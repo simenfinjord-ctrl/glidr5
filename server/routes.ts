@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
-import { storage } from "./storage";
+import { storage, parseGroupScopes } from "./storage";
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated() || !req.user) {
@@ -17,6 +17,26 @@ function userInfo(req: Request) {
     groupScope: u.groupScope,
     isAdmin: u.isAdmin === 1,
   };
+}
+
+function userHasGroupAccess(userGroupScope: string, isAdmin: boolean, recordGroupScope: string): boolean {
+  if (isAdmin) return true;
+  const userGroups = parseGroupScopes(userGroupScope);
+  return userGroups.includes(recordGroupScope);
+}
+
+function resolveCreateGroupScope(req: Request): string {
+  const u = req.user!;
+  const isAdmin = u.isAdmin === 1;
+  const requestedGroup = req.body.groupScope?.trim();
+
+  if (requestedGroup) {
+    if (isAdmin) return requestedGroup;
+    const userGroups = parseGroupScopes(u.groupScope);
+    if (userGroups.includes(requestedGroup)) return requestedGroup;
+  }
+
+  return parseGroupScopes(u.groupScope)[0] || u.groupScope;
 }
 
 export async function registerRoutes(
@@ -77,6 +97,7 @@ export async function registerRoutes(
   app.post("/api/series", requireAuth, async (req, res) => {
     const u = userInfo(req);
     const now = new Date().toISOString();
+    const groupScope = resolveCreateGroupScope(req);
     const result = await storage.createSeries({
       name: req.body.name,
       type: req.body.type,
@@ -86,7 +107,7 @@ export async function registerRoutes(
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
-      groupScope: u.groupScope,
+      groupScope,
     });
     res.json(result);
   });
@@ -96,7 +117,7 @@ export async function registerRoutes(
     const existing = await storage.getSeries(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
-    if (!u.isAdmin && existing.groupScope !== u.groupScope) {
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope)) {
       return res.status(403).json({ message: "Forbidden" });
     }
     const updated = await storage.updateSeries(id, {
@@ -118,6 +139,7 @@ export async function registerRoutes(
   app.post("/api/products", requireAuth, async (req, res) => {
     const u = userInfo(req);
     const now = new Date().toISOString();
+    const groupScope = resolveCreateGroupScope(req);
     const result = await storage.createProduct({
       category: req.body.category,
       brand: req.body.brand.trim(),
@@ -125,9 +147,23 @@ export async function registerRoutes(
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
-      groupScope: u.groupScope,
+      groupScope,
     });
     res.json(result);
+  });
+
+  app.put("/api/products/:id", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const id = parseInt(req.params.id);
+    const data: any = {};
+    if (req.body.groupScope !== undefined) data.groupScope = req.body.groupScope;
+    if (req.body.category !== undefined) data.category = req.body.category;
+    if (req.body.brand !== undefined) data.brand = req.body.brand;
+    if (req.body.name !== undefined) data.name = req.body.name;
+    const updated = await storage.updateProduct(id, data);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
   });
 
   app.get("/api/weather", requireAuth, async (req, res) => {
@@ -147,6 +183,7 @@ export async function registerRoutes(
   app.post("/api/weather", requireAuth, async (req, res) => {
     const u = userInfo(req);
     const now = new Date().toISOString();
+    const groupScope = resolveCreateGroupScope(req);
     const result = await storage.createWeather({
       date: req.body.date,
       time: req.body.time,
@@ -159,7 +196,7 @@ export async function registerRoutes(
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
-      groupScope: u.groupScope,
+      groupScope,
     });
     res.json(result);
   });
@@ -169,7 +206,7 @@ export async function registerRoutes(
     const existing = await storage.getWeather(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
-    if (!u.isAdmin && existing.groupScope !== u.groupScope) {
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope)) {
       return res.status(403).json({ message: "Forbidden" });
     }
     const updated = await storage.updateWeather(id, {
@@ -194,6 +231,7 @@ export async function registerRoutes(
   app.post("/api/tests", requireAuth, async (req, res) => {
     const u = userInfo(req);
     const now = new Date().toISOString();
+    const groupScope = resolveCreateGroupScope(req);
     const test = await storage.createTest({
       date: req.body.date,
       location: req.body.location.trim(),
@@ -204,7 +242,7 @@ export async function registerRoutes(
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
-      groupScope: u.groupScope,
+      groupScope,
     });
 
     const entries = req.body.entries || [];
@@ -222,7 +260,7 @@ export async function registerRoutes(
         createdAt: now,
         createdById: u.id,
         createdByName: u.name,
-        groupScope: u.groupScope,
+        groupScope,
       });
     }
 
@@ -234,7 +272,7 @@ export async function registerRoutes(
     const test = await storage.getTest(id);
     if (!test) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
-    if (!u.isAdmin && test.groupScope !== u.groupScope) {
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope)) {
       return res.status(403).json({ message: "Forbidden" });
     }
     res.json(test);
@@ -245,7 +283,7 @@ export async function registerRoutes(
     const u = userInfo(req);
     const test = await storage.getTest(testId);
     if (!test) return res.status(404).json({ message: "Not found" });
-    if (!u.isAdmin && test.groupScope !== u.groupScope) {
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope)) {
       return res.status(403).json({ message: "Forbidden" });
     }
     const entries = await storage.listEntries(testId);

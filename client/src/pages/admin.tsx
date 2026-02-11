@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 
 type ApiUser = {
   id: number;
@@ -25,18 +26,74 @@ type ApiUser = {
 
 type ApiGroup = { id: number; name: string };
 
+function parseGroups(groupScope: string): string[] {
+  return groupScope.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+function GroupCheckboxes({
+  groupNames,
+  selected,
+  onChange,
+  testIdPrefix,
+}: {
+  groupNames: string[];
+  selected: string[];
+  onChange: (groups: string[]) => void;
+  testIdPrefix: string;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {groupNames.map((g) => {
+        const checked = selected.includes(g);
+        return (
+          <label
+            key={g}
+            className={cn(
+              "inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-all",
+              checked
+                ? "border-primary/50 bg-primary/10 text-primary ring-1 ring-primary/20"
+                : "border-border/40 bg-background/30 text-muted-foreground hover:bg-background/50"
+            )}
+            data-testid={`${testIdPrefix}-${g}`}
+          >
+            <input
+              type="checkbox"
+              checked={checked}
+              className="sr-only"
+              onChange={() => {
+                if (checked) {
+                  onChange(selected.filter((s) => s !== g));
+                } else {
+                  onChange([...selected, g]);
+                }
+              }}
+            />
+            <span className={cn(
+              "flex h-4 w-4 items-center justify-center rounded border transition-colors",
+              checked ? "border-primary bg-primary text-white" : "border-muted-foreground/40"
+            )}>
+              {checked && <Check className="h-3 w-3" />}
+            </span>
+            {g}
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
 const userSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Valid email required"),
   password: z.string().min(1, "Password is required"),
-  groupScope: z.string().min(1, "Group is required"),
+  groupScope: z.string().min(1, "At least one group is required"),
   isAdmin: z.boolean(),
 });
 
 const editSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Valid email required"),
-  groupScope: z.string().min(1, "Group is required"),
+  groupScope: z.string().min(1, "At least one group is required"),
   isAdmin: z.boolean(),
 });
 
@@ -48,8 +105,10 @@ function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames
   const { toast } = useToast();
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
-    defaultValues: { name: "", email: "", password: "password", groupScope: "U23", isAdmin: false },
+    defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false },
   });
+
+  const selectedGroups = parseGroups(form.watch("groupScope"));
 
   const mutation = useMutation({
     mutationFn: async (data: z.infer<typeof userSchema>) => {
@@ -78,33 +137,33 @@ function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames
         <FormField control={form.control} name="password" render={({ field }) => (
           <FormItem><FormLabel>Password</FormLabel><FormControl><Input {...field} type="password" data-testid="input-user-password" /></FormControl><FormMessage /></FormItem>
         )} />
-        <div className="grid grid-cols-2 gap-4">
-          <FormField control={form.control} name="groupScope" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Group</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl><SelectTrigger data-testid="select-user-group"><SelectValue /></SelectTrigger></FormControl>
-                <SelectContent>
-                  {groupNames.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="isAdmin" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Role</FormLabel>
-              <Select value={field.value ? "admin" : "member"} onValueChange={(v) => field.onChange(v === "admin")}>
-                <FormControl><SelectTrigger data-testid="select-user-role"><SelectValue /></SelectTrigger></FormControl>
-                <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )} />
-        </div>
+        <FormField control={form.control} name="groupScope" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Groups (select one or more)</FormLabel>
+            <FormControl>
+              <GroupCheckboxes
+                groupNames={groupNames}
+                selected={selectedGroups}
+                onChange={(groups) => field.onChange(groups.join(","))}
+                testIdPrefix="checkbox-create-group"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )} />
+        <FormField control={form.control} name="isAdmin" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Role</FormLabel>
+            <Select value={field.value ? "admin" : "member"} onValueChange={(v) => field.onChange(v === "admin")}>
+              <FormControl><SelectTrigger data-testid="select-user-role"><SelectValue /></SelectTrigger></FormControl>
+              <SelectContent>
+                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} />
         <div className="flex justify-end">
           <Button type="submit" data-testid="button-create-user" disabled={mutation.isPending}>Create</Button>
         </div>
@@ -119,6 +178,8 @@ function EditUserForm({ user, onDone, groupNames }: { user: ApiUser; onDone: () 
     resolver: zodResolver(editSchema),
     defaultValues: { name: user.name, email: user.email, groupScope: user.groupScope, isAdmin: !!user.isAdmin },
   });
+
+  const selectedGroups = parseGroups(form.watch("groupScope"));
 
   const mutation = useMutation({
     mutationFn: async (data: z.infer<typeof editSchema>) => {
@@ -144,33 +205,33 @@ function EditUserForm({ user, onDone, groupNames }: { user: ApiUser; onDone: () 
         <FormField control={form.control} name="email" render={({ field }) => (
           <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} data-testid="input-edit-email" /></FormControl><FormMessage /></FormItem>
         )} />
-        <div className="grid grid-cols-2 gap-4">
-          <FormField control={form.control} name="groupScope" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Group</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl><SelectTrigger data-testid="select-edit-group"><SelectValue /></SelectTrigger></FormControl>
-                <SelectContent>
-                  {groupNames.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="isAdmin" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Role</FormLabel>
-              <Select value={field.value ? "admin" : "member"} onValueChange={(v) => field.onChange(v === "admin")}>
-                <FormControl><SelectTrigger data-testid="select-edit-role"><SelectValue /></SelectTrigger></FormControl>
-                <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )} />
-        </div>
+        <FormField control={form.control} name="groupScope" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Groups (select one or more)</FormLabel>
+            <FormControl>
+              <GroupCheckboxes
+                groupNames={groupNames}
+                selected={selectedGroups}
+                onChange={(groups) => field.onChange(groups.join(","))}
+                testIdPrefix="checkbox-edit-group"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )} />
+        <FormField control={form.control} name="isAdmin" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Role</FormLabel>
+            <Select value={field.value ? "admin" : "member"} onValueChange={(v) => field.onChange(v === "admin")}>
+              <FormControl><SelectTrigger data-testid="select-edit-role"><SelectValue /></SelectTrigger></FormControl>
+              <SelectContent>
+                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} />
         <div className="flex justify-end">
           <Button type="submit" data-testid="button-save-user" disabled={mutation.isPending}>Save</Button>
         </div>
@@ -322,7 +383,7 @@ export default function Admin() {
 
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button data-testid="button-add-user">
+              <Button data-testid="button-add-user" className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white">
                 <Plus className="mr-2 h-4 w-4" />
                 New user
               </Button>
@@ -337,52 +398,68 @@ export default function Admin() {
         <Card className="fs-card rounded-2xl p-6">
           <div className="text-sm font-semibold">Users ({users.length})</div>
           <div className="mt-3 grid grid-cols-1 gap-2">
-            {users.map((u) => (
-              <div
-                key={u.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/50 px-3 py-2"
-                data-testid={`row-user-${u.id}`}
-              >
-                <div className="min-w-0">
-                  <div className="text-sm font-medium">{u.name}</div>
-                  <div className="text-xs text-muted-foreground">{u.email} · Group {u.groupScope}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="rounded-full border bg-card/70 px-3 py-1 text-xs">
-                    {u.isAdmin ? "Admin" : "Member"}
+            {users.map((u) => {
+              const userGroups = parseGroups(u.groupScope);
+              return (
+                <div
+                  key={u.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/50 px-3 py-2"
+                  data-testid={`row-user-${u.id}`}
+                >
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium">{u.name}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{u.email}</div>
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {userGroups.map((g) => (
+                        <span
+                          key={g}
+                          className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary ring-1 ring-primary/20"
+                        >
+                          {g}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    data-testid={`button-edit-user-${u.id}`}
-                    onClick={() => setEditUser(u)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    data-testid={`button-reset-user-${u.id}`}
-                    onClick={() => setResetUser(u)}
-                  >
-                    <KeyRound className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    data-testid={`button-delete-user-${u.id}`}
-                    disabled={u.id === user.id}
-                    onClick={() => {
-                      if (confirm(`Delete ${u.name}?`)) {
-                        deleteMutation.mutate(u.id);
-                      }
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      "rounded-full border px-3 py-1 text-xs",
+                      u.isAdmin ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : "bg-card/70"
+                    )}>
+                      {u.isAdmin ? "Admin" : "Member"}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      data-testid={`button-edit-user-${u.id}`}
+                      onClick={() => setEditUser(u)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      data-testid={`button-reset-user-${u.id}`}
+                      onClick={() => setResetUser(u)}
+                    >
+                      <KeyRound className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      data-testid={`button-delete-user-${u.id}`}
+                      disabled={u.id === user.id}
+                      onClick={() => {
+                        if (confirm(`Delete ${u.name}?`)) {
+                          deleteMutation.mutate(u.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
 

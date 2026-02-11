@@ -1,4 +1,4 @@
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, groups, testSkiSeries, products, dailyWeather, tests, testEntries,
@@ -10,6 +10,10 @@ import {
   type Test, type InsertTest,
   type TestEntry, type InsertEntry,
 } from "@shared/schema";
+
+export function parseGroupScopes(groupScope: string): string[] {
+  return groupScope.split(",").map((s) => s.trim()).filter(Boolean);
+}
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -31,6 +35,7 @@ export interface IStorage {
 
   listProducts(groupScope: string, isAdmin: boolean): Promise<Product[]>;
   createProduct(p: InsertProduct): Promise<Product>;
+  updateProduct(id: number, data: Partial<InsertProduct>): Promise<Product | undefined>;
 
   listWeather(groupScope: string, isAdmin: boolean): Promise<Weather[]>;
   getWeather(id: number): Promise<Weather | undefined>;
@@ -98,7 +103,11 @@ export class DatabaseStorage implements IStorage {
 
   private scopeFilter(groupScope: string, isAdmin: boolean, table: any) {
     if (isAdmin) return undefined;
-    return eq(table.groupScope, groupScope);
+    const scopes = parseGroupScopes(groupScope);
+    if (scopes.length <= 1) {
+      return eq(table.groupScope, scopes[0] || groupScope);
+    }
+    return inArray(table.groupScope, scopes);
   }
 
   async listSeries(groupScope: string, isAdmin: boolean): Promise<Series[]> {
@@ -137,6 +146,11 @@ export class DatabaseStorage implements IStorage {
     return created!;
   }
 
+  async updateProduct(id: number, data: Partial<InsertProduct>): Promise<Product | undefined> {
+    const [updated] = await db.update(products).set(data).where(eq(products.id, id)).returning();
+    return updated;
+  }
+
   async listWeather(groupScope: string, isAdmin: boolean): Promise<Weather[]> {
     const filter = this.scopeFilter(groupScope, isAdmin, dailyWeather);
     if (filter) {
@@ -161,11 +175,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async findWeather(date: string, location: string, groupScope: string): Promise<Weather | undefined> {
+    const scopes = parseGroupScopes(groupScope);
     const [w] = await db.select().from(dailyWeather).where(
       and(
         eq(dailyWeather.date, date),
         sql`lower(${dailyWeather.location}) = lower(${location})`,
-        eq(dailyWeather.groupScope, groupScope),
+        scopes.length > 1
+          ? inArray(dailyWeather.groupScope, scopes)
+          : eq(dailyWeather.groupScope, scopes[0] || groupScope),
       )
     );
     return w;

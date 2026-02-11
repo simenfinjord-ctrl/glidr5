@@ -40,7 +40,9 @@ type Weather = {
   date: string;
   location: string;
   airTemperatureC: number;
+  airHumidityPct: number;
   snowTemperatureC: number;
+  snowHumidityPct: number;
   snowType: string;
 };
 
@@ -69,6 +71,14 @@ export default function Tests() {
   const [filterProduct, setFilterProduct] = useState<string>("All");
   const [filterSnowType, setFilterSnowType] = useState("");
   const [filterLocation, setFilterLocation] = useState("");
+  const [filterAirTempMin, setFilterAirTempMin] = useState("");
+  const [filterAirTempMax, setFilterAirTempMax] = useState("");
+  const [filterSnowTempMin, setFilterSnowTempMin] = useState("");
+  const [filterSnowTempMax, setFilterSnowTempMax] = useState("");
+  const [filterAirHumMin, setFilterAirHumMin] = useState("");
+  const [filterAirHumMax, setFilterAirHumMax] = useState("");
+  const [filterSnowHumMin, setFilterSnowHumMin] = useState("");
+  const [filterSnowHumMax, setFilterSnowHumMax] = useState("");
 
   const seriesById = new Map(series.map((s) => [s.id, s.name] as const));
   const productsById = new Map(products.map((p) => [p.id, p] as const));
@@ -103,16 +113,26 @@ export default function Tests() {
         if (!entries.some((e) => e.productId === pid)) return false;
       }
 
+      const w = t.weatherId ? weatherById.get(t.weatherId) : null;
+
       if (filterSnowType) {
-        const w = t.weatherId ? weatherById.get(t.weatherId) : null;
         if (!w || !w.snowType.toLowerCase().includes(filterSnowType.toLowerCase())) return false;
       }
 
+      if (filterAirTempMin && (!w || w.airTemperatureC < parseFloat(filterAirTempMin))) return false;
+      if (filterAirTempMax && (!w || w.airTemperatureC > parseFloat(filterAirTempMax))) return false;
+      if (filterSnowTempMin && (!w || w.snowTemperatureC < parseFloat(filterSnowTempMin))) return false;
+      if (filterSnowTempMax && (!w || w.snowTemperatureC > parseFloat(filterSnowTempMax))) return false;
+      if (filterAirHumMin && (!w || w.airHumidityPct < parseFloat(filterAirHumMin))) return false;
+      if (filterAirHumMax && (!w || w.airHumidityPct > parseFloat(filterAirHumMax))) return false;
+      if (filterSnowHumMin && (!w || w.snowHumidityPct < parseFloat(filterSnowHumMin))) return false;
+      if (filterSnowHumMax && (!w || w.snowHumidityPct > parseFloat(filterSnowHumMax))) return false;
+
       return true;
     });
-  }, [tests, filterType, filterProduct, filterSnowType, filterLocation, allEntries, weatherById]);
+  }, [tests, filterType, filterProduct, filterSnowType, filterLocation, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, allEntries, weatherById]);
 
-  const hasFilters = filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation;
+  const hasFilters = filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax;
 
   return (
     <AppShell>
@@ -192,11 +212,113 @@ export default function Tests() {
                   setFilterProduct("All");
                   setFilterSnowType("");
                   setFilterLocation("");
+                  setFilterAirTempMin("");
+                  setFilterAirTempMax("");
+                  setFilterSnowTempMin("");
+                  setFilterSnowTempMax("");
+                  setFilterAirHumMin("");
+                  setFilterAirHumMax("");
+                  setFilterSnowHumMin("");
+                  setFilterSnowHumMax("");
                 }}
               >
                 Clear
               </Button>
             )}
+          </div>
+
+          <div className="mt-3 border-t pt-3">
+            <div className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Weather conditions</div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Air temp (°C)</label>
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="number"
+                    value={filterAirTempMin}
+                    onChange={(e) => setFilterAirTempMin(e.target.value)}
+                    placeholder="Min"
+                    className="h-8 text-xs"
+                    data-testid="input-filter-air-temp-min"
+                  />
+                  <span className="text-xs text-muted-foreground">–</span>
+                  <Input
+                    type="number"
+                    value={filterAirTempMax}
+                    onChange={(e) => setFilterAirTempMax(e.target.value)}
+                    placeholder="Max"
+                    className="h-8 text-xs"
+                    data-testid="input-filter-air-temp-max"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Snow temp (°C)</label>
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="number"
+                    value={filterSnowTempMin}
+                    onChange={(e) => setFilterSnowTempMin(e.target.value)}
+                    placeholder="Min"
+                    className="h-8 text-xs"
+                    data-testid="input-filter-snow-temp-min"
+                  />
+                  <span className="text-xs text-muted-foreground">–</span>
+                  <Input
+                    type="number"
+                    value={filterSnowTempMax}
+                    onChange={(e) => setFilterSnowTempMax(e.target.value)}
+                    placeholder="Max"
+                    className="h-8 text-xs"
+                    data-testid="input-filter-snow-temp-max"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Air humidity (%)</label>
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="number"
+                    value={filterAirHumMin}
+                    onChange={(e) => setFilterAirHumMin(e.target.value)}
+                    placeholder="Min"
+                    className="h-8 text-xs"
+                    data-testid="input-filter-air-hum-min"
+                  />
+                  <span className="text-xs text-muted-foreground">–</span>
+                  <Input
+                    type="number"
+                    value={filterAirHumMax}
+                    onChange={(e) => setFilterAirHumMax(e.target.value)}
+                    placeholder="Max"
+                    className="h-8 text-xs"
+                    data-testid="input-filter-air-hum-max"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Snow humidity (%)</label>
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="number"
+                    value={filterSnowHumMin}
+                    onChange={(e) => setFilterSnowHumMin(e.target.value)}
+                    placeholder="Min"
+                    className="h-8 text-xs"
+                    data-testid="input-filter-snow-hum-min"
+                  />
+                  <span className="text-xs text-muted-foreground">–</span>
+                  <Input
+                    type="number"
+                    value={filterSnowHumMax}
+                    onChange={(e) => setFilterSnowHumMax(e.target.value)}
+                    placeholder="Max"
+                    className="h-8 text-xs"
+                    data-testid="input-filter-snow-hum-max"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </Card>
 
@@ -220,7 +342,7 @@ export default function Tests() {
                         </div>
                         {w && (
                           <div className="mt-1 text-xs text-muted-foreground">
-                            Air {w.airTemperatureC}°C · Snow {w.snowTemperatureC}°C · {w.snowType}
+                            Air {w.airTemperatureC}°C / {w.airHumidityPct}% · Snow {w.snowTemperatureC}°C / {w.snowHumidityPct}% · {w.snowType}
                           </div>
                         )}
                         <div className="mt-2 text-xs text-muted-foreground">

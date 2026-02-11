@@ -39,10 +39,15 @@ export default function Login() {
     <div className="min-h-screen fs-grid flex items-center justify-center px-4">
       <Card className="w-full max-w-md fs-card">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl">Sign in</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            FastSki is a prototype. Use a seeded account to continue.
-          </p>
+          <div className="flex flex-col items-center gap-3 pb-2">
+            <img src="/logo.png" alt="US Ski Team" className="h-16 w-16 object-contain" />
+            <div className="text-center">
+              <CardTitle className="text-2xl">FastSki</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
+                US Ski Team Testing & Documentation
+              </p>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <Form {...form}>

@@ -60,10 +60,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-primary to-accent" />
-              <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-white/30" />
-            </div>
+            <img src="/logo.png" alt="US Ski Team" className="h-10 w-10 object-contain" />
             <div className="min-w-0">
               <div className="flex items-baseline gap-2">
                 <span className="text-base font-semibold tracking-tight">FastSki</span>
@@ -128,7 +125,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <footer className="mx-auto w-full max-w-6xl px-4 pb-10">
         <Separator className="mb-4" />
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span>FastSki prototype (frontend-only)</span>
+          <span>FastSki · US Ski Team</span>
           <span>Designed for fast tablet entry</span>
         </div>
       </footer>

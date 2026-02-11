@@ -20,8 +20,10 @@ Full-stack React web application for the US Ski Team to manage ski testing and d
 - `client/src/lib/queryClient.ts` — API request helpers
 - `client/src/App.tsx` — Router with auth guard
 - `client/src/components/app-shell.tsx` — Layout with nav
-- `client/src/pages/test-detail.tsx` — Test detail view with results table
+- `client/src/pages/test-detail.tsx` — Test detail view with results table, CSV export, Hide/Show toggle
+- `client/src/pages/dashboard.tsx` — Dashboard with stats, top products, recent tests
 - `client/src/pages/` — All page components
+- `client/public/logo.png` — US Ski Team logo
 
 ## Seeded Accounts
 | Email | Password | Group | Admin |

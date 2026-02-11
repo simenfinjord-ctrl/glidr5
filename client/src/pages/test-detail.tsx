@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, EyeOff, Eye } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, Download } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -207,15 +207,48 @@ export default function TestDetail() {
         <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-test-results">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Results</h2>
-            <Button
-              variant="outline"
-              size="sm"
-              data-testid="button-toggle-hide"
-              onClick={() => setHideDetails((v) => !v)}
-            >
-              {hideDetails ? <Eye className="mr-2 h-4 w-4" /> : <EyeOff className="mr-2 h-4 w-4" />}
-              {hideDetails ? "Show" : "Hide"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid="button-export-csv"
+                onClick={() => {
+                  const headers = ["Rank", "Ski No.", "Product", "Method", "Result 0km (cm)", "Result Xkm (cm)", "Rank Xkm"];
+                  const rows = sortedEntries.map((entry) => {
+                    const prod = entry.productId ? productsById.get(entry.productId) : null;
+                    return [
+                      entry.rank0km ?? "",
+                      entry.skiNumber,
+                      prod ? `${prod.brand} ${prod.name}` : "",
+                      entry.methodology,
+                      entry.result0kmCmBehind ?? "",
+                      entry.resultXkmCmBehind ?? "",
+                      entry.rankXkm ?? "",
+                    ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
+                  });
+                  const csv = [headers.join(","), ...rows].join("\n");
+                  const blob = new Blob([csv], { type: "text/csv" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `test-${test.location}-${test.date}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid="button-toggle-hide"
+                onClick={() => setHideDetails((v) => !v)}
+              >
+                {hideDetails ? <Eye className="mr-2 h-4 w-4" /> : <EyeOff className="mr-2 h-4 w-4" />}
+                {hideDetails ? "Show" : "Hide"}
+              </Button>
+            </div>
           </div>
           {sortedEntries.length === 0 ? (
             <p className="text-sm text-muted-foreground" data-testid="empty-entries">

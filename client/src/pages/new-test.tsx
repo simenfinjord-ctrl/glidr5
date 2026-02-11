@@ -29,7 +29,6 @@ import { getCurrentUser } from "@/lib/mock-auth";
 import {
   createTestWithEntries,
   getWeatherFor,
-  listLanes,
   listProducts,
   listSeries,
   listWeather,
@@ -41,11 +40,12 @@ const schema = z.object({
   date: z.string().min(1, "Date is required"),
   seriesId: z.string().min(1, "Select a series"),
   testType: z.enum(["Glide", "Structure"]),
-  lane: z.string().min(1, "Select a lane"),
   location: z.string().min(1, "Location is required"),
   weatherId: z.string().optional(),
   notes: z.string().optional(),
 });
+
+type FormValues = z.infer<typeof schema>;
 
 function makeRows(n = 8): EntryRow[] {
   return Array.from({ length: n }).map((_, i) => ({
@@ -67,7 +67,6 @@ export default function NewTest() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const lanes = useMemo(() => listLanes(), []);
   const series = useMemo(() => (user ? listSeries(user) : []), [user]);
   const products = useMemo(() => (user ? listProducts(user) : []), [user]);
   const weather = useMemo(() => (user ? listWeather(user) : []), [user]);
@@ -76,12 +75,11 @@ export default function NewTest() {
 
   const defaultLocation = weather[0]?.location ?? "";
 
-  const form = useForm<z.infer<typeof schema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       date: today,
       testType: "Glide",
-      lane: lanes[0] ?? "Blue 1",
       seriesId: series[0]?.id ?? "",
       location: defaultLocation,
       weatherId: undefined,
@@ -121,16 +119,16 @@ export default function NewTest() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Button asChild variant="secondary" size="sm" data-testid="button-back-tests">
-              <Link href="/tests">
-                <a>
+            <Link href="/tests">
+              <a data-testid="button-back-tests">
+                <Button asChild variant="secondary" size="sm">
                   <span className="inline-flex items-center">
                     <ChevronLeft className="mr-1 h-4 w-4" />
                     Tests
                   </span>
-                </a>
-              </Link>
-            </Button>
+                </Button>
+              </a>
+            </Link>
             <div>
               <h1 className="text-2xl sm:text-3xl">New test</h1>
               <p
@@ -184,7 +182,7 @@ export default function NewTest() {
                       weatherId: chosenWeatherId,
                       testType: values.testType,
                       seriesId: values.seriesId,
-                      lane: values.lane,
+                      lane: "",
                       notes: values.notes,
                       entries: rows.map((r) => ({
                         skiNumber: r.skiNumber,
@@ -279,39 +277,6 @@ export default function NewTest() {
                   />
                 </div>
 
-                <div className="lg:col-span-2">
-                  <FormField
-                    control={form.control}
-                    name="lane"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Lane</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-test-lane">
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {lanes.map((l) => (
-                              <SelectItem
-                                key={l}
-                                value={l}
-                                data-testid={`option-lane-${l}`}
-                              >
-                                {l}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
 
                 <div className="lg:col-span-2">
                   <FormField

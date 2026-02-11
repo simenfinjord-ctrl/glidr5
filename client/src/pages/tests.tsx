@@ -48,7 +48,7 @@ export default function Tests() {
                   <div>
                     <div className="text-base font-semibold">{t.location}</div>
                     <div className="mt-1 text-xs text-muted-foreground">
-                      {t.date} · {t.testType} · {t.lane} · {seriesById.get(t.seriesId) ?? "Series"}
+                      {t.date} · {t.testType} · {seriesById.get(t.seriesId) ?? "Series"}
                     </div>
                     <div className="mt-2 text-xs text-muted-foreground">
                       Created by <span className="text-foreground">{t.createdBy.name}</span>

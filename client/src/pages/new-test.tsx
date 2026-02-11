@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,9 +7,22 @@ import { ChevronLeft, Save, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { getCurrentUser } from "@/lib/mock-auth";
@@ -62,7 +75,6 @@ export default function NewTest() {
   const [rows, setRows] = useState<EntryRow[]>(() => makeRows(8));
 
   const defaultLocation = weather[0]?.location ?? "";
-  const defaultWeatherId = weather[0]?.id ?? undefined;
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -72,10 +84,22 @@ export default function NewTest() {
       lane: lanes[0] ?? "Blue 1",
       seriesId: series[0]?.id ?? "",
       location: defaultLocation,
-      weatherId: defaultWeatherId,
+      weatherId: undefined,
       notes: "",
     },
   });
+
+  useEffect(() => {
+    if (!series.length) return;
+    if (form.getValues("seriesId")) return;
+    form.setValue("seriesId", series[0]!.id, { shouldValidate: true });
+  }, [series, form]);
+
+  useEffect(() => {
+    if (!weather.length) return;
+    if (form.getValues("location")) return;
+    form.setValue("location", weather[0]!.location, { shouldValidate: true });
+  }, [weather, form]);
 
   const watchDate = form.watch("date");
   const watchLocation = form.watch("location");
@@ -98,14 +122,23 @@ export default function NewTest() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link href="/tests">
-              <Button variant="secondary" size="sm" data-testid="button-back-tests">
-                <ChevronLeft className="mr-1 h-4 w-4" />
-                Tests
-              </Button>
+              <a>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  data-testid="button-back-tests"
+                >
+                  <ChevronLeft className="mr-1 h-4 w-4" />
+                  Tests
+                </Button>
+              </a>
             </Link>
             <div>
               <h1 className="text-2xl sm:text-3xl">New test</h1>
-              <p className="mt-1 text-sm text-muted-foreground" data-testid="text-newtest-subtitle">
+              <p
+                className="mt-1 text-sm text-muted-foreground"
+                data-testid="text-newtest-subtitle"
+              >
                 Fast, table-first logging with live ranking.
               </p>
             </div>
@@ -115,12 +148,24 @@ export default function NewTest() {
             <Button
               variant="secondary"
               data-testid="button-add-row"
-              onClick={() => setRows((r) => [...r, ...makeRows(1).map((x) => ({ ...x, skiNumber: r.length + 1 }))])}
+              onClick={() =>
+                setRows((r) => [
+                  ...r,
+                  ...makeRows(1).map((x) => ({
+                    ...x,
+                    skiNumber: r.length + 1,
+                  })),
+                ])
+              }
             >
               <Sparkles className="mr-2 h-4 w-4" />
               Add ski
             </Button>
-            <Button type="submit" form="new-test-form" data-testid="button-save-test">
+            <Button
+              type="submit"
+              form="new-test-form"
+              data-testid="button-save-test"
+            >
               <Save className="mr-2 h-4 w-4" />
               Save
             </Button>
@@ -133,12 +178,12 @@ export default function NewTest() {
               id="new-test-form"
               onSubmit={form.handleSubmit((values) => {
                 try {
-                  const chosenWeather = values.weatherId || autoWeather?.id;
-                  const test = createTestWithEntries(
+                  const chosenWeatherId = values.weatherId || autoWeather?.id;
+                  createTestWithEntries(
                     {
                       date: values.date,
                       location: values.location,
-                      weatherId: chosenWeather,
+                      weatherId: chosenWeatherId,
                       testType: values.testType,
                       seriesId: values.seriesId,
                       lane: values.lane,
@@ -159,7 +204,6 @@ export default function NewTest() {
                     description: `Saved ${rows.length} entries.`,
                   });
                   setLocation("/tests");
-                  void test;
                 } catch (e) {
                   toast({
                     title: "Could not save test",
@@ -178,7 +222,10 @@ export default function NewTest() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Series</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
                           <FormControl>
                             <SelectTrigger data-testid="select-test-series">
                               <SelectValue placeholder="Select series" />
@@ -186,7 +233,11 @@ export default function NewTest() {
                           </FormControl>
                           <SelectContent>
                             {series.map((s) => (
-                              <SelectItem key={s.id} value={s.id} data-testid={`option-series-${s.id}`}>
+                              <SelectItem
+                                key={s.id}
+                                value={s.id}
+                                data-testid={`option-series-${s.id}`}
+                              >
                                 {s.name}
                               </SelectItem>
                             ))}
@@ -209,8 +260,9 @@ export default function NewTest() {
                           value={field.value}
                           onValueChange={(v) => {
                             field.onChange(v);
-                            // reset products when switching types
-                            setRows((prev) => prev.map((r) => ({ ...r, productId: undefined })));
+                            setRows((prev) =>
+                              prev.map((r) => ({ ...r, productId: undefined })),
+                            );
                           }}
                         >
                           <FormControl>
@@ -236,7 +288,10 @@ export default function NewTest() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Lane</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
                           <FormControl>
                             <SelectTrigger data-testid="select-test-lane">
                               <SelectValue placeholder="Select" />
@@ -244,7 +299,11 @@ export default function NewTest() {
                           </FormControl>
                           <SelectContent>
                             {lanes.map((l) => (
-                              <SelectItem key={l} value={l} data-testid={`option-lane-${l}`}>
+                              <SelectItem
+                                key={l}
+                                value={l}
+                                data-testid={`option-lane-${l}`}
+                              >
                                 {l}
                               </SelectItem>
                             ))}
@@ -264,7 +323,11 @@ export default function NewTest() {
                       <FormItem>
                         <FormLabel>Date</FormLabel>
                         <FormControl>
-                          <Input {...field} type="date" data-testid="input-test-date" />
+                          <Input
+                            {...field}
+                            type="date"
+                            data-testid="input-test-date"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -280,7 +343,11 @@ export default function NewTest() {
                       <FormItem>
                         <FormLabel>Location</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-test-location" placeholder="e.g., Park City" />
+                          <Input
+                            {...field}
+                            data-testid="input-test-location"
+                            placeholder="e.g., Park City"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -295,16 +362,36 @@ export default function NewTest() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Weather</FormLabel>
-                        <Select value={field.value ?? ""} onValueChange={(v) => field.onChange(v)}>
+                        <Select
+                          value={field.value ?? "__auto__"}
+                          onValueChange={(v) => {
+                            field.onChange(v === "__auto__" ? undefined : v);
+                          }}
+                        >
                           <FormControl>
                             <SelectTrigger data-testid="select-test-weather">
-                              <SelectValue placeholder={autoWeather ? `Auto: ${autoWeather.location} ${autoWeather.time}` : "Select weather"} />
+                              <SelectValue
+                                placeholder={
+                                  autoWeather
+                                    ? `Auto: ${autoWeather.location} ${autoWeather.time}`
+                                    : "Select weather"
+                                }
+                              />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="" data-testid="option-weather-none">Auto</SelectItem>
+                            <SelectItem
+                              value="__auto__"
+                              data-testid="option-weather-auto"
+                            >
+                              Auto
+                            </SelectItem>
                             {weather.map((w) => (
-                              <SelectItem key={w.id} value={w.id} data-testid={`option-weather-${w.id}`}>
+                              <SelectItem
+                                key={w.id}
+                                value={w.id}
+                                data-testid={`option-weather-${w.id}`}
+                              >
                                 {w.date} · {w.location} · {w.time} · Air {w.airTemperatureC}°C
                               </SelectItem>
                             ))}
@@ -342,8 +429,16 @@ export default function NewTest() {
         </Card>
 
         <div>
-          <TestEntryTable testType={watchTestType} products={products} rows={rows} setRows={setRows} />
-          <div className="mt-2 text-xs text-muted-foreground" data-testid="text-ranking-hint">
+          <TestEntryTable
+            testType={watchTestType}
+            products={products}
+            rows={rows}
+            setRows={setRows}
+          />
+          <div
+            className="mt-2 text-xs text-muted-foreground"
+            data-testid="text-ranking-hint"
+          >
             Ranking uses dense ranking: same result = same rank.
           </div>
         </div>

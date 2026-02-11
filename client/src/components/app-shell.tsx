@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { logout } from "@/lib/mock-auth";
 
 type NavItem = {
   href: string;
@@ -21,11 +22,31 @@ type NavItem = {
 };
 
 const nav: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, testId: "link-dashboard" },
+  {
+    href: "/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    testId: "link-dashboard",
+  },
   { href: "/tests", label: "Tests", icon: ListChecks, testId: "link-tests" },
-  { href: "/testskis", label: "TestSkis", icon: Snowflake, testId: "link-testskis" },
-  { href: "/products", label: "Products", icon: Package, testId: "link-products" },
-  { href: "/weather", label: "Weather", icon: CloudSun, testId: "link-weather" },
+  {
+    href: "/testskis",
+    label: "TestSkis",
+    icon: Snowflake,
+    testId: "link-testskis",
+  },
+  {
+    href: "/products",
+    label: "Products",
+    icon: Package,
+    testId: "link-products",
+  },
+  {
+    href: "/weather",
+    label: "Weather",
+    icon: CloudSun,
+    testId: "link-weather",
+  },
   { href: "/admin", label: "Admin", icon: Shield, testId: "link-admin" },
 ];
 
@@ -48,9 +69,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   US Ski Team
                 </span>
               </div>
-              <div className="text-xs text-muted-foreground">
-                Testing + documentation
-              </div>
+              <div className="text-xs text-muted-foreground">Testing + documentation</div>
             </div>
           </div>
 
@@ -60,7 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               size="sm"
               data-testid="button-logout"
               onClick={() => {
-                // mock-only logout
+                logout();
                 window.location.href = "/login";
               }}
             >
@@ -70,7 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="mx-auto w-full max-w-6xl px-4 pb-3">
-          <nav className="flex flex-wrap items-center gap-2">
+          <nav className="flex flex-wrap items-center gap-2" data-testid="nav-primary">
             {nav.map((item) => {
               const active = location === item.href;
               const Icon = item.icon;
@@ -86,7 +105,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                         : "border-border/80 text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    <Icon className={cn("h-4 w-4", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+                    <Icon
+                      className={cn(
+                        "h-4 w-4",
+                        active
+                          ? "text-primary"
+                          : "text-muted-foreground group-hover:text-foreground",
+                      )}
+                    />
                     <span>{item.label}</span>
                   </a>
                 </Link>

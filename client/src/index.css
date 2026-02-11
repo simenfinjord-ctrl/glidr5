@@ -152,19 +152,20 @@
 @layer utilities {
   .fs-grid {
     background-image:
-      radial-gradient(900px 300px at 10% -10%, hsl(var(--primary) / 0.12), transparent 60%),
-      radial-gradient(700px 260px at 90% 0%, hsl(var(--accent) / 0.10), transparent 55%),
-      radial-gradient(900px 360px at 50% 110%, hsl(var(--primary) / 0.08), transparent 60%),
+      radial-gradient(1000px 400px at 5% -5%, hsl(212 92% 58% / 0.15), transparent 60%),
+      radial-gradient(800px 350px at 95% -5%, hsl(160 84% 39% / 0.10), transparent 55%),
+      radial-gradient(600px 250px at 50% 0%, hsl(280 80% 60% / 0.06), transparent 50%),
+      radial-gradient(900px 360px at 50% 110%, hsl(198 90% 52% / 0.10), transparent 60%),
       linear-gradient(to bottom, hsl(var(--background)), hsl(var(--background)));
   }
 
   .fs-card {
     background: hsl(var(--card) / 0.72);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(12px);
     border: 1px solid hsl(var(--border) / 0.9);
     box-shadow:
       0 14px 44px -24px hsl(222 28% 8% / 0.25),
-      0 1px 0 hsl(0 0% 100% / 0.6) inset;
+      0 1px 0 hsl(0 0% 100% / 0.06) inset;
   }
 
   .fs-focus {
@@ -172,5 +173,55 @@
     box-shadow:
       0 0 0 4px hsl(var(--primary) / 0.18),
       0 0 0 1px hsl(var(--primary) / 0.55);
+  }
+
+  .fs-badge-glide {
+    background: hsl(212 92% 58% / 0.15);
+    color: hsl(212 92% 68%);
+    border: 1px solid hsl(212 92% 58% / 0.25);
+  }
+
+  .fs-badge-structure {
+    background: hsl(280 80% 60% / 0.15);
+    color: hsl(280 80% 70%);
+    border: 1px solid hsl(280 80% 60% / 0.25);
+  }
+
+  .fs-badge-topping {
+    background: hsl(35 95% 55% / 0.15);
+    color: hsl(35 95% 65%);
+    border: 1px solid hsl(35 95% 55% / 0.25);
+  }
+
+  .fs-gradient-blue {
+    background: linear-gradient(135deg, hsl(212 92% 58% / 0.15), hsl(198 90% 52% / 0.08));
+  }
+
+  .fs-gradient-emerald {
+    background: linear-gradient(135deg, hsl(160 84% 39% / 0.15), hsl(160 84% 39% / 0.05));
+  }
+
+  .fs-gradient-violet {
+    background: linear-gradient(135deg, hsl(280 80% 60% / 0.15), hsl(280 80% 60% / 0.05));
+  }
+
+  .fs-gradient-amber {
+    background: linear-gradient(135deg, hsl(35 95% 55% / 0.15), hsl(35 95% 55% / 0.05));
+  }
+
+  .fs-stat-blue {
+    border-left: 3px solid hsl(212 92% 58%);
+  }
+
+  .fs-stat-emerald {
+    border-left: 3px solid hsl(160 84% 39%);
+  }
+
+  .fs-stat-violet {
+    border-left: 3px solid hsl(280 80% 60%);
+  }
+
+  .fs-stat-amber {
+    border-left: 3px solid hsl(35 95% 55%);
   }
 }

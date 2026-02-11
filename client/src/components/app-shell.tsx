@@ -10,7 +10,6 @@ import {
   LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { AppLink } from "@/components/app-link";
@@ -20,6 +19,8 @@ type NavItem = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   testId: string;
+  color: string;
+  activeColor: string;
 };
 
 const nav: NavItem[] = [
@@ -28,27 +29,49 @@ const nav: NavItem[] = [
     label: "Dashboard",
     icon: LayoutDashboard,
     testId: "link-dashboard",
+    color: "text-blue-400/70",
+    activeColor: "text-blue-400",
   },
-  { href: "/tests", label: "Tests", icon: ListChecks, testId: "link-tests" },
+  {
+    href: "/tests",
+    label: "Tests",
+    icon: ListChecks,
+    testId: "link-tests",
+    color: "text-emerald-400/70",
+    activeColor: "text-emerald-400",
+  },
   {
     href: "/testskis",
     label: "TestSkis",
     icon: Snowflake,
     testId: "link-testskis",
+    color: "text-sky-400/70",
+    activeColor: "text-sky-400",
   },
   {
     href: "/products",
     label: "Products",
     icon: Package,
     testId: "link-products",
+    color: "text-amber-400/70",
+    activeColor: "text-amber-400",
   },
   {
     href: "/weather",
     label: "Weather",
     icon: CloudSun,
     testId: "link-weather",
+    color: "text-violet-400/70",
+    activeColor: "text-violet-400",
   },
-  { href: "/admin", label: "Admin", icon: Shield, testId: "link-admin" },
+  {
+    href: "/admin",
+    label: "Admin",
+    icon: Shield,
+    testId: "link-admin",
+    color: "text-rose-400/70",
+    activeColor: "text-rose-400",
+  },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -57,27 +80,31 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen fs-grid">
-      <header className="sticky top-0 z-40 border-b bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-40 border-b border-border/50 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="US Ski Team" className="h-10 w-10 object-contain" />
+            <div className="relative">
+              <img src="/logo.png" alt="US Ski Team" className="h-10 w-10 object-contain" />
+              <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-background" />
+            </div>
             <div className="min-w-0">
               <div className="flex items-baseline gap-2">
-                <span className="text-base font-semibold tracking-tight">FastSki</span>
-                <span className="rounded-full border bg-card/70 px-2 py-0.5 text-[11px] text-muted-foreground">
+                <span className="text-base font-bold tracking-tight bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">FastSki</span>
+                <span className="rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary">
                   US Ski Team
                 </span>
               </div>
-              <div className="text-xs text-muted-foreground">Testing + documentation</div>
+              <div className="text-[11px] text-muted-foreground">Testing & Documentation</div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <Button
-              variant="secondary"
+              variant="ghost"
               size="sm"
               data-testid="button-logout"
               onClick={() => logout()}
+              className="text-muted-foreground hover:text-foreground"
             >
               <LogOut className="mr-2 h-4 w-4" />
               Log out
@@ -85,9 +112,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="mx-auto w-full max-w-6xl px-4 pb-3">
-          <nav className="flex flex-wrap items-center gap-2" data-testid="nav-primary">
+          <nav className="flex flex-wrap items-center gap-1.5" data-testid="nav-primary">
             {nav.map((item) => {
-              const active = location === item.href;
+              const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
               const Icon = item.icon;
               return (
                 <AppLink
@@ -95,19 +122,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                   href={item.href}
                   testId={item.testId}
                   className={cn(
-                    "group inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition",
-                    "bg-card/60 hover:bg-card/90",
+                    "group inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-all duration-200",
                     active
-                      ? "border-primary/40 bg-primary/10 text-foreground"
-                      : "border-border/80 text-muted-foreground hover:text-foreground",
+                      ? "bg-card/80 shadow-sm ring-1 ring-border/60 text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-card/40",
                   )}
                 >
                   <Icon
                     className={cn(
-                      "h-4 w-4",
-                      active
-                        ? "text-primary"
-                        : "text-muted-foreground group-hover:text-foreground",
+                      "h-4 w-4 transition-colors",
+                      active ? item.activeColor : item.color,
                     )}
                   />
                   <span>{item.label}</span>
@@ -123,9 +147,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       <footer className="mx-auto w-full max-w-6xl px-4 pb-10">
-        <Separator className="mb-4" />
+        <div className="mb-4 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span>FastSki · US Ski Team</span>
+          <span className="font-medium">FastSki · US Ski Team</span>
           <span>Designed for fast tablet entry</span>
         </div>
       </footer>

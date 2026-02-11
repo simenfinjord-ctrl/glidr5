@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Trophy, Filter, Search } from "lucide-react";
+import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -141,11 +141,11 @@ export default function Tests() {
           <div>
             <h1 className="text-2xl sm:text-3xl">Tests</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-tests-subtitle">
-              View test results and filter by product or conditions.
+              {filtered.length} test{filtered.length !== 1 ? "s" : ""}{hasFilters ? " matching filters" : " total"}
             </p>
           </div>
           <AppLink href="/tests/new">
-            <Button data-testid="button-new-test">
+            <Button data-testid="button-new-test" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90">
               <Plus className="mr-2 h-4 w-4" />
               New test
             </Button>
@@ -155,7 +155,9 @@ export default function Tests() {
         <Card className="fs-card rounded-2xl p-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="inline-flex items-center gap-2 text-sm font-semibold">
-              <Filter className="h-4 w-4 text-muted-foreground" />
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10">
+                <Filter className="h-3.5 w-3.5 text-primary" />
+              </div>
               Filters
             </div>
             <div className="flex flex-1 flex-wrap items-center gap-3">
@@ -227,95 +229,54 @@ export default function Tests() {
             )}
           </div>
 
-          <div className="mt-3 border-t pt-3">
-            <div className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Weather conditions</div>
+          <div className="mt-3 border-t border-border/40 pt-3">
+            <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <Thermometer className="h-3 w-3" />
+              Weather conditions
+            </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <label className="mb-1 block text-xs text-muted-foreground">Air temp (°C)</label>
+                <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />
+                  Air temp (°C)
+                </label>
                 <div className="flex items-center gap-1.5">
-                  <Input
-                    type="number"
-                    value={filterAirTempMin}
-                    onChange={(e) => setFilterAirTempMin(e.target.value)}
-                    placeholder="Min"
-                    className="h-8 text-xs"
-                    data-testid="input-filter-air-temp-min"
-                  />
+                  <Input type="number" value={filterAirTempMin} onChange={(e) => setFilterAirTempMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-air-temp-min" />
                   <span className="text-xs text-muted-foreground">–</span>
-                  <Input
-                    type="number"
-                    value={filterAirTempMax}
-                    onChange={(e) => setFilterAirTempMax(e.target.value)}
-                    placeholder="Max"
-                    className="h-8 text-xs"
-                    data-testid="input-filter-air-temp-max"
-                  />
+                  <Input type="number" value={filterAirTempMax} onChange={(e) => setFilterAirTempMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-air-temp-max" />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-muted-foreground">Snow temp (°C)</label>
+                <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Snow temp (°C)
+                </label>
                 <div className="flex items-center gap-1.5">
-                  <Input
-                    type="number"
-                    value={filterSnowTempMin}
-                    onChange={(e) => setFilterSnowTempMin(e.target.value)}
-                    placeholder="Min"
-                    className="h-8 text-xs"
-                    data-testid="input-filter-snow-temp-min"
-                  />
+                  <Input type="number" value={filterSnowTempMin} onChange={(e) => setFilterSnowTempMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-snow-temp-min" />
                   <span className="text-xs text-muted-foreground">–</span>
-                  <Input
-                    type="number"
-                    value={filterSnowTempMax}
-                    onChange={(e) => setFilterSnowTempMax(e.target.value)}
-                    placeholder="Max"
-                    className="h-8 text-xs"
-                    data-testid="input-filter-snow-temp-max"
-                  />
+                  <Input type="number" value={filterSnowTempMax} onChange={(e) => setFilterSnowTempMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-snow-temp-max" />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-muted-foreground">Air humidity (%)</label>
+                <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400" />
+                  Air humidity (%)
+                </label>
                 <div className="flex items-center gap-1.5">
-                  <Input
-                    type="number"
-                    value={filterAirHumMin}
-                    onChange={(e) => setFilterAirHumMin(e.target.value)}
-                    placeholder="Min"
-                    className="h-8 text-xs"
-                    data-testid="input-filter-air-hum-min"
-                  />
+                  <Input type="number" value={filterAirHumMin} onChange={(e) => setFilterAirHumMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-air-hum-min" />
                   <span className="text-xs text-muted-foreground">–</span>
-                  <Input
-                    type="number"
-                    value={filterAirHumMax}
-                    onChange={(e) => setFilterAirHumMax(e.target.value)}
-                    placeholder="Max"
-                    className="h-8 text-xs"
-                    data-testid="input-filter-air-hum-max"
-                  />
+                  <Input type="number" value={filterAirHumMax} onChange={(e) => setFilterAirHumMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-air-hum-max" />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-muted-foreground">Snow humidity (%)</label>
+                <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
+                  Snow humidity (%)
+                </label>
                 <div className="flex items-center gap-1.5">
-                  <Input
-                    type="number"
-                    value={filterSnowHumMin}
-                    onChange={(e) => setFilterSnowHumMin(e.target.value)}
-                    placeholder="Min"
-                    className="h-8 text-xs"
-                    data-testid="input-filter-snow-hum-min"
-                  />
+                  <Input type="number" value={filterSnowHumMin} onChange={(e) => setFilterSnowHumMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-snow-hum-min" />
                   <span className="text-xs text-muted-foreground">–</span>
-                  <Input
-                    type="number"
-                    value={filterSnowHumMax}
-                    onChange={(e) => setFilterSnowHumMax(e.target.value)}
-                    placeholder="Max"
-                    className="h-8 text-xs"
-                    data-testid="input-filter-snow-hum-max"
-                  />
+                  <Input type="number" value={filterSnowHumMax} onChange={(e) => setFilterSnowHumMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-snow-hum-max" />
                 </div>
               </div>
             </div>
@@ -333,30 +294,46 @@ export default function Tests() {
               const w = t.weatherId ? weatherById.get(t.weatherId) : null;
               return (
                 <AppLink key={t.id} href={`/tests/${t.id}`} testId={`link-test-${t.id}`}>
-                  <Card className="fs-card rounded-2xl p-4 transition hover:bg-card/90 cursor-pointer" data-testid={`card-test-${t.id}`}>
+                  <Card className="fs-card rounded-2xl p-4 transition-all duration-200 hover:bg-card/90 hover:shadow-lg hover:shadow-primary/5 cursor-pointer" data-testid={`card-test-${t.id}`}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-base font-semibold">{t.location}</div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {t.date} · {t.testType} · {seriesById.get(t.seriesId) ?? "Series"}
+                        <div className="flex items-center gap-2">
+                          <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
+                            {t.testType}
+                          </span>
+                          <span className="text-base font-semibold">{t.location}</span>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span>{t.date}</span>
+                          <span className="text-border">·</span>
+                          <span>{seriesById.get(t.seriesId) ?? "Series"}</span>
                         </div>
                         {w && (
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            Air {w.airTemperatureC}°C / {w.airHumidityPct}% · Snow {w.snowTemperatureC}°C / {w.snowHumidityPct}% · {w.snowType}
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            <span className="inline-flex items-center gap-1 rounded-full fs-gradient-blue px-2 py-0.5 text-[10px] font-medium text-sky-300 ring-1 ring-sky-500/10">
+                              <Thermometer className="h-2.5 w-2.5" /> Air {w.airTemperatureC}°C
+                            </span>
+                            <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/10">
+                              <Thermometer className="h-2.5 w-2.5" /> Snow {w.snowTemperatureC}°C
+                            </span>
+                            <span className="inline-flex items-center gap-1 rounded-full fs-gradient-violet px-2 py-0.5 text-[10px] font-medium text-violet-300 ring-1 ring-violet-500/10">
+                              <Droplets className="h-2.5 w-2.5" /> {w.snowType}
+                            </span>
                           </div>
                         )}
                         <div className="mt-2 text-xs text-muted-foreground">
-                          Created by <span className="text-foreground">{t.createdByName}</span>
-                          {` · Group ${t.groupScope}`}
+                          <span className="text-foreground/70">{t.createdByName}</span>
+                          <span className="text-border"> · </span>
+                          <span>{t.groupScope}</span>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
-                        <div className="inline-flex rounded-full border bg-background/60 px-3 py-1 text-xs text-muted-foreground">
+                        <div className="inline-flex rounded-full border border-border/40 bg-background/40 px-3 py-1 text-xs text-muted-foreground">
                           {new Date(t.createdAt).toLocaleDateString()}
                         </div>
                         {winner && (
                           <div
-                            className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500/15 to-emerald-400/5 px-3 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/20"
                             data-testid={`badge-winner-${t.id}`}
                           >
                             <Trophy className="h-3 w-3" />

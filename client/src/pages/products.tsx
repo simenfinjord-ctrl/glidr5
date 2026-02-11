@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 
 type ProductCategory = "Glide product" | "Topping product" | "Structure tool";
 
@@ -32,6 +33,12 @@ const schema = z.object({
   brand: z.string().min(1, "Brand is required"),
   name: z.string().min(1, "Name is required"),
 });
+
+function categoryBadgeClass(cat: string) {
+  if (cat === "Glide product") return "fs-badge-glide";
+  if (cat === "Topping product") return "fs-badge-topping";
+  return "fs-badge-structure";
+}
 
 function AddProductModal({ onSaved }: { onSaved: () => void }) {
   const { toast } = useToast();
@@ -155,13 +162,13 @@ export default function Products() {
           <div>
             <h1 className="text-2xl sm:text-3xl">Products</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-products-subtitle">
-              Filter by category or brand. Products are scoped to your group.
+              {filtered.length} product{filtered.length !== 1 ? "s" : ""} · Filter by category or brand
             </p>
           </div>
 
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button data-testid="button-add-product-prominent">
+              <Button data-testid="button-add-product-prominent" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white">
                 <PackagePlus className="mr-2 h-4 w-4" />
                 Add product
               </Button>
@@ -178,7 +185,9 @@ export default function Products() {
         <Card className="fs-card rounded-2xl p-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="inline-flex items-center gap-2 text-sm font-semibold">
-              <Filter className="h-4 w-4 text-muted-foreground" />
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/10">
+                <Filter className="h-3.5 w-3.5 text-amber-400" />
+              </div>
               Filters
             </div>
             <div className="flex flex-1 flex-wrap items-center gap-3">
@@ -218,28 +227,33 @@ export default function Products() {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {filtered.length === 0 ? (
-            <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-products">
+            <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground sm:col-span-2" data-testid="empty-products">
               No products match your filters.
             </Card>
           ) : (
             filtered.map((p) => (
               <Card
                 key={p.id}
-                className="fs-card rounded-2xl p-4"
+                className="fs-card rounded-2xl p-4 transition-all duration-200 hover:shadow-lg hover:shadow-amber-500/5"
                 data-testid={`card-product-${p.id}`}
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="truncate text-base font-semibold">{p.brand} — {p.name}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{p.category}</div>
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      Created by <span className="text-foreground">{p.createdByName}</span>
-                      {` · Group ${p.groupScope}`}
+                    <div className="flex items-center gap-2">
+                      <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", categoryBadgeClass(p.category))}>
+                        {p.category}
+                      </span>
+                    </div>
+                    <div className="mt-2 truncate text-base font-semibold">{p.brand} — {p.name}</div>
+                    <div className="mt-1.5 text-xs text-muted-foreground">
+                      <span className="text-foreground/70">{p.createdByName}</span>
+                      <span className="text-border"> · </span>
+                      <span>{p.groupScope}</span>
                     </div>
                   </div>
-                  <div className="inline-flex rounded-full border bg-background/60 px-3 py-1 text-xs text-muted-foreground">
+                  <div className="inline-flex rounded-full border border-border/40 bg-background/40 px-3 py-1 text-xs text-muted-foreground">
                     {new Date(p.createdAt).toLocaleDateString()}
                   </div>
                 </div>

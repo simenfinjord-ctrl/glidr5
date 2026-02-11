@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Snowflake, Hash } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 
 type Series = {
   id: number;
@@ -34,6 +35,12 @@ const schema = z.object({
   numberOfSkis: z.coerce.number().int().min(1, "Must be at least 1"),
   lastRegrind: z.string().optional(),
 });
+
+function typeBadgeClass(type: string) {
+  if (type === "Glide") return "fs-badge-glide";
+  if (type === "Structure") return "fs-badge-structure";
+  return "fs-badge-topping";
+}
 
 function SeriesForm({
   initial,
@@ -223,7 +230,7 @@ export default function TestSkis() {
           <div>
             <h1 className="text-2xl sm:text-3xl">TestSkis</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-testskis-subtitle">
-              Create and manage test ski series for your group.
+              {series.length} series · Create and manage test ski series
             </p>
           </div>
 
@@ -232,7 +239,7 @@ export default function TestSkis() {
             if (!v) setEditing(undefined);
           }}>
             <DialogTrigger asChild>
-              <Button data-testid="button-add-series" onClick={() => setEditing(undefined)}>
+              <Button data-testid="button-add-series" onClick={() => setEditing(undefined)} className="bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-600 hover:to-cyan-600 text-white">
                 <Plus className="mr-2 h-4 w-4" />
                 New series
               </Button>
@@ -252,30 +259,45 @@ export default function TestSkis() {
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {series.length === 0 ? (
-            <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-series">
+            <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground sm:col-span-2" data-testid="empty-series">
               No test series yet.
             </Card>
           ) : (
             series.map((s) => (
               <Card
                 key={s.id}
-                className="fs-card rounded-2xl p-4"
+                className="fs-card rounded-2xl p-4 transition-all duration-200 hover:shadow-lg hover:shadow-sky-500/5"
                 data-testid={`card-series-${s.id}`}
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="truncate text-base font-semibold">{s.name}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {s.type}
-                      {s.grind ? ` · Grind ${s.grind}` : ""}
-                      {` · ${s.numberOfSkis} skis`}
-                      {s.lastRegrind ? ` · Last regrind ${s.lastRegrind}` : ""}
+                    <div className="flex items-center gap-2">
+                      <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", typeBadgeClass(s.type))}>
+                        {s.type}
+                      </span>
+                      <span className="truncate text-base font-semibold">{s.name}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-300 ring-1 ring-sky-500/20">
+                        <Hash className="h-2.5 w-2.5" /> {s.numberOfSkis} skis
+                      </span>
+                      {s.grind && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-300 ring-1 ring-amber-500/20">
+                          Grind {s.grind}
+                        </span>
+                      )}
+                      {s.lastRegrind && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-300 ring-1 ring-violet-500/20">
+                          Regrind {s.lastRegrind}
+                        </span>
+                      )}
                     </div>
                     <div className="mt-2 text-xs text-muted-foreground">
-                      Created by <span className="text-foreground">{s.createdByName}</span>
-                      {` · Group ${s.groupScope}`}
+                      <span className="text-foreground/70">{s.createdByName}</span>
+                      <span className="text-border"> · </span>
+                      <span>{s.groupScope}</span>
                     </div>
                   </div>
 

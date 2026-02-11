@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { logout } from "@/lib/mock-auth";
+import { useAuth } from "@/lib/auth";
 import { AppLink } from "@/components/app-link";
 
 type NavItem = {
@@ -53,6 +53,7 @@ const nav: NavItem[] = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
+  const { logout } = useAuth();
 
   return (
     <div className="min-h-screen fs-grid">
@@ -79,10 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               variant="secondary"
               size="sm"
               data-testid="button-logout"
-              onClick={() => {
-                logout();
-                window.location.href = "/login";
-              }}
+              onClick={() => logout()}
             >
               <LogOut className="mr-2 h-4 w-4" />
               Log out

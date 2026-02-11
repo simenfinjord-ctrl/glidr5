@@ -1,13 +1,21 @@
 import { useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { Product, TestType } from "@/lib/mock-db";
 import { ProductCombobox } from "@/components/product-combobox";
+
+type TestType = "Glide" | "Structure";
+
+type Product = {
+  id: number;
+  category: string;
+  brand: string;
+  name: string;
+};
 
 export type EntryRow = {
   id: string;
   skiNumber: number;
-  productId?: string;
+  productId?: number;
   methodology: string;
   result0kmCmBehind: number | null;
   rank0km: number | null;
@@ -69,7 +77,6 @@ export function TestEntryTable({
       rank0km: r.result0kmCmBehind === null ? null : (ranks0.get(r.id) ?? null),
       rankXkm: r.resultXkmCmBehind === null ? null : (ranksX.get(r.id) ?? null),
     }));
-    // only update if ranks changed
     const changed = next.some((n, i) => n.rank0km !== rows[i]?.rank0km || n.rankXkm !== rows[i]?.rankXkm);
     if (changed) setRows(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps

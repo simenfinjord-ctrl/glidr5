@@ -11,7 +11,16 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import type { Product, ProductCategory, TestType } from "@/lib/mock-db";
+
+type TestType = "Glide" | "Structure";
+type ProductCategory = "Glide product" | "Topping product" | "Structure tool";
+
+type Product = {
+  id: number;
+  category: string;
+  brand: string;
+  name: string;
+};
 
 function categoriesFor(testType: TestType): ProductCategory[] {
   return testType === "Glide"
@@ -28,14 +37,14 @@ export function ProductCombobox({
 }: {
   testType: TestType;
   products: Product[];
-  value: string | undefined;
-  onChange: (productId: string) => void;
+  value: number | undefined;
+  onChange: (productId: number) => void;
   testId: string;
 }) {
   const [open, setOpen] = useState(false);
 
   const allowed = useMemo(() => {
-    const cats = new Set(categoriesFor(testType));
+    const cats = new Set<string>(categoriesFor(testType));
     return products.filter((p) => cats.has(p.category));
   }, [products, testType]);
 

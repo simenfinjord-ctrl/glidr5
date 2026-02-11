@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Filter, PackagePlus } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Filter, PackagePlus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,8 +12,20 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { getCurrentUser } from "@/lib/mock-auth";
-import { createProduct, listProducts, type Product, type ProductCategory } from "@/lib/mock-db";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+
+type ProductCategory = "Glide product" | "Topping product" | "Structure tool";
+
+type Product = {
+  id: number;
+  category: string;
+  brand: string;
+  name: string;
+  createdAt: string;
+  createdById: number;
+  createdByName: string;
+  groupScope: string;
+};
 
 const schema = z.object({
   category: z.enum(["Glide product", "Topping product", "Structure tool"]),
@@ -21,7 +34,6 @@ const schema = z.object({
 });
 
 function AddProductModal({ onSaved }: { onSaved: () => void }) {
-  const user = getCurrentUser()!;
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof schema>>({
@@ -33,29 +45,29 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
     },
   });
 
+  const mutation = useMutation({
+    mutationFn: async (data: z.infer<typeof schema>) => {
+      const res = await apiRequest("POST", "/api/products", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({ title: "Product added" });
+      onSaved();
+    },
+    onError: (e) => {
+      toast({
+        title: "Could not add product",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit((values) => {
-          try {
-            createProduct(
-              {
-                category: values.category,
-                brand: values.brand,
-                name: values.name,
-              },
-              user,
-            );
-            toast({ title: "Product added" });
-            onSaved();
-          } catch (e) {
-            toast({
-              title: "Could not add product",
-              description: e instanceof Error ? e.message : "Unknown error",
-              variant: "destructive",
-            });
-          }
-        })}
+        onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
         className="space-y-4"
       >
         <FormField
@@ -121,12 +133,11 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
 }
 
 export default function Products() {
-  const user = getCurrentUser();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<ProductCategory | "All">("All");
   const [brand, setBrand] = useState("");
 
-  const products = useMemo(() => (user ? listProducts(user) : []), [user, open]);
+  const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
 
   const filtered = useMemo(() => {
     const b = brand.trim().toLowerCase();
@@ -136,11 +147,6 @@ export default function Products() {
       return okCategory && okBrand;
     });
   }, [products, category, brand]);
-
-  if (!user) {
-    window.location.href = "/login";
-    return null;
-  }
 
   return (
     <AppShell>
@@ -229,7 +235,7 @@ export default function Products() {
                     <div className="truncate text-base font-semibold">{p.brand} — {p.name}</div>
                     <div className="mt-1 text-xs text-muted-foreground">{p.category}</div>
                     <div className="mt-2 text-xs text-muted-foreground">
-                      Created by <span className="text-foreground">{p.createdBy.name}</span>
+                      Created by <span className="text-foreground">{p.createdByName}</span>
                       {` · Group ${p.groupScope}`}
                     </div>
                   </div>

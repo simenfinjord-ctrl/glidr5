@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,20 +8,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { login as mockLogin, seedUsers } from "@/lib/mock-auth";
+import { useAuth } from "@/lib/auth";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
   password: z.string().min(1, "Enter your password"),
 });
 
+const seededEmails = [
+  "admin@fastski.local",
+  "u23@fastski.local",
+  "wc@fastski.local",
+  "biathlon@fastski.local",
+];
+
 export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { login } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const hint = useMemo(() => {
-    return seedUsers.map((u) => u.email).join(" · ");
-  }, []);
+  const hint = seededEmails.join(" · ");
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -40,17 +47,20 @@ export default function Login() {
         <CardContent>
           <Form {...form}>
             <form
-              onSubmit={form.handleSubmit((values) => {
-                const user = mockLogin(values.email, values.password);
-                if (!user) {
+              onSubmit={form.handleSubmit(async (values) => {
+                setIsSubmitting(true);
+                try {
+                  await login(values.email, values.password);
+                  setLocation("/dashboard");
+                } catch (e) {
                   toast({
                     title: "Sign in failed",
-                    description: "No user found for that email.",
+                    description: e instanceof Error ? e.message : "Invalid credentials.",
                     variant: "destructive",
                   });
-                  return;
+                } finally {
+                  setIsSubmitting(false);
                 }
-                setLocation("/dashboard");
               })}
               className="space-y-4"
             >
@@ -92,14 +102,14 @@ export default function Login() {
                 )}
               />
 
-              <Button type="submit" className="w-full" data-testid="button-login">
+              <Button type="submit" className="w-full" data-testid="button-login" disabled={isSubmitting}>
                 Sign in
               </Button>
 
               <div className="rounded-xl border bg-background/60 p-3 text-xs text-muted-foreground">
                 <div className="font-medium text-foreground">Seeded accounts</div>
                 <div className="mt-1">{hint}</div>
-                <div className="mt-2">Any password works in this prototype.</div>
+                <div className="mt-2">All accounts use password "password".</div>
               </div>
             </form>
           </Form>

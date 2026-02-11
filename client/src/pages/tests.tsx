@@ -1,20 +1,29 @@
 import { Plus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getCurrentUser } from "@/lib/mock-auth";
-import { listTests, listSeries } from "@/lib/mock-db";
+
+type Test = {
+  id: number;
+  date: string;
+  location: string;
+  testType: string;
+  seriesId: number;
+  createdAt: string;
+  createdByName: string;
+  groupScope: string;
+};
+
+type Series = {
+  id: number;
+  name: string;
+};
 
 export default function Tests() {
-  const user = getCurrentUser();
-  const tests = user ? listTests(user) : [];
-  const series = user ? listSeries(user) : [];
-
-  if (!user) {
-    window.location.href = "/login";
-    return null;
-  }
+  const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
+  const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
 
   const seriesById = new Map(series.map((s) => [s.id, s.name] as const));
 
@@ -51,7 +60,7 @@ export default function Tests() {
                       {t.date} · {t.testType} · {seriesById.get(t.seriesId) ?? "Series"}
                     </div>
                     <div className="mt-2 text-xs text-muted-foreground">
-                      Created by <span className="text-foreground">{t.createdBy.name}</span>
+                      Created by <span className="text-foreground">{t.createdByName}</span>
                       {` · Group ${t.groupScope}`}
                     </div>
                   </div>

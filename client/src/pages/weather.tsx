@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Pencil } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -23,8 +24,23 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { getCurrentUser } from "@/lib/mock-auth";
-import { listWeather, upsertWeather, type DailyWeather } from "@/lib/mock-db";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+
+type Weather = {
+  id: number;
+  date: string;
+  time: string;
+  location: string;
+  airTemperatureC: number;
+  airHumidityPct: number;
+  snowTemperatureC: number;
+  snowHumidityPct: number;
+  snowType: string;
+  createdAt: string;
+  createdById: number;
+  createdByName: string;
+  groupScope: string;
+};
 
 const schema = z.object({
   date: z.string().min(1, "Date is required"),
@@ -41,10 +57,9 @@ function WeatherForm({
   initial,
   onSaved,
 }: {
-  initial?: DailyWeather;
+  initial?: Weather;
   onSaved: () => void;
 }) {
-  const user = getCurrentUser()!;
   const { toast } = useToast();
 
   const today = new Date().toISOString().slice(0, 10);
@@ -63,33 +78,52 @@ function WeatherForm({
     },
   });
 
+  const createMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof schema>) => {
+      const res = await apiRequest("POST", "/api/weather", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/weather"] });
+      toast({ title: "Weather added" });
+      onSaved();
+    },
+    onError: (e) => {
+      toast({
+        title: "Could not save weather",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof schema>) => {
+      const res = await apiRequest("PUT", `/api/weather/${initial!.id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/weather"] });
+      toast({ title: "Weather updated" });
+      onSaved();
+    },
+    onError: (e) => {
+      toast({
+        title: "Could not save weather",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit((values) => {
-          try {
-            upsertWeather(
-              {
-                id: initial?.id,
-                date: values.date,
-                time: values.time,
-                location: values.location,
-                airTemperatureC: values.airTemperatureC,
-                airHumidityPct: values.airHumidityPct,
-                snowTemperatureC: values.snowTemperatureC,
-                snowHumidityPct: values.snowHumidityPct,
-                snowType: values.snowType,
-              },
-              user,
-            );
-            toast({ title: initial ? "Weather updated" : "Weather added" });
-            onSaved();
-          } catch (e) {
-            toast({
-              title: "Could not save weather",
-              description: e instanceof Error ? e.message : "Unknown error",
-              variant: "destructive",
-            });
+          if (initial) {
+            updateMutation.mutate(values);
+          } else {
+            createMutation.mutate(values);
           }
         })}
         className="space-y-4"
@@ -254,17 +288,11 @@ function WeatherForm({
   );
 }
 
-export default function Weather() {
-  const user = getCurrentUser();
+export default function WeatherPage() {
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<DailyWeather | undefined>();
+  const [editing, setEditing] = useState<Weather | undefined>();
 
-  const weather = useMemo(() => (user ? listWeather(user) : []), [user, open]);
-
-  if (!user) {
-    window.location.href = "/login";
-    return null;
-  }
+  const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
 
   return (
     <AppShell>
@@ -350,7 +378,7 @@ export default function Weather() {
                       </div>
                     </div>
                     <div className="mt-2 text-xs text-muted-foreground">
-                      Created by <span className="text-foreground">{w.createdBy.name}</span>
+                      Created by <span className="text-foreground">{w.createdByName}</span>
                       {` · Group ${w.groupScope}`}
                     </div>
                   </div>

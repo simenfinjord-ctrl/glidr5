@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Pencil } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -11,8 +12,20 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { getCurrentUser } from "@/lib/mock-auth";
-import { listSeries, upsertSeries, type TestSkiSeries, type TestSkiType } from "@/lib/mock-db";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+
+type Series = {
+  id: number;
+  name: string;
+  type: string;
+  grind: string | null;
+  numberOfSkis: number;
+  lastRegrind: string | null;
+  createdAt: string;
+  createdById: number;
+  createdByName: string;
+  groupScope: string;
+};
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -26,20 +39,69 @@ function SeriesForm({
   initial,
   onSaved,
 }: {
-  initial?: TestSkiSeries;
+  initial?: Series;
   onSaved: () => void;
 }) {
-  const user = getCurrentUser()!;
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: initial?.name ?? "",
-      type: (initial?.type ?? "Glide") as TestSkiType,
+      type: (initial?.type ?? "Glide") as "Structure" | "Glide" | "Grind",
       grind: initial?.grind ?? "",
       numberOfSkis: initial?.numberOfSkis ?? 8,
       lastRegrind: initial?.lastRegrind ?? "",
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof schema>) => {
+      const res = await apiRequest("POST", "/api/series", {
+        name: data.name,
+        type: data.type,
+        grind: data.grind?.trim() || null,
+        numberOfSkis: data.numberOfSkis,
+        lastRegrind: data.lastRegrind || null,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/series"] });
+      toast({ title: "Series created" });
+      onSaved();
+    },
+    onError: (e) => {
+      toast({
+        title: "Could not save series",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof schema>) => {
+      const res = await apiRequest("PUT", `/api/series/${initial!.id}`, {
+        name: data.name,
+        type: data.type,
+        grind: data.grind?.trim() || null,
+        numberOfSkis: data.numberOfSkis,
+        lastRegrind: data.lastRegrind || null,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/series"] });
+      toast({ title: "Series updated" });
+      onSaved();
+    },
+    onError: (e) => {
+      toast({
+        title: "Could not save series",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
     },
   });
 
@@ -47,26 +109,10 @@ function SeriesForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit((values) => {
-          try {
-            upsertSeries(
-              {
-                id: initial?.id,
-                name: values.name,
-                type: values.type,
-                grind: values.grind?.trim() || undefined,
-                numberOfSkis: values.numberOfSkis,
-                lastRegrind: values.lastRegrind || undefined,
-              },
-              user,
-            );
-            toast({ title: initial ? "Series updated" : "Series created" });
-            onSaved();
-          } catch (e) {
-            toast({
-              title: "Could not save series",
-              description: e instanceof Error ? e.message : "Unknown error",
-              variant: "destructive",
-            });
+          if (initial) {
+            updateMutation.mutate(values);
+          } else {
+            createMutation.mutate(values);
           }
         })}
         className="space-y-4"
@@ -164,17 +210,11 @@ function SeriesForm({
 }
 
 export default function TestSkis() {
-  const user = getCurrentUser();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<TestSkiSeries | undefined>();
+  const [editing, setEditing] = useState<Series | undefined>();
 
-  const series = useMemo(() => (user ? listSeries(user) : []), [user, open]);
-
-  if (!user) {
-    window.location.href = "/login";
-    return null;
-  }
+  const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
 
   return (
     <AppShell>
@@ -234,7 +274,7 @@ export default function TestSkis() {
                       {s.lastRegrind ? ` · Last regrind ${s.lastRegrind}` : ""}
                     </div>
                     <div className="mt-2 text-xs text-muted-foreground">
-                      Created by <span className="text-foreground">{s.createdBy.name}</span>
+                      Created by <span className="text-foreground">{s.createdByName}</span>
                       {` · Group ${s.groupScope}`}
                     </div>
                   </div>

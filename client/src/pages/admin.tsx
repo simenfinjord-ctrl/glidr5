@@ -1,12 +1,25 @@
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
-import { getCurrentUser, seedUsers } from "@/lib/mock-auth";
+import { useAuth } from "@/lib/auth";
+
+type ApiUser = {
+  id: number;
+  email: string;
+  name: string;
+  groupScope: string;
+  isAdmin: number;
+};
 
 export default function Admin() {
-  const user = getCurrentUser();
+  const { user } = useAuth();
+
+  const { data: users = [] } = useQuery<ApiUser[]>({
+    queryKey: ["/api/users"],
+    enabled: !!user && !!user.isAdmin,
+  });
 
   if (!user) {
-    window.location.href = "/login";
     return null;
   }
 
@@ -29,14 +42,14 @@ export default function Admin() {
         <div>
           <h1 className="text-2xl sm:text-3xl">Admin</h1>
           <p className="mt-1 text-sm text-muted-foreground" data-testid="text-admin-subtitle">
-            Prototype user/group management (mock).
+            User and group management.
           </p>
         </div>
 
         <Card className="fs-card rounded-2xl p-6">
           <div className="text-sm font-semibold">Users</div>
           <div className="mt-3 grid grid-cols-1 gap-2">
-            {seedUsers.map((u) => (
+            {users.map((u) => (
               <div
                 key={u.id}
                 className="flex items-center justify-between rounded-xl border bg-background/50 px-3 py-2"
@@ -57,7 +70,7 @@ export default function Admin() {
         <Card className="fs-card rounded-2xl p-6" data-testid="card-admin-groups">
           <div className="text-sm font-semibold">Groups</div>
           <div className="mt-2 text-sm text-muted-foreground">
-            Admin, World Cup, U23, Biathlon (mock role scopes).
+            Admin, World Cup, U23, Biathlon (role scopes).
           </div>
         </Card>
 

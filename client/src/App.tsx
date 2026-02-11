@@ -1,8 +1,10 @@
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth";
+import { Spinner } from "@/components/ui/spinner";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
@@ -30,12 +32,35 @@ function Router() {
   );
 }
 
+function AuthGuard() {
+  const { user, isLoading } = useAuth();
+  const [location] = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Spinner className="h-8 w-8" />
+      </div>
+    );
+  }
+
+  if (!user && location !== "/login") {
+    return <Redirect to="/login" />;
+  }
+
+  if (user && location === "/login") {
+    return <Redirect to="/dashboard" />;
+  }
+
+  return <Router />;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <AuthGuard />
       </TooltipProvider>
     </QueryClientProvider>
   );

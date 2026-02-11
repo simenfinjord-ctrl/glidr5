@@ -1,11 +1,10 @@
 import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { getCurrentUser } from "@/lib/mock-auth";
-import { listTests, listWeather, listProducts, listSeries } from "@/lib/mock-db";
 
 function QuickCard({
   title,
@@ -40,11 +39,15 @@ function QuickCard({
 }
 
 export default function Dashboard() {
-  const user = getCurrentUser();
-  const tests = user ? listTests(user).slice(0, 5) : [];
-  const weather = user ? listWeather(user).slice(0, 4) : [];
-  const products = user ? listProducts(user).slice(0, 4) : [];
-  const series = user ? listSeries(user).slice(0, 4) : [];
+  const { data: tests = [] } = useQuery<any[]>({ queryKey: ["/api/tests"] });
+  const { data: weather = [] } = useQuery<any[]>({ queryKey: ["/api/weather"] });
+  const { data: products = [] } = useQuery<any[]>({ queryKey: ["/api/products"] });
+  const { data: series = [] } = useQuery<any[]>({ queryKey: ["/api/series"] });
+
+  const recentTests = tests.slice(0, 5);
+  const recentWeather = weather.slice(0, 4);
+  const recentProducts = products.slice(0, 4);
+  const recentSeries = series.slice(0, 4);
 
   return (
     <AppShell>
@@ -116,12 +119,12 @@ export default function Dashboard() {
           <Card className="fs-card rounded-2xl p-4">
             <div className="text-sm font-semibold">Recent tests</div>
             <div className="mt-3 space-y-2">
-              {tests.length === 0 ? (
+              {recentTests.length === 0 ? (
                 <div className="text-sm text-muted-foreground" data-testid="empty-tests">
                   No tests yet.
                 </div>
               ) : (
-                tests.map((t) => (
+                recentTests.map((t: any) => (
                   <div
                     key={t.id}
                     className="flex items-center justify-between rounded-xl border bg-background/50 px-3 py-2"
@@ -133,7 +136,7 @@ export default function Dashboard() {
                         {t.date} · {t.testType}
                       </div>
                     </div>
-                    <span className="text-xs text-muted-foreground">{t.createdBy.name}</span>
+                    <span className="text-xs text-muted-foreground">{t.createdByName}</span>
                   </div>
                 ))
               )}
@@ -141,14 +144,14 @@ export default function Dashboard() {
           </Card>
 
           <Card className="fs-card rounded-2xl p-4">
-            <div className="text-sm font-semibold">Today’s weather</div>
+            <div className="text-sm font-semibold">Today's weather</div>
             <div className="mt-3 space-y-2">
-              {weather.length === 0 ? (
+              {recentWeather.length === 0 ? (
                 <div className="text-sm text-muted-foreground" data-testid="empty-weather">
                   No weather logged.
                 </div>
               ) : (
-                weather.map((w) => (
+                recentWeather.map((w: any) => (
                   <div
                     key={w.id}
                     className="rounded-xl border bg-background/50 px-3 py-2"
@@ -172,12 +175,12 @@ export default function Dashboard() {
             <div className="mt-3 space-y-2">
               <div className="text-xs text-muted-foreground">Products</div>
               <div className="space-y-2">
-                {products.length === 0 ? (
+                {recentProducts.length === 0 ? (
                   <div className="text-sm text-muted-foreground" data-testid="empty-products">
                     No products yet.
                   </div>
                 ) : (
-                  products.map((p) => (
+                  recentProducts.map((p: any) => (
                     <div
                       key={p.id}
                       className="flex items-center justify-between rounded-xl border bg-background/50 px-3 py-2"
@@ -189,7 +192,7 @@ export default function Dashboard() {
                         </div>
                         <div className="text-xs text-muted-foreground">{p.category}</div>
                       </div>
-                      <span className="text-xs text-muted-foreground">{p.createdBy.name}</span>
+                      <span className="text-xs text-muted-foreground">{p.createdByName}</span>
                     </div>
                   ))
                 )}
@@ -197,12 +200,12 @@ export default function Dashboard() {
 
               <div className="pt-2 text-xs text-muted-foreground">Series</div>
               <div className="space-y-2">
-                {series.length === 0 ? (
+                {recentSeries.length === 0 ? (
                   <div className="text-sm text-muted-foreground" data-testid="empty-series">
                     No series yet.
                   </div>
                 ) : (
-                  series.map((s) => (
+                  recentSeries.map((s: any) => (
                     <div
                       key={s.id}
                       className="flex items-center justify-between rounded-xl border bg-background/50 px-3 py-2"
@@ -214,7 +217,7 @@ export default function Dashboard() {
                           {s.type} · {s.numberOfSkis} skis
                         </div>
                       </div>
-                      <span className="text-xs text-muted-foreground">{s.createdBy.name}</span>
+                      <span className="text-xs text-muted-foreground">{s.createdByName}</span>
                     </div>
                   ))
                 )}

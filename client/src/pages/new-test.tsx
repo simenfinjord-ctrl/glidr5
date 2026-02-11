@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { ChevronLeft, Save, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -25,16 +26,31 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { getCurrentUser } from "@/lib/mock-auth";
-import {
-  createTestWithEntries,
-  getWeatherFor,
-  listProducts,
-  listSeries,
-  listWeather,
-  type TestType,
-} from "@/lib/mock-db";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { TestEntryTable, type EntryRow } from "@/components/test-entry-table";
+
+type TestType = "Glide" | "Structure";
+
+type Series = {
+  id: number;
+  name: string;
+  type: string;
+};
+
+type Product = {
+  id: number;
+  category: string;
+  brand: string;
+  name: string;
+};
+
+type Weather = {
+  id: number;
+  date: string;
+  time: string;
+  location: string;
+  airTemperatureC: number;
+};
 
 const schema = z.object({
   date: z.string().min(1, "Date is required"),
@@ -61,15 +77,14 @@ function makeRows(n = 8): EntryRow[] {
 }
 
 export default function NewTest() {
-  const user = getCurrentUser();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const series = useMemo(() => (user ? listSeries(user) : []), [user]);
-  const products = useMemo(() => (user ? listProducts(user) : []), [user]);
-  const weather = useMemo(() => (user ? listWeather(user) : []), [user]);
+  const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
+  const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
+  const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
 
   const [rows, setRows] = useState<EntryRow[]>(() => makeRows(8));
 
@@ -80,7 +95,7 @@ export default function NewTest() {
     defaultValues: {
       date: today,
       testType: "Glide",
-      seriesId: series[0]?.id ?? "",
+      seriesId: "",
       location: defaultLocation,
       weatherId: undefined,
       notes: "",
@@ -90,7 +105,7 @@ export default function NewTest() {
   useEffect(() => {
     if (!series.length) return;
     if (form.getValues("seriesId")) return;
-    form.setValue("seriesId", series[0]!.id, { shouldValidate: true });
+    form.setValue("seriesId", String(series[0]!.id), { shouldValidate: true });
   }, [series, form]);
 
   useEffect(() => {
@@ -104,31 +119,63 @@ export default function NewTest() {
   const watchTestType = form.watch("testType") as TestType;
 
   const autoWeather = useMemo(() => {
-    if (!user) return undefined;
     if (!watchDate || !watchLocation) return undefined;
-    return getWeatherFor(watchDate, watchLocation, user);
-  }, [user, watchDate, watchLocation]);
+    return weather.find(
+      (w) =>
+        w.date === watchDate &&
+        w.location.toLowerCase() === watchLocation.trim().toLowerCase(),
+    );
+  }, [weather, watchDate, watchLocation]);
 
-  if (!user) {
-    window.location.href = "/login";
-    return null;
-  }
+  const saveMutation = useMutation({
+    mutationFn: async (data: {
+      date: string;
+      location: string;
+      weatherId?: number;
+      testType: string;
+      seriesId: number;
+      notes?: string;
+      entries: Array<{
+        skiNumber: number;
+        productId?: number;
+        methodology: string;
+        result0kmCmBehind: number | null;
+        resultXkmCmBehind?: number | null;
+      }>;
+    }) => {
+      const res = await apiRequest("POST", "/api/tests", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
+      toast({
+        title: "Test saved",
+        description: `Saved ${rows.length} entries.`,
+      });
+      setLocation("/tests");
+    },
+    onError: (e) => {
+      toast({
+        title: "Could not save test",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <AppShell>
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Link href="/tests">
-              <a data-testid="button-back-tests">
-                <Button asChild variant="secondary" size="sm">
-                  <span className="inline-flex items-center">
-                    <ChevronLeft className="mr-1 h-4 w-4" />
-                    Tests
-                  </span>
-                </Button>
-              </a>
-            </Link>
+            <a href="/tests" data-testid="button-back-tests">
+              <Button asChild variant="secondary" size="sm">
+                <span className="inline-flex items-center">
+                  <ChevronLeft className="mr-1 h-4 w-4" />
+                  Tests
+                </span>
+              </Button>
+            </a>
             <div>
               <h1 className="text-2xl sm:text-3xl">New test</h1>
               <p
@@ -173,40 +220,24 @@ export default function NewTest() {
             <form
               id="new-test-form"
               onSubmit={form.handleSubmit((values) => {
-                try {
-                  const chosenWeatherId = values.weatherId || autoWeather?.id;
-                  createTestWithEntries(
-                    {
-                      date: values.date,
-                      location: values.location,
-                      weatherId: chosenWeatherId,
-                      testType: values.testType,
-                      seriesId: values.seriesId,
-                      lane: "",
-                      notes: values.notes,
-                      entries: rows.map((r) => ({
-                        skiNumber: r.skiNumber,
-                        productId: r.productId,
-                        methodology: r.methodology,
-                        result0kmCmBehind: r.result0kmCmBehind,
-                        resultXkmCmBehind: r.resultXkmCmBehind,
-                      })),
-                    },
-                    user,
-                  );
-
-                  toast({
-                    title: "Test saved",
-                    description: `Saved ${rows.length} entries.`,
-                  });
-                  setLocation("/tests");
-                } catch (e) {
-                  toast({
-                    title: "Could not save test",
-                    description: e instanceof Error ? e.message : "Unknown error",
-                    variant: "destructive",
-                  });
-                }
+                const chosenWeatherId = values.weatherId
+                  ? Number(values.weatherId)
+                  : autoWeather?.id;
+                saveMutation.mutate({
+                  date: values.date,
+                  location: values.location,
+                  weatherId: chosenWeatherId,
+                  testType: values.testType,
+                  seriesId: Number(values.seriesId),
+                  notes: values.notes,
+                  entries: rows.map((r) => ({
+                    skiNumber: r.skiNumber,
+                    productId: r.productId,
+                    methodology: r.methodology,
+                    result0kmCmBehind: r.result0kmCmBehind,
+                    resultXkmCmBehind: r.resultXkmCmBehind,
+                  })),
+                });
               })}
               className="space-y-4"
             >
@@ -231,7 +262,7 @@ export default function NewTest() {
                             {series.map((s) => (
                               <SelectItem
                                 key={s.id}
-                                value={s.id}
+                                value={String(s.id)}
                                 data-testid={`option-series-${s.id}`}
                               >
                                 {s.name}
@@ -352,7 +383,7 @@ export default function NewTest() {
                             {weather.map((w) => (
                               <SelectItem
                                 key={w.id}
-                                value={w.id}
+                                value={String(w.id)}
                                 data-testid={`option-weather-${w.id}`}
                               >
                                 {w.date} · {w.location} · {w.time} · Air {w.airTemperatureC}°C

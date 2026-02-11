@@ -20,6 +20,7 @@ Full-stack React web application for the US Ski Team to manage ski testing and d
 - `client/src/lib/queryClient.ts` — API request helpers
 - `client/src/App.tsx` — Router with auth guard
 - `client/src/components/app-shell.tsx` — Layout with nav
+- `client/src/pages/test-detail.tsx` — Test detail view with results table
 - `client/src/pages/` — All page components
 
 ## Seeded Accounts
@@ -40,9 +41,13 @@ Full-stack React web application for the US Ski Team to manage ski testing and d
 - `GET/POST /api/weather` — List/create weather
 - `PUT /api/weather/:id` — Update weather
 - `GET /api/weather/find?date=&location=` — Find weather
+- `GET /api/tests/:id` — Get single test
 - `GET/POST /api/tests` — List/create tests (with entries)
-- `GET /api/tests/:id/entries` — List test entries
-- `GET /api/users` — List users (admin only)
+- `GET /api/tests/:id/entries` — List test entries (scope-checked)
+- `GET/POST /api/users` — List/create users (admin only)
+- `PUT /api/users/:id` — Update user (admin only)
+- `DELETE /api/users/:id` — Delete user (admin only)
+- `POST /api/users/:id/reset-password` — Reset password (admin only)
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -50,3 +55,7 @@ Full-stack React web application for the US Ski Team to manage ski testing and d
 - "lane" field removed from data model
 - Product autocomplete filters by test type (Glide shows Glide+Topping; Structure shows Structure tool)
 - Weather auto-links to tests by matching date + location + groupScope
+- Tests list shows winner badge with product name
+- Tests can be filtered by type, product, snow type, location
+- Test detail page shows full results table with winner highlighting
+- Admin can create/edit/delete users and reset passwords

@@ -14,6 +14,8 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
   listUsers(): Promise<User[]>;
 
   listSeries(groupScope: string, isAdmin: boolean): Promise<Series[]>;
@@ -31,6 +33,7 @@ export interface IStorage {
   findWeather(date: string, location: string, groupScope: string): Promise<Weather | undefined>;
 
   listTests(groupScope: string, isAdmin: boolean): Promise<Test[]>;
+  getTest(id: number): Promise<Test | undefined>;
   createTest(t: InsertTest): Promise<Test>;
   listEntries(testId: number): Promise<TestEntry[]>;
   createEntry(e: InsertEntry): Promise<TestEntry>;
@@ -52,6 +55,16 @@ export class DatabaseStorage implements IStorage {
   async createUser(user: InsertUser): Promise<User> {
     const [created] = await db.insert(users).values(user).returning();
     return created!;
+  }
+
+  async updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined> {
+    const [updated] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+    return updated;
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id)).returning();
+    return result.length > 0;
   }
 
   async listUsers(): Promise<User[]> {
@@ -139,6 +152,11 @@ export class DatabaseStorage implements IStorage {
       return db.select().from(tests).where(filter);
     }
     return db.select().from(tests);
+  }
+
+  async getTest(id: number): Promise<Test | undefined> {
+    const [t] = await db.select().from(tests).where(eq(tests.id, id));
+    return t;
   }
 
   async createTest(t: InsertTest): Promise<Test> {

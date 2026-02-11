@@ -185,8 +185,25 @@ export async function registerRoutes(
     res.json(test);
   });
 
+  app.get("/api/tests/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const test = await storage.getTest(id);
+    if (!test) return res.status(404).json({ message: "Not found" });
+    const u = userInfo(req);
+    if (!u.isAdmin && test.groupScope !== u.groupScope) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    res.json(test);
+  });
+
   app.get("/api/tests/:id/entries", requireAuth, async (req, res) => {
-    const testId = parseInt(req.params.id);
+    const testId = parseInt(req.params.id as string);
+    const u = userInfo(req);
+    const test = await storage.getTest(testId);
+    if (!test) return res.status(404).json({ message: "Not found" });
+    if (!u.isAdmin && test.groupScope !== u.groupScope) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
     const entries = await storage.listEntries(testId);
     res.json(entries);
   });
@@ -196,6 +213,57 @@ export async function registerRoutes(
     if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
     const list = await storage.listUsers();
     res.json(list.map(({ password, ...rest }) => rest));
+  });
+
+  app.post("/api/users", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const existing = await storage.getUserByEmail(req.body.email);
+    if (existing) return res.status(409).json({ message: "Email already in use" });
+    const created = await storage.createUser({
+      email: req.body.email,
+      password: req.body.password,
+      name: req.body.name,
+      groupScope: req.body.groupScope,
+      isAdmin: req.body.isAdmin ? 1 : 0,
+    });
+    const { password, ...safe } = created;
+    res.json(safe);
+  });
+
+  app.put("/api/users/:id", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const id = parseInt(req.params.id);
+    const data: any = {};
+    if (req.body.name !== undefined) data.name = req.body.name;
+    if (req.body.email !== undefined) data.email = req.body.email;
+    if (req.body.groupScope !== undefined) data.groupScope = req.body.groupScope;
+    if (req.body.isAdmin !== undefined) data.isAdmin = req.body.isAdmin ? 1 : 0;
+    const updated = await storage.updateUser(id, data);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    const { password, ...safe } = updated;
+    res.json(safe);
+  });
+
+  app.post("/api/users/:id/reset-password", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const id = parseInt(req.params.id);
+    const newPassword = req.body.password || "password";
+    const updated = await storage.updateUser(id, { password: newPassword });
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/users/:id", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const id = parseInt(req.params.id);
+    if (id === u.id) return res.status(400).json({ message: "Cannot delete yourself" });
+    const deleted = await storage.deleteUser(id);
+    if (!deleted) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
   });
 
   return httpServer;

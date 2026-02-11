@@ -12,6 +12,7 @@ import TestSkis from "@/pages/testskis";
 import Weather from "@/pages/weather";
 import Tests from "@/pages/tests";
 import NewTest from "@/pages/new-test";
+import TestDetail from "@/pages/test-detail";
 import Admin from "@/pages/admin";
 import Login from "@/pages/login";
 
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/weather" component={Weather} />
       <Route path="/tests" component={Tests} />
       <Route path="/tests/new" component={NewTest} />
+      <Route path="/tests/:id" component={TestDetail} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>

@@ -1,8 +1,9 @@
 import { eq, and, sql } from "drizzle-orm";
 import { db } from "./db";
 import {
-  users, testSkiSeries, products, dailyWeather, tests, testEntries,
+  users, groups, testSkiSeries, products, dailyWeather, tests, testEntries,
   type User, type InsertUser,
+  type Group, type InsertGroup,
   type Series, type InsertSeries,
   type Product, type InsertProduct,
   type Weather, type InsertWeather,
@@ -17,6 +18,11 @@ export interface IStorage {
   updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
   listUsers(): Promise<User[]>;
+
+  listGroups(): Promise<Group[]>;
+  createGroup(g: InsertGroup): Promise<Group>;
+  updateGroup(id: number, data: Partial<InsertGroup>): Promise<Group | undefined>;
+  deleteGroup(id: number): Promise<boolean>;
 
   listSeries(groupScope: string, isAdmin: boolean): Promise<Series[]>;
   getSeries(id: number): Promise<Series | undefined>;
@@ -69,6 +75,25 @@ export class DatabaseStorage implements IStorage {
 
   async listUsers(): Promise<User[]> {
     return db.select().from(users);
+  }
+
+  async listGroups(): Promise<Group[]> {
+    return db.select().from(groups);
+  }
+
+  async createGroup(g: InsertGroup): Promise<Group> {
+    const [created] = await db.insert(groups).values(g).returning();
+    return created!;
+  }
+
+  async updateGroup(id: number, data: Partial<InsertGroup>): Promise<Group | undefined> {
+    const [updated] = await db.update(groups).set(data).where(eq(groups.id, id)).returning();
+    return updated;
+  }
+
+  async deleteGroup(id: number): Promise<boolean> {
+    const result = await db.delete(groups).where(eq(groups.id, id)).returning();
+    return result.length > 0;
   }
 
   private scopeFilter(groupScope: string, isAdmin: boolean, table: any) {

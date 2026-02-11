@@ -1,7 +1,19 @@
 import { storage } from "./storage";
 import { log } from "./index";
 
+async function seedGroups() {
+  const existing = await storage.listGroups();
+  if (existing.length > 0) return;
+  const defaults = ["Admin", "World Cup", "U23", "Biathlon"];
+  for (const name of defaults) {
+    await storage.createGroup({ name });
+  }
+  log("Seeded default groups", "seed");
+}
+
 export async function seedDatabase() {
+  await seedGroups();
+
   const existing = await storage.getUserByEmail("admin@fastski.local");
   if (existing) {
     log("Database already seeded, skipping", "seed");

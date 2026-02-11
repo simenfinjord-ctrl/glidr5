@@ -35,6 +35,9 @@ Full-stack React web application for the US Ski Team to manage ski testing and d
 - `POST /api/auth/login` — Login
 - `POST /api/auth/logout` — Logout
 - `GET /api/auth/me` — Current user
+- `GET/POST /api/groups` — List/create groups
+- `PUT /api/groups/:id` — Rename group (admin only)
+- `DELETE /api/groups/:id` — Delete group (admin only)
 - `GET/POST /api/series` — List/create series
 - `PUT /api/series/:id` — Update series
 - `GET/POST /api/products` — List/create products
@@ -56,6 +59,8 @@ Full-stack React web application for the US Ski Team to manage ski testing and d
 - Product autocomplete filters by test type (Glide shows Glide+Topping; Structure shows Structure tool)
 - Weather auto-links to tests by matching date + location + groupScope
 - Tests list shows winner badge with product name
-- Tests can be filtered by type, product, snow type, location
+- Tests can be filtered by type, product, snow type, location, air/snow temp, air/snow humidity
 - Test detail page shows full results table with winner highlighting
+- Test detail page has Hide/Show button to toggle product and methodology columns
 - Admin can create/edit/delete users and reset passwords
+- Admin can manage groups (add, rename, delete) — groups are stored in database

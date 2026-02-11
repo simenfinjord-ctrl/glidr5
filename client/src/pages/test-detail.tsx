@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ type Weather = {
 export default function TestDetail() {
   const [, params] = useRoute("/tests/:id");
   const id = params?.id;
+  const [hideDetails, setHideDetails] = useState(false);
 
   const { data: test, isLoading: testLoading } = useQuery<Test>({
     queryKey: [`/api/tests/${id}`],
@@ -203,7 +205,18 @@ export default function TestDetail() {
         )}
 
         <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-test-results">
-          <h2 className="mb-3 text-lg font-semibold">Results</h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Results</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="button-toggle-hide"
+              onClick={() => setHideDetails((v) => !v)}
+            >
+              {hideDetails ? <Eye className="mr-2 h-4 w-4" /> : <EyeOff className="mr-2 h-4 w-4" />}
+              {hideDetails ? "Show" : "Hide"}
+            </Button>
+          </div>
           {sortedEntries.length === 0 ? (
             <p className="text-sm text-muted-foreground" data-testid="empty-entries">
               No entries recorded.
@@ -215,8 +228,8 @@ export default function TestDetail() {
                   <tr className="border-b text-left text-xs text-muted-foreground">
                     <th className="pb-2 pr-3">Rank</th>
                     <th className="pb-2 pr-3">Ski No.</th>
-                    <th className="pb-2 pr-3">Product</th>
-                    <th className="pb-2 pr-3">Method</th>
+                    {!hideDetails && <th className="pb-2 pr-3">Product</th>}
+                    {!hideDetails && <th className="pb-2 pr-3">Method</th>}
                     <th className="pb-2 pr-3">Result 0km (cm)</th>
                     <th className="pb-2 pr-3">Result Xkm (cm)</th>
                     <th className="pb-2">Rank Xkm</th>
@@ -258,14 +271,18 @@ export default function TestDetail() {
                         <td className="py-2 pr-3" data-testid={`text-ski-number-${entry.id}`}>
                           {entry.skiNumber}
                         </td>
-                        <td className="py-2 pr-3" data-testid={`text-product-${entry.id}`}>
-                          {product
-                            ? `${product.brand} ${product.name}`
-                            : "—"}
-                        </td>
-                        <td className="py-2 pr-3" data-testid={`text-method-${entry.id}`}>
-                          {entry.methodology}
-                        </td>
+                        {!hideDetails && (
+                          <td className="py-2 pr-3" data-testid={`text-product-${entry.id}`}>
+                            {product
+                              ? `${product.brand} ${product.name}`
+                              : "—"}
+                          </td>
+                        )}
+                        {!hideDetails && (
+                          <td className="py-2 pr-3" data-testid={`text-method-${entry.id}`}>
+                            {entry.methodology}
+                          </td>
+                        )}
                         <td className="py-2 pr-3" data-testid={`text-result0km-${entry.id}`}>
                           {entry.result0kmCmBehind ?? "—"}
                         </td>

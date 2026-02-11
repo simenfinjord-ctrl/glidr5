@@ -24,6 +24,50 @@ export async function registerRoutes(
   app: Express,
 ): Promise<Server> {
 
+  app.get("/api/groups", requireAuth, async (req, res) => {
+    const list = await storage.listGroups();
+    res.json(list);
+  });
+
+  app.post("/api/groups", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const name = req.body.name?.trim();
+    if (!name) return res.status(400).json({ message: "Name is required" });
+    try {
+      const created = await storage.createGroup({ name });
+      res.json(created);
+    } catch (e: any) {
+      if (e.code === "23505") return res.status(409).json({ message: "Group already exists" });
+      throw e;
+    }
+  });
+
+  app.put("/api/groups/:id", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const id = parseInt(req.params.id);
+    const name = req.body.name?.trim();
+    if (!name) return res.status(400).json({ message: "Name is required" });
+    try {
+      const updated = await storage.updateGroup(id, { name });
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
+    } catch (e: any) {
+      if (e.code === "23505") return res.status(409).json({ message: "Group already exists" });
+      throw e;
+    }
+  });
+
+  app.delete("/api/groups/:id", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const id = parseInt(req.params.id);
+    const deleted = await storage.deleteGroup(id);
+    if (!deleted) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
   app.get("/api/series", requireAuth, async (req, res) => {
     const u = userInfo(req);
     const list = await storage.listSeries(u.groupScope, u.isAdmin);

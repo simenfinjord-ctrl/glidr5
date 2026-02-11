@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, KeyRound } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Check, X } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ type ApiUser = {
   isAdmin: number;
 };
 
-const GROUPS = ["Admin", "World Cup", "U23", "Biathlon"];
+type ApiGroup = { id: number; name: string };
 
 const userSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -44,7 +44,7 @@ const resetSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-function CreateUserForm({ onDone }: { onDone: () => void }) {
+function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames: string[] }) {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
@@ -85,7 +85,7 @@ function CreateUserForm({ onDone }: { onDone: () => void }) {
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl><SelectTrigger data-testid="select-user-group"><SelectValue /></SelectTrigger></FormControl>
                 <SelectContent>
-                  {GROUPS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                  {groupNames.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -113,7 +113,7 @@ function CreateUserForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-function EditUserForm({ user, onDone }: { user: ApiUser; onDone: () => void }) {
+function EditUserForm({ user, onDone, groupNames }: { user: ApiUser; onDone: () => void; groupNames: string[] }) {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof editSchema>>({
     resolver: zodResolver(editSchema),
@@ -151,7 +151,7 @@ function EditUserForm({ user, onDone }: { user: ApiUser; onDone: () => void }) {
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl><SelectTrigger data-testid="select-edit-group"><SelectValue /></SelectTrigger></FormControl>
                 <SelectContent>
-                  {GROUPS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                  {groupNames.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -220,10 +220,64 @@ export default function Admin() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<ApiUser | undefined>();
   const [resetUser, setResetUser] = useState<ApiUser | undefined>();
+  const [newGroupName, setNewGroupName] = useState("");
+  const [editingGroup, setEditingGroup] = useState<ApiGroup | null>(null);
+  const [editingGroupName, setEditingGroupName] = useState("");
 
   const { data: users = [] } = useQuery<ApiUser[]>({
     queryKey: ["/api/users"],
     enabled: !!user && !!user.isAdmin,
+  });
+
+  const { data: apiGroups = [] } = useQuery<ApiGroup[]>({
+    queryKey: ["/api/groups"],
+    enabled: !!user && !!user.isAdmin,
+  });
+
+  const groupNames = apiGroups.map((g) => g.name);
+
+  const createGroupMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await apiRequest("POST", "/api/groups", { name });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      setNewGroupName("");
+      toast({ title: "Group created" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const updateGroupMutation = useMutation({
+    mutationFn: async ({ id, name }: { id: number; name: string }) => {
+      const res = await apiRequest("PUT", `/api/groups/${id}`, { name });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      setEditingGroup(null);
+      toast({ title: "Group renamed" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/groups/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      toast({ title: "Group deleted" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -275,7 +329,7 @@ export default function Admin() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-xl">
               <DialogHeader><DialogTitle>Create user</DialogTitle></DialogHeader>
-              <CreateUserForm onDone={() => setCreateOpen(false)} />
+              <CreateUserForm onDone={() => setCreateOpen(false)} groupNames={groupNames} />
             </DialogContent>
           </Dialog>
         </div>
@@ -335,7 +389,7 @@ export default function Admin() {
         <Dialog open={!!editUser} onOpenChange={(v) => { if (!v) setEditUser(undefined); }}>
           <DialogContent className="sm:max-w-xl">
             <DialogHeader><DialogTitle>Edit user</DialogTitle></DialogHeader>
-            {editUser && <EditUserForm user={editUser} onDone={() => setEditUser(undefined)} />}
+            {editUser && <EditUserForm user={editUser} onDone={() => setEditUser(undefined)} groupNames={groupNames} />}
           </DialogContent>
         </Dialog>
 
@@ -347,11 +401,94 @@ export default function Admin() {
         </Dialog>
 
         <Card className="fs-card rounded-2xl p-6" data-testid="card-admin-groups">
-          <div className="text-sm font-semibold">Groups</div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {GROUPS.map((g) => (
-              <div key={g} className="rounded-full border bg-card/70 px-3 py-1 text-xs">{g}</div>
+          <div className="text-sm font-semibold">Groups ({apiGroups.length})</div>
+          <div className="mt-3 grid grid-cols-1 gap-2">
+            {apiGroups.map((g) => (
+              <div
+                key={g.id}
+                className="flex items-center justify-between gap-3 rounded-xl border bg-background/50 px-3 py-2"
+                data-testid={`row-group-${g.id}`}
+              >
+                {editingGroup?.id === g.id ? (
+                  <div className="flex flex-1 items-center gap-2">
+                    <Input
+                      value={editingGroupName}
+                      onChange={(e) => setEditingGroupName(e.target.value)}
+                      className="h-8 text-sm"
+                      data-testid="input-edit-group-name"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && editingGroupName.trim()) {
+                          updateGroupMutation.mutate({ id: g.id, name: editingGroupName.trim() });
+                        }
+                        if (e.key === "Escape") setEditingGroup(null);
+                      }}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      data-testid="button-save-group"
+                      disabled={!editingGroupName.trim() || updateGroupMutation.isPending}
+                      onClick={() => updateGroupMutation.mutate({ id: g.id, name: editingGroupName.trim() })}
+                    >
+                      <Check className="h-4 w-4 text-emerald-400" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setEditingGroup(null)} data-testid="button-cancel-edit-group">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-sm">{g.name}</span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        data-testid={`button-edit-group-${g.id}`}
+                        onClick={() => { setEditingGroup(g); setEditingGroupName(g.name); }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        data-testid={`button-delete-group-${g.id}`}
+                        onClick={() => {
+                          if (confirm(`Delete group "${g.name}"?`)) {
+                            deleteGroupMutation.mutate(g.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
             ))}
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <Input
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              placeholder="New group name…"
+              className="h-8 text-sm"
+              data-testid="input-new-group"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newGroupName.trim()) {
+                  createGroupMutation.mutate(newGroupName.trim());
+                }
+              }}
+            />
+            <Button
+              size="sm"
+              data-testid="button-add-group"
+              disabled={!newGroupName.trim() || createGroupMutation.isPending}
+              onClick={() => createGroupMutation.mutate(newGroupName.trim())}
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              Add
+            </Button>
           </div>
         </Card>
       </div>

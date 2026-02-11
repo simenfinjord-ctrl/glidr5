@@ -15,6 +15,15 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+export const groups = pgTable("groups", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+});
+
+export const insertGroupSchema = createInsertSchema(groups).omit({ id: true });
+export type InsertGroup = z.infer<typeof insertGroupSchema>;
+export type Group = typeof groups.$inferSelect;
+
 export const testSkiSeries = pgTable("test_ski_series", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),

@@ -1,6 +1,6 @@
-import { Link } from "wouter";
 import { Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/mock-auth";
@@ -28,12 +28,12 @@ export default function Tests() {
               Table logs grouped by date and location.
             </p>
           </div>
-          <Link href="/tests/new">
+          <AppLink href="/tests/new">
             <Button data-testid="button-new-test">
               <Plus className="mr-2 h-4 w-4" />
               New test
             </Button>
-          </Link>
+          </AppLink>
         </div>
 
         <div className="grid grid-cols-1 gap-3">

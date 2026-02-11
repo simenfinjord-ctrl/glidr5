@@ -1,6 +1,6 @@
-import { Link } from "wouter";
 import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -21,22 +21,21 @@ function QuickCard({
   testId: string;
 }) {
   return (
-    <Link href={href}>
-      <a
-        data-testid={testId}
-        className="group block rounded-2xl border bg-card/60 p-4 transition hover:bg-card/90"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold tracking-tight">{title}</div>
-            <div className="mt-1 text-xs text-muted-foreground">{description}</div>
-          </div>
-          <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Icon className="h-5 w-5" />
-          </div>
+    <AppLink
+      href={href}
+      testId={testId}
+      className="group block rounded-2xl border bg-card/60 p-4 transition hover:bg-card/90"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold tracking-tight">{title}</div>
+          <div className="mt-1 text-xs text-muted-foreground">{description}</div>
         </div>
-      </a>
-    </Link>
+        <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </AppLink>
   );
 }
 
@@ -59,24 +58,24 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Link href="/tests/new">
+            <AppLink href="/tests/new">
               <Button data-testid="button-new-test">
                 <Plus className="mr-2 h-4 w-4" />
                 New test
               </Button>
-            </Link>
-            <Link href="/weather">
+            </AppLink>
+            <AppLink href="/weather">
               <Button variant="secondary" data-testid="button-add-weather">
                 <CalendarPlus className="mr-2 h-4 w-4" />
                 Add weather
               </Button>
-            </Link>
-            <Link href="/products">
+            </AppLink>
+            <AppLink href="/products">
               <Button variant="secondary" data-testid="button-add-product">
                 <PackagePlus className="mr-2 h-4 w-4" />
                 Add product
               </Button>
-            </Link>
+            </AppLink>
           </div>
         </div>
 
@@ -130,7 +129,9 @@ export default function Dashboard() {
                   >
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium">{t.location}</div>
-                      <div className="text-xs text-muted-foreground">{t.date} · {t.testType} · {t.lane}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {t.date} · {t.testType} · {t.lane}
+                      </div>
                     </div>
                     <span className="text-xs text-muted-foreground">{t.createdBy.name}</span>
                   </div>
@@ -183,7 +184,9 @@ export default function Dashboard() {
                       data-testid={`row-product-${p.id}`}
                     >
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-medium">{p.brand} — {p.name}</div>
+                        <div className="truncate text-sm font-medium">
+                          {p.brand} — {p.name}
+                        </div>
                         <div className="text-xs text-muted-foreground">{p.category}</div>
                       </div>
                       <span className="text-xs text-muted-foreground">{p.createdBy.name}</span>
@@ -207,7 +210,9 @@ export default function Dashboard() {
                     >
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium">{s.name}</div>
-                        <div className="text-xs text-muted-foreground">{s.type} · {s.numberOfSkis} skis</div>
+                        <div className="text-xs text-muted-foreground">
+                          {s.type} · {s.numberOfSkis} skis
+                        </div>
                       </div>
                       <span className="text-xs text-muted-foreground">{s.createdBy.name}</span>
                     </div>

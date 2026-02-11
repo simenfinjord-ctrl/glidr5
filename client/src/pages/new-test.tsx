@@ -121,18 +121,16 @@ export default function NewTest() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Link href="/tests">
-              <a>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  data-testid="button-back-tests"
-                >
-                  <ChevronLeft className="mr-1 h-4 w-4" />
-                  Tests
-                </Button>
-              </a>
-            </Link>
+            <Button asChild variant="secondary" size="sm" data-testid="button-back-tests">
+              <Link href="/tests">
+                <a>
+                  <span className="inline-flex items-center">
+                    <ChevronLeft className="mr-1 h-4 w-4" />
+                    Tests
+                  </span>
+                </a>
+              </Link>
+            </Button>
             <div>
               <h1 className="text-2xl sm:text-3xl">New test</h1>
               <p

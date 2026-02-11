@@ -1,7 +1,7 @@
-import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
+import { AppLink } from "@/components/app-link";
 
 export default function NotFound() {
   return (
@@ -21,17 +21,14 @@ export default function NotFound() {
           </div>
 
           <div className="mt-6 flex items-center gap-2">
-            <Link href="/dashboard">
+            <AppLink href="/dashboard">
               <Button data-testid="button-go-dashboard">Go to Dashboard</Button>
-            </Link>
-            <Link href="/tests/new">
-              <Button
-                variant="secondary"
-                data-testid="button-go-new-test"
-              >
+            </AppLink>
+            <AppLink href="/tests/new">
+              <Button variant="secondary" data-testid="button-go-new-test">
                 New test
               </Button>
-            </Link>
+            </AppLink>
           </div>
         </CardContent>
       </Card>

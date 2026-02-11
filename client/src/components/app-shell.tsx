@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import {
   LayoutDashboard,
   ListChecks,
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { logout } from "@/lib/mock-auth";
+import { AppLink } from "@/components/app-link";
 
 type NavItem = {
   href: string;
@@ -94,28 +95,28 @@ export function AppShell({ children }: { children: ReactNode }) {
               const active = location === item.href;
               const Icon = item.icon;
               return (
-                <Link key={item.href} href={item.href}>
-                  <a
-                    data-testid={item.testId}
+                <AppLink
+                  key={item.href}
+                  href={item.href}
+                  testId={item.testId}
+                  className={cn(
+                    "group inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition",
+                    "bg-card/60 hover:bg-card/90",
+                    active
+                      ? "border-primary/40 bg-primary/10 text-foreground"
+                      : "border-border/80 text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Icon
                     className={cn(
-                      "group inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition",
-                      "bg-card/60 hover:bg-card/90",
+                      "h-4 w-4",
                       active
-                        ? "border-primary/40 bg-primary/10 text-foreground"
-                        : "border-border/80 text-muted-foreground hover:text-foreground",
+                        ? "text-primary"
+                        : "text-muted-foreground group-hover:text-foreground",
                     )}
-                  >
-                    <Icon
-                      className={cn(
-                        "h-4 w-4",
-                        active
-                          ? "text-primary"
-                          : "text-muted-foreground group-hover:text-foreground",
-                      )}
-                    />
-                    <span>{item.label}</span>
-                  </a>
-                </Link>
+                  />
+                  <span>{item.label}</span>
+                </AppLink>
               );
             })}
           </nav>

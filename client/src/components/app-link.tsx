@@ -1,5 +1,4 @@
 import { ReactNode } from "react";
-import { Link } from "wouter";
 
 export function AppLink({
   href,
@@ -13,10 +12,8 @@ export function AppLink({
   className?: string;
 }) {
   return (
-    <Link href={href}>
-      <a data-testid={testId} className={className}>
-        {children}
-      </a>
-    </Link>
+    <a href={href} data-testid={testId} className={className}>
+      {children}
+    </a>
   );
 }

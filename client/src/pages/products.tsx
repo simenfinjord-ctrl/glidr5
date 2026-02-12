@@ -174,7 +174,7 @@ function MoveProductModal({
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-border/40 bg-background/30 p-3">
-        <div className="text-sm font-medium">{product.brand} — {product.name}</div>
+        <div className="text-sm font-medium">{product.brand} {product.name}</div>
         <div className="mt-1 text-xs text-muted-foreground">
           Currently in: <span className="font-medium text-foreground">{product.groupScope}</span>
         </div>
@@ -416,7 +416,7 @@ function ProductCard({
               {p.category}
             </span>
           </div>
-          <div className="mt-2 truncate text-base font-semibold">{p.brand} — {p.name}</div>
+          <div className="mt-2 truncate text-base font-semibold">{p.brand} {p.name}</div>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/20">
               {p.groupScope}

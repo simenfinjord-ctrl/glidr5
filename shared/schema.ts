@@ -28,6 +28,7 @@ export const testSkiSeries = pgTable("test_ski_series", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   type: text("type").notNull(),
+  brand: text("brand"),
   grind: text("grind"),
   numberOfSkis: integer("number_of_skis").notNull().default(8),
   lastRegrind: text("last_regrind"),
@@ -94,6 +95,8 @@ export const tests = pgTable("tests", {
   testType: text("test_type").notNull(),
   seriesId: integer("series_id").notNull(),
   notes: text("notes"),
+  distanceLabel0km: text("distance_label_0km"),
+  distanceLabelXkm: text("distance_label_xkm"),
   createdAt: text("created_at").notNull(),
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),
@@ -109,12 +112,14 @@ export const testEntries = pgTable("test_entries", {
   testId: integer("test_id").notNull(),
   skiNumber: integer("ski_number").notNull(),
   productId: integer("product_id"),
+  additionalProductIds: text("additional_product_ids"),
   freeTextProduct: text("free_text_product"),
   methodology: text("methodology").notNull().default(""),
   result0kmCmBehind: real("result_0km_cm_behind"),
   rank0km: integer("rank_0km"),
   resultXkmCmBehind: real("result_xkm_cm_behind"),
   rankXkm: integer("rank_xkm"),
+  feelingRank: integer("feeling_rank"),
   createdAt: text("created_at").notNull(),
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),
@@ -124,3 +129,15 @@ export const testEntries = pgTable("test_entries", {
 export const insertEntrySchema = createInsertSchema(testEntries).omit({ id: true });
 export type InsertEntry = z.infer<typeof insertEntrySchema>;
 export type TestEntry = typeof testEntries.$inferSelect;
+
+export const loginLogs = pgTable("login_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  email: text("email").notNull(),
+  name: text("name").notNull(),
+  loginAt: text("login_at").notNull(),
+});
+
+export const insertLoginLogSchema = createInsertSchema(loginLogs).omit({ id: true });
+export type InsertLoginLog = z.infer<typeof insertLoginLogSchema>;
+export type LoginLog = typeof loginLogs.$inferSelect;

@@ -59,6 +59,8 @@ const schema = z.object({
   location: z.string().min(1, "Location is required"),
   weatherId: z.string().optional(),
   notes: z.string().optional(),
+  distanceLabel0km: z.string().optional(),
+  distanceLabelXkm: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -73,6 +75,7 @@ function makeRows(n = 8): EntryRow[] {
     rank0km: null,
     resultXkmCmBehind: null,
     rankXkm: null,
+    feelingRank: null,
   }));
 }
 
@@ -99,6 +102,8 @@ export default function NewTest() {
       location: defaultLocation,
       weatherId: undefined,
       notes: "",
+      distanceLabel0km: "",
+      distanceLabelXkm: "",
     },
   });
 
@@ -135,12 +140,16 @@ export default function NewTest() {
       testType: string;
       seriesId: number;
       notes?: string;
+      distanceLabel0km?: string;
+      distanceLabelXkm?: string;
       entries: Array<{
         skiNumber: number;
         productId?: number;
+        additionalProductIds?: string;
         methodology: string;
         result0kmCmBehind: number | null;
         resultXkmCmBehind?: number | null;
+        feelingRank?: number | null;
       }>;
     }) => {
       const res = await apiRequest("POST", "/api/tests", data);
@@ -230,12 +239,16 @@ export default function NewTest() {
                   testType: values.testType,
                   seriesId: Number(values.seriesId),
                   notes: values.notes,
+                  distanceLabel0km: values.distanceLabel0km || undefined,
+                  distanceLabelXkm: values.distanceLabelXkm || undefined,
                   entries: rows.map((r) => ({
                     skiNumber: r.skiNumber,
                     productId: r.productId,
+                    additionalProductIds: r.additionalProductIds,
                     methodology: r.methodology,
                     result0kmCmBehind: r.result0kmCmBehind,
                     resultXkmCmBehind: r.resultXkmCmBehind,
+                    feelingRank: r.feelingRank,
                   })),
                 });
               })}
@@ -397,6 +410,46 @@ export default function NewTest() {
                   />
                 </div>
 
+                <div className="lg:col-span-2">
+                  <FormField
+                    control={form.control}
+                    name="distanceLabel0km"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Distance 1 label</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="0 km"
+                            data-testid="input-distance-label-0"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="lg:col-span-2">
+                  <FormField
+                    control={form.control}
+                    name="distanceLabelXkm"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Distance 2 label</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="X km"
+                            data-testid="input-distance-label-x"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <div className="lg:col-span-8">
                   <FormField
                     control={form.control}
@@ -428,6 +481,8 @@ export default function NewTest() {
             products={products}
             rows={rows}
             setRows={setRows}
+            distanceLabel0km={form.watch("distanceLabel0km")}
+            distanceLabelXkm={form.watch("distanceLabelXkm")}
           />
           <div
             className="mt-2 text-xs text-muted-foreground"

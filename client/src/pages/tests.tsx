@@ -189,7 +189,7 @@ export default function Tests() {
                     <SelectItem value="All">All products</SelectItem>
                     {products.map((p) => (
                       <SelectItem key={p.id} value={String(p.id)}>
-                        {p.brand} — {p.name}
+                        {p.brand} {p.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

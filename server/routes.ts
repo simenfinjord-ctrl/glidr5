@@ -259,6 +259,8 @@ export async function registerRoutes(
       testType: req.body.testType,
       seriesId: req.body.seriesId,
       notes: req.body.notes?.trim() || null,
+      distanceLabel0km: req.body.distanceLabel0km?.trim() || null,
+      distanceLabelXkm: req.body.distanceLabelXkm?.trim() || null,
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
@@ -272,11 +274,13 @@ export async function registerRoutes(
         skiNumber: e.skiNumber,
         productId: e.productId || null,
         freeTextProduct: e.freeTextProduct || null,
+        additionalProductIds: e.additionalProductIds || null,
         methodology: e.methodology || "",
         result0kmCmBehind: e.result0kmCmBehind ?? null,
         rank0km: e.rank0km ?? null,
         resultXkmCmBehind: e.resultXkmCmBehind ?? null,
         rankXkm: e.rankXkm ?? null,
+        feelingRank: e.feelingRank ?? null,
         createdAt: now,
         createdById: u.id,
         createdByName: u.name,
@@ -313,6 +317,8 @@ export async function registerRoutes(
       testType: req.body.testType,
       seriesId: req.body.seriesId,
       notes: req.body.notes?.trim() || null,
+      distanceLabel0km: req.body.distanceLabel0km?.trim() || null,
+      distanceLabelXkm: req.body.distanceLabelXkm?.trim() || null,
     });
 
     if (req.body.entries) {
@@ -325,11 +331,13 @@ export async function registerRoutes(
           skiNumber: e.skiNumber,
           productId: e.productId || null,
           freeTextProduct: e.freeTextProduct || null,
+          additionalProductIds: e.additionalProductIds || null,
           methodology: e.methodology || "",
           result0kmCmBehind: e.result0kmCmBehind ?? null,
           rank0km: e.rank0km ?? null,
           resultXkmCmBehind: e.resultXkmCmBehind ?? null,
           rankXkm: e.rankXkm ?? null,
+          feelingRank: e.feelingRank ?? null,
           createdAt: now,
           createdById: u.id,
           createdByName: u.name,
@@ -421,6 +429,13 @@ export async function registerRoutes(
     const deleted = await storage.deleteUser(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
     res.json({ ok: true });
+  });
+
+  app.get("/api/login-logs", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const logs = await storage.listLoginLogs();
+    res.json(logs);
   });
 
   return httpServer;

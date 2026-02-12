@@ -19,6 +19,7 @@ type Series = {
   id: number;
   name: string;
   type: string;
+  brand: string | null;
   grind: string | null;
   numberOfSkis: number;
   lastRegrind: string | null;
@@ -31,6 +32,7 @@ type Series = {
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
   type: z.enum(["Structure", "Glide", "Grind"]),
+  brand: z.string().optional(),
   grind: z.string().optional(),
   numberOfSkis: z.coerce.number().int().min(1, "Must be at least 1"),
   lastRegrind: z.string().optional(),
@@ -56,6 +58,7 @@ function SeriesForm({
     defaultValues: {
       name: initial?.name ?? "",
       type: (initial?.type ?? "Glide") as "Structure" | "Glide" | "Grind",
+      brand: initial?.brand ?? "",
       grind: initial?.grind ?? "",
       numberOfSkis: initial?.numberOfSkis ?? 8,
       lastRegrind: initial?.lastRegrind ?? "",
@@ -67,6 +70,7 @@ function SeriesForm({
       const res = await apiRequest("POST", "/api/series", {
         name: data.name,
         type: data.type,
+        brand: data.brand?.trim() || null,
         grind: data.grind?.trim() || null,
         numberOfSkis: data.numberOfSkis,
         lastRegrind: data.lastRegrind || null,
@@ -92,6 +96,7 @@ function SeriesForm({
       const res = await apiRequest("PUT", `/api/series/${initial!.id}`, {
         name: data.name,
         type: data.type,
+        brand: data.brand?.trim() || null,
         grind: data.grind?.trim() || null,
         numberOfSkis: data.numberOfSkis,
         lastRegrind: data.lastRegrind || null,
@@ -124,19 +129,35 @@ function SeriesForm({
         })}
         className="space-y-4"
       >
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input {...field} data-testid="input-series-name" placeholder="e.g., Testskis Blue 1" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Name</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-series-name" placeholder="e.g., Testskis Blue 1" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="brand"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Brand</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-series-brand" placeholder="e.g., Fischer" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField
@@ -280,6 +301,11 @@ export default function TestSkis() {
                       <span className="truncate text-base font-semibold">{s.name}</span>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
+                      {s.brand && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/20">
+                          {s.brand}
+                        </span>
+                      )}
                       <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-300 ring-1 ring-sky-500/20">
                         <Hash className="h-2.5 w-2.5" /> {s.numberOfSkis} skis
                       </span>

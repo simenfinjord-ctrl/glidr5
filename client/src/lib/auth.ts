@@ -15,8 +15,8 @@ export function useAuth() {
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
-  const login = async (email: string, password: string) => {
-    const res = await apiRequest("POST", "/api/auth/login", { email, password });
+  const login = async (email: string, password: string, rememberMe?: boolean) => {
+    const res = await apiRequest("POST", "/api/auth/login", { email, password, rememberMe });
     const data = await res.json();
     await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     return data;

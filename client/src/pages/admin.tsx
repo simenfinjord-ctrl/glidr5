@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, KeyRound, Check, X } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Check, X, Clock } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,14 @@ type ApiUser = {
 };
 
 type ApiGroup = { id: number; name: string };
+
+type LoginLog = {
+  id: number;
+  userId: number;
+  email: string;
+  name: string;
+  loginAt: string;
+};
 
 function parseGroups(groupScope: string): string[] {
   return groupScope.split(",").map((s) => s.trim()).filter(Boolean);
@@ -292,6 +300,11 @@ export default function Admin() {
 
   const { data: apiGroups = [] } = useQuery<ApiGroup[]>({
     queryKey: ["/api/groups"],
+    enabled: !!user && !!user.isAdmin,
+  });
+
+  const { data: loginLogs = [] } = useQuery<LoginLog[]>({
+    queryKey: ["/api/login-logs"],
     enabled: !!user && !!user.isAdmin,
   });
 
@@ -567,6 +580,39 @@ export default function Admin() {
               Add
             </Button>
           </div>
+        </Card>
+
+        <Card className="fs-card rounded-2xl p-6" data-testid="card-admin-login-history">
+          <div className="flex items-center gap-2 mb-3">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <div className="text-sm font-semibold">Login History ({loginLogs.length})</div>
+          </div>
+          {loginLogs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No login records yet.</p>
+          ) : (
+            <div className="max-h-80 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    <th className="pb-2 pr-3">Name</th>
+                    <th className="pb-2 pr-3">Email</th>
+                    <th className="pb-2">Login Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loginLogs.slice(0, 100).map((log) => (
+                    <tr key={log.id} className="border-b border-border/20" data-testid={`row-login-${log.id}`}>
+                      <td className="py-2 pr-3 font-medium">{log.name}</td>
+                      <td className="py-2 pr-3 text-muted-foreground">{log.email}</td>
+                      <td className="py-2 text-muted-foreground">
+                        {new Date(log.loginAt).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
       </div>
     </AppShell>

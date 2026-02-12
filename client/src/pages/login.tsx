@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { LogIn, Mail, Lock, ArrowLeft } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import { useAuth } from "@/lib/auth";
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
   password: z.string().min(1, "Enter your password"),
+  rememberMe: z.boolean().default(false),
 });
 
 export default function Login() {
@@ -25,7 +27,7 @@ export default function Login() {
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "", password: "", rememberMe: false },
   });
 
   return (
@@ -82,7 +84,7 @@ export default function Login() {
                   onSubmit={form.handleSubmit(async (values) => {
                     setIsSubmitting(true);
                     try {
-                      await login(values.email, values.password);
+                      await login(values.email, values.password, values.rememberMe);
                       setLocation("/dashboard");
                     } catch (e) {
                       toast({
@@ -148,6 +150,23 @@ export default function Login() {
                           </div>
                         </FormControl>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="rememberMe"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center gap-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-remember-me"
+                          />
+                        </FormControl>
+                        <FormLabel className="text-sm text-muted-foreground cursor-pointer">Remember me for 30 days</FormLabel>
                       </FormItem>
                     )}
                   />

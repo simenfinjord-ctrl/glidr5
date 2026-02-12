@@ -29,6 +29,8 @@ type Test = {
   testType: string;
   seriesId: number;
   notes: string | null;
+  distanceLabel0km: string | null;
+  distanceLabelXkm: string | null;
   createdAt: string;
   createdByName: string;
   groupScope: string;
@@ -39,11 +41,13 @@ type TestEntry = {
   testId: number;
   skiNumber: number;
   productId: number | null;
+  additionalProductIds: string | null;
   methodology: string;
   result0kmCmBehind: number | null;
   rank0km: number | null;
   resultXkmCmBehind: number | null;
   rankXkm: number | null;
+  feelingRank: number | null;
 };
 
 type Product = {
@@ -406,17 +410,30 @@ export default function TestDetail() {
                 size="sm"
                 data-testid="button-export-csv"
                 onClick={() => {
-                  const headers = ["Rank", "Ski No.", "Product", "Method", "Result 0km (cm)", "Result Xkm (cm)", "Rank Xkm"];
+                  const label0 = test.distanceLabel0km?.trim() || "0 km";
+                  const labelX = test.distanceLabelXkm?.trim() || "X km";
+                  const headers = ["Rank", "Ski No.", "Product", "Method", `Result ${label0} (cm)`, `Result ${labelX} (cm)`, `Rank ${labelX}`, "Feeling"];
                   const rows = sortedEntries.map((entry) => {
                     const prod = entry.productId ? productsById.get(entry.productId) : null;
+                    const additionalIds = entry.additionalProductIds
+                      ? entry.additionalProductIds.split(",").map(Number).filter((n) => !isNaN(n) && n > 0)
+                      : [];
+                    const allProducts = [
+                      prod ? `${prod.brand} ${prod.name}` : null,
+                      ...additionalIds.map((aid) => {
+                        const p = productsById.get(aid);
+                        return p ? `${p.brand} ${p.name}` : null;
+                      }),
+                    ].filter(Boolean);
                     return [
                       entry.rank0km ?? "",
                       entry.skiNumber,
-                      prod ? `${prod.brand} ${prod.name}` : "",
+                      allProducts.join(", "),
                       entry.methodology,
                       entry.result0kmCmBehind ?? "",
                       entry.resultXkmCmBehind ?? "",
                       entry.rankXkm ?? "",
+                      entry.feelingRank ?? "",
                     ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
                   });
                   const csv = [headers.join(","), ...rows].join("\n");
@@ -454,11 +471,12 @@ export default function TestDetail() {
                   <tr className="border-b border-border/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="pb-3 pr-3">Rank</th>
                     <th className="pb-3 pr-3">Ski</th>
-                    {!hideDetails && <th className="pb-3 pr-3">Product</th>}
-                    {!hideDetails && <th className="pb-3 pr-3">Method</th>}
-                    <th className="pb-3 pr-3">0km (cm)</th>
-                    <th className="pb-3 pr-3">Xkm (cm)</th>
-                    <th className="pb-3">Rank Xkm</th>
+                    <th className="pb-3 pr-3">Product</th>
+                    <th className="pb-3 pr-3">Method</th>
+                    <th className="pb-3 pr-3">{test.distanceLabel0km?.trim() || "0 km"} (cm)</th>
+                    <th className="pb-3 pr-3">{test.distanceLabelXkm?.trim() || "X km"} (cm)</th>
+                    <th className="pb-3 pr-3">Rank {test.distanceLabelXkm?.trim() || "X km"}</th>
+                    <th className="pb-3">Feeling</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -466,6 +484,16 @@ export default function TestDetail() {
                     const product = entry.productId
                       ? productsById.get(entry.productId)
                       : null;
+                    const additionalIds = entry.additionalProductIds
+                      ? entry.additionalProductIds.split(",").map(Number).filter((n) => !isNaN(n) && n > 0)
+                      : [];
+                    const allProducts = [
+                      product ? `${product.brand} ${product.name}` : null,
+                      ...additionalIds.map((aid) => {
+                        const p = productsById.get(aid);
+                        return p ? `${p.brand} ${p.name}` : null;
+                      }),
+                    ].filter(Boolean);
 
                     return (
                       <tr
@@ -497,26 +525,27 @@ export default function TestDetail() {
                             {entry.skiNumber}
                           </span>
                         </td>
-                        {!hideDetails && (
-                          <td className="py-3 pr-3" data-testid={`text-product-${entry.id}`}>
-                            {product
-                              ? `${product.brand} ${product.name}`
-                              : "—"}
-                          </td>
-                        )}
-                        {!hideDetails && (
-                          <td className="py-3 pr-3 text-muted-foreground" data-testid={`text-method-${entry.id}`}>
-                            {entry.methodology || "—"}
-                          </td>
-                        )}
+                        <td className="py-3 pr-3" data-testid={`text-product-${entry.id}`}>
+                          {hideDetails ? "" : (allProducts.length > 0 ? allProducts.join(", ") : "—")}
+                        </td>
+                        <td className="py-3 pr-3 text-muted-foreground" data-testid={`text-method-${entry.id}`}>
+                          {hideDetails ? "" : (entry.methodology || "—")}
+                        </td>
                         <td className="py-3 pr-3 font-mono text-sm" data-testid={`text-result0km-${entry.id}`}>
                           {entry.result0kmCmBehind ?? "—"}
                         </td>
                         <td className="py-3 pr-3 font-mono text-sm" data-testid={`text-resultXkm-${entry.id}`}>
                           {entry.resultXkmCmBehind ?? "—"}
                         </td>
-                        <td className="py-3" data-testid={`text-rankXkm-${entry.id}`}>
+                        <td className="py-3 pr-3" data-testid={`text-rankXkm-${entry.id}`}>
                           <RankBadge rank={entry.rankXkm} />
+                        </td>
+                        <td className="py-3" data-testid={`text-feeling-${entry.id}`}>
+                          {entry.feelingRank != null ? (
+                            <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-semibold text-violet-300">
+                              {entry.feelingRank}
+                            </span>
+                          ) : "—"}
                         </td>
                       </tr>
                     );

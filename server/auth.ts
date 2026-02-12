@@ -34,6 +34,8 @@ export function setupAuth(app: Express) {
     }),
   };
 
+  const REMEMBER_ME_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
+
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
@@ -77,8 +79,19 @@ export function setupAuth(app: Express) {
       if (!user) {
         return res.status(401).json({ message: info?.message || "Login failed" });
       }
-      req.logIn(user, (err) => {
+      req.logIn(user, async (err) => {
         if (err) return next(err);
+        if (req.body.rememberMe && req.session) {
+          req.session.cookie.maxAge = REMEMBER_ME_MAX_AGE;
+        }
+        try {
+          await storage.createLoginLog({
+            userId: user.id,
+            email: user.email,
+            name: user.name,
+            loginAt: new Date().toISOString(),
+          });
+        } catch (_) {}
         const { password, ...safe } = user;
         return res.json(safe);
       });

@@ -1,7 +1,7 @@
 import { eq, and, sql, inArray } from "drizzle-orm";
 import { db } from "./db";
 import {
-  users, groups, testSkiSeries, products, dailyWeather, tests, testEntries,
+  users, groups, testSkiSeries, products, dailyWeather, tests, testEntries, loginLogs,
   type User, type InsertUser,
   type Group, type InsertGroup,
   type Series, type InsertSeries,
@@ -9,6 +9,7 @@ import {
   type Weather, type InsertWeather,
   type Test, type InsertTest,
   type TestEntry, type InsertEntry,
+  type LoginLog, type InsertLoginLog,
 } from "@shared/schema";
 
 export function parseGroupScopes(groupScope: string): string[] {
@@ -51,6 +52,9 @@ export interface IStorage {
   listEntries(testId: number): Promise<TestEntry[]>;
   createEntry(e: InsertEntry): Promise<TestEntry>;
   deleteEntriesByTestId(testId: number): Promise<void>;
+
+  createLoginLog(log: InsertLoginLog): Promise<LoginLog>;
+  listLoginLogs(): Promise<LoginLog[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -231,6 +235,15 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEntriesByTestId(testId: number): Promise<void> {
     await db.delete(testEntries).where(eq(testEntries.testId, testId));
+  }
+
+  async createLoginLog(log: InsertLoginLog): Promise<LoginLog> {
+    const [created] = await db.insert(loginLogs).values(log).returning();
+    return created!;
+  }
+
+  async listLoginLogs(): Promise<LoginLog[]> {
+    return db.select().from(loginLogs).orderBy(sql`${loginLogs.id} desc`);
   }
 }
 

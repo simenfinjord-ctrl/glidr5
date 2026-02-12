@@ -60,7 +60,7 @@ export function ProductCombobox({
           data-testid={testId}
         >
           <span className={cn("truncate", !selected && "text-muted-foreground")}>
-            {selected ? `${selected.brand} — ${selected.name}` : "Select product"}
+            {selected ? `${selected.brand} ${selected.name}` : "Select product"}
           </span>
           <ChevronsUpDown className="h-4 w-4 opacity-60" />
         </Button>
@@ -83,7 +83,7 @@ export function ProductCombobox({
                     }}
                     data-testid={`option-product-${p.id}`}
                   >
-                    <span className="truncate">{p.brand} — {p.name}</span>
+                    <span className="truncate">{p.brand} {p.name}</span>
                     <Check className={cn("ml-auto h-4 w-4", isSelected ? "opacity-100" : "opacity-0")} />
                   </CommandItem>
                 );

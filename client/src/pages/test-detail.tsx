@@ -31,6 +31,7 @@ type Test = {
   notes: string | null;
   distanceLabel0km: string | null;
   distanceLabelXkm: string | null;
+  distanceLabels: string | null;
   createdAt: string;
   createdByName: string;
   groupScope: string;
@@ -47,6 +48,7 @@ type TestEntry = {
   rank0km: number | null;
   resultXkmCmBehind: number | null;
   rankXkm: number | null;
+  results: string | null;
   feelingRank: number | null;
 };
 
@@ -83,6 +85,42 @@ type Weather = {
   testQuality: number | null;
   snowType: string | null;
 };
+
+type RoundResult = { result: number | null; rank: number | null };
+
+function getDistanceLabels(test: Test): string[] {
+  if (test.distanceLabels) {
+    try {
+      const parsed = JSON.parse(test.distanceLabels);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {}
+  }
+  const labels: string[] = [test.distanceLabel0km || "0 km"];
+  if (test.distanceLabelXkm) {
+    labels.push(test.distanceLabelXkm);
+  }
+  return labels;
+}
+
+function getEntryRounds(entry: TestEntry, numRounds: number): RoundResult[] {
+  if (entry.results) {
+    try {
+      const parsed = JSON.parse(entry.results);
+      if (Array.isArray(parsed)) {
+        while (parsed.length < numRounds) parsed.push({ result: null, rank: null });
+        return parsed.slice(0, numRounds);
+      }
+    } catch {}
+  }
+  const results: RoundResult[] = [
+    { result: entry.result0kmCmBehind, rank: entry.rank0km },
+  ];
+  if (numRounds > 1) {
+    results.push({ result: entry.resultXkmCmBehind, rank: entry.rankXkm });
+  }
+  while (results.length < numRounds) results.push({ result: null, rank: null });
+  return results;
+}
 
 function RankBadge({ rank, size = "sm" }: { rank: number | null; size?: "sm" | "lg" }) {
   const sizeClass = size === "lg" ? "min-w-12 px-3 py-1.5 text-sm" : "min-w-8 px-2 py-0.5 text-xs";
@@ -158,11 +196,17 @@ export default function TestDetail() {
     ? weatherList.find((w) => w.id === test.weatherId)
     : null;
 
+  const distLabels = test ? getDistanceLabels(test) : ["0 km"];
+
   const sortedEntries = [...entries].sort((a, b) => {
-    if (a.rank0km == null && b.rank0km == null) return 0;
-    if (a.rank0km == null) return 1;
-    if (b.rank0km == null) return -1;
-    return a.rank0km - b.rank0km;
+    const aRounds = getEntryRounds(a, distLabels.length);
+    const bRounds = getEntryRounds(b, distLabels.length);
+    const aRank = aRounds[0]?.rank;
+    const bRank = bRounds[0]?.rank;
+    if (aRank == null && bRank == null) return 0;
+    if (aRank == null) return 1;
+    if (bRank == null) return -1;
+    return aRank - bRank;
   });
 
   if (testLoading) {
@@ -284,6 +328,18 @@ export default function TestDetail() {
                   <div className="text-sm font-medium" data-testid="text-test-created-by">{test.createdByName}</div>
                 </div>
               </div>
+              {distLabels.length > 0 && (
+                <div className="rounded-xl bg-background/40 px-3 py-2.5">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Rounds</div>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {distLabels.map((label, i) => (
+                      <span key={i} className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                        {label || `Round ${i + 1}`}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               {test.notes && (
                 <div className="rounded-xl bg-background/40 px-3 py-2.5">
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Notes</div>
@@ -410,10 +466,13 @@ export default function TestDetail() {
                 size="sm"
                 data-testid="button-export-csv"
                 onClick={() => {
-                  const label0 = test.distanceLabel0km?.trim() || "0 km";
-                  const labelX = test.distanceLabelXkm?.trim() || "X km";
-                  const headers = ["Rank", "Ski No.", "Product", "Method", `Result ${label0} (cm)`, `Result ${labelX} (cm)`, `Rank ${labelX}`, "Feeling"];
-                  const rows = sortedEntries.map((entry) => {
+                  const headers = ["Rank", "Ski No.", "Product", "Method"];
+                  for (const label of distLabels) {
+                    const lbl = label?.trim() || "Round";
+                    headers.push(`Result ${lbl} (cm)`, `Rank ${lbl}`);
+                  }
+                  headers.push("Feeling");
+                  const csvRows = sortedEntries.map((entry) => {
                     const prod = entry.productId ? productsById.get(entry.productId) : null;
                     const additionalIds = entry.additionalProductIds
                       ? entry.additionalProductIds.split(",").map(Number).filter((n) => !isNaN(n) && n > 0)
@@ -425,18 +484,20 @@ export default function TestDetail() {
                         return p ? `${p.brand} ${p.name}` : null;
                       }),
                     ].filter(Boolean);
-                    return [
-                      entry.rank0km ?? "",
+                    const rounds = getEntryRounds(entry, distLabels.length);
+                    const vals: (string | number)[] = [
+                      rounds[0]?.rank ?? "",
                       entry.skiNumber,
                       allProducts.join(", "),
                       entry.methodology,
-                      entry.result0kmCmBehind ?? "",
-                      entry.resultXkmCmBehind ?? "",
-                      entry.rankXkm ?? "",
-                      entry.feelingRank ?? "",
-                    ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
+                    ];
+                    for (const rr of rounds) {
+                      vals.push(rr.result ?? "", rr.rank ?? "");
+                    }
+                    vals.push(entry.feelingRank ?? "");
+                    return vals.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
                   });
-                  const csv = [headers.join(","), ...rows].join("\n");
+                  const csv = [headers.join(","), ...csvRows].join("\n");
                   const blob = new Blob([csv], { type: "text/csv" });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement("a");
@@ -473,9 +534,12 @@ export default function TestDetail() {
                     <th className="pb-3 pr-3">Ski</th>
                     <th className="pb-3 pr-3">Product</th>
                     <th className="pb-3 pr-3">Method</th>
-                    <th className="pb-3 pr-3">{test.distanceLabel0km?.trim() || "0 km"} (cm)</th>
-                    <th className="pb-3 pr-3">{test.distanceLabelXkm?.trim() || "X km"} (cm)</th>
-                    <th className="pb-3 pr-3">Rank {test.distanceLabelXkm?.trim() || "X km"}</th>
+                    {distLabels.map((label, i) => (
+                      <th key={i} className="pb-3 pr-3" colSpan={i === 0 ? 1 : 2}>
+                        {(label?.trim() || `Round ${i + 1}`)} (cm)
+                      </th>
+                    ))}
+                    {distLabels.length > 1 && <th className="pb-3 pr-3"></th>}
                     <th className="pb-3">Feeling</th>
                   </tr>
                 </thead>
@@ -495,22 +559,25 @@ export default function TestDetail() {
                       }),
                     ].filter(Boolean);
 
+                    const rounds = getEntryRounds(entry, distLabels.length);
+                    const firstRank = rounds[0]?.rank ?? null;
+
                     return (
                       <tr
                         key={entry.id}
                         data-testid={`row-entry-${entry.id}`}
                         className={cn(
                           "border-b border-border/30 last:border-0 transition-colors",
-                          entry.rank0km === 1 && "bg-emerald-500/8",
-                          entry.rank0km === 2 && "bg-sky-500/8",
-                          entry.rank0km === 3 && "bg-amber-500/8",
-                          idx % 2 === 0 && !entry.rank0km && "bg-background/20",
+                          firstRank === 1 && "bg-emerald-500/8",
+                          firstRank === 2 && "bg-sky-500/8",
+                          firstRank === 3 && "bg-amber-500/8",
+                          idx % 2 === 0 && !firstRank && "bg-background/20",
                         )}
                       >
                         <td className="py-3 pr-3">
                           <div className="flex items-center gap-2">
-                            <RankBadge rank={entry.rank0km} size="lg" />
-                            {entry.rank0km === 1 && (
+                            <RankBadge rank={firstRank} size="lg" />
+                            {firstRank === 1 && (
                               <span
                                 className="rounded-full bg-gradient-to-r from-emerald-500/20 to-emerald-400/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400 ring-1 ring-emerald-500/30"
                                 data-testid={`badge-winner-${entry.id}`}
@@ -531,15 +598,18 @@ export default function TestDetail() {
                         <td className="py-3 pr-3 text-muted-foreground" data-testid={`text-method-${entry.id}`}>
                           {hideDetails ? "" : (entry.methodology || "—")}
                         </td>
-                        <td className="py-3 pr-3 font-mono text-sm" data-testid={`text-result0km-${entry.id}`}>
-                          {entry.result0kmCmBehind ?? "—"}
-                        </td>
-                        <td className="py-3 pr-3 font-mono text-sm" data-testid={`text-resultXkm-${entry.id}`}>
-                          {entry.resultXkmCmBehind ?? "—"}
-                        </td>
-                        <td className="py-3 pr-3" data-testid={`text-rankXkm-${entry.id}`}>
-                          <RankBadge rank={entry.rankXkm} />
-                        </td>
+                        {rounds.map((rr, roundIdx) => (
+                          <>
+                            <td key={`res-${roundIdx}`} className="py-3 pr-3 font-mono text-sm" data-testid={`text-result-${roundIdx}-${entry.id}`}>
+                              {rr.result ?? "—"}
+                            </td>
+                            {roundIdx > 0 && (
+                              <td key={`rank-${roundIdx}`} className="py-3 pr-3" data-testid={`text-rank-${roundIdx}-${entry.id}`}>
+                                <RankBadge rank={rr.rank} />
+                              </td>
+                            )}
+                          </>
+                        ))}
                         <td className="py-3" data-testid={`text-feeling-${entry.id}`}>
                           {entry.feelingRank != null ? (
                             <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-semibold text-violet-300">

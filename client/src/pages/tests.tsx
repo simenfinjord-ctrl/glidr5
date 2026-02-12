@@ -32,8 +32,7 @@ type TestEntry = {
   methodology: string;
   result0kmCmBehind: number | null;
   rank0km: number | null;
-  resultXkmCmBehind: number | null;
-  rankXkm: number | null;
+  results: string | null;
 };
 type Weather = {
   id: number;

@@ -2,7 +2,8 @@ import { useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ProductCombobox } from "@/components/product-combobox";
-import { PlusCircle, X } from "lucide-react";
+import { PlusCircle, X, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type TestType = "Glide" | "Structure";
 
@@ -13,16 +14,18 @@ type Product = {
   name: string;
 };
 
+export type RoundResult = {
+  result: number | null;
+  rank: number | null;
+};
+
 export type EntryRow = {
   id: string;
   skiNumber: number;
   productId?: number;
   additionalProductIds?: string;
   methodology: string;
-  result0kmCmBehind: number | null;
-  rank0km: number | null;
-  resultXkmCmBehind: number | null;
-  rankXkm: number | null;
+  roundResults: RoundResult[];
   feelingRank: number | null;
 };
 
@@ -51,7 +54,7 @@ function denseRanks(values: Array<{ rowId: string; v: number }>) {
 
 function parseAdditionalIds(ids?: string): number[] {
   if (!ids) return [];
-  return ids.split(",").map(Number).filter((n) => !isNaN(n) && n > 0);
+  return ids.split(",").map(Number).filter((n) => !isNaN(n));
 }
 
 function serializeAdditionalIds(ids: number[]): string | undefined {
@@ -59,62 +62,128 @@ function serializeAdditionalIds(ids: number[]): string | undefined {
   return ids.join(",");
 }
 
+export function cleanAdditionalIds(ids?: string): string | undefined {
+  if (!ids) return undefined;
+  const cleaned = ids.split(",").map(Number).filter((n) => !isNaN(n) && n > 0);
+  return cleaned.length ? cleaned.join(",") : undefined;
+}
+
 export function TestEntryTable({
   testType,
   products,
   rows,
   setRows,
-  distanceLabel0km,
-  distanceLabelXkm,
+  distanceLabels,
+  onDistanceLabelsChange,
 }: {
   testType: TestType;
   products: Product[];
   rows: EntryRow[];
   setRows: (next: EntryRow[]) => void;
-  distanceLabel0km?: string;
-  distanceLabelXkm?: string;
+  distanceLabels: string[];
+  onDistanceLabelsChange: (labels: string[]) => void;
 }) {
-  const label0 = distanceLabel0km?.trim() || "0 km";
-  const labelX = distanceLabelXkm?.trim() || "X km";
-
-  const ranks0 = useMemo(() => {
-    const vals = rows
-      .filter((r) => typeof r.result0kmCmBehind === "number" && r.result0kmCmBehind !== null)
-      .map((r) => ({ rowId: r.id, v: r.result0kmCmBehind as number }));
-    return denseRanks(vals);
-  }, [rows]);
-
-  const ranksX = useMemo(() => {
-    const vals = rows
-      .filter((r) => typeof r.resultXkmCmBehind === "number" && r.resultXkmCmBehind !== null)
-      .map((r) => ({ rowId: r.id, v: r.resultXkmCmBehind as number }));
-    return denseRanks(vals);
-  }, [rows]);
+  const roundRanks = useMemo(() => {
+    return distanceLabels.map((_, roundIdx) => {
+      const vals = rows
+        .filter((r) => r.roundResults[roundIdx]?.result != null)
+        .map((r) => ({ rowId: r.id, v: r.roundResults[roundIdx]!.result as number }));
+      return denseRanks(vals);
+    });
+  }, [rows, distanceLabels.length]);
 
   useEffect(() => {
-    const next = rows.map((r) => ({
-      ...r,
-      rank0km: r.result0kmCmBehind === null ? null : (ranks0.get(r.id) ?? null),
-      rankXkm: r.resultXkmCmBehind === null ? null : (ranksX.get(r.id) ?? null),
-    }));
-    const changed = next.some((n, i) => n.rank0km !== rows[i]?.rank0km || n.rankXkm !== rows[i]?.rankXkm);
+    let changed = false;
+    const next = rows.map((r) => {
+      const newRoundResults = r.roundResults.map((rr, roundIdx) => {
+        const newRank = rr.result === null ? null : (roundRanks[roundIdx]?.get(r.id) ?? null);
+        if (newRank !== rr.rank) changed = true;
+        return { ...rr, rank: newRank };
+      });
+      return { ...r, roundResults: newRoundResults };
+    });
     if (changed) setRows(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ranks0, ranksX]);
+  }, [roundRanks]);
+
+  const addRound = () => {
+    onDistanceLabelsChange([...distanceLabels, ""]);
+    setRows(rows.map((r) => ({
+      ...r,
+      roundResults: [...r.roundResults, { result: null, rank: null }],
+    })));
+  };
+
+  const removeRound = (roundIdx: number) => {
+    if (distanceLabels.length <= 1) return;
+    onDistanceLabelsChange(distanceLabels.filter((_, i) => i !== roundIdx));
+    setRows(rows.map((r) => ({
+      ...r,
+      roundResults: r.roundResults.filter((_, i) => i !== roundIdx),
+    })));
+  };
 
   return (
     <div className="overflow-x-auto rounded-2xl border bg-card/50">
-      <table className="min-w-[1060px] w-full border-separate border-spacing-0">
+      <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${560 + distanceLabels.length * 200}px` }}>
         <thead>
           <tr className="text-left text-xs text-muted-foreground">
             <th className="sticky left-0 z-10 bg-card/80 px-3 py-3">Ski No.</th>
-            <th className="px-3 py-3">Product</th>
+            <th className="px-3 py-3">Product(s)</th>
             <th className="px-3 py-3">Method</th>
-            <th className="px-3 py-3">Result {label0} (cm)</th>
-            <th className="px-3 py-3">Rank</th>
-            <th className="px-3 py-3">Result {labelX} (cm)</th>
-            <th className="px-3 py-3">Rank</th>
+            {distanceLabels.map((label, roundIdx) => (
+              <th key={roundIdx} className="px-3 py-3" colSpan={2}>
+                <div className="flex items-center gap-1">
+                  <Input
+                    value={label}
+                    onChange={(e) => {
+                      const next = [...distanceLabels];
+                      next[roundIdx] = e.target.value;
+                      onDistanceLabelsChange(next);
+                    }}
+                    className="h-7 w-24 text-xs bg-background/70"
+                    placeholder={`Round ${roundIdx + 1}`}
+                    data-testid={`input-distance-label-${roundIdx}`}
+                  />
+                  {distanceLabels.length > 1 && (
+                    <button
+                      type="button"
+                      className="text-red-400 hover:text-red-300 transition-colors"
+                      onClick={() => removeRound(roundIdx)}
+                      data-testid={`button-remove-round-${roundIdx}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </th>
+            ))}
             <th className="px-3 py-3">Feeling</th>
+            <th className="px-1 py-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                onClick={addRound}
+                data-testid="button-add-round"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Round
+              </Button>
+            </th>
+          </tr>
+          <tr className="text-left text-[10px] text-muted-foreground/70 uppercase tracking-wider">
+            <th className="sticky left-0 z-10 bg-card/80"></th>
+            <th></th>
+            <th></th>
+            {distanceLabels.map((_, roundIdx) => (
+              <>
+                <th key={`res-${roundIdx}`} className="px-3 pb-1">Result (cm)</th>
+                <th key={`rank-${roundIdx}`} className="px-3 pb-1">Rank</th>
+              </>
+            ))}
+            <th></th>
+            <th></th>
           </tr>
         </thead>
         <tbody className="text-sm">
@@ -133,7 +202,6 @@ export function TestEntryTable({
                         ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300"
                         : "bg-muted/70 text-foreground",
                 )}
-                data-testid={`text-rank-${row.id}`}
               >
                 {rank ?? "—"}
               </div>
@@ -156,7 +224,7 @@ export function TestEntryTable({
                   </div>
                 </td>
                 <td className="px-3 py-2">
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-wrap items-center gap-1">
                     <ProductCombobox
                       testType={testType}
                       products={products}
@@ -168,11 +236,11 @@ export function TestEntryTable({
                       testId={`input-product-${row.id}`}
                     />
                     {additionalIds.map((addId, addIdx) => (
-                      <div key={addIdx} className="flex items-center gap-1">
+                      <div key={addIdx} className="flex items-center gap-0.5">
                         <ProductCombobox
                           testType={testType}
                           products={products}
-                          value={addId}
+                          value={addId || undefined}
                           onChange={(newId) => {
                             const updated = [...additionalIds];
                             if (newId) {
@@ -199,13 +267,13 @@ export function TestEntryTable({
                           }}
                           data-testid={`button-remove-product-${row.id}-${addIdx}`}
                         >
-                          <X className="h-4 w-4" />
+                          <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     ))}
                     <button
                       type="button"
-                      className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors mt-0.5"
+                      className="flex-shrink-0 flex items-center justify-center h-9 w-9 rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors"
                       onClick={() => {
                         const updated = [...additionalIds, 0];
                         const next = rows.map((r) =>
@@ -214,9 +282,9 @@ export function TestEntryTable({
                         setRows(next);
                       }}
                       data-testid={`button-add-product-${row.id}`}
+                      title="Add product"
                     >
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Add product
+                      <PlusCircle className="h-4 w-4" />
                     </button>
                   </div>
                 </td>
@@ -232,40 +300,32 @@ export function TestEntryTable({
                     data-testid={`input-method-${row.id}`}
                   />
                 </td>
-                <td className="px-3 py-2">
-                  <Input
-                    inputMode="decimal"
-                    type="number"
-                    value={row.result0kmCmBehind ?? ""}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      const num = v === "" ? null : Number(v);
-                      const next = rows.map((r) => (r.id === row.id ? { ...r, result0kmCmBehind: Number.isNaN(num) ? null : num } : r));
-                      setRows(next);
-                    }}
-                    className="h-9 bg-background/70"
-                    placeholder="0"
-                    data-testid={`input-result0-${row.id}`}
-                  />
-                </td>
-                <td className="px-3 py-2">{rankBadge(row.rank0km)}</td>
-                <td className="px-3 py-2">
-                  <Input
-                    inputMode="decimal"
-                    type="number"
-                    value={row.resultXkmCmBehind ?? ""}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      const num = v === "" ? null : Number(v);
-                      const next = rows.map((r) => (r.id === row.id ? { ...r, resultXkmCmBehind: Number.isNaN(num) ? null : num } : r));
-                      setRows(next);
-                    }}
-                    className="h-9 bg-background/70"
-                    placeholder=""
-                    data-testid={`input-resultx-${row.id}`}
-                  />
-                </td>
-                <td className="px-3 py-2">{rankBadge(row.rankXkm)}</td>
+                {row.roundResults.map((rr, roundIdx) => (
+                  <>
+                    <td key={`res-${roundIdx}`} className="px-3 py-2">
+                      <Input
+                        inputMode="decimal"
+                        type="number"
+                        value={rr.result ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          const num = v === "" ? null : Number(v);
+                          const next = rows.map((r) => {
+                            if (r.id !== row.id) return r;
+                            const newRounds = [...r.roundResults];
+                            newRounds[roundIdx] = { ...newRounds[roundIdx], result: Number.isNaN(num) ? null : num };
+                            return { ...r, roundResults: newRounds };
+                          });
+                          setRows(next);
+                        }}
+                        className="h-9 w-20 bg-background/70"
+                        placeholder="0"
+                        data-testid={`input-result-${roundIdx}-${row.id}`}
+                      />
+                    </td>
+                    <td key={`rank-${roundIdx}`} className="px-3 py-2">{rankBadge(rr.rank)}</td>
+                  </>
+                ))}
                 <td className="px-3 py-2">
                   <Input
                     inputMode="numeric"
@@ -283,6 +343,7 @@ export function TestEntryTable({
                     data-testid={`input-feeling-${row.id}`}
                   />
                 </td>
+                <td></td>
               </tr>
             );
           })}

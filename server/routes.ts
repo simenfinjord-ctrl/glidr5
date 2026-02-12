@@ -261,6 +261,7 @@ export async function registerRoutes(
       notes: req.body.notes?.trim() || null,
       distanceLabel0km: req.body.distanceLabel0km?.trim() || null,
       distanceLabelXkm: req.body.distanceLabelXkm?.trim() || null,
+      distanceLabels: req.body.distanceLabels || null,
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
@@ -280,6 +281,7 @@ export async function registerRoutes(
         rank0km: e.rank0km ?? null,
         resultXkmCmBehind: e.resultXkmCmBehind ?? null,
         rankXkm: e.rankXkm ?? null,
+        results: e.results || null,
         feelingRank: e.feelingRank ?? null,
         createdAt: now,
         createdById: u.id,
@@ -319,6 +321,7 @@ export async function registerRoutes(
       notes: req.body.notes?.trim() || null,
       distanceLabel0km: req.body.distanceLabel0km?.trim() || null,
       distanceLabelXkm: req.body.distanceLabelXkm?.trim() || null,
+      distanceLabels: req.body.distanceLabels || null,
     });
 
     if (req.body.entries) {
@@ -337,6 +340,7 @@ export async function registerRoutes(
           rank0km: e.rank0km ?? null,
           resultXkmCmBehind: e.resultXkmCmBehind ?? null,
           rankXkm: e.rankXkm ?? null,
+          results: e.results || null,
           feelingRank: e.feelingRank ?? null,
           createdAt: now,
           createdById: u.id,

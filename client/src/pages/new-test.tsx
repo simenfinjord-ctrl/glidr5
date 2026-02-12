@@ -27,7 +27,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { TestEntryTable, type EntryRow } from "@/components/test-entry-table";
+import { TestEntryTable, type EntryRow, type RoundResult, cleanAdditionalIds } from "@/components/test-entry-table";
 
 type TestType = "Glide" | "Structure";
 
@@ -59,22 +59,17 @@ const schema = z.object({
   location: z.string().min(1, "Location is required"),
   weatherId: z.string().optional(),
   notes: z.string().optional(),
-  distanceLabel0km: z.string().optional(),
-  distanceLabelXkm: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-function makeRows(n = 8): EntryRow[] {
+function makeRows(n = 8, numRounds = 1): EntryRow[] {
   return Array.from({ length: n }).map((_, i) => ({
     id: `row_${i + 1}_${Math.random().toString(16).slice(2)}`,
     skiNumber: i + 1,
     productId: undefined,
     methodology: "",
-    result0kmCmBehind: null,
-    rank0km: null,
-    resultXkmCmBehind: null,
-    rankXkm: null,
+    roundResults: Array.from({ length: numRounds }, () => ({ result: null, rank: null })),
     feelingRank: null,
   }));
 }
@@ -89,7 +84,8 @@ export default function NewTest() {
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
 
-  const [rows, setRows] = useState<EntryRow[]>(() => makeRows(8));
+  const [rows, setRows] = useState<EntryRow[]>(() => makeRows(8, 1));
+  const [distanceLabels, setDistanceLabels] = useState<string[]>(["0 km"]);
 
   const defaultLocation = weather[0]?.location ?? "";
 
@@ -102,8 +98,6 @@ export default function NewTest() {
       location: defaultLocation,
       weatherId: undefined,
       notes: "",
-      distanceLabel0km: "",
-      distanceLabelXkm: "",
     },
   });
 
@@ -133,25 +127,7 @@ export default function NewTest() {
   }, [weather, watchDate, watchLocation]);
 
   const saveMutation = useMutation({
-    mutationFn: async (data: {
-      date: string;
-      location: string;
-      weatherId?: number;
-      testType: string;
-      seriesId: number;
-      notes?: string;
-      distanceLabel0km?: string;
-      distanceLabelXkm?: string;
-      entries: Array<{
-        skiNumber: number;
-        productId?: number;
-        additionalProductIds?: string;
-        methodology: string;
-        result0kmCmBehind: number | null;
-        resultXkmCmBehind?: number | null;
-        feelingRank?: number | null;
-      }>;
-    }) => {
+    mutationFn: async (data: any) => {
       const res = await apiRequest("POST", "/api/tests", data);
       return res.json();
     },
@@ -203,10 +179,14 @@ export default function NewTest() {
               onClick={() =>
                 setRows((r) => [
                   ...r,
-                  ...makeRows(1).map((x) => ({
-                    ...x,
+                  {
+                    id: `row_${r.length + 1}_${Math.random().toString(16).slice(2)}`,
                     skiNumber: r.length + 1,
-                  })),
+                    productId: undefined,
+                    methodology: "",
+                    roundResults: Array.from({ length: distanceLabels.length }, () => ({ result: null, rank: null })),
+                    feelingRank: null,
+                  },
                 ])
               }
             >
@@ -239,15 +219,15 @@ export default function NewTest() {
                   testType: values.testType,
                   seriesId: Number(values.seriesId),
                   notes: values.notes,
-                  distanceLabel0km: values.distanceLabel0km || undefined,
-                  distanceLabelXkm: values.distanceLabelXkm || undefined,
+                  distanceLabels: JSON.stringify(distanceLabels),
                   entries: rows.map((r) => ({
                     skiNumber: r.skiNumber,
                     productId: r.productId,
-                    additionalProductIds: r.additionalProductIds,
+                    additionalProductIds: cleanAdditionalIds(r.additionalProductIds),
                     methodology: r.methodology,
-                    result0kmCmBehind: r.result0kmCmBehind,
-                    resultXkmCmBehind: r.resultXkmCmBehind,
+                    result0kmCmBehind: r.roundResults[0]?.result ?? null,
+                    rank0km: r.roundResults[0]?.rank ?? null,
+                    results: JSON.stringify(r.roundResults),
                     feelingRank: r.feelingRank,
                   })),
                 });
@@ -320,7 +300,6 @@ export default function NewTest() {
                     )}
                   />
                 </div>
-
 
                 <div className="lg:col-span-2">
                   <FormField
@@ -410,46 +389,6 @@ export default function NewTest() {
                   />
                 </div>
 
-                <div className="lg:col-span-2">
-                  <FormField
-                    control={form.control}
-                    name="distanceLabel0km"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Distance 1 label</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="0 km"
-                            data-testid="input-distance-label-0"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="lg:col-span-2">
-                  <FormField
-                    control={form.control}
-                    name="distanceLabelXkm"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Distance 2 label</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="X km"
-                            data-testid="input-distance-label-x"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
                 <div className="lg:col-span-8">
                   <FormField
                     control={form.control}
@@ -481,14 +420,14 @@ export default function NewTest() {
             products={products}
             rows={rows}
             setRows={setRows}
-            distanceLabel0km={form.watch("distanceLabel0km")}
-            distanceLabelXkm={form.watch("distanceLabelXkm")}
+            distanceLabels={distanceLabels}
+            onDistanceLabelsChange={setDistanceLabels}
           />
           <div
             className="mt-2 text-xs text-muted-foreground"
             data-testid="text-ranking-hint"
           >
-            Ranking uses dense ranking: same result = same rank.
+            Ranking uses dense ranking: same result = same rank. Click "+ Round" to add more distance tests.
           </div>
         </div>
       </div>

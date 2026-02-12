@@ -278,6 +278,61 @@ export async function registerRoutes(
     res.json(test);
   });
 
+  app.put("/api/tests/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getTest(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    const u = userInfo(req);
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const updated = await storage.updateTest(id, {
+      date: req.body.date,
+      location: req.body.location?.trim(),
+      weatherId: req.body.weatherId || null,
+      testType: req.body.testType,
+      seriesId: req.body.seriesId,
+      notes: req.body.notes?.trim() || null,
+    });
+
+    if (req.body.entries) {
+      await storage.deleteEntriesByTestId(id);
+      const now = new Date().toISOString();
+      const groupScope = existing.groupScope;
+      for (const e of req.body.entries) {
+        await storage.createEntry({
+          testId: id,
+          skiNumber: e.skiNumber,
+          productId: e.productId || null,
+          freeTextProduct: e.freeTextProduct || null,
+          methodology: e.methodology || "",
+          result0kmCmBehind: e.result0kmCmBehind ?? null,
+          rank0km: e.rank0km ?? null,
+          resultXkmCmBehind: e.resultXkmCmBehind ?? null,
+          rankXkm: e.rankXkm ?? null,
+          createdAt: now,
+          createdById: u.id,
+          createdByName: u.name,
+          groupScope,
+        });
+      }
+    }
+
+    res.json(updated);
+  });
+
+  app.delete("/api/tests/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getTest(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    const u = userInfo(req);
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    await storage.deleteTest(id);
+    res.json({ ok: true });
+  });
+
   app.get("/api/tests/:id/entries", requireAuth, async (req, res) => {
     const testId = parseInt(req.params.id as string);
     const u = userInfo(req);

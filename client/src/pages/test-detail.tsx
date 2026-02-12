@@ -1,12 +1,25 @@
 import { useState } from "react";
-import { useRoute } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical } from "lucide-react";
+import { useRoute, useLocation } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type Test = {
   id: number;
@@ -80,6 +93,27 @@ export default function TestDetail() {
   const [, params] = useRoute("/tests/:id");
   const id = params?.id;
   const [hideDetails, setHideDetails] = useState(false);
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/tests/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
+      toast({ title: "Test deleted" });
+      setLocation("/tests");
+    },
+    onError: (e) => {
+      toast({
+        title: "Could not delete test",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
 
   const { data: test, isLoading: testLoading } = useQuery<Test>({
     queryKey: [`/api/tests/${id}`],
@@ -149,12 +183,48 @@ export default function TestDetail() {
     <AppShell>
       <div className="flex flex-col gap-5">
         <div>
-          <AppLink href="/tests" testId="link-back-tests">
-            <Button variant="ghost" size="sm" data-testid="button-back-tests">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to tests
-            </Button>
-          </AppLink>
+          <div className="flex items-center justify-between">
+            <AppLink href="/tests" testId="link-back-tests">
+              <Button variant="ghost" size="sm" data-testid="button-back-tests">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to tests
+              </Button>
+            </AppLink>
+            <div className="flex items-center gap-2">
+              <AppLink href={`/tests/${id}/edit`} testId="link-edit-test">
+                <Button variant="outline" size="sm" data-testid="button-edit-test">
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+              </AppLink>
+              <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" data-testid="button-delete-test">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this test?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete the test "{test.location}" ({test.date}) and all its entries. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => deleteMutation.mutate()}
+                      data-testid="button-confirm-delete-test"
+                    >
+                      {deleteMutation.isPending ? "Deleting…" : "Delete"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h1 className="text-2xl sm:text-3xl" data-testid="text-test-title">

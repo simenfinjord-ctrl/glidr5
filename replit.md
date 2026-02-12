@@ -55,6 +55,16 @@ Full-stack React web application for the US Ski Team to manage ski testing and d
 - `DELETE /api/users/:id` — Delete user (admin only)
 - `POST /api/users/:id/reset-password` — Reset password (admin only)
 
+## Weather Data Model
+The daily_weather table stores comprehensive snow and weather conditions:
+- **Core**: date, time, location, groupScope
+- **Temperature/Humidity**: snowTemperatureC, airTemperatureC, snowHumidityPct (ref. Doser), airHumidityPct (%rH)
+- **Weather**: clouds (0-8 oktas), visibility, wind, precipitation
+- **Snow type**: artificialSnow + naturalSnow (both can be set simultaneously): Falling new, New, Irreg. dir. new, Irreg. dir. transf., Transformed
+- **Snow characteristics**: grainSize (Extra fine → Very coarse), snowHumidityType (Dry → Slush), trackHardness (Very soft → Ice)
+- **Quality**: testQuality (1-10 scale)
+- Old `snowType` field retained as nullable for backward compatibility
+
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
 - Ranking auto-calculates live (dense ranking: 0cm = rank 1)
@@ -65,6 +75,7 @@ Full-stack React web application for the US Ski Team to manage ski testing and d
 - Tests can be filtered by type, product, snow type, location, air/snow temp, air/snow humidity
 - Test detail page shows full results table with winner highlighting
 - Test detail page has Hide/Show button to toggle product and methodology columns
+- Tests can be edited and deleted (with cascade deletion of entries)
 - Admin can create/edit/delete users and reset passwords
 - Admin can manage groups (add, rename, delete) — groups are stored in database
 - Users can belong to multiple groups (comma-separated groupScope, multi-checkbox in admin UI)

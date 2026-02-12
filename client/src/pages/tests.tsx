@@ -43,7 +43,13 @@ type Weather = {
   airHumidityPct: number;
   snowTemperatureC: number;
   snowHumidityPct: number;
-  snowType: string;
+  snowType: string | null;
+  artificialSnow: string | null;
+  naturalSnow: string | null;
+  grainSize: string | null;
+  snowHumidityType: string | null;
+  trackHardness: string | null;
+  testQuality: number | null;
 };
 
 export default function Tests() {
@@ -116,7 +122,8 @@ export default function Tests() {
       const w = t.weatherId ? weatherById.get(t.weatherId) : null;
 
       if (filterSnowType) {
-        if (!w || !w.snowType.toLowerCase().includes(filterSnowType.toLowerCase())) return false;
+        const snowLabel = [w?.artificialSnow, w?.naturalSnow, w?.snowType].filter(Boolean).join(" ").toLowerCase();
+        if (!w || !snowLabel.includes(filterSnowType.toLowerCase())) return false;
       }
 
       if (filterAirTempMin && (!w || w.airTemperatureC < parseFloat(filterAirTempMin))) return false;
@@ -316,9 +323,21 @@ export default function Tests() {
                             <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/10">
                               <Thermometer className="h-2.5 w-2.5" /> Snow {w.snowTemperatureC}°C
                             </span>
-                            <span className="inline-flex items-center gap-1 rounded-full fs-gradient-violet px-2 py-0.5 text-[10px] font-medium text-violet-300 ring-1 ring-violet-500/10">
-                              <Droplets className="h-2.5 w-2.5" /> {w.snowType}
-                            </span>
+                            {w.artificialSnow && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] font-medium text-pink-300 ring-1 ring-pink-500/10">
+                                Art: {w.artificialSnow}
+                              </span>
+                            )}
+                            {w.naturalSnow && (
+                              <span className="inline-flex items-center gap-1 rounded-full fs-gradient-violet px-2 py-0.5 text-[10px] font-medium text-violet-300 ring-1 ring-violet-500/10">
+                                Nat: {w.naturalSnow}
+                              </span>
+                            )}
+                            {w.snowHumidityType && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] font-medium text-indigo-300 ring-1 ring-indigo-500/10">
+                                <Droplets className="h-2.5 w-2.5" /> {w.snowHumidityType}
+                              </span>
+                            )}
                           </div>
                         )}
                         <div className="mt-2 text-xs text-muted-foreground">

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 type Test = { id: number; date: string; location: string; testType: string; createdByName: string; groupScope: string; weatherId: number | null; seriesId: number; createdAt: string };
 type TestEntry = { id: number; testId: number; skiNumber: number; productId: number | null; rank0km: number | null; result0kmCmBehind: number | null; methodology: string; resultXkmCmBehind: number | null; rankXkm: number | null };
 type Product = { id: number; category: string; brand: string; name: string; createdByName: string; createdAt: string };
-type Weather = { id: number; date: string; time: string; location: string; airTemperatureC: number; snowTemperatureC: number; snowType: string; airHumidityPct: number; snowHumidityPct: number; createdByName: string };
+type Weather = { id: number; date: string; time: string; location: string; airTemperatureC: number; snowTemperatureC: number; snowType: string | null; airHumidityPct: number; snowHumidityPct: number; artificialSnow: string | null; naturalSnow: string | null; snowHumidityType: string | null; testQuality: number | null; createdByName: string };
 type Series = { id: number; name: string; type: string; numberOfSkis: number; createdByName: string };
 
 function StatCard({ label, value, icon: Icon, accent, testId }: { label: string; value: string | number; icon: React.ComponentType<{ className?: string }>; accent: string; testId: string }) {
@@ -292,7 +292,9 @@ export default function Dashboard() {
                       <div className="mt-1.5 flex flex-wrap gap-2">
                         <span className="rounded-full fs-gradient-blue px-2 py-0.5 text-[10px] font-medium text-sky-300">Air {w.airTemperatureC}°C</span>
                         <span className="rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-emerald-300">Snow {w.snowTemperatureC}°C</span>
-                        <span className="rounded-full fs-gradient-violet px-2 py-0.5 text-[10px] font-medium text-violet-300">{w.snowType}</span>
+                        {w.artificialSnow && <span className="rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] font-medium text-pink-300">Art: {w.artificialSnow}</span>}
+                        {w.naturalSnow && <span className="rounded-full fs-gradient-violet px-2 py-0.5 text-[10px] font-medium text-violet-300">Nat: {w.naturalSnow}</span>}
+                        {w.snowHumidityType && <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] font-medium text-indigo-300">{w.snowHumidityType}</span>}
                       </div>
                     </div>
                   ))}

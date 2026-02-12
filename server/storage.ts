@@ -46,8 +46,11 @@ export interface IStorage {
   listTests(groupScope: string, isAdmin: boolean): Promise<Test[]>;
   getTest(id: number): Promise<Test | undefined>;
   createTest(t: InsertTest): Promise<Test>;
+  updateTest(id: number, data: Partial<InsertTest>): Promise<Test | undefined>;
+  deleteTest(id: number): Promise<boolean>;
   listEntries(testId: number): Promise<TestEntry[]>;
   createEntry(e: InsertEntry): Promise<TestEntry>;
+  deleteEntriesByTestId(testId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -206,6 +209,17 @@ export class DatabaseStorage implements IStorage {
     return created!;
   }
 
+  async updateTest(id: number, data: Partial<InsertTest>): Promise<Test | undefined> {
+    const [updated] = await db.update(tests).set(data).where(eq(tests.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTest(id: number): Promise<boolean> {
+    await db.delete(testEntries).where(eq(testEntries.testId, id));
+    const result = await db.delete(tests).where(eq(tests.id, id)).returning();
+    return result.length > 0;
+  }
+
   async listEntries(testId: number): Promise<TestEntry[]> {
     return db.select().from(testEntries).where(eq(testEntries.testId, testId));
   }
@@ -213,6 +227,10 @@ export class DatabaseStorage implements IStorage {
   async createEntry(e: InsertEntry): Promise<TestEntry> {
     const [created] = await db.insert(testEntries).values(e).returning();
     return created!;
+  }
+
+  async deleteEntriesByTestId(testId: number): Promise<void> {
+    await db.delete(testEntries).where(eq(testEntries.testId, testId));
   }
 }
 

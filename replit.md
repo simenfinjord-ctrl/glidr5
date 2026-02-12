@@ -84,9 +84,15 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Scope filtering supports multi-group users (data from all assigned groups is visible)
 - Login page has "Remember me" checkbox (extends session to 30 days)
 - Admin page shows login history (who logged in and when)
-- Tests have editable distance labels (distanceLabel0km, distanceLabelXkm) replacing default "0km"/"X-km" headers
+- Tests support dynamic rounds (unlimited distance measurements via + Round button)
+- Distance labels and results stored as JSON (distanceLabels on tests, results on test_entries)
+- Legacy 2-field format (distanceLabel0km/Xkm, result0km/Xkm) auto-converted on load
 - Test entries support feeling rank (subjective ski pair ranking column)
-- Test entries support multiple products per line (green + button, additionalProductIds field)
+- Test entries support multiple products per line (inline + button, additionalProductIds field)
+- Combined products displayed with "+" separator between names (e.g., "Brand A + Brand B")
 - Hide/Show on test detail blanks Product/Method cells instead of removing columns
 - Brand and product name displayed with space separator (no em dash)
 - Test ski series have optional Brand field
+- Series detail page (/testskis/:id) shows all tests for a series with results tables
+- Tests page has day picker: select a date to see all tests stacked with inline results tables
+- Quick day select buttons show recent test dates for fast navigation

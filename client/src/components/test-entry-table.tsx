@@ -224,7 +224,7 @@ export function TestEntryTable({
                   </div>
                 </td>
                 <td className="px-3 py-2">
-                  <div className="flex flex-wrap items-center gap-1">
+                  <div className="flex items-center gap-1">
                     <ProductCombobox
                       testType={testType}
                       products={products}
@@ -237,6 +237,7 @@ export function TestEntryTable({
                     />
                     {additionalIds.map((addId, addIdx) => (
                       <div key={addIdx} className="flex items-center gap-0.5">
+                        <span className="text-xs font-bold text-muted-foreground">+</span>
                         <ProductCombobox
                           testType={testType}
                           products={products}
@@ -267,13 +268,13 @@ export function TestEntryTable({
                           }}
                           data-testid={`button-remove-product-${row.id}-${addIdx}`}
                         >
-                          <X className="h-3.5 w-3.5" />
+                          <X className="h-3 w-3" />
                         </button>
                       </div>
                     ))}
                     <button
                       type="button"
-                      className="flex-shrink-0 flex items-center justify-center h-9 w-9 rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors"
+                      className="flex-shrink-0 flex items-center justify-center h-7 w-7 rounded-md text-emerald-400 hover:bg-emerald-500/15 transition-colors"
                       onClick={() => {
                         const updated = [...additionalIds, 0];
                         const next = rows.map((r) =>
@@ -284,7 +285,7 @@ export function TestEntryTable({
                       data-testid={`button-add-product-${row.id}`}
                       title="Add product"
                     >
-                      <PlusCircle className="h-4 w-4" />
+                      <Plus className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </td>

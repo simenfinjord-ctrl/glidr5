@@ -488,7 +488,7 @@ export default function TestDetail() {
                     const vals: (string | number)[] = [
                       rounds[0]?.rank ?? "",
                       entry.skiNumber,
-                      allProducts.join(", "),
+                      allProducts.join(" + "),
                       entry.methodology,
                     ];
                     for (const rr of rounds) {
@@ -593,7 +593,7 @@ export default function TestDetail() {
                           </span>
                         </td>
                         <td className="py-3 pr-3" data-testid={`text-product-${entry.id}`}>
-                          {hideDetails ? "" : (allProducts.length > 0 ? allProducts.join(", ") : "—")}
+                          {hideDetails ? "" : (allProducts.length > 0 ? allProducts.join(" + ") : "—")}
                         </td>
                         <td className="py-3 pr-3 text-muted-foreground" data-testid={`text-method-${entry.id}`}>
                           {hideDetails ? "" : (entry.methodology || "—")}

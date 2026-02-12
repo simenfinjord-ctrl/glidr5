@@ -9,6 +9,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
 import TestSkis from "@/pages/testskis";
+import SeriesDetail from "@/pages/series-detail";
 import Weather from "@/pages/weather";
 import Tests from "@/pages/tests";
 import NewTest from "@/pages/new-test";
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/" component={() => <Redirect to="/dashboard" />} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/testskis" component={TestSkis} />
+      <Route path="/testskis/:id" component={SeriesDetail} />
       <Route path="/products" component={Products} />
       <Route path="/weather" component={Weather} />
       <Route path="/tests" component={Tests} />

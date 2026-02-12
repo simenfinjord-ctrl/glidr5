@@ -3,8 +3,9 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Snowflake, Hash } from "lucide-react";
+import { Plus, Pencil, Snowflake, Hash, Table } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -327,18 +328,26 @@ export default function TestSkis() {
                     </div>
                   </div>
 
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    data-testid={`button-edit-series-${s.id}`}
-                    onClick={() => {
-                      setEditing(s);
-                      setOpen(true);
-                    }}
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <AppLink href={`/testskis/${s.id}`} testId={`link-series-tests-${s.id}`}>
+                      <Button variant="secondary" size="sm" data-testid={`button-view-series-${s.id}`}>
+                        <Table className="mr-2 h-4 w-4" />
+                        Tests
+                      </Button>
+                    </AppLink>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      data-testid={`button-edit-series-${s.id}`}
+                      onClick={() => {
+                        setEditing(s);
+                        setOpen(true);
+                      }}
+                    >
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit
+                    </Button>
+                  </div>
                 </div>
               </Card>
             ))

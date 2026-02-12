@@ -10,7 +10,7 @@ Full-stack React web application for the US Ski Team to manage ski testing and d
 - **Design**: Space Grotesk (display) + Inter (UI), glassmorphic cards with backdrop blur, dark theme
 
 ## Key Files
-- `shared/schema.ts` — Drizzle schema: users, test_ski_series, products, daily_weather, tests, test_entries
+- `shared/schema.ts` — Drizzle schema: users, test_ski_series, products, daily_weather, tests, test_entries, login_logs
 - `server/db.ts` — PostgreSQL connection pool
 - `server/storage.ts` — DatabaseStorage class (IStorage interface with full CRUD)
 - `server/auth.ts` — Passport-local session auth setup
@@ -54,6 +54,7 @@ Full-stack React web application for the US Ski Team to manage ski testing and d
 - `PUT /api/users/:id` — Update user (admin only)
 - `DELETE /api/users/:id` — Delete user (admin only)
 - `POST /api/users/:id/reset-password` — Reset password (admin only)
+- `GET /api/login-logs` — Login history (admin only)
 
 ## Weather Data Model
 The daily_weather table stores comprehensive snow and weather conditions:
@@ -81,3 +82,11 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Users can belong to multiple groups (comma-separated groupScope, multi-checkbox in admin UI)
 - Admin can see products from all groups, filtered by group, and move products between groups
 - Scope filtering supports multi-group users (data from all assigned groups is visible)
+- Login page has "Remember me" checkbox (extends session to 30 days)
+- Admin page shows login history (who logged in and when)
+- Tests have editable distance labels (distanceLabel0km, distanceLabelXkm) replacing default "0km"/"X-km" headers
+- Test entries support feeling rank (subjective ski pair ranking column)
+- Test entries support multiple products per line (green + button, additionalProductIds field)
+- Hide/Show on test detail blanks Product/Method cells instead of removing columns
+- Brand and product name displayed with space separator (no em dash)
+- Test ski series have optional Brand field

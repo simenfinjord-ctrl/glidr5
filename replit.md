@@ -26,12 +26,12 @@ Full-stack React web application for the US Ski Team to manage ski testing and d
 - `client/public/logo.png` — US Ski Team logo
 
 ## Seeded Accounts
-| Email | Password | Group | Admin |
-|---|---|---|---|
-| admin@fastski.local | password | Admin | Yes |
-| u23@fastski.local | password | U23 | No |
-| wc@fastski.local | password | World Cup | No |
-| biathlon@fastski.local | password | Biathlon | No |
+| Email | Group | Admin |
+|---|---|---|
+| admin@fastski.local | Admin | Yes |
+| u23@fastski.local | U23 | No |
+| wc@fastski.local | World Cup | No |
+| biathlon@fastski.local | Biathlon | No |
 
 ## API Endpoints
 - `POST /api/auth/login` — Login

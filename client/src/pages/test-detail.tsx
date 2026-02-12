@@ -63,11 +63,21 @@ type Weather = {
   date: string;
   time: string;
   location: string;
-  airTemperatureC: number;
-  airHumidityPct: number;
   snowTemperatureC: number;
+  airTemperatureC: number;
   snowHumidityPct: number;
-  snowType: string;
+  airHumidityPct: number;
+  clouds: number | null;
+  visibility: string | null;
+  wind: string | null;
+  precipitation: string | null;
+  artificialSnow: string | null;
+  naturalSnow: string | null;
+  grainSize: string | null;
+  snowHumidityType: string | null;
+  trackHardness: string | null;
+  testQuality: number | null;
+  snowType: string | null;
 };
 
 function RankBadge({ rank, size = "sm" }: { rank: number | null; size?: "sm" | "lg" }) {
@@ -286,44 +296,97 @@ export default function TestDetail() {
                   <Snowflake className="h-4 w-4 text-sky-400" />
                 </div>
                 <h2 className="text-base font-semibold">Weather Conditions</h2>
+                {weather.testQuality != null && (
+                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300 ring-1 ring-amber-500/20">
+                    Quality {weather.testQuality}/10
+                  </span>
+                )}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl fs-gradient-blue px-3 py-3 ring-1 ring-sky-500/10">
-                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-sky-300/70">
-                    <Thermometer className="h-3 w-3" />
-                    Air Temp
-                  </div>
-                  <div className="mt-1 text-lg font-bold text-sky-300" data-testid="text-weather-air-temp">{weather.airTemperatureC}°C</div>
-                </div>
-                <div className="rounded-xl fs-gradient-emerald px-3 py-3 ring-1 ring-emerald-500/10">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-xl fs-gradient-emerald px-3 py-3 ring-1 ring-emerald-500/10" data-testid="text-weather-snow-temp">
                   <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-emerald-300/70">
-                    <Thermometer className="h-3 w-3" />
-                    Snow Temp
+                    <Thermometer className="h-3 w-3" /> Snow Temp
                   </div>
-                  <div className="mt-1 text-lg font-bold text-emerald-300" data-testid="text-weather-snow-temp">{weather.snowTemperatureC}°C</div>
+                  <div className="mt-1 text-lg font-bold text-emerald-300">{weather.snowTemperatureC}°C</div>
                 </div>
-                <div className="rounded-xl fs-gradient-violet px-3 py-3 ring-1 ring-violet-500/10">
-                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-violet-300/70">
-                    <Droplets className="h-3 w-3" />
-                    Air Humidity
+                <div className="rounded-xl fs-gradient-blue px-3 py-3 ring-1 ring-sky-500/10" data-testid="text-weather-air-temp">
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-sky-300/70">
+                    <Thermometer className="h-3 w-3" /> Air Temp
                   </div>
-                  <div className="mt-1 text-lg font-bold text-violet-300" data-testid="text-weather-air-humidity">{weather.airHumidityPct}%</div>
+                  <div className="mt-1 text-lg font-bold text-sky-300">{weather.airTemperatureC}°C</div>
                 </div>
-                <div className="rounded-xl fs-gradient-amber px-3 py-3 ring-1 ring-amber-500/10">
+                <div className="rounded-xl fs-gradient-amber px-3 py-3 ring-1 ring-amber-500/10" data-testid="text-weather-snow-humidity">
                   <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-amber-300/70">
-                    <Droplets className="h-3 w-3" />
-                    Snow Humidity
+                    <Droplets className="h-3 w-3" /> Snow Hum (Doser)
                   </div>
-                  <div className="mt-1 text-lg font-bold text-amber-300" data-testid="text-weather-snow-humidity">{weather.snowHumidityPct}%</div>
+                  <div className="mt-1 text-lg font-bold text-amber-300">{weather.snowHumidityPct}%</div>
+                </div>
+                <div className="rounded-xl fs-gradient-violet px-3 py-3 ring-1 ring-violet-500/10" data-testid="text-weather-air-humidity">
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-violet-300/70">
+                    <Droplets className="h-3 w-3" /> Air Hum
+                  </div>
+                  <div className="mt-1 text-lg font-bold text-violet-300">{weather.airHumidityPct}%rH</div>
                 </div>
               </div>
-              <div className="mt-3 flex items-center gap-2 rounded-xl bg-background/40 px-3 py-2.5">
-                <Snowflake className="h-4 w-4 text-sky-400/60" />
-                <div>
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Snow Type</div>
-                  <div className="text-sm font-medium" data-testid="text-weather-snow-type">{weather.snowType}</div>
+
+              {(weather.clouds != null || weather.visibility || weather.wind || weather.precipitation) && (
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {weather.clouds != null && (
+                    <div className="rounded-lg bg-background/40 px-3 py-2">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Clouds</div>
+                      <div className="text-sm font-medium">{weather.clouds}/8</div>
+                    </div>
+                  )}
+                  {weather.visibility && (
+                    <div className="rounded-lg bg-background/40 px-3 py-2">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Visibility</div>
+                      <div className="text-sm font-medium">{weather.visibility}</div>
+                    </div>
+                  )}
+                  {weather.wind && (
+                    <div className="rounded-lg bg-background/40 px-3 py-2">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Wind</div>
+                      <div className="text-sm font-medium">{weather.wind}</div>
+                    </div>
+                  )}
+                  {weather.precipitation && (
+                    <div className="rounded-lg bg-background/40 px-3 py-2">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Precipitation</div>
+                      <div className="text-sm font-medium">{weather.precipitation}</div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {(weather.artificialSnow || weather.naturalSnow || weather.grainSize || weather.snowHumidityType || weather.trackHardness) && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {weather.artificialSnow && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-pink-500/10 px-2.5 py-1 text-xs font-medium text-pink-300 ring-1 ring-pink-500/20">
+                      Art. snow: {weather.artificialSnow}
+                    </span>
+                  )}
+                  {weather.naturalSnow && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2.5 py-1 text-xs font-medium text-sky-300 ring-1 ring-sky-500/20">
+                      Nat. snow: {weather.naturalSnow}
+                    </span>
+                  )}
+                  {weather.grainSize && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-medium text-orange-300 ring-1 ring-orange-500/20">
+                      Grain: {weather.grainSize}
+                    </span>
+                  )}
+                  {weather.snowHumidityType && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2.5 py-1 text-xs font-medium text-indigo-300 ring-1 ring-indigo-500/20">
+                      Snow hum: {weather.snowHumidityType}
+                    </span>
+                  )}
+                  {weather.trackHardness && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2.5 py-1 text-xs font-medium text-rose-300 ring-1 ring-rose-500/20">
+                      Track: {weather.trackHardness}
+                    </span>
+                  )}
+                </div>
+              )}
             </Card>
           )}
         </div>

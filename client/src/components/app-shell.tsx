@@ -98,7 +98,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   US Ski Team
                 </span>
               </div>
-              <div className="text-[11px] text-muted-foreground">Testing & Documentation</div>
+              <div className="text-[11px] text-muted-foreground">A US Ski Team database</div>
             </div>
           </div>
 

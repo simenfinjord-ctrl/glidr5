@@ -49,7 +49,7 @@ export default function Login() {
               Glidr
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Testing & Documentation
+              A US Ski Team database
             </p>
           </div>
         </div>

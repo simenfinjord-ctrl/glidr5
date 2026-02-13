@@ -7,6 +7,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { ChevronLeft, Save, Sparkles } from "lucide-react";
 import { useOffline } from "@/lib/offline-context";
 import { OfflineError } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -37,6 +38,7 @@ type Series = {
   id: number;
   name: string;
   type: string;
+  groupScope: string;
 };
 
 type Product = {
@@ -61,6 +63,7 @@ const schema = z.object({
   location: z.string().min(1, "Location is required"),
   weatherId: z.string().optional(),
   notes: z.string().optional(),
+  groupScope: z.string().min(1, "Select a group"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -79,12 +82,21 @@ function makeRows(n = 8, numRounds = 1): EntryRow[] {
 export default function NewTest() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const today = new Date().toISOString().slice(0, 10);
 
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
+  const { data: groups = [] } = useQuery<{ id: number; name: string }[]>({ queryKey: ["/api/groups"] });
+
+  const userGroups = useMemo(() => {
+    if (user?.isAdmin && groups.length > 0) {
+      return groups.map((g) => g.name);
+    }
+    return (user?.groupScope ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  }, [user, groups]);
 
   const [rows, setRows] = useState<EntryRow[]>(() => makeRows(8, 1));
   const [distanceLabels, setDistanceLabels] = useState<string[]>(["0 km"]);
@@ -100,6 +112,7 @@ export default function NewTest() {
       location: defaultLocation,
       weatherId: undefined,
       notes: "",
+      groupScope: userGroups[0] ?? "",
     },
   });
 
@@ -107,7 +120,19 @@ export default function NewTest() {
     if (!series.length) return;
     if (form.getValues("seriesId")) return;
     form.setValue("seriesId", String(series[0]!.id), { shouldValidate: true });
+    if (series[0]?.groupScope) {
+      form.setValue("groupScope", series[0].groupScope, { shouldValidate: true });
+    }
   }, [series, form]);
+
+  const watchSeriesId = form.watch("seriesId");
+  useEffect(() => {
+    if (!watchSeriesId || !series.length) return;
+    const selected = series.find((s) => String(s.id) === watchSeriesId);
+    if (selected?.groupScope) {
+      form.setValue("groupScope", selected.groupScope, { shouldValidate: true });
+    }
+  }, [watchSeriesId, series, form]);
 
   useEffect(() => {
     if (!weather.length) return;
@@ -238,6 +263,7 @@ export default function NewTest() {
                   testType: values.testType,
                   seriesId: Number(values.seriesId),
                   notes: values.notes,
+                  groupScope: values.groupScope,
                   distanceLabels: JSON.stringify(distanceLabels),
                   entries: rows.map((r) => ({
                     skiNumber: r.skiNumber,
@@ -408,7 +434,36 @@ export default function NewTest() {
                   />
                 </div>
 
-                <div className="lg:col-span-8">
+                {userGroups.length > 1 && (
+                  <div className="lg:col-span-2">
+                    <FormField
+                      control={form.control}
+                      name="groupScope"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Group</FormLabel>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-test-group">
+                                <SelectValue placeholder="Select group" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {userGroups.map((g) => (
+                                <SelectItem key={g} value={g} data-testid={`option-test-group-${g}`}>
+                                  {g}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                <div className={userGroups.length > 1 ? "lg:col-span-6" : "lg:col-span-8"}>
                   <FormField
                     control={form.control}
                     name="notes"

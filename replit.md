@@ -107,3 +107,7 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Analytics page has Glide/Structure/All filter
 - PDF report generation on test detail page (jsPDF + autoTable): includes test info, weather, full results table
 - Test detail page has CSV, PDF, and Hide/Show export buttons
+- Series form has group selector (shown for multi-group users, defaults to first group)
+- New test form has group selector that defaults to selected series' group
+- Edit test form has group selector that updates when series changes
+- Group selector hidden for single-group users (auto-assigned)

@@ -120,13 +120,16 @@ export async function registerRoutes(
     if (!userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope)) {
       return res.status(403).json({ message: "Forbidden" });
     }
-    const updated = await storage.updateSeries(id, {
+    const data: any = {
       name: req.body.name,
       type: req.body.type,
       grind: req.body.grind || null,
       numberOfSkis: req.body.numberOfSkis,
       lastRegrind: req.body.lastRegrind || null,
-    });
+    };
+    if (req.body.brand !== undefined) data.brand = req.body.brand;
+    if (req.body.groupScope) data.groupScope = req.body.groupScope;
+    const updated = await storage.updateSeries(id, data);
     res.json(updated);
   });
 
@@ -320,7 +323,7 @@ export async function registerRoutes(
     if (!userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope)) {
       return res.status(403).json({ message: "Forbidden" });
     }
-    const updated = await storage.updateTest(id, {
+    const testData: any = {
       date: req.body.date,
       location: req.body.location?.trim(),
       weatherId: req.body.weatherId || null,
@@ -330,12 +333,14 @@ export async function registerRoutes(
       distanceLabel0km: req.body.distanceLabel0km?.trim() || null,
       distanceLabelXkm: req.body.distanceLabelXkm?.trim() || null,
       distanceLabels: req.body.distanceLabels || null,
-    });
+    };
+    if (req.body.groupScope) testData.groupScope = req.body.groupScope;
+    const updated = await storage.updateTest(id, testData);
 
     if (req.body.entries) {
       await storage.deleteEntriesByTestId(id);
       const now = new Date().toISOString();
-      const groupScope = existing.groupScope;
+      const groupScope = req.body.groupScope || existing.groupScope;
       for (const e of req.body.entries) {
         await storage.createEntry({
           testId: id,

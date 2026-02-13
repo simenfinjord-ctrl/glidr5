@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient, OfflineError } from "@/lib/queryClient";
 import { useOffline } from "@/lib/offline-context";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ const schema = z.object({
   grind: z.string().optional(),
   numberOfSkis: z.coerce.number().int().min(1, "Must be at least 1"),
   lastRegrind: z.string().optional(),
+  groupScope: z.string().min(1, "Select a group"),
 });
 
 function typeBadgeClass(type: string) {
@@ -49,9 +51,11 @@ function typeBadgeClass(type: string) {
 function SeriesForm({
   initial,
   onSaved,
+  userGroups,
 }: {
   initial?: Series;
   onSaved: () => void;
+  userGroups: string[];
 }) {
   const { toast } = useToast();
   const { queueMutation } = useOffline();
@@ -65,6 +69,7 @@ function SeriesForm({
       grind: initial?.grind ?? "",
       numberOfSkis: initial?.numberOfSkis ?? 8,
       lastRegrind: initial?.lastRegrind ?? "",
+      groupScope: initial?.groupScope ?? userGroups[0] ?? "",
     },
   });
 
@@ -78,6 +83,7 @@ function SeriesForm({
           grind: data.grind?.trim() || null,
           numberOfSkis: data.numberOfSkis,
           lastRegrind: data.lastRegrind || null,
+          groupScope: data.groupScope,
         });
         return res.json();
       } catch (err) {
@@ -116,6 +122,7 @@ function SeriesForm({
         grind: data.grind?.trim() || null,
         numberOfSkis: data.numberOfSkis,
         lastRegrind: data.lastRegrind || null,
+        groupScope: data.groupScope,
       });
       return res.json();
     },
@@ -243,6 +250,33 @@ function SeriesForm({
           />
         </div>
 
+        {userGroups.length > 1 && (
+          <FormField
+            control={form.control}
+            name="groupScope"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Group</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-series-group">
+                      <SelectValue placeholder="Select group" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {userGroups.map((g) => (
+                      <SelectItem key={g} value={g} data-testid={`option-group-${g}`}>
+                        {g}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
         <div className="flex items-center justify-end gap-2">
           <Button type="submit" data-testid="button-save-series">
             Save
@@ -255,11 +289,20 @@ function SeriesForm({
 
 export default function TestSkis() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Series | undefined>();
   const [sortAZ, setSortAZ] = useState(false);
 
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
+  const { data: groups = [] } = useQuery<{ id: number; name: string }[]>({ queryKey: ["/api/groups"] });
+
+  const userGroups = useMemo(() => {
+    if (user?.isAdmin && groups.length > 0) {
+      return groups.map((g) => g.name);
+    }
+    return (user?.groupScope ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  }, [user, groups]);
 
   const sortedSeries = useMemo(() => {
     if (!sortAZ) return series;
@@ -309,6 +352,7 @@ export default function TestSkis() {
                   setOpen(false);
                   toast({ title: "Saved" });
                 }}
+                userGroups={userGroups}
               />
             </DialogContent>
             </Dialog>

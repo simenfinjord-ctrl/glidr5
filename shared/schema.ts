@@ -143,3 +143,4 @@ export const loginLogs = pgTable("login_logs", {
 export const insertLoginLogSchema = createInsertSchema(loginLogs).omit({ id: true });
 export type InsertLoginLog = z.infer<typeof insertLoginLogSchema>;
 export type LoginLog = typeof loginLogs.$inferSelect;
+

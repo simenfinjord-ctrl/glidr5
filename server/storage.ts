@@ -55,6 +55,7 @@ export interface IStorage {
 
   createLoginLog(log: InsertLoginLog): Promise<LoginLog>;
   listLoginLogs(): Promise<LoginLog[]>;
+
 }
 
 export class DatabaseStorage implements IStorage {
@@ -245,6 +246,7 @@ export class DatabaseStorage implements IStorage {
   async listLoginLogs(): Promise<LoginLog[]> {
     return db.select().from(loginLogs).orderBy(sql`${loginLogs.id} desc`);
   }
+
 }
 
 export const storage = new DatabaseStorage();

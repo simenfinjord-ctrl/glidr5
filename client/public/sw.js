@@ -1,7 +1,6 @@
 const CACHE_NAME = "glidr-v1";
 const STATIC_ASSETS = [
   "/",
-  "/logo.png",
 ];
 
 self.addEventListener("install", (event) => {

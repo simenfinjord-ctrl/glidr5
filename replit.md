@@ -1,7 +1,7 @@
-# Glidr — US Ski Team Testing & Documentation
+# Glidr — Ski Testing & Documentation
 
 ## Overview
-Full-stack React web application for the US Ski Team to manage ski testing and documentation. Features role-based access control (Admin, World Cup, U23, Biathlon groups), databases for TestSkis series, Products (glide/topping/structure tools), DailyWeather, and Tests with live-ranking entry.
+Full-stack React web application to manage ski testing and documentation. Features role-based access control (Admin, World Cup, U23, Biathlon groups), databases for TestSkis series, Products (glide/topping/structure tools), DailyWeather, and Tests with live-ranking entry.
 
 ## Architecture
 - **Frontend**: React 19 + Vite + TanStack Query + wouter routing + shadcn/ui + Tailwind CSS v4
@@ -23,7 +23,6 @@ Full-stack React web application for the US Ski Team to manage ski testing and d
 - `client/src/pages/test-detail.tsx` — Test detail view with results table, CSV export, Hide/Show toggle
 - `client/src/pages/dashboard.tsx` — Dashboard with stats, top products, recent tests
 - `client/src/pages/` — All page components
-- `client/public/logo.png` — US Ski Team logo
 
 ## Seeded Accounts
 | Email | Group | Admin |

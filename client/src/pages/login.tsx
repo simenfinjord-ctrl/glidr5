@@ -43,13 +43,12 @@ export default function Login() {
     >
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center gap-3 mb-8">
-          <img src="/logo.png" alt="US Ski Team" className="h-16 w-16 object-contain" />
           <div className="text-center">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">
               Glidr
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              A US Ski Team database
+              Ski testing & documentation platform
             </p>
           </div>
         </div>

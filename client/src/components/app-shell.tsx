@@ -102,7 +102,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <img src="/logo.png" alt="US Ski Team" className="h-10 w-10 object-contain" />
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-sky-400 flex items-center justify-center text-white font-bold text-lg">G</div>
               <div className={cn(
                 "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-background",
                 isOnline ? "bg-emerald-500" : "bg-amber-500"
@@ -111,11 +111,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="min-w-0">
               <div className="flex items-baseline gap-2">
                 <span className="text-base font-bold tracking-tight bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">Glidr</span>
-                <span className="rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary">
-                  US Ski Team
-                </span>
               </div>
-              <div className="text-[11px] text-muted-foreground">A US Ski Team database</div>
+              <div className="text-[11px] text-muted-foreground">Ski testing & documentation</div>
             </div>
           </div>
 
@@ -193,7 +190,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <footer className="mx-auto w-full max-w-6xl px-4 pb-10">
         <div className="mb-4 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span className="font-medium">Glidr · US Ski Team</span>
+          <span className="font-medium">Glidr</span>
           <span>Designed for fast tablet entry</span>
         </div>
       </footer>

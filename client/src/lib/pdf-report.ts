@@ -284,7 +284,7 @@ export function generateTestPDF(
   const finalY = (doc as any).lastAutoTable.finalY + 8;
   doc.setFontSize(7);
   doc.setTextColor(150);
-  doc.text("Glidr — US Ski Team Testing Platform", 14, finalY);
+  doc.text("Glidr — Ski Testing Platform", 14, finalY);
   doc.text(`Page 1`, pageWidth - 14, finalY, { align: "right" });
 
   doc.save(`glidr-test-${test.location}-${test.date}.pdf`);

@@ -37,6 +37,7 @@ export interface IStorage {
   listProducts(groupScope: string, isAdmin: boolean): Promise<Product[]>;
   createProduct(p: InsertProduct): Promise<Product>;
   updateProduct(id: number, data: Partial<InsertProduct>): Promise<Product | undefined>;
+  deleteProduct(id: number): Promise<boolean>;
 
   listWeather(groupScope: string, isAdmin: boolean): Promise<Weather[]>;
   getWeather(id: number): Promise<Weather | undefined>;
@@ -157,6 +158,11 @@ export class DatabaseStorage implements IStorage {
   async updateProduct(id: number, data: Partial<InsertProduct>): Promise<Product | undefined> {
     const [updated] = await db.update(products).set(data).where(eq(products.id, id)).returning();
     return updated;
+  }
+
+  async deleteProduct(id: number): Promise<boolean> {
+    const result = await db.delete(products).where(eq(products.id, id));
+    return (result as any).rowCount > 0;
   }
 
   async listWeather(groupScope: string, isAdmin: boolean): Promise<Weather[]> {

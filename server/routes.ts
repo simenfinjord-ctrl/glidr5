@@ -166,6 +166,14 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  app.delete("/api/products/:id", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const id = parseInt(req.params.id);
+    await storage.deleteProduct(id);
+    res.json({ ok: true });
+  });
+
   app.get("/api/weather", requireAuth, async (req, res) => {
     const u = userInfo(req);
     const list = await storage.listWeather(u.groupScope, u.isAdmin);

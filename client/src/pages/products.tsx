@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, PackagePlus, ArrowRightLeft, Users } from "lucide-react";
+import { Filter, PackagePlus, Trash2, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient, OfflineError } from "@/lib/queryClient";
@@ -157,7 +158,7 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
   );
 }
 
-function MoveProductModal({
+function GroupAssignModal({
   product,
   groupNames,
   onDone,
@@ -167,18 +168,25 @@ function MoveProductModal({
   onDone: () => void;
 }) {
   const { toast } = useToast();
-  const [targetGroup, setTargetGroup] = useState(product.groupScope);
+  const currentGroups = product.groupScope.split(",").map((s) => s.trim()).filter(Boolean);
+  const [selected, setSelected] = useState<string[]>(currentGroups);
+
+  const toggle = (g: string) => {
+    setSelected((prev) =>
+      prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]
+    );
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("PUT", `/api/products/${product.id}`, {
-        groupScope: targetGroup,
+        groupScope: selected.join(","),
       });
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: "Product moved", description: `${product.brand} ${product.name} moved to ${targetGroup}` });
+      toast({ title: "Groups updated", description: `${product.brand} ${product.name} assigned to ${selected.join(", ")}` });
       onDone();
     },
     onError: (e) => {
@@ -195,26 +203,36 @@ function MoveProductModal({
         </div>
       </div>
       <div>
-        <label className="mb-2 block text-sm font-medium">Move to group</label>
-        <Select value={targetGroup} onValueChange={setTargetGroup}>
-          <SelectTrigger data-testid="select-move-group">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {groupNames.map((g) => (
-              <SelectItem key={g} value={g}>{g}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <label className="mb-2 block text-sm font-medium">Assign to groups</label>
+        <div className="space-y-2">
+          {groupNames.map((g) => (
+            <label
+              key={g}
+              className={cn(
+                "flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 transition-colors",
+                selected.includes(g)
+                  ? "border-primary/40 bg-primary/5"
+                  : "border-border/40 bg-background/30 hover:bg-background/50"
+              )}
+            >
+              <Checkbox
+                checked={selected.includes(g)}
+                onCheckedChange={() => toggle(g)}
+                data-testid={`checkbox-group-${g}`}
+              />
+              <span className="text-sm">{g}</span>
+            </label>
+          ))}
+        </div>
       </div>
       <div className="flex justify-end gap-2">
         <Button
-          data-testid="button-move-product"
-          disabled={targetGroup === product.groupScope || mutation.isPending}
+          data-testid="button-save-groups"
+          disabled={selected.length === 0 || mutation.isPending}
           onClick={() => mutation.mutate()}
         >
-          <ArrowRightLeft className="mr-2 h-4 w-4" />
-          Move
+          <Users className="mr-2 h-4 w-4" />
+          Save
         </Button>
       </div>
     </div>
@@ -227,8 +245,9 @@ export default function Products() {
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<ProductCategory | "All">("All");
   const [brand, setBrand] = useState("");
-  const [groupFilter, setGroupFilter] = useState<string>("All");
-  const [movingProduct, setMovingProduct] = useState<Product | undefined>();
+  const [editingProduct, setEditingProduct] = useState<Product | undefined>();
+  const [deletingProduct, setDeletingProduct] = useState<Product | undefined>();
+  const { toast } = useToast();
 
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: apiGroups = [] } = useQuery<ApiGroup[]>({
@@ -238,7 +257,13 @@ export default function Products() {
   const groupNames = apiGroups.map((g) => g.name);
 
   const uniqueGroups = useMemo(() => {
-    const set = new Set(products.map((p) => p.groupScope));
+    const set = new Set<string>();
+    products.forEach((p) => {
+      p.groupScope.split(",").forEach((g) => {
+        const trimmed = g.trim();
+        if (trimmed) set.add(trimmed);
+      });
+    });
     return Array.from(set).sort();
   }, [products]);
 
@@ -247,21 +272,23 @@ export default function Products() {
     return products.filter((p) => {
       const okCategory = category === "All" ? true : p.category === category;
       const okBrand = b ? p.brand.toLowerCase().includes(b) : true;
-      const okGroup = groupFilter === "All" ? true : p.groupScope === groupFilter;
-      return okCategory && okBrand && okGroup;
+      return okCategory && okBrand;
     });
-  }, [products, category, brand, groupFilter]);
+  }, [products, category, brand]);
 
-  const groupedProducts = useMemo(() => {
-    if (!isAdmin || groupFilter !== "All") return null;
-    const map = new Map<string, Product[]>();
-    for (const p of filtered) {
-      const existing = map.get(p.groupScope) || [];
-      existing.push(p);
-      map.set(p.groupScope, existing);
-    }
-    return map;
-  }, [filtered, isAdmin, groupFilter]);
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/products/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({ title: "Product deleted" });
+      setDeletingProduct(undefined);
+    },
+    onError: (e) => {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    },
+  });
 
   return (
     <AppShell>
@@ -271,7 +298,6 @@ export default function Products() {
             <h1 className="text-2xl sm:text-3xl">Products</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-products-subtitle">
               {filtered.length} product{filtered.length !== 1 ? "s" : ""}
-              {isAdmin && groupFilter === "All" && uniqueGroups.length > 1 ? ` across ${uniqueGroups.length} groups` : ""}
             </p>
           </div>
 
@@ -321,21 +347,6 @@ export default function Products() {
                   data-testid="input-filter-brand"
                 />
               </div>
-              {isAdmin && uniqueGroups.length > 1 && (
-                <div className="min-w-[200px]">
-                  <Select value={groupFilter} onValueChange={setGroupFilter}>
-                    <SelectTrigger data-testid="select-filter-group">
-                      <SelectValue placeholder="Group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All groups</SelectItem>
-                      {uniqueGroups.map((g) => (
-                        <SelectItem key={g} value={g}>{g}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
             </div>
 
             <Button
@@ -344,7 +355,6 @@ export default function Products() {
               onClick={() => {
                 setCategory("All");
                 setBrand("");
-                setGroupFilter("All");
               }}
             >
               Clear
@@ -352,56 +362,58 @@ export default function Products() {
           </div>
         </Card>
 
-        {groupedProducts && groupedProducts.size > 1 ? (
-          Array.from(groupedProducts.entries()).map(([group, prods]) => (
-            <div key={group} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary/60" />
-                <h2 className="text-sm font-semibold">{group}</h2>
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                  {prods.length}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {prods.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    isAdmin={isAdmin}
-                    onMove={() => setMovingProduct(p)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {filtered.length === 0 ? (
-              <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground sm:col-span-2" data-testid="empty-products">
-                No products match your filters.
-              </Card>
-            ) : (
-              filtered.map((p) => (
-                <ProductCard
-                  key={p.id}
-                  product={p}
-                  isAdmin={isAdmin}
-                  onMove={() => setMovingProduct(p)}
-                />
-              ))
-            )}
-          </div>
-        )}
-
-        <Dialog open={!!movingProduct} onOpenChange={(v) => { if (!v) setMovingProduct(undefined); }}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader><DialogTitle>Move product to another group</DialogTitle></DialogHeader>
-            {movingProduct && (
-              <MoveProductModal
-                product={movingProduct}
-                groupNames={groupNames.length > 0 ? groupNames : uniqueGroups}
-                onDone={() => setMovingProduct(undefined)}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {filtered.length === 0 ? (
+            <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground sm:col-span-2" data-testid="empty-products">
+              No products match your filters.
+            </Card>
+          ) : (
+            filtered.map((p) => (
+              <ProductCard
+                key={p.id}
+                product={p}
+                isAdmin={isAdmin}
+                onEditGroups={() => setEditingProduct(p)}
+                onDelete={() => setDeletingProduct(p)}
               />
+            ))
+          )}
+        </div>
+
+        <Dialog open={!!editingProduct} onOpenChange={(v) => { if (!v) setEditingProduct(undefined); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader><DialogTitle>Assign groups</DialogTitle></DialogHeader>
+            {editingProduct && (
+              <GroupAssignModal
+                product={editingProduct}
+                groupNames={groupNames.length > 0 ? groupNames : uniqueGroups}
+                onDone={() => setEditingProduct(undefined)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!deletingProduct} onOpenChange={(v) => { if (!v) setDeletingProduct(undefined); }}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader><DialogTitle>Delete product</DialogTitle></DialogHeader>
+            {deletingProduct && (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to delete <span className="font-medium text-foreground">{deletingProduct.brand} {deletingProduct.name}</span>?
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setDeletingProduct(undefined)}>Cancel</Button>
+                  <Button
+                    variant="destructive"
+                    data-testid="button-confirm-delete-product"
+                    disabled={deleteMutation.isPending}
+                    onClick={() => deleteMutation.mutate(deletingProduct.id)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </Button>
+                </div>
+              </div>
             )}
           </DialogContent>
         </Dialog>
@@ -413,12 +425,16 @@ export default function Products() {
 function ProductCard({
   product: p,
   isAdmin,
-  onMove,
+  onEditGroups,
+  onDelete,
 }: {
   product: Product;
   isAdmin: boolean;
-  onMove: () => void;
+  onEditGroups: () => void;
+  onDelete: () => void;
 }) {
+  const groups = p.groupScope.split(",").map((s) => s.trim()).filter(Boolean);
+
   return (
     <Card
       className="fs-card rounded-2xl p-4 transition-all duration-200 hover:shadow-lg hover:shadow-amber-500/5"
@@ -433,9 +449,14 @@ function ProductCard({
           </div>
           <div className="mt-2 truncate text-base font-semibold">{p.brand} {p.name}</div>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/20">
-              {p.groupScope}
-            </span>
+            {groups.map((g) => (
+              <span key={g} className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/20">
+                {g}
+              </span>
+            ))}
+            {groups.length === 0 && (
+              <span className="text-[10px] text-muted-foreground">No group assigned</span>
+            )}
             <span className="text-xs text-muted-foreground">
               <span className="text-foreground/70">{p.createdByName}</span>
             </span>
@@ -446,16 +467,27 @@ function ProductCard({
             {new Date(p.createdAt).toLocaleDateString()}
           </div>
           {isAdmin && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs text-muted-foreground hover:text-foreground"
-              data-testid={`button-move-product-${p.id}`}
-              onClick={onMove}
-            >
-              <ArrowRightLeft className="mr-1 h-3 w-3" />
-              Move
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                data-testid={`button-edit-groups-${p.id}`}
+                onClick={onEditGroups}
+              >
+                <Users className="mr-1 h-3 w-3" />
+                Groups
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                data-testid={`button-delete-product-${p.id}`}
+                onClick={onDelete}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
           )}
         </div>
       </div>

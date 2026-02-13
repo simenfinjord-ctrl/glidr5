@@ -42,7 +42,8 @@ Full-stack React web application to manage ski testing and documentation. Featur
 - `GET/POST /api/series` — List/create series
 - `PUT /api/series/:id` — Update series
 - `GET/POST /api/products` — List/create products
-- `PUT /api/products/:id` — Update product (admin only, for moving between groups)
+- `PUT /api/products/:id` — Update product (admin only, for group assignment)
+- `DELETE /api/products/:id` — Delete product (admin only)
 - `GET/POST /api/weather` — List/create weather
 - `PUT /api/weather/:id` — Update weather
 - `GET /api/weather/find?date=&location=` — Find weather

@@ -211,12 +211,13 @@ export default function SeriesDetail() {
                       <thead>
                         <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                           <th className="pb-2 pr-3">Rank</th>
+                          <th className="pb-2 pr-3">{distLabels[0]?.trim() || "R1"}</th>
                           <th className="pb-2 pr-3">Ski</th>
                           <th className="pb-2 pr-3">Product</th>
                           <th className="pb-2 pr-3">Method</th>
-                          {distLabels.map((label, i) => (
+                          {distLabels.slice(1).map((label, i) => (
                             <th key={i} className="pb-2 pr-3">
-                              {label?.trim() || `R${i + 1}`}
+                              {label?.trim() || `R${i + 2}`}
                             </th>
                           ))}
                           <th className="pb-2">Feel</th>
@@ -250,6 +251,9 @@ export default function SeriesDetail() {
                               <td className="py-2 pr-3">
                                 <RankBadge rank={firstRank} />
                               </td>
+                              <td className="py-2 pr-3 font-mono text-xs">
+                                {rounds[0]?.result ?? "—"}
+                              </td>
                               <td className="py-2 pr-3">
                                 <span className="inline-flex h-6 w-8 items-center justify-center rounded bg-background/50 text-xs font-semibold ring-1 ring-border/50">
                                   {entry.skiNumber}
@@ -261,12 +265,12 @@ export default function SeriesDetail() {
                               <td className="py-2 pr-3 text-xs text-muted-foreground">
                                 {entry.methodology || "—"}
                               </td>
-                              {rounds.map((rr, i) => (
+                              {rounds.slice(1).map((rr, i) => (
                                 <td key={i} className="py-2 pr-3 font-mono text-xs">
                                   {rr.result != null ? (
                                     <span className="flex items-center gap-1">
                                       {rr.result}
-                                      {i > 0 && <RankBadge rank={rr.rank} />}
+                                      <RankBadge rank={rr.rank} />
                                     </span>
                                   ) : "—"}
                                 </td>

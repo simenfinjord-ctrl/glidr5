@@ -536,15 +536,15 @@ export default function TestDetail() {
                 <thead>
                   <tr className="border-b border-border/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="pb-3 pr-3">Rank</th>
+                    <th className="pb-3 pr-3">{(distLabels[0]?.trim() || "Round 1")} (cm)</th>
                     <th className="pb-3 pr-3">Ski</th>
                     <th className="pb-3 pr-3">Product</th>
                     <th className="pb-3 pr-3">Method</th>
-                    {distLabels.map((label, i) => (
-                      <th key={i} className="pb-3 pr-3" colSpan={i === 0 ? 1 : 2}>
-                        {(label?.trim() || `Round ${i + 1}`)} (cm)
+                    {distLabels.slice(1).map((label, i) => (
+                      <th key={i} className="pb-3 pr-3" colSpan={2}>
+                        {(label?.trim() || `Round ${i + 2}`)} (cm)
                       </th>
                     ))}
-                    {distLabels.length > 1 && <th className="pb-3 pr-3"></th>}
                     <th className="pb-3">Feeling</th>
                   </tr>
                 </thead>
@@ -592,6 +592,9 @@ export default function TestDetail() {
                             )}
                           </div>
                         </td>
+                        <td className="py-3 pr-3 font-mono text-sm" data-testid={`text-result-0-${entry.id}`}>
+                          {rounds[0]?.result ?? "—"}
+                        </td>
                         <td className="py-3 pr-3" data-testid={`text-ski-number-${entry.id}`}>
                           <span className="inline-flex h-8 w-10 items-center justify-center rounded-lg bg-background/50 text-sm font-semibold ring-1 ring-border/50">
                             {entry.skiNumber}
@@ -603,16 +606,14 @@ export default function TestDetail() {
                         <td className="py-3 pr-3 text-muted-foreground" data-testid={`text-method-${entry.id}`}>
                           {hideDetails ? "" : (entry.methodology || "—")}
                         </td>
-                        {rounds.map((rr, roundIdx) => (
+                        {rounds.slice(1).map((rr, roundIdx) => (
                           <>
-                            <td key={`res-${roundIdx}`} className="py-3 pr-3 font-mono text-sm" data-testid={`text-result-${roundIdx}-${entry.id}`}>
+                            <td key={`res-${roundIdx + 1}`} className="py-3 pr-3 font-mono text-sm" data-testid={`text-result-${roundIdx + 1}-${entry.id}`}>
                               {rr.result ?? "—"}
                             </td>
-                            {roundIdx > 0 && (
-                              <td key={`rank-${roundIdx}`} className="py-3 pr-3" data-testid={`text-rank-${roundIdx}-${entry.id}`}>
-                                <RankBadge rank={rr.rank} />
-                              </td>
-                            )}
+                            <td key={`rank-${roundIdx + 1}`} className="py-3 pr-3" data-testid={`text-rank-${roundIdx + 1}-${entry.id}`}>
+                              <RankBadge rank={rr.rank} />
+                            </td>
                           </>
                         ))}
                         <td className="py-3" data-testid={`text-feeling-${entry.id}`}>

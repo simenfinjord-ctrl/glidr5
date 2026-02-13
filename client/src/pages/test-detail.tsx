@@ -535,16 +535,15 @@ export default function TestDetail() {
               <table className="w-full text-sm" data-testid="table-results">
                 <thead>
                   <tr className="border-b border-border/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    <th className="pb-3 pr-3">Rank</th>
-                    <th className="pb-3 pr-3">{(distLabels[0]?.trim() || "Round 1")} (cm)</th>
                     <th className="pb-3 pr-3">Ski</th>
                     <th className="pb-3 pr-3">Product</th>
                     <th className="pb-3 pr-3">Method</th>
-                    {distLabels.slice(1).map((label, i) => (
-                      <th key={i} className="pb-3 pr-3" colSpan={2}>
-                        {(label?.trim() || `Round ${i + 2}`)} (cm)
+                    {distLabels.map((label, i) => (
+                      <th key={i} className="pb-3 pr-3">
+                        {(label?.trim() || `Round ${i + 1}`)} (cm)
                       </th>
                     ))}
+                    <th className="pb-3 pr-3">Rank</th>
                     <th className="pb-3">Feeling</th>
                   </tr>
                 </thead>
@@ -579,6 +578,22 @@ export default function TestDetail() {
                           idx % 2 === 0 && !firstRank && "bg-background/20",
                         )}
                       >
+                        <td className="py-3 pr-3" data-testid={`text-ski-number-${entry.id}`}>
+                          <span className="inline-flex h-8 w-10 items-center justify-center rounded-lg bg-background/50 text-sm font-semibold ring-1 ring-border/50">
+                            {entry.skiNumber}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-3" data-testid={`text-product-${entry.id}`}>
+                          {hideDetails ? "" : (allProducts.length > 0 ? allProducts.join(" + ") : "—")}
+                        </td>
+                        <td className="py-3 pr-3 text-muted-foreground" data-testid={`text-method-${entry.id}`}>
+                          {hideDetails ? "" : (entry.methodology || "—")}
+                        </td>
+                        {rounds.map((rr, roundIdx) => (
+                          <td key={`res-${roundIdx}`} className="py-3 pr-3 font-mono text-sm" data-testid={`text-result-${roundIdx}-${entry.id}`}>
+                            {rr.result ?? "—"}
+                          </td>
+                        ))}
                         <td className="py-3 pr-3">
                           <div className="flex items-center gap-2">
                             <RankBadge rank={firstRank} size="lg" />
@@ -592,30 +607,6 @@ export default function TestDetail() {
                             )}
                           </div>
                         </td>
-                        <td className="py-3 pr-3 font-mono text-sm" data-testid={`text-result-0-${entry.id}`}>
-                          {rounds[0]?.result ?? "—"}
-                        </td>
-                        <td className="py-3 pr-3" data-testid={`text-ski-number-${entry.id}`}>
-                          <span className="inline-flex h-8 w-10 items-center justify-center rounded-lg bg-background/50 text-sm font-semibold ring-1 ring-border/50">
-                            {entry.skiNumber}
-                          </span>
-                        </td>
-                        <td className="py-3 pr-3" data-testid={`text-product-${entry.id}`}>
-                          {hideDetails ? "" : (allProducts.length > 0 ? allProducts.join(" + ") : "—")}
-                        </td>
-                        <td className="py-3 pr-3 text-muted-foreground" data-testid={`text-method-${entry.id}`}>
-                          {hideDetails ? "" : (entry.methodology || "—")}
-                        </td>
-                        {rounds.slice(1).map((rr, roundIdx) => (
-                          <>
-                            <td key={`res-${roundIdx + 1}`} className="py-3 pr-3 font-mono text-sm" data-testid={`text-result-${roundIdx + 1}-${entry.id}`}>
-                              {rr.result ?? "—"}
-                            </td>
-                            <td key={`rank-${roundIdx + 1}`} className="py-3 pr-3" data-testid={`text-rank-${roundIdx + 1}-${entry.id}`}>
-                              <RankBadge rank={rr.rank} />
-                            </td>
-                          </>
-                        ))}
                         <td className="py-3" data-testid={`text-feeling-${entry.id}`}>
                           {entry.feelingRank != null ? (
                             <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-semibold text-violet-300">

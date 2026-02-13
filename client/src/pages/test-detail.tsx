@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText } from "lucide-react";
+import { generateTestPDF } from "@/lib/pdf-report";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ type TestEntry = {
   skiNumber: number;
   productId: number | null;
   additionalProductIds: string | null;
+  freeTextProduct: string | null;
   methodology: string;
   result0kmCmBehind: number | null;
   rank0km: number | null;
@@ -509,6 +511,18 @@ export default function TestDetail() {
               >
                 <Download className="mr-2 h-4 w-4" />
                 CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid="button-export-pdf"
+                onClick={() => {
+                  const seriesMap = new Map(series.map((s) => [s.id, s]));
+                  generateTestPDF(test, entries, productsById, seriesMap, weather ?? null);
+                }}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                PDF
               </Button>
               <Button
                 variant="outline"

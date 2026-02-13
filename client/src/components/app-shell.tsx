@@ -11,6 +11,7 @@ import {
   WifiOff,
   RefreshCw,
   CloudUpload,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -68,6 +69,14 @@ const nav: NavItem[] = [
     testId: "link-weather",
     color: "text-violet-400/70",
     activeColor: "text-violet-400",
+  },
+  {
+    href: "/analytics",
+    label: "Analytics",
+    icon: BarChart3,
+    testId: "link-analytics",
+    color: "text-pink-400/70",
+    activeColor: "text-pink-400",
   },
   {
     href: "/admin",

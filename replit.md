@@ -103,3 +103,7 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Service worker caches app shell for offline access
 - IndexedDB stores pending mutations and cached reference data
 - Header shows online/offline status indicator and pending sync count
+- Analytics page (/analytics) with recharts: product wins over time, avg rank by product, tests per month, snow temp vs rank scatter
+- Analytics page has Glide/Structure/All filter
+- PDF report generation on test detail page (jsPDF + autoTable): includes test info, weather, full results table
+- Test detail page has CSV, PDF, and Hide/Show export buttons

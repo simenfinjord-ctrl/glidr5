@@ -17,6 +17,7 @@ import NewTest from "@/pages/new-test";
 import TestDetail from "@/pages/test-detail";
 import EditTest from "@/pages/edit-test";
 import Admin from "@/pages/admin";
+import Analytics from "@/pages/analytics";
 import Login from "@/pages/login";
 
 function Router() {
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/tests/new" component={NewTest} />
       <Route path="/tests/:id/edit" component={EditTest} />
       <Route path="/tests/:id" component={TestDetail} />
+      <Route path="/analytics" component={Analytics} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>

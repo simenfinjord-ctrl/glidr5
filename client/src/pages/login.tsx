@@ -46,7 +46,7 @@ export default function Login() {
           <img src="/logo.png" alt="US Ski Team" className="h-16 w-16 object-contain" />
           <div className="text-center">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">
-              FastSki
+              Glidr
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Testing & Documentation

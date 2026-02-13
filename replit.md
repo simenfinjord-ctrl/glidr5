@@ -1,4 +1,4 @@
-# FastSki — US Ski Team Testing & Documentation
+# Glidr — US Ski Team Testing & Documentation
 
 ## Overview
 Full-stack React web application for the US Ski Team to manage ski testing and documentation. Features role-based access control (Admin, World Cup, U23, Biathlon groups), databases for TestSkis series, Products (glide/topping/structure tools), DailyWeather, and Tests with live-ranking entry.
@@ -28,10 +28,10 @@ Full-stack React web application for the US Ski Team to manage ski testing and d
 ## Seeded Accounts
 | Email | Group | Admin |
 |---|---|---|
-| admin@fastski.local | Admin | Yes |
-| u23@fastski.local | U23 | No |
-| wc@fastski.local | World Cup | No |
-| biathlon@fastski.local | Biathlon | No |
+| admin@glidr.local | Admin | Yes |
+| u23@glidr.local | U23 | No |
+| wc@glidr.local | World Cup | No |
+| biathlon@glidr.local | Biathlon | No |
 
 ## API Endpoints
 - `POST /api/auth/login` — Login
@@ -68,7 +68,10 @@ The daily_weather table stores comprehensive snow and weather conditions:
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
-- Ranking auto-calculates live (dense ranking: 0cm = rank 1)
+- Ranking auto-calculates live (competition ranking: ties skip next numbers, e.g., 1-1-3)
+- Rank badges use gold (1st), silver (2nd), bronze (3rd) medal colors
+- Admin menu hidden from non-admin users
+- Test series can be sorted alphabetically (A-Z toggle)
 - "lane" field removed from data model
 - Product autocomplete filters by test type (Glide shows Glide+Topping; Structure shows Structure tool)
 - Weather auto-links to tests by matching date + location + groupScope

@@ -23,7 +23,7 @@ export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
 
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "fastski-dev-secret-change-me",
+    secret: process.env.SESSION_SECRET || "glidr-dev-secret-change-me",
     resave: false,
     saveUninitialized: false,
     cookie: {

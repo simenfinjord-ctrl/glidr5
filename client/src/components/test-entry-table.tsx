@@ -29,24 +29,19 @@ export type EntryRow = {
   feelingRank: number | null;
 };
 
-function denseRanks(values: Array<{ rowId: string; v: number }>) {
+function competitionRanks(values: Array<{ rowId: string; v: number }>) {
   const sorted = [...values].sort((a, b) => a.v - b.v);
   const ranks = new Map<string, number>();
-  let rank = 1;
   let prev: number | null = null;
+  let currentRank = 1;
 
-  for (const item of sorted) {
-    if (prev === null) {
-      ranks.set(item.rowId, rank);
-      prev = item.v;
-      continue;
+  for (let i = 0; i < sorted.length; i++) {
+    const item = sorted[i];
+    if (prev !== null && item.v !== prev) {
+      currentRank = i + 1;
     }
-
-    if (item.v !== prev) {
-      rank += 1;
-      prev = item.v;
-    }
-    ranks.set(item.rowId, rank);
+    ranks.set(item.rowId, currentRank);
+    prev = item.v;
   }
 
   return ranks;
@@ -88,7 +83,7 @@ export function TestEntryTable({
       const vals = rows
         .filter((r) => r.roundResults[roundIdx]?.result != null)
         .map((r) => ({ rowId: r.id, v: r.roundResults[roundIdx]!.result as number }));
-      return denseRanks(vals);
+      return competitionRanks(vals);
     });
   }, [rows, distanceLabels.length]);
 
@@ -195,11 +190,11 @@ export function TestEntryTable({
                 className={cn(
                   "inline-flex min-w-10 items-center justify-center rounded-full px-2 py-1 text-xs font-semibold",
                   rank === 1
-                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                    ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400"
                     : rank === 2
-                      ? "bg-sky-500/15 text-sky-700 dark:text-sky-300"
+                      ? "bg-slate-300/15 text-slate-500 dark:text-slate-300"
                       : rank === 3
-                        ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300"
+                        ? "bg-amber-700/15 text-amber-700 dark:text-amber-600"
                         : "bg-muted/70 text-foreground",
                 )}
               >

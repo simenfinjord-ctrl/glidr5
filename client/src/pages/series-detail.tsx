@@ -91,9 +91,9 @@ function RankBadge({ rank }: { rank: number | null }) {
     <span
       className={cn(
         "inline-flex min-w-7 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold",
-        rank === 1 && "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30",
-        rank === 2 && "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30",
-        rank === 3 && "bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30",
+        rank === 1 && "bg-yellow-500/20 text-yellow-400 ring-1 ring-yellow-500/30",
+        rank === 2 && "bg-slate-300/20 text-slate-300 ring-1 ring-slate-300/30",
+        rank === 3 && "bg-amber-700/20 text-amber-600 ring-1 ring-amber-700/30",
         rank !== null && rank > 3 && "bg-muted/60 text-muted-foreground",
         rank === null && "text-muted-foreground",
       )}

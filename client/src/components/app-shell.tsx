@@ -21,6 +21,7 @@ type NavItem = {
   testId: string;
   color: string;
   activeColor: string;
+  adminOnly?: boolean;
 };
 
 const nav: NavItem[] = [
@@ -71,12 +72,15 @@ const nav: NavItem[] = [
     testId: "link-admin",
     color: "text-rose-400/70",
     activeColor: "text-rose-400",
+    adminOnly: true,
   },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+
+  const visibleNav = nav.filter((item) => !item.adminOnly || user?.isAdmin);
 
   return (
     <div className="min-h-screen fs-grid">
@@ -89,7 +93,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <div className="min-w-0">
               <div className="flex items-baseline gap-2">
-                <span className="text-base font-bold tracking-tight bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">FastSki</span>
+                <span className="text-base font-bold tracking-tight bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">Glidr</span>
                 <span className="rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary">
                   US Ski Team
                 </span>
@@ -113,7 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <div className="mx-auto w-full max-w-6xl px-4 pb-3">
           <nav className="flex flex-wrap items-center gap-1.5" data-testid="nav-primary">
-            {nav.map((item) => {
+            {visibleNav.map((item) => {
               const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
               const Icon = item.icon;
               return (
@@ -149,7 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <footer className="mx-auto w-full max-w-6xl px-4 pb-10">
         <div className="mb-4 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span className="font-medium">FastSki · US Ski Team</span>
+          <span className="font-medium">Glidr · US Ski Team</span>
           <span>Designed for fast tablet entry</span>
         </div>
       </footer>

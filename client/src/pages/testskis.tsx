@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Snowflake, Hash, Table } from "lucide-react";
+import { Plus, Pencil, Snowflake, Hash, Table, ArrowUpDown } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -242,8 +242,14 @@ export default function TestSkis() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Series | undefined>();
+  const [sortAZ, setSortAZ] = useState(false);
 
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
+
+  const sortedSeries = useMemo(() => {
+    if (!sortAZ) return series;
+    return [...series].sort((a, b) => a.name.localeCompare(b.name, "nb"));
+  }, [series, sortAZ]);
 
   return (
     <AppShell>
@@ -256,16 +262,28 @@ export default function TestSkis() {
             </p>
           </div>
 
-          <Dialog open={open} onOpenChange={(v) => {
-            setOpen(v);
-            if (!v) setEditing(undefined);
-          }}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-add-series" onClick={() => setEditing(undefined)} className="bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-600 hover:to-cyan-600 text-white">
-                <Plus className="mr-2 h-4 w-4" />
-                New series
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={sortAZ ? "secondary" : "outline"}
+              size="sm"
+              data-testid="button-sort-series"
+              onClick={() => setSortAZ(!sortAZ)}
+              className={sortAZ ? "ring-1 ring-sky-500/30" : ""}
+            >
+              <ArrowUpDown className="mr-2 h-4 w-4" />
+              A–Z
+            </Button>
+
+            <Dialog open={open} onOpenChange={(v) => {
+              setOpen(v);
+              if (!v) setEditing(undefined);
+            }}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-series" onClick={() => setEditing(undefined)} className="bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-600 hover:to-cyan-600 text-white">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New series
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-xl">
               <DialogHeader>
                 <DialogTitle>{editing ? "Edit series" : "New series"}</DialogTitle>
@@ -278,16 +296,17 @@ export default function TestSkis() {
                 }}
               />
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {series.length === 0 ? (
+          {sortedSeries.length === 0 ? (
             <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground sm:col-span-2" data-testid="empty-series">
               No test series yet.
             </Card>
           ) : (
-            series.map((s) => (
+            sortedSeries.map((s) => (
               <Card
                 key={s.id}
                 className="fs-card rounded-2xl p-4 transition-all duration-200 hover:shadow-lg hover:shadow-sky-500/5"

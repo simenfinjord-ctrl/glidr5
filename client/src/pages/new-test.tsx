@@ -5,6 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ChevronLeft, Save, Sparkles } from "lucide-react";
+import { useOffline } from "@/lib/offline-context";
+import { OfflineError } from "@/lib/queryClient";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -126,17 +128,34 @@ export default function NewTest() {
     );
   }, [weather, watchDate, watchLocation]);
 
+  const { queueMutation } = useOffline();
+
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/tests", data);
-      return res.json();
+      try {
+        const res = await apiRequest("POST", "/api/tests", data);
+        return res.json();
+      } catch (err) {
+        if (err instanceof OfflineError) {
+          await queueMutation("POST", "/api/tests", data, "Save new test");
+          return { offline: true };
+        }
+        throw err;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
-      toast({
-        title: "Test saved",
-        description: `Saved ${rows.length} entries.`,
-      });
+      if (result?.offline) {
+        toast({
+          title: "Saved offline",
+          description: "Test will sync when you reconnect.",
+        });
+      } else {
+        toast({
+          title: "Test saved",
+          description: `Saved ${rows.length} entries.`,
+        });
+      }
       setLocation("/tests");
     },
     onError: (e) => {

@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, OfflineError } from "@/lib/queryClient";
+import { useOffline } from "@/lib/offline-context";
 import { cn } from "@/lib/utils";
 
 type ProductCategory = "Glide product" | "Topping product" | "Structure tool";
@@ -45,6 +46,7 @@ function categoryBadgeClass(cat: string) {
 
 function AddProductModal({ onSaved }: { onSaved: () => void }) {
   const { toast } = useToast();
+  const { queueMutation } = useOffline();
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -57,10 +59,23 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
 
   const mutation = useMutation({
     mutationFn: async (data: z.infer<typeof schema>) => {
-      const res = await apiRequest("POST", "/api/products", data);
-      return res.json();
+      try {
+        const res = await apiRequest("POST", "/api/products", data);
+        return res.json();
+      } catch (err) {
+        if (err instanceof OfflineError) {
+          await queueMutation(err.method, err.url, err.body, "Save new product");
+          return { offline: true };
+        }
+        throw err;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result?.offline) {
+        toast({ title: "Saved offline", description: "Will sync when you reconnect." });
+        onSaved();
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       toast({ title: "Product added" });
       onSaved();

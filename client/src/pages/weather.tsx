@@ -31,7 +31,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, OfflineError } from "@/lib/queryClient";
+import { useOffline } from "@/lib/offline-context";
 
 const SNOW_STAGES = [
   "Falling new",
@@ -125,6 +126,7 @@ function WeatherForm({
   onSaved: () => void;
 }) {
   const { toast } = useToast();
+  const { queueMutation } = useOffline();
   const today = new Date().toISOString().slice(0, 10);
 
   const form = useForm<FormValues>({
@@ -166,10 +168,23 @@ function WeatherForm({
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      const res = await apiRequest("POST", "/api/weather", preparePayload(data));
-      return res.json();
+      try {
+        const res = await apiRequest("POST", "/api/weather", preparePayload(data));
+        return res.json();
+      } catch (err) {
+        if (err instanceof OfflineError) {
+          await queueMutation(err.method, err.url, err.body, "Save weather entry");
+          return { offline: true };
+        }
+        throw err;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result?.offline) {
+        toast({ title: "Saved offline", description: "Will sync when you reconnect." });
+        onSaved();
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/weather"] });
       toast({ title: "Weather added" });
       onSaved();

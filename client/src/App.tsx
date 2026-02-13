@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import { Spinner } from "@/components/ui/spinner";
+import { OfflineProvider } from "@/lib/offline-context";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
@@ -64,10 +65,12 @@ function AuthGuard() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <AuthGuard />
-      </TooltipProvider>
+      <OfflineProvider>
+        <TooltipProvider>
+          <Toaster />
+          <AuthGuard />
+        </TooltipProvider>
+      </OfflineProvider>
     </QueryClientProvider>
   );
 }

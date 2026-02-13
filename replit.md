@@ -99,3 +99,7 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Series detail page (/testskis/:id) shows all tests for a series with results tables
 - Tests page has day picker: select a date to see all tests stacked with inline results tables
 - Quick day select buttons show recent test dates for fast navigation
+- Offline mode: data entry works without internet, changes queue locally and sync when reconnected
+- Service worker caches app shell for offline access
+- IndexedDB stores pending mutations and cached reference data
+- Header shows online/offline status indicator and pending sync count

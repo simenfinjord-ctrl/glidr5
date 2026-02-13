@@ -8,10 +8,14 @@ import {
   Package,
   Shield,
   LogOut,
+  WifiOff,
+  RefreshCw,
+  CloudUpload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
+import { useOffline } from "@/lib/offline-context";
 import { AppLink } from "@/components/app-link";
 
 type NavItem = {
@@ -79,6 +83,7 @@ const nav: NavItem[] = [
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
 
   const visibleNav = nav.filter((item) => !item.adminOnly || user?.isAdmin);
 
@@ -89,7 +94,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-3">
             <div className="relative">
               <img src="/logo.png" alt="US Ski Team" className="h-10 w-10 object-contain" />
-              <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-background" />
+              <div className={cn(
+                "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-background",
+                isOnline ? "bg-emerald-500" : "bg-amber-500"
+              )} />
             </div>
             <div className="min-w-0">
               <div className="flex items-baseline gap-2">
@@ -103,6 +111,29 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2">
+            {!isOnline && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-medium text-amber-400 ring-1 ring-amber-500/30" data-testid="badge-offline">
+                <WifiOff className="h-3 w-3" />
+                Offline
+              </span>
+            )}
+            {pendingCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="button-sync"
+                onClick={() => syncNow()}
+                disabled={isSyncing || !isOnline}
+                className="text-amber-400 hover:text-amber-300"
+              >
+                {isSyncing ? (
+                  <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <CloudUpload className="mr-1.5 h-4 w-4" />
+                )}
+                {pendingCount} pending
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

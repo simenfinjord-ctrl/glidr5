@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { setCachedData, getCachedData } from "./offline-db";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -7,11 +8,26 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+export class OfflineError extends Error {
+  constructor(
+    public method: string,
+    public url: string,
+    public body?: unknown,
+  ) {
+    super("You are offline. This change has been saved locally and will sync when you reconnect.");
+    this.name = "OfflineError";
+  }
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  if (!navigator.onLine && method !== "GET") {
+    throw new OfflineError(method, url, data);
+  }
+
   const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
@@ -29,16 +45,32 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
-    });
+    const cacheKey = queryKey.join("/");
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    try {
+      const res = await fetch(cacheKey as string, {
+        credentials: "include",
+      });
+
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null;
+      }
+
+      await throwIfResNotOk(res);
+      const data = await res.json();
+
+      if (cacheKey.startsWith("/api/")) {
+        setCachedData(cacheKey, data).catch(() => {});
+      }
+
+      return data;
+    } catch (err) {
+      if (!navigator.onLine) {
+        const cached = await getCachedData(cacheKey);
+        if (cached !== null) return cached;
+      }
+      throw err;
     }
-
-    await throwIfResNotOk(res);
-    return await res.json();
   };
 
 export const queryClient = new QueryClient({

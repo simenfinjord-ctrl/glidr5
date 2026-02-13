@@ -157,9 +157,22 @@ export default function Tests() {
       const entries = allEntries.filter((e) => e.testId === t.id);
       const winner = entries.find((e) => e.rank0km === 1);
       if (winner) {
-        const prod = winner.productId ? productsById.get(winner.productId) : null;
+        const names: string[] = [];
+        if (winner.productId) {
+          const prod = productsById.get(winner.productId);
+          if (prod) names.push(`${prod.brand} ${prod.name}`);
+        }
+        if (winner.additionalProductIds) {
+          for (const idStr of winner.additionalProductIds.split(",")) {
+            const id = parseInt(idStr.trim(), 10);
+            if (!isNaN(id)) {
+              const p = productsById.get(id);
+              if (p) names.push(`${p.brand} ${p.name}`);
+            }
+          }
+        }
         map.set(t.id, {
-          productName: prod ? `${prod.brand} ${prod.name}` : `Ski #${winner.skiNumber}`,
+          productName: names.length > 0 ? names.join(" + ") : `Ski #${winner.skiNumber}`,
           skiNumber: winner.skiNumber,
         });
       } else {

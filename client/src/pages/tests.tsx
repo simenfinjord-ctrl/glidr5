@@ -404,14 +404,7 @@ export default function Tests() {
               filtered.map((t) => {
                 const distLabels = getDistanceLabels(t);
                 const testEntries = allEntries.filter((e) => e.testId === t.id);
-                const sortedEntries = [...testEntries].sort((a, b) => {
-                  const aR = getEntryRounds(a, distLabels.length)[0]?.rank;
-                  const bR = getEntryRounds(b, distLabels.length)[0]?.rank;
-                  if (aR == null && bR == null) return 0;
-                  if (aR == null) return 1;
-                  if (bR == null) return -1;
-                  return aR - bR;
-                });
+                const sortedEntries = [...testEntries].sort((a, b) => a.skiNumber - b.skiNumber);
                 const w = t.weatherId ? weatherById.get(t.weatherId) : null;
                 const winner = winnersByTest.get(t.id);
 

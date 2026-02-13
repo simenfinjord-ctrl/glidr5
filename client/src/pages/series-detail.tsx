@@ -186,14 +186,7 @@ export default function SeriesDetail() {
           seriesTests.map((test) => {
             const distLabels = getDistanceLabels(test);
             const testEntries = allEntries.filter((e) => e.testId === test.id);
-            const sortedEntries = [...testEntries].sort((a, b) => {
-              const aR = getEntryRounds(a, distLabels.length)[0]?.rank;
-              const bR = getEntryRounds(b, distLabels.length)[0]?.rank;
-              if (aR == null && bR == null) return 0;
-              if (aR == null) return 1;
-              if (bR == null) return -1;
-              return aR - bR;
-            });
+            const sortedEntries = [...testEntries].sort((a, b) => a.skiNumber - b.skiNumber);
 
             return (
               <Card key={test.id} className="fs-card rounded-2xl p-4 sm:p-5" data-testid={`card-series-test-${test.id}`}>

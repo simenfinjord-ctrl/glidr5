@@ -200,16 +200,7 @@ export default function TestDetail() {
 
   const distLabels = test ? getDistanceLabels(test) : ["0 km"];
 
-  const sortedEntries = [...entries].sort((a, b) => {
-    const aRounds = getEntryRounds(a, distLabels.length);
-    const bRounds = getEntryRounds(b, distLabels.length);
-    const aRank = aRounds[0]?.rank;
-    const bRank = bRounds[0]?.rank;
-    if (aRank == null && bRank == null) return 0;
-    if (aRank == null) return 1;
-    if (bRank == null) return -1;
-    return aRank - bRank;
-  });
+  const sortedEntries = [...entries].sort((a, b) => a.skiNumber - b.skiNumber);
 
   if (testLoading) {
     return (

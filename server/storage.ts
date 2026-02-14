@@ -1,4 +1,4 @@
-import { eq, and, sql, inArray } from "drizzle-orm";
+import { eq, and, sql, inArray, isNull, isNotNull } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, groups, testSkiSeries, products, dailyWeather, tests, testEntries, loginLogs,
@@ -30,9 +30,13 @@ export interface IStorage {
   deleteGroup(id: number): Promise<boolean>;
 
   listSeries(groupScope: string, isAdmin: boolean): Promise<Series[]>;
+  listArchivedSeries(groupScope: string, isAdmin: boolean): Promise<Series[]>;
   getSeries(id: number): Promise<Series | undefined>;
   createSeries(s: InsertSeries): Promise<Series>;
   updateSeries(id: number, s: Partial<InsertSeries>): Promise<Series | undefined>;
+  archiveSeries(id: number): Promise<Series | undefined>;
+  restoreSeries(id: number): Promise<Series | undefined>;
+  deleteSeries(id: number): Promise<boolean>;
 
   listProducts(groupScope: string, isAdmin: boolean): Promise<Product[]>;
   createProduct(p: InsertProduct): Promise<Product>;
@@ -120,11 +124,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async listSeries(groupScope: string, isAdmin: boolean): Promise<Series[]> {
-    const filter = this.scopeFilter(groupScope, isAdmin, testSkiSeries);
-    if (filter) {
-      return db.select().from(testSkiSeries).where(filter);
+    const scopeFilter = this.scopeFilter(groupScope, isAdmin, testSkiSeries);
+    const notArchived = isNull(testSkiSeries.archivedAt);
+    if (scopeFilter) {
+      return db.select().from(testSkiSeries).where(and(scopeFilter, notArchived));
     }
-    return db.select().from(testSkiSeries);
+    return db.select().from(testSkiSeries).where(notArchived);
+  }
+
+  async listArchivedSeries(groupScope: string, isAdmin: boolean): Promise<Series[]> {
+    const scopeFilter = this.scopeFilter(groupScope, isAdmin, testSkiSeries);
+    const archived = isNotNull(testSkiSeries.archivedAt);
+    if (scopeFilter) {
+      return db.select().from(testSkiSeries).where(and(scopeFilter, archived));
+    }
+    return db.select().from(testSkiSeries).where(archived);
   }
 
   async getSeries(id: number): Promise<Series | undefined> {
@@ -140,6 +154,27 @@ export class DatabaseStorage implements IStorage {
   async updateSeries(id: number, s: Partial<InsertSeries>): Promise<Series | undefined> {
     const [updated] = await db.update(testSkiSeries).set(s).where(eq(testSkiSeries.id, id)).returning();
     return updated;
+  }
+
+  async archiveSeries(id: number): Promise<Series | undefined> {
+    const [updated] = await db.update(testSkiSeries)
+      .set({ archivedAt: new Date().toISOString() })
+      .where(eq(testSkiSeries.id, id))
+      .returning();
+    return updated;
+  }
+
+  async restoreSeries(id: number): Promise<Series | undefined> {
+    const [updated] = await db.update(testSkiSeries)
+      .set({ archivedAt: null })
+      .where(eq(testSkiSeries.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSeries(id: number): Promise<boolean> {
+    const result = await db.delete(testSkiSeries).where(eq(testSkiSeries.id, id));
+    return (result as any).rowCount > 0;
   }
 
   async listProducts(groupScope: string, isAdmin: boolean): Promise<Product[]> {

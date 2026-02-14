@@ -36,6 +36,7 @@ export const testSkiSeries = pgTable("test_ski_series", {
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),
   groupScope: text("group_scope").notNull(),
+  archivedAt: text("archived_at"),
 });
 
 export const insertSeriesSchema = createInsertSchema(testSkiSeries).omit({ id: true });

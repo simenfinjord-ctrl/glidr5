@@ -133,6 +133,51 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  app.get("/api/series/archived", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const list = await storage.listArchivedSeries(u.groupScope, u.isAdmin);
+    res.json(list);
+  });
+
+  app.post("/api/series/:id/archive", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getSeries(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    const u = userInfo(req);
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const updated = await storage.archiveSeries(id);
+    res.json(updated);
+  });
+
+  app.post("/api/series/:id/restore", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getSeries(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    const u = userInfo(req);
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const updated = await storage.restoreSeries(id);
+    res.json(updated);
+  });
+
+  app.delete("/api/series/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getSeries(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    const u = userInfo(req);
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    if (!existing.archivedAt) {
+      return res.status(400).json({ message: "Series must be archived before permanent deletion" });
+    }
+    await storage.deleteSeries(id);
+    res.json({ ok: true });
+  });
+
   app.get("/api/products", requireAuth, async (req, res) => {
     const u = userInfo(req);
     const list = await storage.listProducts(u.groupScope, u.isAdmin);

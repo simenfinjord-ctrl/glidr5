@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Snowflake, Hash, Table, ArrowUpDown } from "lucide-react";
+import { Plus, Pencil, Snowflake, Hash, Table, ArrowUpDown, Archive, RotateCcw, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ type Series = {
   createdById: number;
   createdByName: string;
   groupScope: string;
+  archivedAt: string | null;
 };
 
 const schema = z.object({
@@ -293,8 +294,12 @@ export default function TestSkis() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Series | undefined>();
   const [sortAZ, setSortAZ] = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState<Series | undefined>();
+  const [confirmDelete, setConfirmDelete] = useState<Series | undefined>();
 
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
+  const { data: archived = [] } = useQuery<Series[]>({ queryKey: ["/api/series/archived"] });
   const { data: groups = [] } = useQuery<{ id: number; name: string }[]>({ queryKey: ["/api/groups"] });
 
   const userGroups = useMemo(() => {
@@ -309,6 +314,49 @@ export default function TestSkis() {
     return [...series].sort((a, b) => a.name.localeCompare(b.name, "nb"));
   }, [series, sortAZ]);
 
+  const archiveMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("POST", `/api/series/${id}/archive`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/series"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/series/archived"] });
+      toast({ title: "Series archived" });
+      setConfirmArchive(undefined);
+    },
+    onError: (e) => {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    },
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("POST", `/api/series/${id}/restore`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/series"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/series/archived"] });
+      toast({ title: "Series restored" });
+    },
+    onError: (e) => {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/series/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/series/archived"] });
+      toast({ title: "Series permanently deleted" });
+      setConfirmDelete(undefined);
+    },
+    onError: (e) => {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    },
+  });
+
   return (
     <AppShell>
       <div className="flex flex-col gap-5">
@@ -316,11 +364,24 @@ export default function TestSkis() {
           <div>
             <h1 className="text-2xl sm:text-3xl">TestSkis</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-testskis-subtitle">
-              {series.length} series · Create and manage test ski series
+              {series.length} series{archived.length > 0 ? ` · ${archived.length} archived` : ""} · Create and manage test ski series
             </p>
           </div>
 
           <div className="flex items-center gap-2">
+            {archived.length > 0 && (
+              <Button
+                variant={showArchive ? "secondary" : "outline"}
+                size="sm"
+                data-testid="button-toggle-archive"
+                onClick={() => setShowArchive(!showArchive)}
+                className={showArchive ? "ring-1 ring-amber-500/30" : ""}
+              >
+                <Archive className="mr-2 h-4 w-4" />
+                Archive ({archived.length})
+              </Button>
+            )}
+
             <Button
               variant={sortAZ ? "secondary" : "outline"}
               size="sm"
@@ -358,6 +419,67 @@ export default function TestSkis() {
             </Dialog>
           </div>
         </div>
+
+        {showArchive && archived.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-amber-400">Archived series</h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {archived.map((s) => (
+                <Card
+                  key={s.id}
+                  className="fs-card rounded-2xl p-4 opacity-70 transition-all duration-200"
+                  data-testid={`card-archived-series-${s.id}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", typeBadgeClass(s.type))}>
+                          {s.type}
+                        </span>
+                        <span className="truncate text-base font-semibold">{s.name}</span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {s.brand && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/20">
+                            {s.brand}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-300 ring-1 ring-sky-500/20">
+                          <Hash className="h-2.5 w-2.5" /> {s.numberOfSkis} skis
+                        </span>
+                      </div>
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        Archived {s.archivedAt ? new Date(s.archivedAt).toLocaleDateString() : ""}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        data-testid={`button-restore-series-${s.id}`}
+                        disabled={restoreMutation.isPending}
+                        onClick={() => restoreMutation.mutate(s.id)}
+                      >
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Restore
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                        data-testid={`button-delete-series-${s.id}`}
+                        onClick={() => setConfirmDelete(s)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {sortedSeries.length === 0 ? (
@@ -425,12 +547,70 @@ export default function TestSkis() {
                       <Pencil className="mr-2 h-4 w-4" />
                       Edit
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10"
+                      data-testid={`button-archive-series-${s.id}`}
+                      onClick={() => setConfirmArchive(s)}
+                    >
+                      <Archive className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </Card>
             ))
           )}
         </div>
+
+        <Dialog open={!!confirmArchive} onOpenChange={(v) => { if (!v) setConfirmArchive(undefined); }}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader><DialogTitle>Archive series</DialogTitle></DialogHeader>
+            {confirmArchive && (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to archive <span className="font-medium text-foreground">{confirmArchive.name}</span>? You can restore it later from the archive.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setConfirmArchive(undefined)}>Cancel</Button>
+                  <Button
+                    data-testid="button-confirm-archive"
+                    disabled={archiveMutation.isPending}
+                    onClick={() => archiveMutation.mutate(confirmArchive.id)}
+                  >
+                    <Archive className="mr-2 h-4 w-4" />
+                    Archive
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!confirmDelete} onOpenChange={(v) => { if (!v) setConfirmDelete(undefined); }}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader><DialogTitle>Delete permanently</DialogTitle></DialogHeader>
+            {confirmDelete && (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to permanently delete <span className="font-medium text-foreground">{confirmDelete.name}</span>? This cannot be undone.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setConfirmDelete(undefined)}>Cancel</Button>
+                  <Button
+                    variant="destructive"
+                    data-testid="button-confirm-delete-series"
+                    disabled={deleteMutation.isPending}
+                    onClick={() => deleteMutation.mutate(confirmDelete.id)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete permanently
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AppShell>
   );

@@ -5,7 +5,7 @@ Full-stack React web application to manage ski testing and documentation. Featur
 
 ## Architecture
 - **Frontend**: React 19 + Vite + TanStack Query + wouter routing + shadcn/ui + Tailwind CSS v4
-- **Backend**: Express 5 + session-based auth (passport-local) + Drizzle ORM
+- **Backend**: Express 5 + session-based auth (passport-local, connect-pg-simple for PostgreSQL session store) + Drizzle ORM
 - **Database**: PostgreSQL (Neon-backed via Replit)
 - **Design**: Space Grotesk (display) + Inter (UI), glassmorphic cards with backdrop blur, dark theme
 

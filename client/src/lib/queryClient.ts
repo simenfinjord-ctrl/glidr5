@@ -56,6 +56,11 @@ export const getQueryFn: <T>(options: {
         return null;
       }
 
+      if (res.status === 401) {
+        queryClient.setQueryData(["/api/auth/me"], null);
+        throw new Error("Session expired");
+      }
+
       await throwIfResNotOk(res);
       const data = await res.json();
 
@@ -79,8 +84,12 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      staleTime: 5 * 60 * 1000,
+      retry: (failureCount, error) => {
+        if (error instanceof Error && error.message.includes("401")) return false;
+        if (error instanceof Error && error.message === "Session expired") return false;
+        return failureCount < 2;
+      },
     },
     mutations: {
       retry: false,

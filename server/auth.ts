@@ -1,9 +1,10 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import pgSession from "connect-pg-simple";
 import { type Express, type Request } from "express";
 import { storage } from "./storage";
+import { pool } from "./db";
 import { type User } from "@shared/schema";
 
 declare global {
@@ -20,21 +21,24 @@ declare global {
 }
 
 export function setupAuth(app: Express) {
-  const MemoryStore = createMemoryStore(session);
+  const PgStore = pgSession(session);
+
+  const REMEMBER_ME_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
+  const DEFAULT_MAX_AGE = 24 * 60 * 60 * 1000;
 
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "glidr-dev-secret-change-me",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 24 * 60 * 60 * 1000,
+      maxAge: DEFAULT_MAX_AGE,
     },
-    store: new MemoryStore({
-      checkPeriod: 86400000,
+    store: new PgStore({
+      pool: pool as any,
+      tableName: "user_sessions",
+      createTableIfMissing: true,
     }),
   };
-
-  const REMEMBER_ME_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 
   app.use(session(sessionSettings));
   app.use(passport.initialize());

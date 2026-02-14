@@ -27,10 +27,10 @@ Full-stack React web application to manage ski testing and documentation. Featur
 ## Seeded Accounts
 | Email | Group | Admin |
 |---|---|---|
-| admin@glidr.local | Admin | Yes |
-| u23@glidr.local | U23 | No |
-| wc@glidr.local | World Cup | No |
-| biathlon@glidr.local | Biathlon | No |
+| admin@fastski.local | Admin | Yes |
+| u23@fastski.local | U23 | No |
+| wc@fastski.local | World Cup | No |
+| biathlon@fastski.local | Biathlon | No |
 
 ## API Endpoints
 - `POST /api/auth/login` — Login

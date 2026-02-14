@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, PackagePlus, Trash2, Users } from "lucide-react";
+import { Filter, PackagePlus, Pencil, Trash2, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -158,6 +158,111 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
   );
 }
 
+function EditProductModal({
+  product,
+  onSaved,
+}: {
+  product: Product;
+  onSaved: () => void;
+}) {
+  const { toast } = useToast();
+
+  const form = useForm<z.infer<typeof schema>>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      category: product.category as ProductCategory,
+      brand: product.brand,
+      name: product.name,
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (data: z.infer<typeof schema>) => {
+      const res = await apiRequest("PUT", `/api/products/${product.id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({ title: "Product updated" });
+      onSaved();
+    },
+    onError: (e) => {
+      toast({
+        title: "Could not update product",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
+        className="space-y-4"
+      >
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Category</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-edit-product-category">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="Glide product">Glide product</SelectItem>
+                  <SelectItem value="Topping product">Topping product</SelectItem>
+                  <SelectItem value="Structure tool">Structure tool</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="brand"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Brand</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-edit-product-brand" placeholder="e.g., Swix" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Name</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-edit-product-name" placeholder="e.g., HS10" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="flex items-center justify-end">
+          <Button type="submit" data-testid="button-update-product" disabled={mutation.isPending}>
+            {mutation.isPending ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
 function GroupAssignModal({
   product,
   groupNames,
@@ -246,6 +351,7 @@ export default function Products() {
   const [category, setCategory] = useState<ProductCategory | "All">("All");
   const [brand, setBrand] = useState("");
   const [editingProduct, setEditingProduct] = useState<Product | undefined>();
+  const [editingDetailsProduct, setEditingDetailsProduct] = useState<Product | undefined>();
   const [deletingProduct, setDeletingProduct] = useState<Product | undefined>();
   const { toast } = useToast();
 
@@ -373,6 +479,7 @@ export default function Products() {
                 key={p.id}
                 product={p}
                 isAdmin={isAdmin}
+                onEdit={() => setEditingDetailsProduct(p)}
                 onEditGroups={() => setEditingProduct(p)}
                 onDelete={() => setDeletingProduct(p)}
               />
@@ -388,6 +495,18 @@ export default function Products() {
                 product={editingProduct}
                 groupNames={groupNames.length > 0 ? groupNames : uniqueGroups}
                 onDone={() => setEditingProduct(undefined)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!editingDetailsProduct} onOpenChange={(v) => { if (!v) setEditingDetailsProduct(undefined); }}>
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader><DialogTitle>Edit product</DialogTitle></DialogHeader>
+            {editingDetailsProduct && (
+              <EditProductModal
+                product={editingDetailsProduct}
+                onSaved={() => setEditingDetailsProduct(undefined)}
               />
             )}
           </DialogContent>
@@ -425,11 +544,13 @@ export default function Products() {
 function ProductCard({
   product: p,
   isAdmin,
+  onEdit,
   onEditGroups,
   onDelete,
 }: {
   product: Product;
   isAdmin: boolean;
+  onEdit: () => void;
   onEditGroups: () => void;
   onDelete: () => void;
 }) {
@@ -466,29 +587,41 @@ function ProductCard({
           <div className="inline-flex rounded-full border border-border/40 bg-background/40 px-3 py-1 text-xs text-muted-foreground">
             {new Date(p.createdAt).toLocaleDateString()}
           </div>
-          {isAdmin && (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                data-testid={`button-edit-groups-${p.id}`}
-                onClick={onEditGroups}
-              >
-                <Users className="mr-1 h-3 w-3" />
-                Groups
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
-                data-testid={`button-delete-product-${p.id}`}
-                onClick={onDelete}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs text-muted-foreground hover:text-foreground"
+              data-testid={`button-edit-product-${p.id}`}
+              onClick={onEdit}
+            >
+              <Pencil className="mr-1 h-3 w-3" />
+              Edit
+            </Button>
+            {isAdmin && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                  data-testid={`button-edit-groups-${p.id}`}
+                  onClick={onEditGroups}
+                >
+                  <Users className="mr-1 h-3 w-3" />
+                  Groups
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                  data-testid={`button-delete-product-${p.id}`}
+                  onClick={onDelete}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </Card>

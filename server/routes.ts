@@ -157,10 +157,12 @@ export async function registerRoutes(
 
   app.put("/api/products/:id", requireAuth, async (req, res) => {
     const u = userInfo(req);
-    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
     const id = parseInt(req.params.id);
     const data: any = {};
-    if (req.body.groupScope !== undefined) data.groupScope = req.body.groupScope;
+    if (req.body.groupScope !== undefined) {
+      if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+      data.groupScope = req.body.groupScope;
+    }
     if (req.body.category !== undefined) data.category = req.body.category;
     if (req.body.brand !== undefined) data.brand = req.body.brand;
     if (req.body.name !== undefined) data.name = req.body.name;

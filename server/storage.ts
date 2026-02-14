@@ -47,6 +47,7 @@ export interface IStorage {
   getWeather(id: number): Promise<Weather | undefined>;
   createWeather(w: InsertWeather): Promise<Weather>;
   updateWeather(id: number, w: Partial<InsertWeather>): Promise<Weather | undefined>;
+  deleteWeather(id: number): Promise<boolean>;
   findWeather(date: string, location: string, groupScope: string): Promise<Weather | undefined>;
 
   listTests(groupScope: string, isAdmin: boolean): Promise<Test[]>;
@@ -221,6 +222,11 @@ export class DatabaseStorage implements IStorage {
   async updateWeather(id: number, w: Partial<InsertWeather>): Promise<Weather | undefined> {
     const [updated] = await db.update(dailyWeather).set(w).where(eq(dailyWeather.id, id)).returning();
     return updated;
+  }
+
+  async deleteWeather(id: number): Promise<boolean> {
+    const result = await db.delete(dailyWeather).where(eq(dailyWeather.id, id));
+    return (result as any).rowCount > 0;
   }
 
   async findWeather(date: string, location: string, groupScope: string): Promise<Weather | undefined> {

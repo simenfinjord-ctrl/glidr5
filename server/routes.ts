@@ -101,6 +101,8 @@ export async function registerRoutes(
     const result = await storage.createSeries({
       name: req.body.name,
       type: req.body.type,
+      brand: req.body.brand?.trim() || null,
+      skiType: req.body.skiType?.trim() || null,
       grind: req.body.grind || null,
       numberOfSkis: req.body.numberOfSkis ?? 8,
       lastRegrind: req.body.lastRegrind || null,
@@ -128,6 +130,7 @@ export async function registerRoutes(
       lastRegrind: req.body.lastRegrind || null,
     };
     if (req.body.brand !== undefined) data.brand = req.body.brand;
+    if (req.body.skiType !== undefined) data.skiType = req.body.skiType;
     if (req.body.groupScope) data.groupScope = req.body.groupScope;
     const updated = await storage.updateSeries(id, data);
     res.json(updated);
@@ -298,6 +301,18 @@ export async function registerRoutes(
       snowType: req.body.snowType?.trim() || null,
     });
     res.json(updated);
+  });
+
+  app.delete("/api/weather/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getWeather(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    const u = userInfo(req);
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    await storage.deleteWeather(id);
+    res.json({ ok: true });
   });
 
   app.get("/api/tests", requireAuth, async (req, res) => {

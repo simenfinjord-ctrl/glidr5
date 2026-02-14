@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Thermometer, Droplets, Snowflake, MapPin, Cloud, Wind, Eye, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, Thermometer, Droplets, Snowflake, MapPin, Cloud, Wind, Eye, Star } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -580,10 +580,26 @@ function WeatherBadge({ label, value, colorClass }: { label: string; value: stri
 }
 
 export default function WeatherPage() {
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Weather | undefined>();
+  const [confirmDelete, setConfirmDelete] = useState<Weather | undefined>();
 
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/weather/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/weather"] });
+      toast({ title: "Weather log deleted" });
+      setConfirmDelete(undefined);
+    },
+    onError: (e) => {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    },
+  });
 
   return (
     <AppShell>
@@ -709,23 +725,59 @@ export default function WeatherPage() {
                     </div>
                   </div>
 
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    data-testid={`button-edit-weather-${w.id}`}
-                    onClick={() => {
-                      setEditing(w);
-                      setOpen(true);
-                    }}
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      data-testid={`button-edit-weather-${w.id}`}
+                      onClick={() => {
+                        setEditing(w);
+                        setOpen(true);
+                      }}
+                    >
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground/50 hover:text-red-400 hover:bg-red-500/10"
+                      data-testid={`button-delete-weather-${w.id}`}
+                      onClick={() => setConfirmDelete(w)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </Card>
             ))
           )}
         </div>
+
+        <Dialog open={!!confirmDelete} onOpenChange={(v) => { if (!v) setConfirmDelete(undefined); }}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader><DialogTitle>Delete weather log</DialogTitle></DialogHeader>
+            {confirmDelete && (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to delete the weather log for <span className="font-medium text-foreground">{confirmDelete.location}</span> on <span className="font-medium text-foreground">{confirmDelete.date}</span>?
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setConfirmDelete(undefined)}>Cancel</Button>
+                  <Button
+                    variant="destructive"
+                    data-testid="button-confirm-delete-weather"
+                    disabled={deleteMutation.isPending}
+                    onClick={() => deleteMutation.mutate(confirmDelete.id)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AppShell>
   );

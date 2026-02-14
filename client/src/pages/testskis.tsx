@@ -23,6 +23,7 @@ type Series = {
   name: string;
   type: string;
   brand: string | null;
+  skiType: string | null;
   grind: string | null;
   numberOfSkis: number;
   lastRegrind: string | null;
@@ -37,6 +38,7 @@ const schema = z.object({
   name: z.string().min(1, "Name is required"),
   type: z.enum(["Structure", "Glide", "Grind"]),
   brand: z.string().optional(),
+  skiType: z.string().optional(),
   grind: z.string().optional(),
   numberOfSkis: z.coerce.number().int().min(1, "Must be at least 1"),
   lastRegrind: z.string().optional(),
@@ -67,6 +69,7 @@ function SeriesForm({
       name: initial?.name ?? "",
       type: (initial?.type ?? "Glide") as "Structure" | "Glide" | "Grind",
       brand: initial?.brand ?? "",
+      skiType: initial?.skiType ?? "",
       grind: initial?.grind ?? "",
       numberOfSkis: initial?.numberOfSkis ?? 8,
       lastRegrind: initial?.lastRegrind ?? "",
@@ -81,6 +84,7 @@ function SeriesForm({
           name: data.name,
           type: data.type,
           brand: data.brand?.trim() || null,
+          skiType: data.skiType?.trim() || null,
           grind: data.grind?.trim() || null,
           numberOfSkis: data.numberOfSkis,
           lastRegrind: data.lastRegrind || null,
@@ -120,6 +124,7 @@ function SeriesForm({
         name: data.name,
         type: data.type,
         brand: data.brand?.trim() || null,
+        skiType: data.skiType?.trim() || null,
         grind: data.grind?.trim() || null,
         numberOfSkis: data.numberOfSkis,
         lastRegrind: data.lastRegrind || null,
@@ -184,6 +189,20 @@ function SeriesForm({
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="skiType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Ski type</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-series-skitype" placeholder="e.g., Classic, Skate" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name="type"
@@ -427,28 +446,21 @@ export default function TestSkis() {
               {archived.map((s) => (
                 <Card
                   key={s.id}
-                  className="fs-card rounded-2xl p-4 opacity-70 transition-all duration-200"
+                  className="fs-card rounded-2xl p-4 opacity-60 transition-all duration-200"
                   data-testid={`card-archived-series-${s.id}`}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", typeBadgeClass(s.type))}>
                           {s.type}
                         </span>
                         <span className="truncate text-base font-semibold">{s.name}</span>
                       </div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {s.brand && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/20">
-                            {s.brand}
-                          </span>
-                        )}
-                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-300 ring-1 ring-sky-500/20">
-                          <Hash className="h-2.5 w-2.5" /> {s.numberOfSkis} skis
-                        </span>
+                      <div className="mt-1.5 text-sm text-muted-foreground">
+                        {[s.brand, s.skiType, `${s.numberOfSkis} skis`].filter(Boolean).join(" · ")}
                       </div>
-                      <div className="mt-2 text-xs text-muted-foreground">
+                      <div className="mt-1 text-xs text-muted-foreground/60">
                         Archived {s.archivedAt ? new Date(s.archivedAt).toLocaleDateString() : ""}
                       </div>
                     </div>
@@ -490,45 +502,32 @@ export default function TestSkis() {
             sortedSeries.map((s) => (
               <Card
                 key={s.id}
-                className="fs-card rounded-2xl p-4 transition-all duration-200 hover:shadow-lg hover:shadow-sky-500/5"
+                className="fs-card rounded-2xl p-4 transition-all duration-200"
                 data-testid={`card-series-${s.id}`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", typeBadgeClass(s.type))}>
                         {s.type}
                       </span>
                       <span className="truncate text-base font-semibold">{s.name}</span>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {s.brand && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/20">
-                          {s.brand}
-                        </span>
-                      )}
-                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-300 ring-1 ring-sky-500/20">
-                        <Hash className="h-2.5 w-2.5" /> {s.numberOfSkis} skis
-                      </span>
-                      {s.grind && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-300 ring-1 ring-amber-500/20">
-                          Grind {s.grind}
-                        </span>
-                      )}
-                      {s.lastRegrind && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-300 ring-1 ring-violet-500/20">
-                          Regrind {s.lastRegrind}
-                        </span>
-                      )}
+                    <div className="mt-1.5 text-sm text-muted-foreground">
+                      {[
+                        s.brand,
+                        s.skiType,
+                        `${s.numberOfSkis} skis`,
+                        s.grind ? `Grind ${s.grind}` : null,
+                        s.lastRegrind ? `Regrind ${s.lastRegrind}` : null,
+                      ].filter(Boolean).join(" · ")}
                     </div>
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      <span className="text-foreground/70">{s.createdByName}</span>
-                      <span className="text-border"> · </span>
-                      <span>{s.groupScope}</span>
+                    <div className="mt-1 text-xs text-muted-foreground/60">
+                      {s.createdByName} · {s.groupScope}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <AppLink href={`/testskis/${s.id}`} testId={`link-series-tests-${s.id}`}>
                       <Button variant="secondary" size="sm" data-testid={`button-view-series-${s.id}`}>
                         <Table className="mr-2 h-4 w-4" />
@@ -536,7 +535,7 @@ export default function TestSkis() {
                       </Button>
                     </AppLink>
                     <Button
-                      variant="secondary"
+                      variant="ghost"
                       size="sm"
                       data-testid={`button-edit-series-${s.id}`}
                       onClick={() => {
@@ -544,13 +543,12 @@ export default function TestSkis() {
                         setOpen(true);
                       }}
                     >
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit
+                      <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10"
+                      className="text-muted-foreground/50 hover:text-amber-400 hover:bg-amber-500/10"
                       data-testid={`button-archive-series-${s.id}`}
                       onClick={() => setConfirmArchive(s)}
                     >

@@ -95,7 +95,9 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Combined products displayed with "+" separator between names (e.g., "Brand A + Brand B")
 - Hide/Show on test detail blanks Product/Method cells instead of removing columns
 - Brand and product name displayed with space separator (no em dash)
-- Test ski series have optional Brand field
+- Test ski series have optional Brand and Ski type fields
+- Weather logs can be deleted (with confirmation dialog)
+- DELETE /api/weather/:id — Delete weather log
 - Series detail page (/testskis/:id) shows all tests for a series with results tables
 - Tests page has day picker: select a date to see all tests stacked with inline results tables
 - Quick day select buttons show recent test dates for fast navigation

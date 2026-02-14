@@ -29,6 +29,7 @@ export const testSkiSeries = pgTable("test_ski_series", {
   name: text("name").notNull(),
   type: text("type").notNull(),
   brand: text("brand"),
+  skiType: text("ski_type"),
   grind: text("grind"),
   numberOfSkis: integer("number_of_skis").notNull().default(8),
   lastRegrind: text("last_regrind"),

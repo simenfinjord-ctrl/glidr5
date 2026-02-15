@@ -48,44 +48,44 @@
 }
 
 :root {
-  --background: 210 22% 98%;
-  --foreground: 222 30% 10%;
+  --background: 210 20% 98%;
+  --foreground: 220 20% 14%;
 
   --card: 0 0% 100%;
-  --card-foreground: 222 30% 10%;
+  --card-foreground: 220 20% 14%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 222 30% 10%;
+  --popover-foreground: 220 20% 14%;
 
-  --primary: 212 86% 46%;
+  --primary: 215 80% 48%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 210 18% 93%;
-  --secondary-foreground: 222 30% 12%;
+  --secondary: 214 16% 94%;
+  --secondary-foreground: 220 14% 24%;
 
-  --muted: 210 16% 94%;
-  --muted-foreground: 222 12% 40%;
+  --muted: 214 12% 95%;
+  --muted-foreground: 220 10% 46%;
 
-  --accent: 198 90% 44%;
+  --accent: 215 80% 48%;
   --accent-foreground: 0 0% 100%;
 
-  --destructive: 0 76% 50%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 214 18% 86%;
-  --input: 214 18% 82%;
-  --ring: 212 86% 46%;
+  --border: 216 14% 90%;
+  --input: 216 14% 87%;
+  --ring: 215 80% 48%;
 
   --sidebar: 0 0% 100%;
-  --sidebar-foreground: 222 30% 10%;
-  --sidebar-border: 214 18% 86%;
-  --sidebar-primary: 212 86% 46%;
+  --sidebar-foreground: 220 20% 14%;
+  --sidebar-border: 216 14% 90%;
+  --sidebar-primary: 215 80% 48%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 210 16% 94%;
-  --sidebar-accent-foreground: 222 30% 12%;
-  --sidebar-ring: 212 86% 46%;
+  --sidebar-accent: 214 12% 95%;
+  --sidebar-accent-foreground: 220 14% 24%;
+  --sidebar-ring: 215 80% 48%;
 
-  --radius: 14px;
+  --radius: 12px;
 
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
@@ -93,42 +93,42 @@
 }
 
 .dark {
-  --background: 222 28% 8%;
-  --foreground: 210 30% 96%;
+  --background: 224 20% 10%;
+  --foreground: 210 20% 95%;
 
-  --card: 222 26% 11%;
-  --card-foreground: 210 30% 96%;
+  --card: 224 18% 13%;
+  --card-foreground: 210 20% 95%;
 
-  --popover: 222 26% 11%;
-  --popover-foreground: 210 30% 96%;
+  --popover: 224 18% 13%;
+  --popover-foreground: 210 20% 95%;
 
-  --primary: 212 92% 58%;
-  --primary-foreground: 222 28% 8%;
+  --primary: 215 85% 58%;
+  --primary-foreground: 224 20% 10%;
 
-  --secondary: 222 18% 18%;
-  --secondary-foreground: 210 30% 96%;
+  --secondary: 224 14% 20%;
+  --secondary-foreground: 210 20% 95%;
 
-  --muted: 222 18% 18%;
-  --muted-foreground: 215 18% 70%;
+  --muted: 224 14% 20%;
+  --muted-foreground: 215 14% 65%;
 
-  --accent: 198 90% 52%;
-  --accent-foreground: 222 28% 8%;
+  --accent: 215 85% 58%;
+  --accent-foreground: 224 20% 10%;
 
   --destructive: 0 78% 55%;
-  --destructive-foreground: 222 28% 8%;
+  --destructive-foreground: 224 20% 10%;
 
-  --border: 222 16% 22%;
-  --input: 222 16% 26%;
-  --ring: 212 92% 58%;
+  --border: 224 12% 22%;
+  --input: 224 12% 26%;
+  --ring: 215 85% 58%;
 
-  --sidebar: 222 26% 11%;
-  --sidebar-foreground: 210 30% 96%;
-  --sidebar-border: 222 16% 22%;
-  --sidebar-primary: 212 92% 58%;
-  --sidebar-primary-foreground: 222 28% 8%;
-  --sidebar-accent: 222 18% 18%;
-  --sidebar-accent-foreground: 210 30% 96%;
-  --sidebar-ring: 212 92% 58%;
+  --sidebar: 224 18% 13%;
+  --sidebar-foreground: 210 20% 95%;
+  --sidebar-border: 224 12% 22%;
+  --sidebar-primary: 215 85% 58%;
+  --sidebar-primary-foreground: 224 20% 10%;
+  --sidebar-accent: 224 14% 20%;
+  --sidebar-accent-foreground: 210 20% 95%;
+  --sidebar-ring: 215 85% 58%;
 }
 
 @layer base {
@@ -151,77 +151,69 @@
 
 @layer utilities {
   .fs-grid {
-    background-image:
-      radial-gradient(1000px 400px at 5% -5%, hsl(212 92% 58% / 0.15), transparent 60%),
-      radial-gradient(800px 350px at 95% -5%, hsl(160 84% 39% / 0.10), transparent 55%),
-      radial-gradient(600px 250px at 50% 0%, hsl(280 80% 60% / 0.06), transparent 50%),
-      radial-gradient(900px 360px at 50% 110%, hsl(198 90% 52% / 0.10), transparent 60%),
-      linear-gradient(to bottom, hsl(var(--background)), hsl(var(--background)));
+    background: hsl(var(--background));
   }
 
   .fs-card {
-    background: hsl(var(--card) / 0.72);
-    backdrop-filter: blur(12px);
-    border: 1px solid hsl(var(--border) / 0.9);
-    box-shadow:
-      0 14px 44px -24px hsl(222 28% 8% / 0.25),
-      0 1px 0 hsl(0 0% 100% / 0.06) inset;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 1px 3px hsl(220 20% 14% / 0.06), 0 1px 2px hsl(220 20% 14% / 0.04);
   }
 
   .fs-focus {
     outline: none;
     box-shadow:
-      0 0 0 4px hsl(var(--primary) / 0.18),
-      0 0 0 1px hsl(var(--primary) / 0.55);
+      0 0 0 3px hsl(var(--primary) / 0.15),
+      0 0 0 1px hsl(var(--primary) / 0.4);
   }
 
   .fs-badge-glide {
-    background: hsl(212 92% 58% / 0.15);
-    color: hsl(212 92% 68%);
-    border: 1px solid hsl(212 92% 58% / 0.25);
+    background: hsl(215 80% 48% / 0.08);
+    color: hsl(215 80% 40%);
+    border: 1px solid hsl(215 80% 48% / 0.2);
   }
 
   .fs-badge-structure {
-    background: hsl(280 80% 60% / 0.15);
-    color: hsl(280 80% 70%);
-    border: 1px solid hsl(280 80% 60% / 0.25);
+    background: hsl(270 60% 55% / 0.08);
+    color: hsl(270 60% 42%);
+    border: 1px solid hsl(270 60% 55% / 0.2);
   }
 
   .fs-badge-topping {
-    background: hsl(35 95% 55% / 0.15);
-    color: hsl(35 95% 65%);
-    border: 1px solid hsl(35 95% 55% / 0.25);
+    background: hsl(35 85% 50% / 0.08);
+    color: hsl(35 85% 38%);
+    border: 1px solid hsl(35 85% 50% / 0.2);
   }
 
   .fs-gradient-blue {
-    background: linear-gradient(135deg, hsl(212 92% 58% / 0.15), hsl(198 90% 52% / 0.08));
+    background: hsl(215 80% 48% / 0.04);
   }
 
   .fs-gradient-emerald {
-    background: linear-gradient(135deg, hsl(160 84% 39% / 0.15), hsl(160 84% 39% / 0.05));
+    background: hsl(160 70% 40% / 0.04);
   }
 
   .fs-gradient-violet {
-    background: linear-gradient(135deg, hsl(280 80% 60% / 0.15), hsl(280 80% 60% / 0.05));
+    background: hsl(270 60% 55% / 0.04);
   }
 
   .fs-gradient-amber {
-    background: linear-gradient(135deg, hsl(35 95% 55% / 0.15), hsl(35 95% 55% / 0.05));
+    background: hsl(35 85% 50% / 0.04);
   }
 
   .fs-stat-blue {
-    border-left: 3px solid hsl(212 92% 58%);
+    border-left: 3px solid hsl(215 80% 48%);
   }
 
   .fs-stat-emerald {
-    border-left: 3px solid hsl(160 84% 39%);
+    border-left: 3px solid hsl(160 70% 40%);
   }
 
   .fs-stat-violet {
-    border-left: 3px solid hsl(280 80% 60%);
+    border-left: 3px solid hsl(270 60% 55%);
   }
 
   .fs-stat-amber {
-    border-left: 3px solid hsl(35 95% 55%);
+    border-left: 3px solid hsl(35 85% 50%);
   }
 }

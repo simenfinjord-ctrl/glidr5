@@ -168,7 +168,7 @@ export default function SeriesDetail() {
               {series.type}
             </span>
             {series.brand && (
-              <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300 ring-1 ring-emerald-500/20">
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
                 {series.brand}
               </span>
             )}
@@ -209,7 +209,7 @@ export default function SeriesDetail() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm" data-testid={`table-series-test-${test.id}`}>
                       <thead>
-                        <tr className="border-b border-border/50 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <tr className="border-b border-gray-200 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                           <th className="pb-2 pr-3">Ski</th>
                           <th className="pb-2 pr-3">Product</th>
                           <th className="pb-2 pr-3">Method</th>
@@ -268,7 +268,7 @@ export default function SeriesDetail() {
                               </td>
                               <td className="py-2 text-xs">
                                 {entry.feelingRank != null ? (
-                                  <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-violet-300">
+                                  <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700">
                                     {entry.feelingRank}
                                   </span>
                                 ) : "—"}

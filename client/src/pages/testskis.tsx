@@ -394,7 +394,7 @@ export default function TestSkis() {
                 size="sm"
                 data-testid="button-toggle-archive"
                 onClick={() => setShowArchive(!showArchive)}
-                className={showArchive ? "ring-1 ring-amber-500/30" : ""}
+                className={showArchive ? "ring-1 ring-amber-200" : ""}
               >
                 <Archive className="mr-2 h-4 w-4" />
                 Archive ({archived.length})
@@ -441,7 +441,7 @@ export default function TestSkis() {
 
         {showArchive && archived.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-amber-400">Archived series</h2>
+            <h2 className="text-lg font-semibold text-amber-600">Archived series</h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {archived.map((s) => (
                 <Card
@@ -548,7 +548,7 @@ export default function TestSkis() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-muted-foreground/50 hover:text-amber-400 hover:bg-amber-500/10"
+                      className="text-muted-foreground/50 hover:text-amber-600 hover:bg-amber-50"
                       data-testid={`button-archive-series-${s.id}`}
                       onClick={() => setConfirmArchive(s)}
                     >

@@ -60,7 +60,7 @@ function GroupCheckboxes({
               "inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-all",
               checked
                 ? "border-primary/50 bg-primary/10 text-primary ring-1 ring-primary/20"
-                : "border-border/40 bg-background/30 text-muted-foreground hover:bg-background/50"
+                : "border-gray-100 bg-gray-50/50 text-muted-foreground hover:bg-background/50"
             )}
             data-testid={`${testIdPrefix}-${g}`}
           >
@@ -436,7 +436,7 @@ export default function Admin() {
                   <div className="flex items-center gap-2">
                     <div className={cn(
                       "rounded-full border px-3 py-1 text-xs",
-                      u.isAdmin ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : "bg-card/70"
+                      u.isAdmin ? "border-amber-500/30 bg-amber-50 text-amber-600" : "bg-white"
                     )}>
                       {u.isAdmin ? "Admin" : "Member"}
                     </div>
@@ -521,7 +521,7 @@ export default function Admin() {
                       disabled={!editingGroupName.trim() || updateGroupMutation.isPending}
                       onClick={() => updateGroupMutation.mutate({ id: g.id, name: editingGroupName.trim() })}
                     >
-                      <Check className="h-4 w-4 text-emerald-400" />
+                      <Check className="h-4 w-4 text-emerald-600" />
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => setEditingGroup(null)} data-testid="button-cancel-edit-group">
                       <X className="h-4 w-4" />
@@ -593,7 +593,7 @@ export default function Admin() {
             <div className="max-h-80 overflow-y-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="pb-2 pr-3">Name</th>
                     <th className="pb-2 pr-3">Email</th>
                     <th className="pb-2">Login Time</th>

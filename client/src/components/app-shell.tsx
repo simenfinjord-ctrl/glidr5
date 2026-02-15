@@ -26,6 +26,7 @@ type NavItem = {
   testId: string;
   color: string;
   activeColor: string;
+  activeBg: string;
   adminOnly?: boolean;
 };
 
@@ -35,56 +36,63 @@ const nav: NavItem[] = [
     label: "Dashboard",
     icon: LayoutDashboard,
     testId: "link-dashboard",
-    color: "text-blue-400/70",
-    activeColor: "text-blue-400",
+    color: "text-gray-500",
+    activeColor: "text-blue-600",
+    activeBg: "bg-blue-50",
   },
   {
     href: "/tests",
     label: "Tests",
     icon: ListChecks,
     testId: "link-tests",
-    color: "text-emerald-400/70",
-    activeColor: "text-emerald-400",
+    color: "text-gray-500",
+    activeColor: "text-emerald-600",
+    activeBg: "bg-emerald-50",
   },
   {
     href: "/testskis",
     label: "TestSkis",
     icon: Snowflake,
     testId: "link-testskis",
-    color: "text-sky-400/70",
-    activeColor: "text-sky-400",
+    color: "text-gray-500",
+    activeColor: "text-sky-600",
+    activeBg: "bg-sky-50",
   },
   {
     href: "/products",
     label: "Products",
     icon: Package,
     testId: "link-products",
-    color: "text-amber-400/70",
-    activeColor: "text-amber-400",
+    color: "text-gray-500",
+    activeColor: "text-amber-600",
+    activeBg: "bg-amber-50",
   },
   {
     href: "/weather",
     label: "Weather",
     icon: CloudSun,
     testId: "link-weather",
-    color: "text-violet-400/70",
-    activeColor: "text-violet-400",
+    color: "text-gray-500",
+    activeColor: "text-violet-600",
+    activeBg: "bg-violet-50",
   },
   {
     href: "/analytics",
     label: "Analytics",
     icon: BarChart3,
     testId: "link-analytics",
-    color: "text-pink-400/70",
-    activeColor: "text-pink-400",
+    color: "text-gray-500",
+    activeColor: "text-pink-600",
+    activeBg: "bg-pink-50",
   },
   {
     href: "/admin",
     label: "Admin",
     icon: Shield,
     testId: "link-admin",
-    color: "text-rose-400/70",
-    activeColor: "text-rose-400",
+    color: "text-gray-500",
+    activeColor: "text-rose-600",
+    activeBg: "bg-rose-50",
     adminOnly: true,
   },
 ];
@@ -98,27 +106,25 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen fs-grid">
-      <header className="sticky top-0 z-40 border-b border-border/50 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3">
+      <header className="sticky top-0 z-40 border-b border-border bg-white/80 backdrop-blur-lg">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-sky-400 flex items-center justify-center text-white font-bold text-lg">G</div>
+              <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-white font-bold text-base shadow-sm">G</div>
               <div className={cn(
-                "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-background",
+                "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white",
                 isOnline ? "bg-emerald-500" : "bg-amber-500"
               )} />
             </div>
             <div className="min-w-0">
-              <div className="flex items-baseline gap-2">
-                <span className="text-base font-bold tracking-tight bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">Glidr</span>
-              </div>
-              <div className="text-[11px] text-muted-foreground">Ski testing & documentation</div>
+              <span className="text-base font-bold tracking-tight text-gray-900">Glidr</span>
+              <div className="text-[11px] text-gray-400 leading-tight">Ski testing & documentation</div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             {!isOnline && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-medium text-amber-400 ring-1 ring-amber-500/30" data-testid="badge-offline">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200" data-testid="badge-offline">
                 <WifiOff className="h-3 w-3" />
                 Offline
               </span>
@@ -130,7 +136,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 data-testid="button-sync"
                 onClick={() => syncNow()}
                 disabled={isSyncing || !isOnline}
-                className="text-amber-400 hover:text-amber-300"
+                className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
               >
                 {isSyncing ? (
                   <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" />
@@ -140,20 +146,22 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {pendingCount} pending
               </Button>
             )}
+            <div className="hidden sm:flex items-center gap-2 text-sm text-gray-500 mr-1">
+              <span>{user?.name}</span>
+            </div>
             <Button
               variant="ghost"
               size="sm"
               data-testid="button-logout"
               onClick={() => logout()}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100"
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              Log out
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </div>
-        <div className="mx-auto w-full max-w-6xl px-4 pb-3">
-          <nav className="flex flex-wrap items-center gap-1.5" data-testid="nav-primary">
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 pb-3">
+          <nav className="flex flex-wrap items-center gap-1" data-testid="nav-primary">
             {visibleNav.map((item) => {
               const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
               const Icon = item.icon;
@@ -163,10 +171,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                   href={item.href}
                   testId={item.testId}
                   className={cn(
-                    "group inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-all duration-200",
+                    "group inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150",
                     active
-                      ? "bg-card/80 shadow-sm ring-1 ring-border/60 text-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-card/40",
+                      ? `${item.activeBg} ${item.activeColor} shadow-sm`
+                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-100",
                   )}
                 >
                   <Icon
@@ -183,15 +191,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-6">
-        <div className="fs-card rounded-3xl p-4 sm:p-6">{children}</div>
+      <main className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-6">
+        <div className="fs-card rounded-2xl p-4 sm:p-6">{children}</div>
       </main>
 
-      <footer className="mx-auto w-full max-w-6xl px-4 pb-10">
-        <div className="mb-4 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <footer className="mx-auto w-full max-w-6xl px-4 sm:px-6 pb-8">
+        <div className="mb-3 h-px bg-gray-100" />
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
           <span className="font-medium">Glidr</span>
-          <span>Designed for fast tablet entry</span>
+          <span>Ski testing & documentation</span>
         </div>
       </footer>
     </div>

@@ -230,7 +230,7 @@ export default function Analytics() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text" data-testid="text-analytics-title">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900" data-testid="text-analytics-title">
               Analytics
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -262,8 +262,8 @@ export default function Analytics() {
           <>
             <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-wins-trend">
               <div className="flex items-center gap-2 mb-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10">
-                  <TrendingUp className="h-4 w-4 text-emerald-400" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50">
+                  <TrendingUp className="h-4 w-4 text-emerald-600" />
                 </div>
                 <h2 className="text-base font-semibold">Product wins over time</h2>
               </div>
@@ -303,8 +303,8 @@ export default function Analytics() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-avg-rank">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/10">
-                    <Award className="h-4 w-4 text-blue-400" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50">
+                    <Award className="h-4 w-4 text-blue-600" />
                   </div>
                   <h2 className="text-base font-semibold">Average rank by product</h2>
                   <span className="text-xs text-muted-foreground">(min 2 tests)</span>
@@ -341,8 +341,8 @@ export default function Analytics() {
 
               <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-tests-month">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/10">
-                    <BarChart3 className="h-4 w-4 text-violet-400" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50">
+                    <BarChart3 className="h-4 w-4 text-violet-600" />
                   </div>
                   <h2 className="text-base font-semibold">Tests per month</h2>
                 </div>
@@ -373,8 +373,8 @@ export default function Analytics() {
 
             <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-temp-rank">
               <div className="flex items-center gap-2 mb-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10">
-                  <Thermometer className="h-4 w-4 text-amber-400" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50">
+                  <Thermometer className="h-4 w-4 text-amber-600" />
                 </div>
                 <h2 className="text-base font-semibold">Snow temperature vs. rank</h2>
                 <span className="text-xs text-muted-foreground">(top 6 products, lower rank = better)</span>

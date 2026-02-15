@@ -301,7 +301,7 @@ function GroupAssignModal({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border/40 bg-background/30 p-3">
+      <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3">
         <div className="text-sm font-medium">{product.brand} {product.name}</div>
         <div className="mt-1 text-xs text-muted-foreground">
           Currently in: <span className="font-medium text-foreground">{product.groupScope}</span>
@@ -317,7 +317,7 @@ function GroupAssignModal({
                 "flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 transition-colors",
                 selected.includes(g)
                   ? "border-primary/40 bg-primary/5"
-                  : "border-border/40 bg-background/30 hover:bg-background/50"
+                  : "border-gray-100 bg-gray-50/50 hover:bg-background/50"
               )}
             >
               <Checkbox
@@ -426,8 +426,8 @@ export default function Products() {
         <Card className="fs-card rounded-2xl p-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="inline-flex items-center gap-2 text-sm font-semibold">
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/10">
-                <Filter className="h-3.5 w-3.5 text-amber-400" />
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50">
+                <Filter className="h-3.5 w-3.5 text-amber-600" />
               </div>
               Filters
             </div>
@@ -571,7 +571,7 @@ function ProductCard({
           <div className="mt-2 truncate text-base font-semibold">{p.brand} {p.name}</div>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {groups.map((g) => (
-              <span key={g} className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/20">
+              <span key={g} className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">
                 {g}
               </span>
             ))}
@@ -584,7 +584,7 @@ function ProductCard({
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <div className="inline-flex rounded-full border border-border/40 bg-background/40 px-3 py-1 text-xs text-muted-foreground">
+          <div className="inline-flex rounded-full border border-gray-100 bg-background/40 px-3 py-1 text-xs text-muted-foreground">
             {new Date(p.createdAt).toLocaleDateString()}
           </div>
           <div className="flex items-center gap-1">

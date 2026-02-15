@@ -35,35 +35,37 @@ export default function Login() {
       className="min-h-screen flex items-center justify-center px-4"
       style={{
         background: `
-          radial-gradient(1200px 500px at 30% 20%, hsl(212 92% 58% / 0.10), transparent 60%),
-          radial-gradient(800px 400px at 70% 80%, hsl(160 84% 39% / 0.06), transparent 55%),
-          hsl(222 28% 8%)
+          radial-gradient(ellipse 80% 60% at 50% -10%, hsl(212 80% 92% / 0.8), transparent 60%),
+          radial-gradient(ellipse 60% 50% at 80% 100%, hsl(198 70% 90% / 0.5), transparent 50%),
+          hsl(210 25% 97%)
         `,
       }}
     >
-      <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center gap-3 mb-8">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">
-              Glidr
+      <div className="w-full max-w-[400px]">
+        <div className="flex flex-col items-center gap-2 mb-8">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/25">
+            G
+          </div>
+          <div className="text-center mt-2">
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+              Welcome to Glidr
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Ski testing & documentation platform
+            <p className="mt-1 text-sm text-gray-500">
+              Sign in to your ski testing account
             </p>
           </div>
         </div>
 
-        <Card className="fs-card overflow-hidden border-border/40">
-          <div className="h-0.5 bg-gradient-to-r from-blue-500 via-emerald-400 to-violet-500" />
-          <CardContent className="p-6">
+        <Card className="bg-white shadow-xl shadow-gray-200/50 border-gray-200/80 rounded-2xl">
+          <CardContent className="p-7">
             {showForgot ? (
               <div className="space-y-4">
                 <div className="text-center space-y-2">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10">
-                    <Mail className="h-6 w-6 text-blue-400" />
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
+                    <Mail className="h-6 w-6 text-blue-600" />
                   </div>
-                  <h2 className="text-lg font-semibold">Forgot password?</h2>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <h2 className="text-lg font-semibold text-gray-900">Forgot password?</h2>
+                  <p className="text-sm text-gray-500 leading-relaxed">
                     Contact your team administrator to reset your password. Admins can reset passwords from the Admin panel.
                   </p>
                 </div>
@@ -102,15 +104,15 @@ export default function Login() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs uppercase tracking-wider text-muted-foreground">Email</FormLabel>
+                        <FormLabel className="text-sm font-medium text-gray-700">Email</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
                               {...field}
                               placeholder="name@team.org"
                               autoComplete="email"
-                              className="pl-10"
+                              className="pl-10 h-11 bg-gray-50/50 border-gray-200 focus:bg-white"
                               data-testid="input-email"
                             />
                           </div>
@@ -125,10 +127,10 @@ export default function Login() {
                     render={({ field }) => (
                       <FormItem>
                         <div className="flex items-center justify-between">
-                          <FormLabel className="text-xs uppercase tracking-wider text-muted-foreground">Password</FormLabel>
+                          <FormLabel className="text-sm font-medium text-gray-700">Password</FormLabel>
                           <button
                             type="button"
-                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                            className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
                             onClick={() => setShowForgot(true)}
                             data-testid="button-forgot-password"
                           >
@@ -137,13 +139,13 @@ export default function Login() {
                         </div>
                         <FormControl>
                           <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
                               {...field}
                               type="password"
                               placeholder="Enter your password"
                               autoComplete="current-password"
-                              className="pl-10"
+                              className="pl-10 h-11 bg-gray-50/50 border-gray-200 focus:bg-white"
                               data-testid="input-password"
                             />
                           </div>
@@ -165,14 +167,14 @@ export default function Login() {
                             data-testid="checkbox-remember-me"
                           />
                         </FormControl>
-                        <FormLabel className="text-sm text-muted-foreground cursor-pointer">Remember me for 30 days</FormLabel>
+                        <FormLabel className="text-sm text-gray-500 cursor-pointer">Remember me for 30 days</FormLabel>
                       </FormItem>
                     )}
                   />
 
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-500/20"
+                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm"
                     data-testid="button-login"
                     disabled={isSubmitting}
                   >
@@ -184,6 +186,10 @@ export default function Login() {
             )}
           </CardContent>
         </Card>
+
+        <p className="text-center text-xs text-gray-400 mt-6">
+          Glidr &middot; Ski testing & documentation
+        </p>
       </div>
     </div>
   );

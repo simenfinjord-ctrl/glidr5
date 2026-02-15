@@ -649,13 +649,13 @@ export default function WeatherPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-violet-400" />
+                      <MapPin className="h-4 w-4 text-violet-600" />
                       <span className="text-base font-semibold">{w.location}</span>
-                      <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-300 ring-1 ring-violet-500/20">
+                      <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700 ring-1 ring-violet-200">
                         {w.date} · {w.time}
                       </span>
                       {w.testQuality != null && (
-                        <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300 ring-1 ring-amber-500/20">
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-300 ring-1 ring-amber-200">
                           <Star className="h-3 w-3" /> {w.testQuality}/10
                         </span>
                       )}
@@ -663,16 +663,16 @@ export default function WeatherPage() {
 
                     <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                       <div className="rounded-xl fs-gradient-emerald px-3 py-2.5 ring-1 ring-emerald-500/10" data-testid={`text-snowtemp-${w.id}`}>
-                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-300/70">
+                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-700/70">
                           <Thermometer className="h-3 w-3" /> Snow Temp
                         </div>
-                        <div className="mt-0.5 text-sm font-bold text-emerald-300">{w.snowTemperatureC}°C</div>
+                        <div className="mt-0.5 text-sm font-bold text-emerald-700">{w.snowTemperatureC}°C</div>
                       </div>
                       <div className="rounded-xl fs-gradient-blue px-3 py-2.5 ring-1 ring-sky-500/10" data-testid={`text-airtemp-${w.id}`}>
-                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-sky-300/70">
+                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-sky-700/70">
                           <Thermometer className="h-3 w-3" /> Air Temp
                         </div>
-                        <div className="mt-0.5 text-sm font-bold text-sky-300">{w.airTemperatureC}°C</div>
+                        <div className="mt-0.5 text-sm font-bold text-sky-700">{w.airTemperatureC}°C</div>
                       </div>
                       <div className="rounded-xl fs-gradient-amber px-3 py-2.5 ring-1 ring-amber-500/10" data-testid={`text-snowhum-${w.id}`}>
                         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-amber-300/70">
@@ -681,10 +681,10 @@ export default function WeatherPage() {
                         <div className="mt-0.5 text-sm font-bold text-amber-300">{w.snowHumidityPct}%</div>
                       </div>
                       <div className="rounded-xl fs-gradient-violet px-3 py-2.5 ring-1 ring-violet-500/10" data-testid={`text-airhum-${w.id}`}>
-                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-violet-300/70">
+                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-violet-700/70">
                           <Droplets className="h-3 w-3" /> Air Hum
                         </div>
-                        <div className="mt-0.5 text-sm font-bold text-violet-300">{w.airHumidityPct}%rH</div>
+                        <div className="mt-0.5 text-sm font-bold text-violet-700">{w.airHumidityPct}%rH</div>
                       </div>
                     </div>
 
@@ -699,22 +699,22 @@ export default function WeatherPage() {
                         <WeatherBadge label="Wind" value={w.wind} colorClass="bg-teal-500/10 text-teal-300 ring-teal-500/20" />
                       )}
                       {w.precipitation && (
-                        <WeatherBadge label="Precip" value={w.precipitation} colorClass="bg-blue-500/10 text-blue-300 ring-blue-500/20" />
+                        <WeatherBadge label="Precip" value={w.precipitation} colorClass="bg-blue-50 text-blue-300 ring-blue-200" />
                       )}
                       {w.artificialSnow && (
-                        <WeatherBadge label="Art. snow" value={w.artificialSnow} colorClass="bg-pink-500/10 text-pink-300 ring-pink-500/20" />
+                        <WeatherBadge label="Art. snow" value={w.artificialSnow} colorClass="bg-pink-50 text-pink-700 ring-pink-200" />
                       )}
                       {w.naturalSnow && (
-                        <WeatherBadge label="Nat. snow" value={w.naturalSnow} colorClass="bg-sky-500/10 text-sky-300 ring-sky-500/20" />
+                        <WeatherBadge label="Nat. snow" value={w.naturalSnow} colorClass="bg-sky-50 text-sky-700 ring-sky-200" />
                       )}
                       {w.grainSize && (
                         <WeatherBadge label="Grain" value={w.grainSize} colorClass="bg-orange-500/10 text-orange-300 ring-orange-500/20" />
                       )}
                       {w.snowHumidityType && (
-                        <WeatherBadge label="Snow hum" value={w.snowHumidityType} colorClass="bg-indigo-500/10 text-indigo-300 ring-indigo-500/20" />
+                        <WeatherBadge label="Snow hum" value={w.snowHumidityType} colorClass="bg-indigo-50 text-indigo-700 ring-indigo-500/20" />
                       )}
                       {w.trackHardness && (
-                        <WeatherBadge label="Track" value={w.trackHardness} colorClass="bg-rose-500/10 text-rose-300 ring-rose-500/20" />
+                        <WeatherBadge label="Track" value={w.trackHardness} colorClass="bg-rose-50 text-rose-300 ring-rose-200" />
                       )}
                     </div>
 

@@ -305,7 +305,7 @@ export default function TestDetail() {
                 </div>
               </div>
               <div className="flex items-center gap-3 rounded-xl bg-background/40 px-3 py-2.5">
-                <MapPin className="h-4 w-4 text-emerald-400/70" />
+                <MapPin className="h-4 w-4 text-emerald-600/70" />
                 <div>
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Location</div>
                   <div className="text-sm font-medium" data-testid="text-test-location">{test.location}</div>
@@ -345,28 +345,28 @@ export default function TestDetail() {
           {weather && (
             <Card className="fs-card rounded-2xl p-4 sm:p-5" data-testid="card-test-weather">
               <div className="flex items-center gap-2 mb-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-500/10">
-                  <Snowflake className="h-4 w-4 text-sky-400" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50">
+                  <Snowflake className="h-4 w-4 text-sky-600" />
                 </div>
                 <h2 className="text-base font-semibold">Weather Conditions</h2>
                 {weather.testQuality != null && (
-                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300 ring-1 ring-amber-500/20">
+                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-300 ring-1 ring-amber-200">
                     Quality {weather.testQuality}/10
                   </span>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-xl fs-gradient-emerald px-3 py-3 ring-1 ring-emerald-500/10" data-testid="text-weather-snow-temp">
-                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-emerald-300/70">
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-emerald-700/70">
                     <Thermometer className="h-3 w-3" /> Snow Temp
                   </div>
-                  <div className="mt-1 text-lg font-bold text-emerald-300">{weather.snowTemperatureC}°C</div>
+                  <div className="mt-1 text-lg font-bold text-emerald-700">{weather.snowTemperatureC}°C</div>
                 </div>
                 <div className="rounded-xl fs-gradient-blue px-3 py-3 ring-1 ring-sky-500/10" data-testid="text-weather-air-temp">
-                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-sky-300/70">
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-sky-700/70">
                     <Thermometer className="h-3 w-3" /> Air Temp
                   </div>
-                  <div className="mt-1 text-lg font-bold text-sky-300">{weather.airTemperatureC}°C</div>
+                  <div className="mt-1 text-lg font-bold text-sky-700">{weather.airTemperatureC}°C</div>
                 </div>
                 <div className="rounded-xl fs-gradient-amber px-3 py-3 ring-1 ring-amber-500/10" data-testid="text-weather-snow-humidity">
                   <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-amber-300/70">
@@ -375,10 +375,10 @@ export default function TestDetail() {
                   <div className="mt-1 text-lg font-bold text-amber-300">{weather.snowHumidityPct}%</div>
                 </div>
                 <div className="rounded-xl fs-gradient-violet px-3 py-3 ring-1 ring-violet-500/10" data-testid="text-weather-air-humidity">
-                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-violet-300/70">
+                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-violet-700/70">
                     <Droplets className="h-3 w-3" /> Air Hum
                   </div>
-                  <div className="mt-1 text-lg font-bold text-violet-300">{weather.airHumidityPct}%rH</div>
+                  <div className="mt-1 text-lg font-bold text-violet-700">{weather.airHumidityPct}%rH</div>
                 </div>
               </div>
 
@@ -414,12 +414,12 @@ export default function TestDetail() {
               {(weather.artificialSnow || weather.naturalSnow || weather.grainSize || weather.snowHumidityType || weather.trackHardness) && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {weather.artificialSnow && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-pink-500/10 px-2.5 py-1 text-xs font-medium text-pink-300 ring-1 ring-pink-500/20">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-2.5 py-1 text-xs font-medium text-pink-700 ring-1 ring-pink-200">
                       Art. snow: {weather.artificialSnow}
                     </span>
                   )}
                   {weather.naturalSnow && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2.5 py-1 text-xs font-medium text-sky-300 ring-1 ring-sky-500/20">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-200">
                       Nat. snow: {weather.naturalSnow}
                     </span>
                   )}
@@ -429,12 +429,12 @@ export default function TestDetail() {
                     </span>
                   )}
                   {weather.snowHumidityType && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2.5 py-1 text-xs font-medium text-indigo-300 ring-1 ring-indigo-500/20">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-500/20">
                       Snow hum: {weather.snowHumidityType}
                     </span>
                   )}
                   {weather.trackHardness && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2.5 py-1 text-xs font-medium text-rose-300 ring-1 ring-rose-500/20">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-300 ring-1 ring-rose-200">
                       Track: {weather.trackHardness}
                     </span>
                   )}
@@ -447,8 +447,8 @@ export default function TestDetail() {
         <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-test-results">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10">
-                <Award className="h-4 w-4 text-emerald-400" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50">
+                <Award className="h-4 w-4 text-emerald-600" />
               </div>
               <h2 className="text-base font-semibold">Results</h2>
               <span className="rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">{sortedEntries.length} entries</span>
@@ -534,7 +534,7 @@ export default function TestDetail() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm" data-testid="table-results">
                 <thead>
-                  <tr className="border-b border-border/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="pb-3 pr-3">Ski</th>
                     <th className="pb-3 pr-3">Product</th>
                     <th className="pb-3 pr-3">Method</th>
@@ -599,7 +599,7 @@ export default function TestDetail() {
                             <RankBadge rank={firstRank} size="lg" />
                             {firstRank === 1 && (
                               <span
-                                className="rounded-full bg-gradient-to-r from-emerald-500/20 to-emerald-400/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400 ring-1 ring-emerald-500/30"
+                                className="rounded-full bg-gradient-to-r from-emerald-500/20 to-emerald-400/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 ring-1 ring-emerald-500/30"
                                 data-testid={`badge-winner-${entry.id}`}
                               >
                                 Winner
@@ -609,7 +609,7 @@ export default function TestDetail() {
                         </td>
                         <td className="py-3" data-testid={`text-feeling-${entry.id}`}>
                           {entry.feelingRank != null ? (
-                            <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-semibold text-violet-300">
+                            <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-semibold text-violet-700">
                               {entry.feelingRank}
                             </span>
                           ) : "—"}

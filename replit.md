@@ -86,7 +86,8 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Admin can see products from all groups, filtered by group, and move products between groups
 - Scope filtering supports multi-group users (data from all assigned groups is visible)
 - Login page has "Remember me" checkbox (extends session to 30 days)
-- Admin page shows login history (who logged in and when)
+- Admin page shows login history (who logged in, when, and from which IP address)
+- Admin page has "Download PDF" button to export all app data (users, groups, series, products, tests, weather, login history)
 - Tests support dynamic rounds (unlimited distance measurements via + Round button)
 - Distance labels and results stored as JSON (distanceLabels on tests, results on test_entries)
 - Legacy 2-field format (distanceLabel0km/Xkm, result0km/Xkm) auto-converted on load

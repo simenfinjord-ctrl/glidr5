@@ -89,11 +89,15 @@ export function setupAuth(app: Express) {
           req.session.cookie.maxAge = REMEMBER_ME_MAX_AGE;
         }
         try {
+          const ip = req.headers["x-forwarded-for"]
+            ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
+            : req.socket.remoteAddress || "unknown";
           await storage.createLoginLog({
             userId: user.id,
             email: user.email,
             name: user.name,
             loginAt: new Date().toISOString(),
+            ipAddress: ip,
           });
         } catch (_) {}
         const { password, ...safe } = user;

@@ -3,7 +3,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, KeyRound, Check, X, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Check, X, Clock, Download } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +34,7 @@ type LoginLog = {
   email: string;
   name: string;
   loginAt: string;
+  ipAddress: string | null;
 };
 
 function parseGroups(groupScope: string): string[] {
@@ -308,7 +311,141 @@ export default function Admin() {
     enabled: !!user && !!user.isAdmin,
   });
 
+  const { data: allSeries = [] } = useQuery<any[]>({
+    queryKey: ["/api/series"],
+    enabled: !!user && !!user.isAdmin,
+  });
+
+  const { data: allProducts = [] } = useQuery<any[]>({
+    queryKey: ["/api/products"],
+    enabled: !!user && !!user.isAdmin,
+  });
+
+  const { data: allTests = [] } = useQuery<any[]>({
+    queryKey: ["/api/tests"],
+    enabled: !!user && !!user.isAdmin,
+  });
+
+  const { data: allWeather = [] } = useQuery<any[]>({
+    queryKey: ["/api/weather"],
+    enabled: !!user && !!user.isAdmin,
+  });
+
   const groupNames = apiGroups.map((g) => g.name);
+
+  function downloadFullPdf() {
+    const doc = new jsPDF({ orientation: "landscape" });
+    let y = 15;
+
+    doc.setFontSize(18);
+    doc.text("Glidr — Full Data Export", 14, y);
+    y += 6;
+    doc.setFontSize(9);
+    doc.text(`Generated ${new Date().toLocaleString()}`, 14, y);
+    y += 10;
+
+    doc.setFontSize(13);
+    doc.text("Users", 14, y);
+    y += 2;
+    autoTable(doc, {
+      startY: y,
+      head: [["Name", "Email", "Groups", "Role"]],
+      body: users.map((u) => [u.name, u.email, u.groupScope, u.isAdmin ? "Admin" : "Member"]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 10;
+
+    doc.setFontSize(13);
+    doc.text("Groups", 14, y);
+    y += 2;
+    autoTable(doc, {
+      startY: y,
+      head: [["ID", "Name"]],
+      body: apiGroups.map((g) => [g.id, g.name]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 10;
+
+    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
+    doc.setFontSize(13);
+    doc.text("Test Ski Series", 14, y);
+    y += 2;
+    autoTable(doc, {
+      startY: y,
+      head: [["Name", "Type", "Brand", "Ski Type", "Skis", "Group"]],
+      body: allSeries.map((s: any) => [s.name, s.type, s.brand || "", s.skiType || "", s.numberOfSkis, s.groupScope]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 10;
+
+    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
+    doc.setFontSize(13);
+    doc.text("Products", 14, y);
+    y += 2;
+    autoTable(doc, {
+      startY: y,
+      head: [["Brand", "Name", "Type", "Group"]],
+      body: allProducts.map((p: any) => [p.brand || "", p.name, p.type, p.groupScope]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 10;
+
+    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
+    doc.setFontSize(13);
+    doc.text("Tests", 14, y);
+    y += 2;
+    autoTable(doc, {
+      startY: y,
+      head: [["Date", "Type", "Location", "Series ID", "Notes", "Group"]],
+      body: allTests.map((t: any) => [t.date, t.testType, t.location || "", t.seriesId, t.notes || "", t.groupScope]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 10;
+
+    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
+    doc.setFontSize(13);
+    doc.text("Weather Logs", 14, y);
+    y += 2;
+    autoTable(doc, {
+      startY: y,
+      head: [["Date", "Time", "Location", "Snow °C", "Air °C", "Snow Hum.", "Air Hum.", "Group"]],
+      body: allWeather.map((w: any) => [
+        w.date, w.time || "", w.location || "",
+        w.snowTemperatureC ?? "", w.airTemperatureC ?? "",
+        w.snowHumidityPct ?? "", w.airHumidityPct ?? "",
+        w.groupScope,
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 10;
+
+    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
+    doc.setFontSize(13);
+    doc.text("Login History", 14, y);
+    y += 2;
+    autoTable(doc, {
+      startY: y,
+      head: [["Name", "Email", "IP Address", "Login Time"]],
+      body: loginLogs.map((l) => [l.name, l.email, l.ipAddress || "—", new Date(l.loginAt).toLocaleString()]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
+      margin: { left: 14, right: 14 },
+    });
+
+    doc.save("glidr-full-export.pdf");
+  }
 
   const createGroupMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -394,18 +531,28 @@ export default function Admin() {
             </p>
           </div>
 
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-add-user" className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white">
-                <Plus className="mr-2 h-4 w-4" />
-                New user
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              data-testid="button-download-pdf"
+              onClick={downloadFullPdf}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download PDF
+            </Button>
+            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-user" className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New user
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-xl">
               <DialogHeader><DialogTitle>Create user</DialogTitle></DialogHeader>
               <CreateUserForm onDone={() => setCreateOpen(false)} groupNames={groupNames} />
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
 
         <Card className="fs-card rounded-2xl p-6">
@@ -596,6 +743,7 @@ export default function Admin() {
                   <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="pb-2 pr-3">Name</th>
                     <th className="pb-2 pr-3">Email</th>
+                    <th className="pb-2 pr-3">IP Address</th>
                     <th className="pb-2">Login Time</th>
                   </tr>
                 </thead>
@@ -604,6 +752,7 @@ export default function Admin() {
                     <tr key={log.id} className="border-b border-border/20" data-testid={`row-login-${log.id}`}>
                       <td className="py-2 pr-3 font-medium">{log.name}</td>
                       <td className="py-2 pr-3 text-muted-foreground">{log.email}</td>
+                      <td className="py-2 pr-3 font-mono text-xs text-muted-foreground">{log.ipAddress || "—"}</td>
                       <td className="py-2 text-muted-foreground">
                         {new Date(log.loginAt).toLocaleString()}
                       </td>

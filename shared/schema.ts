@@ -142,6 +142,7 @@ export const loginLogs = pgTable("login_logs", {
   email: text("email").notNull(),
   name: text("name").notNull(),
   loginAt: text("login_at").notNull(),
+  ipAddress: text("ip_address"),
 });
 
 export const insertLoginLogSchema = createInsertSchema(loginLogs).omit({ id: true });

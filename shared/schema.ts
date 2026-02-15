@@ -2,6 +2,8 @@ import { pgTable, text, varchar, integer, real, serial, timestamp } from "drizzl
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export * from "./models/chat";
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),

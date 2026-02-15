@@ -143,6 +143,8 @@ export const loginLogs = pgTable("login_logs", {
   name: text("name").notNull(),
   loginAt: text("login_at").notNull(),
   ipAddress: text("ip_address"),
+  action: text("action").notNull().default("login"),
+  details: text("details"),
 });
 
 export const insertLoginLogSchema = createInsertSchema(loginLogs).omit({ id: true });

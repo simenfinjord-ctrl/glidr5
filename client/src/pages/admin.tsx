@@ -35,6 +35,8 @@ type LoginLog = {
   name: string;
   loginAt: string;
   ipAddress: string | null;
+  action: string;
+  details: string | null;
 };
 
 function parseGroups(groupScope: string): string[] {
@@ -333,7 +335,7 @@ export default function Admin() {
 
   const groupNames = apiGroups.map((g) => g.name);
 
-  function downloadFullPdf() {
+  async function downloadFullPdf() {
     const doc = new jsPDF({ orientation: "landscape" });
     let y = 15;
 
@@ -445,6 +447,10 @@ export default function Admin() {
     });
 
     doc.save("glidr-full-export.pdf");
+    try {
+      await apiRequest("POST", "/api/action-log", { action: "pdf_download", details: "Full data export" });
+      queryClient.invalidateQueries({ queryKey: ["/api/login-logs"] });
+    } catch (_) {}
   }
 
   const createGroupMutation = useMutation({
@@ -743,15 +749,27 @@ export default function Admin() {
                   <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="pb-2 pr-3">Name</th>
                     <th className="pb-2 pr-3">Email</th>
+                    <th className="pb-2 pr-3">Action</th>
                     <th className="pb-2 pr-3">IP Address</th>
-                    <th className="pb-2">Login Time</th>
+                    <th className="pb-2">Time</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {loginLogs.slice(0, 100).map((log) => (
+                  {loginLogs.slice(0, 200).map((log) => (
                     <tr key={log.id} className="border-b border-border/20" data-testid={`row-login-${log.id}`}>
                       <td className="py-2 pr-3 font-medium">{log.name}</td>
                       <td className="py-2 pr-3 text-muted-foreground">{log.email}</td>
+                      <td className="py-2 pr-3">
+                        {log.action === "login" ? (
+                          <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200">Login</span>
+                        ) : log.action === "pdf_download" ? (
+                          <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
+                            PDF {log.details ? `— ${log.details}` : ""}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">{log.action}</span>
+                        )}
+                      </td>
                       <td className="py-2 pr-3 font-mono text-xs text-muted-foreground">{log.ipAddress || "—"}</td>
                       <td className="py-2 text-muted-foreground">
                         {new Date(log.loginAt).toLocaleString()}

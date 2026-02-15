@@ -54,6 +54,7 @@ Note: Only the admin account is seeded. All other users, series, products, and w
 - `DELETE /api/users/:id` — Delete user (admin only)
 - `POST /api/users/:id/reset-password` — Reset password (admin only)
 - `GET /api/login-logs` — Login history (admin only)
+- `POST /api/action-log` — Log user actions (PDF downloads etc.)
 
 ## Weather Data Model
 The daily_weather table stores comprehensive snow and weather conditions:

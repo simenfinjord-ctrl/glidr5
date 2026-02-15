@@ -13,6 +13,7 @@ function userInfo(req: Request) {
   const u = req.user!;
   return {
     id: u.id,
+    email: u.email,
     name: u.name,
     groupScope: u.groupScope,
     isAdmin: u.isAdmin === 1,
@@ -515,6 +516,25 @@ export async function registerRoutes(
     if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
     const logs = await storage.listLoginLogs();
     res.json(logs);
+  });
+
+  app.post("/api/action-log", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const { action, details } = req.body;
+    if (!action) return res.status(400).json({ message: "action required" });
+    const ip = req.headers["x-forwarded-for"]
+      ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
+      : req.socket.remoteAddress || "unknown";
+    await storage.createLoginLog({
+      userId: u.id,
+      email: u.email,
+      name: u.name,
+      loginAt: new Date().toISOString(),
+      ipAddress: ip,
+      action,
+      details: details || null,
+    });
+    res.json({ ok: true });
   });
 
   return httpServer;

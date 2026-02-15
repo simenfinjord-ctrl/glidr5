@@ -507,9 +507,16 @@ export default function TestDetail() {
                 variant="outline"
                 size="sm"
                 data-testid="button-export-pdf"
-                onClick={() => {
+                onClick={async () => {
                   const seriesMap = new Map(series.map((s) => [s.id, s]));
                   generateTestPDF(test, entries, productsById, seriesMap, weather ?? null);
+                  try {
+                    const s = seriesMap.get(test.seriesId);
+                    await apiRequest("POST", "/api/action-log", {
+                      action: "pdf_download",
+                      details: `Test ${test.date} — ${s?.name || ""}`,
+                    });
+                  } catch (_) {}
                 }}
               >
                 <FileText className="mr-2 h-4 w-4" />

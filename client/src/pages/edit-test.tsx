@@ -223,6 +223,11 @@ export default function EditTest() {
   const watchDate = form.watch("date");
   const watchLocation = form.watch("location");
 
+  const filteredSeries = useMemo(
+    () => series.filter((s) => s.type === watchTestType),
+    [series, watchTestType],
+  );
+
   const autoWeather = useMemo(() => {
     if (!watchDate || !watchLocation) return undefined;
     return weather.find(
@@ -393,7 +398,7 @@ export default function EditTest() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {series.map((s) => (
+                            {filteredSeries.map((s) => (
                               <SelectItem key={s.id} value={String(s.id)} data-testid={`option-series-${s.id}`}>
                                 {s.name}
                               </SelectItem>
@@ -417,6 +422,7 @@ export default function EditTest() {
                           value={field.value}
                           onValueChange={(v) => {
                             field.onChange(v);
+                            form.setValue("seriesId", "", { shouldValidate: false });
                             setRows((prev) =>
                               prev.map((r) => ({ ...r, productId: undefined })),
                             );

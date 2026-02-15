@@ -116,16 +116,27 @@ export default function NewTest() {
     },
   });
 
-  useEffect(() => {
-    if (!series.length) return;
-    if (form.getValues("seriesId")) return;
-    form.setValue("seriesId", String(series[0]!.id), { shouldValidate: true });
-    if (series[0]?.groupScope) {
-      form.setValue("groupScope", series[0].groupScope, { shouldValidate: true });
-    }
-  }, [series, form]);
-
   const watchSeriesId = form.watch("seriesId");
+  const watchDate = form.watch("date");
+  const watchLocation = form.watch("location");
+  const watchTestType = form.watch("testType") as TestType;
+
+  const filteredSeries = useMemo(
+    () => series.filter((s) => s.type === watchTestType),
+    [series, watchTestType],
+  );
+
+  useEffect(() => {
+    if (!filteredSeries.length) return;
+    const current = form.getValues("seriesId");
+    const stillValid = current && filteredSeries.some((s) => String(s.id) === current);
+    if (stillValid) return;
+    form.setValue("seriesId", String(filteredSeries[0]!.id), { shouldValidate: true });
+    if (filteredSeries[0]?.groupScope) {
+      form.setValue("groupScope", filteredSeries[0].groupScope, { shouldValidate: true });
+    }
+  }, [filteredSeries, form]);
+
   useEffect(() => {
     if (!watchSeriesId || !series.length) return;
     const selected = series.find((s) => String(s.id) === watchSeriesId);
@@ -139,10 +150,6 @@ export default function NewTest() {
     if (form.getValues("location")) return;
     form.setValue("location", weather[0]!.location, { shouldValidate: true });
   }, [weather, form]);
-
-  const watchDate = form.watch("date");
-  const watchLocation = form.watch("location");
-  const watchTestType = form.watch("testType") as TestType;
 
   const autoWeather = useMemo(() => {
     if (!watchDate || !watchLocation) return undefined;
@@ -297,7 +304,7 @@ export default function NewTest() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {series.map((s) => (
+                            {filteredSeries.map((s) => (
                               <SelectItem
                                 key={s.id}
                                 value={String(s.id)}
@@ -325,6 +332,7 @@ export default function NewTest() {
                           value={field.value}
                           onValueChange={(v) => {
                             field.onChange(v);
+                            form.setValue("seriesId", "", { shouldValidate: false });
                             setRows((prev) =>
                               prev.map((r) => ({ ...r, productId: undefined })),
                             );

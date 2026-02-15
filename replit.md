@@ -28,9 +28,8 @@ Full-stack React web application to manage ski testing and documentation. Featur
 | Email | Group | Admin |
 |---|---|---|
 | admin@fastski.local | Admin | Yes |
-| u23@fastski.local | U23 | No |
-| wc@fastski.local | World Cup | No |
-| biathlon@fastski.local | Biathlon | No |
+
+Note: Only the admin account is seeded. All other users, series, products, and weather data must be created manually through the app.
 
 ## API Endpoints
 - `POST /api/auth/login` — Login
@@ -74,6 +73,7 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Test series can be sorted alphabetically (A-Z toggle)
 - "lane" field removed from data model
 - Product autocomplete filters by test type (Glide shows Glide+Topping; Structure shows Structure tool)
+- Series dropdown filters by test type (only shows series matching selected Glide/Structure)
 - Weather auto-links to tests by matching date + location + groupScope
 - Tests list shows winner badge with product name
 - Tests can be filtered by type, product, snow type, location, air/snow temp, air/snow humidity

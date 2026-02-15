@@ -12,6 +12,7 @@ import {
   RefreshCw,
   CloudUpload,
   BarChart3,
+  FileUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -77,6 +78,14 @@ const nav: NavItem[] = [
     testId: "link-analytics",
     color: "text-pink-400/70",
     activeColor: "text-pink-400",
+  },
+  {
+    href: "/import",
+    label: "Import",
+    icon: FileUp,
+    testId: "link-import",
+    color: "text-teal-400/70",
+    activeColor: "text-teal-400",
   },
   {
     href: "/admin",

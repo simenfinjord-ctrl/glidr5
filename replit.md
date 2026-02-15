@@ -107,6 +107,13 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Header shows online/offline status indicator and pending sync count
 - Analytics page (/analytics) with recharts: product wins over time, avg rank by product, tests per month, snow temp vs rank scatter
 - Analytics page has Glide/Structure/All filter
+- CSV import with AI-powered column mapping (/import page)
+- Import supports tests, products, weather, and series data types
+- AI (OpenAI via Replit AI Integrations) analyzes CSV headers and sample data to suggest column mappings
+- 3-step import flow: Upload CSV → Review AI mapping → Execute import
+- Import validates group scope server-side via resolveCreateGroupScope
+- POST /api/import/analyze — AI-powered CSV column analysis
+- POST /api/import/execute — Execute import with validated mappings
 - PDF report generation on test detail page (jsPDF + autoTable): includes test info, weather, full results table
 - Test detail page has CSV, PDF, and Hide/Show export buttons
 - Series form has group selector (shown for multi-group users, defaults to first group)

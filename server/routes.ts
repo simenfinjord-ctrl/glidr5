@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
+import { analyzeCSV, executeImport } from "./import";
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated() || !req.user) {
@@ -515,6 +516,41 @@ export async function registerRoutes(
     if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
     const logs = await storage.listLoginLogs();
     res.json(logs);
+  });
+
+  app.post("/api/import/analyze", requireAuth, async (req, res) => {
+    try {
+      const { csvText, targetType } = req.body;
+      if (!csvText || typeof csvText !== "string") {
+        return res.status(400).json({ message: "csvText is required and must be a string" });
+      }
+      const validTypes = ["tests", "products", "weather", "series"];
+      const safeType = validTypes.includes(targetType) ? targetType : "tests";
+      const result = await analyzeCSV(csvText, safeType);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
+  app.post("/api/import/execute", requireAuth, async (req, res) => {
+    try {
+      const u = userInfo(req);
+      const { csvText, mappings, targetType } = req.body;
+      if (!csvText || typeof csvText !== "string") {
+        return res.status(400).json({ message: "csvText is required and must be a string" });
+      }
+      if (!Array.isArray(mappings)) {
+        return res.status(400).json({ message: "mappings must be an array" });
+      }
+      const validTypes = ["tests", "products", "weather", "series"];
+      const safeType = validTypes.includes(targetType) ? targetType : "tests";
+      const groupScope = resolveCreateGroupScope(req);
+      const result = await executeImport(csvText, mappings, safeType, u.id, u.name, groupScope);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
   });
 
   return httpServer;

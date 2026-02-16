@@ -112,6 +112,13 @@ export async function registerRoutes(
       createdByName: u.name,
       groupScope,
     });
+    try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "created",
+        entityType: "series", entityId: result.id,
+        details: `Series: ${result.name}`, createdAt: new Date().toISOString(), groupScope,
+      });
+    } catch (_) {}
     res.json(result);
   });
 
@@ -201,6 +208,13 @@ export async function registerRoutes(
       createdByName: u.name,
       groupScope,
     });
+    try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "created",
+        entityType: "product", entityId: result.id,
+        details: `Product: ${result.brand} ${result.name}`, createdAt: new Date().toISOString(), groupScope,
+      });
+    } catch (_) {}
     res.json(result);
   });
 
@@ -225,6 +239,13 @@ export async function registerRoutes(
     if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
     const id = parseInt(req.params.id);
     await storage.deleteProduct(id);
+    try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "deleted",
+        entityType: "product", entityId: id,
+        details: "Product deleted", createdAt: new Date().toISOString(), groupScope: u.groupScope,
+      });
+    } catch (_) {}
     res.json({ ok: true });
   });
 
@@ -270,6 +291,13 @@ export async function registerRoutes(
       createdByName: u.name,
       groupScope,
     });
+    try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "created",
+        entityType: "weather", entityId: result.id,
+        details: `Weather: ${req.body.date} ${req.body.location}`, createdAt: new Date().toISOString(), groupScope,
+      });
+    } catch (_) {}
     res.json(result);
   });
 
@@ -313,6 +341,13 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Forbidden" });
     }
     await storage.deleteWeather(id);
+    try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "deleted",
+        entityType: "weather", entityId: id,
+        details: "Weather deleted", createdAt: new Date().toISOString(), groupScope: existing.groupScope,
+      });
+    } catch (_) {}
     res.json({ ok: true });
   });
 
@@ -341,6 +376,13 @@ export async function registerRoutes(
       createdByName: u.name,
       groupScope,
     });
+    try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "created",
+        entityType: "test", entityId: test.id,
+        details: `Test: ${req.body.testType} on ${req.body.date}`, createdAt: new Date().toISOString(), groupScope,
+      });
+    } catch (_) {}
 
     const entries = req.body.entries || [];
     for (const e of entries) {
@@ -438,6 +480,13 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Forbidden" });
     }
     await storage.deleteTest(id);
+    try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "deleted",
+        entityType: "test", entityId: id,
+        details: "Test deleted", createdAt: new Date().toISOString(), groupScope: existing.groupScope,
+      });
+    } catch (_) {}
     res.json({ ok: true });
   });
 
@@ -534,6 +583,114 @@ export async function registerRoutes(
       action,
       details: details || null,
     });
+    res.json({ ok: true });
+  });
+
+  // Activity feed
+  app.get("/api/activity", requireAuth, async (req, res) => {
+    const limit = parseInt(req.query.limit as string) || 50;
+    const logs = await storage.listActivityLogs(limit);
+    res.json(logs);
+  });
+
+  // Profile - change own password
+  app.post("/api/users/me/password", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ message: "Both current and new password required" });
+    if (u.password !== currentPassword) return res.status(403).json({ message: "Current password is incorrect" });
+    if (newPassword.length < 1) return res.status(400).json({ message: "New password too short" });
+    await storage.updateUser(u.id, { password: newPassword });
+    res.json({ ok: true });
+  });
+
+  // Grinding records
+  app.get("/api/grinding", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin && !(req.user! as any).canAccessGrinding) {
+      return res.status(403).json({ message: "No access to grinding" });
+    }
+    const list = await storage.listGrindingRecords(u.groupScope, u.isAdmin);
+    res.json(list);
+  });
+
+  app.post("/api/grinding", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin && !(req.user! as any).canAccessGrinding) {
+      return res.status(403).json({ message: "No access to grinding" });
+    }
+    const groupScope = resolveCreateGroupScope(req);
+    const record = await storage.createGrindingRecord({
+      seriesId: req.body.seriesId || null,
+      date: req.body.date,
+      grindType: req.body.grindType,
+      stone: req.body.stone || null,
+      notes: req.body.notes || null,
+      createdAt: new Date().toISOString(),
+      createdById: u.id,
+      createdByName: u.name,
+      groupScope,
+    });
+    await storage.createActivityLog({
+      userId: u.id, userName: u.name, action: "created",
+      entityType: "grinding", entityId: record.id,
+      details: `Grinding: ${record.grindType}`, createdAt: new Date().toISOString(), groupScope,
+    });
+    res.json(record);
+  });
+
+  app.put("/api/grinding/:id", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin && !(req.user! as any).canAccessGrinding) {
+      return res.status(403).json({ message: "No access to grinding" });
+    }
+    const id = parseInt(req.params.id);
+    const updated = await storage.updateGrindingRecord(id, {
+      seriesId: req.body.seriesId,
+      date: req.body.date,
+      grindType: req.body.grindType,
+      stone: req.body.stone || null,
+      notes: req.body.notes || null,
+    });
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/grinding/:id", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin && !(req.user! as any).canAccessGrinding) {
+      return res.status(403).json({ message: "No access to grinding" });
+    }
+    const id = parseInt(req.params.id);
+    const deleted = await storage.deleteGrindingRecord(id);
+    if (!deleted) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
+  // Admin stats
+  app.get("/api/admin/stats", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const [userCount, testCount, productCount, seriesCount, weatherCount, grindingCount, loginCount, activityCount] = await Promise.all([
+      storage.countTable("users"),
+      storage.countTable("tests"),
+      storage.countTable("products"),
+      storage.countTable("testSkiSeries"),
+      storage.countTable("dailyWeather"),
+      storage.countTable("grindingRecords"),
+      storage.countTable("loginLogs"),
+      storage.countTable("activityLogs"),
+    ]);
+    res.json({ userCount, testCount, productCount, seriesCount, weatherCount, grindingCount, loginCount, activityCount });
+  });
+
+  // Admin force logout user (delete their sessions)
+  app.post("/api/admin/force-logout/:userId", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const targetId = parseInt(req.params.userId);
+    const { pool } = await import("./db");
+    await (pool as any).query(`DELETE FROM user_sessions WHERE sess::jsonb -> 'passport' ->> 'user' = $1`, [String(targetId)]);
     res.json({ ok: true });
   });
 

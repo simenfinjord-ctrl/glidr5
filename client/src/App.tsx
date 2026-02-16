@@ -18,6 +18,8 @@ import TestDetail from "@/pages/test-detail";
 import EditTest from "@/pages/edit-test";
 import Admin from "@/pages/admin";
 import Analytics from "@/pages/analytics";
+import Profile from "@/pages/profile";
+import Grinding from "@/pages/grinding";
 import Login from "@/pages/login";
 
 function Router() {
@@ -35,6 +37,8 @@ function Router() {
       <Route path="/tests/:id/edit" component={EditTest} />
       <Route path="/tests/:id" component={TestDetail} />
       <Route path="/analytics" component={Analytics} />
+      <Route path="/profile" component={Profile} />
+      <Route path="/grinding" component={Grinding} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>

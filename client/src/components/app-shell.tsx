@@ -12,6 +12,8 @@ import {
   RefreshCw,
   CloudUpload,
   BarChart3,
+  Disc3,
+  UserCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -28,6 +30,7 @@ type NavItem = {
   activeColor: string;
   activeBg: string;
   adminOnly?: boolean;
+  grindingOnly?: boolean;
 };
 
 const nav: NavItem[] = [
@@ -86,6 +89,16 @@ const nav: NavItem[] = [
     activeBg: "bg-pink-50",
   },
   {
+    href: "/grinding",
+    label: "Grinding",
+    icon: Disc3,
+    testId: "link-grinding",
+    color: "text-gray-500",
+    activeColor: "text-indigo-600",
+    activeBg: "bg-indigo-50",
+    grindingOnly: true,
+  },
+  {
     href: "/admin",
     label: "Admin",
     icon: Shield,
@@ -102,7 +115,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
 
-  const visibleNav = nav.filter((item) => !item.adminOnly || user?.isAdmin);
+  const visibleNav = nav.filter((item) => {
+    if (item.adminOnly && !user?.isAdmin) return false;
+    if (item.grindingOnly && !user?.isAdmin && !(user as any)?.canAccessGrinding) return false;
+    return true;
+  });
 
   return (
     <div className="min-h-screen fs-grid">
@@ -146,9 +163,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {pendingCount} pending
               </Button>
             )}
-            <div className="hidden sm:flex items-center gap-2 text-sm text-gray-500 mr-1">
+            <AppLink
+              href="/profile"
+              testId="link-profile"
+              className="hidden sm:flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mr-1 transition-colors"
+            >
+              <UserCircle className="h-4 w-4" />
               <span>{user?.name}</span>
-            </div>
+            </AppLink>
             <Button
               variant="ghost"
               size="sm"

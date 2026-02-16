@@ -128,6 +128,7 @@ export default function Tests() {
     enabled: allTestIds.length > 0,
   });
 
+  const [filterSeason, setFilterSeason] = useState<string>("All");
   const [filterType, setFilterType] = useState<string>("All");
   const [filterProduct, setFilterProduct] = useState<string>("All");
   const [filterSnowType, setFilterSnowType] = useState("");
@@ -145,6 +146,18 @@ export default function Tests() {
   const seriesById = new Map(series.map((s) => [s.id, s.name] as const));
   const productsById = new Map(products.map((p) => [p.id, p] as const));
   const weatherById = new Map(weather.map((w) => [w.id, w] as const));
+
+  function getSeason(dateStr: string): string {
+    const d = new Date(dateStr);
+    const month = d.getMonth();
+    const year = d.getFullYear();
+    return month >= 9 ? `${year}/${year + 1}` : `${year - 1}/${year}`;
+  }
+
+  const availableSeasons = useMemo(() => {
+    const seasons = Array.from(new Set(tests.map((t) => getSeason(t.date))));
+    return seasons.sort().reverse();
+  }, [tests]);
 
   const availableDates = useMemo(() => {
     const dates = Array.from(new Set(tests.map((t) => t.date)));
@@ -184,6 +197,7 @@ export default function Tests() {
 
   const filtered = useMemo(() => {
     return tests.filter((t) => {
+      if (filterSeason !== "All" && getSeason(t.date) !== filterSeason) return false;
       if (filterType !== "All" && t.testType !== filterType) return false;
       if (filterLocation && !t.location.toLowerCase().includes(filterLocation.toLowerCase())) return false;
       if (filterDate && t.date !== filterDate) return false;
@@ -212,9 +226,9 @@ export default function Tests() {
 
       return true;
     });
-  }, [tests, filterType, filterProduct, filterSnowType, filterLocation, filterDate, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, allEntries, weatherById]);
+  }, [tests, filterSeason, filterType, filterProduct, filterSnowType, filterLocation, filterDate, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, allEntries, weatherById]);
 
-  const hasFilters = filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || filterDate || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax;
+  const hasFilters = filterSeason !== "All" || filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || filterDate || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax;
 
   const isDayView = !!filterDate;
 
@@ -245,6 +259,19 @@ export default function Tests() {
               Filters
             </div>
             <div className="flex flex-1 flex-wrap items-center gap-3">
+              <div className="min-w-[140px]">
+                <Select value={filterSeason} onValueChange={setFilterSeason}>
+                  <SelectTrigger data-testid="select-filter-season">
+                    <SelectValue placeholder="Season" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All seasons</SelectItem>
+                    {availableSeasons.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="min-w-[150px]">
                 <div className="flex items-center gap-1.5">
                   <CalendarDays className="h-3.5 w-3.5 text-primary/70" />
@@ -306,6 +333,7 @@ export default function Tests() {
                 variant="secondary"
                 data-testid="button-clear-test-filters"
                 onClick={() => {
+                  setFilterSeason("All");
                   setFilterType("All");
                   setFilterProduct("All");
                   setFilterSnowType("");

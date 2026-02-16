@@ -2,6 +2,7 @@ import { eq, and, sql, inArray, isNull, isNotNull } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, groups, testSkiSeries, products, dailyWeather, tests, testEntries, loginLogs,
+  activityLogs, grindingRecords,
   type User, type InsertUser,
   type Group, type InsertGroup,
   type Series, type InsertSeries,
@@ -10,6 +11,8 @@ import {
   type Test, type InsertTest,
   type TestEntry, type InsertEntry,
   type LoginLog, type InsertLoginLog,
+  type ActivityLog, type InsertActivityLog,
+  type GrindingRecord, type InsertGrindingRecord,
 } from "@shared/schema";
 
 export function parseGroupScopes(groupScope: string): string[] {
@@ -62,6 +65,15 @@ export interface IStorage {
   createLoginLog(log: InsertLoginLog): Promise<LoginLog>;
   listLoginLogs(): Promise<LoginLog[]>;
 
+  createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
+  listActivityLogs(limit?: number): Promise<ActivityLog[]>;
+
+  listGrindingRecords(groupScope: string, isAdmin: boolean): Promise<GrindingRecord[]>;
+  createGrindingRecord(r: InsertGrindingRecord): Promise<GrindingRecord>;
+  updateGrindingRecord(id: number, data: Partial<InsertGrindingRecord>): Promise<GrindingRecord | undefined>;
+  deleteGrindingRecord(id: number): Promise<boolean>;
+
+  countTable(tableName: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -292,6 +304,46 @@ export class DatabaseStorage implements IStorage {
 
   async listLoginLogs(): Promise<LoginLog[]> {
     return db.select().from(loginLogs).orderBy(sql`${loginLogs.id} desc`);
+  }
+
+  async createActivityLog(log: InsertActivityLog): Promise<ActivityLog> {
+    const [created] = await db.insert(activityLogs).values(log).returning();
+    return created!;
+  }
+
+  async listActivityLogs(limit = 50): Promise<ActivityLog[]> {
+    return db.select().from(activityLogs).orderBy(sql`${activityLogs.id} desc`).limit(limit);
+  }
+
+  async listGrindingRecords(groupScope: string, isAdmin: boolean): Promise<GrindingRecord[]> {
+    const filter = this.scopeFilter(groupScope, isAdmin, grindingRecords);
+    if (filter) {
+      return db.select().from(grindingRecords).where(filter).orderBy(sql`${grindingRecords.id} desc`);
+    }
+    return db.select().from(grindingRecords).orderBy(sql`${grindingRecords.id} desc`);
+  }
+
+  async createGrindingRecord(r: InsertGrindingRecord): Promise<GrindingRecord> {
+    const [created] = await db.insert(grindingRecords).values(r).returning();
+    return created!;
+  }
+
+  async updateGrindingRecord(id: number, data: Partial<InsertGrindingRecord>): Promise<GrindingRecord | undefined> {
+    const [updated] = await db.update(grindingRecords).set(data).where(eq(grindingRecords.id, id)).returning();
+    return updated;
+  }
+
+  async deleteGrindingRecord(id: number): Promise<boolean> {
+    const result = await db.delete(grindingRecords).where(eq(grindingRecords.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async countTable(tableName: string): Promise<number> {
+    const tableMap: Record<string, any> = { users, tests, products, testSkiSeries, dailyWeather, grindingRecords, loginLogs, activityLogs };
+    const table = tableMap[tableName];
+    if (!table) return 0;
+    const result = await db.select({ count: sql<number>`count(*)` }).from(table);
+    return Number(result[0]?.count ?? 0);
   }
 
 }

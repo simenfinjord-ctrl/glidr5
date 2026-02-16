@@ -15,6 +15,8 @@ declare global {
       name: string;
       groupScope: string;
       isAdmin: number;
+      canAccessGrinding: number;
+      isActive: number;
       password: string;
     }
   }
@@ -55,6 +57,9 @@ export function setupAuth(app: Express) {
           }
           if (user.password !== password) {
             return done(null, false, { message: "Invalid password." });
+          }
+          if (user.isActive === 0) {
+            return done(null, false, { message: "Account is deactivated. Contact your administrator." });
           }
           return done(null, user);
         } catch (err) {

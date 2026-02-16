@@ -11,6 +11,8 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   groupScope: text("group_scope").notNull().default("U23"),
   isAdmin: integer("is_admin").notNull().default(0),
+  canAccessGrinding: integer("can_access_grinding").notNull().default(0),
+  isActive: integer("is_active").notNull().default(1),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
@@ -135,6 +137,39 @@ export const testEntries = pgTable("test_entries", {
 export const insertEntrySchema = createInsertSchema(testEntries).omit({ id: true });
 export type InsertEntry = z.infer<typeof insertEntrySchema>;
 export type TestEntry = typeof testEntries.$inferSelect;
+
+export const activityLogs = pgTable("activity_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  userName: text("user_name").notNull(),
+  action: text("action").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: integer("entity_id"),
+  details: text("details"),
+  createdAt: text("created_at").notNull(),
+  groupScope: text("group_scope"),
+});
+
+export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true });
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+export type ActivityLog = typeof activityLogs.$inferSelect;
+
+export const grindingRecords = pgTable("grinding_records", {
+  id: serial("id").primaryKey(),
+  seriesId: integer("series_id"),
+  date: text("date").notNull(),
+  grindType: text("grind_type").notNull(),
+  stone: text("stone"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+  createdById: integer("created_by_id").notNull(),
+  createdByName: text("created_by_name").notNull(),
+  groupScope: text("group_scope").notNull(),
+});
+
+export const insertGrindingRecordSchema = createInsertSchema(grindingRecords).omit({ id: true });
+export type InsertGrindingRecord = z.infer<typeof insertGrindingRecordSchema>;
+export type GrindingRecord = typeof grindingRecords.$inferSelect;
 
 export const loginLogs = pgTable("login_logs", {
   id: serial("id").primaryKey(),

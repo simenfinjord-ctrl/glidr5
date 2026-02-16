@@ -125,18 +125,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen fs-grid">
       <header className="sticky top-0 z-40 border-b border-border bg-white/80 backdrop-blur-lg">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 py-3">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-white font-bold text-base shadow-sm">G</div>
-              <div className={cn(
-                "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white",
-                isOnline ? "bg-emerald-500" : "bg-amber-500"
-              )} />
-            </div>
-            <div className="min-w-0">
-              <span className="text-base font-bold tracking-tight text-gray-900">Glidr</span>
-              <div className="text-[11px] text-gray-400 leading-tight">Ski testing & documentation</div>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="text-base font-bold tracking-tight text-gray-900">Glidr</span>
+            <div className={cn(
+              "h-2 w-2 rounded-full",
+              isOnline ? "bg-emerald-500" : "bg-amber-500"
+            )} />
           </div>
 
           <div className="flex items-center gap-2">

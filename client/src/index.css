@@ -151,7 +151,7 @@
 
 @layer utilities {
   .fs-grid {
-    background: hsl(var(--background));
+    background: hsl(210 40% 94%);
   }
 
   .fs-card {

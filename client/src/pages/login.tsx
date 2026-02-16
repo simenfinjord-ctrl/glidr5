@@ -43,10 +43,7 @@ export default function Login() {
     >
       <div className="w-full max-w-[400px]">
         <div className="flex flex-col items-center gap-2 mb-8">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/25">
-            G
-          </div>
-          <div className="text-center mt-2">
+          <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
               Welcome to Glidr
             </h1>

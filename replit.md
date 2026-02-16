@@ -10,7 +10,7 @@ Full-stack React web application to manage ski testing and documentation. Featur
 - **Design**: Space Grotesk (display) + Inter (UI), clean light theme with subtle shadows and professional color palette
 
 ## Key Files
-- `shared/schema.ts` — Drizzle schema: users, test_ski_series, products, daily_weather, tests, test_entries, login_logs
+- `shared/schema.ts` — Drizzle schema: users, test_ski_series, products, daily_weather, tests, test_entries, login_logs, grinding_records, grinding_sheets, activity_logs
 - `server/db.ts` — PostgreSQL connection pool
 - `server/storage.ts` — DatabaseStorage class (IStorage interface with full CRUD)
 - `server/auth.ts` — Passport-local session auth setup
@@ -55,6 +55,9 @@ Note: Only the admin account is seeded. All other users, series, products, and w
 - `POST /api/users/:id/reset-password` — Reset password (admin only)
 - `GET /api/login-logs` — Login history (admin only)
 - `POST /api/action-log` — Log user actions (PDF downloads etc.)
+- `GET/POST /api/grinding-sheets` — List/create grinding spreadsheet links
+- `PUT /api/grinding-sheets/:id` — Update grinding sheet
+- `DELETE /api/grinding-sheets/:id` — Delete grinding sheet
 
 ## Weather Data Model
 The daily_weather table stores comprehensive snow and weather conditions:
@@ -115,3 +118,9 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - New test form has group selector that defaults to selected series' group
 - Edit test form has group selector that updates when series changes
 - Group selector hidden for single-group users (auto-assigned)
+- Grinding page has two tabs: Records (grinding log) and Spreadsheets (embedded Google Sheets)
+- Multiple Google Sheets can be added, with a selector to switch between them
+- Sheets are embedded via iframe using Google Sheets HTML export URL
+- Sheet URLs auto-converted to embed format (extracts spreadsheet ID and gid)
+- Each sheet has name, URL, edit, and delete controls
+- "Open in Google Sheets" link for direct access to the original spreadsheet

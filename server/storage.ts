@@ -2,7 +2,7 @@ import { eq, and, sql, inArray, isNull, isNotNull } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, groups, testSkiSeries, products, dailyWeather, tests, testEntries, loginLogs,
-  activityLogs, grindingRecords,
+  activityLogs, grindingRecords, grindingSheets,
   type User, type InsertUser,
   type Group, type InsertGroup,
   type Series, type InsertSeries,
@@ -13,6 +13,7 @@ import {
   type LoginLog, type InsertLoginLog,
   type ActivityLog, type InsertActivityLog,
   type GrindingRecord, type InsertGrindingRecord,
+  type GrindingSheet, type InsertGrindingSheet,
 } from "@shared/schema";
 
 export function parseGroupScopes(groupScope: string): string[] {
@@ -72,6 +73,12 @@ export interface IStorage {
   createGrindingRecord(r: InsertGrindingRecord): Promise<GrindingRecord>;
   updateGrindingRecord(id: number, data: Partial<InsertGrindingRecord>): Promise<GrindingRecord | undefined>;
   deleteGrindingRecord(id: number): Promise<boolean>;
+
+  listGrindingSheets(groupScope: string, isAdmin: boolean): Promise<GrindingSheet[]>;
+  getGrindingSheet(id: number): Promise<GrindingSheet | undefined>;
+  createGrindingSheet(s: InsertGrindingSheet): Promise<GrindingSheet>;
+  updateGrindingSheet(id: number, data: Partial<InsertGrindingSheet>): Promise<GrindingSheet | undefined>;
+  deleteGrindingSheet(id: number): Promise<boolean>;
 
   countTable(tableName: string): Promise<number>;
 }
@@ -335,6 +342,32 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGrindingRecord(id: number): Promise<boolean> {
     const result = await db.delete(grindingRecords).where(eq(grindingRecords.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async listGrindingSheets(groupScope: string, isAdmin: boolean): Promise<GrindingSheet[]> {
+    if (isAdmin) return db.select().from(grindingSheets);
+    const scopes = parseGroupScopes(groupScope);
+    return db.select().from(grindingSheets).where(inArray(grindingSheets.groupScope, scopes));
+  }
+
+  async getGrindingSheet(id: number): Promise<GrindingSheet | undefined> {
+    const [sheet] = await db.select().from(grindingSheets).where(eq(grindingSheets.id, id));
+    return sheet;
+  }
+
+  async createGrindingSheet(s: InsertGrindingSheet): Promise<GrindingSheet> {
+    const [created] = await db.insert(grindingSheets).values(s).returning();
+    return created;
+  }
+
+  async updateGrindingSheet(id: number, data: Partial<InsertGrindingSheet>): Promise<GrindingSheet | undefined> {
+    const [updated] = await db.update(grindingSheets).set(data).where(eq(grindingSheets.id, id)).returning();
+    return updated;
+  }
+
+  async deleteGrindingSheet(id: number): Promise<boolean> {
+    const result = await db.delete(grindingSheets).where(eq(grindingSheets.id, id)).returning();
     return result.length > 0;
   }
 

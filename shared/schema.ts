@@ -171,6 +171,20 @@ export const insertGrindingRecordSchema = createInsertSchema(grindingRecords).om
 export type InsertGrindingRecord = z.infer<typeof insertGrindingRecordSchema>;
 export type GrindingRecord = typeof grindingRecords.$inferSelect;
 
+export const grindingSheets = pgTable("grinding_sheets", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  createdAt: text("created_at").notNull(),
+  createdById: integer("created_by_id").notNull(),
+  createdByName: text("created_by_name").notNull(),
+  groupScope: text("group_scope").notNull(),
+});
+
+export const insertGrindingSheetSchema = createInsertSchema(grindingSheets).omit({ id: true });
+export type InsertGrindingSheet = z.infer<typeof insertGrindingSheetSchema>;
+export type GrindingSheet = typeof grindingSheets.$inferSelect;
+
 export const loginLogs = pgTable("login_logs", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),

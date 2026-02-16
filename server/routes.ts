@@ -667,6 +667,70 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  app.get("/api/grinding-sheets", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin && !(req.user! as any).canAccessGrinding) {
+      return res.status(403).json({ message: "No access to grinding" });
+    }
+    const sheets = await storage.listGrindingSheets(u.groupScope, u.isAdmin);
+    res.json(sheets);
+  });
+
+  app.post("/api/grinding-sheets", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin && !(req.user! as any).canAccessGrinding) {
+      return res.status(403).json({ message: "No access to grinding" });
+    }
+    const { name, url } = req.body;
+    if (!name || !url) return res.status(400).json({ message: "Name and URL are required" });
+    if (!url.includes("docs.google.com")) return res.status(400).json({ message: "Only Google Sheets URLs are supported" });
+    const sheet = await storage.createGrindingSheet({
+      name,
+      url,
+      createdAt: new Date().toISOString(),
+      createdById: u.id,
+      createdByName: u.name,
+      groupScope: u.groupScope.split(",")[0].trim(),
+    });
+    res.json(sheet);
+  });
+
+  app.put("/api/grinding-sheets/:id", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin && !(req.user! as any).canAccessGrinding) {
+      return res.status(403).json({ message: "No access to grinding" });
+    }
+    const id = parseInt(req.params.id);
+    const existing = await storage.getGrindingSheet(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!u.isAdmin) {
+      const scopes = u.groupScope.split(",").map((s: string) => s.trim());
+      if (!scopes.includes(existing.groupScope)) return res.status(403).json({ message: "No access" });
+    }
+    const { name, url } = req.body;
+    if (url && !url.includes("docs.google.com")) return res.status(400).json({ message: "Only Google Sheets URLs are supported" });
+    const updated = await storage.updateGrindingSheet(id, { name, url });
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/grinding-sheets/:id", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin && !(req.user! as any).canAccessGrinding) {
+      return res.status(403).json({ message: "No access to grinding" });
+    }
+    const id = parseInt(req.params.id);
+    const existing = await storage.getGrindingSheet(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!u.isAdmin) {
+      const scopes = u.groupScope.split(",").map((s: string) => s.trim());
+      if (!scopes.includes(existing.groupScope)) return res.status(403).json({ message: "No access" });
+    }
+    const deleted = await storage.deleteGrindingSheet(id);
+    if (!deleted) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
   // Admin stats
   app.get("/api/admin/stats", requireAuth, async (req, res) => {
     const u = userInfo(req);

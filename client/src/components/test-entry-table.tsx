@@ -5,7 +5,7 @@ import { ProductCombobox } from "@/components/product-combobox";
 import { PlusCircle, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-type TestType = "Glide" | "Structure";
+type TestType = "Glide" | "Structure" | "Grind";
 
 type Product = {
   id: number;
@@ -117,14 +117,16 @@ export function TestEntryTable({
     })));
   };
 
+  const hideProductMethod = testType === "Grind";
+
   return (
     <div className="overflow-x-auto rounded-2xl border bg-card/50">
-      <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${560 + distanceLabels.length * 200}px` }}>
+      <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${(hideProductMethod ? 260 : 560) + distanceLabels.length * 200}px` }}>
         <thead>
           <tr className="text-left text-xs text-muted-foreground">
             <th className="sticky left-0 z-10 bg-card/80 px-3 py-3">Ski No.</th>
-            <th className="px-3 py-3">Product(s)</th>
-            <th className="px-3 py-3">Method</th>
+            {!hideProductMethod && <th className="px-3 py-3">Product(s)</th>}
+            {!hideProductMethod && <th className="px-3 py-3">Method</th>}
             {distanceLabels.map((label, roundIdx) => (
               <th key={roundIdx} className="px-3 py-3" colSpan={2}>
                 <div className="flex items-center gap-1">
@@ -169,8 +171,8 @@ export function TestEntryTable({
           </tr>
           <tr className="text-left text-[10px] text-muted-foreground/70 uppercase tracking-wider">
             <th className="sticky left-0 z-10 bg-card/80"></th>
-            <th></th>
-            <th></th>
+            {!hideProductMethod && <th></th>}
+            {!hideProductMethod && <th></th>}
             {distanceLabels.map((_, roundIdx) => (
               <>
                 <th key={`res-${roundIdx}`} className="px-3 pb-1">Result (cm)</th>
@@ -218,6 +220,7 @@ export function TestEntryTable({
                     {row.skiNumber}
                   </div>
                 </td>
+                {!hideProductMethod && (
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-1">
                     <ProductCombobox
@@ -284,6 +287,8 @@ export function TestEntryTable({
                     </button>
                   </div>
                 </td>
+                )}
+                {!hideProductMethod && (
                 <td className="px-3 py-2">
                   <Input
                     value={row.methodology}
@@ -296,6 +301,7 @@ export function TestEntryTable({
                     data-testid={`input-method-${row.id}`}
                   />
                 </td>
+                )}
                 {row.roundResults.map((rr, roundIdx) => (
                   <>
                     <td key={`res-${roundIdx}`} className="px-3 py-2">

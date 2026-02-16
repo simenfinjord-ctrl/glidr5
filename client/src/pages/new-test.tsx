@@ -32,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { TestEntryTable, type EntryRow, type RoundResult, cleanAdditionalIds } from "@/components/test-entry-table";
 
-type TestType = "Glide" | "Structure";
+type TestType = "Glide" | "Structure" | "Grind";
 
 type Series = {
   id: number;
@@ -59,7 +59,7 @@ type Weather = {
 const schema = z.object({
   date: z.string().min(1, "Date is required"),
   seriesId: z.string().min(1, "Select a series"),
-  testType: z.enum(["Glide", "Structure"]),
+  testType: z.enum(["Glide", "Structure", "Grind"]),
   location: z.string().min(1, "Location is required"),
   weatherId: z.string().optional(),
   notes: z.string().optional(),
@@ -84,7 +84,15 @@ export default function NewTest() {
   const { toast } = useToast();
   const { user } = useAuth();
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialType = (urlParams.get("type") as TestType) || "Glide";
+  const returnTo = urlParams.get("returnTo") || "/tests";
+
   const today = new Date().toISOString().slice(0, 10);
+
+  const [grindType, setGrindType] = useState("");
+  const [grindStone, setGrindStone] = useState("");
+  const [grindPattern, setGrindPattern] = useState("");
 
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
@@ -107,7 +115,7 @@ export default function NewTest() {
     resolver: zodResolver(schema),
     defaultValues: {
       date: today,
-      testType: "Glide",
+      testType: initialType,
       seriesId: "",
       location: defaultLocation,
       weatherId: undefined,
@@ -188,7 +196,7 @@ export default function NewTest() {
           description: `Saved ${rows.length} entries.`,
         });
       }
-      setLocation("/tests");
+      setLocation(returnTo);
     },
     onError: (e) => {
       toast({
@@ -204,16 +212,16 @@ export default function NewTest() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <a href="/tests" data-testid="button-back-tests">
+            <a href={returnTo} data-testid="button-back-tests">
               <Button asChild variant="secondary" size="sm">
                 <span className="inline-flex items-center">
                   <ChevronLeft className="mr-1 h-4 w-4" />
-                  Tests
+                  {initialType === "Grind" ? "Grinding" : "Tests"}
                 </span>
               </Button>
             </a>
             <div>
-              <h1 className="text-2xl sm:text-3xl">New test</h1>
+              <h1 className="text-2xl sm:text-3xl">{initialType === "Grind" ? "New grind test" : "New test"}</h1>
               <p
                 className="mt-1 text-sm text-muted-foreground"
                 data-testid="text-newtest-subtitle"
@@ -263,6 +271,11 @@ export default function NewTest() {
                 const chosenWeatherId = values.weatherId
                   ? Number(values.weatherId)
                   : autoWeather?.id;
+                const grindParams = values.testType === "Grind" ? JSON.stringify({
+                  grindType: grindType || undefined,
+                  stone: grindStone || undefined,
+                  pattern: grindPattern || undefined,
+                }) : undefined;
                 saveMutation.mutate({
                   date: values.date,
                   location: values.location,
@@ -271,6 +284,7 @@ export default function NewTest() {
                   seriesId: Number(values.seriesId),
                   notes: values.notes,
                   groupScope: values.groupScope,
+                  grindParameters: grindParams,
                   distanceLabels: JSON.stringify(distanceLabels),
                   entries: rows.map((r) => ({
                     skiNumber: r.skiNumber,
@@ -346,6 +360,7 @@ export default function NewTest() {
                           <SelectContent>
                             <SelectItem value="Glide">Glide</SelectItem>
                             <SelectItem value="Structure">Structure</SelectItem>
+                            <SelectItem value="Grind">Grind</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -491,6 +506,48 @@ export default function NewTest() {
                     )}
                   />
                 </div>
+
+                {watchTestType === "Grind" && (
+                  <>
+                    <div className="lg:col-span-4">
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">Grind Type</label>
+                        <Select value={grindType} onValueChange={setGrindType}>
+                          <SelectTrigger data-testid="select-grind-type">
+                            <SelectValue placeholder="Select grind type..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {["New grind", "Regrind", "Hand finish", "Stone grind", "Linear", "Cross-hatch", "Custom"].map((t) => (
+                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="lg:col-span-4">
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">Stone / Tool</label>
+                        <Input
+                          value={grindStone}
+                          onChange={(e) => setGrindStone(e.target.value)}
+                          placeholder="e.g., SG12, Diamond..."
+                          data-testid="input-grind-stone"
+                        />
+                      </div>
+                    </div>
+                    <div className="lg:col-span-4">
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">Pattern</label>
+                        <Input
+                          value={grindPattern}
+                          onChange={(e) => setGrindPattern(e.target.value)}
+                          placeholder="e.g., 0.5mm linear..."
+                          data-testid="input-grind-pattern"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </form>
           </Form>

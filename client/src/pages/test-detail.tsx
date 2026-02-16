@@ -33,6 +33,7 @@ type Test = {
   distanceLabel0km: string | null;
   distanceLabelXkm: string | null;
   distanceLabels: string | null;
+  grindParameters: string | null;
   createdAt: string;
   createdByName: string;
   groupScope: string;
@@ -158,7 +159,7 @@ export default function TestDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
       toast({ title: "Test deleted" });
-      setLocation("/tests");
+      setLocation(test?.testType === "Grind" ? "/grinding" : "/tests");
     },
     onError: (e) => {
       toast({
@@ -228,17 +229,19 @@ export default function TestDetail() {
     );
   }
 
-  const testTypeBadgeClass = test.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure";
+  const isGrind = test.testType === "Grind";
+  const grindParams = isGrind && test.grindParameters ? (() => { try { return JSON.parse(test.grindParameters); } catch { return {}; } })() : {};
+  const testTypeBadgeClass = test.testType === "Glide" ? "fs-badge-glide" : test.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure";
 
   return (
     <AppShell>
       <div className="flex flex-col gap-5">
         <div>
           <div className="flex items-center justify-between">
-            <AppLink href="/tests" testId="link-back-tests">
+            <AppLink href={isGrind ? "/grinding" : "/tests"} testId="link-back-tests">
               <Button variant="ghost" size="sm" data-testid="button-back-tests">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to tests
+                {isGrind ? "Back to grinding" : "Back to tests"}
               </Button>
             </AppLink>
             <div className="flex items-center gap-2">
@@ -337,6 +340,22 @@ export default function TestDetail() {
                 <div className="rounded-xl bg-background/40 px-3 py-2.5">
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Notes</div>
                   <div className="text-sm" data-testid="text-test-notes">{test.notes}</div>
+                </div>
+              )}
+              {isGrind && (grindParams.grindType || grindParams.stone || grindParams.pattern) && (
+                <div className="rounded-xl bg-indigo-50/50 px-3 py-2.5 ring-1 ring-indigo-100">
+                  <div className="text-[11px] uppercase tracking-wider text-indigo-600/70 mb-1">Grind Parameters</div>
+                  <div className="flex flex-wrap gap-2">
+                    {grindParams.grindType && (
+                      <span className="inline-flex rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700" data-testid="text-grind-type">{grindParams.grindType}</span>
+                    )}
+                    {grindParams.stone && (
+                      <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700" data-testid="text-grind-stone">{grindParams.stone}</span>
+                    )}
+                    {grindParams.pattern && (
+                      <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700" data-testid="text-grind-pattern">{grindParams.pattern}</span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -543,8 +562,8 @@ export default function TestDetail() {
                 <thead>
                   <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="pb-3 pr-3">Ski</th>
-                    <th className="pb-3 pr-3">Product</th>
-                    <th className="pb-3 pr-3">Method</th>
+                    {!isGrind && <th className="pb-3 pr-3">Product</th>}
+                    {!isGrind && <th className="pb-3 pr-3">Method</th>}
                     {distLabels.map((label, i) => (
                       <th key={i} className="pb-3 pr-3">
                         {(label?.trim() || `Round ${i + 1}`)} (cm)
@@ -590,12 +609,16 @@ export default function TestDetail() {
                             {entry.skiNumber}
                           </span>
                         </td>
-                        <td className="py-3 pr-3" data-testid={`text-product-${entry.id}`}>
-                          {hideDetails ? "" : (allProducts.length > 0 ? allProducts.join(" + ") : "—")}
-                        </td>
-                        <td className="py-3 pr-3 text-muted-foreground" data-testid={`text-method-${entry.id}`}>
-                          {hideDetails ? "" : (entry.methodology || "—")}
-                        </td>
+                        {!isGrind && (
+                          <td className="py-3 pr-3" data-testid={`text-product-${entry.id}`}>
+                            {hideDetails ? "" : (allProducts.length > 0 ? allProducts.join(" + ") : "—")}
+                          </td>
+                        )}
+                        {!isGrind && (
+                          <td className="py-3 pr-3 text-muted-foreground" data-testid={`text-method-${entry.id}`}>
+                            {hideDetails ? "" : (entry.methodology || "—")}
+                          </td>
+                        )}
                         {rounds.map((rr, roundIdx) => (
                           <td key={`res-${roundIdx}`} className="py-3 pr-3 font-mono text-sm" data-testid={`text-result-${roundIdx}-${entry.id}`}>
                             {rr.result ?? "—"}

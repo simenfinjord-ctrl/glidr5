@@ -197,6 +197,7 @@ export default function Tests() {
 
   const filtered = useMemo(() => {
     return tests.filter((t) => {
+      if (t.testType === "Grind") return false;
       if (filterSeason !== "All" && getSeason(t.date) !== filterSeason) return false;
       if (filterType !== "All" && t.testType !== filterType) return false;
       if (filterLocation && !t.location.toLowerCase().includes(filterLocation.toLowerCase())) return false;

@@ -101,6 +101,7 @@ export const tests = pgTable("tests", {
   testType: text("test_type").notNull(),
   seriesId: integer("series_id").notNull(),
   notes: text("notes"),
+  grindParameters: text("grind_parameters"),
   distanceLabel0km: text("distance_label_0km"),
   distanceLabelXkm: text("distance_label_xkm"),
   distanceLabels: text("distance_labels"),

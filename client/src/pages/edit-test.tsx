@@ -33,7 +33,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { TestEntryTable, type EntryRow, type RoundResult, cleanAdditionalIds } from "@/components/test-entry-table";
 import { Spinner } from "@/components/ui/spinner";
 
-type TestType = "Glide" | "Structure";
+type TestType = "Glide" | "Structure" | "Grind";
 
 type Test = {
   id: number;
@@ -46,6 +46,7 @@ type Test = {
   distanceLabel0km: string | null;
   distanceLabelXkm: string | null;
   distanceLabels: string | null;
+  grindParameters: string | null;
   createdAt: string;
   createdByName: string;
   groupScope: string;
@@ -91,7 +92,7 @@ type TestEntry = {
 const schema = z.object({
   date: z.string().min(1, "Date is required"),
   seriesId: z.string().min(1, "Select a series"),
-  testType: z.enum(["Glide", "Structure"]),
+  testType: z.enum(["Glide", "Structure", "Grind"]),
   location: z.string().min(1, "Location is required"),
   weatherId: z.string().optional(),
   notes: z.string().optional(),
@@ -164,6 +165,9 @@ export default function EditTest() {
 
   const [rows, setRows] = useState<EntryRow[]>([]);
   const [distanceLabels, setDistanceLabels] = useState<string[]>(["0 km"]);
+  const [grindType, setGrindType] = useState("");
+  const [grindStone, setGrindStone] = useState("");
+  const [grindPattern, setGrindPattern] = useState("");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -182,7 +186,7 @@ export default function EditTest() {
     if (!test || initialized) return;
     form.reset({
       date: test.date,
-      testType: test.testType as "Glide" | "Structure",
+      testType: test.testType as TestType,
       seriesId: String(test.seriesId),
       location: test.location,
       weatherId: test.weatherId ? String(test.weatherId) : undefined,
@@ -191,6 +195,14 @@ export default function EditTest() {
     });
     const labels = parseDistanceLabels(test);
     setDistanceLabels(labels);
+    if (test.grindParameters) {
+      try {
+        const gp = JSON.parse(test.grindParameters);
+        setGrindType(gp.grindType || "");
+        setGrindStone(gp.stone || "");
+        setGrindPattern(gp.pattern || "");
+      } catch {}
+    }
     setInitialized(true);
   }, [test, initialized, form]);
 
@@ -360,6 +372,11 @@ export default function EditTest() {
                 const chosenWeatherId = values.weatherId
                   ? Number(values.weatherId)
                   : autoWeather?.id;
+                const grindParams = values.testType === "Grind" ? JSON.stringify({
+                  grindType: grindType || undefined,
+                  stone: grindStone || undefined,
+                  pattern: grindPattern || undefined,
+                }) : null;
                 saveMutation.mutate({
                   date: values.date,
                   location: values.location,
@@ -368,6 +385,7 @@ export default function EditTest() {
                   seriesId: Number(values.seriesId),
                   notes: values.notes,
                   groupScope: values.groupScope,
+                  grindParameters: grindParams,
                   distanceLabels: JSON.stringify(distanceLabels),
                   entries: rows.map((r) => ({
                     skiNumber: r.skiNumber,
@@ -436,6 +454,7 @@ export default function EditTest() {
                           <SelectContent>
                             <SelectItem value="Glide">Glide</SelectItem>
                             <SelectItem value="Structure">Structure</SelectItem>
+                            <SelectItem value="Grind">Grind</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -566,6 +585,48 @@ export default function EditTest() {
                     )}
                   />
                 </div>
+
+                {watchTestType === "Grind" && (
+                  <>
+                    <div className="lg:col-span-4">
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">Grind Type</label>
+                        <Select value={grindType} onValueChange={setGrindType}>
+                          <SelectTrigger data-testid="select-grind-type">
+                            <SelectValue placeholder="Select grind type..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {["New grind", "Regrind", "Hand finish", "Stone grind", "Linear", "Cross-hatch", "Custom"].map((t) => (
+                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="lg:col-span-4">
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">Stone / Tool</label>
+                        <Input
+                          value={grindStone}
+                          onChange={(e) => setGrindStone(e.target.value)}
+                          placeholder="e.g., SG12, Diamond..."
+                          data-testid="input-grind-stone"
+                        />
+                      </div>
+                    </div>
+                    <div className="lg:col-span-4">
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">Pattern</label>
+                        <Input
+                          value={grindPattern}
+                          onChange={(e) => setGrindPattern(e.target.value)}
+                          placeholder="e.g., 0.5mm linear..."
+                          data-testid="input-grind-pattern"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </form>
           </Form>

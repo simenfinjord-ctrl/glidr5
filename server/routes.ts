@@ -371,6 +371,7 @@ export async function registerRoutes(
       distanceLabel0km: req.body.distanceLabel0km?.trim() || null,
       distanceLabelXkm: req.body.distanceLabelXkm?.trim() || null,
       distanceLabels: req.body.distanceLabels || null,
+      grindParameters: req.body.grindParameters || null,
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
@@ -438,6 +439,7 @@ export async function registerRoutes(
       distanceLabel0km: req.body.distanceLabel0km?.trim() || null,
       distanceLabelXkm: req.body.distanceLabelXkm?.trim() || null,
       distanceLabels: req.body.distanceLabels || null,
+      grindParameters: req.body.grindParameters ?? null,
     };
     if (req.body.groupScope) testData.groupScope = req.body.groupScope;
     const updated = await storage.updateTest(id, testData);

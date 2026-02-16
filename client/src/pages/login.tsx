@@ -185,7 +185,7 @@ export default function Login() {
         </Card>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          Glidr &middot; Ski testing & documentation
+          Glidr &middot; A glide and performance database
         </p>
       </div>
     </div>

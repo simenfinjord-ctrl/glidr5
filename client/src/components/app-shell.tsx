@@ -126,7 +126,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-border bg-white/80 backdrop-blur-lg">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 py-3">
           <div className="flex items-center gap-2">
-            <span className="text-base font-bold tracking-tight text-gray-900">Glidr</span>
+            <span className="text-xl font-bold tracking-tight text-gray-900">Glidr</span>
             <div className={cn(
               "h-2 w-2 rounded-full",
               isOnline ? "bg-emerald-500" : "bg-amber-500"
@@ -215,7 +215,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mb-3 h-px bg-gray-100" />
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
           <span className="font-medium">Glidr</span>
-          <span>Ski testing & documentation</span>
+          <span>A glide and performance database</span>
         </div>
       </footer>
     </div>

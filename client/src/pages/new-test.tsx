@@ -285,6 +285,8 @@ export default function NewTest() {
                   notes: values.notes,
                   groupScope: values.groupScope,
                   grindParameters: grindParams,
+                  distanceLabel0km: distanceLabels[0] || null,
+                  distanceLabelXkm: distanceLabels[1] || null,
                   distanceLabels: JSON.stringify(distanceLabels),
                   entries: rows.map((r) => ({
                     skiNumber: r.skiNumber,
@@ -293,6 +295,8 @@ export default function NewTest() {
                     methodology: r.methodology,
                     result0kmCmBehind: r.roundResults[0]?.result ?? null,
                     rank0km: r.roundResults[0]?.rank ?? null,
+                    resultXkmCmBehind: r.roundResults[1]?.result ?? null,
+                    rankXkm: r.roundResults[1]?.rank ?? null,
                     results: JSON.stringify(r.roundResults),
                     feelingRank: r.feelingRank,
                   })),

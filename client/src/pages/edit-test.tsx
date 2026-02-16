@@ -165,6 +165,7 @@ export default function EditTest() {
 
   const [rows, setRows] = useState<EntryRow[]>([]);
   const [distanceLabels, setDistanceLabels] = useState<string[]>(["0 km"]);
+  const [entriesLoaded, setEntriesLoaded] = useState(false);
   const [grindType, setGrindType] = useState("");
   const [grindStone, setGrindStone] = useState("");
   const [grindPattern, setGrindPattern] = useState("");
@@ -207,8 +208,9 @@ export default function EditTest() {
   }, [test, initialized, form]);
 
   useEffect(() => {
-    if (!entries.length || rows.length > 0 || !initialized) return;
-    const numRounds = distanceLabels.length;
+    if (!entries.length || !test || !initialized || entriesLoaded) return;
+    const labels = parseDistanceLabels(test);
+    const numRounds = labels.length;
     setRows(
       entries.map((e, i) => ({
         id: `row_${i}_${e.id}`,
@@ -220,7 +222,8 @@ export default function EditTest() {
         feelingRank: e.feelingRank ?? null,
       }))
     );
-  }, [entries, rows.length, initialized, distanceLabels.length]);
+    setEntriesLoaded(true);
+  }, [entries, test, initialized, entriesLoaded]);
 
   const watchSeriesId = form.watch("seriesId");
   useEffect(() => {
@@ -356,7 +359,7 @@ export default function EditTest() {
               type="submit"
               form="edit-test-form"
               data-testid="button-save-test"
-              disabled={saveMutation.isPending}
+              disabled={saveMutation.isPending || (!entriesLoaded && entries.length > 0)}
             >
               <Save className="mr-2 h-4 w-4" />
               {saveMutation.isPending ? "Saving…" : "Save"}
@@ -377,7 +380,7 @@ export default function EditTest() {
                   stone: grindStone || undefined,
                   pattern: grindPattern || undefined,
                 }) : null;
-                saveMutation.mutate({
+                const payload: any = {
                   date: values.date,
                   location: values.location,
                   weatherId: chosenWeatherId,
@@ -386,18 +389,25 @@ export default function EditTest() {
                   notes: values.notes,
                   groupScope: values.groupScope,
                   grindParameters: grindParams,
+                  distanceLabel0km: distanceLabels[0] || null,
+                  distanceLabelXkm: distanceLabels[1] || null,
                   distanceLabels: JSON.stringify(distanceLabels),
-                  entries: rows.map((r) => ({
+                };
+                if (entriesLoaded || entries.length === 0) {
+                  payload.entries = rows.map((r) => ({
                     skiNumber: r.skiNumber,
                     productId: r.productId,
                     additionalProductIds: cleanAdditionalIds(r.additionalProductIds),
                     methodology: r.methodology,
                     result0kmCmBehind: r.roundResults[0]?.result ?? null,
                     rank0km: r.roundResults[0]?.rank ?? null,
+                    resultXkmCmBehind: r.roundResults[1]?.result ?? null,
+                    rankXkm: r.roundResults[1]?.rank ?? null,
                     results: JSON.stringify(r.roundResults),
                     feelingRank: r.feelingRank,
-                  })),
-                });
+                  }));
+                }
+                saveMutation.mutate(payload);
               })}
               className="space-y-4"
             >

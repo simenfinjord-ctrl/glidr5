@@ -132,6 +132,7 @@ const userSchema = z.object({
   password: z.string().min(1, "Password is required"),
   groupScope: z.string().min(1, "At least one group is required"),
   isAdmin: z.boolean(),
+  canAccessGrinding: z.boolean(),
   isActive: z.boolean(),
 });
 
@@ -152,7 +153,7 @@ function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames
   const { toast } = useToast();
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
-    defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, isActive: true },
+    defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, canAccessGrinding: false, isActive: true },
   });
 
   const selectedGroups = parseGroups(form.watch("groupScope"));
@@ -206,6 +207,19 @@ function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames
               <SelectContent>
                 <SelectItem value="member">Member</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} />
+        <FormField control={form.control} name="canAccessGrinding" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Grinding Access</FormLabel>
+            <Select value={field.value ? "yes" : "no"} onValueChange={(v) => field.onChange(v === "yes")}>
+              <FormControl><SelectTrigger data-testid="select-create-grinding"><SelectValue /></SelectTrigger></FormControl>
+              <SelectContent>
+                <SelectItem value="yes">Enabled</SelectItem>
+                <SelectItem value="no">Disabled</SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />

@@ -522,6 +522,7 @@ export async function registerRoutes(
       name: req.body.name,
       groupScope: req.body.groupScope,
       isAdmin: req.body.isAdmin ? 1 : 0,
+      canAccessGrinding: req.body.canAccessGrinding ? 1 : 0,
     });
     const { password, ...safe } = created;
     res.json(safe);
@@ -536,6 +537,8 @@ export async function registerRoutes(
     if (req.body.email !== undefined) data.email = req.body.email;
     if (req.body.groupScope !== undefined) data.groupScope = req.body.groupScope;
     if (req.body.isAdmin !== undefined) data.isAdmin = req.body.isAdmin ? 1 : 0;
+    if (req.body.canAccessGrinding !== undefined) data.canAccessGrinding = req.body.canAccessGrinding ? 1 : 0;
+    if (req.body.isActive !== undefined) data.isActive = req.body.isActive ? 1 : 0;
     const updated = await storage.updateUser(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });
     const { password, ...safe } = updated;

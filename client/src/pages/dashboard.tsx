@@ -1,4 +1,4 @@
-import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap } from "lucide-react";
+import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 type Test = { id: number; date: string; location: string; testType: string; createdByName: string; groupScope: string; weatherId: number | null; seriesId: number; createdAt: string };
+type Product = { id: number; brand: string; name: string; category: string; groupScope: string };
+type Weather = { id: number; date: string; location: string; airTemperatureC: number; snowTemperatureC: number; time: string | null };
 
 function QuickCard({
   title,
@@ -46,9 +48,14 @@ function QuickCard({
 export default function Dashboard() {
   const { user } = useAuth();
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
+  const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
+  const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayTests = tests.filter((t) => t.date === todayStr);
+
+  const recentTests = [...tests].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
+  const recentWeather = [...weather].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
 
   return (
     <AppShell>
@@ -97,7 +104,7 @@ export default function Dashboard() {
                 <AppLink key={t.id} href={`/tests/${t.id}`} testId={`link-today-test-${t.id}`}>
                   <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2.5 transition hover:bg-white hover:shadow-sm cursor-pointer">
                     <div className="flex items-center gap-2">
-                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
+                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : t.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure")}>
                         {t.testType}
                       </span>
                       <span className="text-sm font-medium text-gray-900">{t.location}</span>
@@ -115,6 +122,99 @@ export default function Dashboard() {
           <QuickCard title="New test series" description="Track test ski series and regrinds" href="/testskis" icon={Snowflake} iconColor="text-sky-600" testId="card-quick-new-series" />
           <QuickCard title="Add product" description="Glide, topping, and structure tools" href="/products" icon={PackagePlus} iconColor="text-amber-600" testId="card-quick-add-product" />
           <QuickCard title="Add weather" description="One entry per date + location" href="/weather" icon={CalendarPlus} iconColor="text-violet-600" testId="card-quick-add-weather" />
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {recentTests.length > 0 && (
+            <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-tests">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-50">
+                  <ListChecks className="h-3.5 w-3.5 text-blue-600" />
+                </div>
+                Recent tests
+              </div>
+              <div className="space-y-2">
+                {recentTests.map((t) => (
+                  <AppLink key={t.id} href={`/tests/${t.id}`} testId={`link-recent-test-${t.id}`}>
+                    <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2.5 transition hover:bg-white hover:shadow-sm cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : t.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure")}>
+                          {t.testType}
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">{t.location}</span>
+                        <span className="text-xs text-gray-400">{t.date}</span>
+                      </div>
+                      <span className="text-xs text-gray-500">{t.createdByName}</span>
+                    </div>
+                  </AppLink>
+                ))}
+              </div>
+              <div className="mt-3 text-center">
+                <AppLink href="/tests" testId="link-all-tests">
+                  <span className="text-xs font-medium text-blue-600 hover:text-blue-700">View all tests</span>
+                </AppLink>
+              </div>
+            </Card>
+          )}
+
+          <div className="flex flex-col gap-5">
+            {products.length > 0 && (
+              <Card className="fs-card rounded-2xl p-4" data-testid="card-products-overview">
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50">
+                    <Package className="h-3.5 w-3.5 text-amber-600" />
+                  </div>
+                  Products
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{products.length}</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {products.slice(0, 8).map((p) => (
+                    <span key={p.id} className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700 ring-1 ring-gray-200" data-testid={`badge-product-${p.id}`}>
+                      {p.brand} {p.name}
+                    </span>
+                  ))}
+                  {products.length > 8 && (
+                    <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs text-gray-500">+{products.length - 8} more</span>
+                  )}
+                </div>
+                <div className="mt-3 text-center">
+                  <AppLink href="/products" testId="link-all-products">
+                    <span className="text-xs font-medium text-amber-600 hover:text-amber-700">View all products</span>
+                  </AppLink>
+                </div>
+              </Card>
+            )}
+
+            {recentWeather.length > 0 && (
+              <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-weather">
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-50">
+                    <CloudSun className="h-3.5 w-3.5 text-violet-600" />
+                  </div>
+                  Recent weather
+                </div>
+                <div className="space-y-2">
+                  {recentWeather.map((w) => (
+                    <div key={w.id} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2 text-xs" data-testid={`weather-row-${w.id}`}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900">{w.location}</span>
+                        <span className="text-gray-400">{w.date}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-blue-600">Air {w.airTemperatureC}°C</span>
+                        <span className="text-cyan-600">Snow {w.snowTemperatureC}°C</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 text-center">
+                  <AppLink href="/weather" testId="link-all-weather">
+                    <span className="text-xs font-medium text-violet-600 hover:text-violet-700">View all weather</span>
+                  </AppLink>
+                </div>
+              </Card>
+            )}
+          </div>
         </div>
 
       </div>

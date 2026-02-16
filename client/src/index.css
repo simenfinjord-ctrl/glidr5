@@ -48,7 +48,7 @@
 }
 
 :root {
-  --background: 210 20% 98%;
+  --background: 210 50% 92%;
   --foreground: 220 20% 14%;
 
   --card: 0 0% 100%;
@@ -151,7 +151,7 @@
 
 @layer utilities {
   .fs-grid {
-    background: hsl(210 40% 94%);
+    background: hsl(210 50% 88%);
   }
 
   .fs-card {

@@ -117,7 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const visibleNav = nav.filter((item) => {
     if (item.adminOnly && !user?.isAdmin) return false;
-    if (item.grindingOnly && !user?.isAdmin && !(user as any)?.canAccessGrinding) return false;
+    if (item.grindingOnly && !user?.isAdmin && !user?.canAccessGrinding) return false;
     return true;
   });
 

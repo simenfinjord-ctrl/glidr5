@@ -7,6 +7,7 @@ type User = {
   name: string;
   groupScope: string;
   isAdmin: number;
+  canAccessGrinding: number;
 };
 
 export function useAuth() {

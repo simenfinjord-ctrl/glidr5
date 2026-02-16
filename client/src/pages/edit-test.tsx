@@ -455,7 +455,9 @@ export default function EditTest() {
                           <SelectContent>
                             <SelectItem value="Glide">Glide</SelectItem>
                             <SelectItem value="Structure">Structure</SelectItem>
-                            <SelectItem value="Grind">Grind</SelectItem>
+                            {(user?.isAdmin || user?.canAccessGrinding) && (
+                              <SelectItem value="Grind">Grind</SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />

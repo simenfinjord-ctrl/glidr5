@@ -353,12 +353,16 @@ export async function registerRoutes(
 
   app.get("/api/tests", requireAuth, async (req, res) => {
     const u = userInfo(req);
+    const canGrind = u.isAdmin || !!(req.user! as any).canAccessGrinding;
     const list = await storage.listTests(u.groupScope, u.isAdmin);
-    res.json(list);
+    res.json(canGrind ? list : list.filter((t: any) => t.testType !== "Grind"));
   });
 
   app.post("/api/tests", requireAuth, async (req, res) => {
     const u = userInfo(req);
+    if (req.body.testType === "Grind" && !u.isAdmin && !(req.user! as any).canAccessGrinding) {
+      return res.status(403).json({ message: "Grinding access required" });
+    }
     const now = new Date().toISOString();
     const groupScope = resolveCreateGroupScope(req);
     const test = await storage.createTest({
@@ -420,6 +424,9 @@ export async function registerRoutes(
     const u = userInfo(req);
     if (!userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope)) {
       return res.status(403).json({ message: "Forbidden" });
+    }
+    if ((test as any).testType === "Grind" && !u.isAdmin && !(req.user! as any).canAccessGrinding) {
+      return res.status(403).json({ message: "Grinding access required" });
     }
     res.json(test);
   });
@@ -505,6 +512,9 @@ export async function registerRoutes(
     if (!test) return res.status(404).json({ message: "Not found" });
     if (!userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope)) {
       return res.status(403).json({ message: "Forbidden" });
+    }
+    if ((test as any).testType === "Grind" && !u.isAdmin && !(req.user! as any).canAccessGrinding) {
+      return res.status(403).json({ message: "Grinding access required" });
     }
     const entries = await storage.listEntries(testId);
     res.json(entries);

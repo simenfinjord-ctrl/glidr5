@@ -27,6 +27,9 @@ export type EntryRow = {
   methodology: string;
   roundResults: RoundResult[];
   feelingRank: number | null;
+  grindType?: string;
+  grindStone?: string;
+  grindPattern?: string;
 };
 
 function competitionRanks(values: Array<{ rowId: string; v: number }>) {
@@ -117,16 +120,19 @@ export function TestEntryTable({
     })));
   };
 
-  const hideProductMethod = testType === "Grind";
+  const isGrind = testType === "Grind";
 
   return (
     <div className="overflow-x-auto rounded-2xl border bg-card/50">
-      <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${(hideProductMethod ? 260 : 560) + distanceLabels.length * 200}px` }}>
+      <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${(isGrind ? 700 : 560) + distanceLabels.length * 200}px` }}>
         <thead>
           <tr className="text-left text-xs text-muted-foreground">
             <th className="sticky left-0 z-10 bg-card/80 px-3 py-3">Ski No.</th>
-            {!hideProductMethod && <th className="px-3 py-3">Product(s)</th>}
-            {!hideProductMethod && <th className="px-3 py-3">Method</th>}
+            {!isGrind && <th className="px-3 py-3">Product(s)</th>}
+            {!isGrind && <th className="px-3 py-3">Method</th>}
+            {isGrind && <th className="px-3 py-3">Grind Type</th>}
+            {isGrind && <th className="px-3 py-3">Stone / Tool</th>}
+            {isGrind && <th className="px-3 py-3">Pattern</th>}
             {distanceLabels.map((label, roundIdx) => (
               <th key={roundIdx} className="px-3 py-3" colSpan={2}>
                 <div className="flex items-center gap-1">
@@ -171,8 +177,11 @@ export function TestEntryTable({
           </tr>
           <tr className="text-left text-[10px] text-muted-foreground/70 uppercase tracking-wider">
             <th className="sticky left-0 z-10 bg-card/80"></th>
-            {!hideProductMethod && <th></th>}
-            {!hideProductMethod && <th></th>}
+            {!isGrind && <th></th>}
+            {!isGrind && <th></th>}
+            {isGrind && <th></th>}
+            {isGrind && <th></th>}
+            {isGrind && <th></th>}
             {distanceLabels.map((_, roundIdx) => (
               <>
                 <th key={`res-${roundIdx}`} className="px-3 pb-1">Result (cm)</th>
@@ -220,7 +229,7 @@ export function TestEntryTable({
                     {row.skiNumber}
                   </div>
                 </td>
-                {!hideProductMethod && (
+                {!isGrind && (
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-1">
                     <ProductCombobox
@@ -288,7 +297,7 @@ export function TestEntryTable({
                   </div>
                 </td>
                 )}
-                {!hideProductMethod && (
+                {!isGrind && (
                 <td className="px-3 py-2">
                   <Input
                     value={row.methodology}
@@ -301,6 +310,50 @@ export function TestEntryTable({
                     data-testid={`input-method-${row.id}`}
                   />
                 </td>
+                )}
+                {isGrind && (
+                <>
+                  <td className="px-3 py-2">
+                    <select
+                      value={row.grindType || ""}
+                      onChange={(e) => {
+                        const next = rows.map((r) => (r.id === row.id ? { ...r, grindType: e.target.value || undefined } : r));
+                        setRows(next);
+                      }}
+                      className="h-9 w-full rounded-md border bg-background/70 px-2 text-sm"
+                      data-testid={`select-grind-type-${row.id}`}
+                    >
+                      <option value="">—</option>
+                      {["New grind", "Regrind", "Hand finish", "Stone grind", "Linear", "Cross-hatch", "Custom"].map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2">
+                    <Input
+                      value={row.grindStone || ""}
+                      onChange={(e) => {
+                        const next = rows.map((r) => (r.id === row.id ? { ...r, grindStone: e.target.value || undefined } : r));
+                        setRows(next);
+                      }}
+                      className="h-9 bg-background/70"
+                      placeholder="e.g., SG12"
+                      data-testid={`input-grind-stone-${row.id}`}
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <Input
+                      value={row.grindPattern || ""}
+                      onChange={(e) => {
+                        const next = rows.map((r) => (r.id === row.id ? { ...r, grindPattern: e.target.value || undefined } : r));
+                        setRows(next);
+                      }}
+                      className="h-9 bg-background/70"
+                      placeholder="e.g., 0.5mm"
+                      data-testid={`input-grind-pattern-${row.id}`}
+                    />
+                  </td>
+                </>
                 )}
                 {row.roundResults.map((rr, roundIdx) => (
                   <>

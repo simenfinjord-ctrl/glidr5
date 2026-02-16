@@ -124,3 +124,6 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Sheet URLs auto-converted to embed format (extracts spreadsheet ID and gid)
 - Each sheet has name, URL, edit, and delete controls
 - "Open in Google Sheets" link for direct access to the original spreadsheet
+- Dark mode toggle (sun/moon icon) in header and login page, persisted to localStorage
+- Grind tests hidden from users without canAccessGrinding (server-side + client-side filtering)
+- Grind parameters (type, stone, pattern) configurable per entry, not per test

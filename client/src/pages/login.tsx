@@ -3,7 +3,8 @@ import { useLocation } from "wouter";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { LogIn, Mail, Lock, ArrowLeft } from "lucide-react";
+import { LogIn, Mail, Lock, ArrowLeft, Sun, Moon } from "lucide-react";
+import { useTheme } from "@/lib/theme";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export default function Login() {
   const { login } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  const { theme, toggle: toggleTheme } = useTheme();
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -34,26 +36,31 @@ export default function Login() {
     <div
       className="min-h-screen flex items-center justify-center px-4"
       style={{
-        background: `
-          radial-gradient(ellipse 80% 60% at 50% -10%, hsl(212 80% 92% / 0.8), transparent 60%),
-          radial-gradient(ellipse 60% 50% at 80% 100%, hsl(198 70% 90% / 0.5), transparent 50%),
-          hsl(210 25% 97%)
-        `,
+        background: theme === "dark"
+          ? `radial-gradient(ellipse 80% 60% at 50% -10%, hsl(215 40% 18% / 0.8), transparent 60%), hsl(224 20% 10%)`
+          : `radial-gradient(ellipse 80% 60% at 50% -10%, hsl(212 80% 92% / 0.8), transparent 60%), radial-gradient(ellipse 60% 50% at 80% 100%, hsl(198 70% 90% / 0.5), transparent 50%), hsl(210 25% 97%)`,
       }}
     >
+      <button
+        onClick={toggleTheme}
+        className="absolute top-4 right-4 p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        data-testid="button-login-theme-toggle"
+      >
+        {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+      </button>
       <div className="w-full max-w-[400px]">
         <div className="flex flex-col items-center gap-2 mb-8">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
               Welcome to Glidr
             </h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Sign in to your ski testing account
             </p>
           </div>
         </div>
 
-        <Card className="bg-white shadow-xl shadow-gray-200/50 border-gray-200/80 rounded-2xl">
+        <Card className="bg-white dark:bg-gray-900 shadow-xl shadow-gray-200/50 dark:shadow-black/30 border-gray-200/80 dark:border-gray-700/50 rounded-2xl">
           <CardContent className="p-7">
             {showForgot ? (
               <div className="space-y-4">
@@ -184,7 +191,7 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
+        <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">
           Glidr &middot; A glide and performance database
         </p>
       </div>

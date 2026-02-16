@@ -154,6 +154,10 @@
     background: hsl(210 50% 88%);
   }
 
+  .dark .fs-grid {
+    background: hsl(224 20% 8%);
+  }
+
   .fs-card {
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));

@@ -14,11 +14,14 @@ import {
   BarChart3,
   Disc3,
   UserCircle,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useOffline } from "@/lib/offline-context";
+import { useTheme } from "@/lib/theme";
 import { AppLink } from "@/components/app-link";
 
 type NavItem = {
@@ -114,6 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
+  const { theme, toggle: toggleTheme } = useTheme();
 
   const visibleNav = nav.filter((item) => {
     if (item.adminOnly && !user?.isAdmin) return false;
@@ -123,10 +127,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen fs-grid">
-      <header className="sticky top-0 z-40 border-b border-border bg-white/80 backdrop-blur-lg">
+      <header className="sticky top-0 z-40 border-b border-border bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 py-3">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-bold tracking-tight text-gray-900">Glidr</span>
+            <span className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Glidr</span>
             <div className={cn(
               "h-2 w-2 rounded-full",
               isOnline ? "bg-emerald-500" : "bg-amber-500"
@@ -157,10 +161,19 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {pendingCount} pending
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid="button-theme-toggle"
+              onClick={toggleTheme}
+              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
             <AppLink
               href="/profile"
               testId="link-profile"
-              className="hidden sm:flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mr-1 transition-colors"
+              className="hidden sm:flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mr-1 transition-colors"
             >
               <UserCircle className="h-4 w-4" />
               <span>{user?.name}</span>
@@ -170,7 +183,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               size="sm"
               data-testid="button-logout"
               onClick={() => logout()}
-              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-gray-800"
             >
               <LogOut className="h-4 w-4" />
             </Button>
@@ -189,8 +202,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                   className={cn(
                     "group inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150",
                     active
-                      ? `${item.activeBg} ${item.activeColor} shadow-sm`
-                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-100",
+                      ? `${item.activeBg} ${item.activeColor} shadow-sm dark:bg-opacity-20`
+                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800",
                   )}
                 >
                   <Icon
@@ -212,8 +225,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       <footer className="mx-auto w-full max-w-6xl px-4 sm:px-6 pb-8">
-        <div className="mb-3 h-px bg-gray-100" />
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+        <div className="mb-3 h-px bg-gray-100 dark:bg-gray-800" />
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400 dark:text-gray-500">
           <span className="font-medium">Glidr</span>
           <span>A glide and performance database</span>
         </div>

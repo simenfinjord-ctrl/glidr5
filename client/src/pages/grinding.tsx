@@ -45,6 +45,7 @@ type TestEntry = {
   rank0km: number | null;
   results: string | null;
   feelingRank: number | null;
+  kickRank: number | null;
 };
 type Weather = {
   id: number;

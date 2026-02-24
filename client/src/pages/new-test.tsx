@@ -32,12 +32,13 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { TestEntryTable, type EntryRow, type RoundResult, cleanAdditionalIds } from "@/components/test-entry-table";
 
-type TestType = "Glide" | "Structure" | "Grind";
+type TestType = "Glide" | "Structure" | "Grind" | "Classic" | "Skating";
 
 type Series = {
   id: number;
   name: string;
   type: string;
+  skiType?: string | null;
   groupScope: string;
 };
 
@@ -59,7 +60,7 @@ type Weather = {
 const formSchema = z.object({
   date: z.string().min(1, "Date is required"),
   seriesId: z.string().min(1, "Select a series"),
-  testType: z.enum(["Glide", "Structure", "Grind"]),
+  testType: z.enum(["Glide", "Structure", "Grind", "Classic", "Skating"]),
   location: z.string().min(1, "Location is required"),
   weatherId: z.string().optional(),
   notes: z.string().optional(),
@@ -76,6 +77,7 @@ function makeRows(n = 8, numRounds = 1): EntryRow[] {
     methodology: "",
     roundResults: Array.from({ length: numRounds }, () => ({ result: null, rank: null })),
     feelingRank: null,
+    kickRank: null,
   }));
 }
 
@@ -125,10 +127,12 @@ export default function NewTest() {
   const watchLocation = form.watch("location");
   const watchTestType = form.watch("testType") as TestType;
 
-  const filteredSeries = useMemo(
-    () => series.filter((s) => s.type === watchTestType),
-    [series, watchTestType],
-  );
+  const filteredSeries = useMemo(() => {
+    if (watchTestType === "Classic" || watchTestType === "Skating") {
+      return series.filter((s) => s.skiType?.toLowerCase() === watchTestType.toLowerCase());
+    }
+    return series.filter((s) => s.type === watchTestType);
+  }, [series, watchTestType]);
 
   useEffect(() => {
     if (!filteredSeries.length) return;
@@ -241,6 +245,7 @@ export default function NewTest() {
                     methodology: "",
                     roundResults: Array.from({ length: distanceLabels.length }, () => ({ result: null, rank: null })),
                     feelingRank: null,
+                    kickRank: null,
                   },
                 ])
               }
@@ -291,6 +296,7 @@ export default function NewTest() {
                     rankXkm: r.roundResults[1]?.rank ?? null,
                     results: JSON.stringify(r.roundResults),
                     feelingRank: r.feelingRank,
+                    kickRank: r.kickRank,
                     grindType: r.grindType || null,
                     grindStone: r.grindStone || null,
                     grindPattern: r.grindPattern || null,
@@ -360,6 +366,8 @@ export default function NewTest() {
                           <SelectContent>
                             <SelectItem value="Glide">Glide</SelectItem>
                             <SelectItem value="Structure">Structure</SelectItem>
+                            <SelectItem value="Classic">Classic</SelectItem>
+                            <SelectItem value="Skating">Skating</SelectItem>
                             {can("grinding") && (
                               <SelectItem value="Grind">Grind</SelectItem>
                             )}

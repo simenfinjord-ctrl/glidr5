@@ -53,6 +53,7 @@ type TestEntry = {
   rankXkm: number | null;
   results: string | null;
   feelingRank: number | null;
+  kickRank: number | null;
 };
 
 type Product = {
@@ -230,6 +231,7 @@ export default function TestDetail() {
   }
 
   const isGrind = test.testType === "Grind";
+  const isClassic = test.testType === "Classic";
   const grindParams = isGrind && test.grindParameters ? (() => { try { return JSON.parse(test.grindParameters); } catch { return {}; } })() : {};
   const testTypeBadgeClass = test.testType === "Glide" ? "fs-badge-glide" : test.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure";
 
@@ -484,6 +486,7 @@ export default function TestDetail() {
                     headers.push(`Result ${lbl} (cm)`, `Rank ${lbl}`);
                   }
                   headers.push("Feeling");
+                  if (isClassic) headers.push("Kick");
                   const csvRows = sortedEntries.map((entry) => {
                     const prod = entry.productId ? productsById.get(entry.productId) : null;
                     const additionalIds = entry.additionalProductIds
@@ -507,6 +510,7 @@ export default function TestDetail() {
                       vals.push(rr.result ?? "", rr.rank ?? "");
                     }
                     vals.push(entry.feelingRank ?? "");
+                    if (isClassic) vals.push(entry.kickRank ?? "");
                     return vals.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
                   });
                   const csv = [headers.join(","), ...csvRows].join("\n");
@@ -571,6 +575,7 @@ export default function TestDetail() {
                     ))}
                     <th className="pb-3 pr-3">Rank</th>
                     <th className="pb-3">Feeling</th>
+                    {isClassic && <th className="pb-3 pl-3">Kick</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -644,6 +649,15 @@ export default function TestDetail() {
                             </span>
                           ) : "—"}
                         </td>
+                        {isClassic && (
+                        <td className="py-3 pl-3" data-testid={`text-kick-${entry.id}`}>
+                          {entry.kickRank != null ? (
+                            <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-orange-500/15 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                              {entry.kickRank}
+                            </span>
+                          ) : "—"}
+                        </td>
+                        )}
                       </tr>
                     );
                   })}

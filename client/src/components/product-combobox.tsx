@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
-type TestType = "Glide" | "Structure";
+type TestType = "Glide" | "Structure" | "Classic" | "Skating";
 type ProductCategory = "Glide product" | "Topping product" | "Structure tool";
 
 type Product = {
@@ -23,9 +23,9 @@ type Product = {
 };
 
 function categoriesFor(testType: TestType): ProductCategory[] {
-  return testType === "Glide"
-    ? ["Glide product", "Topping product"]
-    : ["Structure tool"];
+  if (testType === "Glide" || testType === "Classic" || testType === "Skating")
+    return ["Glide product", "Topping product"];
+  return ["Structure tool"];
 }
 
 export function ProductCombobox({

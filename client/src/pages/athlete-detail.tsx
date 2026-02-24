@@ -104,6 +104,7 @@ type TestEntry = {
   rank0km: number | null;
   results: string | null;
   feelingRank: number | null;
+  kickRank: number | null;
   raceSkiId: number | null;
   createdAt: string;
 };
@@ -119,6 +120,7 @@ type RaceSkiTestRow = {
   heights: string | null;
   roundResults: { result: number | null; rank: number | null }[];
   feelingRank: number | null;
+  kickRank: number | null;
 };
 
 type WeatherItem = {
@@ -406,6 +408,7 @@ export default function AthleteDetail() {
         rank0km: row.roundResults[0]?.rank ?? null,
         results: JSON.stringify(row.roundResults),
         feelingRank: row.feelingRank ?? null,
+        kickRank: row.kickRank ?? null,
       }));
       const groupScope = user?.groupScope?.split(",")[0]?.trim() || "";
       const payload = {
@@ -552,6 +555,7 @@ export default function AthleteDetail() {
               heights: ski.heights,
               roundResults: distanceLabels.map(() => ({ result: null, rank: null })),
               feelingRank: null,
+              kickRank: null,
             },
           ]);
         }
@@ -1582,6 +1586,7 @@ function RaceSkiTestCard({ test, skiIds }: { test: RaceSkiTest; skiIds: Set<numb
                   <th className="px-3 py-2">Result</th>
                   <th className="px-3 py-2">Rank</th>
                   <th className="px-3 py-2">Feeling</th>
+                  {test.testType === "Classic" && <th className="px-3 py-2">Kick</th>}
                 </tr>
               </thead>
               <tbody>
@@ -1601,6 +1606,7 @@ function RaceSkiTestCard({ test, skiIds }: { test: RaceSkiTest; skiIds: Set<numb
                       </span>
                     </td>
                     <td className="px-3 py-1.5">{entry.feelingRank ?? "—"}</td>
+                    {test.testType === "Classic" && <td className="px-3 py-1.5">{entry.kickRank ?? "—"}</td>}
                   </tr>
                 ))}
               </tbody>

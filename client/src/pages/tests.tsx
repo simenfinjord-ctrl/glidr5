@@ -38,6 +38,7 @@ type TestEntry = {
   rank0km: number | null;
   results: string | null;
   feelingRank: number | null;
+  kickRank: number | null;
 };
 type Weather = {
   id: number;
@@ -294,6 +295,8 @@ export default function Tests() {
                     <SelectItem value="All">All types</SelectItem>
                     <SelectItem value="Glide">Glide</SelectItem>
                     <SelectItem value="Structure">Structure</SelectItem>
+                    <SelectItem value="Classic">Classic</SelectItem>
+                    <SelectItem value="Skating">Skating</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -500,6 +503,7 @@ export default function Tests() {
                               ))}
                               <th className="pb-2 pr-3">Rank</th>
                               <th className="pb-2">Feel</th>
+                              {t.testType === "Classic" && <th className="pb-2 pl-2">Kick</th>}
                             </tr>
                           </thead>
                           <tbody>
@@ -553,6 +557,15 @@ export default function Tests() {
                                       </span>
                                     ) : "—"}
                                   </td>
+                                  {t.testType === "Classic" && (
+                                  <td className="py-2 pl-2 text-xs">
+                                    {entry.kickRank != null ? (
+                                      <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">
+                                        {entry.kickRank}
+                                      </span>
+                                    ) : "—"}
+                                  </td>
+                                  )}
                                 </tr>
                               );
                             })}

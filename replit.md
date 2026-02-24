@@ -114,6 +114,10 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Distance labels and results stored as JSON (distanceLabels on tests, results on test_entries)
 - Legacy 2-field format (distanceLabel0km/Xkm, result0km/Xkm) auto-converted on load
 - Test entries support feeling rank (subjective ski pair ranking column)
+- Test entries support kick rank (only shown for Classic test type, orange badge styling)
+- Test types include Glide, Structure, Classic, Skating, and Grind
+- Classic/Skating test types filter series by skiType (matching discipline)
+- Kick column included in CSV and PDF exports for Classic tests
 - Test entries support multiple products per line (inline + button, additionalProductIds field)
 - Combined products displayed with "+" separator between names (e.g., "Brand A + Brand B")
 - Hide/Show on test detail blanks Product/Method cells instead of removing columns

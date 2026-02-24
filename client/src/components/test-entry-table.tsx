@@ -5,7 +5,7 @@ import { ProductCombobox } from "@/components/product-combobox";
 import { PlusCircle, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-type TestType = "Glide" | "Structure" | "Grind";
+type TestType = "Glide" | "Structure" | "Grind" | "Classic" | "Skating";
 
 type Product = {
   id: number;
@@ -27,6 +27,7 @@ export type EntryRow = {
   methodology: string;
   roundResults: RoundResult[];
   feelingRank: number | null;
+  kickRank: number | null;
   grindType?: string;
   grindStone?: string;
   grindPattern?: string;
@@ -122,10 +123,11 @@ export function TestEntryTable({
   };
 
   const isGrind = testType === "Grind";
+  const isClassic = testType === "Classic";
 
   return (
     <div className="overflow-x-auto rounded-2xl border bg-card/50">
-      <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${(isGrind ? 700 : 560) + distanceLabels.length * 200}px` }}>
+      <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${(isGrind ? 700 : 560) + distanceLabels.length * 200 + (isClassic ? 80 : 0)}px` }}>
         <thead>
           <tr className="text-left text-xs text-muted-foreground">
             <th className="sticky left-0 z-10 bg-card/80 px-3 py-3">Ski No.</th>
@@ -162,6 +164,7 @@ export function TestEntryTable({
               </th>
             ))}
             <th className="px-3 py-3">Feeling</th>
+            {isClassic && <th className="px-3 py-3">Kick</th>}
             <th className="px-1 py-3">
               <Button
                 type="button"
@@ -190,6 +193,7 @@ export function TestEntryTable({
               </>
             ))}
             <th></th>
+            {isClassic && <th></th>}
             <th></th>
           </tr>
         </thead>
@@ -234,7 +238,7 @@ export function TestEntryTable({
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-1">
                     <ProductCombobox
-                      testType={testType}
+                      testType={testType as "Glide" | "Structure" | "Classic" | "Skating"}
                       products={products}
                       value={row.productId}
                       onChange={(id) => {
@@ -247,7 +251,7 @@ export function TestEntryTable({
                       <div key={addIdx} className="flex items-center gap-0.5">
                         <span className="text-xs font-bold text-muted-foreground">+</span>
                         <ProductCombobox
-                          testType={testType}
+                          testType={testType as "Glide" | "Structure" | "Classic" | "Skating"}
                           products={products}
                           value={addId || undefined}
                           onChange={(newId) => {
@@ -399,6 +403,25 @@ export function TestEntryTable({
                     data-testid={`input-feeling-${row.id}`}
                   />
                 </td>
+                {isClassic && (
+                <td className="px-3 py-2">
+                  <Input
+                    inputMode="numeric"
+                    type="number"
+                    min={1}
+                    value={row.kickRank ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      const num = v === "" ? null : Number(v);
+                      const next = rows.map((r) => (r.id === row.id ? { ...r, kickRank: Number.isNaN(num) ? null : num } : r));
+                      setRows(next);
+                    }}
+                    className="h-9 w-16 bg-background/70"
+                    placeholder="—"
+                    data-testid={`input-kick-${row.id}`}
+                  />
+                </td>
+                )}
                 <td></td>
               </tr>
             );

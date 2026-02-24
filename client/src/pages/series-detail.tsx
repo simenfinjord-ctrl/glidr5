@@ -43,6 +43,7 @@ type TestEntry = {
   rank0km: number | null;
   results: string | null;
   feelingRank: number | null;
+  kickRank: number | null;
 };
 
 type Product = {
@@ -220,6 +221,7 @@ export default function SeriesDetail() {
                           ))}
                           <th className="pb-2 pr-3">Rank</th>
                           <th className="pb-2">Feel</th>
+                          {test.testType === "Classic" && <th className="pb-2 pl-2">Kick</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -273,6 +275,15 @@ export default function SeriesDetail() {
                                   </span>
                                 ) : "—"}
                               </td>
+                              {test.testType === "Classic" && (
+                              <td className="py-2 pl-2 text-xs">
+                                {entry.kickRank != null ? (
+                                  <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">
+                                    {entry.kickRank}
+                                  </span>
+                                ) : "—"}
+                              </td>
+                              )}
                             </tr>
                           );
                         })}

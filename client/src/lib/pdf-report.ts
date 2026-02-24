@@ -29,6 +29,7 @@ type TestEntry = {
   rankXkm: number | null;
   results: string | null;
   feelingRank: number | null;
+  kickRank: number | null;
 };
 
 type Product = {
@@ -216,6 +217,8 @@ export function generateTestPDF(
     headers.push(`Rank`);
   }
   headers.push("Feeling");
+  const isClassic = test.testType === "Classic";
+  if (isClassic) headers.push("Kick");
 
   const body = sortedEntries.map((entry) => {
     const prod = entry.productId ? productsById.get(entry.productId) : null;
@@ -242,6 +245,7 @@ export function generateTestPDF(
       row.push(rr.rank != null ? String(rr.rank) : "—");
     }
     row.push(entry.feelingRank != null ? String(entry.feelingRank) : "—");
+    if (isClassic) row.push(entry.kickRank != null ? String(entry.kickRank) : "—");
     return row;
   });
 

@@ -33,7 +33,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { TestEntryTable, type EntryRow, type RoundResult, cleanAdditionalIds } from "@/components/test-entry-table";
 import { Spinner } from "@/components/ui/spinner";
 
-type TestType = "Glide" | "Structure" | "Grind";
+type TestType = "Glide" | "Structure" | "Grind" | "Classic" | "Skating";
 
 type Test = {
   id: number;
@@ -57,6 +57,7 @@ type Series = {
   id: number;
   name: string;
   type: string;
+  skiType?: string | null;
   groupScope: string;
 };
 
@@ -88,12 +89,13 @@ type TestEntry = {
   rankXkm: number | null;
   results: string | null;
   feelingRank: number | null;
+  kickRank: number | null;
 };
 
 const formSchemaEdit = z.object({
   date: z.string().min(1, "Date is required"),
   seriesId: z.string().min(1, "Select a series"),
-  testType: z.enum(["Glide", "Structure", "Grind"]),
+  testType: z.enum(["Glide", "Structure", "Grind", "Classic", "Skating"]),
   location: z.string().min(1, "Location is required"),
   weatherId: z.string().optional(),
   notes: z.string().optional(),
@@ -210,6 +212,7 @@ export default function EditTest() {
         methodology: e.methodology,
         roundResults: parseEntryResults(e, numRounds),
         feelingRank: e.feelingRank ?? null,
+        kickRank: e.kickRank ?? null,
         grindType: (e as any).grindType ?? undefined,
         grindStone: (e as any).grindStone ?? undefined,
         grindPattern: (e as any).grindPattern ?? undefined,
@@ -232,8 +235,12 @@ export default function EditTest() {
   const watchDate = form.watch("date");
   const watchLocation = form.watch("location");
 
-  const filteredSeries = useMemo(
-    () => series.filter((s) => s.type === watchTestType),
+  const filteredSeries = useMemo(() => {
+    if (watchTestType === "Classic" || watchTestType === "Skating") {
+      return series.filter((s) => s.skiType?.toLowerCase() === watchTestType.toLowerCase());
+    }
+    return series.filter((s) => s.type === watchTestType);
+  },
     [series, watchTestType],
   );
 
@@ -342,6 +349,7 @@ export default function EditTest() {
                     methodology: "",
                     roundResults: Array.from({ length: distanceLabels.length }, () => ({ result: null, rank: null })),
                     feelingRank: null,
+                    kickRank: null,
                   },
                 ])
               }
@@ -395,6 +403,7 @@ export default function EditTest() {
                     rankXkm: r.roundResults[1]?.rank ?? null,
                     results: JSON.stringify(r.roundResults),
                     feelingRank: r.feelingRank,
+                    kickRank: r.kickRank,
                     grindType: r.grindType || null,
                     grindStone: r.grindStone || null,
                     grindPattern: r.grindPattern || null,
@@ -458,6 +467,8 @@ export default function EditTest() {
                           <SelectContent>
                             <SelectItem value="Glide">Glide</SelectItem>
                             <SelectItem value="Structure">Structure</SelectItem>
+                            <SelectItem value="Classic">Classic</SelectItem>
+                            <SelectItem value="Skating">Skating</SelectItem>
                             {can("grinding") && (
                               <SelectItem value="Grind">Grind</SelectItem>
                             )}

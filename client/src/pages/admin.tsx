@@ -945,7 +945,7 @@ export default function Admin() {
                           title={u.isActive ? "Deactivate user" : "Activate user"}
                           onClick={() => toggleActiveMutation.mutate({ userId: u.id, value: !u.isActive })}
                         >
-                          {u.isActive ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+                          {u.isActive ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
                         </button>
                         <button
                           className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
@@ -953,7 +953,7 @@ export default function Admin() {
                           title="Edit user"
                           onClick={() => setEditUser(u)}
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Pencil className="h-4.5 w-4.5" />
                         </button>
                         <button
                           className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
@@ -961,7 +961,7 @@ export default function Admin() {
                           title="Reset password"
                           onClick={() => setResetUser(u)}
                         >
-                          <KeyRound className="h-3.5 w-3.5" />
+                          <KeyRound className="h-4.5 w-4.5" />
                         </button>
                         <button
                           className="rounded p-1 text-orange-500 hover:bg-orange-50"
@@ -973,7 +973,7 @@ export default function Admin() {
                             }
                           }}
                         >
-                          <LogOut className="h-3.5 w-3.5" />
+                          <LogOut className="h-4.5 w-4.5" />
                         </button>
                         <button
                           className="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-30"
@@ -986,7 +986,7 @@ export default function Admin() {
                             }
                           }}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4.5 w-4.5" />
                         </button>
                       </div>
                     </div>

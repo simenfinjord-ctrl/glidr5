@@ -7,8 +7,9 @@ import OpenAI from "openai";
 
 function sanitizePermissions(input: any): Record<string, string> {
   const result: Record<string, string> = { ...DEFAULT_PERMISSIONS };
-  if (!input || typeof input !== "object") return result;
+  if (!input) return result;
   const raw = typeof input === "string" ? (() => { try { return JSON.parse(input); } catch { return {}; } })() : input;
+  if (typeof raw !== "object" || raw === null) return result;
   for (const area of PERMISSION_AREAS) {
     const val = raw[area];
     if (val === "none" || val === "view" || val === "edit") {

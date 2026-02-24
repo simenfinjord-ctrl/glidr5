@@ -30,9 +30,23 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { TestEntryTable, type EntryRow, type RoundResult, cleanAdditionalIds } from "@/components/test-entry-table";
+import { TestEntryTable, type EntryRow, type RoundResult, type RaceSkiOption, cleanAdditionalIds } from "@/components/test-entry-table";
 
 type TestType = "Glide" | "Structure" | "Grind" | "Classic" | "Skating";
+
+type Athlete = {
+  id: number;
+  name: string;
+};
+
+type RaceSki = {
+  id: number;
+  athleteId: number;
+  skiId: string;
+  brand: string | null;
+  discipline: string;
+  grind: string | null;
+};
 
 type Series = {
   id: number;
@@ -59,7 +73,7 @@ type Weather = {
 
 const formSchema = z.object({
   date: z.string().min(1, "Date is required"),
-  seriesId: z.string().min(1, "Select a series"),
+  seriesId: z.string().optional(),
   testType: z.enum(["Glide", "Structure", "Grind", "Classic", "Skating"]),
   location: z.string().min(1, "Location is required"),
   weatherId: z.string().optional(),
@@ -92,10 +106,35 @@ export default function NewTest() {
 
   const today = new Date().toISOString().slice(0, 10);
 
+  const initialSource = urlParams.get("source") === "raceskis" ? "raceskis" : "series";
+  const [testSkiSource, setTestSkiSource] = useState<"series" | "raceskis">(initialSource as any);
+
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
   const { data: groups = [] } = useQuery<{ id: number; name: string }[]>({ queryKey: ["/api/groups"] });
+  const { data: athletes = [] } = useQuery<Athlete[]>({
+    queryKey: ["/api/athletes"],
+    enabled: can("raceskis"),
+  });
+  const { data: allRaceSkis = [] } = useQuery<RaceSki[]>({
+    queryKey: ["/api/race-skis/all"],
+    enabled: testSkiSource === "raceskis" && can("raceskis"),
+  });
+
+  const raceSkiOptions: RaceSkiOption[] = useMemo(() => {
+    return allRaceSkis.map((ski) => {
+      const athlete = athletes.find((a) => a.id === ski.athleteId);
+      return {
+        id: ski.id,
+        skiId: ski.skiId,
+        brand: ski.brand,
+        discipline: ski.discipline,
+        athleteName: athlete?.name || "Unknown",
+        grind: ski.grind,
+      };
+    });
+  }, [allRaceSkis, athletes]);
 
   const userGroups = useMemo(() => {
     if (user?.isAdmin && groups.length > 0) {
@@ -135,6 +174,7 @@ export default function NewTest() {
   }, [series, watchTestType]);
 
   useEffect(() => {
+    if (testSkiSource === "raceskis") return;
     if (!filteredSeries.length) return;
     const current = form.getValues("seriesId");
     const stillValid = current && filteredSeries.some((s) => String(s.id) === current);
@@ -143,7 +183,7 @@ export default function NewTest() {
     if (filteredSeries[0]?.groupScope) {
       form.setValue("groupScope", filteredSeries[0].groupScope, { shouldValidate: true });
     }
-  }, [filteredSeries, form]);
+  }, [filteredSeries, form, testSkiSource]);
 
   useEffect(() => {
     if (!watchSeriesId || !series.length) return;
@@ -269,6 +309,10 @@ export default function NewTest() {
             <form
               id="new-test-form"
               onSubmit={form.handleSubmit((values) => {
+                if (testSkiSource === "series" && !values.seriesId) {
+                  form.setError("seriesId", { message: "Select a series" });
+                  return;
+                }
                 const chosenWeatherId = values.weatherId
                   ? Number(values.weatherId)
                   : autoWeather?.id;
@@ -278,7 +322,8 @@ export default function NewTest() {
                   location: values.location,
                   weatherId: chosenWeatherId,
                   testType: values.testType,
-                  seriesId: Number(values.seriesId),
+                  testSkiSource,
+                  seriesId: testSkiSource === "raceskis" ? null : Number(values.seriesId),
                   notes: values.notes,
                   groupScope: effectiveGroup,
                   grindParameters: null,
@@ -287,8 +332,8 @@ export default function NewTest() {
                   distanceLabels: JSON.stringify(distanceLabels),
                   entries: rows.map((r) => ({
                     skiNumber: r.skiNumber,
-                    productId: r.productId,
-                    additionalProductIds: cleanAdditionalIds(r.additionalProductIds),
+                    productId: testSkiSource === "raceskis" ? null : r.productId,
+                    additionalProductIds: testSkiSource === "raceskis" ? null : cleanAdditionalIds(r.additionalProductIds),
                     methodology: r.methodology,
                     result0kmCmBehind: r.roundResults[0]?.result ?? null,
                     rank0km: r.roundResults[0]?.rank ?? null,
@@ -300,14 +345,34 @@ export default function NewTest() {
                     grindType: r.grindType || null,
                     grindStone: r.grindStone || null,
                     grindPattern: r.grindPattern || null,
-                    raceSkiId: r.raceSkiId || null,
+                    raceSkiId: testSkiSource === "raceskis" ? (r.raceSkiId || null) : null,
                   })),
                 });
               })}
               className="space-y-4"
             >
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="lg:col-span-3">
+                {can("raceskis") && (
+                  <div className="lg:col-span-2">
+                    <FormItem>
+                      <FormLabel>Ski source</FormLabel>
+                      <Select
+                        value={testSkiSource}
+                        onValueChange={(v) => setTestSkiSource(v as "series" | "raceskis")}
+                      >
+                        <SelectTrigger data-testid="select-ski-source">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="series">Test Series</SelectItem>
+                          <SelectItem value="raceskis">Race Skis</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  </div>
+                )}
+                {testSkiSource === "series" && (
+                <div className={can("raceskis") ? "lg:col-span-2" : "lg:col-span-3"}>
                   <FormField
                     control={form.control}
                     name="seriesId"
@@ -340,6 +405,7 @@ export default function NewTest() {
                     )}
                   />
                 </div>
+                )}
 
                 <div className="lg:col-span-2">
                   <FormField
@@ -530,6 +596,8 @@ export default function NewTest() {
             setRows={setRows}
             distanceLabels={distanceLabels}
             onDistanceLabelsChange={setDistanceLabels}
+            testSkiSource={testSkiSource}
+            raceSkis={raceSkiOptions}
           />
           <div
             className="mt-2 text-xs text-muted-foreground"

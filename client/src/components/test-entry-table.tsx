@@ -68,6 +68,15 @@ export function cleanAdditionalIds(ids?: string): string | undefined {
   return cleaned.length ? cleaned.join(",") : undefined;
 }
 
+export type RaceSkiOption = {
+  id: number;
+  skiId: string;
+  brand: string | null;
+  discipline: string;
+  athleteName: string;
+  grind: string | null;
+};
+
 export function TestEntryTable({
   testType,
   products,
@@ -75,6 +84,8 @@ export function TestEntryTable({
   setRows,
   distanceLabels,
   onDistanceLabelsChange,
+  testSkiSource = "series",
+  raceSkis = [],
 }: {
   testType: TestType;
   products: Product[];
@@ -82,6 +93,8 @@ export function TestEntryTable({
   setRows: (next: EntryRow[]) => void;
   distanceLabels: string[];
   onDistanceLabelsChange: (labels: string[]) => void;
+  testSkiSource?: "series" | "raceskis";
+  raceSkis?: RaceSkiOption[];
 }) {
   const roundRanks = useMemo(() => {
     return distanceLabels.map((_, roundIdx) => {
@@ -124,6 +137,7 @@ export function TestEntryTable({
 
   const isGrind = testType === "Grind";
   const isClassic = testType === "Classic";
+  const isRaceSki = testSkiSource === "raceskis";
 
   return (
     <div className="overflow-x-auto rounded-2xl border bg-card/50">
@@ -131,7 +145,7 @@ export function TestEntryTable({
         <thead>
           <tr className="text-left text-xs text-muted-foreground">
             <th className="sticky left-0 z-10 bg-card/80 px-3 py-3">Ski No.</th>
-            {!isGrind && <th className="px-3 py-3">Product(s)</th>}
+            {!isGrind && <th className="px-3 py-3">{isRaceSki ? "Race Ski" : "Product(s)"}</th>}
             {!isGrind && <th className="px-3 py-3">Method</th>}
             {isGrind && <th className="px-3 py-3">Grind Type</th>}
             {isGrind && <th className="px-3 py-3">Stone / Tool</th>}
@@ -236,6 +250,25 @@ export function TestEntryTable({
                 </td>
                 {!isGrind && (
                 <td className="px-3 py-2">
+                  {isRaceSki ? (
+                    <select
+                      value={row.raceSkiId || ""}
+                      onChange={(e) => {
+                        const val = e.target.value ? Number(e.target.value) : undefined;
+                        const next = rows.map((r) => (r.id === row.id ? { ...r, raceSkiId: val } : r));
+                        setRows(next);
+                      }}
+                      className="h-9 w-full min-w-[180px] rounded-md border bg-background/70 px-2 text-sm"
+                      data-testid={`select-raceski-${row.id}`}
+                    >
+                      <option value="">Select race ski...</option>
+                      {raceSkis.map((ski) => (
+                        <option key={ski.id} value={ski.id}>
+                          {ski.athleteName} — {ski.brand ? `${ski.brand} ` : ""}{ski.skiId} ({ski.discipline}{ski.grind ? `, ${ski.grind}` : ""})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
                   <div className="flex items-center gap-1">
                     <ProductCombobox
                       testType={testType as "Glide" | "Structure" | "Classic" | "Skating"}
@@ -300,6 +333,7 @@ export function TestEntryTable({
                       <Plus className="h-3.5 w-3.5" />
                     </button>
                   </div>
+                  )}
                 </td>
                 )}
                 {!isGrind && (

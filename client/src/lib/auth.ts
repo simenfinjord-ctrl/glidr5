@@ -20,6 +20,9 @@ type User = {
   name: string;
   groupScope: string;
   isAdmin: number;
+  isTeamAdmin: number;
+  teamId: number;
+  activeTeamId: number | null;
   permissions: string;
   parsedPermissions: UserPermissions;
 };
@@ -43,11 +46,17 @@ export function useAuth() {
     window.location.href = "/login";
   };
 
+  const switchTeam = async (teamId: number) => {
+    await apiRequest("POST", "/api/teams/switch", { teamId });
+    await queryClient.invalidateQueries();
+  };
+
   const perms = user?.parsedPermissions;
 
   const can = (area: keyof UserPermissions, level: PermissionLevel = "view"): boolean => {
     if (!user) return false;
     if (user.isAdmin) return true;
+    if (user.isTeamAdmin) return true;
     if (!perms) return false;
     const userLevel = perms[area];
     if (userLevel === "none") return false;
@@ -55,5 +64,20 @@ export function useAuth() {
     return true;
   };
 
-  return { user: user ?? null, isLoading, login, logout, can, permissions: perms ?? null };
+  const isSuperAdmin = !!user?.isAdmin;
+  const isTeamAdmin = !!user?.isTeamAdmin;
+  const canManage = isSuperAdmin || isTeamAdmin;
+
+  return {
+    user: user ?? null,
+    isLoading,
+    login,
+    logout,
+    switchTeam,
+    can,
+    permissions: perms ?? null,
+    isSuperAdmin,
+    isTeamAdmin,
+    canManage,
+  };
 }

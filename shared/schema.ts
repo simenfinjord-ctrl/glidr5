@@ -33,6 +33,16 @@ export const ADMIN_PERMISSIONS: UserPermissions = {
   suggestions: "edit",
 };
 
+export const teams = pgTable("teams", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });
+export type InsertTeam = z.infer<typeof insertTeamSchema>;
+export type Team = typeof teams.$inferSelect;
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
@@ -40,6 +50,9 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   groupScope: text("group_scope").notNull().default(""),
   isAdmin: integer("is_admin").notNull().default(0),
+  isTeamAdmin: integer("is_team_admin").notNull().default(0),
+  teamId: integer("team_id").notNull().default(1),
+  activeTeamId: integer("active_team_id"),
   permissions: text("permissions").notNull().default(JSON.stringify(DEFAULT_PERMISSIONS)),
   isActive: integer("is_active").notNull().default(1),
 });
@@ -50,7 +63,8 @@ export type User = typeof users.$inferSelect;
 
 export const groups = pgTable("groups", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
+  name: text("name").notNull(),
+  teamId: integer("team_id").notNull().default(1),
 });
 
 export const insertGroupSchema = createInsertSchema(groups).omit({ id: true });
@@ -70,6 +84,7 @@ export const testSkiSeries = pgTable("test_ski_series", {
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),
   groupScope: text("group_scope").notNull(),
+  teamId: integer("team_id").notNull().default(1),
   archivedAt: text("archived_at"),
 });
 
@@ -86,6 +101,7 @@ export const products = pgTable("products", {
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),
   groupScope: text("group_scope").notNull(),
+  teamId: integer("team_id").notNull().default(1),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });
@@ -116,6 +132,7 @@ export const dailyWeather = pgTable("daily_weather", {
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),
   groupScope: text("group_scope").notNull(),
+  teamId: integer("team_id").notNull().default(1),
 });
 
 export const insertWeatherSchema = createInsertSchema(dailyWeather).omit({ id: true });
@@ -140,6 +157,7 @@ export const tests = pgTable("tests", {
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),
   groupScope: text("group_scope").notNull(),
+  teamId: integer("team_id").notNull().default(1),
 });
 
 export const insertTestSchema = createInsertSchema(tests).omit({ id: true });
@@ -169,6 +187,7 @@ export const testEntries = pgTable("test_entries", {
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),
   groupScope: text("group_scope").notNull(),
+  teamId: integer("team_id").notNull().default(1),
 });
 
 export const insertEntrySchema = createInsertSchema(testEntries).omit({ id: true });
@@ -185,6 +204,7 @@ export const activityLogs = pgTable("activity_logs", {
   details: text("details"),
   createdAt: text("created_at").notNull(),
   groupScope: text("group_scope"),
+  teamId: integer("team_id").notNull().default(1),
 });
 
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true });
@@ -202,6 +222,7 @@ export const grindingRecords = pgTable("grinding_records", {
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),
   groupScope: text("group_scope").notNull(),
+  teamId: integer("team_id").notNull().default(1),
 });
 
 export const insertGrindingRecordSchema = createInsertSchema(grindingRecords).omit({ id: true });
@@ -216,6 +237,7 @@ export const grindingSheets = pgTable("grinding_sheets", {
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),
   groupScope: text("group_scope").notNull(),
+  teamId: integer("team_id").notNull().default(1),
 });
 
 export const insertGrindingSheetSchema = createInsertSchema(grindingSheets).omit({ id: true });
@@ -246,6 +268,7 @@ export const athletes = pgTable("athletes", {
   createdAt: text("created_at").notNull(),
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),
+  teamId: integer("team_id").notNull().default(1),
 });
 
 export const insertAthleteSchema = createInsertSchema(athletes).omit({ id: true });

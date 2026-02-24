@@ -4,6 +4,7 @@ import {
   users, groups, testSkiSeries, products, dailyWeather, tests, testEntries, loginLogs,
   activityLogs, grindingRecords, grindingSheets,
   athletes, athleteAccess, raceSkis, raceSkiRegrinds, testSkiRegrinds,
+  teams,
   type User, type InsertUser,
   type Group, type InsertGroup,
   type Series, type InsertSeries,
@@ -20,6 +21,7 @@ import {
   type RaceSki, type InsertRaceSki,
   type RaceSkiRegrind, type InsertRaceSkiRegrind,
   type TestSkiRegrind, type InsertTestSkiRegrind,
+  type Team, type InsertTeam,
 } from "@shared/schema";
 
 export function parseGroupScopes(groupScope: string): string[] {
@@ -32,15 +34,21 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
-  listUsers(): Promise<User[]>;
+  listUsers(teamId?: number): Promise<User[]>;
 
-  listGroups(): Promise<Group[]>;
+  listTeams(): Promise<Team[]>;
+  getTeam(id: number): Promise<Team | undefined>;
+  createTeam(t: InsertTeam): Promise<Team>;
+  updateTeam(id: number, data: Partial<InsertTeam>): Promise<Team | undefined>;
+  deleteTeam(id: number): Promise<boolean>;
+
+  listGroups(teamId?: number): Promise<Group[]>;
   createGroup(g: InsertGroup): Promise<Group>;
   updateGroup(id: number, data: Partial<InsertGroup>): Promise<Group | undefined>;
   deleteGroup(id: number): Promise<boolean>;
 
-  listSeries(groupScope: string, isAdmin: boolean): Promise<Series[]>;
-  listArchivedSeries(groupScope: string, isAdmin: boolean): Promise<Series[]>;
+  listSeries(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Series[]>;
+  listArchivedSeries(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Series[]>;
   getSeries(id: number): Promise<Series | undefined>;
   createSeries(s: InsertSeries): Promise<Series>;
   updateSeries(id: number, s: Partial<InsertSeries>): Promise<Series | undefined>;
@@ -48,19 +56,19 @@ export interface IStorage {
   restoreSeries(id: number): Promise<Series | undefined>;
   deleteSeries(id: number): Promise<boolean>;
 
-  listProducts(groupScope: string, isAdmin: boolean): Promise<Product[]>;
+  listProducts(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Product[]>;
   createProduct(p: InsertProduct): Promise<Product>;
   updateProduct(id: number, data: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: number): Promise<boolean>;
 
-  listWeather(groupScope: string, isAdmin: boolean): Promise<Weather[]>;
+  listWeather(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Weather[]>;
   getWeather(id: number): Promise<Weather | undefined>;
   createWeather(w: InsertWeather): Promise<Weather>;
   updateWeather(id: number, w: Partial<InsertWeather>): Promise<Weather | undefined>;
   deleteWeather(id: number): Promise<boolean>;
-  findWeather(date: string, location: string, groupScope: string): Promise<Weather | undefined>;
+  findWeather(date: string, location: string, groupScope: string, teamId?: number): Promise<Weather | undefined>;
 
-  listTests(groupScope: string, isAdmin: boolean): Promise<Test[]>;
+  listTests(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Test[]>;
   getTest(id: number): Promise<Test | undefined>;
   createTest(t: InsertTest): Promise<Test>;
   updateTest(id: number, data: Partial<InsertTest>): Promise<Test | undefined>;
@@ -75,18 +83,18 @@ export interface IStorage {
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
   listActivityLogs(limit?: number): Promise<ActivityLog[]>;
 
-  listGrindingRecords(groupScope: string, isAdmin: boolean): Promise<GrindingRecord[]>;
+  listGrindingRecords(groupScope: string, isAdmin: boolean, teamId?: number): Promise<GrindingRecord[]>;
   createGrindingRecord(r: InsertGrindingRecord): Promise<GrindingRecord>;
   updateGrindingRecord(id: number, data: Partial<InsertGrindingRecord>): Promise<GrindingRecord | undefined>;
   deleteGrindingRecord(id: number): Promise<boolean>;
 
-  listGrindingSheets(groupScope: string, isAdmin: boolean): Promise<GrindingSheet[]>;
+  listGrindingSheets(groupScope: string, isAdmin: boolean, teamId?: number): Promise<GrindingSheet[]>;
   getGrindingSheet(id: number): Promise<GrindingSheet | undefined>;
   createGrindingSheet(s: InsertGrindingSheet): Promise<GrindingSheet>;
   updateGrindingSheet(id: number, data: Partial<InsertGrindingSheet>): Promise<GrindingSheet | undefined>;
   deleteGrindingSheet(id: number): Promise<boolean>;
 
-  listAthletes(userId: number, isAdmin: boolean): Promise<Athlete[]>;
+  listAthletes(userId: number, isAdmin: boolean, teamId?: number): Promise<Athlete[]>;
   getAthlete(id: number): Promise<Athlete | undefined>;
   createAthlete(a: InsertAthlete): Promise<Athlete>;
   updateAthlete(id: number, data: Partial<InsertAthlete>): Promise<Athlete | undefined>;
@@ -142,11 +150,43 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  async listUsers(): Promise<User[]> {
+  async listUsers(teamId?: number): Promise<User[]> {
+    if (teamId) {
+      return db.select().from(users).where(eq(users.teamId, teamId));
+    }
     return db.select().from(users);
   }
 
-  async listGroups(): Promise<Group[]> {
+  // --- Teams ---
+
+  async listTeams(): Promise<Team[]> {
+    return db.select().from(teams);
+  }
+
+  async getTeam(id: number): Promise<Team | undefined> {
+    const [team] = await db.select().from(teams).where(eq(teams.id, id));
+    return team;
+  }
+
+  async createTeam(t: InsertTeam): Promise<Team> {
+    const [created] = await db.insert(teams).values(t).returning();
+    return created!;
+  }
+
+  async updateTeam(id: number, data: Partial<InsertTeam>): Promise<Team | undefined> {
+    const [updated] = await db.update(teams).set(data).where(eq(teams.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTeam(id: number): Promise<boolean> {
+    const result = await db.delete(teams).where(eq(teams.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async listGroups(teamId?: number): Promise<Group[]> {
+    if (teamId) {
+      return db.select().from(groups).where(eq(groups.teamId, teamId));
+    }
     return db.select().from(groups);
   }
 
@@ -165,17 +205,26 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  private scopeFilter(groupScope: string, isAdmin: boolean, table: any) {
-    if (isAdmin) return undefined;
-    const scopes = parseGroupScopes(groupScope);
-    if (scopes.length <= 1) {
-      return eq(table.groupScope, scopes[0] || groupScope);
+  private scopeFilter(groupScope: string, isAdmin: boolean, table: any, teamId?: number) {
+    const conditions: any[] = [];
+    if (teamId && !isAdmin) {
+      conditions.push(eq(table.teamId, teamId));
     }
-    return inArray(table.groupScope, scopes);
+    if (!isAdmin) {
+      const scopes = parseGroupScopes(groupScope);
+      if (scopes.length <= 1) {
+        conditions.push(eq(table.groupScope, scopes[0] || groupScope));
+      } else {
+        conditions.push(inArray(table.groupScope, scopes));
+      }
+    } else if (teamId) {
+      conditions.push(eq(table.teamId, teamId));
+    }
+    return conditions.length > 0 ? and(...conditions) : undefined;
   }
 
-  async listSeries(groupScope: string, isAdmin: boolean): Promise<Series[]> {
-    const scopeFilter = this.scopeFilter(groupScope, isAdmin, testSkiSeries);
+  async listSeries(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Series[]> {
+    const scopeFilter = this.scopeFilter(groupScope, isAdmin, testSkiSeries, teamId);
     const notArchived = isNull(testSkiSeries.archivedAt);
     if (scopeFilter) {
       return db.select().from(testSkiSeries).where(and(scopeFilter, notArchived));
@@ -183,8 +232,8 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(testSkiSeries).where(notArchived);
   }
 
-  async listArchivedSeries(groupScope: string, isAdmin: boolean): Promise<Series[]> {
-    const scopeFilter = this.scopeFilter(groupScope, isAdmin, testSkiSeries);
+  async listArchivedSeries(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Series[]> {
+    const scopeFilter = this.scopeFilter(groupScope, isAdmin, testSkiSeries, teamId);
     const archived = isNotNull(testSkiSeries.archivedAt);
     if (scopeFilter) {
       return db.select().from(testSkiSeries).where(and(scopeFilter, archived));
@@ -228,8 +277,8 @@ export class DatabaseStorage implements IStorage {
     return (result as any).rowCount > 0;
   }
 
-  async listProducts(groupScope: string, isAdmin: boolean): Promise<Product[]> {
-    const filter = this.scopeFilter(groupScope, isAdmin, products);
+  async listProducts(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Product[]> {
+    const filter = this.scopeFilter(groupScope, isAdmin, products, teamId);
     if (filter) {
       return db.select().from(products).where(filter);
     }
@@ -251,8 +300,8 @@ export class DatabaseStorage implements IStorage {
     return (result as any).rowCount > 0;
   }
 
-  async listWeather(groupScope: string, isAdmin: boolean): Promise<Weather[]> {
-    const filter = this.scopeFilter(groupScope, isAdmin, dailyWeather);
+  async listWeather(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Weather[]> {
+    const filter = this.scopeFilter(groupScope, isAdmin, dailyWeather, teamId);
     if (filter) {
       return db.select().from(dailyWeather).where(filter);
     }
@@ -279,22 +328,24 @@ export class DatabaseStorage implements IStorage {
     return (result as any).rowCount > 0;
   }
 
-  async findWeather(date: string, location: string, groupScope: string): Promise<Weather | undefined> {
+  async findWeather(date: string, location: string, groupScope: string, teamId?: number): Promise<Weather | undefined> {
     const scopes = parseGroupScopes(groupScope);
-    const [w] = await db.select().from(dailyWeather).where(
-      and(
-        eq(dailyWeather.date, date),
-        sql`lower(${dailyWeather.location}) = lower(${location})`,
-        scopes.length > 1
-          ? inArray(dailyWeather.groupScope, scopes)
-          : eq(dailyWeather.groupScope, scopes[0] || groupScope),
-      )
-    );
+    const conditions = [
+      eq(dailyWeather.date, date),
+      sql`lower(${dailyWeather.location}) = lower(${location})`,
+      scopes.length > 1
+        ? inArray(dailyWeather.groupScope, scopes)
+        : eq(dailyWeather.groupScope, scopes[0] || groupScope),
+    ];
+    if (teamId) {
+      conditions.push(eq(dailyWeather.teamId, teamId));
+    }
+    const [w] = await db.select().from(dailyWeather).where(and(...conditions));
     return w;
   }
 
-  async listTests(groupScope: string, isAdmin: boolean): Promise<Test[]> {
-    const filter = this.scopeFilter(groupScope, isAdmin, tests);
+  async listTests(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Test[]> {
+    const filter = this.scopeFilter(groupScope, isAdmin, tests, teamId);
     if (filter) {
       return db.select().from(tests).where(filter);
     }
@@ -353,8 +404,8 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(activityLogs).orderBy(sql`${activityLogs.id} desc`).limit(limit);
   }
 
-  async listGrindingRecords(groupScope: string, isAdmin: boolean): Promise<GrindingRecord[]> {
-    const filter = this.scopeFilter(groupScope, isAdmin, grindingRecords);
+  async listGrindingRecords(groupScope: string, isAdmin: boolean, teamId?: number): Promise<GrindingRecord[]> {
+    const filter = this.scopeFilter(groupScope, isAdmin, grindingRecords, teamId);
     if (filter) {
       return db.select().from(grindingRecords).where(filter).orderBy(sql`${grindingRecords.id} desc`);
     }
@@ -376,10 +427,20 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  async listGrindingSheets(groupScope: string, isAdmin: boolean): Promise<GrindingSheet[]> {
-    if (isAdmin) return db.select().from(grindingSheets);
-    const scopes = parseGroupScopes(groupScope);
-    return db.select().from(grindingSheets).where(inArray(grindingSheets.groupScope, scopes));
+  async listGrindingSheets(groupScope: string, isAdmin: boolean, teamId?: number): Promise<GrindingSheet[]> {
+    if (isAdmin && !teamId) return db.select().from(grindingSheets);
+    const conditions: any[] = [];
+    if (teamId) {
+      conditions.push(eq(grindingSheets.teamId, teamId));
+    }
+    if (!isAdmin) {
+      const scopes = parseGroupScopes(groupScope);
+      conditions.push(inArray(grindingSheets.groupScope, scopes));
+    }
+    if (conditions.length > 0) {
+      return db.select().from(grindingSheets).where(and(...conditions));
+    }
+    return db.select().from(grindingSheets);
   }
 
   async getGrindingSheet(id: number): Promise<GrindingSheet | undefined> {
@@ -404,17 +465,24 @@ export class DatabaseStorage implements IStorage {
 
   // --- Athletes ---
 
-  async listAthletes(userId: number, isAdmin: boolean): Promise<Athlete[]> {
+  async listAthletes(userId: number, isAdmin: boolean, teamId?: number): Promise<Athlete[]> {
     if (isAdmin) {
+      if (teamId) {
+        return db.select().from(athletes).where(eq(athletes.teamId, teamId)).orderBy(sql`${athletes.name} asc`);
+      }
       return db.select().from(athletes).orderBy(sql`${athletes.name} asc`);
     }
     const accessRows = await db.select().from(athleteAccess).where(eq(athleteAccess.userId, userId));
     const accessAthleteIds = accessRows.map((r) => r.athleteId);
     const createdByMe = await db.select().from(athletes).where(eq(athletes.createdById, userId));
     const createdByMeIds = createdByMe.map((a) => a.id);
-    const allIds = [...new Set([...accessAthleteIds, ...createdByMeIds])];
+    const allIds = Array.from(new Set([...accessAthleteIds, ...createdByMeIds]));
     if (allIds.length === 0) return [];
-    return db.select().from(athletes).where(inArray(athletes.id, allIds)).orderBy(sql`${athletes.name} asc`);
+    const conditions: any[] = [inArray(athletes.id, allIds)];
+    if (teamId) {
+      conditions.push(eq(athletes.teamId, teamId));
+    }
+    return db.select().from(athletes).where(and(...conditions)).orderBy(sql`${athletes.name} asc`);
   }
 
   async getAthlete(id: number): Promise<Athlete | undefined> {

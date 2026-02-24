@@ -15,6 +15,9 @@ declare global {
       name: string;
       groupScope: string;
       isAdmin: number;
+      isTeamAdmin: number;
+      teamId: number;
+      activeTeamId: number | null;
       permissions: string;
       isActive: number;
       password: string;
@@ -22,8 +25,8 @@ declare global {
   }
 }
 
-export function parsePermissions(permissionsStr: string | null | undefined, isAdmin: boolean): UserPermissions {
-  if (isAdmin) return { ...ADMIN_PERMISSIONS };
+export function parsePermissions(permissionsStr: string | null | undefined, isAdmin: boolean, isTeamAdmin?: boolean): UserPermissions {
+  if (isAdmin || isTeamAdmin) return { ...ADMIN_PERMISSIONS };
   try {
     const parsed = JSON.parse(permissionsStr || "{}");
     return { ...DEFAULT_PERMISSIONS, ...parsed };
@@ -121,7 +124,7 @@ export function setupAuth(app: Express) {
           });
         } catch (_) {}
         const { password, ...safe } = user;
-        const perms = parsePermissions(safe.permissions, !!safe.isAdmin);
+        const perms = parsePermissions(safe.permissions, !!safe.isAdmin, (safe as any).isTeamAdmin === 1);
         return res.json({ ...safe, parsedPermissions: perms });
       });
     })(req, res, next);
@@ -139,7 +142,7 @@ export function setupAuth(app: Express) {
       return res.status(401).json({ message: "Not authenticated" });
     }
     const { password, ...safe } = req.user;
-    const perms = parsePermissions(safe.permissions, !!safe.isAdmin);
-    return res.json({ ...safe, parsedPermissions: perms });
+    const perms = parsePermissions(safe.permissions, !!safe.isAdmin, safe.isTeamAdmin === 1);
+    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms });
   });
 }

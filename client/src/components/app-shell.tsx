@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   ListChecks,
@@ -18,8 +19,10 @@ import {
   Moon,
   Sparkles,
   Trophy,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useAuth, type UserPermissions } from "@/lib/auth";
 import { useOffline } from "@/lib/offline-context";
@@ -143,19 +146,27 @@ const nav: NavItem[] = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { user, logout, can } = useAuth();
+  const { user, logout, can, isSuperAdmin, canManage, switchTeam } = useAuth();
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
   const { theme, toggle: toggleTheme } = useTheme();
 
+  const { data: teams = [] } = useQuery<any[]>({
+    queryKey: ["/api/teams"],
+    enabled: isSuperAdmin,
+  });
+
+  const activeTeamId = user?.activeTeamId || user?.teamId || 1;
+  const activeTeam = teams.find((t: any) => t.id === activeTeamId);
+
   const filteredNav = nav.filter((item) => {
-    if (item.adminOnly) return !!user?.isAdmin;
+    if (item.adminOnly) return canManage;
     if (item.permArea) return can(item.permArea);
     return true;
   });
 
   const perms = user?.parsedPermissions;
   const visibleNav = [...filteredNav].sort((a, b) => {
-    if (user?.isAdmin) return 0;
+    if (user?.isAdmin || user?.isTeamAdmin) return 0;
     if (!perms) return 0;
     const levelOrder = (item: NavItem) => {
       if (item.adminOnly) return 2;
@@ -178,6 +189,26 @@ export function AppShell({ children }: { children: ReactNode }) {
               "h-2 w-2 rounded-full",
               isOnline ? "bg-emerald-500" : "bg-amber-500"
             )} />
+            {isSuperAdmin && teams.length > 1 && (
+              <Select
+                value={String(activeTeamId)}
+                onValueChange={(val) => switchTeam(parseInt(val))}
+              >
+                <SelectTrigger
+                  className="h-8 w-auto min-w-[140px] border-gray-200 bg-gray-50 text-xs font-medium dark:border-gray-700 dark:bg-gray-800"
+                  data-testid="select-team"
+                >
+                  <SelectValue placeholder="Select team" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teams.map((team: any) => (
+                    <SelectItem key={team.id} value={String(team.id)}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

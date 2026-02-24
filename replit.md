@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Full-stack React web application to manage ski testing and documentation. Features role-based access control (Admin, World Cup, U23, Biathlon groups), databases for TestSkis series, Products (glide/topping/structure tools), DailyWeather, and Tests with live-ranking entry.
+Full-stack React web application to manage ski testing and documentation. Features multi-team/multi-tenant architecture, role-based access control (Super Admin, Team Admin, Members with granular permissions), group-based data scoping, databases for TestSkis series, Products (glide/topping/structure tools), DailyWeather, and Tests with live-ranking entry.
 
 ## Architecture
 - **Frontend**: React 19 + Vite + TanStack Query + wouter routing + shadcn/ui + Tailwind CSS v4
@@ -10,7 +10,7 @@ Full-stack React web application to manage ski testing and documentation. Featur
 - **Design**: Space Grotesk (display) + Inter (UI), clean light theme with subtle shadows and professional color palette
 
 ## Key Files
-- `shared/schema.ts` — Drizzle schema: users, test_ski_series, products, daily_weather, tests, test_entries, login_logs, grinding_records, grinding_sheets, activity_logs, athletes, athlete_access, race_skis, race_ski_regrinds, test_ski_regrinds
+- `shared/schema.ts` — Drizzle schema: teams, users, test_ski_series, products, daily_weather, tests, test_entries, login_logs, grinding_records, grinding_sheets, activity_logs, athletes, athlete_access, race_skis, race_ski_regrinds, test_ski_regrinds
 - `server/db.ts` — PostgreSQL connection pool
 - `server/storage.ts` — DatabaseStorage class (IStorage interface with full CRUD)
 - `server/auth.ts` — Passport-local session auth setup
@@ -163,3 +163,13 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Language feature removed: no I18nProvider, no language selector, English-only
 - AI Suggestions page: weather parameter form → OpenAI-powered product recommendations based on historical test data (DB-only, group-scoped)
 - Test ski regrind tracking archive per series
+- Multi-team/multi-tenant architecture: teams table sits above groups, all data tables have teamId column
+- Three role levels: Super Admin (cross-team access), Team Admin (full access within their team), Member (granular permissions)
+- Super Admin can switch between teams via team switcher dropdown in header (activeTeamId)
+- Team Admin has full permissions within their team (treated like admin for permission checks)
+- All data queries scoped by teamId for complete data isolation between teams/organizations
+- Teams CRUD API: GET/POST/PUT/DELETE /api/teams, POST /api/teams/switch
+- Admin page has Teams tab (super admin only) for managing teams
+- User create/edit forms include Team Admin role option
+- Existing data migrated to teamId=1 (default team)
+- Groups.name unique constraint removed to allow same group names across different teams

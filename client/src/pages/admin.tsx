@@ -30,8 +30,16 @@ type ApiUser = {
   name: string;
   groupScope: string;
   isAdmin: number;
+  isTeamAdmin: number;
+  teamId: number;
   permissions: string;
   isActive: number;
+};
+
+type ApiTeam = {
+  id: number;
+  name: string;
+  createdAt: string;
 };
 
 const AREA_LABELS: Record<string, string> = {
@@ -155,7 +163,7 @@ type ActivityEntry = {
   groupScope: string;
 };
 
-type TabId = "overview" | "users" | "groups" | "activity" | "logins";
+type TabId = "overview" | "users" | "groups" | "teams" | "activity" | "logins";
 
 function parseGroups(groupScope: string): string[] {
   return groupScope.split(",").map((s) => s.trim()).filter(Boolean);
@@ -219,6 +227,7 @@ const userSchema = z.object({
   password: z.string().min(1, "Password is required"),
   groupScope: z.string().min(1, "At least one group is required"),
   isAdmin: z.boolean(),
+  isTeamAdmin: z.boolean(),
   permissions: z.string(),
   isActive: z.boolean(),
 });
@@ -228,6 +237,7 @@ const editSchema = z.object({
   email: z.string().email("Valid email required"),
   groupScope: z.string().min(1, "At least one group is required"),
   isAdmin: z.boolean(),
+  isTeamAdmin: z.boolean(),
   permissions: z.string(),
   isActive: z.boolean(),
 });
@@ -238,10 +248,11 @@ const resetSchema = z.object({
 
 function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames: string[] }) {
   const { toast } = useToast();
+  const { isSuperAdmin } = useAuth();
   const [perms, setPerms] = useState<UserPermissions>({ ...DEFAULT_PERMISSIONS });
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
-    defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true },
+    defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, isTeamAdmin: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true },
   });
 
   const selectedGroups = parseGroups(form.watch("groupScope"));
@@ -287,14 +298,21 @@ function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames
             <FormMessage />
           </FormItem>
         )} />
-        <FormField control={form.control} name="isAdmin" render={({ field }) => (
+        <FormField control={form.control} name="isAdmin" render={() => (
           <FormItem>
             <FormLabel>Role</FormLabel>
-            <Select value={field.value ? "admin" : "member"} onValueChange={(v) => field.onChange(v === "admin")}>
+            <Select
+              value={form.watch("isAdmin") ? "superadmin" : form.watch("isTeamAdmin") ? "teamadmin" : "member"}
+              onValueChange={(v) => {
+                form.setValue("isAdmin", v === "superadmin");
+                form.setValue("isTeamAdmin", v === "teamadmin");
+              }}
+            >
               <FormControl><SelectTrigger data-testid="select-user-role"><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
                 <SelectItem value="member">Member</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="teamadmin">Team Admin</SelectItem>
+                {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
               </SelectContent>
             </Select>
             <FormMessage />
@@ -328,6 +346,7 @@ function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames
 
 function EditUserForm({ user, onDone, groupNames }: { user: ApiUser; onDone: () => void; groupNames: string[] }) {
   const { toast } = useToast();
+  const { isSuperAdmin } = useAuth();
   const [perms, setPerms] = useState<UserPermissions>(parsePermissions(user.permissions));
   const form = useForm<z.infer<typeof editSchema>>({
     resolver: zodResolver(editSchema),
@@ -336,6 +355,7 @@ function EditUserForm({ user, onDone, groupNames }: { user: ApiUser; onDone: () 
       email: user.email,
       groupScope: user.groupScope,
       isAdmin: !!user.isAdmin,
+      isTeamAdmin: !!user.isTeamAdmin,
       permissions: user.permissions || JSON.stringify(DEFAULT_PERMISSIONS),
       isActive: !!user.isActive,
     },
@@ -381,14 +401,21 @@ function EditUserForm({ user, onDone, groupNames }: { user: ApiUser; onDone: () 
             <FormMessage />
           </FormItem>
         )} />
-        <FormField control={form.control} name="isAdmin" render={({ field }) => (
+        <FormField control={form.control} name="isAdmin" render={() => (
           <FormItem>
             <FormLabel>Role</FormLabel>
-            <Select value={field.value ? "admin" : "member"} onValueChange={(v) => field.onChange(v === "admin")}>
+            <Select
+              value={form.watch("isAdmin") ? "superadmin" : form.watch("isTeamAdmin") ? "teamadmin" : "member"}
+              onValueChange={(v) => {
+                form.setValue("isAdmin", v === "superadmin");
+                form.setValue("isTeamAdmin", v === "teamadmin");
+              }}
+            >
               <FormControl><SelectTrigger data-testid="select-edit-role"><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
                 <SelectItem value="member">Member</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="teamadmin">Team Admin</SelectItem>
+                {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
               </SelectContent>
             </Select>
             <FormMessage />
@@ -455,10 +482,11 @@ function ResetPasswordForm({ user, onDone }: { user: ApiUser; onDone: () => void
   );
 }
 
-const TABS: { id: TabId; label: string }[] = [
+const ALL_TABS: { id: TabId; label: string; superAdminOnly?: boolean }[] = [
   { id: "overview", label: "Overview" },
   { id: "users", label: "Users" },
   { id: "groups", label: "Groups" },
+  { id: "teams", label: "Teams", superAdminOnly: true },
   { id: "activity", label: "Activity Log" },
   { id: "logins", label: "Login History" },
 ];
@@ -491,7 +519,7 @@ function StatCard({ label, value, icon: Icon, color, testId }: { label: string; 
 }
 
 export default function Admin() {
-  const { user } = useAuth();
+  const { user, isSuperAdmin, canManage } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [createOpen, setCreateOpen] = useState(false);
@@ -500,52 +528,56 @@ export default function Admin() {
   const [newGroupName, setNewGroupName] = useState("");
   const [editingGroup, setEditingGroup] = useState<ApiGroup | null>(null);
   const [editingGroupName, setEditingGroupName] = useState("");
-
-  const isAdmin = !!user && !!user.isAdmin;
+  const [newTeamName, setNewTeamName] = useState("");
 
   const { data: users = [] } = useQuery<ApiUser[]>({
     queryKey: ["/api/users"],
-    enabled: isAdmin,
+    enabled: canManage,
   });
 
   const { data: apiGroups = [] } = useQuery<ApiGroup[]>({
     queryKey: ["/api/groups"],
-    enabled: isAdmin,
+    enabled: canManage,
   });
 
   const { data: loginLogs = [] } = useQuery<LoginLog[]>({
     queryKey: ["/api/login-logs"],
-    enabled: isAdmin,
+    enabled: canManage,
   });
 
   const { data: allSeries = [] } = useQuery<any[]>({
     queryKey: ["/api/series"],
-    enabled: isAdmin,
+    enabled: canManage,
   });
 
   const { data: allProducts = [] } = useQuery<any[]>({
     queryKey: ["/api/products"],
-    enabled: isAdmin,
+    enabled: canManage,
   });
 
   const { data: allTests = [] } = useQuery<any[]>({
     queryKey: ["/api/tests"],
-    enabled: isAdmin,
+    enabled: canManage,
   });
 
   const { data: allWeather = [] } = useQuery<any[]>({
     queryKey: ["/api/weather"],
-    enabled: isAdmin,
+    enabled: canManage,
   });
 
   const { data: adminStats } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
-    enabled: isAdmin,
+    enabled: canManage,
   });
 
   const { data: activities = [] } = useQuery<ActivityEntry[]>({
     queryKey: ["/api/activity"],
-    enabled: isAdmin,
+    enabled: canManage,
+  });
+
+  const { data: teams = [] } = useQuery<ApiTeam[]>({
+    queryKey: ["/api/teams"],
+    enabled: isSuperAdmin,
   });
 
   const groupNames = apiGroups.map((g) => g.name);
@@ -851,9 +883,52 @@ export default function Admin() {
     },
   });
 
+  const createTeamMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await apiRequest("POST", "/api/teams", { name });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      setNewTeamName("");
+      toast({ title: "Team created" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const updateTeamMutation = useMutation({
+    mutationFn: async ({ id, name }: { id: number; name: string }) => {
+      const res = await apiRequest("PUT", `/api/teams/${id}`, { name });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      toast({ title: "Team updated" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const deleteTeamMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/teams/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      toast({ title: "Team deleted" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
   if (!user) return null;
 
-  if (!user.isAdmin) {
+  if (!canManage) {
     return (
       <AppShell>
         <Card className="fs-card rounded-2xl p-6" data-testid="status-admin-forbidden">
@@ -900,7 +975,7 @@ export default function Admin() {
         </div>
 
         <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 shadow-sm" data-testid="admin-tab-bar">
-          {TABS.map((tab) => (
+          {ALL_TABS.filter((tab) => !tab.superAdminOnly || isSuperAdmin).map((tab) => (
             <button
               key={tab.id}
               data-testid={`tab-${tab.id}`}
@@ -1021,9 +1096,9 @@ export default function Admin() {
                           <span className="text-xs text-gray-400">{u.email}</span>
                           <span className={cn(
                             "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                            u.isAdmin ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-500"
+                            u.isAdmin ? "bg-amber-50 text-amber-600" : u.isTeamAdmin ? "bg-purple-50 text-purple-600" : "bg-gray-100 text-gray-500"
                           )}>
-                            {u.isAdmin ? "Admin" : "Member"}
+                            {u.isAdmin ? "Super Admin" : u.isTeamAdmin ? "Team Admin" : "Member"}
                           </span>
                           {!u.isActive && (
                             <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600">Inactive</span>
@@ -1196,6 +1271,85 @@ export default function Admin() {
                   data-testid="button-add-group"
                   disabled={!newGroupName.trim() || createGroupMutation.isPending}
                   onClick={() => createGroupMutation.mutate(newGroupName.trim())}
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  Add
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === "teams" && isSuperAdmin && (
+          <div className="flex flex-col gap-4" data-testid="tab-content-teams">
+            <Card className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="card-admin-teams">
+              <div className="text-sm font-semibold text-gray-900 mb-3">Teams ({teams.length})</div>
+              <div className="grid grid-cols-1 gap-2">
+                {teams.map((team) => (
+                  <div
+                    key={team.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2.5"
+                    data-testid={`row-team-${team.id}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm font-medium text-gray-900">{team.name}</span>
+                      {team.id === 1 && (
+                        <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">Default</span>
+                      )}
+                      <div className="text-[10px] text-gray-400 mt-0.5">
+                        {users.filter((u) => u.teamId === team.id).length} users
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        data-testid={`button-edit-team-${team.id}`}
+                        onClick={() => {
+                          const newName = prompt("Team name:", team.name);
+                          if (newName?.trim()) {
+                            updateTeamMutation.mutate({ id: team.id, name: newName.trim() });
+                          }
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {team.id !== 1 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          data-testid={`button-delete-team-${team.id}`}
+                          onClick={() => {
+                            if (confirm(`Delete team "${team.name}"? All data belonging to this team will be orphaned.`)) {
+                              deleteTeamMutation.mutate(team.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <Input
+                  value={newTeamName}
+                  onChange={(e) => setNewTeamName(e.target.value)}
+                  placeholder="New team name…"
+                  className="h-8 text-sm"
+                  data-testid="input-new-team"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newTeamName.trim()) {
+                      createTeamMutation.mutate(newTeamName.trim());
+                    }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  data-testid="button-add-team"
+                  disabled={!newTeamName.trim() || createTeamMutation.isPending}
+                  onClick={() => createTeamMutation.mutate(newTeamName.trim())}
                 >
                   <Plus className="mr-1 h-4 w-4" />
                   Add

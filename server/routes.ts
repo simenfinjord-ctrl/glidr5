@@ -32,13 +32,16 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 function userInfo(req: Request) {
   const u = req.user!;
-  const perms = parsePermissions(u.permissions, u.isAdmin === 1);
+  const perms = parsePermissions(u.permissions, u.isAdmin === 1, u.isTeamAdmin === 1);
   return {
     id: u.id,
     email: u.email,
     name: u.name,
     groupScope: u.groupScope,
     isAdmin: u.isAdmin === 1,
+    isTeamAdmin: u.isTeamAdmin === 1,
+    teamId: u.teamId,
+    activeTeamId: getActiveTeamId(req),
     permissions: perms,
   };
 }
@@ -49,7 +52,7 @@ function requirePermission(area: PermissionArea, level: PermissionLevel) {
       return res.status(401).json({ message: "Not authenticated" });
     }
     const u = req.user!;
-    const perms = parsePermissions(u.permissions, u.isAdmin === 1);
+    const perms = parsePermissions(u.permissions, u.isAdmin === 1, u.isTeamAdmin === 1);
     const userLevel = perms[area];
     if (userLevel === "none") {
       return res.status(403).json({ message: "No access" });
@@ -81,23 +84,90 @@ function resolveCreateGroupScope(req: Request): string {
   return parseGroupScopes(u.groupScope)[0] || u.groupScope;
 }
 
+function getActiveTeamId(req: Request): number {
+  const u = req.user!;
+  const isSuperAdmin = u.isAdmin === 1;
+  if (isSuperAdmin) {
+    return (u as any).activeTeamId || u.teamId;
+  }
+  return u.teamId;
+}
+
+function canManageTeam(req: Request): boolean {
+  const u = req.user!;
+  return u.isAdmin === 1 || u.isTeamAdmin === 1;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
 ): Promise<Server> {
 
+  // --- Teams CRUD ---
+  app.get("/api/teams", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin === 1) {
+      const list = await storage.listTeams();
+      return res.json(list);
+    }
+    const team = await storage.getTeam(u.teamId);
+    res.json(team ? [team] : []);
+  });
+
+  app.post("/api/teams", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const name = req.body.name?.trim();
+    if (!name) return res.status(400).json({ message: "Name is required" });
+    const team = await storage.createTeam({ name, createdAt: new Date().toISOString() });
+    res.json(team);
+  });
+
+  app.put("/api/teams/:id", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const id = parseInt(req.params.id);
+    const name = req.body.name?.trim();
+    if (!name) return res.status(400).json({ message: "Name is required" });
+    const updated = await storage.updateTeam(id, { name });
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/teams/:id", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const id = parseInt(req.params.id);
+    if (id === 1) return res.status(400).json({ message: "Cannot delete default team" });
+    const deleted = await storage.deleteTeam(id);
+    if (!deleted) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
+  app.post("/api/teams/switch", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const teamId = req.body.teamId;
+    if (!teamId) return res.status(400).json({ message: "teamId required" });
+    const team = await storage.getTeam(teamId);
+    if (!team) return res.status(404).json({ message: "Team not found" });
+    await storage.updateUser(u.id, { activeTeamId: teamId } as any);
+    res.json({ ok: true });
+  });
+
   app.get("/api/groups", requireAuth, async (req, res) => {
-    const list = await storage.listGroups();
+    const teamId = getActiveTeamId(req);
+    const list = await storage.listGroups(teamId);
     res.json(list);
   });
 
   app.post("/api/groups", requireAuth, async (req, res) => {
-    const u = userInfo(req);
-    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const teamId = getActiveTeamId(req);
     const name = req.body.name?.trim();
     if (!name) return res.status(400).json({ message: "Name is required" });
     try {
-      const created = await storage.createGroup({ name });
+      const created = await storage.createGroup({ name, teamId });
       res.json(created);
     } catch (e: any) {
       if (e.code === "23505") return res.status(409).json({ message: "Group already exists" });
@@ -106,8 +176,7 @@ export async function registerRoutes(
   });
 
   app.put("/api/groups/:id", requireAuth, async (req, res) => {
-    const u = userInfo(req);
-    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const id = parseInt(req.params.id);
     const name = req.body.name?.trim();
     if (!name) return res.status(400).json({ message: "Name is required" });
@@ -122,8 +191,7 @@ export async function registerRoutes(
   });
 
   app.delete("/api/groups/:id", requireAuth, async (req, res) => {
-    const u = userInfo(req);
-    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const id = parseInt(req.params.id);
     const deleted = await storage.deleteGroup(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
@@ -132,12 +200,14 @@ export async function registerRoutes(
 
   app.get("/api/series", requirePermission("testskis", "view"), async (req, res) => {
     const u = userInfo(req);
-    const list = await storage.listSeries(u.groupScope, u.isAdmin);
+    const teamId = getActiveTeamId(req);
+    const list = await storage.listSeries(u.groupScope, u.isAdmin, teamId);
     res.json(list);
   });
 
   app.post("/api/series", requirePermission("testskis", "edit"), async (req, res) => {
     const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
     const now = new Date().toISOString();
     const groupScope = resolveCreateGroupScope(req);
     const result = await storage.createSeries({
@@ -152,6 +222,7 @@ export async function registerRoutes(
       createdById: u.id,
       createdByName: u.name,
       groupScope,
+      teamId,
     });
     try {
       await storage.createActivityLog({
@@ -187,7 +258,8 @@ export async function registerRoutes(
 
   app.get("/api/series/archived", requirePermission("testskis", "view"), async (req, res) => {
     const u = userInfo(req);
-    const list = await storage.listArchivedSeries(u.groupScope, u.isAdmin);
+    const teamId = getActiveTeamId(req);
+    const list = await storage.listArchivedSeries(u.groupScope, u.isAdmin, teamId);
     res.json(list);
   });
 
@@ -232,12 +304,14 @@ export async function registerRoutes(
 
   app.get("/api/products", requirePermission("products", "view"), async (req, res) => {
     const u = userInfo(req);
-    const list = await storage.listProducts(u.groupScope, u.isAdmin);
+    const teamId = getActiveTeamId(req);
+    const list = await storage.listProducts(u.groupScope, u.isAdmin, teamId);
     res.json(list);
   });
 
   app.post("/api/products", requirePermission("products", "edit"), async (req, res) => {
     const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
     const now = new Date().toISOString();
     const groupScope = resolveCreateGroupScope(req);
     const result = await storage.createProduct({
@@ -248,6 +322,7 @@ export async function registerRoutes(
       createdById: u.id,
       createdByName: u.name,
       groupScope,
+      teamId,
     });
     try {
       await storage.createActivityLog({
@@ -292,20 +367,23 @@ export async function registerRoutes(
 
   app.get("/api/weather", requirePermission("weather", "view"), async (req, res) => {
     const u = userInfo(req);
-    const list = await storage.listWeather(u.groupScope, u.isAdmin);
+    const teamId = getActiveTeamId(req);
+    const list = await storage.listWeather(u.groupScope, u.isAdmin, teamId);
     res.json(list);
   });
 
   app.get("/api/weather/find", requirePermission("weather", "view"), async (req, res) => {
     const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
     const { date, location } = req.query as { date: string; location: string };
     if (!date || !location) return res.status(400).json({ message: "date and location required" });
-    const w = await storage.findWeather(date, location, u.groupScope);
+    const w = await storage.findWeather(date, location, u.groupScope, teamId);
     res.json(w || null);
   });
 
   app.post("/api/weather", requirePermission("weather", "edit"), async (req, res) => {
     const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
     const now = new Date().toISOString();
     const groupScope = resolveCreateGroupScope(req);
     const result = await storage.createWeather({
@@ -331,6 +409,7 @@ export async function registerRoutes(
       createdById: u.id,
       createdByName: u.name,
       groupScope,
+      teamId,
     });
     try {
       await storage.createActivityLog({
@@ -394,12 +473,14 @@ export async function registerRoutes(
 
   app.get("/api/tests", requirePermission("tests", "view"), async (req, res) => {
     const u = userInfo(req);
-    const list = await storage.listTests(u.groupScope, u.isAdmin);
+    const teamId = getActiveTeamId(req);
+    const list = await storage.listTests(u.groupScope, u.isAdmin, teamId);
     res.json(u.permissions.grinding !== "none" ? list : list.filter((t: any) => t.testType !== "Grind"));
   });
 
   app.post("/api/tests", requirePermission("tests", "edit"), async (req, res) => {
     const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
     if (req.body.testType === "Grind" && u.permissions.grinding === "none") {
       return res.status(403).json({ message: "Grinding access required" });
     }
@@ -441,6 +522,7 @@ export async function registerRoutes(
       createdById: u.id,
       createdByName: u.name,
       groupScope,
+      teamId,
     });
     try {
       await storage.createActivityLog({
@@ -473,6 +555,7 @@ export async function registerRoutes(
         createdById: u.id,
         createdByName: u.name,
         groupScope,
+        teamId,
       });
     }
 
@@ -536,6 +619,7 @@ export async function registerRoutes(
       await storage.deleteEntriesByTestId(id);
       const now = new Date().toISOString();
       const groupScope = req.body.groupScope || existing.groupScope;
+      const teamId = getActiveTeamId(req);
       for (const e of req.body.entries) {
         await storage.createEntry({
           testId: id,
@@ -559,6 +643,7 @@ export async function registerRoutes(
           createdById: u.id,
           createdByName: u.name,
           groupScope,
+          teamId,
         });
       }
     }
@@ -601,39 +686,50 @@ export async function registerRoutes(
   });
 
   app.get("/api/users", requireAuth, async (req, res) => {
-    const u = userInfo(req);
-    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
-    const list = await storage.listUsers();
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const teamId = getActiveTeamId(req);
+    const list = await storage.listUsers(teamId);
     res.json(list.map(({ password, ...rest }) => rest));
   });
 
   app.post("/api/users", requireAuth, async (req, res) => {
-    const u = userInfo(req);
-    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const u = req.user!;
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const existing = await storage.getUserByEmail(req.body.email);
     if (existing) return res.status(409).json({ message: "Email already in use" });
     const sanitizedPerms = sanitizePermissions(req.body.permissions);
+    const teamId = u.isAdmin === 1 ? (req.body.teamId || getActiveTeamId(req)) : u.teamId;
+    const isSuperAdmin = u.isAdmin === 1;
     const created = await storage.createUser({
       email: req.body.email,
       password: req.body.password,
       name: req.body.name,
       groupScope: req.body.groupScope,
-      isAdmin: req.body.isAdmin ? 1 : 0,
+      isAdmin: isSuperAdmin && req.body.isAdmin ? 1 : 0,
+      isTeamAdmin: req.body.isTeamAdmin ? 1 : 0,
       permissions: JSON.stringify(sanitizedPerms),
+      teamId,
     });
     const { password, ...safe } = created;
     res.json(safe);
   });
 
   app.put("/api/users/:id", requireAuth, async (req, res) => {
-    const u = userInfo(req);
-    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const u = req.user!;
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const id = parseInt(req.params.id);
+    if (u.isTeamAdmin === 1 && u.isAdmin !== 1) {
+      const targetUser = await storage.getUser(id);
+      if (!targetUser || targetUser.teamId !== u.teamId) {
+        return res.status(403).json({ message: "Can only manage users in your team" });
+      }
+    }
     const data: any = {};
     if (req.body.name !== undefined) data.name = req.body.name;
     if (req.body.email !== undefined) data.email = req.body.email;
     if (req.body.groupScope !== undefined) data.groupScope = req.body.groupScope;
-    if (req.body.isAdmin !== undefined) data.isAdmin = req.body.isAdmin ? 1 : 0;
+    if (u.isAdmin === 1 && req.body.isAdmin !== undefined) data.isAdmin = req.body.isAdmin ? 1 : 0;
+    if (req.body.isTeamAdmin !== undefined) data.isTeamAdmin = req.body.isTeamAdmin ? 1 : 0;
     if (req.body.permissions !== undefined) data.permissions = JSON.stringify(sanitizePermissions(req.body.permissions));
     if (req.body.isActive !== undefined) data.isActive = req.body.isActive ? 1 : 0;
     const updated = await storage.updateUser(id, data);
@@ -643,9 +739,15 @@ export async function registerRoutes(
   });
 
   app.post("/api/users/:id/reset-password", requireAuth, async (req, res) => {
-    const u = userInfo(req);
-    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const u = req.user!;
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const id = parseInt(req.params.id);
+    if (u.isTeamAdmin === 1 && u.isAdmin !== 1) {
+      const targetUser = await storage.getUser(id);
+      if (!targetUser || targetUser.teamId !== u.teamId) {
+        return res.status(403).json({ message: "Can only manage users in your team" });
+      }
+    }
     const newPassword = req.body.password || "password";
     const updated = await storage.updateUser(id, { password: newPassword });
     if (!updated) return res.status(404).json({ message: "Not found" });
@@ -653,10 +755,16 @@ export async function registerRoutes(
   });
 
   app.delete("/api/users/:id", requireAuth, async (req, res) => {
-    const u = userInfo(req);
-    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const u = req.user!;
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const id = parseInt(req.params.id);
     if (id === u.id) return res.status(400).json({ message: "Cannot delete yourself" });
+    if (u.isTeamAdmin === 1 && u.isAdmin !== 1) {
+      const targetUser = await storage.getUser(id);
+      if (!targetUser || targetUser.teamId !== u.teamId) {
+        return res.status(403).json({ message: "Can only manage users in your team" });
+      }
+    }
     const deleted = await storage.deleteUser(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
     res.json({ ok: true });
@@ -709,12 +817,14 @@ export async function registerRoutes(
   // Grinding records
   app.get("/api/grinding", requirePermission("grinding", "view"), async (req, res) => {
     const u = userInfo(req);
-    const list = await storage.listGrindingRecords(u.groupScope, u.isAdmin);
+    const teamId = getActiveTeamId(req);
+    const list = await storage.listGrindingRecords(u.groupScope, u.isAdmin, teamId);
     res.json(list);
   });
 
   app.post("/api/grinding", requirePermission("grinding", "edit"), async (req, res) => {
     const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
     const groupScope = resolveCreateGroupScope(req);
     const record = await storage.createGrindingRecord({
       seriesId: req.body.seriesId || null,
@@ -726,6 +836,7 @@ export async function registerRoutes(
       createdById: u.id,
       createdByName: u.name,
       groupScope,
+      teamId,
     });
     await storage.createActivityLog({
       userId: u.id, userName: u.name, action: "created",
@@ -757,12 +868,14 @@ export async function registerRoutes(
 
   app.get("/api/grinding-sheets", requirePermission("grinding", "view"), async (req, res) => {
     const u = userInfo(req);
-    const sheets = await storage.listGrindingSheets(u.groupScope, u.isAdmin);
+    const teamId = getActiveTeamId(req);
+    const sheets = await storage.listGrindingSheets(u.groupScope, u.isAdmin, teamId);
     res.json(sheets);
   });
 
   app.post("/api/grinding-sheets", requirePermission("grinding", "edit"), async (req, res) => {
     const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
     const { name, url } = req.body;
     if (!name || !url) return res.status(400).json({ message: "Name and URL are required" });
     if (!url.includes("docs.google.com")) return res.status(400).json({ message: "Only Google Sheets URLs are supported" });
@@ -773,6 +886,7 @@ export async function registerRoutes(
       createdById: u.id,
       createdByName: u.name,
       groupScope: u.groupScope.split(",")[0].trim(),
+      teamId,
     });
     res.json(sheet);
   });
@@ -837,12 +951,14 @@ export async function registerRoutes(
   // --- Athletes CRUD ---
   app.get("/api/athletes", requirePermission("raceskis", "view"), async (req, res) => {
     const u = userInfo(req);
-    const list = await storage.listAthletes(u.id, u.isAdmin);
+    const teamId = getActiveTeamId(req);
+    const list = await storage.listAthletes(u.id, u.isAdmin, teamId);
     res.json(list);
   });
 
   app.post("/api/athletes", requirePermission("raceskis", "edit"), async (req, res) => {
     const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
     const now = new Date().toISOString();
     const athlete = await storage.createAthlete({
       name: req.body.name,
@@ -850,6 +966,7 @@ export async function registerRoutes(
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
+      teamId,
     });
     const accessUserIds: number[] = req.body.accessUserIds || [];
     const allAccessIds = [...new Set([...accessUserIds, u.id])];
@@ -1070,9 +1187,10 @@ export async function registerRoutes(
       artificialSnow, naturalSnow, grainSize, snowHumidityType, trackHardness, testType } = req.body;
 
     try {
-      const allTests = await storage.listTests(u.groupScope, u.isAdmin);
-      const allWeather = await storage.listWeather(u.groupScope, u.isAdmin);
-      const products = await storage.listProducts(u.groupScope, u.isAdmin);
+      const teamId = getActiveTeamId(req);
+      const allTests = await storage.listTests(u.groupScope, u.isAdmin, teamId);
+      const allWeather = await storage.listWeather(u.groupScope, u.isAdmin, teamId);
+      const products = await storage.listProducts(u.groupScope, u.isAdmin, teamId);
       const weatherMap = new Map(allWeather.map((w) => [w.id, w]));
       const productMap = new Map(products.map((p) => [p.id, p]));
 

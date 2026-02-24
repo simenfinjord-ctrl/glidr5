@@ -699,41 +699,61 @@ export default function Admin() {
         y += 4;
 
         if (entries.length > 0) {
-          const distanceLabels: string[] = test.distanceLabels
-            ? (typeof test.distanceLabels === "string" ? JSON.parse(test.distanceLabels) : test.distanceLabels)
-            : [];
+          let distanceLabels: string[] = [];
+          if (test.distanceLabels) {
+            try {
+              const parsed = typeof test.distanceLabels === "string" ? JSON.parse(test.distanceLabels) : test.distanceLabels;
+              if (Array.isArray(parsed) && parsed.length > 0) distanceLabels = parsed;
+            } catch {}
+          }
+          if (distanceLabels.length === 0) {
+            distanceLabels = [test.distanceLabel0km || "0 km"];
+            if (test.distanceLabelXkm) distanceLabels.push(test.distanceLabelXkm);
+          }
 
-          const baseHead = ["Rank", "Ski", "Product", "Method"];
-          const baseBody = (e: any) => {
-            return [
-              e.overallRank ?? "",
-              e.skiNumber || "",
-              getProductLabel(e),
-              e.methodology || "",
-            ];
+          const getEntryRounds = (entry: any, numRounds: number) => {
+            if (entry.results) {
+              try {
+                const parsed = typeof entry.results === "string" ? JSON.parse(entry.results) : entry.results;
+                if (Array.isArray(parsed)) {
+                  while (parsed.length < numRounds) parsed.push({ result: null, rank: null });
+                  return parsed.slice(0, numRounds);
+                }
+              } catch {}
+            }
+            const results = [{ result: entry.result0kmCmBehind ?? entry.result_0km_cm_behind, rank: entry.rank0km ?? entry.rank_0km }];
+            if (numRounds > 1) results.push({ result: entry.resultXkmCmBehind ?? entry.result_xkm_cm_behind, rank: entry.rankXkm ?? entry.rank_xkm });
+            while (results.length < numRounds) results.push({ result: null, rank: null });
+            return results;
           };
 
-          const roundCols = distanceLabels.map((l: string) => l);
-          const head = [...baseHead, ...roundCols];
+          const head = ["Rank", "Ski", "Product", "Method"];
+          for (const label of distanceLabels) {
+            head.push(`${label} (cm)`);
+            head.push("Rank");
+          }
           if (isClassic) head.push("Kick");
           head.push("Feeling");
 
           const body = entries
-            .sort((a: any, b: any) => (a.overallRank ?? 999) - (b.overallRank ?? 999))
             .map((e: any) => {
-              const results = e.results
-                ? (typeof e.results === "string" ? JSON.parse(e.results) : e.results)
-                : [];
-              const row = [
-                ...baseBody(e),
-                ...distanceLabels.map((_: string, i: number) => {
-                  const r = results[i];
-                  if (!r) return "";
-                  return r.rank ? `${r.cmBehind ?? ""}cm (#${r.rank})` : (r.cmBehind ?? "");
-                }),
+              const rounds = getEntryRounds(e, distanceLabels.length);
+              return { entry: e, rounds, firstRank: rounds[0]?.rank ?? 999 };
+            })
+            .sort((a: any, b: any) => a.firstRank - b.firstRank)
+            .map(({ entry: e, rounds }: any) => {
+              const row: (string | number)[] = [
+                rounds[0]?.rank ?? "—",
+                e.skiNumber || "",
+                getProductLabel(e),
+                e.methodology || "",
               ];
-              if (isClassic) row.push(e.kickRank ?? "");
-              row.push(e.feelingRank ?? "");
+              for (const rr of rounds) {
+                row.push(rr.result != null ? String(rr.result) : "—");
+                row.push(rr.rank != null ? String(rr.rank) : "—");
+              }
+              if (isClassic) row.push(e.kickRank != null ? String(e.kickRank) : "—");
+              row.push(e.feelingRank != null ? String(e.feelingRank) : "—");
               return row;
             });
 

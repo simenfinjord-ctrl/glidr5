@@ -167,7 +167,7 @@ export default function AthleteDetail() {
   const [testForm, setTestForm] = useState({
     date: new Date().toISOString().split("T")[0],
     location: "",
-    testType: "Glide" as "Glide" | "Structure",
+    testType: "Glide" as "Glide" | "Structure" | "Classic" | "Skating",
     notes: "",
     weatherId: undefined as number | undefined,
   });
@@ -431,7 +431,7 @@ export default function AthleteDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
       toast({ title: "Test saved" });
       setShowTestForm(false);
-      setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Glide", notes: "", weatherId: undefined });
+      setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Glide" as any, notes: "", weatherId: undefined });
       setSelectedSkiIds(new Set());
       setDistanceLabels([""]);
       setTestRows([]);
@@ -814,7 +814,7 @@ export default function AthleteDetail() {
                       <label className="mb-1 block text-sm font-medium">Test Type</label>
                       <Select
                         value={testForm.testType}
-                        onValueChange={(v) => setTestForm((f) => ({ ...f, testType: v as "Glide" | "Structure" }))}
+                        onValueChange={(v) => setTestForm((f) => ({ ...f, testType: v as "Glide" | "Structure" | "Classic" | "Skating" }))}
                       >
                         <SelectTrigger data-testid="select-test-type">
                           <SelectValue />
@@ -822,6 +822,8 @@ export default function AthleteDetail() {
                         <SelectContent>
                           <SelectItem value="Glide">Glide</SelectItem>
                           <SelectItem value="Structure">Structure</SelectItem>
+                          <SelectItem value="Classic">Classic</SelectItem>
+                          <SelectItem value="Skating">Skating</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -870,13 +872,17 @@ export default function AthleteDetail() {
                   {/* Ski Selection */}
                   <div className="mb-4">
                     <label className="mb-2 block text-sm font-medium">Select skis for this test</label>
-                    {skis.length === 0 ? (
+                    {(() => {
+                      const filteredSkis = (testForm.testType === "Classic" || testForm.testType === "Skating")
+                        ? skis.filter((s) => s.discipline === testForm.testType)
+                        : skis;
+                      return filteredSkis.length === 0 ? (
                       <p className="text-sm text-muted-foreground" data-testid="text-no-skis-for-test">
-                        No skis available. Add skis to this athlete first.
+                        No {testForm.testType === "Classic" || testForm.testType === "Skating" ? `${testForm.testType} ` : ""}skis available. {skis.length > 0 ? "Try a different test type or add skis with the right discipline." : "Add skis to this athlete first."}
                       </p>
                     ) : (
                       <div className="flex flex-wrap gap-2">
-                        {skis.map((ski) => (
+                        {filteredSkis.map((ski) => (
                           <button
                             key={ski.id}
                             type="button"
@@ -905,7 +911,8 @@ export default function AthleteDetail() {
                           </button>
                         ))}
                       </div>
-                    )}
+                    );
+                    })()}
                   </div>
 
                   {/* Test Entry Table */}
@@ -1174,7 +1181,7 @@ export default function AthleteDetail() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Classic">Classic</SelectItem>
-                  <SelectItem value="Skate">Skate</SelectItem>
+                  <SelectItem value="Skating">Skating</SelectItem>
                 </SelectContent>
               </Select>
             </div>

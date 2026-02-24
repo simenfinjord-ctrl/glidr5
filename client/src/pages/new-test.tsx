@@ -122,20 +122,6 @@ export default function NewTest() {
     enabled: testSkiSource === "raceskis" && can("raceskis"),
   });
 
-  const raceSkiOptions: RaceSkiOption[] = useMemo(() => {
-    return allRaceSkis.map((ski) => {
-      const athlete = athletes.find((a) => a.id === ski.athleteId);
-      return {
-        id: ski.id,
-        skiId: ski.skiId,
-        brand: ski.brand,
-        discipline: ski.discipline,
-        athleteName: athlete?.name || "Unknown",
-        grind: ski.grind,
-      };
-    });
-  }, [allRaceSkis, athletes]);
-
   const userGroups = useMemo(() => {
     if (user?.isAdmin && groups.length > 0) {
       return groups.map((g) => g.name);
@@ -172,6 +158,27 @@ export default function NewTest() {
     }
     return series.filter((s) => s.type === watchTestType);
   }, [series, watchTestType]);
+
+  const raceSkiOptions: RaceSkiOption[] = useMemo(() => {
+    return allRaceSkis
+      .filter((ski) => {
+        if (watchTestType === "Classic" || watchTestType === "Skating") {
+          return ski.discipline === watchTestType;
+        }
+        return true;
+      })
+      .map((ski) => {
+        const athlete = athletes.find((a) => a.id === ski.athleteId);
+        return {
+          id: ski.id,
+          skiId: ski.skiId,
+          brand: ski.brand,
+          discipline: ski.discipline,
+          athleteName: athlete?.name || "Unknown",
+          grind: ski.grind,
+        };
+      });
+  }, [allRaceSkis, athletes, watchTestType]);
 
   useEffect(() => {
     if (testSkiSource === "raceskis") return;

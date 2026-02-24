@@ -1006,7 +1006,7 @@ export async function registerRoutes(
     const hasAccess = await storage.hasAthleteAccess(id, u.id, u.isAdmin);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     const accessList = await storage.listAthleteAccess(id);
-    res.json(accessList.map((a) => a.userId));
+    res.json(accessList);
   });
 
   app.put("/api/athletes/:id/access", requirePermission("raceskis", "edit"), async (req, res) => {
@@ -1017,7 +1017,10 @@ export async function registerRoutes(
     if (!u.isAdmin && athlete.createdById !== u.id) {
       return res.status(403).json({ message: "Only admin or creator can manage access" });
     }
-    await storage.setAthleteAccess(id, req.body.userIds);
+    const userIds = Array.isArray(req.body.userIds)
+      ? req.body.userIds.filter((id: any) => typeof id === "number" && !isNaN(id))
+      : [];
+    await storage.setAthleteAccess(id, userIds);
     res.json({ ok: true });
   });
 

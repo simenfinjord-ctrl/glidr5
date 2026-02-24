@@ -196,7 +196,7 @@ function SeriesForm({
               <FormItem>
                 <FormLabel>Ski type</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-series-skitype" placeholder="e.g., Classic, Skate" />
+                  <Input {...field} data-testid="input-series-skitype" placeholder="e.g., Classic, Skating" />
                 </FormControl>
                 <FormMessage />
               </FormItem>

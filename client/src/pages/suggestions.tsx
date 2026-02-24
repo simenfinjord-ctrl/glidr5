@@ -3,7 +3,6 @@ import { useMutation } from "@tanstack/react-query";
 import { Sparkles, Lightbulb, ThermometerSnowflake, Droplets } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth";
-import { useI18n } from "@/lib/i18n";
 import { apiRequest } from "@/lib/queryClient";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,7 +50,6 @@ function getConfidenceBadgeClass(confidence: string) {
 }
 
 export default function Suggestions() {
-  const { t } = useI18n();
   const { toast } = useToast();
 
   const [testType, setTestType] = useState("Glide");
@@ -108,10 +106,10 @@ export default function Suggestions() {
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100" data-testid="text-suggestions-title">
-            {t("suggestions.title")}
+            Suggestions
           </h1>
           <p className="mt-1 text-sm text-muted-foreground" data-testid="text-suggestions-subtitle">
-            {t("suggestions.subtitle")}
+            AI-powered product recommendations based on weather conditions
           </p>
         </div>
 
@@ -125,7 +123,7 @@ export default function Suggestions() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-muted-foreground">{t("suggestions.testType")}</label>
+              <label className="text-sm font-medium text-muted-foreground">Test Type</label>
               <Select value={testType} onValueChange={setTestType}>
                 <SelectTrigger data-testid="select-test-type">
                   <SelectValue />
@@ -138,7 +136,7 @@ export default function Suggestions() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-muted-foreground">{t("suggestions.snowTemp")}</label>
+              <label className="text-sm font-medium text-muted-foreground">Snow Temperature (°C)</label>
               <Input
                 type="number"
                 value={snowTemperatureC}
@@ -148,7 +146,7 @@ export default function Suggestions() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-muted-foreground">{t("suggestions.airTemp")}</label>
+              <label className="text-sm font-medium text-muted-foreground">Air Temperature (°C)</label>
               <Input
                 type="number"
                 value={airTemperatureC}
@@ -158,7 +156,7 @@ export default function Suggestions() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-muted-foreground">{t("suggestions.snowHumidity")}</label>
+              <label className="text-sm font-medium text-muted-foreground">Snow Humidity (Doser)</label>
               <Input
                 type="number"
                 value={snowHumidityPct}
@@ -168,7 +166,7 @@ export default function Suggestions() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-muted-foreground">{t("suggestions.airHumidity")}</label>
+              <label className="text-sm font-medium text-muted-foreground">Air Humidity (%rH)</label>
               <Input
                 type="number"
                 value={airHumidityPct}
@@ -178,7 +176,7 @@ export default function Suggestions() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-muted-foreground">{t("suggestions.snowType")}</label>
+              <label className="text-sm font-medium text-muted-foreground">Snow Type</label>
               <Select value={snowType} onValueChange={setSnowType}>
                 <SelectTrigger data-testid="select-snow-type">
                   <SelectValue />
@@ -192,7 +190,7 @@ export default function Suggestions() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-muted-foreground">{t("suggestions.grainSize")}</label>
+              <label className="text-sm font-medium text-muted-foreground">Grain Size</label>
               <Select value={grainSize} onValueChange={setGrainSize}>
                 <SelectTrigger data-testid="select-grain-size">
                   <SelectValue />
@@ -206,7 +204,7 @@ export default function Suggestions() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-muted-foreground">{t("suggestions.snowHumidityType")}</label>
+              <label className="text-sm font-medium text-muted-foreground">Snow Humidity Type</label>
               <Select value={snowHumidityType} onValueChange={setSnowHumidityType}>
                 <SelectTrigger data-testid="select-snow-humidity-type">
                   <SelectValue />
@@ -220,7 +218,7 @@ export default function Suggestions() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-muted-foreground">{t("suggestions.trackHardness")}</label>
+              <label className="text-sm font-medium text-muted-foreground">Track Hardness</label>
               <Select value={trackHardness} onValueChange={setTrackHardness}>
                 <SelectTrigger data-testid="select-track-hardness">
                   <SelectValue />
@@ -244,12 +242,12 @@ export default function Suggestions() {
               {mutation.isPending ? (
                 <>
                   <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-                  {t("suggestions.analyzing")}
+                  Analyzing...
                 </>
               ) : (
                 <>
                   <Sparkles className="mr-2 h-4 w-4" />
-                  {t("suggestions.getRecommendations")}
+                  Get Recommendations
                 </>
               )}
             </Button>
@@ -259,7 +257,7 @@ export default function Suggestions() {
         {mutation.isPending && (
           <Card className="fs-card rounded-2xl p-8 text-center" data-testid="card-loading">
             <Sparkles className="mx-auto h-12 w-12 text-violet-500 animate-pulse" />
-            <p className="mt-4 text-sm font-medium text-muted-foreground">{t("suggestions.analyzing")}</p>
+            <p className="mt-4 text-sm font-medium text-muted-foreground">Analyzing...</p>
             <p className="mt-1 text-xs text-muted-foreground">AI is analyzing weather conditions and historical test data...</p>
           </Card>
         )}
@@ -274,7 +272,7 @@ export default function Suggestions() {
         {!mutation.isPending && suggestions && suggestions.length === 0 && (
           <Card className="fs-card rounded-2xl p-8 text-center" data-testid="card-no-results">
             <Droplets className="mx-auto h-12 w-12 text-muted-foreground/40" />
-            <p className="mt-4 text-muted-foreground">{t("suggestions.noResults")}</p>
+            <p className="mt-4 text-muted-foreground">No recommendations available. Try adjusting the weather parameters.</p>
           </Card>
         )}
 
@@ -284,7 +282,7 @@ export default function Suggestions() {
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-900/30">
                 <Lightbulb className="h-4 w-4 text-violet-600 dark:text-violet-400" />
               </div>
-              <h2 className="text-base font-semibold" data-testid="text-results-heading">{t("suggestions.results")}</h2>
+              <h2 className="text-base font-semibold" data-testid="text-results-heading">Recommendations</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -308,7 +306,7 @@ export default function Suggestions() {
 
                   {suggestion.products.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("suggestions.recommendedProducts")}</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Recommended Products</p>
                       <div className="flex flex-wrap gap-1.5">
                         {suggestion.products.map((product, pIdx) => (
                           <span

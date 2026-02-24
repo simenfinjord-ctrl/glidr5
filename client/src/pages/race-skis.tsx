@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
-import { useI18n } from "@/lib/i18n";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 type Athlete = {
@@ -23,7 +22,6 @@ type Athlete = {
 
 export default function RaceSkis() {
   const { user } = useAuth();
-  const { t } = useI18n();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -69,10 +67,10 @@ export default function RaceSkis() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl" data-testid="text-raceskis-title">
-              {t("raceskis.title")}
+              Race Skis
             </h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-raceskis-subtitle">
-              {t("raceskis.subtitle")}
+              Manage athlete profiles and race ski inventory
             </p>
           </div>
 
@@ -86,16 +84,16 @@ export default function RaceSkis() {
                 className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
               >
                 <Plus className="mr-2 h-4 w-4" />
-                {t("raceskis.addAthlete")}
+                Add Athlete
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>{t("raceskis.addAthlete")}</DialogTitle>
+                <DialogTitle>Add Athlete</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">{t("common.name")}</label>
+                  <label className="mb-1.5 block text-sm font-medium">Name</label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -105,7 +103,7 @@ export default function RaceSkis() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">{t("raceskis.team")}</label>
+                  <label className="mb-1.5 block text-sm font-medium">Team</label>
                   <Input
                     value={team}
                     onChange={(e) => setTeam(e.target.value)}
@@ -119,7 +117,7 @@ export default function RaceSkis() {
                     data-testid="button-save-athlete"
                     disabled={createMutation.isPending || !name.trim()}
                   >
-                    {createMutation.isPending ? "Saving…" : t("common.save")}
+                    {createMutation.isPending ? "Saving…" : "Save"}
                   </Button>
                 </div>
               </form>
@@ -133,7 +131,7 @@ export default function RaceSkis() {
               className="fs-card rounded-2xl p-6 text-sm text-muted-foreground sm:col-span-2"
               data-testid="empty-athletes"
             >
-              {t("raceskis.noAthletes")}
+              No athletes yet. Add your first athlete to get started.
             </Card>
           ) : (
             athletes.map((athlete) => (

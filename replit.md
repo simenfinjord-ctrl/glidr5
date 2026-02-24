@@ -23,7 +23,7 @@ Full-stack React web application to manage ski testing and documentation. Featur
 - `client/src/pages/test-detail.tsx` — Test detail view with results table, CSV export, Hide/Show toggle
 - `client/src/pages/dashboard.tsx` — Dashboard with stats, top products, recent tests
 - `client/src/pages/` — All page components
-- `client/src/lib/i18n.tsx` — Internationalization provider (English/Norwegian)
+- `client/src/lib/i18n.tsx` — Internationalization provider (unused, language feature removed)
 - `client/src/pages/race-skis.tsx` — Race skis athlete listing
 - `client/src/pages/athlete-detail.tsx` — Athlete detail with skis, regrinds, access management
 - `client/src/pages/suggestions.tsx` — AI-powered product recommendations
@@ -143,13 +143,19 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Each sheet has name, URL, edit, and delete controls
 - "Open in Google Sheets" link for direct access to the original spreadsheet
 - Dark mode toggle (sun/moon icon) in header and login page, persisted to localStorage
-- Grind tests hidden from users without canAccessGrinding (server-side + client-side filtering)
+- Granular permission system: 9 areas (dashboard, tests, testskis, products, weather, analytics, grinding, raceskis, suggestions) x 3 levels (none, view, edit)
+- Permissions stored as JSON text column on users table, parsed via parsePermissions helper
+- Server-side permission enforcement via requirePermission(area, level) middleware on all API routes
+- Client-side can(area, level) helper in useAuth hook for nav filtering and UI controls
+- Admin UI has permission matrix editor for managing per-user access levels
+- sanitizePermissions validates JSON on user create/update (only allows known areas and levels)
+- Grind tests require grinding permission (server-side + client-side filtering)
 - Grind parameters (type, stone, pattern) configurable per entry, not per test
 - Race Skis module: athlete profiles with access control, ski inventory (serial, skiId, brand, discipline, construction, mold, base, grind, heights, year), regrind history
+- Race ski testing: testSkiSource field on tests ("series"|"raceskis"), raceSkiId on entries
+- Race ski test entries validated server-side against user's allowed athlete/ski access
 - Athlete access sharing via athlete_access join table (creator always has access, admin has full access)
 - Race ski regrinds auto-update ski's current grind field
-- canAccessRaceSkis permission controls Race Skis nav visibility (admin always sees it)
-- Multi-language support (English/Norwegian) via I18nProvider, user.language field, selectable on profile page
-- Nav labels use i18n translations
-- AI Suggestions page: weather parameter form → OpenAI-powered product recommendations based on historical test data
+- Language feature removed: no I18nProvider, no language selector, English-only
+- AI Suggestions page: weather parameter form → OpenAI-powered product recommendations based on historical test data (DB-only, group-scoped)
 - Test ski regrind tracking archive per series

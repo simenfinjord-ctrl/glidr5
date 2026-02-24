@@ -41,7 +41,8 @@ type Test = {
   location: string;
   weatherId: number | null;
   testType: string;
-  seriesId: number;
+  testSkiSource: string;
+  seriesId: number | null;
   notes: string | null;
   distanceLabel0km: string | null;
   distanceLabelXkm: string | null;
@@ -50,6 +51,19 @@ type Test = {
   createdAt: string;
   createdByName: string;
   groupScope: string;
+};
+
+type Athlete = {
+  id: number;
+  name: string;
+};
+
+type RaceSki = {
+  id: number;
+  athleteId: number;
+  skiId: string;
+  brand: string | null;
+  discipline: string;
 };
 
 type Series = {
@@ -89,7 +103,7 @@ type TestEntry = {
   feelingRank: number | null;
 };
 
-const schema = z.object({
+const seriesSchemaEdit = z.object({
   date: z.string().min(1, "Date is required"),
   seriesId: z.string().min(1, "Select a series"),
   testType: z.enum(["Glide", "Structure", "Grind"]),
@@ -99,7 +113,17 @@ const schema = z.object({
   groupScope: z.string().min(1, "Select a group"),
 });
 
-type FormValues = z.infer<typeof schema>;
+const raceSkiSchemaEdit = z.object({
+  date: z.string().min(1, "Date is required"),
+  seriesId: z.string().optional(),
+  testType: z.enum(["Glide", "Structure", "Grind"]),
+  location: z.string().min(1, "Location is required"),
+  weatherId: z.string().optional(),
+  notes: z.string().optional(),
+  groupScope: z.string().min(1, "Select a group"),
+});
+
+type FormValues = z.infer<typeof seriesSchemaEdit>;
 
 function parseDistanceLabels(test: Test): string[] {
   if (test.distanceLabels) {
@@ -140,13 +164,21 @@ export default function EditTest() {
   const testId = params?.id;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const [initialized, setInitialized] = useState(false);
 
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
   const { data: groups = [] } = useQuery<{ id: number; name: string }[]>({ queryKey: ["/api/groups"] });
+  const { data: athletes = [] } = useQuery<Athlete[]>({
+    queryKey: ["/api/athletes"],
+    enabled: can("raceskis"),
+  });
+  const { data: allRaceSkis = [] } = useQuery<RaceSki[]>({
+    queryKey: ["/api/race-skis/all"],
+    enabled: can("raceskis"),
+  });
 
   const userGroups = useMemo(() => {
     if (user?.isAdmin && groups.length > 0) {
@@ -163,12 +195,30 @@ export default function EditTest() {
     enabled: !!testId,
   });
 
+  const testSkiSource = (test?.testSkiSource as "series" | "raceskis") || "series";
+
+  const raceSkiOptions = useMemo(() => {
+    return allRaceSkis.map((rs) => {
+      const athlete = athletes.find((a) => a.id === rs.athleteId);
+      return {
+        id: rs.id,
+        athleteId: rs.athleteId,
+        athleteName: athlete?.name ?? `Athlete #${rs.athleteId}`,
+        skiId: rs.skiId,
+        brand: rs.brand,
+        discipline: rs.discipline,
+      };
+    });
+  }, [allRaceSkis, athletes]);
+
   const [rows, setRows] = useState<EntryRow[]>([]);
   const [distanceLabels, setDistanceLabels] = useState<string[]>(["0 km"]);
   const [entriesLoaded, setEntriesLoaded] = useState(false);
 
+  const activeSchema = testSkiSource === "raceskis" ? raceSkiSchemaEdit : seriesSchemaEdit;
+
   const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(activeSchema),
     defaultValues: {
       date: "",
       testType: "Glide",
@@ -212,6 +262,7 @@ export default function EditTest() {
         grindType: (e as any).grindType ?? undefined,
         grindStone: (e as any).grindStone ?? undefined,
         grindPattern: (e as any).grindPattern ?? undefined,
+        raceSkiId: (e as any).raceSkiId ?? undefined,
       }))
     );
     setEntriesLoaded(true);
@@ -373,7 +424,8 @@ export default function EditTest() {
                   location: values.location,
                   weatherId: chosenWeatherId,
                   testType: values.testType,
-                  seriesId: Number(values.seriesId),
+                  testSkiSource: testSkiSource,
+                  seriesId: testSkiSource === "raceskis" ? null : Number(values.seriesId),
                   notes: values.notes,
                   groupScope: effectiveGroup,
                   grindParameters: null,
@@ -396,6 +448,7 @@ export default function EditTest() {
                     grindType: r.grindType || null,
                     grindStone: r.grindStone || null,
                     grindPattern: r.grindPattern || null,
+                    raceSkiId: r.raceSkiId || null,
                   }));
                 }
                 saveMutation.mutate(payload);
@@ -403,6 +456,20 @@ export default function EditTest() {
               className="space-y-4"
             >
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                {testSkiSource === "raceskis" && (
+                  <div className="lg:col-span-2">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Ski source</label>
+                      <div className="flex rounded-lg border bg-muted/50 p-0.5" data-testid="text-ski-source-badge">
+                        <span className="flex-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground text-center">
+                          Race Skis
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {testSkiSource !== "raceskis" && (
                 <div className="lg:col-span-3">
                   <FormField
                     control={form.control}
@@ -429,6 +496,7 @@ export default function EditTest() {
                     )}
                   />
                 </div>
+                )}
 
                 <div className="lg:col-span-2">
                   <FormField
@@ -455,7 +523,7 @@ export default function EditTest() {
                           <SelectContent>
                             <SelectItem value="Glide">Glide</SelectItem>
                             <SelectItem value="Structure">Structure</SelectItem>
-                            {(user?.isAdmin || user?.canAccessGrinding) && (
+                            {can("grinding") && (
                               <SelectItem value="Grind">Grind</SelectItem>
                             )}
                           </SelectContent>
@@ -602,6 +670,8 @@ export default function EditTest() {
             setRows={setRows}
             distanceLabels={distanceLabels}
             onDistanceLabelsChange={setDistanceLabels}
+            testSkiSource={testSkiSource}
+            raceSkis={raceSkiOptions}
           />
           <div className="mt-2 text-xs text-muted-foreground" data-testid="text-ranking-hint">
             Ranking uses dense ranking: same result = same rank. Click "+ Round" to add more distance tests.

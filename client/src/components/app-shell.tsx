@@ -21,119 +21,117 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/lib/auth";
+import { useAuth, type UserPermissions } from "@/lib/auth";
 import { useOffline } from "@/lib/offline-context";
 import { useTheme } from "@/lib/theme";
-import { useI18n } from "@/lib/i18n";
 import { AppLink } from "@/components/app-link";
 
 type NavItem = {
   href: string;
-  labelKey: string;
+  label: string;
   icon: React.ComponentType<{ className?: string }>;
   testId: string;
   color: string;
   activeColor: string;
   activeBg: string;
+  permArea?: keyof UserPermissions;
   adminOnly?: boolean;
-  grindingOnly?: boolean;
-  raceSkisOnly?: boolean;
-  hideForRaceSkiOnly?: boolean;
 };
 
 const nav: NavItem[] = [
   {
     href: "/dashboard",
-    labelKey: "nav.dashboard",
+    label: "Dashboard",
     icon: LayoutDashboard,
     testId: "link-dashboard",
     color: "text-gray-500",
     activeColor: "text-blue-600",
     activeBg: "bg-blue-50",
-    hideForRaceSkiOnly: true,
+    permArea: "dashboard",
   },
   {
     href: "/tests",
-    labelKey: "nav.tests",
+    label: "Tests",
     icon: ListChecks,
     testId: "link-tests",
     color: "text-gray-500",
     activeColor: "text-emerald-600",
     activeBg: "bg-emerald-50",
-    hideForRaceSkiOnly: true,
+    permArea: "tests",
   },
   {
     href: "/testskis",
-    labelKey: "nav.testskis",
+    label: "TestSkis",
     icon: Snowflake,
     testId: "link-testskis",
     color: "text-gray-500",
     activeColor: "text-sky-600",
     activeBg: "bg-sky-50",
-    hideForRaceSkiOnly: true,
+    permArea: "testskis",
   },
   {
     href: "/products",
-    labelKey: "nav.products",
+    label: "Products",
     icon: Package,
     testId: "link-products",
     color: "text-gray-500",
     activeColor: "text-amber-600",
     activeBg: "bg-amber-50",
-    hideForRaceSkiOnly: true,
+    permArea: "products",
   },
   {
     href: "/weather",
-    labelKey: "nav.weather",
+    label: "Weather",
     icon: CloudSun,
     testId: "link-weather",
     color: "text-gray-500",
     activeColor: "text-violet-600",
     activeBg: "bg-violet-50",
+    permArea: "weather",
   },
   {
     href: "/analytics",
-    labelKey: "nav.analytics",
+    label: "Analytics",
     icon: BarChart3,
     testId: "link-analytics",
     color: "text-gray-500",
     activeColor: "text-pink-600",
     activeBg: "bg-pink-50",
-    hideForRaceSkiOnly: true,
+    permArea: "analytics",
   },
   {
     href: "/grinding",
-    labelKey: "nav.grinding",
+    label: "Grinding",
     icon: Disc3,
     testId: "link-grinding",
     color: "text-gray-500",
     activeColor: "text-indigo-600",
     activeBg: "bg-indigo-50",
-    grindingOnly: true,
+    permArea: "grinding",
   },
   {
     href: "/raceskis",
-    labelKey: "nav.raceskis",
+    label: "Race Skis",
     icon: Trophy,
     testId: "link-raceskis",
     color: "text-gray-500",
     activeColor: "text-orange-600",
     activeBg: "bg-orange-50",
-    raceSkisOnly: true,
+    permArea: "raceskis",
   },
   {
     href: "/suggestions",
-    labelKey: "nav.suggestions",
+    label: "Suggestions",
     icon: Sparkles,
     testId: "link-suggestions",
     color: "text-gray-500",
     activeColor: "text-purple-600",
     activeBg: "bg-purple-50",
-    hideForRaceSkiOnly: true,
+    permArea: "suggestions",
   },
   {
     href: "/admin",
-    labelKey: "nav.admin",
+    label: "Admin",
     icon: Shield,
     testId: "link-admin",
     color: "text-gray-500",
@@ -145,21 +143,13 @@ const nav: NavItem[] = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, can } = useAuth();
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
   const { theme, toggle: toggleTheme } = useTheme();
-  const { t } = useI18n();
-
-  const isRaceSkiOnlyUser = !user?.isAdmin && user?.canAccessRaceSkis && !user?.canAccessGrinding &&
-    user?.groupScope?.split(",").map((s: string) => s.trim()).filter(Boolean).length === 0;
-
-  const isRaceSkiUser = user?.isAdmin || !!user?.canAccessRaceSkis;
 
   const visibleNav = nav.filter((item) => {
-    if (item.adminOnly && !user?.isAdmin) return false;
-    if (item.grindingOnly && !user?.isAdmin && !user?.canAccessGrinding) return false;
-    if (item.raceSkisOnly && !isRaceSkiUser) return false;
-    if (item.hideForRaceSkiOnly && isRaceSkiOnlyUser) return false;
+    if (item.adminOnly) return !!user?.isAdmin;
+    if (item.permArea) return can(item.permArea);
     return true;
   });
 
@@ -250,7 +240,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                       active ? item.activeColor : item.color,
                     )}
                   />
-                  <span>{t(item.labelKey)}</span>
+                  <span>{item.label}</span>
                 </AppLink>
               );
             })}

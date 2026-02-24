@@ -8,6 +8,8 @@ import {
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
   Shield, LogOut, ToggleLeft, ToggleRight,
 } from "lucide-react";
+import { PERMISSION_AREAS, DEFAULT_PERMISSIONS } from "@shared/schema";
+import type { UserPermissions, PermissionLevel } from "@shared/schema";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { AppShell } from "@/components/app-shell";
@@ -28,10 +30,59 @@ type ApiUser = {
   name: string;
   groupScope: string;
   isAdmin: number;
-  canAccessGrinding: number;
-  canAccessRaceSkis: number;
+  permissions: string;
   isActive: number;
 };
+
+const AREA_LABELS: Record<string, string> = {
+  dashboard: "Dashboard", tests: "Tests", testskis: "TestSkis", products: "Products",
+  weather: "Weather", analytics: "Analytics", grinding: "Grinding", raceskis: "Race Skis",
+  suggestions: "Suggestions"
+};
+
+function parsePermissions(permStr: string): UserPermissions {
+  try {
+    return JSON.parse(permStr);
+  } catch {
+    return { ...DEFAULT_PERMISSIONS };
+  }
+}
+
+function PermissionsMatrix({
+  value,
+  onChange,
+  testIdPrefix,
+}: {
+  value: UserPermissions;
+  onChange: (perms: UserPermissions) => void;
+  testIdPrefix: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-medium">Permissions</div>
+      <div className="grid grid-cols-1 gap-2">
+        {PERMISSION_AREAS.map((area) => (
+          <div key={area} className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-2">
+            <span className="text-sm text-gray-700">{AREA_LABELS[area] || area}</span>
+            <Select
+              value={value[area] || "none"}
+              onValueChange={(v) => onChange({ ...value, [area]: v as PermissionLevel })}
+            >
+              <SelectTrigger className="w-28 h-8 text-xs" data-testid={`${testIdPrefix}-${area}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="view">View</SelectItem>
+                <SelectItem value="edit">Edit</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 type ApiGroup = { id: number; name: string };
 
@@ -133,8 +184,7 @@ const userSchema = z.object({
   password: z.string().min(1, "Password is required"),
   groupScope: z.string().min(1, "At least one group is required"),
   isAdmin: z.boolean(),
-  canAccessGrinding: z.boolean(),
-  canAccessRaceSkis: z.boolean(),
+  permissions: z.string(),
   isActive: z.boolean(),
 });
 
@@ -143,8 +193,7 @@ const editSchema = z.object({
   email: z.string().email("Valid email required"),
   groupScope: z.string().min(1, "At least one group is required"),
   isAdmin: z.boolean(),
-  canAccessGrinding: z.boolean(),
-  canAccessRaceSkis: z.boolean(),
+  permissions: z.string(),
   isActive: z.boolean(),
 });
 
@@ -154,9 +203,10 @@ const resetSchema = z.object({
 
 function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames: string[] }) {
   const { toast } = useToast();
+  const [perms, setPerms] = useState<UserPermissions>({ ...DEFAULT_PERMISSIONS });
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
-    defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, canAccessGrinding: false, canAccessRaceSkis: false, isActive: true },
+    defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true },
   });
 
   const selectedGroups = parseGroups(form.watch("groupScope"));
@@ -215,32 +265,11 @@ function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames
             <FormMessage />
           </FormItem>
         )} />
-        <FormField control={form.control} name="canAccessGrinding" render={({ field }) => (
-          <FormItem>
-            <FormLabel>Grinding Access</FormLabel>
-            <Select value={field.value ? "yes" : "no"} onValueChange={(v) => field.onChange(v === "yes")}>
-              <FormControl><SelectTrigger data-testid="select-create-grinding"><SelectValue /></SelectTrigger></FormControl>
-              <SelectContent>
-                <SelectItem value="yes">Enabled</SelectItem>
-                <SelectItem value="no">Disabled</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
-        <FormField control={form.control} name="canAccessRaceSkis" render={({ field }) => (
-          <FormItem>
-            <FormLabel>Race Skis Access</FormLabel>
-            <Select value={field.value ? "yes" : "no"} onValueChange={(v) => field.onChange(v === "yes")}>
-              <FormControl><SelectTrigger data-testid="select-create-raceskis"><SelectValue /></SelectTrigger></FormControl>
-              <SelectContent>
-                <SelectItem value="yes">Enabled</SelectItem>
-                <SelectItem value="no">Disabled</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
+        <PermissionsMatrix
+          value={perms}
+          onChange={(p) => { setPerms(p); form.setValue("permissions", JSON.stringify(p)); }}
+          testIdPrefix="select-create-perm"
+        />
         <FormField control={form.control} name="isActive" render={({ field }) => (
           <FormItem>
             <FormLabel>Status</FormLabel>
@@ -264,6 +293,7 @@ function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames
 
 function EditUserForm({ user, onDone, groupNames }: { user: ApiUser; onDone: () => void; groupNames: string[] }) {
   const { toast } = useToast();
+  const [perms, setPerms] = useState<UserPermissions>(parsePermissions(user.permissions));
   const form = useForm<z.infer<typeof editSchema>>({
     resolver: zodResolver(editSchema),
     defaultValues: {
@@ -271,8 +301,7 @@ function EditUserForm({ user, onDone, groupNames }: { user: ApiUser; onDone: () 
       email: user.email,
       groupScope: user.groupScope,
       isAdmin: !!user.isAdmin,
-      canAccessGrinding: !!user.canAccessGrinding,
-      canAccessRaceSkis: !!user.canAccessRaceSkis,
+      permissions: user.permissions || JSON.stringify(DEFAULT_PERMISSIONS),
       isActive: !!user.isActive,
     },
   });
@@ -330,32 +359,11 @@ function EditUserForm({ user, onDone, groupNames }: { user: ApiUser; onDone: () 
             <FormMessage />
           </FormItem>
         )} />
-        <FormField control={form.control} name="canAccessGrinding" render={({ field }) => (
-          <FormItem>
-            <FormLabel>Grinding Access</FormLabel>
-            <Select value={field.value ? "yes" : "no"} onValueChange={(v) => field.onChange(v === "yes")}>
-              <FormControl><SelectTrigger data-testid="select-edit-grinding"><SelectValue /></SelectTrigger></FormControl>
-              <SelectContent>
-                <SelectItem value="no">No Access</SelectItem>
-                <SelectItem value="yes">Has Access</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
-        <FormField control={form.control} name="canAccessRaceSkis" render={({ field }) => (
-          <FormItem>
-            <FormLabel>Race Skis Access</FormLabel>
-            <Select value={field.value ? "yes" : "no"} onValueChange={(v) => field.onChange(v === "yes")}>
-              <FormControl><SelectTrigger data-testid="select-edit-raceskis"><SelectValue /></SelectTrigger></FormControl>
-              <SelectContent>
-                <SelectItem value="no">No Access</SelectItem>
-                <SelectItem value="yes">Has Access</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
+        <PermissionsMatrix
+          value={perms}
+          onChange={(p) => { setPerms(p); form.setValue("permissions", JSON.stringify(p)); }}
+          testIdPrefix="select-edit-perm"
+        />
         <FormField control={form.control} name="isActive" render={({ field }) => (
           <FormItem>
             <FormLabel>Status</FormLabel>
@@ -696,34 +704,6 @@ export default function Admin() {
     },
   });
 
-  const toggleGrindingMutation = useMutation({
-    mutationFn: async ({ userId, value }: { userId: number; value: boolean }) => {
-      const res = await apiRequest("PUT", `/api/users/${userId}`, { canAccessGrinding: value });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({ title: "Grinding access updated" });
-    },
-    onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
-    },
-  });
-
-  const toggleRaceSkisMutation = useMutation({
-    mutationFn: async ({ userId, value }: { userId: number; value: boolean }) => {
-      const res = await apiRequest("PUT", `/api/users/${userId}`, { canAccessRaceSkis: value });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({ title: "Race skis access updated" });
-    },
-    onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
-    },
-  });
-
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ userId, value }: { userId: number; value: boolean }) => {
       const res = await apiRequest("PUT", `/api/users/${userId}`, { isActive: value });
@@ -915,44 +895,25 @@ export default function Admin() {
                         )}>
                           {u.isAdmin ? "Admin" : "Member"}
                         </div>
-                        {u.canAccessGrinding ? (
-                          <button
-                            className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-medium text-emerald-700 hover:bg-emerald-100 transition"
-                            data-testid={`toggle-grinding-${u.id}`}
-                            title="Disable grinding access"
-                            onClick={() => toggleGrindingMutation.mutate({ userId: u.id, value: false })}
-                          >
-                            <Disc3 className="inline h-3 w-3 mr-1" />Grinding
-                          </button>
-                        ) : (
-                          <button
-                            className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[10px] font-medium text-gray-400 hover:bg-gray-100 transition"
-                            data-testid={`toggle-grinding-${u.id}`}
-                            title="Enable grinding access"
-                            onClick={() => toggleGrindingMutation.mutate({ userId: u.id, value: true })}
-                          >
-                            <Disc3 className="inline h-3 w-3 mr-1" />Grinding
-                          </button>
-                        )}
-                        {u.canAccessRaceSkis ? (
-                          <button
-                            className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[10px] font-medium text-orange-700 hover:bg-orange-100 transition"
-                            data-testid={`toggle-raceskis-${u.id}`}
-                            title="Disable race skis access"
-                            onClick={() => toggleRaceSkisMutation.mutate({ userId: u.id, value: false })}
-                          >
-                            Race Skis
-                          </button>
-                        ) : (
-                          <button
-                            className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[10px] font-medium text-gray-400 hover:bg-gray-100 transition"
-                            data-testid={`toggle-raceskis-${u.id}`}
-                            title="Enable race skis access"
-                            onClick={() => toggleRaceSkisMutation.mutate({ userId: u.id, value: true })}
-                          >
-                            Race Skis
-                          </button>
-                        )}
+                        {(() => {
+                          const userPerms = parsePermissions(u.permissions);
+                          return PERMISSION_AREAS
+                            .filter((area) => userPerms[area] && userPerms[area] !== "none")
+                            .map((area) => (
+                              <span
+                                key={area}
+                                className={cn(
+                                  "rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                                  userPerms[area] === "edit"
+                                    ? "border-green-200 bg-green-50 text-green-700"
+                                    : "border-blue-200 bg-blue-50 text-blue-700"
+                                )}
+                                data-testid={`badge-perm-${area}-${u.id}`}
+                              >
+                                {AREA_LABELS[area]}: {userPerms[area]}
+                              </span>
+                            ));
+                        })()}
                         <button
                           className={cn(
                             "rounded-full border px-2.5 py-1 text-[10px] font-medium transition",

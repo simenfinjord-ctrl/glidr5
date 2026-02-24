@@ -5,7 +5,7 @@ import pgSession from "connect-pg-simple";
 import { type Express, type Request } from "express";
 import { storage } from "./storage";
 import { pool } from "./db";
-import { type User } from "@shared/schema";
+import { type User, type UserPermissions, DEFAULT_PERMISSIONS, ADMIN_PERMISSIONS } from "@shared/schema";
 
 declare global {
   namespace Express {
@@ -15,12 +15,20 @@ declare global {
       name: string;
       groupScope: string;
       isAdmin: number;
-      canAccessGrinding: number;
-      canAccessRaceSkis: number;
-      language: string;
+      permissions: string;
       isActive: number;
       password: string;
     }
+  }
+}
+
+export function parsePermissions(permissionsStr: string | null | undefined, isAdmin: boolean): UserPermissions {
+  if (isAdmin) return { ...ADMIN_PERMISSIONS };
+  try {
+    const parsed = JSON.parse(permissionsStr || "{}");
+    return { ...DEFAULT_PERMISSIONS, ...parsed };
+  } catch {
+    return { ...DEFAULT_PERMISSIONS };
   }
 }
 
@@ -113,7 +121,8 @@ export function setupAuth(app: Express) {
           });
         } catch (_) {}
         const { password, ...safe } = user;
-        return res.json(safe);
+        const perms = parsePermissions(safe.permissions, !!safe.isAdmin);
+        return res.json({ ...safe, parsedPermissions: perms });
       });
     })(req, res, next);
   });
@@ -130,6 +139,7 @@ export function setupAuth(app: Express) {
       return res.status(401).json({ message: "Not authenticated" });
     }
     const { password, ...safe } = req.user;
-    return res.json(safe);
+    const perms = parsePermissions(safe.permissions, !!safe.isAdmin);
+    return res.json({ ...safe, parsedPermissions: perms });
   });
 }

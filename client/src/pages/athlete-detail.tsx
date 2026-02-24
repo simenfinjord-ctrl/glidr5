@@ -32,7 +32,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
-import { useI18n } from "@/lib/i18n";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 type Athlete = {
@@ -92,7 +91,6 @@ export default function AthleteDetail() {
   const [, navigate] = useLocation();
   const athleteId = params?.id ? parseInt(params.id) : null;
   const { user } = useAuth();
-  const { t } = useI18n();
   const { toast } = useToast();
 
   const [skiDialogOpen, setSkiDialogOpen] = useState(false);
@@ -389,7 +387,7 @@ export default function AthleteDetail() {
           <AppLink href="/raceskis">
             <Button variant="secondary" data-testid="button-back-raceskis">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              {t("common.back")}
+              Back
             </Button>
           </AppLink>
         </div>
@@ -405,7 +403,7 @@ export default function AthleteDetail() {
           <AppLink href="/raceskis" testId="link-back-raceskis">
             <Button variant="ghost" size="sm" data-testid="button-back-raceskis">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              {t("common.back")}
+              Back
             </Button>
           </AppLink>
         </div>
@@ -441,7 +439,7 @@ export default function AthleteDetail() {
                 onClick={openEditAthlete}
               >
                 <Edit2 className="mr-1.5 h-3.5 w-3.5" />
-                {t("common.edit")}
+                Edit
               </Button>
               <Button
                 variant="outline"
@@ -455,7 +453,7 @@ export default function AthleteDetail() {
                 }}
               >
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                {t("common.delete")}
+                Delete
               </Button>
             </div>
           )}
@@ -466,9 +464,9 @@ export default function AthleteDetail() {
           <Card className="fs-card rounded-2xl p-4" data-testid="card-access-management">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h2 className="text-sm font-semibold">{t("raceskis.access")}</h2>
+                <h2 className="text-sm font-semibold">Access</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground" data-testid="text-shared-with">
-                  {t("raceskis.sharedWith")}: {access.length > 0
+                  Shared with: {access.length > 0
                     ? access.map((a) => {
                         const u = users.find((u) => u.id === a.userId);
                         return u?.name || `User #${a.userId}`;
@@ -483,7 +481,7 @@ export default function AthleteDetail() {
                 onClick={openAccessDialog}
               >
                 <Users className="mr-1.5 h-3.5 w-3.5" />
-                {t("raceskis.manageAccess")}
+                Manage Access
               </Button>
             </div>
           </Card>
@@ -492,7 +490,7 @@ export default function AthleteDetail() {
         {/* Race Skis */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold" data-testid="text-skis-heading">
-            {t("raceskis.skis")} ({skis.length})
+            Skis ({skis.length})
           </h2>
           <Button
             data-testid="button-add-ski"
@@ -501,7 +499,7 @@ export default function AthleteDetail() {
             onClick={openAddSki}
           >
             <Plus className="mr-1.5 h-3.5 w-3.5" />
-            {t("raceskis.addSki")}
+            Add Ski
           </Button>
         </div>
 
@@ -525,7 +523,6 @@ export default function AthleteDetail() {
                 onDeleteRegrind={(id) => {
                   if (confirm("Delete this regrind record?")) deleteRegrindMutation.mutate(id);
                 }}
-                t={t}
               />
             ))}
           </div>
@@ -542,11 +539,11 @@ export default function AthleteDetail() {
       >
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingSki ? t("common.edit") : t("raceskis.addSki")}</DialogTitle>
+            <DialogTitle>{editingSki ? "Edit" : "Add Ski"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSkiSubmit} className="space-y-3">
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("raceskis.skiId")} *</label>
+              <label className="mb-1 block text-sm font-medium">Ski ID *</label>
               <Input
                 value={skiForm.skiId}
                 onChange={(e) => setSkiForm((f) => ({ ...f, skiId: e.target.value }))}
@@ -555,7 +552,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("raceskis.serialNumber")}</label>
+              <label className="mb-1 block text-sm font-medium">Serial Number</label>
               <Input
                 value={skiForm.serialNumber}
                 onChange={(e) => setSkiForm((f) => ({ ...f, serialNumber: e.target.value }))}
@@ -563,7 +560,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("common.brand")}</label>
+              <label className="mb-1 block text-sm font-medium">Brand</label>
               <Input
                 value={skiForm.brand}
                 onChange={(e) => setSkiForm((f) => ({ ...f, brand: e.target.value }))}
@@ -571,7 +568,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("raceskis.discipline")}</label>
+              <label className="mb-1 block text-sm font-medium">Discipline</label>
               <Select
                 value={skiForm.discipline}
                 onValueChange={(v) => setSkiForm((f) => ({ ...f, discipline: v }))}
@@ -580,13 +577,13 @@ export default function AthleteDetail() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Classic">{t("raceskis.classic")}</SelectItem>
-                  <SelectItem value="Skate">{t("raceskis.skate")}</SelectItem>
+                  <SelectItem value="Classic">Classic</SelectItem>
+                  <SelectItem value="Skate">Skate</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("raceskis.construction")}</label>
+              <label className="mb-1 block text-sm font-medium">Construction</label>
               <Input
                 value={skiForm.construction}
                 onChange={(e) => setSkiForm((f) => ({ ...f, construction: e.target.value }))}
@@ -594,7 +591,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("raceskis.mold")}</label>
+              <label className="mb-1 block text-sm font-medium">Mold</label>
               <Input
                 value={skiForm.mold}
                 onChange={(e) => setSkiForm((f) => ({ ...f, mold: e.target.value }))}
@@ -602,7 +599,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("raceskis.base")}</label>
+              <label className="mb-1 block text-sm font-medium">Base</label>
               <Input
                 value={skiForm.base}
                 onChange={(e) => setSkiForm((f) => ({ ...f, base: e.target.value }))}
@@ -610,7 +607,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("raceskis.grind")}</label>
+              <label className="mb-1 block text-sm font-medium">Grind</label>
               <Input
                 value={skiForm.grind}
                 onChange={(e) => setSkiForm((f) => ({ ...f, grind: e.target.value }))}
@@ -619,7 +616,7 @@ export default function AthleteDetail() {
             </div>
             {skiForm.discipline === "Classic" && (
               <div>
-                <label className="mb-1 block text-sm font-medium">{t("raceskis.heights")}</label>
+                <label className="mb-1 block text-sm font-medium">Heights</label>
                 <Input
                   value={skiForm.heights}
                   onChange={(e) => setSkiForm((f) => ({ ...f, heights: e.target.value }))}
@@ -628,7 +625,7 @@ export default function AthleteDetail() {
               </div>
             )}
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("common.year")}</label>
+              <label className="mb-1 block text-sm font-medium">Year</label>
               <Input
                 value={skiForm.year}
                 onChange={(e) => setSkiForm((f) => ({ ...f, year: e.target.value }))}
@@ -641,7 +638,7 @@ export default function AthleteDetail() {
                 data-testid="button-save-ski"
                 disabled={createSkiMutation.isPending || updateSkiMutation.isPending || !skiForm.skiId.trim()}
               >
-                {(createSkiMutation.isPending || updateSkiMutation.isPending) ? "Saving…" : t("common.save")}
+                {(createSkiMutation.isPending || updateSkiMutation.isPending) ? "Saving…" : "Save"}
               </Button>
             </div>
           </form>
@@ -658,11 +655,11 @@ export default function AthleteDetail() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t("raceskis.addRegrind")}</DialogTitle>
+            <DialogTitle>Add Regrind</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleRegrindSubmit} className="space-y-3">
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("common.date")} *</label>
+              <label className="mb-1 block text-sm font-medium">Date *</label>
               <Input
                 type="date"
                 value={regrindForm.date}
@@ -672,7 +669,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("raceskis.grindType")} *</label>
+              <label className="mb-1 block text-sm font-medium">Grind Type *</label>
               <Input
                 value={regrindForm.grindType}
                 onChange={(e) => setRegrindForm((f) => ({ ...f, grindType: e.target.value }))}
@@ -681,7 +678,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("raceskis.stone")}</label>
+              <label className="mb-1 block text-sm font-medium">Stone</label>
               <Input
                 value={regrindForm.stone}
                 onChange={(e) => setRegrindForm((f) => ({ ...f, stone: e.target.value }))}
@@ -689,7 +686,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("raceskis.pattern")}</label>
+              <label className="mb-1 block text-sm font-medium">Pattern</label>
               <Input
                 value={regrindForm.pattern}
                 onChange={(e) => setRegrindForm((f) => ({ ...f, pattern: e.target.value }))}
@@ -697,7 +694,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("common.notes")}</label>
+              <label className="mb-1 block text-sm font-medium">Notes</label>
               <Input
                 value={regrindForm.notes}
                 onChange={(e) => setRegrindForm((f) => ({ ...f, notes: e.target.value }))}
@@ -710,7 +707,7 @@ export default function AthleteDetail() {
                 data-testid="button-save-regrind"
                 disabled={createRegrindMutation.isPending || !regrindForm.grindType.trim()}
               >
-                {createRegrindMutation.isPending ? "Saving…" : t("common.save")}
+                {createRegrindMutation.isPending ? "Saving…" : "Save"}
               </Button>
             </div>
           </form>
@@ -721,7 +718,7 @@ export default function AthleteDetail() {
       <Dialog open={accessDialogOpen} onOpenChange={setAccessDialogOpen}>
         <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{t("raceskis.manageAccess")}</DialogTitle>
+            <DialogTitle>Manage Access</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
             {users.length === 0 ? (
@@ -757,7 +754,7 @@ export default function AthleteDetail() {
               onClick={() => updateAccessMutation.mutate(selectedUserIds)}
               disabled={updateAccessMutation.isPending}
             >
-              {updateAccessMutation.isPending ? "Saving…" : t("common.save")}
+              {updateAccessMutation.isPending ? "Saving…" : "Save"}
             </Button>
           </div>
         </DialogContent>
@@ -767,11 +764,11 @@ export default function AthleteDetail() {
       <Dialog open={editAthleteOpen} onOpenChange={setEditAthleteOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t("common.edit")}</DialogTitle>
+            <DialogTitle>Edit</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAthleteSubmit} className="space-y-3">
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("common.name")} *</label>
+              <label className="mb-1 block text-sm font-medium">Name *</label>
               <Input
                 value={athleteForm.name}
                 onChange={(e) => setAthleteForm((f) => ({ ...f, name: e.target.value }))}
@@ -780,7 +777,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">{t("raceskis.team")}</label>
+              <label className="mb-1 block text-sm font-medium">Team</label>
               <Input
                 value={athleteForm.team}
                 onChange={(e) => setAthleteForm((f) => ({ ...f, team: e.target.value }))}
@@ -793,7 +790,7 @@ export default function AthleteDetail() {
                 data-testid="button-save-edit-athlete"
                 disabled={updateAthleteMutation.isPending || !athleteForm.name.trim()}
               >
-                {updateAthleteMutation.isPending ? "Saving…" : t("common.save")}
+                {updateAthleteMutation.isPending ? "Saving…" : "Save"}
               </Button>
             </div>
           </form>
@@ -811,7 +808,6 @@ function SkiCard({
   onDelete,
   onRegrind,
   onDeleteRegrind,
-  t,
 }: {
   ski: RaceSki;
   expanded: boolean;
@@ -820,7 +816,6 @@ function SkiCard({
   onDelete: () => void;
   onRegrind: () => void;
   onDeleteRegrind: (id: number) => void;
-  t: (key: string) => string;
 }) {
   const { data: regrinds = [] } = useQuery<RaceSkiRegrind[]>({
     queryKey: [`/api/race-skis/${ski.id}/regrinds`],
@@ -857,16 +852,16 @@ function SkiCard({
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
               {ski.grind && (
                 <span data-testid={`text-ski-grind-${ski.id}`}>
-                  <strong className="text-foreground">{t("raceskis.currentGrind")}:</strong> {ski.grind}
+                  <strong className="text-foreground">Current Grind:</strong> {ski.grind}
                 </span>
               )}
-              {ski.construction && <span>{t("raceskis.construction")}: {ski.construction}</span>}
-              {ski.mold && <span>{t("raceskis.mold")}: {ski.mold}</span>}
-              {ski.base && <span>{t("raceskis.base")}: {ski.base}</span>}
+              {ski.construction && <span>Construction: {ski.construction}</span>}
+              {ski.mold && <span>Mold: {ski.mold}</span>}
+              {ski.base && <span>Base: {ski.base}</span>}
               {ski.discipline === "Classic" && ski.heights && (
-                <span>{t("raceskis.heights")}: {ski.heights}</span>
+                <span>Heights: {ski.heights}</span>
               )}
-              {ski.year && <span>{t("common.year")}: {ski.year}</span>}
+              {ski.year && <span>Year: {ski.year}</span>}
             </div>
           </div>
         </div>
@@ -880,7 +875,7 @@ function SkiCard({
             className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
           >
             <RefreshCw className="mr-1 h-3.5 w-3.5" />
-            {t("raceskis.regrind")}
+            Regrind
           </Button>
           <Button variant="ghost" size="sm" data-testid={`button-edit-ski-${ski.id}`} onClick={onEdit}>
             <Edit2 className="h-3.5 w-3.5" />
@@ -900,11 +895,11 @@ function SkiCard({
       {expanded && (
         <div className="mt-3 border-t border-border/40 pt-3" data-testid={`section-regrinds-${ski.id}`}>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("raceskis.regrindHistory")}
+            Regrind History
           </h3>
           {regrinds.length === 0 ? (
             <p className="text-xs text-muted-foreground" data-testid={`text-no-regrinds-${ski.id}`}>
-              {t("raceskis.noRegrinds")}
+              No regrind history
             </p>
           ) : (
             <div className="space-y-2">
@@ -917,8 +912,8 @@ function SkiCard({
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
                     <span className="font-medium">{rg.date}</span>
                     <span className="font-semibold text-foreground">{rg.grindType}</span>
-                    {rg.stone && <span className="text-muted-foreground">{t("raceskis.stone")}: {rg.stone}</span>}
-                    {rg.pattern && <span className="text-muted-foreground">{t("raceskis.pattern")}: {rg.pattern}</span>}
+                    {rg.stone && <span className="text-muted-foreground">Stone: {rg.stone}</span>}
+                    {rg.pattern && <span className="text-muted-foreground">Pattern: {rg.pattern}</span>}
                     {rg.notes && <span className="text-muted-foreground italic">{rg.notes}</span>}
                   </div>
                   <Button

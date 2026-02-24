@@ -7,7 +7,6 @@ import { useAuth } from "@/lib/auth";
 import { Spinner } from "@/components/ui/spinner";
 import { OfflineProvider } from "@/lib/offline-context";
 import { ThemeProvider } from "@/lib/theme";
-import { I18nProvider } from "@/lib/i18n";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
@@ -80,14 +79,12 @@ export default function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <I18nProvider>
-          <OfflineProvider>
-            <TooltipProvider>
-              <Toaster />
-              <AuthGuard />
-            </TooltipProvider>
-          </OfflineProvider>
-        </I18nProvider>
+        <OfflineProvider>
+          <TooltipProvider>
+            <Toaster />
+            <AuthGuard />
+          </TooltipProvider>
+        </OfflineProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

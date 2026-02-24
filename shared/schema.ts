@@ -4,16 +4,43 @@ import { z } from "zod";
 
 export * from "./models/chat";
 
+export const PERMISSION_AREAS = ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "suggestions"] as const;
+export type PermissionArea = typeof PERMISSION_AREAS[number];
+export type PermissionLevel = "none" | "view" | "edit";
+export type UserPermissions = Record<PermissionArea, PermissionLevel>;
+
+export const DEFAULT_PERMISSIONS: UserPermissions = {
+  dashboard: "none",
+  tests: "none",
+  testskis: "none",
+  products: "none",
+  weather: "none",
+  analytics: "none",
+  grinding: "none",
+  raceskis: "none",
+  suggestions: "none",
+};
+
+export const ADMIN_PERMISSIONS: UserPermissions = {
+  dashboard: "edit",
+  tests: "edit",
+  testskis: "edit",
+  products: "edit",
+  weather: "edit",
+  analytics: "edit",
+  grinding: "edit",
+  raceskis: "edit",
+  suggestions: "edit",
+};
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
-  groupScope: text("group_scope").notNull().default("U23"),
+  groupScope: text("group_scope").notNull().default(""),
   isAdmin: integer("is_admin").notNull().default(0),
-  canAccessGrinding: integer("can_access_grinding").notNull().default(0),
-  canAccessRaceSkis: integer("can_access_race_skis").notNull().default(0),
-  language: text("language").notNull().default("en"),
+  permissions: text("permissions").notNull().default(JSON.stringify(DEFAULT_PERMISSIONS)),
   isActive: integer("is_active").notNull().default(1),
 });
 
@@ -101,7 +128,8 @@ export const tests = pgTable("tests", {
   location: text("location").notNull(),
   weatherId: integer("weather_id"),
   testType: text("test_type").notNull(),
-  seriesId: integer("series_id").notNull(),
+  testSkiSource: text("test_ski_source").notNull().default("series"),
+  seriesId: integer("series_id"),
   notes: text("notes"),
   grindParameters: text("grind_parameters"),
   distanceLabel0km: text("distance_label_0km"),

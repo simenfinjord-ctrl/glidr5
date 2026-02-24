@@ -33,15 +33,6 @@ export type EntryRow = {
   raceSkiId?: number;
 };
 
-type RaceSkiOption = {
-  id: number;
-  athleteId: number;
-  athleteName: string;
-  skiId: string;
-  brand: string | null;
-  discipline: string;
-};
-
 function competitionRanks(values: Array<{ rowId: string; v: number }>) {
   const sorted = [...values].sort((a, b) => a.v - b.v);
   const ranks = new Map<string, number>();
@@ -83,8 +74,6 @@ export function TestEntryTable({
   setRows,
   distanceLabels,
   onDistanceLabelsChange,
-  testSkiSource,
-  raceSkis,
 }: {
   testType: TestType;
   products: Product[];
@@ -92,8 +81,6 @@ export function TestEntryTable({
   setRows: (next: EntryRow[]) => void;
   distanceLabels: string[];
   onDistanceLabelsChange: (labels: string[]) => void;
-  testSkiSource?: "series" | "raceskis";
-  raceSkis?: RaceSkiOption[];
 }) {
   const roundRanks = useMemo(() => {
     return distanceLabels.map((_, roundIdx) => {
@@ -135,15 +122,13 @@ export function TestEntryTable({
   };
 
   const isGrind = testType === "Grind";
-  const isRaceSkiMode = testSkiSource === "raceskis";
 
   return (
     <div className="overflow-x-auto rounded-2xl border bg-card/50">
-      <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${(isGrind ? 700 : 560) + (isRaceSkiMode ? 200 : 0) + distanceLabels.length * 200}px` }}>
+      <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${(isGrind ? 700 : 560) + distanceLabels.length * 200}px` }}>
         <thead>
           <tr className="text-left text-xs text-muted-foreground">
             <th className="sticky left-0 z-10 bg-card/80 px-3 py-3">Ski No.</th>
-            {isRaceSkiMode && <th className="px-3 py-3">Race Ski</th>}
             {!isGrind && <th className="px-3 py-3">Product(s)</th>}
             {!isGrind && <th className="px-3 py-3">Method</th>}
             {isGrind && <th className="px-3 py-3">Grind Type</th>}
@@ -193,7 +178,6 @@ export function TestEntryTable({
           </tr>
           <tr className="text-left text-[10px] text-muted-foreground/70 uppercase tracking-wider">
             <th className="sticky left-0 z-10 bg-card/80"></th>
-            {isRaceSkiMode && <th></th>}
             {!isGrind && <th></th>}
             {!isGrind && <th></th>}
             {isGrind && <th></th>}
@@ -246,27 +230,6 @@ export function TestEntryTable({
                     {row.skiNumber}
                   </div>
                 </td>
-                {isRaceSkiMode && (
-                <td className="px-3 py-2">
-                  <select
-                    value={row.raceSkiId ?? ""}
-                    onChange={(e) => {
-                      const val = e.target.value ? Number(e.target.value) : undefined;
-                      const next = rows.map((r) => (r.id === row.id ? { ...r, raceSkiId: val } : r));
-                      setRows(next);
-                    }}
-                    className="h-9 w-full min-w-[160px] rounded-md border bg-background/70 px-2 text-sm"
-                    data-testid={`select-race-ski-${row.id}`}
-                  >
-                    <option value="">— Select ski —</option>
-                    {(raceSkis ?? []).map((rs) => (
-                      <option key={rs.id} value={rs.id}>
-                        {rs.athleteName} – {rs.skiId} {rs.brand ? `(${rs.brand})` : ""} {rs.discipline}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                )}
                 {!isGrind && (
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-1">

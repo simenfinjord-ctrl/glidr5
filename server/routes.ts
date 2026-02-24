@@ -430,6 +430,7 @@ export async function registerRoutes(
       weatherId: req.body.weatherId || null,
       testType: req.body.testType,
       seriesId: testSkiSource === "raceskis" ? null : req.body.seriesId,
+      athleteId: testSkiSource === "raceskis" ? (req.body.athleteId || null) : null,
       testSkiSource,
       notes: req.body.notes?.trim() || null,
       distanceLabel0km: req.body.distanceLabel0km?.trim() || null,
@@ -1098,7 +1099,17 @@ export async function registerRoutes(
         );
       }
 
-      const systemPrompt = `You are an expert ski wax/glide/structure recommendation assistant. Based on historical test data and current weather conditions, provide 4-6 product recommendations. Return ONLY valid JSON in this format: {"suggestions": [{"title": "string", "description": "string", "products": ["string"], "confidence": "High|Medium|Low"}]}`;
+      const productCatalog = products.map((p) => `${p.brand} ${p.name}`);
+      const productCatalogStr = productCatalog.join("\n");
+
+      const systemPrompt = `You are an expert ski wax/glide/structure recommendation assistant. Based on historical test data and current weather conditions, provide 4-6 product recommendations.
+
+CRITICAL: You MUST ONLY recommend products from the available product catalog below. Do NOT invent, suggest, or reference any products that are not in this list. Each product name in the "products" array must be copied exactly from this list.
+
+Available product catalog:
+${productCatalogStr}
+
+Return ONLY valid JSON in this format: {"suggestions": [{"title": "string", "description": "string", "products": ["${productCatalog[0] || "Brand ProductName"}"], "confidence": "High|Medium|Low"}]}`;
 
       const userPrompt = `Current conditions:
 - Snow temperature: ${snowTemperatureC}°C
@@ -1115,7 +1126,7 @@ export async function registerRoutes(
 Historical test data (${dataSummary.length} tests):
 ${dataSummary.join("\n")}
 
-Based on the above historical data and current conditions, recommend the best products.`;
+Based on the above historical data and current conditions, recommend the best products. Only use products from the catalog provided in the system prompt.`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",

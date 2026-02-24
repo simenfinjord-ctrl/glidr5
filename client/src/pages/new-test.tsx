@@ -56,20 +56,7 @@ type Weather = {
   airTemperatureC: number;
 };
 
-type Athlete = {
-  id: number;
-  name: string;
-};
-
-type RaceSki = {
-  id: number;
-  athleteId: number;
-  skiId: string;
-  brand: string | null;
-  discipline: string;
-};
-
-const seriesSchema = z.object({
+const formSchema = z.object({
   date: z.string().min(1, "Date is required"),
   seriesId: z.string().min(1, "Select a series"),
   testType: z.enum(["Glide", "Structure", "Grind"]),
@@ -79,17 +66,7 @@ const seriesSchema = z.object({
   groupScope: z.string().min(1, "Select a group"),
 });
 
-const raceSkiSchema = z.object({
-  date: z.string().min(1, "Date is required"),
-  seriesId: z.string().optional(),
-  testType: z.enum(["Glide", "Structure", "Grind"]),
-  location: z.string().min(1, "Location is required"),
-  weatherId: z.string().optional(),
-  notes: z.string().optional(),
-  groupScope: z.string().min(1, "Select a group"),
-});
-
-type FormValues = z.infer<typeof seriesSchema>;
+type FormValues = z.infer<typeof formSchema>;
 
 function makeRows(n = 8, numRounds = 1): EntryRow[] {
   return Array.from({ length: n }).map((_, i) => ({
@@ -113,34 +90,10 @@ export default function NewTest() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const [testSkiSource, setTestSkiSource] = useState<"series" | "raceskis">("series");
-
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
   const { data: groups = [] } = useQuery<{ id: number; name: string }[]>({ queryKey: ["/api/groups"] });
-  const { data: athletes = [] } = useQuery<Athlete[]>({
-    queryKey: ["/api/athletes"],
-    enabled: can("raceskis"),
-  });
-  const { data: allRaceSkis = [] } = useQuery<RaceSki[]>({
-    queryKey: ["/api/race-skis/all"],
-    enabled: can("raceskis") && testSkiSource === "raceskis",
-  });
-
-  const raceSkiOptions = useMemo(() => {
-    return allRaceSkis.map((rs) => {
-      const athlete = athletes.find((a) => a.id === rs.athleteId);
-      return {
-        id: rs.id,
-        athleteId: rs.athleteId,
-        athleteName: athlete?.name ?? `Athlete #${rs.athleteId}`,
-        skiId: rs.skiId,
-        brand: rs.brand,
-        discipline: rs.discipline,
-      };
-    });
-  }, [allRaceSkis, athletes]);
 
   const userGroups = useMemo(() => {
     if (user?.isAdmin && groups.length > 0) {
@@ -154,10 +107,8 @@ export default function NewTest() {
 
   const defaultLocation = weather[0]?.location ?? "";
 
-  const activeSchema = testSkiSource === "raceskis" ? raceSkiSchema : seriesSchema;
-
   const form = useForm<FormValues>({
-    resolver: zodResolver(activeSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       date: today,
       testType: initialType,
@@ -322,8 +273,7 @@ export default function NewTest() {
                   location: values.location,
                   weatherId: chosenWeatherId,
                   testType: values.testType,
-                  testSkiSource: testSkiSource,
-                  seriesId: testSkiSource === "raceskis" ? null : Number(values.seriesId),
+                  seriesId: Number(values.seriesId),
                   notes: values.notes,
                   groupScope: effectiveGroup,
                   grindParameters: null,
@@ -351,33 +301,6 @@ export default function NewTest() {
               className="space-y-4"
             >
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                {can("raceskis") && (
-                  <div className="lg:col-span-2">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Ski source</label>
-                      <div className="flex rounded-lg border bg-background/70 p-0.5" data-testid="toggle-ski-source">
-                        <button
-                          type="button"
-                          className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${testSkiSource === "series" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                          onClick={() => setTestSkiSource("series")}
-                          data-testid="button-source-series"
-                        >
-                          Series
-                        </button>
-                        <button
-                          type="button"
-                          className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${testSkiSource === "raceskis" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                          onClick={() => setTestSkiSource("raceskis")}
-                          data-testid="button-source-raceskis"
-                        >
-                          Race Skis
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {testSkiSource === "series" && (
                 <div className="lg:col-span-3">
                   <FormField
                     control={form.control}
@@ -411,7 +334,6 @@ export default function NewTest() {
                     )}
                   />
                 </div>
-                )}
 
                 <div className="lg:col-span-2">
                   <FormField
@@ -600,8 +522,6 @@ export default function NewTest() {
             setRows={setRows}
             distanceLabels={distanceLabels}
             onDistanceLabelsChange={setDistanceLabels}
-            testSkiSource={testSkiSource}
-            raceSkis={raceSkiOptions}
           />
           <div
             className="mt-2 text-xs text-muted-foreground"

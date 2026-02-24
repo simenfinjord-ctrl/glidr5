@@ -57,26 +57,61 @@ function PermissionsMatrix({
   onChange: (perms: UserPermissions) => void;
   testIdPrefix: string;
 }) {
+  const levels: PermissionLevel[] = ["none", "view", "edit"];
+  const levelStyles: Record<PermissionLevel, { active: string; inactive: string }> = {
+    none: { active: "bg-gray-500 text-white", inactive: "text-gray-500 hover:bg-gray-100" },
+    view: { active: "bg-blue-500 text-white", inactive: "text-blue-600 hover:bg-blue-50" },
+    edit: { active: "bg-green-500 text-white", inactive: "text-green-600 hover:bg-green-50" },
+  };
+
+  const setAll = (level: PermissionLevel) => {
+    const next = { ...value };
+    for (const area of PERMISSION_AREAS) next[area] = level;
+    onChange(next);
+  };
+
   return (
     <div className="space-y-2">
-      <div className="text-sm font-medium">Permissions</div>
-      <div className="grid grid-cols-1 gap-2">
-        {PERMISSION_AREAS.map((area) => (
-          <div key={area} className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-2">
-            <span className="text-sm text-gray-700">{AREA_LABELS[area] || area}</span>
-            <Select
-              value={value[area] || "none"}
-              onValueChange={(v) => onChange({ ...value, [area]: v as PermissionLevel })}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium">Permissions</span>
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-gray-400 mr-1">Set all:</span>
+          {levels.map((l) => (
+            <button
+              key={l}
+              type="button"
+              className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium border transition-colors", levelStyles[l].inactive, "border-gray-200")}
+              onClick={() => setAll(l)}
+              data-testid={`${testIdPrefix}-setall-${l}`}
             >
-              <SelectTrigger className="w-28 h-8 text-xs" data-testid={`${testIdPrefix}-${area}`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                <SelectItem value="view">View</SelectItem>
-                <SelectItem value="edit">Edit</SelectItem>
-              </SelectContent>
-            </Select>
+              {l.charAt(0).toUpperCase() + l.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-lg border border-gray-200 divide-y divide-gray-100">
+        {PERMISSION_AREAS.map((area) => (
+          <div key={area} className="flex items-center justify-between px-3 h-8">
+            <span className="text-xs text-gray-700">{AREA_LABELS[area] || area}</span>
+            <div className="flex items-center gap-0.5">
+              {levels.map((l) => {
+                const selected = (value[area] || "none") === l;
+                return (
+                  <button
+                    key={l}
+                    type="button"
+                    data-testid={`${testIdPrefix}-${area}${selected ? "" : `-opt-${l}`}`}
+                    className={cn(
+                      "rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors",
+                      selected ? levelStyles[l].active : levelStyles[l].inactive
+                    )}
+                    onClick={() => onChange({ ...value, [area]: l })}
+                  >
+                    {l.charAt(0).toUpperCase() + l.slice(1)}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         ))}
       </div>
@@ -860,93 +895,76 @@ export default function Admin() {
             </div>
 
             <Card className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-1.5">
                 {users.map((u) => {
-                  const userGroups = parseGroups(u.groupScope);
+                  const userPerms = parsePermissions(u.permissions);
+                  const viewAreas = PERMISSION_AREAS.filter((a) => userPerms[a] === "view");
+                  const editAreas = PERMISSION_AREAS.filter((a) => userPerms[a] === "edit");
+                  const totalActive = viewAreas.length + editAreas.length;
+                  const permSummary = totalActive === 0
+                    ? "No permissions"
+                    : `${totalActive} area${totalActive > 1 ? "s" : ""}` +
+                      (viewAreas.length ? ` · ${viewAreas.length} view` : "") +
+                      (editAreas.length ? ` · ${editAreas.length} edit` : "");
+                  const permDetail = [
+                    ...(viewAreas.length ? [`${viewAreas.map((a) => AREA_LABELS[a]).join(", ")} (view)`] : []),
+                    ...(editAreas.length ? [`${editAreas.map((a) => AREA_LABELS[a]).join(", ")} (edit)`] : []),
+                  ].join(" · ");
+
                   return (
                     <div
                       key={u.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2.5"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-2"
                       data-testid={`row-user-${u.id}`}
                     >
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-gray-900">{u.name}</span>
+                          <span className="text-xs text-gray-400">{u.email}</span>
+                          <span className={cn(
+                            "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                            u.isAdmin ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-500"
+                          )}>
+                            {u.isAdmin ? "Admin" : "Member"}
+                          </span>
                           {!u.isActive && (
-                            <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600 ring-1 ring-red-200">Inactive</span>
+                            <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600">Inactive</span>
                           )}
                         </div>
-                        <div className="mt-1 text-xs text-gray-500">{u.email}</div>
-                        <div className="mt-1.5 flex flex-wrap gap-1">
-                          {userGroups.map((g) => (
-                            <span
-                              key={g}
-                              className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary ring-1 ring-primary/20"
-                            >
-                              {g}
-                            </span>
-                          ))}
+                        <div className="mt-0.5 text-[11px] text-gray-400 truncate" title={permDetail} data-testid={`text-perm-summary-${u.id}`}>
+                          {permSummary}{totalActive > 0 && ` — ${permDetail}`}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className={cn(
-                          "rounded-full border px-3 py-1 text-xs",
-                          u.isAdmin ? "border-amber-500/30 bg-amber-50 text-amber-600" : "bg-white"
-                        )}>
-                          {u.isAdmin ? "Admin" : "Member"}
-                        </div>
-                        {(() => {
-                          const userPerms = parsePermissions(u.permissions);
-                          return PERMISSION_AREAS
-                            .filter((area) => userPerms[area] && userPerms[area] !== "none")
-                            .map((area) => (
-                              <span
-                                key={area}
-                                className={cn(
-                                  "rounded-full border px-2 py-0.5 text-[10px] font-medium",
-                                  userPerms[area] === "edit"
-                                    ? "border-green-200 bg-green-50 text-green-700"
-                                    : "border-blue-200 bg-blue-50 text-blue-700"
-                                )}
-                                data-testid={`badge-perm-${area}-${u.id}`}
-                              >
-                                {AREA_LABELS[area]}: {userPerms[area]}
-                              </span>
-                            ));
-                        })()}
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
                         <button
                           className={cn(
-                            "rounded-full border px-2.5 py-1 text-[10px] font-medium transition",
-                            u.isActive
-                              ? "border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
-                              : "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+                            "rounded p-1 transition-colors",
+                            u.isActive ? "text-green-600 hover:bg-green-50" : "text-red-500 hover:bg-red-50"
                           )}
                           data-testid={`toggle-active-${u.id}`}
                           title={u.isActive ? "Deactivate user" : "Activate user"}
                           onClick={() => toggleActiveMutation.mutate({ userId: u.id, value: !u.isActive })}
                         >
-                          {u.isActive ? <ToggleRight className="inline h-3 w-3 mr-1" /> : <ToggleLeft className="inline h-3 w-3 mr-1" />}
-                          {u.isActive ? "Active" : "Inactive"}
+                          {u.isActive ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
                         </button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        <button
+                          className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                           data-testid={`button-edit-user-${u.id}`}
+                          title="Edit user"
                           onClick={() => setEditUser(u)}
                         >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                           data-testid={`button-reset-user-${u.id}`}
+                          title="Reset password"
                           onClick={() => setResetUser(u)}
                         >
-                          <KeyRound className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                          <KeyRound className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          className="rounded p-1 text-orange-500 hover:bg-orange-50"
                           data-testid={`button-force-logout-${u.id}`}
                           title="Force logout"
                           onClick={() => {
@@ -955,21 +973,21 @@ export default function Admin() {
                             }
                           }}
                         >
-                          <LogOut className="h-4 w-4 text-orange-500" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                          <LogOut className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          className="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-30"
                           data-testid={`button-delete-user-${u.id}`}
                           disabled={u.id === user.id}
+                          title="Delete user"
                           onClick={() => {
                             if (confirm(`Delete ${u.name}?`)) {
                               deleteMutation.mutate(u.id);
                             }
                           }}
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </div>
                   );

@@ -130,6 +130,7 @@ export const tests = pgTable("tests", {
   testType: text("test_type").notNull(),
   testSkiSource: text("test_ski_source").notNull().default("series"),
   seriesId: integer("series_id"),
+  athleteId: integer("athlete_id"),
   notes: text("notes"),
   grindParameters: text("grind_parameters"),
   distanceLabel0km: text("distance_label_0km"),

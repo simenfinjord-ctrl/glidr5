@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -10,6 +10,9 @@ import {
   ChevronDown,
   ChevronRight,
   RefreshCw,
+  X,
+  MapPin,
+  Calendar,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -22,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -33,6 +37,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ProductCombobox } from "@/components/product-combobox";
+import { cn } from "@/lib/utils";
 
 type Athlete = {
   id: number;
@@ -74,6 +80,57 @@ type RaceSkiRegrind = {
   createdByName: string;
 };
 
+type TestProduct = {
+  id: number;
+  category: string;
+  brand: string;
+  name: string;
+};
+
+type RaceSkiTest = {
+  id: number;
+  date: string;
+  location: string;
+  testType: string;
+  testSkiSource: string;
+  seriesId: number | null;
+  athleteId: number | null;
+  notes: string | null;
+  distanceLabels: string | null;
+  createdAt: string;
+  createdByName: string;
+  groupScope: string;
+};
+
+type TestEntry = {
+  id: number;
+  testId: number;
+  skiNumber: number;
+  productId: number | null;
+  methodology: string;
+  result0kmCmBehind: number | null;
+  rank0km: number | null;
+  results: string | null;
+  feelingRank: number | null;
+  raceSkiId: number | null;
+  createdAt: string;
+};
+
+type RaceSkiTestRow = {
+  id: string;
+  raceSkiId: number;
+  skiId: string;
+  brand: string | null;
+  base: string | null;
+  construction: string | null;
+  grind: string | null;
+  heights: string | null;
+  productId: number | undefined;
+  methodology: string;
+  roundResults: { result: number | null; rank: number | null }[];
+  feelingRank: number | null;
+};
+
 type AthleteAccess = {
   id: number;
   athleteId: number;
@@ -90,7 +147,7 @@ export default function AthleteDetail() {
   const [, params] = useRoute("/raceskis/:id");
   const [, navigate] = useLocation();
   const athleteId = params?.id ? parseInt(params.id) : null;
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const { toast } = useToast();
 
   const [skiDialogOpen, setSkiDialogOpen] = useState(false);
@@ -100,6 +157,17 @@ export default function AthleteDetail() {
   const [accessDialogOpen, setAccessDialogOpen] = useState(false);
   const [editAthleteOpen, setEditAthleteOpen] = useState(false);
   const [expandedSkiId, setExpandedSkiId] = useState<number | null>(null);
+
+  const [testsExpanded, setTestsExpanded] = useState(true);
+  const [showTestForm, setShowTestForm] = useState(false);
+  const [testForm, setTestForm] = useState({
+    date: new Date().toISOString().split("T")[0],
+    location: "",
+    testType: "Glide" as "Glide" | "Structure",
+    notes: "",
+  });
+  const [testRows, setTestRows] = useState<RaceSkiTestRow[]>([]);
+  const [distanceLabels, setDistanceLabels] = useState<string[]>([""]);
 
   const [skiForm, setSkiForm] = useState({
     skiId: "",
@@ -144,6 +212,21 @@ export default function AthleteDetail() {
     queryKey: ["/api/users"],
     retry: false,
   });
+
+  const { data: products = [] } = useQuery<TestProduct[]>({
+    queryKey: ["/api/products"],
+  });
+
+  const { data: allTests = [] } = useQuery<RaceSkiTest[]>({
+    queryKey: ["/api/tests"],
+    enabled: !!athleteId,
+  });
+
+  const skiIds = useMemo(() => new Set(skis.map((s) => s.id)), [skis]);
+
+  const raceSkiTests = useMemo(() => {
+    return allTests.filter((t) => t.testSkiSource === "raceskis" && t.athleteId === Number(athleteId));
+  }, [allTests, athleteId]);
 
   const isOwnerOrAdmin =
     user?.isAdmin || (athlete && user?.id === athlete.createdById);
@@ -308,6 +391,47 @@ export default function AthleteDetail() {
     },
   });
 
+  const createTestMutation = useMutation({
+    mutationFn: async () => {
+      const entries = testRows.map((row, idx) => ({
+        skiNumber: idx + 1,
+        raceSkiId: row.raceSkiId,
+        productId: row.productId || null,
+        methodology: row.methodology || "",
+        result0kmCmBehind: row.roundResults[0]?.result ?? null,
+        rank0km: row.roundResults[0]?.rank ?? null,
+        results: JSON.stringify(row.roundResults),
+        feelingRank: row.feelingRank ?? null,
+      }));
+      const groupScope = user?.groupScope?.split(",")[0]?.trim() || "";
+      const payload = {
+        date: testForm.date,
+        location: testForm.location.trim(),
+        testType: testForm.testType,
+        testSkiSource: "raceskis",
+        seriesId: null,
+        athleteId: Number(athleteId),
+        notes: testForm.notes.trim() || null,
+        distanceLabels: JSON.stringify(distanceLabels),
+        groupScope,
+        entries,
+      };
+      const res = await apiRequest("POST", "/api/tests", payload);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
+      toast({ title: "Test saved" });
+      setShowTestForm(false);
+      setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Glide", notes: "" });
+      setDistanceLabels([""]);
+      setTestRows([]);
+    },
+    onError: (e) => {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    },
+  });
+
   function resetSkiForm() {
     setSkiForm({ skiId: "", serialNumber: "", brand: "", discipline: "Classic", construction: "", mold: "", base: "", grind: "", heights: "", year: "" });
   }
@@ -355,6 +479,59 @@ export default function AthleteDetail() {
       setAthleteForm({ name: athlete.name, team: athlete.team || "" });
       setEditAthleteOpen(true);
     }
+  }
+
+  const roundRanks = useMemo(() => {
+    return distanceLabels.map((_, roundIdx) => {
+      const vals = testRows
+        .filter((r) => r.roundResults[roundIdx]?.result != null)
+        .map((r) => ({ rowId: r.id, v: r.roundResults[roundIdx]!.result as number }));
+      const sorted = [...vals].sort((a, b) => a.v - b.v);
+      const ranks = new Map<string, number>();
+      let prev: number | null = null;
+      let currentRank = 1;
+      for (let i = 0; i < sorted.length; i++) {
+        if (prev !== null && sorted[i].v !== prev) currentRank = i + 1;
+        ranks.set(sorted[i].rowId, currentRank);
+        prev = sorted[i].v;
+      }
+      return ranks;
+    });
+  }, [testRows, distanceLabels.length]);
+
+  useEffect(() => {
+    let changed = false;
+    const next = testRows.map((r) => {
+      const newRoundResults = r.roundResults.map((rr, roundIdx) => {
+        const newRank = rr.result === null ? null : (roundRanks[roundIdx]?.get(r.id) ?? null);
+        if (newRank !== rr.rank) changed = true;
+        return { ...rr, rank: newRank };
+      });
+      return { ...r, roundResults: newRoundResults };
+    });
+    if (changed) setTestRows(next);
+  }, [roundRanks]);
+
+  function openNewTest() {
+    setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Glide", notes: "" });
+    setDistanceLabels([""]);
+    setShowTestForm(true);
+    setTestRows(
+      skis.map((ski) => ({
+        id: `rsk_${ski.id}_${Math.random().toString(16).slice(2)}`,
+        raceSkiId: ski.id,
+        skiId: ski.skiId,
+        brand: ski.brand,
+        base: ski.base,
+        construction: ski.construction,
+        grind: ski.grind,
+        heights: ski.heights,
+        productId: undefined,
+        methodology: "",
+        roundResults: [{ result: null, rank: null }],
+        feelingRank: null,
+      }))
+    );
   }
 
   function handleSkiSubmit(e: React.FormEvent) {
@@ -527,6 +704,351 @@ export default function AthleteDetail() {
             ))}
           </div>
         )}
+
+        {/* Race Ski Tests Section */}
+        <div className="border-t border-border/40 pt-4" data-testid="section-race-ski-tests">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div
+              className="flex items-center gap-2 cursor-pointer select-none"
+              onClick={() => setTestsExpanded(!testsExpanded)}
+              data-testid="toggle-tests-section"
+            >
+              {testsExpanded ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              )}
+              <h2 className="text-lg font-semibold" data-testid="text-tests-heading">
+                Tests
+              </h2>
+            </div>
+            {can("tests", "edit") && (
+              <Button
+                data-testid="button-new-test"
+                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+                size="sm"
+                onClick={openNewTest}
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                New Test
+              </Button>
+            )}
+          </div>
+
+          {testsExpanded && (
+            <div className="mt-3 space-y-3">
+              {/* Inline Test Form */}
+              {showTestForm && (
+                <Card className="fs-card rounded-2xl p-4" data-testid="card-new-test-form">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold">New Race Ski Test</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowTestForm(false)}
+                      data-testid="button-cancel-test"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Date *</label>
+                      <Input
+                        type="date"
+                        value={testForm.date}
+                        onChange={(e) => setTestForm((f) => ({ ...f, date: e.target.value }))}
+                        required
+                        data-testid="input-test-date"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Location *</label>
+                      <Input
+                        value={testForm.location}
+                        onChange={(e) => setTestForm((f) => ({ ...f, location: e.target.value }))}
+                        placeholder="e.g., Davos"
+                        data-testid="input-test-location"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Test Type</label>
+                      <Select
+                        value={testForm.testType}
+                        onValueChange={(v) => setTestForm((f) => ({ ...f, testType: v as "Glide" | "Structure" }))}
+                      >
+                        <SelectTrigger data-testid="select-test-type">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Glide">Glide</SelectItem>
+                          <SelectItem value="Structure">Structure</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Notes</label>
+                      <Textarea
+                        value={testForm.notes}
+                        onChange={(e) => setTestForm((f) => ({ ...f, notes: e.target.value }))}
+                        placeholder="Optional notes..."
+                        className="h-9 min-h-[36px] resize-none"
+                        data-testid="input-test-notes"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Test Entry Table */}
+                  {testRows.length === 0 ? (
+                    <p className="text-sm text-muted-foreground" data-testid="text-no-skis-for-test">
+                      No skis available. Add skis to this athlete first.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-2xl border bg-card/50">
+                      <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${700 + distanceLabels.length * 200}px` }}>
+                        <thead>
+                          <tr className="text-left text-xs text-muted-foreground">
+                            <th className="sticky left-0 z-10 bg-card/80 px-3 py-3">Ski ID</th>
+                            <th className="px-2 py-3">Brand</th>
+                            <th className="px-2 py-3">Base</th>
+                            <th className="px-2 py-3">Construction</th>
+                            <th className="px-2 py-3">Grind</th>
+                            <th className="px-2 py-3">Heights</th>
+                            <th className="px-3 py-3">Product</th>
+                            <th className="px-3 py-3">Method</th>
+                            {distanceLabels.map((label, roundIdx) => (
+                              <th key={roundIdx} className="px-3 py-3" colSpan={2}>
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    value={label}
+                                    onChange={(e) => {
+                                      const next = [...distanceLabels];
+                                      next[roundIdx] = e.target.value;
+                                      setDistanceLabels(next);
+                                    }}
+                                    className="h-7 w-24 text-xs bg-background/70"
+                                    placeholder={`Round ${roundIdx + 1}`}
+                                    data-testid={`input-test-distance-label-${roundIdx}`}
+                                  />
+                                  {distanceLabels.length > 1 && (
+                                    <button
+                                      type="button"
+                                      className="text-red-400 hover:text-red-300 transition-colors"
+                                      onClick={() => {
+                                        setDistanceLabels(distanceLabels.filter((_, i) => i !== roundIdx));
+                                        setTestRows(testRows.map((r) => ({
+                                          ...r,
+                                          roundResults: r.roundResults.filter((_, i) => i !== roundIdx),
+                                        })));
+                                      }}
+                                      data-testid={`button-remove-test-round-${roundIdx}`}
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              </th>
+                            ))}
+                            <th className="px-3 py-3">Feeling</th>
+                            <th className="px-1 py-3">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                                onClick={() => {
+                                  setDistanceLabels([...distanceLabels, ""]);
+                                  setTestRows(testRows.map((r) => ({
+                                    ...r,
+                                    roundResults: [...r.roundResults, { result: null, rank: null }],
+                                  })));
+                                }}
+                                data-testid="button-add-test-round"
+                              >
+                                <Plus className="h-3.5 w-3.5 mr-1" />
+                                Round
+                              </Button>
+                            </th>
+                          </tr>
+                          <tr className="text-left text-[10px] text-muted-foreground/70 uppercase tracking-wider">
+                            <th className="sticky left-0 z-10 bg-card/80"></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            {distanceLabels.map((_, roundIdx) => (
+                              <>
+                                <th key={`res-${roundIdx}`} className="px-3 pb-1">Result (cm)</th>
+                                <th key={`rank-${roundIdx}`} className="px-3 pb-1">Rank</th>
+                              </>
+                            ))}
+                            <th></th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-sm">
+                          {testRows.map((row, idx) => {
+                            const rankBadge = (rank: number | null) => (
+                              <div
+                                className={cn(
+                                  "inline-flex min-w-10 items-center justify-center rounded-full px-2 py-1 text-xs font-semibold",
+                                  rank === 1
+                                    ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400"
+                                    : rank === 2
+                                      ? "bg-slate-300/15 text-slate-500 dark:text-slate-300"
+                                      : rank === 3
+                                        ? "bg-amber-700/15 text-amber-700 dark:text-amber-600"
+                                        : "bg-muted/70 text-foreground",
+                                )}
+                              >
+                                {rank ?? "—"}
+                              </div>
+                            );
+
+                            return (
+                              <tr
+                                key={row.id}
+                                className={cn(
+                                  "border-t",
+                                  idx % 2 === 0 ? "bg-background/30" : "bg-background/10",
+                                )}
+                                data-testid={`row-test-entry-${row.raceSkiId}`}
+                              >
+                                <td className="sticky left-0 z-10 bg-inherit px-3 py-2">
+                                  <div
+                                    className="inline-flex h-9 items-center justify-center rounded-xl border bg-background/70 px-2 text-sm font-semibold"
+                                    data-testid={`text-test-ski-id-${row.raceSkiId}`}
+                                  >
+                                    {row.skiId}
+                                  </div>
+                                </td>
+                                <td className="px-2 py-2 text-xs text-muted-foreground" data-testid={`text-test-brand-${row.raceSkiId}`}>
+                                  {row.brand || "—"}
+                                </td>
+                                <td className="px-2 py-2 text-xs text-muted-foreground" data-testid={`text-test-base-${row.raceSkiId}`}>
+                                  {row.base || "—"}
+                                </td>
+                                <td className="px-2 py-2 text-xs text-muted-foreground" data-testid={`text-test-construction-${row.raceSkiId}`}>
+                                  {row.construction || "—"}
+                                </td>
+                                <td className="px-2 py-2 text-xs text-muted-foreground" data-testid={`text-test-grind-${row.raceSkiId}`}>
+                                  {row.grind || "—"}
+                                </td>
+                                <td className="px-2 py-2 text-xs text-muted-foreground" data-testid={`text-test-heights-${row.raceSkiId}`}>
+                                  {row.heights || "—"}
+                                </td>
+                                <td className="px-3 py-2">
+                                  <ProductCombobox
+                                    testType={testForm.testType}
+                                    products={products}
+                                    value={row.productId}
+                                    onChange={(id) => {
+                                      setTestRows(testRows.map((r) => r.id === row.id ? { ...r, productId: id } : r));
+                                    }}
+                                    testId={`input-test-product-${row.raceSkiId}`}
+                                  />
+                                </td>
+                                <td className="px-3 py-2">
+                                  <Input
+                                    value={row.methodology}
+                                    onChange={(e) => {
+                                      setTestRows(testRows.map((r) => r.id === row.id ? { ...r, methodology: e.target.value } : r));
+                                    }}
+                                    className="h-9 bg-background/70"
+                                    placeholder="e.g., 200°C"
+                                    data-testid={`input-test-method-${row.raceSkiId}`}
+                                  />
+                                </td>
+                                {row.roundResults.map((rr, roundIdx) => (
+                                  <>
+                                    <td key={`res-${roundIdx}`} className="px-3 py-2">
+                                      <Input
+                                        inputMode="decimal"
+                                        type="number"
+                                        value={rr.result ?? ""}
+                                        onChange={(e) => {
+                                          const v = e.target.value;
+                                          const num = v === "" ? null : Number(v);
+                                          setTestRows(testRows.map((r) => {
+                                            if (r.id !== row.id) return r;
+                                            const newRounds = [...r.roundResults];
+                                            newRounds[roundIdx] = { ...newRounds[roundIdx], result: Number.isNaN(num) ? null : num };
+                                            return { ...r, roundResults: newRounds };
+                                          }));
+                                        }}
+                                        className="h-9 w-20 bg-background/70"
+                                        placeholder="0"
+                                        data-testid={`input-test-result-${roundIdx}-${row.raceSkiId}`}
+                                      />
+                                    </td>
+                                    <td key={`rank-${roundIdx}`} className="px-3 py-2">
+                                      {rankBadge(rr.rank)}
+                                    </td>
+                                  </>
+                                ))}
+                                <td className="px-3 py-2">
+                                  <Input
+                                    inputMode="numeric"
+                                    type="number"
+                                    min={1}
+                                    value={row.feelingRank ?? ""}
+                                    onChange={(e) => {
+                                      const v = e.target.value;
+                                      const num = v === "" ? null : Number(v);
+                                      setTestRows(testRows.map((r) => r.id === row.id ? { ...r, feelingRank: Number.isNaN(num) ? null : num } : r));
+                                    }}
+                                    className="h-9 w-16 bg-background/70"
+                                    placeholder="—"
+                                    data-testid={`input-test-feeling-${row.raceSkiId}`}
+                                  />
+                                </td>
+                                <td></td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2 mt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowTestForm(false)}
+                      data-testid="button-cancel-test-form"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => createTestMutation.mutate()}
+                      disabled={createTestMutation.isPending || !testForm.date || !testForm.location.trim()}
+                      data-testid="button-save-test"
+                    >
+                      {createTestMutation.isPending ? "Saving…" : "Save Test"}
+                    </Button>
+                  </div>
+                </Card>
+              )}
+
+              {/* Existing Race Ski Tests */}
+              {raceSkiTests.length === 0 && !showTestForm ? (
+                <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-tests">
+                  No race ski tests yet.
+                </Card>
+              ) : (
+                raceSkiTests.map((test) => (
+                  <RaceSkiTestCard key={test.id} test={test} skiIds={skiIds} />
+                ))
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Add/Edit Ski Dialog */}
@@ -928,6 +1450,96 @@ function SkiCard({
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function RaceSkiTestCard({ test, skiIds }: { test: RaceSkiTest; skiIds: Set<number> }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const { data: entries = [] } = useQuery<TestEntry[]>({
+    queryKey: [`/api/tests/${test.id}/entries`],
+    enabled: expanded,
+  });
+
+  const relevantEntries = useMemo(() => {
+    if (entries.length === 0) return [];
+    return entries.filter((e) => e.raceSkiId && skiIds.has(e.raceSkiId));
+  }, [entries, skiIds]);
+
+  if (expanded && entries.length > 0 && relevantEntries.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card className="fs-card rounded-2xl p-4" data-testid={`card-test-${test.id}`}>
+      <div
+        className="flex items-center gap-2 cursor-pointer select-none"
+        onClick={() => setExpanded(!expanded)}
+        data-testid={`toggle-test-${test.id}`}
+      >
+        {expanded ? (
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        )}
+        <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
+          <span className="flex items-center gap-1 text-sm font-medium" data-testid={`text-test-date-${test.id}`}>
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+            {test.date}
+          </span>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground" data-testid={`text-test-location-${test.id}`}>
+            <MapPin className="h-3 w-3" />
+            {test.location}
+          </span>
+          <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800" data-testid={`text-test-type-${test.id}`}>
+            {test.testType}
+          </span>
+          <span className="text-xs text-muted-foreground">{test.createdByName}</span>
+        </div>
+      </div>
+
+      {expanded && relevantEntries.length > 0 && (
+        <div className="mt-3 border-t border-border/40 pt-3" data-testid={`section-test-entries-${test.id}`}>
+          <div className="overflow-x-auto rounded-xl border bg-card/50">
+            <table className="w-full border-separate border-spacing-0 text-xs">
+              <thead>
+                <tr className="text-left text-muted-foreground">
+                  <th className="px-3 py-2">Ski #</th>
+                  <th className="px-3 py-2">Result</th>
+                  <th className="px-3 py-2">Rank</th>
+                  <th className="px-3 py-2">Feeling</th>
+                </tr>
+              </thead>
+              <tbody>
+                {relevantEntries.map((entry) => (
+                  <tr key={entry.id} className="border-t" data-testid={`row-test-result-${entry.id}`}>
+                    <td className="px-3 py-1.5 font-medium">{entry.skiNumber}</td>
+                    <td className="px-3 py-1.5">{entry.result0kmCmBehind ?? "—"}</td>
+                    <td className="px-3 py-1.5">
+                      <span className={cn(
+                        "inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                        entry.rank0km === 1 ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" :
+                        entry.rank0km === 2 ? "bg-slate-300/15 text-slate-500 dark:text-slate-300" :
+                        entry.rank0km === 3 ? "bg-amber-700/15 text-amber-700 dark:text-amber-600" :
+                        "bg-muted/70 text-foreground"
+                      )}>
+                        {entry.rank0km ?? "—"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-1.5">{entry.feelingRank ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {test.notes && (
+            <p className="mt-2 text-xs text-muted-foreground italic" data-testid={`text-test-notes-${test.id}`}>
+              {test.notes}
+            </p>
           )}
         </div>
       )}

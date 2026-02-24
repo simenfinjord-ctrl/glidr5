@@ -1,0 +1,178 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Plus, Users, Ski } from "lucide-react";
+import { AppShell } from "@/components/app-shell";
+import { AppLink } from "@/components/app-link";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+
+type Athlete = {
+  id: number;
+  name: string;
+  team: string | null;
+  createdAt: string;
+  createdById: number;
+  createdByName: string;
+};
+
+export default function RaceSkis() {
+  const { user } = useAuth();
+  const { t } = useI18n();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [team, setTeam] = useState("");
+
+  const { data: athletes = [] } = useQuery<Athlete[]>({
+    queryKey: ["/api/athletes"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: { name: string; team: string }) => {
+      const res = await apiRequest("POST", "/api/athletes", {
+        name: data.name,
+        team: data.team.trim() || null,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/athletes"] });
+      toast({ title: "Athlete added" });
+      setOpen(false);
+      setName("");
+      setTeam("");
+    },
+    onError: (e) => {
+      toast({
+        title: "Could not add athlete",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    createMutation.mutate({ name: name.trim(), team: team.trim() });
+  };
+
+  return (
+    <AppShell>
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl sm:text-3xl" data-testid="text-raceskis-title">
+              {t("raceskis.title")}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground" data-testid="text-raceskis-subtitle">
+              {t("raceskis.subtitle")}
+            </p>
+          </div>
+
+          <Dialog open={open} onOpenChange={(v) => {
+            setOpen(v);
+            if (!v) { setName(""); setTeam(""); }
+          }}>
+            <DialogTrigger asChild>
+              <Button
+                data-testid="button-add-athlete"
+                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {t("raceskis.addAthlete")}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>{t("raceskis.addAthlete")}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">{t("common.name")}</label>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g., Johannes Klæbo"
+                    required
+                    data-testid="input-athlete-name"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">{t("raceskis.team")}</label>
+                  <Input
+                    value={team}
+                    onChange={(e) => setTeam(e.target.value)}
+                    placeholder="e.g., Norway"
+                    data-testid="input-athlete-team"
+                  />
+                </div>
+                <div className="flex items-center justify-end">
+                  <Button
+                    type="submit"
+                    data-testid="button-save-athlete"
+                    disabled={createMutation.isPending || !name.trim()}
+                  >
+                    {createMutation.isPending ? "Saving…" : t("common.save")}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {athletes.length === 0 ? (
+            <Card
+              className="fs-card rounded-2xl p-6 text-sm text-muted-foreground sm:col-span-2"
+              data-testid="empty-athletes"
+            >
+              {t("raceskis.noAthletes")}
+            </Card>
+          ) : (
+            athletes.map((athlete) => (
+              <AppLink
+                key={athlete.id}
+                href={`/raceskis/${athlete.id}`}
+                testId={`link-athlete-${athlete.id}`}
+              >
+                <Card
+                  className="fs-card rounded-2xl p-4 transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/5 cursor-pointer"
+                  data-testid={`card-athlete-${athlete.id}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-base font-semibold" data-testid={`text-athlete-name-${athlete.id}`}>
+                        {athlete.name}
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {athlete.team && (
+                          <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800">
+                            <Users className="mr-1 h-3 w-3" />
+                            {athlete.team}
+                          </span>
+                        )}
+                        <span className="text-xs text-muted-foreground" data-testid={`text-athlete-created-by-${athlete.id}`}>
+                          {athlete.createdByName}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="inline-flex rounded-full border border-gray-100 dark:border-gray-700 bg-background/40 px-3 py-1 text-xs text-muted-foreground">
+                      {new Date(athlete.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </Card>
+              </AppLink>
+            ))
+          )}
+        </div>
+      </div>
+    </AppShell>
+  );
+}

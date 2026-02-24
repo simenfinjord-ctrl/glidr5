@@ -16,6 +16,8 @@ declare global {
       groupScope: string;
       isAdmin: number;
       canAccessGrinding: number;
+      canAccessRaceSkis: number;
+      language: string;
       isActive: number;
       password: string;
     }

@@ -1,6 +1,12 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated() || !req.user) {
@@ -17,6 +23,8 @@ function userInfo(req: Request) {
     name: u.name,
     groupScope: u.groupScope,
     isAdmin: u.isAdmin === 1,
+    canAccessRaceSkis: u.canAccessRaceSkis === 1,
+    language: u.language || "en",
   };
 }
 
@@ -407,6 +415,7 @@ export async function registerRoutes(
         grindType: e.grindType || null,
         grindStone: e.grindStone || null,
         grindPattern: e.grindPattern || null,
+        raceSkiId: e.raceSkiId || null,
         createdAt: now,
         createdById: u.id,
         createdByName: u.name,
@@ -475,6 +484,7 @@ export async function registerRoutes(
           grindType: e.grindType || null,
           grindStone: e.grindStone || null,
           grindPattern: e.grindPattern || null,
+          raceSkiId: e.raceSkiId || null,
           createdAt: now,
           createdById: u.id,
           createdByName: u.name,
@@ -539,6 +549,7 @@ export async function registerRoutes(
       groupScope: req.body.groupScope,
       isAdmin: req.body.isAdmin ? 1 : 0,
       canAccessGrinding: req.body.canAccessGrinding ? 1 : 0,
+      canAccessRaceSkis: req.body.canAccessRaceSkis ? 1 : 0,
     });
     const { password, ...safe } = created;
     res.json(safe);
@@ -554,6 +565,7 @@ export async function registerRoutes(
     if (req.body.groupScope !== undefined) data.groupScope = req.body.groupScope;
     if (req.body.isAdmin !== undefined) data.isAdmin = req.body.isAdmin ? 1 : 0;
     if (req.body.canAccessGrinding !== undefined) data.canAccessGrinding = req.body.canAccessGrinding ? 1 : 0;
+    if (req.body.canAccessRaceSkis !== undefined) data.canAccessRaceSkis = req.body.canAccessRaceSkis ? 1 : 0;
     if (req.body.isActive !== undefined) data.isActive = req.body.isActive ? 1 : 0;
     const updated = await storage.updateUser(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });
@@ -777,6 +789,337 @@ export async function registerRoutes(
     const { pool } = await import("./db");
     await (pool as any).query(`DELETE FROM user_sessions WHERE sess::jsonb -> 'passport' ->> 'user' = $1`, [String(targetId)]);
     res.json({ ok: true });
+  });
+
+  // Language update for own profile
+  app.put("/api/users/me/language", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const { language } = req.body;
+    if (!language) return res.status(400).json({ message: "Language is required" });
+    await storage.updateUser(u.id, { language });
+    res.json({ ok: true });
+  });
+
+  // --- Race Ski Access Helper ---
+  function requireRaceSkiAccess(req: Request, res: Response, next: NextFunction) {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    const u = req.user!;
+    if ((u as any).isAdmin === 1 || (u as any).canAccessRaceSkis) {
+      return next();
+    }
+    return res.status(403).json({ message: "Race ski access required" });
+  }
+
+  // --- Athletes CRUD ---
+  app.get("/api/athletes", requireAuth, requireRaceSkiAccess, async (req, res) => {
+    const u = userInfo(req);
+    const list = await storage.listAthletes(u.id, u.isAdmin);
+    res.json(list);
+  });
+
+  app.post("/api/athletes", requireAuth, requireRaceSkiAccess, async (req, res) => {
+    const u = userInfo(req);
+    const now = new Date().toISOString();
+    const athlete = await storage.createAthlete({
+      name: req.body.name,
+      team: req.body.team || null,
+      createdAt: now,
+      createdById: u.id,
+      createdByName: u.name,
+    });
+    const accessUserIds: number[] = req.body.accessUserIds || [];
+    const allAccessIds = [...new Set([...accessUserIds, u.id])];
+    await storage.setAthleteAccess(athlete.id, allAccessIds);
+    res.json(athlete);
+  });
+
+  app.put("/api/athletes/:id", requireAuth, requireRaceSkiAccess, async (req, res) => {
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const hasAccess = await storage.hasAthleteAccess(id, u.id, u.isAdmin);
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const data: any = {};
+    if (req.body.name !== undefined) data.name = req.body.name;
+    if (req.body.team !== undefined) data.team = req.body.team;
+    const updated = await storage.updateAthlete(id, data);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
+  });
+
+  app.delete("/api/athletes/:id", requireAuth, requireRaceSkiAccess, async (req, res) => {
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const athlete = await storage.getAthlete(id);
+    if (!athlete) return res.status(404).json({ message: "Not found" });
+    if (!u.isAdmin && athlete.createdById !== u.id) {
+      return res.status(403).json({ message: "Only admin or creator can delete" });
+    }
+    await storage.deleteAthlete(id);
+    res.json({ ok: true });
+  });
+
+  app.get("/api/athletes/:id/access", requireAuth, requireRaceSkiAccess, async (req, res) => {
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const hasAccess = await storage.hasAthleteAccess(id, u.id, u.isAdmin);
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const accessList = await storage.listAthleteAccess(id);
+    res.json(accessList.map((a) => a.userId));
+  });
+
+  app.put("/api/athletes/:id/access", requireAuth, requireRaceSkiAccess, async (req, res) => {
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const athlete = await storage.getAthlete(id);
+    if (!athlete) return res.status(404).json({ message: "Not found" });
+    if (!u.isAdmin && athlete.createdById !== u.id) {
+      return res.status(403).json({ message: "Only admin or creator can manage access" });
+    }
+    await storage.setAthleteAccess(id, req.body.userIds);
+    res.json({ ok: true });
+  });
+
+  // --- Race Skis CRUD ---
+  app.get("/api/race-skis/all", requireAuth, requireRaceSkiAccess, async (req, res) => {
+    const u = userInfo(req);
+    const list = await storage.listAllRaceSkisForUser(u.id, u.isAdmin);
+    res.json(list);
+  });
+
+  app.get("/api/athletes/:athleteId/skis", requireAuth, requireRaceSkiAccess, async (req, res) => {
+    const u = userInfo(req);
+    const athleteId = parseInt(req.params.athleteId);
+    const hasAccess = await storage.hasAthleteAccess(athleteId, u.id, u.isAdmin);
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const list = await storage.listRaceSkis(athleteId);
+    res.json(list);
+  });
+
+  app.post("/api/athletes/:athleteId/skis", requireAuth, requireRaceSkiAccess, async (req, res) => {
+    const u = userInfo(req);
+    const athleteId = parseInt(req.params.athleteId);
+    const hasAccess = await storage.hasAthleteAccess(athleteId, u.id, u.isAdmin);
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const now = new Date().toISOString();
+    const ski = await storage.createRaceSki({
+      athleteId,
+      serialNumber: req.body.serialNumber || null,
+      skiId: req.body.skiId,
+      brand: req.body.brand || null,
+      discipline: req.body.discipline,
+      construction: req.body.construction || null,
+      mold: req.body.mold || null,
+      base: req.body.base || null,
+      grind: req.body.grind || null,
+      heights: req.body.heights || null,
+      year: req.body.year || null,
+      createdAt: now,
+      createdById: u.id,
+      createdByName: u.name,
+    });
+    res.json(ski);
+  });
+
+  app.put("/api/race-skis/:id", requireAuth, requireRaceSkiAccess, async (req, res) => {
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const ski = await storage.getRaceSki(id);
+    if (!ski) return res.status(404).json({ message: "Not found" });
+    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isAdmin);
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const data: any = {};
+    if (req.body.serialNumber !== undefined) data.serialNumber = req.body.serialNumber;
+    if (req.body.skiId !== undefined) data.skiId = req.body.skiId;
+    if (req.body.brand !== undefined) data.brand = req.body.brand;
+    if (req.body.discipline !== undefined) data.discipline = req.body.discipline;
+    if (req.body.construction !== undefined) data.construction = req.body.construction;
+    if (req.body.mold !== undefined) data.mold = req.body.mold;
+    if (req.body.base !== undefined) data.base = req.body.base;
+    if (req.body.grind !== undefined) data.grind = req.body.grind;
+    if (req.body.heights !== undefined) data.heights = req.body.heights;
+    if (req.body.year !== undefined) data.year = req.body.year;
+    const updated = await storage.updateRaceSki(id, data);
+    res.json(updated);
+  });
+
+  app.delete("/api/race-skis/:id", requireAuth, requireRaceSkiAccess, async (req, res) => {
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const ski = await storage.getRaceSki(id);
+    if (!ski) return res.status(404).json({ message: "Not found" });
+    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isAdmin);
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    await storage.deleteRaceSki(id);
+    res.json({ ok: true });
+  });
+
+  // --- Race Ski Regrinds ---
+  app.get("/api/race-skis/:id/regrinds", requireAuth, requireRaceSkiAccess, async (req, res) => {
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const ski = await storage.getRaceSki(id);
+    if (!ski) return res.status(404).json({ message: "Not found" });
+    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isAdmin);
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const list = await storage.listRaceSkiRegrinds(id);
+    res.json(list);
+  });
+
+  app.post("/api/race-skis/:id/regrinds", requireAuth, requireRaceSkiAccess, async (req, res) => {
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const ski = await storage.getRaceSki(id);
+    if (!ski) return res.status(404).json({ message: "Not found" });
+    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isAdmin);
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const now = new Date().toISOString();
+    const regrind = await storage.createRaceSkiRegrind({
+      raceSkiId: id,
+      date: req.body.date,
+      grindType: req.body.grindType,
+      stone: req.body.stone || null,
+      pattern: req.body.pattern || null,
+      notes: req.body.notes || null,
+      createdAt: now,
+      createdById: u.id,
+      createdByName: u.name,
+    });
+    await storage.updateRaceSki(id, { grind: req.body.grindType });
+    res.json(regrind);
+  });
+
+  app.delete("/api/race-ski-regrinds/:id", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const id = parseInt(req.params.id);
+    const deleted = await storage.deleteRaceSkiRegrind(id);
+    if (!deleted) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
+  // --- Test Ski Regrinds ---
+  app.get("/api/series/:id/regrinds", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const series = await storage.getSeries(id);
+    if (!series) return res.status(404).json({ message: "Not found" });
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, series.groupScope)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const list = await storage.listTestSkiRegrinds(id);
+    res.json(list);
+  });
+
+  app.post("/api/series/:id/regrinds", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const series = await storage.getSeries(id);
+    if (!series) return res.status(404).json({ message: "Not found" });
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, series.groupScope)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const now = new Date().toISOString();
+    const regrind = await storage.createTestSkiRegrind({
+      seriesId: id,
+      date: req.body.date,
+      grindType: req.body.grindType,
+      stone: req.body.stone || null,
+      pattern: req.body.pattern || null,
+      notes: req.body.notes || null,
+      createdAt: now,
+      createdById: u.id,
+      createdByName: u.name,
+    });
+    await storage.updateSeries(id, { grind: req.body.grindType, lastRegrind: req.body.date });
+    res.json(regrind);
+  });
+
+  app.delete("/api/test-ski-regrinds/:id", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    const id = parseInt(req.params.id);
+    const deleted = await storage.deleteTestSkiRegrind(id);
+    if (!deleted) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
+  // --- AI Suggestions ---
+  app.post("/api/suggestions", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const { snowTemperatureC, airTemperatureC, snowHumidityPct, airHumidityPct,
+      artificialSnow, naturalSnow, grainSize, snowHumidityType, trackHardness, testType } = req.body;
+
+    try {
+      const allTests = await storage.listTests(u.groupScope, u.isAdmin);
+      const allWeather = await storage.listWeather(u.groupScope, u.isAdmin);
+      const weatherMap = new Map(allWeather.map((w) => [w.id, w]));
+
+      const testsWithWeather = allTests.filter((t) => t.weatherId && weatherMap.has(t.weatherId));
+
+      const dataSummary: string[] = [];
+      for (const test of testsWithWeather.slice(0, 100)) {
+        const weather = weatherMap.get(test.weatherId!);
+        if (!weather) continue;
+        const entries = await storage.listEntries(test.id);
+        if (entries.length === 0) continue;
+
+        const products = await storage.listProducts(u.groupScope, u.isAdmin);
+        const productMap = new Map(products.map((p) => [p.id, p]));
+
+        const sorted = [...entries].sort((a, b) => (a.rank0km ?? 999) - (b.rank0km ?? 999));
+        const topEntries = sorted.slice(0, 3).map((e) => {
+          const prod = e.productId ? productMap.get(e.productId) : null;
+          return prod ? `${prod.brand} ${prod.name}` : (e.freeTextProduct || "Unknown");
+        });
+
+        dataSummary.push(
+          `Test ${test.date} ${test.location} (${test.testType}): ` +
+          `Snow ${weather.snowTemperatureC}°C, Air ${weather.airTemperatureC}°C, ` +
+          `Snow humidity ${weather.snowHumidityPct}%, Air humidity ${weather.airHumidityPct}%, ` +
+          `${weather.artificialSnow ? 'Artificial snow' : ''}${weather.naturalSnow ? 'Natural snow' : ''} ` +
+          `Grain: ${weather.grainSize || 'N/A'}, Track: ${weather.trackHardness || 'N/A'} ` +
+          `Top products: ${topEntries.join(", ")}`
+        );
+      }
+
+      const systemPrompt = `You are an expert ski wax/glide/structure recommendation assistant. Based on historical test data and current weather conditions, provide 4-6 product recommendations. Return ONLY valid JSON in this format: {"suggestions": [{"title": "string", "description": "string", "products": ["string"], "confidence": "High|Medium|Low"}]}`;
+
+      const userPrompt = `Current conditions:
+- Snow temperature: ${snowTemperatureC}°C
+- Air temperature: ${airTemperatureC}°C
+- Snow humidity: ${snowHumidityPct}%
+- Air humidity: ${airHumidityPct}%
+- Artificial snow: ${artificialSnow || 'N/A'}
+- Natural snow: ${naturalSnow || 'N/A'}
+- Grain size: ${grainSize || 'N/A'}
+- Snow humidity type: ${snowHumidityType || 'N/A'}
+- Track hardness: ${trackHardness || 'N/A'}
+- Test type: ${testType || 'Glide'}
+
+Historical test data (${dataSummary.length} tests):
+${dataSummary.join("\n")}
+
+Based on the above historical data and current conditions, recommend the best products.`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.7,
+      });
+
+      const content = completion.choices[0]?.message?.content || "{}";
+      const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      res.json(parsed);
+    } catch (err: any) {
+      console.error("AI suggestion error:", err);
+      res.status(500).json({ message: "Failed to generate suggestions", error: err.message });
+    }
   });
 
   return httpServer;

@@ -29,6 +29,7 @@ type ApiUser = {
   groupScope: string;
   isAdmin: number;
   canAccessGrinding: number;
+  canAccessRaceSkis: number;
   isActive: number;
 };
 
@@ -133,6 +134,7 @@ const userSchema = z.object({
   groupScope: z.string().min(1, "At least one group is required"),
   isAdmin: z.boolean(),
   canAccessGrinding: z.boolean(),
+  canAccessRaceSkis: z.boolean(),
   isActive: z.boolean(),
 });
 
@@ -142,6 +144,7 @@ const editSchema = z.object({
   groupScope: z.string().min(1, "At least one group is required"),
   isAdmin: z.boolean(),
   canAccessGrinding: z.boolean(),
+  canAccessRaceSkis: z.boolean(),
   isActive: z.boolean(),
 });
 
@@ -153,7 +156,7 @@ function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames
   const { toast } = useToast();
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
-    defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, canAccessGrinding: false, isActive: true },
+    defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, canAccessGrinding: false, canAccessRaceSkis: false, isActive: true },
   });
 
   const selectedGroups = parseGroups(form.watch("groupScope"));
@@ -225,6 +228,19 @@ function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames
             <FormMessage />
           </FormItem>
         )} />
+        <FormField control={form.control} name="canAccessRaceSkis" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Race Skis Access</FormLabel>
+            <Select value={field.value ? "yes" : "no"} onValueChange={(v) => field.onChange(v === "yes")}>
+              <FormControl><SelectTrigger data-testid="select-create-raceskis"><SelectValue /></SelectTrigger></FormControl>
+              <SelectContent>
+                <SelectItem value="yes">Enabled</SelectItem>
+                <SelectItem value="no">Disabled</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} />
         <FormField control={form.control} name="isActive" render={({ field }) => (
           <FormItem>
             <FormLabel>Status</FormLabel>
@@ -256,6 +272,7 @@ function EditUserForm({ user, onDone, groupNames }: { user: ApiUser; onDone: () 
       groupScope: user.groupScope,
       isAdmin: !!user.isAdmin,
       canAccessGrinding: !!user.canAccessGrinding,
+      canAccessRaceSkis: !!user.canAccessRaceSkis,
       isActive: !!user.isActive,
     },
   });
@@ -318,6 +335,19 @@ function EditUserForm({ user, onDone, groupNames }: { user: ApiUser; onDone: () 
             <FormLabel>Grinding Access</FormLabel>
             <Select value={field.value ? "yes" : "no"} onValueChange={(v) => field.onChange(v === "yes")}>
               <FormControl><SelectTrigger data-testid="select-edit-grinding"><SelectValue /></SelectTrigger></FormControl>
+              <SelectContent>
+                <SelectItem value="no">No Access</SelectItem>
+                <SelectItem value="yes">Has Access</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} />
+        <FormField control={form.control} name="canAccessRaceSkis" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Race Skis Access</FormLabel>
+            <Select value={field.value ? "yes" : "no"} onValueChange={(v) => field.onChange(v === "yes")}>
+              <FormControl><SelectTrigger data-testid="select-edit-raceskis"><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
                 <SelectItem value="no">No Access</SelectItem>
                 <SelectItem value="yes">Has Access</SelectItem>
@@ -680,6 +710,20 @@ export default function Admin() {
     },
   });
 
+  const toggleRaceSkisMutation = useMutation({
+    mutationFn: async ({ userId, value }: { userId: number; value: boolean }) => {
+      const res = await apiRequest("PUT", `/api/users/${userId}`, { canAccessRaceSkis: value });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Race skis access updated" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ userId, value }: { userId: number; value: boolean }) => {
       const res = await apiRequest("PUT", `/api/users/${userId}`, { isActive: value });
@@ -888,6 +932,25 @@ export default function Admin() {
                             onClick={() => toggleGrindingMutation.mutate({ userId: u.id, value: true })}
                           >
                             <Disc3 className="inline h-3 w-3 mr-1" />Grinding
+                          </button>
+                        )}
+                        {u.canAccessRaceSkis ? (
+                          <button
+                            className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[10px] font-medium text-orange-700 hover:bg-orange-100 transition"
+                            data-testid={`toggle-raceskis-${u.id}`}
+                            title="Disable race skis access"
+                            onClick={() => toggleRaceSkisMutation.mutate({ userId: u.id, value: false })}
+                          >
+                            Race Skis
+                          </button>
+                        ) : (
+                          <button
+                            className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[10px] font-medium text-gray-400 hover:bg-gray-100 transition"
+                            data-testid={`toggle-raceskis-${u.id}`}
+                            title="Enable race skis access"
+                            onClick={() => toggleRaceSkisMutation.mutate({ userId: u.id, value: true })}
+                          >
+                            Race Skis
                           </button>
                         )}
                         <button

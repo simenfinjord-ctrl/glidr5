@@ -8,6 +8,8 @@ type User = {
   groupScope: string;
   isAdmin: number;
   canAccessGrinding: number;
+  canAccessRaceSkis: number;
+  language: string;
 };
 
 export function useAuth() {

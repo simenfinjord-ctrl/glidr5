@@ -16,17 +16,20 @@ import {
   UserCircle,
   Sun,
   Moon,
+  Sparkles,
+  Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useOffline } from "@/lib/offline-context";
 import { useTheme } from "@/lib/theme";
+import { useI18n } from "@/lib/i18n";
 import { AppLink } from "@/components/app-link";
 
 type NavItem = {
   href: string;
-  label: string;
+  labelKey: string;
   icon: React.ComponentType<{ className?: string }>;
   testId: string;
   color: string;
@@ -34,48 +37,54 @@ type NavItem = {
   activeBg: string;
   adminOnly?: boolean;
   grindingOnly?: boolean;
+  raceSkisOnly?: boolean;
+  hideForRaceSkiOnly?: boolean;
 };
 
 const nav: NavItem[] = [
   {
     href: "/dashboard",
-    label: "Dashboard",
+    labelKey: "nav.dashboard",
     icon: LayoutDashboard,
     testId: "link-dashboard",
     color: "text-gray-500",
     activeColor: "text-blue-600",
     activeBg: "bg-blue-50",
+    hideForRaceSkiOnly: true,
   },
   {
     href: "/tests",
-    label: "Tests",
+    labelKey: "nav.tests",
     icon: ListChecks,
     testId: "link-tests",
     color: "text-gray-500",
     activeColor: "text-emerald-600",
     activeBg: "bg-emerald-50",
+    hideForRaceSkiOnly: true,
   },
   {
     href: "/testskis",
-    label: "TestSkis",
+    labelKey: "nav.testskis",
     icon: Snowflake,
     testId: "link-testskis",
     color: "text-gray-500",
     activeColor: "text-sky-600",
     activeBg: "bg-sky-50",
+    hideForRaceSkiOnly: true,
   },
   {
     href: "/products",
-    label: "Products",
+    labelKey: "nav.products",
     icon: Package,
     testId: "link-products",
     color: "text-gray-500",
     activeColor: "text-amber-600",
     activeBg: "bg-amber-50",
+    hideForRaceSkiOnly: true,
   },
   {
     href: "/weather",
-    label: "Weather",
+    labelKey: "nav.weather",
     icon: CloudSun,
     testId: "link-weather",
     color: "text-gray-500",
@@ -84,16 +93,17 @@ const nav: NavItem[] = [
   },
   {
     href: "/analytics",
-    label: "Analytics",
+    labelKey: "nav.analytics",
     icon: BarChart3,
     testId: "link-analytics",
     color: "text-gray-500",
     activeColor: "text-pink-600",
     activeBg: "bg-pink-50",
+    hideForRaceSkiOnly: true,
   },
   {
     href: "/grinding",
-    label: "Grinding",
+    labelKey: "nav.grinding",
     icon: Disc3,
     testId: "link-grinding",
     color: "text-gray-500",
@@ -102,8 +112,28 @@ const nav: NavItem[] = [
     grindingOnly: true,
   },
   {
+    href: "/raceskis",
+    labelKey: "nav.raceskis",
+    icon: Trophy,
+    testId: "link-raceskis",
+    color: "text-gray-500",
+    activeColor: "text-orange-600",
+    activeBg: "bg-orange-50",
+    raceSkisOnly: true,
+  },
+  {
+    href: "/suggestions",
+    labelKey: "nav.suggestions",
+    icon: Sparkles,
+    testId: "link-suggestions",
+    color: "text-gray-500",
+    activeColor: "text-purple-600",
+    activeBg: "bg-purple-50",
+    hideForRaceSkiOnly: true,
+  },
+  {
     href: "/admin",
-    label: "Admin",
+    labelKey: "nav.admin",
     icon: Shield,
     testId: "link-admin",
     color: "text-gray-500",
@@ -118,10 +148,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
   const { theme, toggle: toggleTheme } = useTheme();
+  const { t } = useI18n();
+
+  const isRaceSkiOnlyUser = !user?.isAdmin && user?.canAccessRaceSkis && !user?.canAccessGrinding &&
+    user?.groupScope?.split(",").map((s: string) => s.trim()).filter(Boolean).length === 0;
+
+  const isRaceSkiUser = user?.isAdmin || !!user?.canAccessRaceSkis;
 
   const visibleNav = nav.filter((item) => {
     if (item.adminOnly && !user?.isAdmin) return false;
     if (item.grindingOnly && !user?.isAdmin && !user?.canAccessGrinding) return false;
+    if (item.raceSkisOnly && !isRaceSkiUser) return false;
+    if (item.hideForRaceSkiOnly && isRaceSkiOnlyUser) return false;
     return true;
   });
 
@@ -212,7 +250,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                       active ? item.activeColor : item.color,
                     )}
                   />
-                  <span>{item.label}</span>
+                  <span>{t(item.labelKey)}</span>
                 </AppLink>
               );
             })}

@@ -10,7 +10,7 @@ Full-stack React web application to manage ski testing and documentation. Featur
 - **Design**: Space Grotesk (display) + Inter (UI), clean light theme with subtle shadows and professional color palette
 
 ## Key Files
-- `shared/schema.ts` — Drizzle schema: users, test_ski_series, products, daily_weather, tests, test_entries, login_logs, grinding_records, grinding_sheets, activity_logs
+- `shared/schema.ts` — Drizzle schema: users, test_ski_series, products, daily_weather, tests, test_entries, login_logs, grinding_records, grinding_sheets, activity_logs, athletes, athlete_access, race_skis, race_ski_regrinds, test_ski_regrinds
 - `server/db.ts` — PostgreSQL connection pool
 - `server/storage.ts` — DatabaseStorage class (IStorage interface with full CRUD)
 - `server/auth.ts` — Passport-local session auth setup
@@ -23,6 +23,10 @@ Full-stack React web application to manage ski testing and documentation. Featur
 - `client/src/pages/test-detail.tsx` — Test detail view with results table, CSV export, Hide/Show toggle
 - `client/src/pages/dashboard.tsx` — Dashboard with stats, top products, recent tests
 - `client/src/pages/` — All page components
+- `client/src/lib/i18n.tsx` — Internationalization provider (English/Norwegian)
+- `client/src/pages/race-skis.tsx` — Race skis athlete listing
+- `client/src/pages/athlete-detail.tsx` — Athlete detail with skis, regrinds, access management
+- `client/src/pages/suggestions.tsx` — AI-powered product recommendations
 
 ## Seeded Accounts
 | Email | Group | Admin |
@@ -58,6 +62,20 @@ Note: Only the admin account is seeded. All other users, series, products, and w
 - `GET/POST /api/grinding-sheets` — List/create grinding spreadsheet links
 - `PUT /api/grinding-sheets/:id` — Update grinding sheet
 - `DELETE /api/grinding-sheets/:id` — Delete grinding sheet
+- `GET/POST /api/athletes` — List/create athletes (race skis module)
+- `PUT /api/athletes/:id` — Update athlete
+- `DELETE /api/athletes/:id` — Delete athlete
+- `GET /api/athletes/:id/skis` — List race skis for athlete
+- `POST /api/athletes/:athleteId/skis` — Create race ski
+- `GET/PUT /api/athletes/:id/access` — Get/set athlete access (shared users)
+- `PUT /api/race-skis/:id` — Update race ski
+- `DELETE /api/race-skis/:id` — Delete race ski
+- `GET /api/race-skis/:id/regrinds` — List race ski regrinds
+- `POST /api/race-skis/:id/regrinds` — Create race ski regrind
+- `DELETE /api/race-ski-regrinds/:id` — Delete race ski regrind
+- `GET/POST /api/test-ski-regrinds/:seriesId` — List/create test ski regrinds
+- `PUT /api/users/me/language` — Update user language preference
+- `POST /api/suggestions` — Get AI-powered product recommendations
 
 ## Weather Data Model
 The daily_weather table stores comprehensive snow and weather conditions:
@@ -127,3 +145,11 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Dark mode toggle (sun/moon icon) in header and login page, persisted to localStorage
 - Grind tests hidden from users without canAccessGrinding (server-side + client-side filtering)
 - Grind parameters (type, stone, pattern) configurable per entry, not per test
+- Race Skis module: athlete profiles with access control, ski inventory (serial, skiId, brand, discipline, construction, mold, base, grind, heights, year), regrind history
+- Athlete access sharing via athlete_access join table (creator always has access, admin has full access)
+- Race ski regrinds auto-update ski's current grind field
+- canAccessRaceSkis permission controls Race Skis nav visibility (admin always sees it)
+- Multi-language support (English/Norwegian) via I18nProvider, user.language field, selectable on profile page
+- Nav labels use i18n translations
+- AI Suggestions page: weather parameter form → OpenAI-powered product recommendations based on historical test data
+- Test ski regrind tracking archive per series

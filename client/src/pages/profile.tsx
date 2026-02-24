@@ -3,15 +3,17 @@ import { useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { User, KeyRound, Mail, Users, Shield } from "lucide-react";
+import { User, KeyRound, Mail, Users, Shield, Globe } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
-import { apiRequest } from "@/lib/queryClient";
+import { useI18n } from "@/lib/i18n";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -25,6 +27,7 @@ const passwordSchema = z.object({
 export default function Profile() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<z.infer<typeof passwordSchema>>({
@@ -49,6 +52,20 @@ export default function Profile() {
     },
   });
 
+  const languageMutation = useMutation({
+    mutationFn: async (language: string) => {
+      const res = await apiRequest("PUT", "/api/users/me/language", { language });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({ title: t("profile.language"), description: "Language updated" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
   if (!user) return null;
 
   const groups = user.groupScope?.split(",").map((s: string) => s.trim()).filter(Boolean) || [];
@@ -57,8 +74,8 @@ export default function Profile() {
     <AppShell>
       <div className="flex flex-col gap-6 max-w-2xl">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900" data-testid="text-profile-title">Profile</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Your account information and settings</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100" data-testid="text-profile-title">{t("profile.title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("profile.subtitle")}</p>
         </div>
 
         <Card className="fs-card rounded-2xl p-6">
@@ -146,6 +163,29 @@ export default function Profile() {
               </div>
             </form>
           </Form>
+        </Card>
+        <Card className="fs-card rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="h-10 w-10 rounded-xl bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center">
+              <Globe className="h-5 w-5 text-violet-600" />
+            </div>
+            <div>
+              <div className="text-base font-semibold text-gray-900 dark:text-gray-100">{t("profile.language")}</div>
+              <div className="text-xs text-muted-foreground">{t("profile.selectLanguage")}</div>
+            </div>
+          </div>
+          <Select
+            value={user.language || "en"}
+            onValueChange={(v) => languageMutation.mutate(v)}
+          >
+            <SelectTrigger data-testid="select-language" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="en">English</SelectItem>
+              <SelectItem value="no">Norsk</SelectItem>
+            </SelectContent>
+          </Select>
         </Card>
       </div>
     </AppShell>

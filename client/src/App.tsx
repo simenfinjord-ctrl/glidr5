@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { Spinner } from "@/components/ui/spinner";
 import { OfflineProvider } from "@/lib/offline-context";
 import { ThemeProvider } from "@/lib/theme";
+import { I18nProvider } from "@/lib/i18n";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
@@ -21,6 +22,9 @@ import Admin from "@/pages/admin";
 import Analytics from "@/pages/analytics";
 import Profile from "@/pages/profile";
 import Grinding from "@/pages/grinding";
+import RaceSkis from "@/pages/race-skis";
+import AthleteDetail from "@/pages/athlete-detail";
+import Suggestions from "@/pages/suggestions";
 import Login from "@/pages/login";
 
 function Router() {
@@ -40,6 +44,9 @@ function Router() {
       <Route path="/analytics" component={Analytics} />
       <Route path="/profile" component={Profile} />
       <Route path="/grinding" component={Grinding} />
+      <Route path="/raceskis" component={RaceSkis} />
+      <Route path="/raceskis/:id" component={AthleteDetail} />
+      <Route path="/suggestions" component={Suggestions} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
@@ -73,12 +80,14 @@ export default function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <OfflineProvider>
-          <TooltipProvider>
-            <Toaster />
-            <AuthGuard />
-          </TooltipProvider>
-        </OfflineProvider>
+        <I18nProvider>
+          <OfflineProvider>
+            <TooltipProvider>
+              <Toaster />
+              <AuthGuard />
+            </TooltipProvider>
+          </OfflineProvider>
+        </I18nProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

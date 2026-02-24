@@ -12,6 +12,8 @@ export const users = pgTable("users", {
   groupScope: text("group_scope").notNull().default("U23"),
   isAdmin: integer("is_admin").notNull().default(0),
   canAccessGrinding: integer("can_access_grinding").notNull().default(0),
+  canAccessRaceSkis: integer("can_access_race_skis").notNull().default(0),
+  language: text("language").notNull().default("en"),
   isActive: integer("is_active").notNull().default(1),
 });
 
@@ -132,6 +134,7 @@ export const testEntries = pgTable("test_entries", {
   grindType: text("grind_type"),
   grindStone: text("grind_stone"),
   grindPattern: text("grind_pattern"),
+  raceSkiId: integer("race_ski_id"),
   createdAt: text("created_at").notNull(),
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),
@@ -204,3 +207,85 @@ export const insertLoginLogSchema = createInsertSchema(loginLogs).omit({ id: tru
 export type InsertLoginLog = z.infer<typeof insertLoginLogSchema>;
 export type LoginLog = typeof loginLogs.$inferSelect;
 
+// --- Race Skis Module ---
+
+export const athletes = pgTable("athletes", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  team: text("team"),
+  createdAt: text("created_at").notNull(),
+  createdById: integer("created_by_id").notNull(),
+  createdByName: text("created_by_name").notNull(),
+});
+
+export const insertAthleteSchema = createInsertSchema(athletes).omit({ id: true });
+export type InsertAthlete = z.infer<typeof insertAthleteSchema>;
+export type Athlete = typeof athletes.$inferSelect;
+
+export const athleteAccess = pgTable("athlete_access", {
+  id: serial("id").primaryKey(),
+  athleteId: integer("athlete_id").notNull(),
+  userId: integer("user_id").notNull(),
+});
+
+export const insertAthleteAccessSchema = createInsertSchema(athleteAccess).omit({ id: true });
+export type InsertAthleteAccess = z.infer<typeof insertAthleteAccessSchema>;
+export type AthleteAccess = typeof athleteAccess.$inferSelect;
+
+export const raceSkis = pgTable("race_skis", {
+  id: serial("id").primaryKey(),
+  athleteId: integer("athlete_id").notNull(),
+  serialNumber: text("serial_number"),
+  skiId: text("ski_id").notNull(),
+  brand: text("brand"),
+  discipline: text("discipline").notNull(),
+  construction: text("construction"),
+  mold: text("mold"),
+  base: text("base"),
+  grind: text("grind"),
+  heights: text("heights"),
+  year: text("year"),
+  createdAt: text("created_at").notNull(),
+  createdById: integer("created_by_id").notNull(),
+  createdByName: text("created_by_name").notNull(),
+});
+
+export const insertRaceSkiSchema = createInsertSchema(raceSkis).omit({ id: true });
+export type InsertRaceSki = z.infer<typeof insertRaceSkiSchema>;
+export type RaceSki = typeof raceSkis.$inferSelect;
+
+export const raceSkiRegrinds = pgTable("race_ski_regrinds", {
+  id: serial("id").primaryKey(),
+  raceSkiId: integer("race_ski_id").notNull(),
+  date: text("date").notNull(),
+  grindType: text("grind_type").notNull(),
+  stone: text("stone"),
+  pattern: text("pattern"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+  createdById: integer("created_by_id").notNull(),
+  createdByName: text("created_by_name").notNull(),
+});
+
+export const insertRaceSkiRegrindSchema = createInsertSchema(raceSkiRegrinds).omit({ id: true });
+export type InsertRaceSkiRegrind = z.infer<typeof insertRaceSkiRegrindSchema>;
+export type RaceSkiRegrind = typeof raceSkiRegrinds.$inferSelect;
+
+// --- Test Ski Regrind History ---
+
+export const testSkiRegrinds = pgTable("test_ski_regrinds", {
+  id: serial("id").primaryKey(),
+  seriesId: integer("series_id").notNull(),
+  date: text("date").notNull(),
+  grindType: text("grind_type").notNull(),
+  stone: text("stone"),
+  pattern: text("pattern"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+  createdById: integer("created_by_id").notNull(),
+  createdByName: text("created_by_name").notNull(),
+});
+
+export const insertTestSkiRegrindSchema = createInsertSchema(testSkiRegrinds).omit({ id: true });
+export type InsertTestSkiRegrind = z.infer<typeof insertTestSkiRegrindSchema>;
+export type TestSkiRegrind = typeof testSkiRegrinds.$inferSelect;

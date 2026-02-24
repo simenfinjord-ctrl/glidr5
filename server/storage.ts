@@ -3,6 +3,7 @@ import { db } from "./db";
 import {
   users, groups, testSkiSeries, products, dailyWeather, tests, testEntries, loginLogs,
   activityLogs, grindingRecords, grindingSheets,
+  athletes, athleteAccess, raceSkis, raceSkiRegrinds, testSkiRegrinds,
   type User, type InsertUser,
   type Group, type InsertGroup,
   type Series, type InsertSeries,
@@ -14,6 +15,11 @@ import {
   type ActivityLog, type InsertActivityLog,
   type GrindingRecord, type InsertGrindingRecord,
   type GrindingSheet, type InsertGrindingSheet,
+  type Athlete, type InsertAthlete,
+  type AthleteAccess, type InsertAthleteAccess,
+  type RaceSki, type InsertRaceSki,
+  type RaceSkiRegrind, type InsertRaceSkiRegrind,
+  type TestSkiRegrind, type InsertTestSkiRegrind,
 } from "@shared/schema";
 
 export function parseGroupScopes(groupScope: string): string[] {
@@ -79,6 +85,31 @@ export interface IStorage {
   createGrindingSheet(s: InsertGrindingSheet): Promise<GrindingSheet>;
   updateGrindingSheet(id: number, data: Partial<InsertGrindingSheet>): Promise<GrindingSheet | undefined>;
   deleteGrindingSheet(id: number): Promise<boolean>;
+
+  listAthletes(userId: number, isAdmin: boolean): Promise<Athlete[]>;
+  getAthlete(id: number): Promise<Athlete | undefined>;
+  createAthlete(a: InsertAthlete): Promise<Athlete>;
+  updateAthlete(id: number, data: Partial<InsertAthlete>): Promise<Athlete | undefined>;
+  deleteAthlete(id: number): Promise<boolean>;
+
+  listAthleteAccess(athleteId: number): Promise<AthleteAccess[]>;
+  setAthleteAccess(athleteId: number, userIds: number[]): Promise<void>;
+  hasAthleteAccess(athleteId: number, userId: number, isAdmin: boolean): Promise<boolean>;
+
+  listRaceSkis(athleteId: number): Promise<RaceSki[]>;
+  getRaceSki(id: number): Promise<RaceSki | undefined>;
+  createRaceSki(s: InsertRaceSki): Promise<RaceSki>;
+  updateRaceSki(id: number, data: Partial<InsertRaceSki>): Promise<RaceSki | undefined>;
+  deleteRaceSki(id: number): Promise<boolean>;
+  listAllRaceSkisForUser(userId: number, isAdmin: boolean): Promise<RaceSki[]>;
+
+  listRaceSkiRegrinds(raceSkiId: number): Promise<RaceSkiRegrind[]>;
+  createRaceSkiRegrind(r: InsertRaceSkiRegrind): Promise<RaceSkiRegrind>;
+  deleteRaceSkiRegrind(id: number): Promise<boolean>;
+
+  listTestSkiRegrinds(seriesId: number): Promise<TestSkiRegrind[]>;
+  createTestSkiRegrind(r: InsertTestSkiRegrind): Promise<TestSkiRegrind>;
+  deleteTestSkiRegrind(id: number): Promise<boolean>;
 
   countTable(tableName: string): Promise<number>;
 }
@@ -371,8 +402,142 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
+  // --- Athletes ---
+
+  async listAthletes(userId: number, isAdmin: boolean): Promise<Athlete[]> {
+    if (isAdmin) {
+      return db.select().from(athletes).orderBy(sql`${athletes.name} asc`);
+    }
+    const accessRows = await db.select().from(athleteAccess).where(eq(athleteAccess.userId, userId));
+    const accessAthleteIds = accessRows.map((r) => r.athleteId);
+    const createdByMe = await db.select().from(athletes).where(eq(athletes.createdById, userId));
+    const createdByMeIds = createdByMe.map((a) => a.id);
+    const allIds = [...new Set([...accessAthleteIds, ...createdByMeIds])];
+    if (allIds.length === 0) return [];
+    return db.select().from(athletes).where(inArray(athletes.id, allIds)).orderBy(sql`${athletes.name} asc`);
+  }
+
+  async getAthlete(id: number): Promise<Athlete | undefined> {
+    const [a] = await db.select().from(athletes).where(eq(athletes.id, id));
+    return a;
+  }
+
+  async createAthlete(a: InsertAthlete): Promise<Athlete> {
+    const [created] = await db.insert(athletes).values(a).returning();
+    return created!;
+  }
+
+  async updateAthlete(id: number, data: Partial<InsertAthlete>): Promise<Athlete | undefined> {
+    const [updated] = await db.update(athletes).set(data).where(eq(athletes.id, id)).returning();
+    return updated;
+  }
+
+  async deleteAthlete(id: number): Promise<boolean> {
+    await db.delete(athleteAccess).where(eq(athleteAccess.athleteId, id));
+    await db.delete(raceSkiRegrinds).where(
+      inArray(raceSkiRegrinds.raceSkiId,
+        db.select({ id: raceSkis.id }).from(raceSkis).where(eq(raceSkis.athleteId, id))
+      )
+    );
+    await db.delete(raceSkis).where(eq(raceSkis.athleteId, id));
+    const result = await db.delete(athletes).where(eq(athletes.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // --- Athlete Access ---
+
+  async listAthleteAccess(athleteId: number): Promise<AthleteAccess[]> {
+    return db.select().from(athleteAccess).where(eq(athleteAccess.athleteId, athleteId));
+  }
+
+  async setAthleteAccess(athleteId: number, userIds: number[]): Promise<void> {
+    await db.delete(athleteAccess).where(eq(athleteAccess.athleteId, athleteId));
+    if (userIds.length > 0) {
+      await db.insert(athleteAccess).values(
+        userIds.map((userId) => ({ athleteId, userId }))
+      );
+    }
+  }
+
+  async hasAthleteAccess(athleteId: number, userId: number, isAdmin: boolean): Promise<boolean> {
+    if (isAdmin) return true;
+    const athlete = await this.getAthlete(athleteId);
+    if (!athlete) return false;
+    if (athlete.createdById === userId) return true;
+    const [access] = await db.select().from(athleteAccess).where(
+      and(eq(athleteAccess.athleteId, athleteId), eq(athleteAccess.userId, userId))
+    );
+    return !!access;
+  }
+
+  // --- Race Skis ---
+
+  async listRaceSkis(athleteId: number): Promise<RaceSki[]> {
+    return db.select().from(raceSkis).where(eq(raceSkis.athleteId, athleteId)).orderBy(sql`${raceSkis.skiId} asc`);
+  }
+
+  async getRaceSki(id: number): Promise<RaceSki | undefined> {
+    const [s] = await db.select().from(raceSkis).where(eq(raceSkis.id, id));
+    return s;
+  }
+
+  async createRaceSki(s: InsertRaceSki): Promise<RaceSki> {
+    const [created] = await db.insert(raceSkis).values(s).returning();
+    return created!;
+  }
+
+  async updateRaceSki(id: number, data: Partial<InsertRaceSki>): Promise<RaceSki | undefined> {
+    const [updated] = await db.update(raceSkis).set(data).where(eq(raceSkis.id, id)).returning();
+    return updated;
+  }
+
+  async deleteRaceSki(id: number): Promise<boolean> {
+    await db.delete(raceSkiRegrinds).where(eq(raceSkiRegrinds.raceSkiId, id));
+    const result = await db.delete(raceSkis).where(eq(raceSkis.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async listAllRaceSkisForUser(userId: number, isAdmin: boolean): Promise<RaceSki[]> {
+    const athleteList = await this.listAthletes(userId, isAdmin);
+    if (athleteList.length === 0) return [];
+    const athleteIds = athleteList.map((a) => a.id);
+    return db.select().from(raceSkis).where(inArray(raceSkis.athleteId, athleteIds)).orderBy(sql`${raceSkis.skiId} asc`);
+  }
+
+  // --- Race Ski Regrinds ---
+
+  async listRaceSkiRegrinds(raceSkiId: number): Promise<RaceSkiRegrind[]> {
+    return db.select().from(raceSkiRegrinds).where(eq(raceSkiRegrinds.raceSkiId, raceSkiId)).orderBy(sql`${raceSkiRegrinds.id} desc`);
+  }
+
+  async createRaceSkiRegrind(r: InsertRaceSkiRegrind): Promise<RaceSkiRegrind> {
+    const [created] = await db.insert(raceSkiRegrinds).values(r).returning();
+    return created!;
+  }
+
+  async deleteRaceSkiRegrind(id: number): Promise<boolean> {
+    const result = await db.delete(raceSkiRegrinds).where(eq(raceSkiRegrinds.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // --- Test Ski Regrinds ---
+
+  async listTestSkiRegrinds(seriesId: number): Promise<TestSkiRegrind[]> {
+    return db.select().from(testSkiRegrinds).where(eq(testSkiRegrinds.seriesId, seriesId)).orderBy(sql`${testSkiRegrinds.id} desc`);
+  }
+
+  async createTestSkiRegrind(r: InsertTestSkiRegrind): Promise<TestSkiRegrind> {
+    const [created] = await db.insert(testSkiRegrinds).values(r).returning();
+    return created!;
+  }
+
+  async deleteTestSkiRegrind(id: number): Promise<boolean> {
+    const result = await db.delete(testSkiRegrinds).where(eq(testSkiRegrinds.id, id)).returning();
+    return result.length > 0;
+  }
+
   async countTable(tableName: string): Promise<number> {
-    const tableMap: Record<string, any> = { users, tests, products, testSkiSeries, dailyWeather, grindingRecords, loginLogs, activityLogs };
+    const tableMap: Record<string, any> = { users, tests, products, testSkiSeries, dailyWeather, grindingRecords, loginLogs, activityLogs, athletes, raceSkis };
     const table = tableMap[tableName];
     if (!table) return 0;
     const result = await db.select({ count: sql<number>`count(*)` }).from(table);

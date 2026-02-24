@@ -615,19 +615,117 @@ export default function Admin() {
     });
     y = (doc as any).lastAutoTable.finalY + 10;
 
+    const productMap = new Map(allProducts.map((p: any) => [p.id, p]));
+    const seriesMap = new Map(allSeries.map((s: any) => [s.id, s]));
+
+    const getProductLabel = (entry: any) => {
+      const mainProduct = productMap.get(entry.productId);
+      const parts: string[] = [];
+      if (mainProduct) parts.push(`${mainProduct.brand || ""} ${mainProduct.name}`.trim());
+      if (entry.additionalProductIds) {
+        const addIds = typeof entry.additionalProductIds === "string"
+          ? JSON.parse(entry.additionalProductIds)
+          : entry.additionalProductIds;
+        if (Array.isArray(addIds)) {
+          for (const id of addIds) {
+            const p = productMap.get(id);
+            if (p) parts.push(`${p.brand || ""} ${p.name}`.trim());
+          }
+        }
+      }
+      return parts.join(" + ") || "—";
+    };
+
     if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
-    doc.setFontSize(13);
-    doc.text("Tests", 14, y);
-    y += 2;
-    autoTable(doc, {
-      startY: y,
-      head: [["Date", "Type", "Location", "Series ID", "Notes", "Group"]],
-      body: allTests.map((t: any) => [t.date, t.testType, t.location || "", t.seriesId, t.notes || "", t.groupScope]),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
-      margin: { left: 14, right: 14 },
-    });
-    y = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFontSize(16);
+    doc.text("Tests with Results", 14, y);
+    y += 8;
+
+    for (const test of allTests) {
+      try {
+        const entriesRes = await apiRequest("GET", `/api/tests/${test.id}/entries`);
+        const entries: any[] = await entriesRes.json();
+
+        const seriesObj = seriesMap.get(test.seriesId);
+        const seriesName = seriesObj ? seriesObj.name : `Series #${test.seriesId}`;
+        const isClassic = test.testType === "Classic";
+
+        if (y > doc.internal.pageSize.getHeight() - 50) { doc.addPage(); y = 15; }
+
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${test.date} — ${test.testType} — ${seriesName}`, 14, y);
+        doc.setFont("helvetica", "normal");
+        y += 4;
+        doc.setFontSize(8);
+        const meta = [
+          test.location ? `Location: ${test.location}` : null,
+          test.notes ? `Notes: ${test.notes}` : null,
+          `Group: ${test.groupScope}`,
+        ].filter(Boolean).join("  |  ");
+        doc.text(meta, 14, y);
+        y += 4;
+
+        if (entries.length > 0) {
+          const distanceLabels: string[] = test.distanceLabels
+            ? (typeof test.distanceLabels === "string" ? JSON.parse(test.distanceLabels) : test.distanceLabels)
+            : [];
+
+          const baseHead = ["Rank", "Ski", "Product", "Method"];
+          const baseBody = (e: any) => {
+            return [
+              e.overallRank ?? "",
+              e.skiNumber || "",
+              getProductLabel(e),
+              e.methodology || "",
+            ];
+          };
+
+          const roundCols = distanceLabels.map((l: string) => l);
+          const head = [...baseHead, ...roundCols];
+          if (isClassic) head.push("Kick");
+          head.push("Feeling");
+
+          const body = entries
+            .sort((a: any, b: any) => (a.overallRank ?? 999) - (b.overallRank ?? 999))
+            .map((e: any) => {
+              const results = e.results
+                ? (typeof e.results === "string" ? JSON.parse(e.results) : e.results)
+                : [];
+              const row = [
+                ...baseBody(e),
+                ...distanceLabels.map((_: string, i: number) => {
+                  const r = results[i];
+                  if (!r) return "";
+                  return r.rank ? `${r.cmBehind ?? ""}cm (#${r.rank})` : (r.cmBehind ?? "");
+                }),
+              ];
+              if (isClassic) row.push(e.kickRank ?? "");
+              row.push(e.feelingRank ?? "");
+              return row;
+            });
+
+          autoTable(doc, {
+            startY: y,
+            head: [head],
+            body,
+            styles: { fontSize: 7 },
+            headStyles: { fillColor: [59, 130, 246] },
+            margin: { left: 14, right: 14 },
+          });
+          y = (doc as any).lastAutoTable.finalY + 8;
+        } else {
+          doc.setFontSize(8);
+          doc.text("No entries", 14, y);
+          y += 6;
+        }
+      } catch (_) {
+        doc.setFontSize(8);
+        doc.text(`Could not load entries for test #${test.id}`, 14, y);
+        y += 6;
+      }
+    }
+    y += 4;
 
     if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
     doc.setFontSize(13);

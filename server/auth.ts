@@ -30,8 +30,6 @@ export function setupAuth(app: Express) {
   const REMEMBER_ME_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
   const DEFAULT_MAX_AGE = 24 * 60 * 60 * 1000;
 
-  const isDev = process.env.NODE_ENV !== "production";
-
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "glidr-dev-secret-change-me",
     resave: false,
@@ -41,7 +39,8 @@ export function setupAuth(app: Express) {
       maxAge: DEFAULT_MAX_AGE,
       secure: true,
       sameSite: "none" as const,
-    },
+      partitioned: true,
+    } as any,
     store: new PgStore({
       pool: pool as any,
       tableName: "user_sessions",

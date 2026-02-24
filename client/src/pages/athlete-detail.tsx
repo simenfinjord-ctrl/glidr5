@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -37,7 +37,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ProductCombobox } from "@/components/product-combobox";
 import { cn } from "@/lib/utils";
 
 type Athlete = {
@@ -80,13 +79,6 @@ type RaceSkiRegrind = {
   createdByName: string;
 };
 
-type TestProduct = {
-  id: number;
-  category: string;
-  brand: string;
-  name: string;
-};
-
 type RaceSkiTest = {
   id: number;
   date: string;
@@ -125,10 +117,20 @@ type RaceSkiTestRow = {
   construction: string | null;
   grind: string | null;
   heights: string | null;
-  productId: number | undefined;
-  methodology: string;
   roundResults: { result: number | null; rank: number | null }[];
   feelingRank: number | null;
+};
+
+type WeatherItem = {
+  id: number;
+  date: string;
+  time: string;
+  location: string;
+  snowTemperatureC: number | null;
+  airTemperatureC: number | null;
+  snowHumidityPct: number | null;
+  airHumidityPct: number | null;
+  groupScope: string;
 };
 
 type AthleteAccess = {
@@ -165,7 +167,9 @@ export default function AthleteDetail() {
     location: "",
     testType: "Glide" as "Glide" | "Structure",
     notes: "",
+    weatherId: undefined as number | undefined,
   });
+  const [selectedSkiIds, setSelectedSkiIds] = useState<Set<number>>(new Set());
   const [testRows, setTestRows] = useState<RaceSkiTestRow[]>([]);
   const [distanceLabels, setDistanceLabels] = useState<string[]>([""]);
 
@@ -213,8 +217,8 @@ export default function AthleteDetail() {
     retry: false,
   });
 
-  const { data: products = [] } = useQuery<TestProduct[]>({
-    queryKey: ["/api/products"],
+  const { data: weather = [] } = useQuery<WeatherItem[]>({
+    queryKey: ["/api/weather"],
   });
 
   const { data: allTests = [] } = useQuery<RaceSkiTest[]>({
@@ -396,8 +400,8 @@ export default function AthleteDetail() {
       const entries = testRows.map((row, idx) => ({
         skiNumber: idx + 1,
         raceSkiId: row.raceSkiId,
-        productId: row.productId || null,
-        methodology: row.methodology || "",
+        productId: null,
+        methodology: "",
         result0kmCmBehind: row.roundResults[0]?.result ?? null,
         rank0km: row.roundResults[0]?.rank ?? null,
         results: JSON.stringify(row.roundResults),
@@ -411,6 +415,7 @@ export default function AthleteDetail() {
         testSkiSource: "raceskis",
         seriesId: null,
         athleteId: Number(athleteId),
+        weatherId: resolvedWeatherId || null,
         notes: testForm.notes.trim() || null,
         distanceLabels: JSON.stringify(distanceLabels),
         groupScope,
@@ -423,7 +428,8 @@ export default function AthleteDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
       toast({ title: "Test saved" });
       setShowTestForm(false);
-      setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Glide", notes: "" });
+      setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Glide", notes: "", weatherId: undefined });
+      setSelectedSkiIds(new Set());
       setDistanceLabels([""]);
       setTestRows([]);
     },
@@ -512,26 +518,54 @@ export default function AthleteDetail() {
     if (changed) setTestRows(next);
   }, [roundRanks]);
 
-  function openNewTest() {
-    setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Glide", notes: "" });
-    setDistanceLabels([""]);
-    setShowTestForm(true);
-    setTestRows(
-      skis.map((ski) => ({
-        id: `rsk_${ski.id}_${Math.random().toString(16).slice(2)}`,
-        raceSkiId: ski.id,
-        skiId: ski.skiId,
-        brand: ski.brand,
-        base: ski.base,
-        construction: ski.construction,
-        grind: ski.grind,
-        heights: ski.heights,
-        productId: undefined,
-        methodology: "",
-        roundResults: [{ result: null, rank: null }],
-        feelingRank: null,
-      }))
+  const autoWeather = useMemo(() => {
+    if (!testForm.date || !testForm.location) return undefined;
+    return weather.find(
+      (w) =>
+        w.date === testForm.date &&
+        w.location.toLowerCase() === testForm.location.trim().toLowerCase(),
     );
+  }, [weather, testForm.date, testForm.location]);
+
+  const resolvedWeatherId = testForm.weatherId ?? autoWeather?.id ?? undefined;
+
+  function toggleSkiSelection(skiId: number) {
+    setSelectedSkiIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(skiId)) {
+        next.delete(skiId);
+        setTestRows((rows) => rows.filter((r) => r.raceSkiId !== skiId));
+      } else {
+        next.add(skiId);
+        const ski = skis.find((s) => s.id === skiId);
+        if (ski) {
+          setTestRows((rows) => [
+            ...rows,
+            {
+              id: `rsk_${ski.id}_${Math.random().toString(16).slice(2)}`,
+              raceSkiId: ski.id,
+              skiId: ski.skiId,
+              brand: ski.brand,
+              base: ski.base,
+              construction: ski.construction,
+              grind: ski.grind,
+              heights: ski.heights,
+              roundResults: distanceLabels.map(() => ({ result: null, rank: null })),
+              feelingRank: null,
+            },
+          ]);
+        }
+      }
+      return next;
+    });
+  }
+
+  function openNewTest() {
+    setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Glide", notes: "", weatherId: undefined });
+    setDistanceLabels([""]);
+    setSelectedSkiIds(new Set());
+    setTestRows([]);
+    setShowTestForm(true);
   }
 
   function handleSkiSubmit(e: React.FormEvent) {
@@ -788,6 +822,36 @@ export default function AthleteDetail() {
                       </Select>
                     </div>
                     <div>
+                      <label className="mb-1 block text-sm font-medium">Weather</label>
+                      <Select
+                        value={testForm.weatherId != null ? String(testForm.weatherId) : "__auto__"}
+                        onValueChange={(v) => setTestForm((f) => ({ ...f, weatherId: v === "__auto__" ? undefined : Number(v) }))}
+                      >
+                        <SelectTrigger data-testid="select-test-weather">
+                          <SelectValue
+                            placeholder={
+                              autoWeather
+                                ? `Auto: ${autoWeather.location} ${autoWeather.time}`
+                                : "Select weather"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__auto__" data-testid="option-weather-auto">
+                            {autoWeather ? `Auto: ${autoWeather.location} ${autoWeather.time}` : "Auto (match by date + location)"}
+                          </SelectItem>
+                          {weather.map((w) => (
+                            <SelectItem key={w.id} value={String(w.id)} data-testid={`option-weather-${w.id}`}>
+                              {w.date} · {w.location} · {w.time} · Air {w.airTemperatureC}°C
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-4">
+                    <div className="lg:col-span-3">
                       <label className="mb-1 block text-sm font-medium">Notes</label>
                       <Textarea
                         value={testForm.notes}
@@ -799,24 +863,58 @@ export default function AthleteDetail() {
                     </div>
                   </div>
 
+                  {/* Ski Selection */}
+                  <div className="mb-4">
+                    <label className="mb-2 block text-sm font-medium">Select skis for this test</label>
+                    {skis.length === 0 ? (
+                      <p className="text-sm text-muted-foreground" data-testid="text-no-skis-for-test">
+                        No skis available. Add skis to this athlete first.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {skis.map((ski) => (
+                          <button
+                            key={ski.id}
+                            type="button"
+                            onClick={() => toggleSkiSelection(ski.id)}
+                            className={cn(
+                              "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-all",
+                              selectedSkiIds.has(ski.id)
+                                ? "border-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800"
+                                : "border-border bg-background/50 text-muted-foreground hover:border-indigo-300 hover:bg-indigo-50/50",
+                            )}
+                            data-testid={`button-select-ski-${ski.id}`}
+                          >
+                            <div className={cn(
+                              "h-4 w-4 rounded border flex items-center justify-center transition-colors",
+                              selectedSkiIds.has(ski.id) ? "bg-indigo-500 border-indigo-500" : "border-gray-300",
+                            )}>
+                              {selectedSkiIds.has(ski.id) && (
+                                <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="font-semibold">{ski.skiId}</span>
+                            {ski.brand && <span className="text-xs text-muted-foreground">{ski.brand}</span>}
+                            {ski.grind && <span className="text-xs text-muted-foreground">· {ski.grind}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Test Entry Table */}
-                  {testRows.length === 0 ? (
-                    <p className="text-sm text-muted-foreground" data-testid="text-no-skis-for-test">
-                      No skis available. Add skis to this athlete first.
-                    </p>
-                  ) : (
+                  {testRows.length > 0 && (
                     <div className="overflow-x-auto rounded-2xl border bg-card/50">
-                      <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${700 + distanceLabels.length * 200}px` }}>
+                      <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${400 + distanceLabels.length * 200}px` }}>
                         <thead>
                           <tr className="text-left text-xs text-muted-foreground">
                             <th className="sticky left-0 z-10 bg-card/80 px-3 py-3">Ski ID</th>
                             <th className="px-2 py-3">Brand</th>
                             <th className="px-2 py-3">Base</th>
-                            <th className="px-2 py-3">Construction</th>
                             <th className="px-2 py-3">Grind</th>
                             <th className="px-2 py-3">Heights</th>
-                            <th className="px-3 py-3">Product</th>
-                            <th className="px-3 py-3">Method</th>
                             {distanceLabels.map((label, roundIdx) => (
                               <th key={roundIdx} className="px-3 py-3" colSpan={2}>
                                 <div className="flex items-center gap-1">
@@ -877,14 +975,11 @@ export default function AthleteDetail() {
                             <th></th>
                             <th></th>
                             <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
                             {distanceLabels.map((_, roundIdx) => (
-                              <>
-                                <th key={`res-${roundIdx}`} className="px-3 pb-1">Result (cm)</th>
-                                <th key={`rank-${roundIdx}`} className="px-3 pb-1">Rank</th>
-                              </>
+                              <React.Fragment key={roundIdx}>
+                                <th className="px-3 pb-1">Result (cm)</th>
+                                <th className="px-3 pb-1">Rank</th>
+                              </React.Fragment>
                             ))}
                             <th></th>
                             <th></th>
@@ -932,40 +1027,15 @@ export default function AthleteDetail() {
                                 <td className="px-2 py-2 text-xs text-muted-foreground" data-testid={`text-test-base-${row.raceSkiId}`}>
                                   {row.base || "—"}
                                 </td>
-                                <td className="px-2 py-2 text-xs text-muted-foreground" data-testid={`text-test-construction-${row.raceSkiId}`}>
-                                  {row.construction || "—"}
-                                </td>
                                 <td className="px-2 py-2 text-xs text-muted-foreground" data-testid={`text-test-grind-${row.raceSkiId}`}>
                                   {row.grind || "—"}
                                 </td>
                                 <td className="px-2 py-2 text-xs text-muted-foreground" data-testid={`text-test-heights-${row.raceSkiId}`}>
                                   {row.heights || "—"}
                                 </td>
-                                <td className="px-3 py-2">
-                                  <ProductCombobox
-                                    testType={testForm.testType}
-                                    products={products}
-                                    value={row.productId}
-                                    onChange={(id) => {
-                                      setTestRows(testRows.map((r) => r.id === row.id ? { ...r, productId: id } : r));
-                                    }}
-                                    testId={`input-test-product-${row.raceSkiId}`}
-                                  />
-                                </td>
-                                <td className="px-3 py-2">
-                                  <Input
-                                    value={row.methodology}
-                                    onChange={(e) => {
-                                      setTestRows(testRows.map((r) => r.id === row.id ? { ...r, methodology: e.target.value } : r));
-                                    }}
-                                    className="h-9 bg-background/70"
-                                    placeholder="e.g., 200°C"
-                                    data-testid={`input-test-method-${row.raceSkiId}`}
-                                  />
-                                </td>
                                 {row.roundResults.map((rr, roundIdx) => (
-                                  <>
-                                    <td key={`res-${roundIdx}`} className="px-3 py-2">
+                                  <React.Fragment key={roundIdx}>
+                                    <td className="px-3 py-2">
                                       <Input
                                         inputMode="decimal"
                                         type="number"
@@ -985,10 +1055,10 @@ export default function AthleteDetail() {
                                         data-testid={`input-test-result-${roundIdx}-${row.raceSkiId}`}
                                       />
                                     </td>
-                                    <td key={`rank-${roundIdx}`} className="px-3 py-2">
+                                    <td className="px-3 py-2">
                                       {rankBadge(rr.rank)}
                                     </td>
-                                  </>
+                                  </React.Fragment>
                                 ))}
                                 <td className="px-3 py-2">
                                   <Input

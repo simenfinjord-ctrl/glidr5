@@ -147,10 +147,25 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
   const { theme, toggle: toggleTheme } = useTheme();
 
-  const visibleNav = nav.filter((item) => {
+  const filteredNav = nav.filter((item) => {
     if (item.adminOnly) return !!user?.isAdmin;
     if (item.permArea) return can(item.permArea);
     return true;
+  });
+
+  const perms = user?.parsedPermissions;
+  const visibleNav = [...filteredNav].sort((a, b) => {
+    if (user?.isAdmin) return 0;
+    if (!perms) return 0;
+    const levelOrder = (item: NavItem) => {
+      if (item.adminOnly) return 2;
+      if (!item.permArea) return 0;
+      const lvl = perms[item.permArea];
+      if (lvl === "edit") return 0;
+      if (lvl === "view") return 1;
+      return 2;
+    };
+    return levelOrder(a) - levelOrder(b);
   });
 
   return (

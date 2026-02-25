@@ -607,7 +607,13 @@ export default function Admin() {
     setPdfLoading(true);
     try {
       const exportRes = await apiRequest("GET", "/api/admin/full-export");
-      const data = await exportRes.json();
+      const rawText = await exportRes.text();
+      let data: any;
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseErr: any) {
+        throw new Error(`Response parse failed (${rawText.length} chars): ${parseErr.message}`);
+      }
 
       const doc = new jsPDF({ orientation: "landscape" });
       let y = 15;
@@ -664,7 +670,7 @@ export default function Admin() {
       autoTable(doc, {
         startY: y,
         head: [["Brand", "Name", "Type", "Group"]],
-        body: data.products.map((p: any) => [p.brand || "", p.name, p.type, p.groupScope]),
+        body: data.products.map((p: any) => [p.brand || "", p.name, p.category || "", p.groupScope]),
         styles: { fontSize: 8 }, headStyles: hStyle, margin: { left: 14, right: 14 },
       });
       y = (doc as any).lastAutoTable.finalY + 10;
@@ -739,14 +745,16 @@ export default function Admin() {
         const parts: string[] = [];
         if (mainProduct) parts.push(`${mainProduct.brand || ""} ${mainProduct.name}`.trim());
         if (entry.additionalProductIds) {
-          const addIds = typeof entry.additionalProductIds === "string"
-            ? JSON.parse(entry.additionalProductIds) : entry.additionalProductIds;
-          if (Array.isArray(addIds)) {
-            for (const id of addIds) {
-              const p = productMap.get(id);
-              if (p) parts.push(`${p.brand || ""} ${p.name}`.trim());
+          try {
+            const addIds = typeof entry.additionalProductIds === "string"
+              ? JSON.parse(entry.additionalProductIds) : entry.additionalProductIds;
+            if (Array.isArray(addIds)) {
+              for (const id of addIds) {
+                const p = productMap.get(id);
+                if (p) parts.push(`${p.brand || ""} ${p.name}`.trim());
+              }
             }
-          }
+          } catch {}
         }
         return parts.join(" + ") || "—";
       };
@@ -1666,7 +1674,13 @@ function DataManagementTab() {
     setCsvLoading(true);
     try {
       const exportRes = await apiRequest("GET", "/api/admin/full-export");
-      const data = await exportRes.json();
+      const rawText = await exportRes.text();
+      let data: any;
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseErr: any) {
+        throw new Error(`Response parse failed (${rawText.length} chars): ${parseErr.message}`);
+      }
 
       const csvRows: string[] = [];
       csvRows.push("=== TESTS ===");
@@ -1687,7 +1701,7 @@ function DataManagementTab() {
       csvRows.push("=== PRODUCTS ===");
       csvRows.push("ID,Brand,Name,Type,Group");
       for (const p of data.products) {
-        csvRows.push([p.id, `"${p.brand || ""}"`, `"${p.name}"`, p.type, p.groupScope].join(","));
+        csvRows.push([p.id, `"${p.brand || ""}"`, `"${p.name}"`, p.category || "", p.groupScope].join(","));
       }
 
       const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });

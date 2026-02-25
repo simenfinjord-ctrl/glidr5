@@ -143,7 +143,7 @@ export default function SeriesDetail() {
           <AppLink href="/testskis">
             <Button variant="secondary" data-testid="button-back-testskis">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to TestSkis
+              Back to Testskis
             </Button>
           </AppLink>
         </div>
@@ -158,7 +158,7 @@ export default function SeriesDetail() {
           <AppLink href="/testskis" testId="link-back-testskis">
             <Button variant="ghost" size="sm" data-testid="button-back-testskis">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to TestSkis
+              Back to Testskis
             </Button>
           </AppLink>
           <div className="mt-2 flex flex-wrap items-center gap-3">

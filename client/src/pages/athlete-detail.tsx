@@ -841,7 +841,7 @@ export default function AthleteDetail() {
               {showTestForm && (
                 <Card className="fs-card rounded-2xl p-4" data-testid="card-new-test-form">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold">New Race Ski Test</h3>
+                    <h3 className="text-sm font-semibold">New Raceski Test</h3>
                     <Button
                       variant="ghost"
                       size="sm"

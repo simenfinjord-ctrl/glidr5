@@ -145,7 +145,7 @@ export function TestEntryTable({
         <thead>
           <tr className="text-left text-xs text-muted-foreground">
             <th className="sticky left-0 z-10 bg-card/80 px-3 py-3">Ski No.</th>
-            {!isGrind && <th className="px-3 py-3">{isRaceSki ? "Race Ski" : "Product(s)"}</th>}
+            {!isGrind && <th className="px-3 py-3">{isRaceSki ? "Raceski" : "Product(s)"}</th>}
             {!isGrind && <th className="px-3 py-3">Method</th>}
             {isGrind && <th className="px-3 py-3">Grind Type</th>}
             {isGrind && <th className="px-3 py-3">Stone / Tool</th>}

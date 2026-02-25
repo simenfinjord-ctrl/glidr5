@@ -67,7 +67,7 @@ export default function RaceSkis() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl" data-testid="text-raceskis-title">
-              Race Skis
+              Raceskis
             </h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-raceskis-subtitle">
               Manage athlete profiles and race ski inventory

@@ -381,7 +381,7 @@ export default function TestSkis() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl">TestSkis</h1>
+            <h1 className="text-2xl sm:text-3xl">Testskis</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-testskis-subtitle">
               {series.length} series{archived.length > 0 ? ` · ${archived.length} archived` : ""} · Create and manage test ski series
             </p>

@@ -64,7 +64,7 @@ const nav: NavItem[] = [
   },
   {
     href: "/testskis",
-    label: "TestSkis",
+    label: "Testskis",
     icon: Snowflake,
     testId: "link-testskis",
     color: "text-gray-500",
@@ -114,7 +114,7 @@ const nav: NavItem[] = [
   },
   {
     href: "/raceskis",
-    label: "Race Skis",
+    label: "Raceskis",
     icon: Trophy,
     testId: "link-raceskis",
     color: "text-gray-500",

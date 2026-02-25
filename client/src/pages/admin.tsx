@@ -44,8 +44,8 @@ type ApiTeam = {
 };
 
 const AREA_LABELS: Record<string, string> = {
-  dashboard: "Dashboard", tests: "Tests", testskis: "TestSkis", products: "Products",
-  weather: "Weather", analytics: "Analytics", grinding: "Grinding", raceskis: "Race Skis",
+  dashboard: "Dashboard", tests: "Tests", testskis: "Testskis", products: "Products",
+  weather: "Weather", analytics: "Analytics", grinding: "Grinding", raceskis: "Raceskis",
   suggestions: "Suggestions"
 };
 
@@ -631,7 +631,7 @@ export default function Admin() {
 
       checkPage();
       doc.setFontSize(13);
-      doc.text("Test Ski Series", 14, y);
+      doc.text("Testski Series", 14, y);
       y += 2;
       autoTable(doc, {
         startY: y,
@@ -670,7 +670,7 @@ export default function Admin() {
       if (data.raceSkis.length > 0) {
         checkPage();
         doc.setFontSize(13);
-        doc.text(`Race Skis (${data.raceSkis.length})`, 14, y);
+        doc.text(`Raceskis (${data.raceSkis.length})`, 14, y);
         y += 2;
         autoTable(doc, {
           startY: y,
@@ -684,7 +684,7 @@ export default function Admin() {
       if (data.raceSkiRegrinds && data.raceSkiRegrinds.length > 0) {
         checkPage();
         doc.setFontSize(13);
-        doc.text(`Race Ski Regrinds (${data.raceSkiRegrinds.length})`, 14, y);
+        doc.text(`Raceski Regrinds (${data.raceSkiRegrinds.length})`, 14, y);
         y += 2;
         autoTable(doc, {
           startY: y,
@@ -698,7 +698,7 @@ export default function Admin() {
       if (data.testSkiRegrinds && data.testSkiRegrinds.length > 0) {
         checkPage();
         doc.setFontSize(13);
-        doc.text(`Test Ski Series Regrinds (${data.testSkiRegrinds.length})`, 14, y);
+        doc.text(`Testski Series Regrinds (${data.testSkiRegrinds.length})`, 14, y);
         y += 2;
         autoTable(doc, {
           startY: y,
@@ -747,7 +747,7 @@ export default function Admin() {
         const seriesObj = seriesMap.get(test.seriesId);
         const athleteObj = test.athleteId ? athleteMap.get(test.athleteId) : null;
         const sourceName = test.testSkiSource === "raceskis"
-          ? (athleteObj ? `Athlete: ${athleteObj.name}` : "Race Skis")
+          ? (athleteObj ? `Athlete: ${athleteObj.name}` : "Raceskis")
           : (seriesObj ? seriesObj.name : "");
         const isClassic = test.testType === "Classic";
 
@@ -796,7 +796,7 @@ export default function Admin() {
             return results;
           };
 
-          const head = ["Rank", "Ski", "Product / Race Ski", "Method"];
+          const head = ["Rank", "Ski", "Product / Raceski", "Method"];
           for (const label of distanceLabels) {
             head.push(`${label} (cm)`);
             head.push("Rank");
@@ -1686,7 +1686,7 @@ function DataManagementTab() {
               { label: "Weather", val: dbStats.weatherCount },
               { label: "Grinding", val: dbStats.grindingCount },
               { label: "Athletes", val: dbStats.athleteCount },
-              { label: "Race Skis", val: dbStats.raceSkiCount },
+              { label: "Raceskis", val: dbStats.raceSkiCount },
               { label: "Login Logs", val: dbStats.loginCount },
               { label: "Activity Logs", val: dbStats.activityCount },
               { label: "Active Sessions", val: dbStats.sessionCount },

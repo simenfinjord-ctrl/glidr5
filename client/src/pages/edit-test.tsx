@@ -478,8 +478,8 @@ export default function EditTest() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="series">Test Series</SelectItem>
-                          <SelectItem value="raceskis">Race Skis</SelectItem>
+                          <SelectItem value="series">Testskis</SelectItem>
+                          <SelectItem value="raceskis">Raceskis</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormItem>

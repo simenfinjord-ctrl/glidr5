@@ -167,7 +167,7 @@ export default function AthleteDetail() {
   const [testForm, setTestForm] = useState({
     date: new Date().toISOString().split("T")[0],
     location: "",
-    testType: "Glide" as "Glide" | "Structure" | "Classic" | "Skating",
+    testType: "Classic" as "Classic" | "Skating",
     notes: "",
     weatherId: undefined as number | undefined,
   });
@@ -431,7 +431,7 @@ export default function AthleteDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
       toast({ title: "Test saved" });
       setShowTestForm(false);
-      setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Glide" as any, notes: "", weatherId: undefined });
+      setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Classic" as any, notes: "", weatherId: undefined });
       setSelectedSkiIds(new Set());
       setDistanceLabels([""]);
       setTestRows([]);
@@ -565,7 +565,7 @@ export default function AthleteDetail() {
   }
 
   function openNewTest() {
-    setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Glide", notes: "", weatherId: undefined });
+    setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Classic", notes: "", weatherId: undefined });
     setDistanceLabels([""]);
     setSelectedSkiIds(new Set());
     setTestRows([]);
@@ -814,14 +814,12 @@ export default function AthleteDetail() {
                       <label className="mb-1 block text-sm font-medium">Test Type</label>
                       <Select
                         value={testForm.testType}
-                        onValueChange={(v) => setTestForm((f) => ({ ...f, testType: v as "Glide" | "Structure" | "Classic" | "Skating" }))}
+                        onValueChange={(v) => setTestForm((f) => ({ ...f, testType: v as "Classic" | "Skating" }))}
                       >
                         <SelectTrigger data-testid="select-test-type">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Glide">Glide</SelectItem>
-                          <SelectItem value="Structure">Structure</SelectItem>
                           <SelectItem value="Classic">Classic</SelectItem>
                           <SelectItem value="Skating">Skating</SelectItem>
                         </SelectContent>

@@ -76,6 +76,12 @@ Note: Only the admin account is seeded. All other users, series, products, and w
 - `GET/POST /api/test-ski-regrinds/:seriesId` — List/create test ski regrinds
 - `PUT /api/users/me/language` — Update user language preference
 - `POST /api/suggestions` — Get AI-powered product recommendations
+- `GET /api/admin/full-export` — Bulk data export (all tests+entries, weather, products, users, etc.)
+- `GET /api/admin/db-stats` — Database table counts and session stats
+- `POST /api/admin/purge-activity-logs` — Delete old activity logs (beforeDate)
+- `POST /api/admin/purge-login-logs` — Delete old login logs (beforeDate)
+- `POST /api/admin/force-logout-all` — Terminate all sessions except current user
+- `POST /api/admin/force-logout/:userId` — Terminate specific user session
 
 ## Weather Data Model
 The daily_weather table stores comprehensive snow and weather conditions:
@@ -109,13 +115,16 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Scope filtering supports multi-group users (data from all assigned groups is visible)
 - Login page has "Remember me" checkbox (extends session to 30 days)
 - Admin page shows login history (who logged in, when, and from which IP address)
-- Admin page has "Download PDF" button to export all app data (users, groups, series, products, tests, weather, login history)
+- Admin page has "Download PDF" button to export all app data via dedicated bulk endpoint (users, groups, series, products, tests with entries, weather with full fields, athletes, race skis, grinding records, login history)
+- PDF export uses /api/admin/full-export endpoint for reliable bulk data retrieval (no N+1 queries)
+- CSV export available for tests, weather, and products in spreadsheet-friendly format
 - Tests support dynamic rounds (unlimited distance measurements via + Round button)
 - Distance labels and results stored as JSON (distanceLabels on tests, results on test_entries)
 - Legacy 2-field format (distanceLabel0km/Xkm, result0km/Xkm) auto-converted on load
 - Test entries support feeling rank (subjective ski pair ranking column)
 - Test entries support kick rank (only shown for Classic test type, orange badge styling)
 - Test types include Glide, Structure, Classic, Skating, and Grind
+- Race ski tests only allow Classic and Skating test types (Glide/Structure/Grind removed from race ski dropdown)
 - Classic/Skating test types filter series by skiType (matching discipline)
 - Kick column included in CSV and PDF exports for Classic tests
 - Test entries support multiple products per line (inline + button, additionalProductIds field)
@@ -158,6 +167,7 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Race Skis module: athlete profiles with access control, ski inventory (serial, skiId, brand, discipline, construction, mold, base, grind, heights, year), regrind history
 - Race ski testing: testSkiSource field on tests ("series"|"raceskis"), raceSkiId on entries
 - Race ski test entries validated server-side against user's allowed athlete/ski access
+- All users with athlete access can view AND edit tests associated with that athlete (not just creator)
 - Athlete access sharing via athlete_access join table (creator always has access, admin has full access)
 - Race ski regrinds auto-update ski's current grind field
 - Language feature removed: no I18nProvider, no language selector, English-only
@@ -173,3 +183,6 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - User create/edit forms include Team Admin role option
 - Existing data migrated to teamId=1 (default team)
 - Groups.name unique constraint removed to allow same group names across different teams
+- Admin page has Data Management tab: database overview (all table counts + active sessions), export tools (PDF + CSV)
+- Admin page has Danger Zone tab: purge old activity/login logs (30/90+ days), force logout all users
+- Admin overview stats include Athletes and Race Skis counts

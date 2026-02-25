@@ -6,7 +6,8 @@ import { useForm } from "react-hook-form";
 import {
   Plus, Pencil, Trash2, KeyRound, Check, X, Clock, Download,
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
-  Shield, LogOut, ToggleLeft, ToggleRight,
+  Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle,
+  HardDrive, UserX, Eraser, RefreshCw,
 } from "lucide-react";
 import { PERMISSION_AREAS, DEFAULT_PERMISSIONS } from "@shared/schema";
 import type { UserPermissions, PermissionLevel } from "@shared/schema";
@@ -163,7 +164,7 @@ type ActivityEntry = {
   groupScope: string;
 };
 
-type TabId = "overview" | "users" | "groups" | "teams" | "activity" | "logins";
+type TabId = "overview" | "users" | "groups" | "teams" | "activity" | "logins" | "data" | "danger";
 
 function parseGroups(groupScope: string): string[] {
   return groupScope.split(",").map((s) => s.trim()).filter(Boolean);
@@ -489,6 +490,8 @@ const ALL_TABS: { id: TabId; label: string; superAdminOnly?: boolean }[] = [
   { id: "teams", label: "Teams", superAdminOnly: true },
   { id: "activity", label: "Activity Log" },
   { id: "logins", label: "Login History" },
+  { id: "data", label: "Data Management" },
+  { id: "danger", label: "Danger Zone" },
 ];
 
 function StatCard({ label, value, icon: Icon, color, testId }: { label: string; value: number; icon: React.ComponentType<{ className?: string }>; color: string; testId: string }) {
@@ -582,111 +585,149 @@ export default function Admin() {
 
   const groupNames = apiGroups.map((g) => g.name);
 
+  const [pdfLoading, setPdfLoading] = useState(false);
+
   async function downloadFullPdf() {
-    const doc = new jsPDF({ orientation: "landscape" });
-    let y = 15;
+    setPdfLoading(true);
+    try {
+      const exportRes = await apiRequest("GET", "/api/admin/full-export");
+      const data = await exportRes.json();
 
-    doc.setFontSize(18);
-    doc.text("Glidr — Full Data Export", 14, y);
-    y += 6;
-    doc.setFontSize(9);
-    doc.text(`Generated ${new Date().toLocaleString()}`, 14, y);
-    y += 10;
+      const doc = new jsPDF({ orientation: "landscape" });
+      let y = 15;
+      const pageH = doc.internal.pageSize.getHeight();
+      const checkPage = (need: number = 40) => { if (y > pageH - need) { doc.addPage(); y = 15; } };
+      const hStyle = { fillColor: [59, 130, 246] as [number, number, number] };
 
-    doc.setFontSize(13);
-    doc.text("Users", 14, y);
-    y += 2;
-    autoTable(doc, {
-      startY: y,
-      head: [["Name", "Email", "Groups", "Role"]],
-      body: users.map((u) => [u.name, u.email, u.groupScope, u.isAdmin ? "Admin" : "Member"]),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
-      margin: { left: 14, right: 14 },
-    });
-    y = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(18);
+      doc.text("Glidr — Full Data Export", 14, y);
+      y += 6;
+      doc.setFontSize(9);
+      doc.text(`Generated ${new Date().toLocaleString()}  |  ${data.tests.length} tests  |  ${data.weather.length} weather logs`, 14, y);
+      y += 10;
 
-    doc.setFontSize(13);
-    doc.text("Groups", 14, y);
-    y += 2;
-    autoTable(doc, {
-      startY: y,
-      head: [["ID", "Name"]],
-      body: apiGroups.map((g) => [g.id, g.name]),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
-      margin: { left: 14, right: 14 },
-    });
-    y = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(13);
+      doc.text("Users", 14, y);
+      y += 2;
+      autoTable(doc, {
+        startY: y,
+        head: [["Name", "Email", "Groups", "Role", "Active"]],
+        body: data.users.map((u: any) => [u.name, u.email, u.groupScope, u.isAdmin ? "Super Admin" : u.isTeamAdmin ? "Team Admin" : "Member", u.isActive ? "Yes" : "No"]),
+        styles: { fontSize: 8 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+      });
+      y = (doc as any).lastAutoTable.finalY + 10;
 
-    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
-    doc.setFontSize(13);
-    doc.text("Test Ski Series", 14, y);
-    y += 2;
-    autoTable(doc, {
-      startY: y,
-      head: [["Name", "Type", "Brand", "Ski Type", "Skis", "Group"]],
-      body: allSeries.map((s: any) => [s.name, s.type, s.brand || "", s.skiType || "", s.numberOfSkis, s.groupScope]),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
-      margin: { left: 14, right: 14 },
-    });
-    y = (doc as any).lastAutoTable.finalY + 10;
+      checkPage();
+      doc.setFontSize(13);
+      doc.text("Groups", 14, y);
+      y += 2;
+      autoTable(doc, {
+        startY: y,
+        head: [["ID", "Name"]],
+        body: data.groups.map((g: any) => [g.id, g.name]),
+        styles: { fontSize: 8 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+      });
+      y = (doc as any).lastAutoTable.finalY + 10;
 
-    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
-    doc.setFontSize(13);
-    doc.text("Products", 14, y);
-    y += 2;
-    autoTable(doc, {
-      startY: y,
-      head: [["Brand", "Name", "Type", "Group"]],
-      body: allProducts.map((p: any) => [p.brand || "", p.name, p.type, p.groupScope]),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
-      margin: { left: 14, right: 14 },
-    });
-    y = (doc as any).lastAutoTable.finalY + 10;
+      checkPage();
+      doc.setFontSize(13);
+      doc.text("Test Ski Series", 14, y);
+      y += 2;
+      autoTable(doc, {
+        startY: y,
+        head: [["Name", "Type", "Brand", "Ski Type", "Skis", "Grind", "Group"]],
+        body: data.series.map((s: any) => [s.name, s.type, s.brand || "", s.skiType || "", s.numberOfSkis, s.grind || "", s.groupScope]),
+        styles: { fontSize: 8 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+      });
+      y = (doc as any).lastAutoTable.finalY + 10;
 
-    const productMap = new Map(allProducts.map((p: any) => [p.id, p]));
-    const seriesMap = new Map(allSeries.map((s: any) => [s.id, s]));
+      checkPage();
+      doc.setFontSize(13);
+      doc.text("Products", 14, y);
+      y += 2;
+      autoTable(doc, {
+        startY: y,
+        head: [["Brand", "Name", "Type", "Group"]],
+        body: data.products.map((p: any) => [p.brand || "", p.name, p.type, p.groupScope]),
+        styles: { fontSize: 8 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+      });
+      y = (doc as any).lastAutoTable.finalY + 10;
 
-    const getProductLabel = (entry: any) => {
-      const mainProduct = productMap.get(entry.productId);
-      const parts: string[] = [];
-      if (mainProduct) parts.push(`${mainProduct.brand || ""} ${mainProduct.name}`.trim());
-      if (entry.additionalProductIds) {
-        const addIds = typeof entry.additionalProductIds === "string"
-          ? JSON.parse(entry.additionalProductIds)
-          : entry.additionalProductIds;
-        if (Array.isArray(addIds)) {
-          for (const id of addIds) {
-            const p = productMap.get(id);
-            if (p) parts.push(`${p.brand || ""} ${p.name}`.trim());
+      if (data.athletes.length > 0) {
+        checkPage();
+        doc.setFontSize(13);
+        doc.text("Athletes", 14, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [["Name", "Team", "Created By"]],
+          body: data.athletes.map((a: any) => [a.name, a.team || "", a.createdByName || ""]),
+          styles: { fontSize: 8 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      if (data.raceSkis.length > 0) {
+        checkPage();
+        doc.setFontSize(13);
+        doc.text("Race Skis", 14, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [["Athlete", "Ski ID", "Brand", "Discipline", "Construction", "Grind", "Year"]],
+          body: data.raceSkis.map((s: any) => [s.athleteName || "", s.skiId || "", s.brand || "", s.discipline || "", s.construction || "", s.grind || "", s.year || ""]),
+          styles: { fontSize: 7 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      const productMap = new Map(data.products.map((p: any) => [p.id, p]));
+      const seriesMap = new Map(data.series.map((s: any) => [s.id, s]));
+      const raceSkiMap = new Map(data.raceSkis.map((s: any) => [s.id, s]));
+      const athleteMap = new Map(data.athletes.map((a: any) => [a.id, a]));
+
+      const getProductLabel = (entry: any) => {
+        if (entry.raceSkiId) {
+          const ski = raceSkiMap.get(entry.raceSkiId);
+          if (ski) return `${ski.athleteName} — ${ski.brand || ""} ${ski.skiId || ""}`.trim();
+        }
+        const mainProduct = productMap.get(entry.productId);
+        const parts: string[] = [];
+        if (mainProduct) parts.push(`${mainProduct.brand || ""} ${mainProduct.name}`.trim());
+        if (entry.additionalProductIds) {
+          const addIds = typeof entry.additionalProductIds === "string"
+            ? JSON.parse(entry.additionalProductIds) : entry.additionalProductIds;
+          if (Array.isArray(addIds)) {
+            for (const id of addIds) {
+              const p = productMap.get(id);
+              if (p) parts.push(`${p.brand || ""} ${p.name}`.trim());
+            }
           }
         }
-      }
-      return parts.join(" + ") || "—";
-    };
+        return parts.join(" + ") || "—";
+      };
 
-    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
-    doc.setFontSize(16);
-    doc.text("Tests with Results", 14, y);
-    y += 8;
+      checkPage();
+      doc.setFontSize(16);
+      doc.text(`Tests with Results (${data.tests.length})`, 14, y);
+      y += 8;
 
-    for (const test of allTests) {
-      try {
-        const entriesRes = await apiRequest("GET", `/api/tests/${test.id}/entries`);
-        const entries: any[] = await entriesRes.json();
+      const sortedTests = [...data.tests].sort((a: any, b: any) => (a.date || "").localeCompare(b.date || ""));
 
+      for (const test of sortedTests) {
+        const entries: any[] = data.entriesByTest[test.id] || [];
         const seriesObj = seriesMap.get(test.seriesId);
-        const seriesName = seriesObj ? seriesObj.name : `Series #${test.seriesId}`;
+        const athleteObj = test.athleteId ? athleteMap.get(test.athleteId) : null;
+        const sourceName = test.testSkiSource === "raceskis"
+          ? (athleteObj ? `Athlete: ${athleteObj.name}` : "Race Skis")
+          : (seriesObj ? seriesObj.name : "");
         const isClassic = test.testType === "Classic";
 
-        if (y > doc.internal.pageSize.getHeight() - 50) { doc.addPage(); y = 15; }
+        checkPage(50);
 
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
-        doc.text(`${test.date} — ${test.testType} — ${seriesName}`, 14, y);
+        doc.text(`${test.date} — ${test.testType} — ${sourceName}`, 14, y);
         doc.setFont("helvetica", "normal");
         y += 4;
         doc.setFontSize(8);
@@ -727,7 +768,7 @@ export default function Admin() {
             return results;
           };
 
-          const head = ["Rank", "Ski", "Product", "Method"];
+          const head = ["Rank", "Ski", "Product / Race Ski", "Method"];
           for (const label of distanceLabels) {
             head.push(`${label} (cm)`);
             head.push("Rank");
@@ -758,12 +799,8 @@ export default function Admin() {
             });
 
           autoTable(doc, {
-            startY: y,
-            head: [head],
-            body,
-            styles: { fontSize: 7 },
-            headStyles: { fillColor: [59, 130, 246] },
-            margin: { left: 14, right: 14 },
+            startY: y, head: [head], body,
+            styles: { fontSize: 7 }, headStyles: hStyle, margin: { left: 14, right: 14 },
           });
           y = (doc as any).lastAutoTable.finalY + 8;
         } else {
@@ -771,51 +808,71 @@ export default function Admin() {
           doc.text("No entries", 14, y);
           y += 6;
         }
-      } catch (_) {
-        doc.setFontSize(8);
-        doc.text(`Could not load entries for test #${test.id}`, 14, y);
-        y += 6;
       }
+      y += 4;
+
+      checkPage();
+      doc.setFontSize(16);
+      doc.text(`Weather Logs (${data.weather.length})`, 14, y);
+      y += 8;
+
+      if (data.weather.length > 0) {
+        autoTable(doc, {
+          startY: y,
+          head: [["Date", "Time", "Location", "Snow °C", "Air °C", "Snow Hum%", "Air Hum%", "Clouds", "Wind", "Precip.", "Snow Type", "Grain", "Track", "Quality", "Group"]],
+          body: data.weather.map((w: any) => {
+            const snowTypes = [w.artificialSnow ? `Art: ${w.artificialSnow}` : null, w.naturalSnow ? `Nat: ${w.naturalSnow}` : null].filter(Boolean).join(", ");
+            return [
+              w.date, w.time || "", w.location || "",
+              w.snowTemperatureC ?? "", w.airTemperatureC ?? "",
+              w.snowHumidityPct ?? "", w.airHumidityPct ?? "",
+              w.clouds != null ? `${w.clouds}/8` : "", w.wind || "", w.precipitation || "",
+              snowTypes || "", w.grainSize || "", w.trackHardness || "",
+              w.testQuality != null ? `${w.testQuality}/10` : "",
+              w.groupScope,
+            ];
+          }),
+          styles: { fontSize: 6.5 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      if (data.grindingRecords.length > 0) {
+        checkPage();
+        doc.setFontSize(13);
+        doc.text(`Grinding Records (${data.grindingRecords.length})`, 14, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [["Date", "Type", "Stone", "Pattern", "Notes", "Group"]],
+          body: data.grindingRecords.map((r: any) => [r.date || "", r.grindType || "", r.stone || "", r.pattern || "", r.notes || "", r.groupScope || ""]),
+          styles: { fontSize: 7 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      checkPage();
+      doc.setFontSize(13);
+      doc.text(`Login History (${data.loginLogs.length})`, 14, y);
+      y += 2;
+      autoTable(doc, {
+        startY: y,
+        head: [["Name", "Email", "IP Address", "Login Time"]],
+        body: data.loginLogs.map((l: any) => [l.name, l.email, l.ipAddress || "—", new Date(l.loginAt).toLocaleString()]),
+        styles: { fontSize: 8 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+      });
+
+      doc.save("glidr-full-export.pdf");
+      toast({ title: "PDF exported", description: `${data.tests.length} tests, ${data.weather.length} weather logs included.` });
+      try {
+        await apiRequest("POST", "/api/action-log", { action: "pdf_download", details: "Full data export" });
+        queryClient.invalidateQueries({ queryKey: ["/api/login-logs"] });
+      } catch (_) {}
+    } catch (err: any) {
+      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+    } finally {
+      setPdfLoading(false);
     }
-    y += 4;
-
-    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
-    doc.setFontSize(13);
-    doc.text("Weather Logs", 14, y);
-    y += 2;
-    autoTable(doc, {
-      startY: y,
-      head: [["Date", "Time", "Location", "Snow °C", "Air °C", "Snow Hum.", "Air Hum.", "Group"]],
-      body: allWeather.map((w: any) => [
-        w.date, w.time || "", w.location || "",
-        w.snowTemperatureC ?? "", w.airTemperatureC ?? "",
-        w.snowHumidityPct ?? "", w.airHumidityPct ?? "",
-        w.groupScope,
-      ]),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
-      margin: { left: 14, right: 14 },
-    });
-    y = (doc as any).lastAutoTable.finalY + 10;
-
-    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
-    doc.setFontSize(13);
-    doc.text("Login History", 14, y);
-    y += 2;
-    autoTable(doc, {
-      startY: y,
-      head: [["Name", "Email", "IP Address", "Login Time"]],
-      body: loginLogs.map((l) => [l.name, l.email, l.ipAddress || "—", new Date(l.loginAt).toLocaleString()]),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
-      margin: { left: 14, right: 14 },
-    });
-
-    doc.save("glidr-full-export.pdf");
-    try {
-      await apiRequest("POST", "/api/action-log", { action: "pdf_download", details: "Full data export" });
-      queryClient.invalidateQueries({ queryKey: ["/api/login-logs"] });
-    } catch (_) {}
   }
 
   const createGroupMutation = useMutation({
@@ -987,9 +1044,10 @@ export default function Admin() {
               variant="outline"
               data-testid="button-download-pdf"
               onClick={downloadFullPdf}
+              disabled={pdfLoading}
             >
-              <Download className="mr-2 h-4 w-4" />
-              Download PDF
+              {pdfLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+              {pdfLoading ? "Exporting…" : "Download PDF"}
             </Button>
           </div>
         </div>
@@ -1484,7 +1542,282 @@ export default function Admin() {
             </Card>
           </div>
         )}
+
+        {activeTab === "data" && <DataManagementTab />}
+
+        {activeTab === "danger" && <DangerZoneTab />}
       </div>
     </AppShell>
+  );
+}
+
+function DataManagementTab() {
+  const { toast } = useToast();
+  const { data: dbStats } = useQuery<any>({ queryKey: ["/api/admin/db-stats"] });
+
+  const [csvLoading, setCsvLoading] = useState(false);
+
+  async function downloadCsvExport() {
+    setCsvLoading(true);
+    try {
+      const exportRes = await apiRequest("GET", "/api/admin/full-export");
+      const data = await exportRes.json();
+
+      const csvRows: string[] = [];
+      csvRows.push("=== TESTS ===");
+      csvRows.push("ID,Date,Type,Location,Series,Group,Notes,Source");
+      for (const t of data.tests) {
+        const series = data.series.find((s: any) => s.id === t.seriesId);
+        csvRows.push([t.id, t.date, t.testType, `"${t.location || ""}"`, `"${series?.name || ""}"`, t.groupScope, `"${(t.notes || "").replace(/"/g, '""')}"`, t.testSkiSource || "series"].join(","));
+      }
+
+      csvRows.push("");
+      csvRows.push("=== WEATHER ===");
+      csvRows.push("ID,Date,Time,Location,Snow°C,Air°C,SnowHum%,AirHum%,Clouds,Wind,Precip,NaturalSnow,ArtificialSnow,GrainSize,TrackHardness,Quality,Group");
+      for (const w of data.weather) {
+        csvRows.push([w.id, w.date, w.time || "", `"${w.location || ""}"`, w.snowTemperatureC ?? "", w.airTemperatureC ?? "", w.snowHumidityPct ?? "", w.airHumidityPct ?? "", w.clouds ?? "", w.wind || "", w.precipitation || "", w.naturalSnow || "", w.artificialSnow || "", w.grainSize || "", w.trackHardness || "", w.testQuality ?? "", w.groupScope].join(","));
+      }
+
+      csvRows.push("");
+      csvRows.push("=== PRODUCTS ===");
+      csvRows.push("ID,Brand,Name,Type,Group");
+      for (const p of data.products) {
+        csvRows.push([p.id, `"${p.brand || ""}"`, `"${p.name}"`, p.type, p.groupScope].join(","));
+      }
+
+      const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "glidr-export.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "CSV exported" });
+    } catch (err: any) {
+      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+    } finally {
+      setCsvLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4" data-testid="tab-content-data">
+      <Card className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="card-db-stats">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-violet-50">
+            <Database className="h-4 w-4 text-violet-600" />
+          </div>
+          <h2 className="text-sm font-semibold text-gray-900">Database Overview</h2>
+        </div>
+        {dbStats ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+            {[
+              { label: "Users", val: dbStats.userCount },
+              { label: "Tests", val: dbStats.testCount },
+              { label: "Products", val: dbStats.productCount },
+              { label: "Series", val: dbStats.seriesCount },
+              { label: "Weather", val: dbStats.weatherCount },
+              { label: "Grinding", val: dbStats.grindingCount },
+              { label: "Athletes", val: dbStats.athleteCount },
+              { label: "Race Skis", val: dbStats.raceSkiCount },
+              { label: "Login Logs", val: dbStats.loginCount },
+              { label: "Activity Logs", val: dbStats.activityCount },
+              { label: "Active Sessions", val: dbStats.sessionCount },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2.5 text-center">
+                <div className="text-lg font-bold text-gray-900">{item.val ?? 0}</div>
+                <div className="text-[11px] text-gray-500">{item.label}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400">Loading...</p>
+        )}
+      </Card>
+
+      <Card className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="card-export-tools">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50">
+            <Download className="h-4 w-4 text-emerald-600" />
+          </div>
+          <h2 className="text-sm font-semibold text-gray-900">Export Tools</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+            <h3 className="text-sm font-medium text-gray-900 mb-1">Full PDF Report</h3>
+            <p className="text-xs text-gray-500 mb-3">Complete data export with all tests, results, weather, athletes, and history.</p>
+            <Button size="sm" variant="outline" data-testid="button-export-pdf-data" onClick={() => document.querySelector<HTMLButtonElement>('[data-testid="button-download-pdf"]')?.click()}>
+              <Download className="mr-2 h-3.5 w-3.5" /> Export PDF
+            </Button>
+          </div>
+          <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+            <h3 className="text-sm font-medium text-gray-900 mb-1">CSV Data Export</h3>
+            <p className="text-xs text-gray-500 mb-3">Export tests, weather, and products in CSV format for spreadsheets.</p>
+            <Button size="sm" variant="outline" data-testid="button-export-csv" onClick={downloadCsvExport} disabled={csvLoading}>
+              {csvLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
+              {csvLoading ? "Exporting…" : "Export CSV"}
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function DangerZoneTab() {
+  const { toast } = useToast();
+
+  const purgeActivityMutation = useMutation({
+    mutationFn: async (days: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - days);
+      const res = await apiRequest("POST", "/api/admin/purge-activity-logs", { beforeDate: d.toISOString() });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/activity"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/db-stats"] });
+      toast({ title: `${data.deleted} activity log entries removed` });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const purgeLoginMutation = useMutation({
+    mutationFn: async (days: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - days);
+      const res = await apiRequest("POST", "/api/admin/purge-login-logs", { beforeDate: d.toISOString() });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/login-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/db-stats"] });
+      toast({ title: `${data.deleted} login log entries removed` });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const forceLogoutAllMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/force-logout-all");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/db-stats"] });
+      toast({ title: "All other users have been logged out" });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="flex flex-col gap-4" data-testid="tab-content-danger">
+      <div className="rounded-2xl border-2 border-red-200 bg-red-50/30 p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-red-100">
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+          </div>
+          <h2 className="text-sm font-semibold text-red-900">Danger Zone</h2>
+          <span className="text-xs text-red-500">These actions are irreversible.</span>
+        </div>
+
+        <div className="space-y-4">
+          <div className="rounded-xl border border-red-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-900">Purge Old Activity Logs</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Remove activity log entries older than a specified period.</p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button
+                  size="sm" variant="outline"
+                  className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                  data-testid="button-purge-activity-90"
+                  disabled={purgeActivityMutation.isPending}
+                  onClick={() => {
+                    if (confirm("Delete all activity logs older than 90 days? This cannot be undone.")) {
+                      purgeActivityMutation.mutate(90);
+                    }
+                  }}
+                >
+                  <Eraser className="mr-1.5 h-3.5 w-3.5" /> 90+ days
+                </Button>
+                <Button
+                  size="sm" variant="outline"
+                  className="border-red-300 text-red-700 hover:bg-red-50"
+                  data-testid="button-purge-activity-30"
+                  disabled={purgeActivityMutation.isPending}
+                  onClick={() => {
+                    if (confirm("Delete all activity logs older than 30 days? This cannot be undone.")) {
+                      purgeActivityMutation.mutate(30);
+                    }
+                  }}
+                >
+                  <Eraser className="mr-1.5 h-3.5 w-3.5" /> 30+ days
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-red-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-900">Purge Old Login History</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Remove login history entries older than a specified period.</p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button
+                  size="sm" variant="outline"
+                  className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                  data-testid="button-purge-logins-90"
+                  disabled={purgeLoginMutation.isPending}
+                  onClick={() => {
+                    if (confirm("Delete all login logs older than 90 days? This cannot be undone.")) {
+                      purgeLoginMutation.mutate(90);
+                    }
+                  }}
+                >
+                  <Eraser className="mr-1.5 h-3.5 w-3.5" /> 90+ days
+                </Button>
+                <Button
+                  size="sm" variant="outline"
+                  className="border-red-300 text-red-700 hover:bg-red-50"
+                  data-testid="button-purge-logins-30"
+                  disabled={purgeLoginMutation.isPending}
+                  onClick={() => {
+                    if (confirm("Delete all login logs older than 30 days? This cannot be undone.")) {
+                      purgeLoginMutation.mutate(30);
+                    }
+                  }}
+                >
+                  <Eraser className="mr-1.5 h-3.5 w-3.5" /> 30+ days
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-red-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-900">Force Logout All Users</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Terminate all active sessions except your own. Users will need to log in again.</p>
+              </div>
+              <Button
+                size="sm" variant="outline"
+                className="border-red-300 text-red-700 hover:bg-red-50 flex-shrink-0"
+                data-testid="button-force-logout-all"
+                disabled={forceLogoutAllMutation.isPending}
+                onClick={() => {
+                  if (confirm("Force logout ALL other users? They will need to log in again.")) {
+                    forceLogoutAllMutation.mutate();
+                  }
+                }}
+              >
+                <UserX className="mr-1.5 h-3.5 w-3.5" /> Logout All
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

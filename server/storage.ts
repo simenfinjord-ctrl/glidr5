@@ -120,6 +120,12 @@ export interface IStorage {
   deleteTestSkiRegrind(id: number): Promise<boolean>;
 
   countTable(tableName: string): Promise<number>;
+  listAllTestsForTeam(teamId: number): Promise<Test[]>;
+  listAllEntriesForTests(testIds: number[]): Promise<TestEntry[]>;
+  listAllWeatherForTeam(teamId: number): Promise<any[]>;
+  listAthleteIdsForUser(userId: number): Promise<number[]>;
+  purgeOldActivityLogs(beforeDate: string): Promise<number>;
+  purgeOldLoginLogs(beforeDate: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -610,6 +616,35 @@ export class DatabaseStorage implements IStorage {
     if (!table) return 0;
     const result = await db.select({ count: sql<number>`count(*)` }).from(table);
     return Number(result[0]?.count ?? 0);
+  }
+
+  async listAllTestsForTeam(teamId: number): Promise<Test[]> {
+    return db.select().from(tests).where(eq(tests.teamId, teamId));
+  }
+
+  async listAllEntriesForTests(testIds: number[]): Promise<TestEntry[]> {
+    if (testIds.length === 0) return [];
+    return db.select().from(testEntries).where(inArray(testEntries.testId, testIds));
+  }
+
+  async listAllWeatherForTeam(teamId: number): Promise<any[]> {
+    return db.select().from(dailyWeather).where(eq(dailyWeather.teamId, teamId));
+  }
+
+  async listAthleteIdsForUser(userId: number): Promise<number[]> {
+    const accessRows = await db.select().from(athleteAccess).where(eq(athleteAccess.userId, userId));
+    const createdByMe = await db.select({ id: athletes.id }).from(athletes).where(eq(athletes.createdById, userId));
+    return Array.from(new Set([...accessRows.map((r) => r.athleteId), ...createdByMe.map((a) => a.id)]));
+  }
+
+  async purgeOldActivityLogs(beforeDate: string): Promise<number> {
+    const result = await db.delete(activityLogs).where(sql`${activityLogs.createdAt} < ${beforeDate}`).returning();
+    return result.length;
+  }
+
+  async purgeOldLoginLogs(beforeDate: string): Promise<number> {
+    const result = await db.delete(loginLogs).where(sql`${loginLogs.loginAt} < ${beforeDate}`).returning();
+    return result.length;
   }
 
 }

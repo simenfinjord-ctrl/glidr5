@@ -476,7 +476,19 @@ export async function registerRoutes(
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
     const list = await storage.listTests(u.groupScope, u.isAdmin, teamId);
-    res.json(u.permissions.grinding !== "none" ? list : list.filter((t: any) => t.testType !== "Grind"));
+    let result = u.permissions.grinding !== "none" ? list : list.filter((t: any) => t.testType !== "Grind");
+    if (!u.isAdmin && u.permissions.raceskis !== "none") {
+      const athleteIds = await storage.listAthleteIdsForUser(u.id);
+      if (athleteIds.length > 0) {
+        const existingIds = new Set(result.map((t: any) => t.id));
+        const allTeamTests = await storage.listAllTestsForTeam(teamId);
+        const athleteTests = allTeamTests.filter((t: any) =>
+          t.testSkiSource === "raceskis" && t.athleteId && athleteIds.includes(t.athleteId) && !existingIds.has(t.id)
+        );
+        result = [...result, ...athleteTests];
+      }
+    }
+    res.json(result);
   });
 
   app.post("/api/tests", requirePermission("tests", "edit"), async (req, res) => {
@@ -568,7 +580,11 @@ export async function registerRoutes(
     const test = await storage.getTest(id);
     if (!test) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
-    if (!userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope)) {
+    let hasAccess = userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope);
+    if (!hasAccess && (test as any).testSkiSource === "raceskis" && (test as any).athleteId) {
+      hasAccess = await storage.hasAthleteAccess((test as any).athleteId, u.id, u.isAdmin);
+    }
+    if (!hasAccess) {
       return res.status(403).json({ message: "Forbidden" });
     }
     if ((test as any).testType === "Grind" && u.permissions.grinding === "none") {
@@ -582,7 +598,11 @@ export async function registerRoutes(
     const existing = await storage.getTest(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
-    if (!userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope)) {
+    let hasAccess = userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope);
+    if (!hasAccess && (existing as any).testSkiSource === "raceskis" && (existing as any).athleteId) {
+      hasAccess = await storage.hasAthleteAccess((existing as any).athleteId, u.id, u.isAdmin);
+    }
+    if (!hasAccess) {
       return res.status(403).json({ message: "Forbidden" });
     }
     const testSkiSource = req.body.testSkiSource === "raceskis" ? "raceskis" : (existing as any).testSkiSource || "series";
@@ -657,7 +677,11 @@ export async function registerRoutes(
     const existing = await storage.getTest(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
-    if (!userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope)) {
+    let hasAccess = userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope);
+    if (!hasAccess && (existing as any).testSkiSource === "raceskis" && (existing as any).athleteId) {
+      hasAccess = await storage.hasAthleteAccess((existing as any).athleteId, u.id, u.isAdmin);
+    }
+    if (!hasAccess) {
       return res.status(403).json({ message: "Forbidden" });
     }
     await storage.deleteTest(id);
@@ -676,7 +700,11 @@ export async function registerRoutes(
     const u = userInfo(req);
     const test = await storage.getTest(testId);
     if (!test) return res.status(404).json({ message: "Not found" });
-    if (!userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope)) {
+    let hasAccess = userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope);
+    if (!hasAccess && (test as any).testSkiSource === "raceskis" && (test as any).athleteId) {
+      hasAccess = await storage.hasAthleteAccess((test as any).athleteId, u.id, u.isAdmin);
+    }
+    if (!hasAccess) {
       return res.status(403).json({ message: "Forbidden" });
     }
     if ((test as any).testType === "Grind" && u.permissions.grinding === "none") {
@@ -937,6 +965,99 @@ export async function registerRoutes(
       storage.countTable("activityLogs"),
     ]);
     res.json({ userCount, testCount, productCount, seriesCount, weatherCount, grindingCount, loginCount, activityCount });
+  });
+
+  app.get("/api/admin/full-export", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const teamId = getActiveTeamId(req);
+    const [allTests, allWeather, allSeries, allProducts, allUsers, allGroups, allLoginLogs, allActivities, allAthletes] = await Promise.all([
+      storage.listAllTestsForTeam(teamId),
+      storage.listAllWeatherForTeam(teamId),
+      storage.listSeries(u.groupScope, true, teamId),
+      storage.listProducts(u.groupScope, true, teamId),
+      storage.listUsers(teamId),
+      storage.listGroups(teamId),
+      storage.listLoginLogs(),
+      storage.listActivityLogs(5000),
+      storage.listAthletes(u.id, true, teamId),
+    ]);
+    const testIds = allTests.map((t: any) => t.id);
+    const allEntries = await storage.listAllEntriesForTests(testIds);
+    const entriesByTest: Record<number, any[]> = {};
+    for (const e of allEntries) {
+      if (!entriesByTest[e.testId]) entriesByTest[e.testId] = [];
+      entriesByTest[e.testId].push(e);
+    }
+    const allRaceSkis: any[] = [];
+    for (const ath of allAthletes) {
+      const skis = await storage.listRaceSkis(ath.id);
+      allRaceSkis.push(...skis.map((s) => ({ ...s, athleteName: ath.name })));
+    }
+    const grindingRecords = await storage.listGrindingRecords(u.groupScope, true, teamId);
+    res.json({
+      tests: allTests,
+      entriesByTest,
+      weather: allWeather,
+      series: allSeries,
+      products: allProducts,
+      users: allUsers.map(({ password, ...rest }) => rest),
+      groups: allGroups,
+      loginLogs: allLoginLogs,
+      activities: allActivities,
+      athletes: allAthletes,
+      raceSkis: allRaceSkis,
+      grindingRecords,
+    });
+  });
+
+  app.post("/api/admin/purge-activity-logs", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const beforeDate = req.body.beforeDate;
+    if (!beforeDate) return res.status(400).json({ message: "beforeDate required" });
+    const count = await storage.purgeOldActivityLogs(beforeDate);
+    res.json({ deleted: count });
+  });
+
+  app.post("/api/admin/purge-login-logs", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const beforeDate = req.body.beforeDate;
+    if (!beforeDate) return res.status(400).json({ message: "beforeDate required" });
+    const count = await storage.purgeOldLoginLogs(beforeDate);
+    res.json({ deleted: count });
+  });
+
+  app.post("/api/admin/force-logout-all", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const { pool } = await import("./db");
+    const mySessionId = (req.session as any)?.id;
+    await (pool as any).query(`DELETE FROM user_sessions WHERE sess::jsonb -> 'passport' ->> 'user' != $1`, [String(u.id)]);
+    res.json({ ok: true });
+  });
+
+  app.get("/api/admin/db-stats", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const { pool } = await import("./db");
+    const sessionResult = await (pool as any).query(`SELECT count(*) as count FROM user_sessions`);
+    const sessionCount = parseInt(sessionResult.rows[0]?.count || "0");
+    const teamId = getActiveTeamId(req);
+    const [userCount, testCount, productCount, seriesCount, weatherCount, grindingCount, loginCount, activityCount, athleteCount, raceSkiCount] = await Promise.all([
+      storage.countTable("users"),
+      storage.countTable("tests"),
+      storage.countTable("products"),
+      storage.countTable("testSkiSeries"),
+      storage.countTable("dailyWeather"),
+      storage.countTable("grindingRecords"),
+      storage.countTable("loginLogs"),
+      storage.countTable("activityLogs"),
+      storage.countTable("athletes"),
+      storage.countTable("raceSkis"),
+    ]);
+    res.json({ sessionCount, userCount, testCount, productCount, seriesCount, weatherCount, grindingCount, loginCount, activityCount, athleteCount, raceSkiCount });
   });
 
   // Admin force logout user (delete their sessions)

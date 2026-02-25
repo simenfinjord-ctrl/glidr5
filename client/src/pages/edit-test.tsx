@@ -537,11 +537,15 @@ export default function EditTest() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Glide">Glide</SelectItem>
-                            <SelectItem value="Structure">Structure</SelectItem>
+                            {testSkiSource !== "raceskis" && (
+                              <>
+                                <SelectItem value="Glide">Glide</SelectItem>
+                                <SelectItem value="Structure">Structure</SelectItem>
+                              </>
+                            )}
                             <SelectItem value="Classic">Classic</SelectItem>
                             <SelectItem value="Skating">Skating</SelectItem>
-                            {can("grinding") && (
+                            {can("grinding") && testSkiSource !== "raceskis" && (
                               <SelectItem value="Grind">Grind</SelectItem>
                             )}
                           </SelectContent>

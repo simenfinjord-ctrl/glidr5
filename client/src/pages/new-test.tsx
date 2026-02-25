@@ -365,7 +365,15 @@ export default function NewTest() {
                       <FormLabel>Ski source</FormLabel>
                       <Select
                         value={testSkiSource}
-                        onValueChange={(v) => setTestSkiSource(v as "series" | "raceskis")}
+                        onValueChange={(v) => {
+                          setTestSkiSource(v as "series" | "raceskis");
+                          if (v === "raceskis") {
+                            const currentType = form.getValues("testType");
+                            if (["Glide", "Structure", "Grind"].includes(currentType)) {
+                              form.setValue("testType", "Classic");
+                            }
+                          }
+                        }}
                       >
                         <SelectTrigger data-testid="select-ski-source">
                           <SelectValue />
@@ -437,11 +445,15 @@ export default function NewTest() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Glide">Glide</SelectItem>
-                            <SelectItem value="Structure">Structure</SelectItem>
+                            {testSkiSource !== "raceskis" && (
+                              <>
+                                <SelectItem value="Glide">Glide</SelectItem>
+                                <SelectItem value="Structure">Structure</SelectItem>
+                              </>
+                            )}
                             <SelectItem value="Classic">Classic</SelectItem>
                             <SelectItem value="Skating">Skating</SelectItem>
-                            {can("grinding") && (
+                            {can("grinding") && testSkiSource !== "raceskis" && (
                               <SelectItem value="Grind">Grind</SelectItem>
                             )}
                           </SelectContent>

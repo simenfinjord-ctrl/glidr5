@@ -296,8 +296,8 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
           <FormItem><FormLabel>Password</FormLabel><FormControl><Input {...field} type="password" data-testid="input-user-password" /></FormControl><FormMessage /></FormItem>
         )} />
         {isSuperAdmin && teams.length > 1 && (
-          <FormItem>
-            <FormLabel>Team</FormLabel>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Team</label>
             <Select
               value={String(selectedTeamId)}
               onValueChange={(v) => {
@@ -307,14 +307,14 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
                 form.setValue("groupScope", "");
               }}
             >
-              <FormControl><SelectTrigger data-testid="select-create-team"><SelectValue /></SelectTrigger></FormControl>
+              <SelectTrigger data-testid="select-create-team"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {teams.map((t) => (
                   <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </FormItem>
+          </div>
         )}
         <FormField control={form.control} name="groupScope" render={({ field }) => (
           <FormItem>
@@ -429,8 +429,8 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
           <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} data-testid="input-edit-email" /></FormControl><FormMessage /></FormItem>
         )} />
         {isSuperAdmin && teams.length > 1 && (
-          <FormItem>
-            <FormLabel>Team</FormLabel>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Team</label>
             <Select
               value={String(selectedTeamId)}
               onValueChange={(v) => {
@@ -440,14 +440,14 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
                 form.setValue("groupScope", "");
               }}
             >
-              <FormControl><SelectTrigger data-testid="select-edit-team"><SelectValue /></SelectTrigger></FormControl>
+              <SelectTrigger data-testid="select-edit-team"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {teams.map((t) => (
                   <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </FormItem>
+          </div>
         )}
         <FormField control={form.control} name="groupScope" render={({ field }) => (
           <FormItem>

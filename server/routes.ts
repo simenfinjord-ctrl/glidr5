@@ -144,11 +144,23 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  app.post("/api/teams/:id/set-default", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const id = parseInt(req.params.id);
+    const team = await storage.getTeam(id);
+    if (!team) return res.status(404).json({ message: "Team not found" });
+    await storage.setDefaultTeam(id);
+    res.json({ ok: true });
+  });
+
   app.delete("/api/teams/:id", requireAuth, async (req, res) => {
     const u = req.user!;
     if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
     const id = parseInt(req.params.id);
-    if (id === 1) return res.status(400).json({ message: "Cannot delete default team" });
+    const team = await storage.getTeam(id);
+    if (!team) return res.status(404).json({ message: "Not found" });
+    if (team.isDefault === 1) return res.status(400).json({ message: "Cannot delete the default team. Set another team as default first." });
     const deleted = await storage.deleteTeam(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
     res.json({ ok: true });

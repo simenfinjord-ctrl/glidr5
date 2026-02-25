@@ -41,6 +41,7 @@ type ApiTeam = {
   id: number;
   name: string;
   createdAt: string;
+  isDefault: number;
 };
 
 const AREA_LABELS: Record<string, string> = {
@@ -1163,6 +1164,20 @@ export default function Admin() {
     },
   });
 
+  const setDefaultTeamMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/teams/${id}/set-default`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      toast({ title: "Default team updated" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
   if (!user) return null;
 
   if (!canManage) {
@@ -1603,7 +1618,7 @@ export default function Admin() {
                       <>
                         <div className="min-w-0 flex-1">
                           <span className="text-sm font-medium text-gray-900">{team.name}</span>
-                          {team.id === 1 && (
+                          {team.isDefault === 1 && (
                             <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">Default</span>
                           )}
                           <div className="text-[10px] text-gray-400 mt-0.5">
@@ -1611,6 +1626,18 @@ export default function Admin() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
+                          {team.isDefault !== 1 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              data-testid={`button-set-default-team-${team.id}`}
+                              onClick={() => setDefaultTeamMutation.mutate(team.id)}
+                              disabled={setDefaultTeamMutation.isPending}
+                              title="Set as default"
+                            >
+                              <Shield className="h-4 w-4 text-blue-500" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -1619,7 +1646,7 @@ export default function Admin() {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          {team.id !== 1 && (
+                          {team.isDefault !== 1 && (
                             <Button
                               variant="ghost"
                               size="sm"

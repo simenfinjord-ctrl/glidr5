@@ -37,6 +37,7 @@ export const teams = pgTable("teams", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   createdAt: text("created_at").notNull(),
+  isDefault: integer("is_default").notNull().default(0),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });

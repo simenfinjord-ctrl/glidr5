@@ -41,6 +41,7 @@ export interface IStorage {
   createTeam(t: InsertTeam): Promise<Team>;
   updateTeam(id: number, data: Partial<InsertTeam>): Promise<Team | undefined>;
   deleteTeam(id: number): Promise<boolean>;
+  setDefaultTeam(id: number): Promise<void>;
 
   listGroups(teamId?: number): Promise<Group[]>;
   createGroup(g: InsertGroup): Promise<Group>;
@@ -187,6 +188,11 @@ export class DatabaseStorage implements IStorage {
   async deleteTeam(id: number): Promise<boolean> {
     const result = await db.delete(teams).where(eq(teams.id, id)).returning();
     return result.length > 0;
+  }
+
+  async setDefaultTeam(id: number): Promise<void> {
+    await db.update(teams).set({ isDefault: 0 }).where(eq(teams.isDefault, 1));
+    await db.update(teams).set({ isDefault: 1 }).where(eq(teams.id, id));
   }
 
   async listGroups(teamId?: number): Promise<Group[]> {

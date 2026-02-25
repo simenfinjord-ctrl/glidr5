@@ -274,7 +274,8 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/users") });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/admin/stats") });
       toast({ title: "User created" });
       onDone();
     },
@@ -410,7 +411,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/users") });
       toast({ title: "User updated" });
       onDone();
     },
@@ -1038,7 +1039,7 @@ export default function Admin() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/groups") });
       setNewGroupName("");
       setNewGroupTeamId(undefined);
       toast({ title: "Group created" });
@@ -1054,7 +1055,7 @@ export default function Admin() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/groups") });
       setEditingGroup(null);
       toast({ title: "Group renamed" });
     },
@@ -1069,7 +1070,7 @@ export default function Admin() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/groups") });
       toast({ title: "Group deleted" });
     },
     onError: (e: Error) => {
@@ -1083,7 +1084,8 @@ export default function Admin() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/users") });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/admin/stats") });
       toast({ title: "User deleted" });
     },
     onError: (e: Error) => {
@@ -1110,7 +1112,7 @@ export default function Admin() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/users") });
       toast({ title: "User status updated" });
     },
     onError: (e: Error) => {

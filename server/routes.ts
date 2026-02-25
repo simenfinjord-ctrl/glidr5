@@ -780,6 +780,7 @@ export async function registerRoutes(
     if (req.body.isTeamAdmin !== undefined) data.isTeamAdmin = req.body.isTeamAdmin ? 1 : 0;
     if (req.body.permissions !== undefined) data.permissions = JSON.stringify(sanitizePermissions(req.body.permissions));
     if (req.body.isActive !== undefined) data.isActive = req.body.isActive ? 1 : 0;
+    if (u.isAdmin === 1 && req.body.teamId !== undefined) data.teamId = req.body.teamId;
     const updated = await storage.updateUser(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });
     const { password, ...safe } = updated;

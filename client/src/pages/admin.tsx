@@ -241,6 +241,7 @@ const editSchema = z.object({
   isTeamAdmin: z.boolean(),
   permissions: z.string(),
   isActive: z.boolean(),
+  teamId: z.number().optional(),
 });
 
 const resetSchema = z.object({
@@ -346,10 +347,17 @@ function CreateUserForm({ onDone, allGroups, teamId }: { onDone: () => void; all
   );
 }
 
-function EditUserForm({ user, onDone, allGroups }: { user: ApiUser; onDone: () => void; allGroups: ApiGroup[] }) {
-  const groupNames = allGroups.filter((g) => g.teamId === user.teamId).map((g) => g.name);
+function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDone: () => void; allGroups: ApiGroup[]; teams: ApiTeam[] }) {
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
+  const [selectedTeamId, setSelectedTeamId] = useState(user.teamId);
+  const teamChanged = selectedTeamId !== user.teamId;
+  const { data: teamGroups } = useQuery<ApiGroup[]>({
+    queryKey: [`/api/groups?teamScope=${selectedTeamId}`],
+    enabled: teamChanged && isSuperAdmin,
+  });
+  const effectiveGroups = teamChanged && teamGroups ? teamGroups : allGroups;
+  const groupNames = effectiveGroups.filter((g) => g.teamId === selectedTeamId).map((g) => g.name);
   const [perms, setPerms] = useState<UserPermissions>(parsePermissions(user.permissions));
   const form = useForm<z.infer<typeof editSchema>>({
     resolver: zodResolver(editSchema),
@@ -361,6 +369,7 @@ function EditUserForm({ user, onDone, allGroups }: { user: ApiUser; onDone: () =
       isTeamAdmin: !!user.isTeamAdmin,
       permissions: user.permissions || JSON.stringify(DEFAULT_PERMISSIONS),
       isActive: !!user.isActive,
+      teamId: user.teamId,
     },
   });
 
@@ -390,6 +399,27 @@ function EditUserForm({ user, onDone, allGroups }: { user: ApiUser; onDone: () =
         <FormField control={form.control} name="email" render={({ field }) => (
           <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} data-testid="input-edit-email" /></FormControl><FormMessage /></FormItem>
         )} />
+        {isSuperAdmin && teams.length > 1 && (
+          <FormItem>
+            <FormLabel>Team</FormLabel>
+            <Select
+              value={String(selectedTeamId)}
+              onValueChange={(v) => {
+                const newTeamId = parseInt(v);
+                setSelectedTeamId(newTeamId);
+                form.setValue("teamId", newTeamId);
+                form.setValue("groupScope", "");
+              }}
+            >
+              <FormControl><SelectTrigger data-testid="select-edit-team"><SelectValue /></SelectTrigger></FormControl>
+              <SelectContent>
+                {teams.map((t) => (
+                  <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormItem>
+        )}
         <FormField control={form.control} name="groupScope" render={({ field }) => (
           <FormItem>
             <FormLabel>Groups (select one or more)</FormLabel>
@@ -1368,7 +1398,7 @@ export default function Admin() {
             <Dialog open={!!editUser} onOpenChange={(v) => { if (!v) setEditUser(undefined); }}>
               <DialogContent className="sm:max-w-xl">
                 <DialogHeader><DialogTitle>Edit user</DialogTitle></DialogHeader>
-                {editUser && <EditUserForm user={editUser} onDone={() => setEditUser(undefined)} allGroups={apiGroups} />}
+                {editUser && <EditUserForm user={editUser} onDone={() => setEditUser(undefined)} allGroups={apiGroups} teams={teams} />}
               </DialogContent>
             </Dialog>
 

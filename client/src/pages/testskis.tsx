@@ -314,6 +314,7 @@ export default function TestSkis() {
   const [editing, setEditing] = useState<Series | undefined>();
   const [sortAZ, setSortAZ] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
+  const [nameSearch, setNameSearch] = useState("");
   const [confirmArchive, setConfirmArchive] = useState<Series | undefined>();
   const [confirmDelete, setConfirmDelete] = useState<Series | undefined>();
 
@@ -329,9 +330,11 @@ export default function TestSkis() {
   }, [user, groups]);
 
   const sortedSeries = useMemo(() => {
-    if (!sortAZ) return series;
-    return [...series].sort((a, b) => a.name.localeCompare(b.name, "nb"));
-  }, [series, sortAZ]);
+    const n = nameSearch.trim().toLowerCase();
+    let result = n ? series.filter((s) => s.name.toLowerCase().includes(n)) : series;
+    if (sortAZ) result = [...result].sort((a, b) => a.name.localeCompare(b.name, "nb"));
+    return result;
+  }, [series, sortAZ, nameSearch]);
 
   const archiveMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -383,11 +386,18 @@ export default function TestSkis() {
           <div>
             <h1 className="text-2xl sm:text-3xl">Testskis</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-testskis-subtitle">
-              {series.length} series{archived.length > 0 ? ` · ${archived.length} archived` : ""} · Create and manage test ski series
+              {sortedSeries.length}{sortedSeries.length !== series.length ? ` of ${series.length}` : ""} series{archived.length > 0 ? ` · ${archived.length} archived` : ""}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
+            <Input
+              value={nameSearch}
+              onChange={(e) => setNameSearch(e.target.value)}
+              placeholder="Search name…"
+              className="h-9 w-[180px]"
+              data-testid="input-search-series"
+            />
             {archived.length > 0 && (
               <Button
                 variant={showArchive ? "secondary" : "outline"}

@@ -350,6 +350,7 @@ export default function Products() {
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<ProductCategory | "All">("All");
   const [brand, setBrand] = useState("");
+  const [nameSearch, setNameSearch] = useState("");
   const [editingProduct, setEditingProduct] = useState<Product | undefined>();
   const [editingDetailsProduct, setEditingDetailsProduct] = useState<Product | undefined>();
   const [deletingProduct, setDeletingProduct] = useState<Product | undefined>();
@@ -375,12 +376,14 @@ export default function Products() {
 
   const filtered = useMemo(() => {
     const b = brand.trim().toLowerCase();
+    const n = nameSearch.trim().toLowerCase();
     return products.filter((p) => {
       const okCategory = category === "All" ? true : p.category === category;
       const okBrand = b ? p.brand.toLowerCase().includes(b) : true;
-      return okCategory && okBrand;
+      const okName = n ? p.name.toLowerCase().includes(n) : true;
+      return okCategory && okBrand && okName;
     });
-  }, [products, category, brand]);
+  }, [products, category, brand, nameSearch]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -453,6 +456,14 @@ export default function Products() {
                   data-testid="input-filter-brand"
                 />
               </div>
+              <div className="min-w-[220px]">
+                <Input
+                  value={nameSearch}
+                  onChange={(e) => setNameSearch(e.target.value)}
+                  placeholder="Name contains…"
+                  data-testid="input-filter-name"
+                />
+              </div>
             </div>
 
             <Button
@@ -461,6 +472,7 @@ export default function Products() {
               onClick={() => {
                 setCategory("All");
                 setBrand("");
+                setNameSearch("");
               }}
             >
               Clear

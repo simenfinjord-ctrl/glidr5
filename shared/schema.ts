@@ -298,6 +298,7 @@ export const raceSkis = pgTable("race_skis", {
   grind: text("grind"),
   heights: text("heights"),
   year: text("year"),
+  customParams: text("custom_params"),
   createdAt: text("created_at").notNull(),
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),

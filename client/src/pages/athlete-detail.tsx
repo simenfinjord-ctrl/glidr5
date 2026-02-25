@@ -65,6 +65,7 @@ type RaceSki = {
   grind: string | null;
   heights: string | null;
   year: string | null;
+  customParams: string | null;
   createdAt: string;
   createdById: number;
   createdByName: string;
@@ -128,6 +129,7 @@ type RaceSkiTestRow = {
   roundResults: { result: number | null; rank: number | null }[];
   feelingRank: number | null;
   kickRank: number | null;
+  [key: string]: any;
 };
 
 type WeatherItem = {
@@ -182,7 +184,18 @@ export default function AthleteDetail() {
   const [testRows, setTestRows] = useState<RaceSkiTestRow[]>([]);
   const [distanceLabels, setDistanceLabels] = useState<string[]>([""]);
 
-  const allSkiParams = [
+  const [customFieldDefs, setCustomFieldDefs] = useState<{ key: string; label: string }[]>(() => {
+    try {
+      const stored = localStorage.getItem("glidr-raceski-custom-fields");
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return [];
+  });
+  useEffect(() => {
+    localStorage.setItem("glidr-raceski-custom-fields", JSON.stringify(customFieldDefs));
+  }, [customFieldDefs]);
+
+  const builtInTestParams: { key: string; label: string }[] = [
     { key: "brand", label: "Brand" },
     { key: "base", label: "Base" },
     { key: "grind", label: "Grind" },
@@ -191,10 +204,11 @@ export default function AthleteDetail() {
     { key: "mold", label: "Mold" },
     { key: "serialNumber", label: "Serial" },
     { key: "year", label: "Year" },
-  ] as const;
-  type SkiParamKey = typeof allSkiParams[number]["key"];
-  const defaultParams: SkiParamKey[] = ["brand", "base", "grind", "heights"];
-  const [activeParams, setActiveParams] = useState<SkiParamKey[]>(() => {
+  ];
+  const allSkiParams = [...builtInTestParams, ...customFieldDefs];
+
+  const defaultParams: string[] = ["brand", "base", "grind", "heights"];
+  const [activeParams, setActiveParams] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem("glidr-raceski-params");
       if (stored) {
@@ -224,14 +238,14 @@ export default function AthleteDetail() {
     [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
     setActiveParams(next);
   };
-  const removeParam = (key: SkiParamKey) => {
+  const removeParam = (key: string) => {
     setActiveParams(activeParams.filter((k) => k !== key));
   };
-  const addParam = (key: SkiParamKey) => {
+  const addParam = (key: string) => {
     setActiveParams([...activeParams, key]);
   };
 
-  const getParamLabel = (key: SkiParamKey) =>
+  const getParamLabel = (key: string) =>
     allSkiParams.find((p) => p.key === key)?.label ?? key;
 
   const [skiForm, setSkiForm] = useState({
@@ -246,8 +260,9 @@ export default function AthleteDetail() {
     heights: "",
     year: "",
   });
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
-  const allSkiFormFields = [
+  const builtInSkiFields: { key: string; label: string }[] = [
     { key: "serialNumber", label: "Serial Number" },
     { key: "brand", label: "Brand" },
     { key: "discipline", label: "Discipline" },
@@ -257,10 +272,13 @@ export default function AthleteDetail() {
     { key: "grind", label: "Grind" },
     { key: "heights", label: "Heights" },
     { key: "year", label: "Year" },
-  ] as const;
-  type SkiFormFieldKey = typeof allSkiFormFields[number]["key"];
-  const defaultFormFields: SkiFormFieldKey[] = ["serialNumber", "brand", "discipline", "construction", "mold", "base", "grind", "heights", "year"];
-  const [activeFormFields, setActiveFormFields] = useState<SkiFormFieldKey[]>(() => {
+  ];
+  const builtInKeys = builtInSkiFields.map((f) => f.key);
+
+  const allSkiFormFields = [...builtInSkiFields, ...customFieldDefs];
+
+  const defaultFormFields = ["serialNumber", "brand", "discipline", "construction", "mold", "base", "grind", "heights", "year"];
+  const [activeFormFields, setActiveFormFields] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem("glidr-raceski-form-fields");
       if (stored) {
@@ -271,14 +289,16 @@ export default function AthleteDetail() {
     return defaultFormFields;
   });
   const [editFormFieldsOpen, setEditFormFieldsOpen] = useState(false);
+  const [newCustomFieldName, setNewCustomFieldName] = useState("");
 
   useEffect(() => {
     localStorage.setItem("glidr-raceski-form-fields", JSON.stringify(activeFormFields));
   }, [activeFormFields]);
 
   const inactiveFormFields = allSkiFormFields.filter((f) => !activeFormFields.includes(f.key));
-  const getFormFieldLabel = (key: SkiFormFieldKey) =>
+  const getFormFieldLabel = (key: string) =>
     allSkiFormFields.find((f) => f.key === key)?.label ?? key;
+  const isCustomField = (key: string) => !builtInKeys.includes(key);
   const moveFormFieldUp = (idx: number) => {
     if (idx <= 0) return;
     const next = [...activeFormFields];
@@ -291,11 +311,24 @@ export default function AthleteDetail() {
     [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
     setActiveFormFields(next);
   };
-  const removeFormField = (key: SkiFormFieldKey) => {
+  const removeFormField = (key: string) => {
     setActiveFormFields(activeFormFields.filter((k) => k !== key));
   };
-  const addFormField = (key: SkiFormFieldKey) => {
+  const addFormField = (key: string) => {
     setActiveFormFields([...activeFormFields, key]);
+  };
+  const addCustomField = () => {
+    const label = newCustomFieldName.trim();
+    if (!label) return;
+    const key = `custom_${label.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+    if (allSkiFormFields.some((f) => f.key === key)) return;
+    setCustomFieldDefs([...customFieldDefs, { key, label }]);
+    setActiveFormFields([...activeFormFields, key]);
+    setNewCustomFieldName("");
+  };
+  const deleteCustomField = (key: string) => {
+    setCustomFieldDefs(customFieldDefs.filter((f) => f.key !== key));
+    setActiveFormFields(activeFormFields.filter((k) => k !== key));
   };
 
   const [regrindForm, setRegrindForm] = useState({
@@ -347,21 +380,29 @@ export default function AthleteDetail() {
   const isOwnerOrAdmin =
     user?.isAdmin || (athlete && user?.id === athlete.createdById);
 
+  function buildSkiBody(data: typeof skiForm) {
+    const cp: Record<string, string> = {};
+    for (const [k, v] of Object.entries(customFieldValues)) {
+      if (v.trim()) cp[k] = v.trim();
+    }
+    return {
+      skiId: data.skiId,
+      serialNumber: data.serialNumber.trim() || null,
+      brand: data.brand.trim() || null,
+      discipline: data.discipline,
+      construction: data.construction.trim() || null,
+      mold: data.mold.trim() || null,
+      base: data.base.trim() || null,
+      grind: data.grind.trim() || null,
+      heights: data.discipline === "Classic" ? data.heights.trim() || null : null,
+      year: data.year.trim() || null,
+      customParams: Object.keys(cp).length > 0 ? JSON.stringify(cp) : null,
+    };
+  }
+
   const createSkiMutation = useMutation({
     mutationFn: async (data: typeof skiForm) => {
-      const body = {
-        skiId: data.skiId,
-        serialNumber: data.serialNumber.trim() || null,
-        brand: data.brand.trim() || null,
-        discipline: data.discipline,
-        construction: data.construction.trim() || null,
-        mold: data.mold.trim() || null,
-        base: data.base.trim() || null,
-        grind: data.grind.trim() || null,
-        heights: data.discipline === "Classic" ? data.heights.trim() || null : null,
-        year: data.year.trim() || null,
-      };
-      const res = await apiRequest("POST", `/api/athletes/${athleteId}/skis`, body);
+      const res = await apiRequest("POST", `/api/athletes/${athleteId}/skis`, buildSkiBody(data));
       return res.json();
     },
     onSuccess: () => {
@@ -369,6 +410,7 @@ export default function AthleteDetail() {
       toast({ title: "Ski added" });
       setSkiDialogOpen(false);
       resetSkiForm();
+      setCustomFieldValues({});
     },
     onError: (e) => {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
@@ -377,19 +419,7 @@ export default function AthleteDetail() {
 
   const updateSkiMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: typeof skiForm }) => {
-      const body = {
-        skiId: data.skiId,
-        serialNumber: data.serialNumber.trim() || null,
-        brand: data.brand.trim() || null,
-        discipline: data.discipline,
-        construction: data.construction.trim() || null,
-        mold: data.mold.trim() || null,
-        base: data.base.trim() || null,
-        grind: data.grind.trim() || null,
-        heights: data.discipline === "Classic" ? data.heights.trim() || null : null,
-        year: data.year.trim() || null,
-      };
-      const res = await apiRequest("PUT", `/api/race-skis/${id}`, body);
+      const res = await apiRequest("PUT", `/api/race-skis/${id}`, buildSkiBody(data));
       return res.json();
     },
     onSuccess: () => {
@@ -573,12 +603,19 @@ export default function AthleteDetail() {
       heights: ski.heights || "",
       year: ski.year || "",
     });
+    try {
+      const cp = ski.customParams ? JSON.parse(ski.customParams) : {};
+      setCustomFieldValues(cp);
+    } catch {
+      setCustomFieldValues({});
+    }
     setSkiDialogOpen(true);
   }
 
   function openAddSki() {
     setEditingSki(null);
     resetSkiForm();
+    setCustomFieldValues({});
     setSkiDialogOpen(true);
   }
 
@@ -666,6 +703,7 @@ export default function AthleteDetail() {
               heights: ski.heights,
               serialNumber: ski.serialNumber,
               year: ski.year,
+              ...(ski.customParams ? (() => { try { return JSON.parse(ski.customParams); } catch { return {}; } })() : {}),
               roundResults: distanceLabels.map(() => ({ result: null, rank: null })),
               feelingRank: null,
               kickRank: null,
@@ -1061,7 +1099,7 @@ export default function AthleteDetail() {
                                   data-testid={`param-active-${key}`}
                                 >
                                   <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
-                                  <span className="text-sm flex-1">{getParamLabel(key)}</span>
+                                  <span className="text-sm flex-1">{getParamLabel(key)}{!builtInTestParams.some(p => p.key === key) && <span className="ml-1 text-[10px] bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 px-1 rounded">custom</span>}</span>
                                   <button
                                     type="button"
                                     className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
@@ -1102,7 +1140,7 @@ export default function AthleteDetail() {
                                       className="flex items-center gap-1.5 rounded-lg border border-dashed bg-background/50 px-2 py-1.5"
                                       data-testid={`param-inactive-${p.key}`}
                                     >
-                                      <span className="text-sm text-muted-foreground flex-1">{p.label}</span>
+                                      <span className="text-sm text-muted-foreground flex-1">{p.label}{!builtInTestParams.some(bp => bp.key === p.key) && <span className="ml-1 text-[10px] bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 px-1 rounded">custom</span>}</span>
                                       <button
                                         type="button"
                                         className="p-0.5 text-emerald-400 hover:text-emerald-300"
@@ -1350,6 +1388,7 @@ export default function AthleteDetail() {
 
             {activeFormFields.map((fieldKey) => {
               if (fieldKey === "heights" && skiForm.discipline !== "Classic") return null;
+              const custom = isCustomField(fieldKey);
               if (fieldKey === "discipline") {
                 return (
                   <div key={fieldKey}>
@@ -1373,8 +1412,14 @@ export default function AthleteDetail() {
                 <div key={fieldKey}>
                   <label className="mb-1 block text-sm font-medium">{getFormFieldLabel(fieldKey)}</label>
                   <Input
-                    value={(skiForm as any)[fieldKey] ?? ""}
-                    onChange={(e) => setSkiForm((f) => ({ ...f, [fieldKey]: e.target.value }))}
+                    value={custom ? (customFieldValues[fieldKey] ?? "") : ((skiForm as any)[fieldKey] ?? "")}
+                    onChange={(e) => {
+                      if (custom) {
+                        setCustomFieldValues((prev) => ({ ...prev, [fieldKey]: e.target.value }));
+                      } else {
+                        setSkiForm((f) => ({ ...f, [fieldKey]: e.target.value }));
+                      }
+                    }}
                     data-testid={`input-ski-${fieldKey}`}
                   />
                 </div>
@@ -1422,6 +1467,9 @@ export default function AthleteDetail() {
                     >
                       <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
                       <span className="text-sm flex-1">{getFormFieldLabel(key)}</span>
+                      {isCustomField(key) && (
+                        <span className="text-[10px] text-muted-foreground/60 bg-muted/50 rounded px-1">custom</span>
+                      )}
                       <button
                         type="button"
                         className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
@@ -1442,8 +1490,8 @@ export default function AthleteDetail() {
                       </button>
                       <button
                         type="button"
-                        className="p-0.5 text-red-400 hover:text-red-300"
-                        onClick={() => removeFormField(key)}
+                        className={cn("p-0.5", isCustomField(key) ? "text-red-400 hover:text-red-300" : "text-red-400 hover:text-red-300")}
+                        onClick={() => isCustomField(key) ? deleteCustomField(key) : removeFormField(key)}
                         data-testid={`button-form-field-remove-${key}`}
                       >
                         <X className="h-3.5 w-3.5" />
@@ -1476,6 +1524,32 @@ export default function AthleteDetail() {
                     </div>
                   </>
                 )}
+
+                <div className="border-t pt-3">
+                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Add custom parameter</div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={newCustomFieldName}
+                      onChange={(e) => setNewCustomFieldName(e.target.value)}
+                      placeholder="Parameter name..."
+                      className="h-8 text-sm"
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomField(); } }}
+                      data-testid="input-new-custom-field"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 shrink-0"
+                      onClick={addCustomField}
+                      disabled={!newCustomFieldName.trim()}
+                      data-testid="button-add-custom-field"
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      Add
+                    </Button>
+                  </div>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
@@ -1699,6 +1773,14 @@ function SkiCard({
                 <span>Heights: {ski.heights}</span>
               )}
               {ski.year && <span>Year: {ski.year}</span>}
+              {(() => {
+                try {
+                  const cp = ski.customParams ? JSON.parse(ski.customParams) : {};
+                  return Object.entries(cp).map(([k, v]) => (
+                    v ? <span key={k}>{k.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}: {String(v)}</span> : null
+                  ));
+                } catch { return null; }
+              })()}
             </div>
           </div>
         </div>

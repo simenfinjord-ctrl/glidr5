@@ -128,7 +128,7 @@ function PermissionsMatrix({
   );
 }
 
-type ApiGroup = { id: number; name: string };
+type ApiGroup = { id: number; name: string; teamId: number };
 
 type LoginLog = {
   id: number;
@@ -247,10 +247,11 @@ const resetSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames: string[] }) {
+function CreateUserForm({ onDone, allGroups, teamId }: { onDone: () => void; allGroups: ApiGroup[]; teamId: number }) {
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
   const [perms, setPerms] = useState<UserPermissions>({ ...DEFAULT_PERMISSIONS });
+  const groupNames = allGroups.filter((g) => g.teamId === teamId).map((g) => g.name);
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
     defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, isTeamAdmin: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true },
@@ -345,7 +346,8 @@ function CreateUserForm({ onDone, groupNames }: { onDone: () => void; groupNames
   );
 }
 
-function EditUserForm({ user, onDone, groupNames }: { user: ApiUser; onDone: () => void; groupNames: string[] }) {
+function EditUserForm({ user, onDone, allGroups }: { user: ApiUser; onDone: () => void; allGroups: ApiGroup[] }) {
+  const groupNames = allGroups.filter((g) => g.teamId === user.teamId).map((g) => g.name);
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
   const [perms, setPerms] = useState<UserPermissions>(parsePermissions(user.permissions));
@@ -594,6 +596,10 @@ export default function Admin() {
   });
 
   const groupNames = apiGroups.map((g) => g.name);
+
+  const effectiveTeamId = adminTeamScope === "all" || adminTeamScope === "current"
+    ? (user?.teamId ?? 1)
+    : parseInt(adminTeamScope);
 
   const scopeLabel = adminTeamScope === "all"
     ? "All teams"
@@ -1248,7 +1254,7 @@ export default function Admin() {
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-xl">
                   <DialogHeader><DialogTitle>Create user</DialogTitle></DialogHeader>
-                  <CreateUserForm onDone={() => setCreateOpen(false)} groupNames={groupNames} />
+                  <CreateUserForm onDone={() => setCreateOpen(false)} allGroups={apiGroups} teamId={effectiveTeamId} />
                 </DialogContent>
               </Dialog>
             </div>
@@ -1362,7 +1368,7 @@ export default function Admin() {
             <Dialog open={!!editUser} onOpenChange={(v) => { if (!v) setEditUser(undefined); }}>
               <DialogContent className="sm:max-w-xl">
                 <DialogHeader><DialogTitle>Edit user</DialogTitle></DialogHeader>
-                {editUser && <EditUserForm user={editUser} onDone={() => setEditUser(undefined)} groupNames={groupNames} />}
+                {editUser && <EditUserForm user={editUser} onDone={() => setEditUser(undefined)} allGroups={apiGroups} />}
               </DialogContent>
             </Dialog>
 

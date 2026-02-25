@@ -593,6 +593,8 @@ export default function Admin() {
   const [newGroupTeamId, setNewGroupTeamId] = useState<number | undefined>(undefined);
   const [editingGroup, setEditingGroup] = useState<ApiGroup | null>(null);
   const [editingGroupName, setEditingGroupName] = useState("");
+  const [editingTeam, setEditingTeam] = useState<ApiTeam | null>(null);
+  const [editingTeamName, setEditingTeamName] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
 
   const [adminTeamScope, setAdminTeamScope] = useState<string>("current");
@@ -1565,44 +1567,75 @@ export default function Admin() {
                     className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2.5"
                     data-testid={`row-team-${team.id}`}
                   >
-                    <div className="min-w-0 flex-1">
-                      <span className="text-sm font-medium text-gray-900">{team.name}</span>
-                      {team.id === 1 && (
-                        <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">Default</span>
-                      )}
-                      <div className="text-[10px] text-gray-400 mt-0.5">
-                        {users.filter((u) => u.teamId === team.id).length} users
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        data-testid={`button-edit-team-${team.id}`}
-                        onClick={() => {
-                          const newName = prompt("Team name:", team.name);
-                          if (newName?.trim()) {
-                            updateTeamMutation.mutate({ id: team.id, name: newName.trim() });
-                          }
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      {team.id !== 1 && (
+                    {editingTeam?.id === team.id ? (
+                      <div className="flex flex-1 items-center gap-2">
+                        <Input
+                          value={editingTeamName}
+                          onChange={(e) => setEditingTeamName(e.target.value)}
+                          className="h-8 text-sm"
+                          data-testid="input-edit-team-name"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && editingTeamName.trim()) {
+                              updateTeamMutation.mutate({ id: team.id, name: editingTeamName.trim() });
+                              setEditingTeam(null);
+                            }
+                            if (e.key === "Escape") setEditingTeam(null);
+                          }}
+                        />
                         <Button
                           variant="ghost"
                           size="sm"
-                          data-testid={`button-delete-team-${team.id}`}
+                          data-testid="button-save-team"
+                          disabled={!editingTeamName.trim() || updateTeamMutation.isPending}
                           onClick={() => {
-                            if (confirm(`Delete team "${team.name}"? All data belonging to this team will be orphaned.`)) {
-                              deleteTeamMutation.mutate(team.id);
-                            }
+                            updateTeamMutation.mutate({ id: team.id, name: editingTeamName.trim() });
+                            setEditingTeam(null);
                           }}
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Check className="h-4 w-4 text-emerald-600" />
                         </Button>
-                      )}
-                    </div>
+                        <Button variant="ghost" size="sm" onClick={() => setEditingTeam(null)} data-testid="button-cancel-edit-team">
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="min-w-0 flex-1">
+                          <span className="text-sm font-medium text-gray-900">{team.name}</span>
+                          {team.id === 1 && (
+                            <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">Default</span>
+                          )}
+                          <div className="text-[10px] text-gray-400 mt-0.5">
+                            {users.filter((u) => u.teamId === team.id).length} users
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            data-testid={`button-edit-team-${team.id}`}
+                            onClick={() => { setEditingTeam(team); setEditingTeamName(team.name); }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          {team.id !== 1 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              data-testid={`button-delete-team-${team.id}`}
+                              onClick={() => {
+                                if (confirm(`Delete team "${team.name}"? All data belonging to this team will be orphaned.`)) {
+                                  deleteTeamMutation.mutate(team.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>

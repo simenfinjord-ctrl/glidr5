@@ -173,7 +173,8 @@ export async function registerRoutes(
 
   app.post("/api/groups", requireAuth, async (req, res) => {
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
-    const teamId = getActiveTeamId(req);
+    const u = req.user!;
+    const teamId = u.isAdmin === 1 && req.body.teamId ? req.body.teamId : getActiveTeamId(req);
     const name = req.body.name?.trim();
     if (!name) return res.status(400).json({ message: "Name is required" });
     try {

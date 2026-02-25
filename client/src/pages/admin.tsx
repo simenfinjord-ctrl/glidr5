@@ -231,6 +231,7 @@ const userSchema = z.object({
   isTeamAdmin: z.boolean(),
   permissions: z.string(),
   isActive: z.boolean(),
+  teamId: z.number().optional(),
 });
 
 const editSchema = z.object({
@@ -248,14 +249,21 @@ const resetSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-function CreateUserForm({ onDone, allGroups, teamId }: { onDone: () => void; allGroups: ApiGroup[]; teamId: number }) {
+function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: () => void; allGroups: ApiGroup[]; defaultTeamId: number; teams: ApiTeam[] }) {
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
   const [perms, setPerms] = useState<UserPermissions>({ ...DEFAULT_PERMISSIONS });
-  const groupNames = allGroups.filter((g) => g.teamId === teamId).map((g) => g.name);
+  const [selectedTeamId, setSelectedTeamId] = useState(defaultTeamId);
+  const teamChanged = selectedTeamId !== defaultTeamId;
+  const { data: teamGroups } = useQuery<ApiGroup[]>({
+    queryKey: [`/api/groups?teamScope=${selectedTeamId}`],
+    enabled: teamChanged && isSuperAdmin,
+  });
+  const effectiveGroups = teamChanged && teamGroups ? teamGroups : allGroups;
+  const groupNames = effectiveGroups.filter((g) => g.teamId === selectedTeamId).map((g) => g.name);
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
-    defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, isTeamAdmin: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true },
+    defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, isTeamAdmin: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true, teamId: defaultTeamId },
   });
 
   const selectedGroups = parseGroups(form.watch("groupScope"));
@@ -287,6 +295,27 @@ function CreateUserForm({ onDone, allGroups, teamId }: { onDone: () => void; all
         <FormField control={form.control} name="password" render={({ field }) => (
           <FormItem><FormLabel>Password</FormLabel><FormControl><Input {...field} type="password" data-testid="input-user-password" /></FormControl><FormMessage /></FormItem>
         )} />
+        {isSuperAdmin && teams.length > 1 && (
+          <FormItem>
+            <FormLabel>Team</FormLabel>
+            <Select
+              value={String(selectedTeamId)}
+              onValueChange={(v) => {
+                const newTeamId = parseInt(v);
+                setSelectedTeamId(newTeamId);
+                form.setValue("teamId", newTeamId);
+                form.setValue("groupScope", "");
+              }}
+            >
+              <FormControl><SelectTrigger data-testid="select-create-team"><SelectValue /></SelectTrigger></FormControl>
+              <SelectContent>
+                {teams.map((t) => (
+                  <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormItem>
+        )}
         <FormField control={form.control} name="groupScope" render={({ field }) => (
           <FormItem>
             <FormLabel>Groups (select one or more)</FormLabel>
@@ -561,6 +590,7 @@ export default function Admin() {
   const [editUser, setEditUser] = useState<ApiUser | undefined>();
   const [resetUser, setResetUser] = useState<ApiUser | undefined>();
   const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupTeamId, setNewGroupTeamId] = useState<number | undefined>(undefined);
   const [editingGroup, setEditingGroup] = useState<ApiGroup | null>(null);
   const [editingGroupName, setEditingGroupName] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
@@ -1003,13 +1033,14 @@ export default function Admin() {
   }
 
   const createGroupMutation = useMutation({
-    mutationFn: async (name: string) => {
-      const res = await apiRequest("POST", "/api/groups", { name });
+    mutationFn: async ({ name, teamId }: { name: string; teamId?: number }) => {
+      const res = await apiRequest("POST", "/api/groups", { name, teamId });
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
       setNewGroupName("");
+      setNewGroupTeamId(undefined);
       toast({ title: "Group created" });
     },
     onError: (e: Error) => {
@@ -1284,7 +1315,7 @@ export default function Admin() {
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-xl">
                   <DialogHeader><DialogTitle>Create user</DialogTitle></DialogHeader>
-                  <CreateUserForm onDone={() => setCreateOpen(false)} allGroups={apiGroups} teamId={effectiveTeamId} />
+                  <CreateUserForm onDone={() => setCreateOpen(false)} allGroups={apiGroups} defaultTeamId={effectiveTeamId} teams={teams} />
                 </DialogContent>
               </Dialog>
             </div>
@@ -1485,19 +1516,35 @@ export default function Admin() {
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
                   placeholder="New group name…"
-                  className="h-8 text-sm"
+                  className="h-8 text-sm flex-1"
                   data-testid="input-new-group"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && newGroupName.trim()) {
-                      createGroupMutation.mutate(newGroupName.trim());
+                      createGroupMutation.mutate({ name: newGroupName.trim(), teamId: newGroupTeamId });
                     }
                   }}
                 />
+                {isSuperAdmin && teams.length > 1 && (
+                  <Select
+                    value={newGroupTeamId ? String(newGroupTeamId) : "default"}
+                    onValueChange={(v) => setNewGroupTeamId(v === "default" ? undefined : parseInt(v))}
+                  >
+                    <SelectTrigger className="h-8 w-[140px] text-sm" data-testid="select-new-group-team">
+                      <SelectValue placeholder="Team" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Current team</SelectItem>
+                      {teams.map((t) => (
+                        <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 <Button
                   size="sm"
                   data-testid="button-add-group"
                   disabled={!newGroupName.trim() || createGroupMutation.isPending}
-                  onClick={() => createGroupMutation.mutate(newGroupName.trim())}
+                  onClick={() => createGroupMutation.mutate({ name: newGroupName.trim(), teamId: newGroupTeamId })}
                 >
                   <Plus className="mr-1 h-4 w-4" />
                   Add

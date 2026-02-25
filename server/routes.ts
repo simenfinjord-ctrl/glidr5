@@ -1193,6 +1193,7 @@ export async function registerRoutes(
       grind: req.body.grind || null,
       heights: req.body.heights || null,
       year: req.body.year || null,
+      customParams: req.body.customParams || null,
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
@@ -1218,6 +1219,7 @@ export async function registerRoutes(
     if (req.body.grind !== undefined) data.grind = req.body.grind;
     if (req.body.heights !== undefined) data.heights = req.body.heights;
     if (req.body.year !== undefined) data.year = req.body.year;
+    if (req.body.customParams !== undefined) data.customParams = req.body.customParams;
     const updated = await storage.updateRaceSki(id, data);
     res.json(updated);
   });

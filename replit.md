@@ -1,97 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Full-stack React web application to manage ski testing and documentation. Features multi-team/multi-tenant architecture, role-based access control (Super Admin, Team Admin, Members with granular permissions), group-based data scoping, databases for TestSkis series, Products (glide/topping/structure tools), DailyWeather, and Tests with live-ranking entry.
-
-## Architecture
-- **Frontend**: React 19 + Vite + TanStack Query + wouter routing + shadcn/ui + Tailwind CSS v4
-- **Backend**: Express 5 + session-based auth (passport-local, connect-pg-simple for PostgreSQL session store) + Drizzle ORM
-- **Database**: PostgreSQL (Neon-backed via Replit)
-- **Design**: Space Grotesk (display) + Inter (UI), clean light theme with subtle shadows and professional color palette
-
-## Key Files
-- `shared/schema.ts` — Drizzle schema: teams, users, test_ski_series, products, daily_weather, tests, test_entries, login_logs, grinding_records, grinding_sheets, activity_logs, athletes, athlete_access, race_skis, race_ski_regrinds, test_ski_regrinds
-- `server/db.ts` — PostgreSQL connection pool
-- `server/storage.ts` — DatabaseStorage class (IStorage interface with full CRUD)
-- `server/auth.ts` — Passport-local session auth setup
-- `server/routes.ts` — All API routes under /api
-- `server/seed.ts` — Seeds demo users + data on first run
-- `client/src/lib/auth.ts` — useAuth() hook (TanStack Query)
-- `client/src/lib/queryClient.ts` — API request helpers
-- `client/src/App.tsx` — Router with auth guard
-- `client/src/components/app-shell.tsx` — Layout with nav
-- `client/src/pages/test-detail.tsx` — Test detail view with results table, CSV export, Hide/Show toggle
-- `client/src/pages/dashboard.tsx` — Dashboard with stats, top products, recent tests
-- `client/src/pages/` — All page components
-- `client/src/lib/i18n.tsx` — Internationalization provider (unused, language feature removed)
-- `client/src/pages/race-skis.tsx` — Race skis athlete listing
-- `client/src/pages/athlete-detail.tsx` — Athlete detail with skis, regrinds, access management
-- `client/src/pages/suggestions.tsx` — AI-powered product recommendations
-
-## Seeded Accounts
-| Email | Group | Admin |
-|---|---|---|
-| admin@fastski.local | Admin | Yes |
-
-Note: Only the admin account is seeded. All other users, series, products, and weather data must be created manually through the app.
-
-## API Endpoints
-- `POST /api/auth/login` — Login
-- `POST /api/auth/logout` — Logout
-- `GET /api/auth/me` — Current user
-- `GET/POST /api/groups` — List/create groups
-- `PUT /api/groups/:id` — Rename group (admin only)
-- `DELETE /api/groups/:id` — Delete group (admin only)
-- `GET/POST /api/series` — List/create series
-- `PUT /api/series/:id` — Update series
-- `GET/POST /api/products` — List/create products
-- `PUT /api/products/:id` — Update product (admin only, for group assignment)
-- `DELETE /api/products/:id` — Delete product (admin only)
-- `GET/POST /api/weather` — List/create weather
-- `PUT /api/weather/:id` — Update weather
-- `GET /api/weather/find?date=&location=` — Find weather
-- `GET /api/tests/:id` — Get single test
-- `GET/POST /api/tests` — List/create tests (with entries)
-- `GET /api/tests/:id/entries` — List test entries (scope-checked)
-- `GET/POST /api/users` — List/create users (admin only)
-- `PUT /api/users/:id` — Update user (admin only)
-- `DELETE /api/users/:id` — Delete user (admin only)
-- `POST /api/users/:id/reset-password` — Reset password (admin only)
-- `GET /api/login-logs` — Login history (admin only)
-- `POST /api/action-log` — Log user actions (PDF downloads etc.)
-- `GET/POST /api/grinding-sheets` — List/create grinding spreadsheet links
-- `PUT /api/grinding-sheets/:id` — Update grinding sheet
-- `DELETE /api/grinding-sheets/:id` — Delete grinding sheet
-- `GET/POST /api/athletes` — List/create athletes (race skis module)
-- `PUT /api/athletes/:id` — Update athlete
-- `DELETE /api/athletes/:id` — Delete athlete
-- `GET /api/athletes/:id/skis` — List race skis for athlete
-- `POST /api/athletes/:athleteId/skis` — Create race ski
-- `GET/PUT /api/athletes/:id/access` — Get/set athlete access (shared users)
-- `PUT /api/race-skis/:id` — Update race ski
-- `DELETE /api/race-skis/:id` — Delete race ski
-- `GET /api/race-skis/:id/regrinds` — List race ski regrinds
-- `POST /api/race-skis/:id/regrinds` — Create race ski regrind
-- `DELETE /api/race-ski-regrinds/:id` — Delete race ski regrind
-- `GET/POST /api/test-ski-regrinds/:seriesId` — List/create test ski regrinds
-- `PUT /api/users/me/language` — Update user language preference
-- `POST /api/suggestions` — Get AI-powered product recommendations
-- `GET /api/admin/full-export` — Bulk data export (all tests+entries, weather, products, users, athletes, race skis, race ski regrinds, test ski regrinds, grinding records, grinding sheets, activity logs, login history)
-- `GET /api/admin/db-stats` — Database table counts and session stats
-- `POST /api/admin/purge-activity-logs` — Delete old activity logs (beforeDate)
-- `POST /api/admin/purge-login-logs` — Delete old login logs (beforeDate)
-- `POST /api/admin/force-logout-all` — Terminate all sessions except current user
-- `POST /api/admin/force-logout/:userId` — Terminate specific user session
-
-## Weather Data Model
-The daily_weather table stores comprehensive snow and weather conditions:
-- **Core**: date, time, location, groupScope
-- **Temperature/Humidity**: snowTemperatureC, airTemperatureC, snowHumidityPct (ref. Doser), airHumidityPct (%rH)
-- **Weather**: clouds (0-8 oktas), visibility, wind, precipitation
-- **Snow type**: artificialSnow + naturalSnow (both can be set simultaneously): Falling new, New, Irreg. dir. new, Irreg. dir. transf., Transformed
-- **Snow characteristics**: grainSize (Extra fine → Very coarse), snowHumidityType (Dry → Slush), trackHardness (Very soft → Ice)
-- **Quality**: testQuality (1-10 scale)
-- Old `snowType` field retained as nullable for backward compatibility
+Glidr is a full-stack React web application designed to manage ski testing and documentation. It supports a multi-team/multi-tenant architecture with role-based access control (Super Admin, Team Admin, Members) and group-based data scoping. The platform facilitates the management of TestSkis series, Products (glide, topping, structure tools), DailyWeather, and Tests with live-ranking entry. The project aims to provide a robust solution for ski testing, enhancing efficiency and data analysis for ski teams.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -99,7 +9,6 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Rank badges use gold (1st), silver (2nd), bronze (3rd) medal colors
 - Admin menu hidden from non-admin users
 - Test series can be sorted alphabetically (A-Z toggle)
-- "lane" field removed from data model
 - Product autocomplete filters by test type (Glide shows Glide+Topping; Structure shows Structure tool)
 - Series dropdown filters by test type (only shows series matching selected Glide/Structure)
 - Weather auto-links to tests by matching date + location + groupScope
@@ -133,7 +42,6 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Brand and product name displayed with space separator (no em dash)
 - Test ski series have optional Brand and Ski type fields
 - Weather logs can be deleted (with confirmation dialog)
-- DELETE /api/weather/:id — Delete weather log
 - Series detail page (/testskis/:id) shows all tests for a series with results tables
 - Tests page has day picker: select a date to see all tests stacked with inline results tables
 - Quick day select buttons show recent test dates for fast navigation
@@ -170,6 +78,7 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - All users with athlete access can view AND edit tests associated with that athlete (not just creator)
 - Athlete access sharing via athlete_access join table (creator always has access, admin has full access)
 - Race ski regrinds auto-update ski's current grind field
+- Race ski test entry has "Edit Parameters" button: configure which ski columns (Brand, Base, Grind, Heights, Construction, Mold, Serial, Year) are visible and their order; persisted to localStorage
 - Language feature removed: no I18nProvider, no language selector, English-only
 - AI Suggestions page: weather parameter form → OpenAI-powered product recommendations based on historical test data (DB-only, group-scoped)
 - Test ski regrind tracking archive per series
@@ -186,3 +95,26 @@ The daily_weather table stores comprehensive snow and weather conditions:
 - Admin page has Data Management tab: database overview (all table counts + active sessions), export tools (PDF + CSV)
 - Admin page has Danger Zone tab: purge old activity/login logs (30/90+ days), force logout all users
 - Admin overview stats include Athletes and Race Skis counts
+
+## System Architecture
+The application follows a client-server architecture. The frontend is built with React 19, Vite, TanStack Query for data fetching, wouter for routing, shadcn/ui for UI components, and Tailwind CSS v4 for styling. The design prioritizes a clean, light theme with a professional color palette and uses Space Grotesk and Inter fonts.
+
+The backend is powered by Express 5, utilizing session-based authentication with `passport-local` and `connect-pg-simple` for PostgreSQL session storage. Drizzle ORM is used for database interactions. Data is stored in a PostgreSQL database.
+
+Core features include:
+- **Authentication**: Session-based with `passport-local`, supporting login, logout, and user session management.
+- **Authorization**: Role-based access control (Super Admin, Team Admin, Member) and granular permissions managed via a JSON text column in the `users` table, enforced both server-side and client-side.
+- **Multi-tenancy**: A `teamId` column scopes all data, ensuring isolation between different teams/organizations. Super Admins can manage and switch between teams.
+- **Data Models**: Comprehensive Drizzle schemas for various entities including `teams`, `users`, `test_ski_series`, `products`, `daily_weather`, `tests`, `test_entries`, `athletes`, `race_skis`, and `regrinds`.
+- **API Design**: A RESTful API (`/api/*`) handles all data operations, with dedicated endpoints for authentication, user management, data CRUD for various entities, and administrative tasks.
+- **UI/UX**: Focus on a streamlined user experience with features like live ranking, intelligent filtering for products and series, offline data entry capabilities, and analytical dashboards.
+- **Data Export**: Support for CSV and PDF exports of various datasets, including a bulk data export for administrators.
+- **AI Integration**: A dedicated page for AI-powered product recommendations based on historical test data.
+- **Grinding Module**: Functionality to log grinding records and embed Google Sheets for grinding management.
+
+## External Dependencies
+- **PostgreSQL**: Primary database for all application data, with Neon-backed hosting via Replit.
+- **OpenAI**: Used for generating AI-powered product recommendations.
+- **Google Sheets**: Integrated for embedding grinding spreadsheets via iframes.
+- **jsPDF + autoTable**: Used for client-side PDF report generation.
+- **Recharts**: Utilized for data visualization and analytics on the dashboard.

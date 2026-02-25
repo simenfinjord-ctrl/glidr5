@@ -13,6 +13,10 @@ import {
   X,
   MapPin,
   Calendar,
+  Settings2,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -116,8 +120,11 @@ type RaceSkiTestRow = {
   brand: string | null;
   base: string | null;
   construction: string | null;
+  mold: string | null;
   grind: string | null;
   heights: string | null;
+  serialNumber: string | null;
+  year: string | null;
   roundResults: { result: number | null; rank: number | null }[];
   feelingRank: number | null;
   kickRank: number | null;
@@ -174,6 +181,58 @@ export default function AthleteDetail() {
   const [selectedSkiIds, setSelectedSkiIds] = useState<Set<number>>(new Set());
   const [testRows, setTestRows] = useState<RaceSkiTestRow[]>([]);
   const [distanceLabels, setDistanceLabels] = useState<string[]>([""]);
+
+  const allSkiParams = [
+    { key: "brand", label: "Brand" },
+    { key: "base", label: "Base" },
+    { key: "grind", label: "Grind" },
+    { key: "heights", label: "Heights" },
+    { key: "construction", label: "Construction" },
+    { key: "mold", label: "Mold" },
+    { key: "serialNumber", label: "Serial" },
+    { key: "year", label: "Year" },
+  ] as const;
+  type SkiParamKey = typeof allSkiParams[number]["key"];
+  const defaultParams: SkiParamKey[] = ["brand", "base", "grind", "heights"];
+  const [activeParams, setActiveParams] = useState<SkiParamKey[]>(() => {
+    try {
+      const stored = localStorage.getItem("glidr-raceski-params");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return defaultParams;
+  });
+  const [editParamsOpen, setEditParamsOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("glidr-raceski-params", JSON.stringify(activeParams));
+  }, [activeParams]);
+
+  const inactiveParams = allSkiParams.filter((p) => !activeParams.includes(p.key));
+
+  const moveParamUp = (idx: number) => {
+    if (idx <= 0) return;
+    const next = [...activeParams];
+    [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+    setActiveParams(next);
+  };
+  const moveParamDown = (idx: number) => {
+    if (idx >= activeParams.length - 1) return;
+    const next = [...activeParams];
+    [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+    setActiveParams(next);
+  };
+  const removeParam = (key: SkiParamKey) => {
+    setActiveParams(activeParams.filter((k) => k !== key));
+  };
+  const addParam = (key: SkiParamKey) => {
+    setActiveParams([...activeParams, key]);
+  };
+
+  const getParamLabel = (key: SkiParamKey) =>
+    allSkiParams.find((p) => p.key === key)?.label ?? key;
 
   const [skiForm, setSkiForm] = useState({
     skiId: "",
@@ -551,8 +610,11 @@ export default function AthleteDetail() {
               brand: ski.brand,
               base: ski.base,
               construction: ski.construction,
+              mold: ski.mold,
               grind: ski.grind,
               heights: ski.heights,
+              serialNumber: ski.serialNumber,
+              year: ski.year,
               roundResults: distanceLabels.map(() => ({ result: null, rank: null })),
               feelingRank: null,
               kickRank: null,
@@ -916,14 +978,104 @@ export default function AthleteDetail() {
                   {/* Test Entry Table */}
                   {testRows.length > 0 && (
                     <div className="overflow-x-auto rounded-2xl border bg-card/50">
+                      <div className="flex items-center justify-end px-3 pt-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                          onClick={() => setEditParamsOpen(true)}
+                          data-testid="button-edit-parameters"
+                        >
+                          <Settings2 className="h-3.5 w-3.5 mr-1" />
+                          Edit parameters
+                        </Button>
+                      </div>
+
+                      <Dialog open={editParamsOpen} onOpenChange={setEditParamsOpen}>
+                        <DialogContent className="max-w-sm">
+                          <DialogHeader>
+                            <DialogTitle>Edit Parameters</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-3">
+                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active columns</div>
+                            {activeParams.length === 0 && (
+                              <p className="text-sm text-muted-foreground">No parameters selected</p>
+                            )}
+                            <div className="space-y-1">
+                              {activeParams.map((key, idx) => (
+                                <div
+                                  key={key}
+                                  className="flex items-center gap-1.5 rounded-lg border bg-background px-2 py-1.5"
+                                  data-testid={`param-active-${key}`}
+                                >
+                                  <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                                  <span className="text-sm flex-1">{getParamLabel(key)}</span>
+                                  <button
+                                    type="button"
+                                    className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                                    onClick={() => moveParamUp(idx)}
+                                    disabled={idx === 0}
+                                    data-testid={`button-param-up-${key}`}
+                                  >
+                                    <ArrowUp className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                                    onClick={() => moveParamDown(idx)}
+                                    disabled={idx === activeParams.length - 1}
+                                    data-testid={`button-param-down-${key}`}
+                                  >
+                                    <ArrowDown className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="p-0.5 text-red-400 hover:text-red-300"
+                                    onClick={() => removeParam(key)}
+                                    data-testid={`button-param-remove-${key}`}
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+
+                            {inactiveParams.length > 0 && (
+                              <>
+                                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider pt-2">Available</div>
+                                <div className="space-y-1">
+                                  {inactiveParams.map((p) => (
+                                    <div
+                                      key={p.key}
+                                      className="flex items-center gap-1.5 rounded-lg border border-dashed bg-background/50 px-2 py-1.5"
+                                      data-testid={`param-inactive-${p.key}`}
+                                    >
+                                      <span className="text-sm text-muted-foreground flex-1">{p.label}</span>
+                                      <button
+                                        type="button"
+                                        className="p-0.5 text-emerald-400 hover:text-emerald-300"
+                                        onClick={() => addParam(p.key)}
+                                        data-testid={`button-param-add-${p.key}`}
+                                      >
+                                        <Plus className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
                       <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${400 + distanceLabels.length * 200}px` }}>
                         <thead>
                           <tr className="text-left text-xs text-muted-foreground">
                             <th className="sticky left-0 z-10 bg-card/80 px-3 py-3">Ski ID</th>
-                            <th className="px-2 py-3">Brand</th>
-                            <th className="px-2 py-3">Base</th>
-                            <th className="px-2 py-3">Grind</th>
-                            <th className="px-2 py-3">Heights</th>
+                            {activeParams.map((key) => (
+                              <th key={key} className="px-2 py-3">{getParamLabel(key)}</th>
+                            ))}
                             {distanceLabels.map((label, roundIdx) => (
                               <th key={roundIdx} className="px-3 py-3" colSpan={2}>
                                 <div className="flex items-center gap-1">
@@ -980,10 +1132,9 @@ export default function AthleteDetail() {
                           </tr>
                           <tr className="text-left text-[10px] text-muted-foreground/70 uppercase tracking-wider">
                             <th className="sticky left-0 z-10 bg-card/80"></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
+                            {activeParams.map((key) => (
+                              <th key={key}></th>
+                            ))}
                             {distanceLabels.map((_, roundIdx) => (
                               <React.Fragment key={roundIdx}>
                                 <th className="px-3 pb-1">Result (cm)</th>
@@ -1030,18 +1181,11 @@ export default function AthleteDetail() {
                                     {row.skiId}
                                   </div>
                                 </td>
-                                <td className="px-2 py-2 text-xs text-muted-foreground" data-testid={`text-test-brand-${row.raceSkiId}`}>
-                                  {row.brand || "—"}
-                                </td>
-                                <td className="px-2 py-2 text-xs text-muted-foreground" data-testid={`text-test-base-${row.raceSkiId}`}>
-                                  {row.base || "—"}
-                                </td>
-                                <td className="px-2 py-2 text-xs text-muted-foreground" data-testid={`text-test-grind-${row.raceSkiId}`}>
-                                  {row.grind || "—"}
-                                </td>
-                                <td className="px-2 py-2 text-xs text-muted-foreground" data-testid={`text-test-heights-${row.raceSkiId}`}>
-                                  {row.heights || "—"}
-                                </td>
+                                {activeParams.map((key) => (
+                                  <td key={key} className="px-2 py-2 text-xs text-muted-foreground" data-testid={`text-test-${key}-${row.raceSkiId}`}>
+                                    {(row as any)[key] || "—"}
+                                  </td>
+                                ))}
                                 {row.roundResults.map((rr, roundIdx) => (
                                   <React.Fragment key={roundIdx}>
                                     <td className="px-3 py-2">

@@ -119,7 +119,7 @@ export interface IStorage {
   createTestSkiRegrind(r: InsertTestSkiRegrind): Promise<TestSkiRegrind>;
   deleteTestSkiRegrind(id: number): Promise<boolean>;
 
-  countTable(tableName: string): Promise<number>;
+  countTable(tableName: string, teamId?: number): Promise<number>;
   listAllTestsForTeam(teamId: number): Promise<Test[]>;
   listAllEntriesForTests(testIds: number[]): Promise<TestEntry[]>;
   listAllWeatherForTeam(teamId: number): Promise<any[]>;
@@ -610,10 +610,15 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  async countTable(tableName: string): Promise<number> {
+  async countTable(tableName: string, teamId?: number): Promise<number> {
     const tableMap: Record<string, any> = { users, tests, products, testSkiSeries, dailyWeather, grindingRecords, loginLogs, activityLogs, athletes, raceSkis };
     const table = tableMap[tableName];
     if (!table) return 0;
+    const hasTeamId = table.teamId !== undefined;
+    if (teamId && hasTeamId) {
+      const result = await db.select({ count: sql<number>`count(*)` }).from(table).where(eq(table.teamId, teamId));
+      return Number(result[0]?.count ?? 0);
+    }
     const result = await db.select({ count: sql<number>`count(*)` }).from(table);
     return Number(result[0]?.count ?? 0);
   }

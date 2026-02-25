@@ -7,7 +7,7 @@ import {
   Plus, Pencil, Trash2, KeyRound, Check, X, Clock, Download,
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle,
-  HardDrive, UserX, Eraser, RefreshCw,
+  HardDrive, UserX, Eraser, RefreshCw, Building2,
 } from "lucide-react";
 import { PERMISSION_AREAS, DEFAULT_PERMISSIONS } from "@shared/schema";
 import type { UserPermissions, PermissionLevel } from "@shared/schema";
@@ -533,13 +533,28 @@ export default function Admin() {
   const [editingGroupName, setEditingGroupName] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
 
+  const [adminTeamScope, setAdminTeamScope] = useState<string>("current");
+
+  const { data: teams = [] } = useQuery<ApiTeam[]>({
+    queryKey: ["/api/teams"],
+    enabled: isSuperAdmin,
+  });
+
+  const teamScopeParam = isSuperAdmin
+    ? adminTeamScope === "all"
+      ? "?teamScope=all"
+      : adminTeamScope !== "current"
+        ? `?teamScope=${adminTeamScope}`
+        : ""
+    : "";
+
   const { data: users = [] } = useQuery<ApiUser[]>({
-    queryKey: ["/api/users"],
+    queryKey: [`/api/users${teamScopeParam}`],
     enabled: canManage,
   });
 
   const { data: apiGroups = [] } = useQuery<ApiGroup[]>({
-    queryKey: ["/api/groups"],
+    queryKey: [`/api/groups${teamScopeParam}`],
     enabled: canManage,
   });
 
@@ -569,7 +584,7 @@ export default function Admin() {
   });
 
   const { data: adminStats } = useQuery<AdminStats>({
-    queryKey: ["/api/admin/stats"],
+    queryKey: [`/api/admin/stats${teamScopeParam}`],
     enabled: canManage,
   });
 
@@ -578,12 +593,13 @@ export default function Admin() {
     enabled: canManage,
   });
 
-  const { data: teams = [] } = useQuery<ApiTeam[]>({
-    queryKey: ["/api/teams"],
-    enabled: isSuperAdmin,
-  });
-
   const groupNames = apiGroups.map((g) => g.name);
+
+  const scopeLabel = adminTeamScope === "all"
+    ? "All teams"
+    : adminTeamScope === "current"
+      ? undefined
+      : teams.find((t) => t.id === parseInt(adminTeamScope))?.name;
 
   const [pdfLoading, setPdfLoading] = useState(false);
 
@@ -1103,10 +1119,27 @@ export default function Admin() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin</h1>
             <p className="mt-1 text-sm text-gray-500" data-testid="text-admin-subtitle">
-              Manage users, groups, and access.
+              Manage users, groups, and access.{scopeLabel ? ` — ${scopeLabel}` : ""}
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {isSuperAdmin && teams.length > 0 && (
+              <Select value={adminTeamScope} onValueChange={setAdminTeamScope}>
+                <SelectTrigger className="w-[180px] h-9" data-testid="select-admin-team-scope">
+                  <Building2 className="h-4 w-4 mr-1.5 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current" data-testid="scope-current">Current team</SelectItem>
+                  <SelectItem value="all" data-testid="scope-all">All teams</SelectItem>
+                  {teams.map((t) => (
+                    <SelectItem key={t.id} value={String(t.id)} data-testid={`scope-team-${t.id}`}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button
               variant="outline"
               data-testid="button-download-pdf"
@@ -1247,6 +1280,11 @@ export default function Admin() {
                           </span>
                           {!u.isActive && (
                             <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600">Inactive</span>
+                          )}
+                          {adminTeamScope !== "current" && teams.length > 0 && (
+                            <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-600">
+                              {teams.find((t) => t.id === u.teamId)?.name ?? `Team ${u.teamId}`}
+                            </span>
                           )}
                         </div>
                         <div className="mt-0.5 text-[11px] text-gray-400 truncate" title={permDetail} data-testid={`text-perm-summary-${u.id}`}>

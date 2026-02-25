@@ -99,6 +99,15 @@ function canManageTeam(req: Request): boolean {
   return u.isAdmin === 1 || u.isTeamAdmin === 1;
 }
 
+function getAdminTeamScope(req: Request): number | undefined {
+  const u = req.user!;
+  if (u.isAdmin !== 1) return getActiveTeamId(req);
+  const scope = req.query.teamScope as string | undefined;
+  if (scope === "all") return undefined;
+  if (scope && !isNaN(parseInt(scope))) return parseInt(scope);
+  return getActiveTeamId(req);
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
@@ -157,7 +166,7 @@ export async function registerRoutes(
   });
 
   app.get("/api/groups", requireAuth, async (req, res) => {
-    const teamId = getActiveTeamId(req);
+    const teamId = canManageTeam(req) ? getAdminTeamScope(req) : getActiveTeamId(req);
     const list = await storage.listGroups(teamId);
     res.json(list);
   });
@@ -716,7 +725,7 @@ export async function registerRoutes(
 
   app.get("/api/users", requireAuth, async (req, res) => {
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
-    const teamId = getActiveTeamId(req);
+    const teamId = getAdminTeamScope(req);
     const list = await storage.listUsers(teamId);
     res.json(list.map(({ password, ...rest }) => rest));
   });
@@ -952,15 +961,15 @@ export async function registerRoutes(
 
   // Admin stats
   app.get("/api/admin/stats", requireAuth, async (req, res) => {
-    const u = userInfo(req);
-    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const teamId = getAdminTeamScope(req);
     const [userCount, testCount, productCount, seriesCount, weatherCount, grindingCount, loginCount, activityCount] = await Promise.all([
-      storage.countTable("users"),
-      storage.countTable("tests"),
-      storage.countTable("products"),
-      storage.countTable("testSkiSeries"),
-      storage.countTable("dailyWeather"),
-      storage.countTable("grindingRecords"),
+      storage.countTable("users", teamId),
+      storage.countTable("tests", teamId),
+      storage.countTable("products", teamId),
+      storage.countTable("testSkiSeries", teamId),
+      storage.countTable("dailyWeather", teamId),
+      storage.countTable("grindingRecords", teamId),
       storage.countTable("loginLogs"),
       storage.countTable("activityLogs"),
     ]);

@@ -670,12 +670,40 @@ export default function Admin() {
       if (data.raceSkis.length > 0) {
         checkPage();
         doc.setFontSize(13);
-        doc.text("Race Skis", 14, y);
+        doc.text(`Race Skis (${data.raceSkis.length})`, 14, y);
         y += 2;
         autoTable(doc, {
           startY: y,
-          head: [["Athlete", "Ski ID", "Brand", "Discipline", "Construction", "Grind", "Year"]],
-          body: data.raceSkis.map((s: any) => [s.athleteName || "", s.skiId || "", s.brand || "", s.discipline || "", s.construction || "", s.grind || "", s.year || ""]),
+          head: [["Athlete", "Ski ID", "Serial", "Brand", "Discipline", "Construction", "Mold", "Base", "Grind", "Heights", "Year"]],
+          body: data.raceSkis.map((s: any) => [s.athleteName || "", s.skiId || "", s.serialNumber || "", s.brand || "", s.discipline || "", s.construction || "", s.mold || "", s.base || "", s.grind || "", s.heights || "", s.year || ""]),
+          styles: { fontSize: 6.5 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      if (data.raceSkiRegrinds && data.raceSkiRegrinds.length > 0) {
+        checkPage();
+        doc.setFontSize(13);
+        doc.text(`Race Ski Regrinds (${data.raceSkiRegrinds.length})`, 14, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [["Athlete", "Ski ID", "Brand", "Date", "Grind Type", "Stone", "Pattern", "Notes"]],
+          body: data.raceSkiRegrinds.map((r: any) => [r.athleteName || "", r.skiId || "", r.brand || "", r.date || "", r.grindType || "", r.stone || "", r.pattern || "", r.notes || ""]),
+          styles: { fontSize: 7 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      if (data.testSkiRegrinds && data.testSkiRegrinds.length > 0) {
+        checkPage();
+        doc.setFontSize(13);
+        doc.text(`Test Ski Series Regrinds (${data.testSkiRegrinds.length})`, 14, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [["Series", "Date", "Grind Type", "Stone", "Pattern", "Notes"]],
+          body: data.testSkiRegrinds.map((r: any) => [r.seriesName || "", r.date || "", r.grindType || "", r.stone || "", r.pattern || "", r.notes || ""]),
           styles: { fontSize: 7 }, headStyles: hStyle, margin: { left: 14, right: 14 },
         });
         y = (doc as any).lastAutoTable.finalY + 10;
@@ -844,9 +872,40 @@ export default function Admin() {
         y += 2;
         autoTable(doc, {
           startY: y,
-          head: [["Date", "Type", "Stone", "Pattern", "Notes", "Group"]],
-          body: data.grindingRecords.map((r: any) => [r.date || "", r.grindType || "", r.stone || "", r.pattern || "", r.notes || "", r.groupScope || ""]),
+          head: [["Date", "Type", "Stone", "Notes", "Created By", "Group"]],
+          body: data.grindingRecords.map((r: any) => [r.date || "", r.grindType || "", r.stone || "", r.notes || "", r.createdByName || "", r.groupScope || ""]),
           styles: { fontSize: 7 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      if (data.grindingSheets && data.grindingSheets.length > 0) {
+        checkPage();
+        doc.setFontSize(13);
+        doc.text(`Grinding Sheets (${data.grindingSheets.length})`, 14, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [["Name", "URL", "Created By", "Group"]],
+          body: data.grindingSheets.map((s: any) => [s.name || "", s.url || "", s.createdByName || "", s.groupScope || ""]),
+          styles: { fontSize: 7 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      if (data.activities && data.activities.length > 0) {
+        checkPage();
+        doc.setFontSize(13);
+        doc.text(`Activity Log (${data.activities.length})`, 14, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [["Time", "User", "Action", "Type", "Details", "Group"]],
+          body: data.activities.slice(0, 500).map((a: any) => [
+            a.createdAt ? new Date(a.createdAt).toLocaleString() : "", a.userName || "", a.action || "",
+            a.entityType || "", a.details || "", a.groupScope || "",
+          ]),
+          styles: { fontSize: 6.5 }, headStyles: hStyle, margin: { left: 14, right: 14 },
         });
         y = (doc as any).lastAutoTable.finalY + 10;
       }
@@ -863,7 +922,15 @@ export default function Admin() {
       });
 
       doc.save("glidr-full-export.pdf");
-      toast({ title: "PDF exported", description: `${data.tests.length} tests, ${data.weather.length} weather logs included.` });
+      const sections = [
+        `${data.tests.length} tests`,
+        `${data.weather.length} weather`,
+        data.raceSkis.length ? `${data.raceSkis.length} race skis` : null,
+        data.grindingRecords.length ? `${data.grindingRecords.length} grinds` : null,
+        data.raceSkiRegrinds?.length ? `${data.raceSkiRegrinds.length} ski regrinds` : null,
+        data.testSkiRegrinds?.length ? `${data.testSkiRegrinds.length} series regrinds` : null,
+      ].filter(Boolean).join(", ");
+      toast({ title: "PDF exported", description: sections });
       try {
         await apiRequest("POST", "/api/action-log", { action: "pdf_download", details: "Full data export" });
         queryClient.invalidateQueries({ queryKey: ["/api/login-logs"] });

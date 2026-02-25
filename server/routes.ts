@@ -995,6 +995,17 @@ export async function registerRoutes(
       allRaceSkis.push(...skis.map((s) => ({ ...s, athleteName: ath.name })));
     }
     const grindingRecords = await storage.listGrindingRecords(u.groupScope, true, teamId);
+    const grindingSheetsList = await storage.listGrindingSheets(u.groupScope, true, teamId);
+    const allRaceSkiRegrinds: any[] = [];
+    for (const ski of allRaceSkis) {
+      const regrinds = await storage.listRaceSkiRegrinds(ski.id);
+      allRaceSkiRegrinds.push(...regrinds.map((r) => ({ ...r, skiId: ski.skiId, athleteName: ski.athleteName, brand: ski.brand })));
+    }
+    const allTestSkiRegrinds: any[] = [];
+    for (const series of allSeries) {
+      const regrinds = await storage.listTestSkiRegrinds(series.id);
+      allTestSkiRegrinds.push(...regrinds.map((r) => ({ ...r, seriesName: series.name })));
+    }
     res.json({
       tests: allTests,
       entriesByTest,
@@ -1008,6 +1019,9 @@ export async function registerRoutes(
       athletes: allAthletes,
       raceSkis: allRaceSkis,
       grindingRecords,
+      grindingSheets: grindingSheetsList,
+      raceSkiRegrinds: allRaceSkiRegrinds,
+      testSkiRegrinds: allTestSkiRegrinds,
     });
   });
 

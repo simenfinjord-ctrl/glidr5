@@ -247,6 +247,57 @@ export default function AthleteDetail() {
     year: "",
   });
 
+  const allSkiFormFields = [
+    { key: "serialNumber", label: "Serial Number" },
+    { key: "brand", label: "Brand" },
+    { key: "discipline", label: "Discipline" },
+    { key: "construction", label: "Construction" },
+    { key: "mold", label: "Mold" },
+    { key: "base", label: "Base" },
+    { key: "grind", label: "Grind" },
+    { key: "heights", label: "Heights" },
+    { key: "year", label: "Year" },
+  ] as const;
+  type SkiFormFieldKey = typeof allSkiFormFields[number]["key"];
+  const defaultFormFields: SkiFormFieldKey[] = ["serialNumber", "brand", "discipline", "construction", "mold", "base", "grind", "heights", "year"];
+  const [activeFormFields, setActiveFormFields] = useState<SkiFormFieldKey[]>(() => {
+    try {
+      const stored = localStorage.getItem("glidr-raceski-form-fields");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return defaultFormFields;
+  });
+  const [editFormFieldsOpen, setEditFormFieldsOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("glidr-raceski-form-fields", JSON.stringify(activeFormFields));
+  }, [activeFormFields]);
+
+  const inactiveFormFields = allSkiFormFields.filter((f) => !activeFormFields.includes(f.key));
+  const getFormFieldLabel = (key: SkiFormFieldKey) =>
+    allSkiFormFields.find((f) => f.key === key)?.label ?? key;
+  const moveFormFieldUp = (idx: number) => {
+    if (idx <= 0) return;
+    const next = [...activeFormFields];
+    [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+    setActiveFormFields(next);
+  };
+  const moveFormFieldDown = (idx: number) => {
+    if (idx >= activeFormFields.length - 1) return;
+    const next = [...activeFormFields];
+    [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+    setActiveFormFields(next);
+  };
+  const removeFormField = (key: SkiFormFieldKey) => {
+    setActiveFormFields(activeFormFields.filter((k) => k !== key));
+  };
+  const addFormField = (key: SkiFormFieldKey) => {
+    setActiveFormFields([...activeFormFields, key]);
+  };
+
   const [regrindForm, setRegrindForm] = useState({
     date: new Date().toISOString().split("T")[0],
     grindType: "",
@@ -1296,88 +1347,52 @@ export default function AthleteDetail() {
                 data-testid="input-ski-id"
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Serial Number</label>
-              <Input
-                value={skiForm.serialNumber}
-                onChange={(e) => setSkiForm((f) => ({ ...f, serialNumber: e.target.value }))}
-                data-testid="input-ski-serial"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Brand</label>
-              <Input
-                value={skiForm.brand}
-                onChange={(e) => setSkiForm((f) => ({ ...f, brand: e.target.value }))}
-                data-testid="input-ski-brand"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Discipline</label>
-              <Select
-                value={skiForm.discipline}
-                onValueChange={(v) => setSkiForm((f) => ({ ...f, discipline: v }))}
+
+            {activeFormFields.map((fieldKey) => {
+              if (fieldKey === "heights" && skiForm.discipline !== "Classic") return null;
+              if (fieldKey === "discipline") {
+                return (
+                  <div key={fieldKey}>
+                    <label className="mb-1 block text-sm font-medium">{getFormFieldLabel(fieldKey)}</label>
+                    <Select
+                      value={skiForm.discipline}
+                      onValueChange={(v) => setSkiForm((f) => ({ ...f, discipline: v }))}
+                    >
+                      <SelectTrigger data-testid="select-ski-discipline">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Classic">Classic</SelectItem>
+                        <SelectItem value="Skating">Skating</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              }
+              return (
+                <div key={fieldKey}>
+                  <label className="mb-1 block text-sm font-medium">{getFormFieldLabel(fieldKey)}</label>
+                  <Input
+                    value={(skiForm as any)[fieldKey] ?? ""}
+                    onChange={(e) => setSkiForm((f) => ({ ...f, [fieldKey]: e.target.value }))}
+                    data-testid={`input-ski-${fieldKey}`}
+                  />
+                </div>
+              );
+            })}
+
+            <div className="flex items-center justify-between pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => setEditFormFieldsOpen(true)}
+                data-testid="button-edit-ski-form-fields"
               >
-                <SelectTrigger data-testid="select-ski-discipline">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Classic">Classic</SelectItem>
-                  <SelectItem value="Skating">Skating</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Construction</label>
-              <Input
-                value={skiForm.construction}
-                onChange={(e) => setSkiForm((f) => ({ ...f, construction: e.target.value }))}
-                data-testid="input-ski-construction"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Mold</label>
-              <Input
-                value={skiForm.mold}
-                onChange={(e) => setSkiForm((f) => ({ ...f, mold: e.target.value }))}
-                data-testid="input-ski-mold"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Base</label>
-              <Input
-                value={skiForm.base}
-                onChange={(e) => setSkiForm((f) => ({ ...f, base: e.target.value }))}
-                data-testid="input-ski-base"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Grind</label>
-              <Input
-                value={skiForm.grind}
-                onChange={(e) => setSkiForm((f) => ({ ...f, grind: e.target.value }))}
-                data-testid="input-ski-grind"
-              />
-            </div>
-            {skiForm.discipline === "Classic" && (
-              <div>
-                <label className="mb-1 block text-sm font-medium">Heights</label>
-                <Input
-                  value={skiForm.heights}
-                  onChange={(e) => setSkiForm((f) => ({ ...f, heights: e.target.value }))}
-                  data-testid="input-ski-heights"
-                />
-              </div>
-            )}
-            <div>
-              <label className="mb-1 block text-sm font-medium">Year</label>
-              <Input
-                value={skiForm.year}
-                onChange={(e) => setSkiForm((f) => ({ ...f, year: e.target.value }))}
-                data-testid="input-ski-year"
-              />
-            </div>
-            <div className="flex items-center justify-end pt-2">
+                <Settings2 className="h-3.5 w-3.5 mr-1" />
+                Edit parameters
+              </Button>
               <Button
                 type="submit"
                 data-testid="button-save-ski"
@@ -1387,6 +1402,83 @@ export default function AthleteDetail() {
               </Button>
             </div>
           </form>
+
+          <Dialog open={editFormFieldsOpen} onOpenChange={setEditFormFieldsOpen}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Edit Parameters</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active fields</div>
+                {activeFormFields.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No fields selected</p>
+                )}
+                <div className="space-y-1">
+                  {activeFormFields.map((key, idx) => (
+                    <div
+                      key={key}
+                      className="flex items-center gap-1.5 rounded-lg border bg-background px-2 py-1.5"
+                      data-testid={`form-field-active-${key}`}
+                    >
+                      <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                      <span className="text-sm flex-1">{getFormFieldLabel(key)}</span>
+                      <button
+                        type="button"
+                        className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        onClick={() => moveFormFieldUp(idx)}
+                        disabled={idx === 0}
+                        data-testid={`button-form-field-up-${key}`}
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        onClick={() => moveFormFieldDown(idx)}
+                        disabled={idx === activeFormFields.length - 1}
+                        data-testid={`button-form-field-down-${key}`}
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        className="p-0.5 text-red-400 hover:text-red-300"
+                        onClick={() => removeFormField(key)}
+                        data-testid={`button-form-field-remove-${key}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {inactiveFormFields.length > 0 && (
+                  <>
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider pt-2">Available</div>
+                    <div className="space-y-1">
+                      {inactiveFormFields.map((f) => (
+                        <div
+                          key={f.key}
+                          className="flex items-center gap-1.5 rounded-lg border border-dashed bg-background/50 px-2 py-1.5"
+                          data-testid={`form-field-inactive-${f.key}`}
+                        >
+                          <span className="text-sm text-muted-foreground flex-1">{f.label}</span>
+                          <button
+                            type="button"
+                            className="p-0.5 text-emerald-400 hover:text-emerald-300"
+                            onClick={() => addFormField(f.key)}
+                            data-testid={`button-form-field-add-${f.key}`}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </DialogContent>
       </Dialog>
 

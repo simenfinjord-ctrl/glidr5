@@ -481,12 +481,18 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
-  app.get("/api/tests", requirePermission("tests", "view"), async (req, res) => {
+  app.get("/api/tests", requireAuth, async (req, res) => {
     const u = userInfo(req);
+    const hasTestsPerm = u.isAdmin || u.isTeamAdmin || u.permissions.tests !== "none";
+    const hasRaceskisPerm = u.isAdmin || u.isTeamAdmin || u.permissions.raceskis !== "none";
+    if (!hasTestsPerm && !hasRaceskisPerm) return res.status(403).json({ message: "No access" });
     const teamId = getActiveTeamId(req);
-    const list = await storage.listTests(u.groupScope, u.isAdmin, teamId);
-    let result = u.permissions.grinding !== "none" ? list : list.filter((t: any) => t.testType !== "Grind");
-    if (!u.isAdmin && u.permissions.raceskis !== "none") {
+    let result: any[] = [];
+    if (hasTestsPerm) {
+      const list = await storage.listTests(u.groupScope, u.isAdmin, teamId);
+      result = u.permissions.grinding !== "none" ? list : list.filter((t: any) => t.testType !== "Grind");
+    }
+    if (!u.isAdmin) {
       const athleteIds = await storage.listAthleteIdsForUser(u.id);
       if (athleteIds.length > 0) {
         const existingIds = new Set(result.map((t: any) => t.id));
@@ -500,9 +506,13 @@ export async function registerRoutes(
     res.json(result);
   });
 
-  app.post("/api/tests", requirePermission("tests", "edit"), async (req, res) => {
+  app.post("/api/tests", requireAuth, async (req, res) => {
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
+    const testSkiSourceCheck = req.body.testSkiSource === "raceskis" ? "raceskis" : "series";
+    const canCreateTest = u.isAdmin || u.isTeamAdmin || u.permissions.tests === "edit"
+      || (testSkiSourceCheck === "raceskis" && u.permissions.raceskis !== "none");
+    if (!canCreateTest) return res.status(403).json({ message: "No access" });
     if (req.body.testType === "Grind" && u.permissions.grinding === "none") {
       return res.status(403).json({ message: "Grinding access required" });
     }
@@ -584,12 +594,12 @@ export async function registerRoutes(
     res.json(test);
   });
 
-  app.get("/api/tests/:id", requirePermission("tests", "view"), async (req, res) => {
+  app.get("/api/tests/:id", requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const test = await storage.getTest(id);
     if (!test) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
-    let hasAccess = userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope);
+    let hasAccess = userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope) && u.permissions.tests !== "none";
     if (!hasAccess && (test as any).testSkiSource === "raceskis" && (test as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((test as any).athleteId, u.id, u.isAdmin);
     }
@@ -602,12 +612,12 @@ export async function registerRoutes(
     res.json(test);
   });
 
-  app.put("/api/tests/:id", requirePermission("tests", "edit"), async (req, res) => {
+  app.put("/api/tests/:id", requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const existing = await storage.getTest(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
-    let hasAccess = userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope);
+    let hasAccess = userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope) && u.permissions.tests === "edit";
     if (!hasAccess && (existing as any).testSkiSource === "raceskis" && (existing as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((existing as any).athleteId, u.id, u.isAdmin);
     }
@@ -681,12 +691,12 @@ export async function registerRoutes(
     res.json(updated);
   });
 
-  app.delete("/api/tests/:id", requirePermission("tests", "edit"), async (req, res) => {
+  app.delete("/api/tests/:id", requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const existing = await storage.getTest(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
-    let hasAccess = userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope);
+    let hasAccess = userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope) && u.permissions.tests === "edit";
     if (!hasAccess && (existing as any).testSkiSource === "raceskis" && (existing as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((existing as any).athleteId, u.id, u.isAdmin);
     }
@@ -704,12 +714,12 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
-  app.get("/api/tests/:id/entries", requirePermission("tests", "view"), async (req, res) => {
+  app.get("/api/tests/:id/entries", requireAuth, async (req, res) => {
     const testId = parseInt(req.params.id as string);
     const u = userInfo(req);
     const test = await storage.getTest(testId);
     if (!test) return res.status(404).json({ message: "Not found" });
-    let hasAccess = userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope);
+    let hasAccess = userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope) && u.permissions.tests !== "none";
     if (!hasAccess && (test as any).testSkiSource === "raceskis" && (test as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((test as any).athleteId, u.id, u.isAdmin);
     }

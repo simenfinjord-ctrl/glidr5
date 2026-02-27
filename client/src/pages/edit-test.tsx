@@ -185,7 +185,7 @@ export default function EditTest() {
     queryKey: [`/api/tests/${testId}`],
     enabled: !!testId,
   });
-  const { data: entries = [] } = useQuery<TestEntry[]>({
+  const { data: entries = [], isLoading: entriesLoading } = useQuery<TestEntry[]>({
     queryKey: [`/api/tests/${testId}/entries`],
     enabled: !!testId,
   });
@@ -225,7 +225,11 @@ export default function EditTest() {
   }, [test, initialized, form]);
 
   useEffect(() => {
-    if (!entries.length || !test || !initialized || entriesLoaded) return;
+    if (!test || !initialized || entriesLoaded || entriesLoading) return;
+    if (entries.length === 0) {
+      setEntriesLoaded(true);
+      return;
+    }
     const labels = parseDistanceLabels(test);
     const numRounds = labels.length;
     setRows(
@@ -245,7 +249,7 @@ export default function EditTest() {
       }))
     );
     setEntriesLoaded(true);
-  }, [entries, test, initialized, entriesLoaded]);
+  }, [entries, test, initialized, entriesLoaded, entriesLoading]);
 
   const watchSeriesId = form.watch("seriesId");
   useEffect(() => {
@@ -340,7 +344,7 @@ export default function EditTest() {
     },
   });
 
-  if (testLoading) {
+  if (testLoading || entriesLoading) {
     return (
       <AppShell>
         <div className="flex items-center justify-center py-20">
@@ -407,7 +411,7 @@ export default function EditTest() {
               type="submit"
               form="edit-test-form"
               data-testid="button-save-test"
-              disabled={saveMutation.isPending || (!entriesLoaded && entries.length > 0)}
+              disabled={saveMutation.isPending || entriesLoading || (!entriesLoaded && entries.length > 0)}
             >
               <Save className="mr-2 h-4 w-4" />
               {saveMutation.isPending ? "Saving…" : "Save"}
@@ -442,7 +446,7 @@ export default function EditTest() {
                   distanceLabelXkm: distanceLabels[1] || null,
                   distanceLabels: JSON.stringify(distanceLabels),
                 };
-                if (entriesLoaded || entries.length === 0) {
+                if (entriesLoaded) {
                   payload.entries = rows.map((r) => ({
                     skiNumber: r.skiNumber,
                     productId: testSkiSource === "raceskis" ? null : r.productId,

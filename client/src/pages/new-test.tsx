@@ -361,8 +361,8 @@ export default function NewTest() {
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
                 {can("raceskis") && (
                   <div className="lg:col-span-2">
-                    <FormItem>
-                      <FormLabel>Ski source</FormLabel>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none">Ski source</label>
                       <Select
                         value={testSkiSource}
                         onValueChange={(v) => {
@@ -383,7 +383,7 @@ export default function NewTest() {
                           <SelectItem value="raceskis">Raceskis</SelectItem>
                         </SelectContent>
                       </Select>
-                    </FormItem>
+                    </div>
                   </div>
                 )}
                 {testSkiSource === "series" && (

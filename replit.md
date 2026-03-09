@@ -54,6 +54,7 @@ Glidr is a full-stack React web application designed to manage ski testing and d
 - Analytics page (/analytics) with recharts: product wins over time, avg rank by product, tests per month, snow temp vs rank scatter
 - Analytics page has Glide/Structure/All filter
 - Analytics page has product search combobox with detailed stats: total tests, wins, avg rank, win rate, methodology breakdown, performance-over-time chart, and test history table
+- Analytics page has product comparison tool: select 2+ products to compare side-by-side with summary table, avg rank over time chart, and head-to-head results in shared tests
 - PDF report generation on test detail page (jsPDF + autoTable): includes test info, weather, full results table
 - Test detail page has CSV, PDF, and Hide/Show export buttons
 - Series form has group selector (shown for multi-group users, defaults to first group)

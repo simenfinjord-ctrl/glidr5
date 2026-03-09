@@ -375,6 +375,328 @@ function ProductSearchStats({
   );
 }
 
+type ProductCompareStats = {
+  product: Product;
+  totalTests: number;
+  totalWins: number;
+  avgRank: number | null;
+  winRate: number;
+  performanceByMonth: Map<string, { ranks: number[]; count: number }>;
+  testRanks: Map<number, number | null>;
+};
+
+function getProductStats(
+  productId: number,
+  product: Product,
+  allEntries: TestEntry[],
+  testsById: Map<number, Test>,
+  filteredTestIds?: Set<number>,
+): ProductCompareStats {
+  const entries = allEntries.filter((e) => {
+    if (filteredTestIds && !filteredTestIds.has(e.testId)) return false;
+    if (e.productId === productId) return true;
+    if (e.additionalProductIds) {
+      const ids = e.additionalProductIds.split(",").map(Number).filter((n) => !isNaN(n));
+      if (ids.includes(productId)) return true;
+    }
+    return false;
+  });
+
+  const bestRankPerTest = new Map<number, number | null>();
+  for (const entry of entries) {
+    const rank = getRank(entry);
+    const prev = bestRankPerTest.get(entry.testId);
+    if (prev === undefined) {
+      bestRankPerTest.set(entry.testId, rank);
+    } else if (rank !== null && (prev === null || rank < prev)) {
+      bestRankPerTest.set(entry.testId, rank);
+    }
+  }
+
+  let totalWins = 0;
+  const ranks: number[] = [];
+  const performanceByMonth = new Map<string, { ranks: number[]; count: number }>();
+  const testRanks = new Map<number, number | null>();
+
+  for (const [testId, rank] of bestRankPerTest) {
+    const test = testsById.get(testId);
+    if (!test) continue;
+    testRanks.set(testId, rank);
+    if (rank !== null) {
+      ranks.push(rank);
+      if (rank === 1) totalWins++;
+    }
+    const month = test.date.slice(0, 7);
+    if (!performanceByMonth.has(month)) performanceByMonth.set(month, { ranks: [], count: 0 });
+    const pm = performanceByMonth.get(month)!;
+    pm.count++;
+    if (rank !== null) pm.ranks.push(rank);
+  }
+
+  const avgRank = ranks.length > 0 ? parseFloat((ranks.reduce((a, b) => a + b, 0) / ranks.length).toFixed(2)) : null;
+  const winRate = ranks.length > 0 ? parseFloat(((totalWins / ranks.length) * 100).toFixed(1)) : 0;
+
+  return { product, totalTests: bestRankPerTest.size, totalWins, avgRank, winRate, performanceByMonth, testRanks };
+}
+
+function ProductCompare({
+  products,
+  allEntries,
+  productsById,
+  testsById,
+  filteredTestIds,
+}: {
+  products: Product[];
+  allEntries: TestEntry[];
+  productsById: Map<number, Product>;
+  testsById: Map<number, Test>;
+  filteredTestIds: Set<number>;
+}) {
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [open, setOpen] = useState(false);
+
+  const addProduct = (id: number) => {
+    if (!selectedIds.includes(id)) setSelectedIds([...selectedIds, id]);
+    setOpen(false);
+  };
+  const removeProduct = (id: number) => setSelectedIds(selectedIds.filter((x) => x !== id));
+
+  const compareStats = useMemo(() => {
+    if (selectedIds.length < 2) return null;
+    return selectedIds.map((id) => {
+      const product = productsById.get(id)!;
+      return getProductStats(id, product, allEntries, testsById, filteredTestIds);
+    });
+  }, [selectedIds, allEntries, productsById, testsById, filteredTestIds]);
+
+  const chartData = useMemo(() => {
+    if (!compareStats) return [];
+    const allMonths = new Set<string>();
+    for (const s of compareStats) {
+      for (const m of s.performanceByMonth.keys()) allMonths.add(m);
+    }
+    return Array.from(allMonths).sort().map((month) => {
+      const row: any = { month };
+      for (const s of compareStats) {
+        const pm = s.performanceByMonth.get(month);
+        row[`p_${s.product.id}`] = pm && pm.ranks.length > 0
+          ? parseFloat((pm.ranks.reduce((a, b) => a + b, 0) / pm.ranks.length).toFixed(2))
+          : null;
+      }
+      return row;
+    });
+  }, [compareStats]);
+
+  const headToHead = useMemo(() => {
+    if (!compareStats || compareStats.length < 2) return [];
+    const sharedTestIds = new Set<number>();
+    const first = compareStats[0];
+    for (const testId of first.testRanks.keys()) {
+      if (compareStats.every((s) => s.testRanks.has(testId))) {
+        sharedTestIds.add(testId);
+      }
+    }
+    return Array.from(sharedTestIds)
+      .map((testId) => {
+        const test = testsById.get(testId)!;
+        const ranks = compareStats.map((s) => ({ product: s.product, rank: s.testRanks.get(testId) ?? null }));
+        return { test, ranks };
+      })
+      .sort((a, b) => b.test.date.localeCompare(a.test.date));
+  }, [compareStats, testsById]);
+
+  return (
+    <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-product-compare">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50">
+          <BarChart3 className="h-4 w-4 text-violet-600" />
+        </div>
+        <h2 className="text-base font-semibold">Compare products</h2>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {selectedIds.map((id) => {
+          const p = productsById.get(id);
+          if (!p) return null;
+          return (
+            <Badge key={id} variant="secondary" className="gap-1 pr-1" data-testid={`badge-compare-product-${id}`}>
+              {p.brand} {p.name}
+              <button
+                onClick={() => removeProduct(id)}
+                className="ml-1 rounded-full p-0.5 hover:bg-muted"
+                data-testid={`button-remove-compare-${id}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          );
+        })}
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 gap-1" data-testid="button-add-compare-product">
+              <Search className="h-3.5 w-3.5" />
+              Add product
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[min(380px,calc(100vw-2rem))] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Search products…" data-testid="input-compare-search" />
+              <CommandList>
+                <CommandEmpty>No matches.</CommandEmpty>
+                <CommandGroup heading="Products">
+                  {products.filter((p) => !selectedIds.includes(p.id)).map((p) => (
+                    <CommandItem
+                      key={p.id}
+                      value={`${p.brand} ${p.name}`}
+                      onSelect={() => addProduct(p.id)}
+                      data-testid={`option-compare-product-${p.id}`}
+                    >
+                      <span className="truncate">{p.brand} {p.name}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{p.category}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {selectedIds.length < 2 && (
+        <p className="text-sm text-muted-foreground" data-testid="text-compare-hint">
+          Select at least 2 products to compare.
+        </p>
+      )}
+
+      {compareStats && (
+        <div className="flex flex-col gap-4" data-testid="section-compare-results">
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full text-sm" data-testid="table-compare-summary">
+              <thead className="bg-muted/80">
+                <tr>
+                  <th className="text-left px-3 py-2 font-medium">Product</th>
+                  <th className="text-center px-3 py-2 font-medium">Tests</th>
+                  <th className="text-center px-3 py-2 font-medium">Wins</th>
+                  <th className="text-center px-3 py-2 font-medium">Avg rank</th>
+                  <th className="text-center px-3 py-2 font-medium">Win rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {compareStats.map((s, i) => {
+                  const best = compareStats.every((o) => o === s || (s.avgRank !== null && (o.avgRank === null || s.avgRank <= o.avgRank)));
+                  return (
+                    <tr key={s.product.id} className={cn("border-t", best && "bg-amber-50/50")} data-testid={`row-compare-${s.product.id}`}>
+                      <td className="px-3 py-2 font-medium">
+                        <span className="inline-flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                          {s.product.brand} {s.product.name}
+                        </span>
+                      </td>
+                      <td className="text-center px-3 py-2">{s.totalTests}</td>
+                      <td className="text-center px-3 py-2">{s.totalWins}</td>
+                      <td className="text-center px-3 py-2 font-semibold">{s.avgRank ?? "—"}</td>
+                      <td className="text-center px-3 py-2">{s.winRate}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {chartData.length > 1 && (
+            <div>
+              <div className="text-sm font-medium mb-2">Average rank over time</div>
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis dataKey="month" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                  <YAxis
+                    reversed
+                    allowDecimals={false}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                    label={{ value: "Avg Rank", angle: -90, position: "insideLeft", style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "12px",
+                      fontSize: "12px",
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "12px" }} />
+                  {compareStats.map((s, i) => (
+                    <Line
+                      key={s.product.id}
+                      type="monotone"
+                      dataKey={`p_${s.product.id}`}
+                      name={`${s.product.brand} ${s.product.name}`}
+                      stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                      connectNulls
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {headToHead.length > 0 && (
+            <div>
+              <div className="text-sm font-medium mb-2">Head-to-head ({headToHead.length} shared tests)</div>
+              <div className="max-h-64 overflow-y-auto rounded-lg border" data-testid="table-head-to-head">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-medium">Date</th>
+                      <th className="text-left px-3 py-2 font-medium">Location</th>
+                      {compareStats.map((s, i) => (
+                        <th key={s.product.id} className="text-center px-3 py-2 font-medium">
+                          <span className="inline-flex items-center gap-1">
+                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                            <span className="truncate max-w-[80px]">{s.product.name}</span>
+                          </span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {headToHead.map(({ test, ranks }) => {
+                      const bestRank = Math.min(...ranks.map((r) => r.rank ?? Infinity));
+                      return (
+                        <tr key={test.id} className="border-t hover:bg-muted/30" data-testid={`row-h2h-${test.id}`}>
+                          <td className="px-3 py-2">{test.date}</td>
+                          <td className="px-3 py-2 truncate max-w-[100px]">{test.location}</td>
+                          {ranks.map((r) => (
+                            <td key={r.product.id} className="text-center px-3 py-2">
+                              {r.rank !== null ? (
+                                <span className={cn(
+                                  "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+                                  r.rank === bestRank && "bg-amber-100 text-amber-700",
+                                  r.rank !== bestRank && "text-muted-foreground",
+                                )}>
+                                  {r.rank}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function Analytics() {
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
@@ -568,6 +890,14 @@ export default function Analytics() {
           allEntries={allEntries}
           productsById={productsById}
           testsById={testsById}
+        />
+
+        <ProductCompare
+          products={products}
+          allEntries={allEntries}
+          productsById={productsById}
+          testsById={testsById}
+          filteredTestIds={filteredTestIds}
         />
 
         {!hasData ? (

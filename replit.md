@@ -16,6 +16,7 @@ Glidr is a full-stack React web application designed to manage ski testing and d
 - Tests can be filtered by type, product, snow type, location, air/snow temp, air/snow humidity
 - Test detail page shows full results table with winner highlighting
 - Test detail page has Hide/Show button to toggle product and methodology columns
+- Tests can be duplicated (copies ski pairs, products, methodology, series, test type — results/date/location left blank for new entry)
 - Tests can be edited and deleted (with cascade deletion of entries)
 - Admin can create/edit/delete users and reset passwords
 - Admin can manage groups (add, rename, delete) — groups are stored in database

@@ -101,6 +101,7 @@ export default function NewTest() {
   const { user, can } = useAuth();
 
   const urlParams = new URLSearchParams(window.location.search);
+  const duplicateId = urlParams.get("duplicate");
   const initialType = (urlParams.get("type") as TestType) || "Glide";
   const returnTo = urlParams.get("returnTo") || "/tests";
 
@@ -121,6 +122,17 @@ export default function NewTest() {
     queryKey: ["/api/race-skis/all"],
     enabled: testSkiSource === "raceskis" && can("raceskis"),
   });
+
+  const { data: sourceTest } = useQuery<any>({
+    queryKey: [`/api/tests/${duplicateId}`],
+    enabled: !!duplicateId,
+  });
+  const { data: sourceEntries = [] } = useQuery<any[]>({
+    queryKey: [`/api/tests/${duplicateId}/entries`],
+    enabled: !!duplicateId,
+  });
+
+  const [duplicateApplied, setDuplicateApplied] = useState(false);
 
   const userGroups = useMemo(() => {
     if (user?.isAdmin && groups.length > 0) {
@@ -200,6 +212,49 @@ export default function NewTest() {
     }
   }, [watchSeriesId, series, form]);
 
+  useEffect(() => {
+    if (duplicateApplied || !sourceTest) return;
+    setDuplicateApplied(true);
+
+    form.setValue("testType", sourceTest.testType as TestType, { shouldValidate: true });
+    if (sourceTest.seriesId) {
+      form.setValue("seriesId", String(sourceTest.seriesId), { shouldValidate: true });
+    }
+    if (sourceTest.groupScope) {
+      form.setValue("groupScope", sourceTest.groupScope, { shouldValidate: true });
+    }
+    if (sourceTest.notes) {
+      form.setValue("notes", sourceTest.notes, { shouldValidate: true });
+    }
+    if (sourceTest.testSkiSource === "raceskis") {
+      setTestSkiSource("raceskis");
+    }
+
+    const srcLabels: string[] = sourceTest.distanceLabels
+      ? (() => { try { const p = JSON.parse(sourceTest.distanceLabels); return Array.isArray(p) ? p : ["0 km"]; } catch { return ["0 km"]; } })()
+      : [sourceTest.distanceLabel0km || "0 km", ...(sourceTest.distanceLabelXkm ? [sourceTest.distanceLabelXkm] : [])];
+    setDistanceLabels(srcLabels);
+
+    if (sourceEntries.length > 0) {
+      const dupRows: EntryRow[] = [...sourceEntries]
+        .sort((a: any, b: any) => a.skiNumber - b.skiNumber)
+        .map((e: any) => ({
+          id: `row_${e.skiNumber}_${Math.random().toString(16).slice(2)}`,
+          skiNumber: e.skiNumber,
+          productId: e.productId || undefined,
+          additionalProductIds: e.additionalProductIds || undefined,
+          methodology: e.methodology || "",
+          roundResults: Array.from({ length: srcLabels.length }, () => ({ result: null, rank: null })),
+          feelingRank: null,
+          kickRank: null,
+          grindType: e.grindType || undefined,
+          grindStone: e.grindStone || undefined,
+          grindPattern: e.grindPattern || undefined,
+          raceSkiId: e.raceSkiId || undefined,
+        }));
+      setRows(dupRows);
+    }
+  }, [sourceTest, sourceEntries, duplicateApplied, form]);
 
   const autoWeather = useMemo(() => {
     if (!watchDate || !watchLocation) return undefined;
@@ -263,7 +318,7 @@ export default function NewTest() {
               </Button>
             </a>
             <div>
-              <h1 className="text-2xl sm:text-3xl">{initialType === "Grind" ? "New grind test" : "New test"}</h1>
+              <h1 className="text-2xl sm:text-3xl">{duplicateId ? "Duplicate test" : initialType === "Grind" ? "New grind test" : "New test"}</h1>
               <p
                 className="mt-1 text-sm text-muted-foreground"
                 data-testid="text-newtest-subtitle"

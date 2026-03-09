@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy } from "lucide-react";
 import { generateTestPDF } from "@/lib/pdf-report";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -247,6 +247,12 @@ export default function TestDetail() {
               </Button>
             </AppLink>
             <div className="flex items-center gap-2">
+              <AppLink href={`/tests/new?duplicate=${id}`} testId="link-duplicate-test">
+                <Button variant="outline" size="sm" data-testid="button-duplicate-test">
+                  <Copy className="mr-2 h-4 w-4" />
+                  Duplicate
+                </Button>
+              </AppLink>
               <AppLink href={`/tests/${id}/edit`} testId="link-edit-test">
                 <Button variant="outline" size="sm" data-testid="button-edit-test">
                   <Pencil className="mr-2 h-4 w-4" />

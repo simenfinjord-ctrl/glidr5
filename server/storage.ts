@@ -79,10 +79,10 @@ export interface IStorage {
   deleteEntriesByTestId(testId: number): Promise<void>;
 
   createLoginLog(log: InsertLoginLog): Promise<LoginLog>;
-  listLoginLogs(): Promise<LoginLog[]>;
+  listLoginLogs(teamId?: number): Promise<LoginLog[]>;
 
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
-  listActivityLogs(limit?: number): Promise<ActivityLog[]>;
+  listActivityLogs(limit?: number, teamId?: number): Promise<ActivityLog[]>;
 
   listGrindingRecords(groupScope: string, isAdmin: boolean, teamId?: number): Promise<GrindingRecord[]>;
   createGrindingRecord(r: InsertGrindingRecord): Promise<GrindingRecord>;
@@ -403,7 +403,13 @@ export class DatabaseStorage implements IStorage {
     return created!;
   }
 
-  async listLoginLogs(): Promise<LoginLog[]> {
+  async listLoginLogs(teamId?: number): Promise<LoginLog[]> {
+    if (teamId) {
+      const teamUsers = await db.select({ id: users.id }).from(users).where(eq(users.teamId, teamId));
+      const userIds = teamUsers.map((u) => u.id);
+      if (userIds.length === 0) return [];
+      return db.select().from(loginLogs).where(inArray(loginLogs.userId, userIds)).orderBy(sql`${loginLogs.id} desc`);
+    }
     return db.select().from(loginLogs).orderBy(sql`${loginLogs.id} desc`);
   }
 
@@ -412,7 +418,10 @@ export class DatabaseStorage implements IStorage {
     return created!;
   }
 
-  async listActivityLogs(limit = 50): Promise<ActivityLog[]> {
+  async listActivityLogs(limit = 50, teamId?: number): Promise<ActivityLog[]> {
+    if (teamId) {
+      return db.select().from(activityLogs).where(eq(activityLogs.teamId, teamId)).orderBy(sql`${activityLogs.id} desc`).limit(limit);
+    }
     return db.select().from(activityLogs).orderBy(sql`${activityLogs.id} desc`).limit(limit);
   }
 
@@ -620,6 +629,13 @@ export class DatabaseStorage implements IStorage {
     const tableMap: Record<string, any> = { users, tests, products, testSkiSeries, dailyWeather, grindingRecords, loginLogs, activityLogs, athletes, raceSkis };
     const table = tableMap[tableName];
     if (!table) return 0;
+    if (teamId && tableName === "loginLogs") {
+      const teamUsers = await db.select({ id: users.id }).from(users).where(eq(users.teamId, teamId));
+      const userIds = teamUsers.map((u) => u.id);
+      if (userIds.length === 0) return 0;
+      const result = await db.select({ count: sql<number>`count(*)` }).from(loginLogs).where(inArray(loginLogs.userId, userIds));
+      return Number(result[0]?.count ?? 0);
+    }
     const hasTeamId = table.teamId !== undefined;
     if (teamId && hasTeamId) {
       const result = await db.select({ count: sql<number>`count(*)` }).from(table).where(eq(table.teamId, teamId));

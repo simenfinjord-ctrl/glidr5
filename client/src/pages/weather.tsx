@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Thermometer, Droplets, Snowflake, MapPin, Cloud, Wind, Eye, Star } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -118,12 +119,20 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+const WEATHER_LAST_GROUP_KEY = "glidr-weather-last-group";
+
 function WeatherForm({
   initial,
   onSaved,
+  userGroups,
+  selectedGroup,
+  onGroupChange,
 }: {
   initial?: Weather;
   onSaved: () => void;
+  userGroups: string[];
+  selectedGroup: string;
+  onGroupChange: (group: string) => void;
 }) {
   const { toast } = useToast();
   const { queueMutation } = useOffline();
@@ -164,6 +173,7 @@ function WeatherForm({
     snowHumidityType: data.snowHumidityType || null,
     trackHardness: data.trackHardness || null,
     testQuality: data.testQuality || null,
+    groupScope: selectedGroup,
   });
 
   const createMutation = useMutation({
@@ -229,6 +239,27 @@ function WeatherForm({
         })}
         className="space-y-5 max-h-[70vh] overflow-y-auto pr-1"
       >
+        {userGroups.length > 1 && (
+          <div className="space-y-1">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Group</h3>
+            <Select
+              value={selectedGroup}
+              onValueChange={(v) => onGroupChange(v)}
+            >
+              <SelectTrigger data-testid="select-weather-group">
+                <SelectValue placeholder="Select group" />
+              </SelectTrigger>
+              <SelectContent>
+                {userGroups.map((g) => (
+                  <SelectItem key={g} value={g} data-testid={`option-weather-group-${g}`}>
+                    {g}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <div className="space-y-1">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date & Location</h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -581,11 +612,35 @@ function WeatherBadge({ label, value, colorClass }: { label: string; value: stri
 
 export default function WeatherPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Weather | undefined>();
   const [confirmDelete, setConfirmDelete] = useState<Weather | undefined>();
 
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
+  const { data: groups = [] } = useQuery<{ id: number; name: string }[]>({ queryKey: ["/api/groups"] });
+
+  const userGroups = useMemo(() => {
+    if (user?.isAdmin && groups.length > 0) {
+      return groups.map((g) => g.name);
+    }
+    return (user?.groupScope ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  }, [user, groups]);
+
+  const [selectedGroup, setSelectedGroup] = useState<string>(() => {
+    const stored = localStorage.getItem(WEATHER_LAST_GROUP_KEY);
+    return stored || "";
+  });
+
+  const effectiveGroup = useMemo(() => {
+    if (selectedGroup && userGroups.includes(selectedGroup)) return selectedGroup;
+    return userGroups[0] ?? "";
+  }, [selectedGroup, userGroups]);
+
+  const handleGroupChange = (group: string) => {
+    setSelectedGroup(group);
+    localStorage.setItem(WEATHER_LAST_GROUP_KEY, group);
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -629,7 +684,7 @@ export default function WeatherPage() {
               <DialogHeader>
                 <DialogTitle>{editing ? "Edit weather" : "Add weather"}</DialogTitle>
               </DialogHeader>
-              <WeatherForm initial={editing} onSaved={() => setOpen(false)} />
+              <WeatherForm initial={editing} onSaved={() => setOpen(false)} userGroups={userGroups} selectedGroup={effectiveGroup} onGroupChange={handleGroupChange} />
             </DialogContent>
           </Dialog>
         </div>

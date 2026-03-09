@@ -129,6 +129,7 @@ export default function Tests() {
     enabled: allTestIds.length > 0,
   });
 
+  const [sortOrder, setSortOrder] = useState<string>("date-desc");
   const [filterSeason, setFilterSeason] = useState<string>("All");
   const [filterType, setFilterType] = useState<string>("All");
   const [filterProduct, setFilterProduct] = useState<string>("All");
@@ -197,7 +198,7 @@ export default function Tests() {
   }, [tests, allEntries, productsById]);
 
   const filtered = useMemo(() => {
-    return tests.filter((t) => {
+    const result = tests.filter((t) => {
       if (t.testType === "Grind") return false;
       if (filterSeason !== "All" && getSeason(t.date) !== filterSeason) return false;
       if (filterType !== "All" && t.testType !== filterType) return false;
@@ -228,7 +229,24 @@ export default function Tests() {
 
       return true;
     });
-  }, [tests, filterSeason, filterType, filterProduct, filterSnowType, filterLocation, filterDate, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, allEntries, weatherById]);
+
+    result.sort((a, b) => {
+      switch (sortOrder) {
+        case "date-asc":
+          return a.date.localeCompare(b.date);
+        case "date-desc":
+          return b.date.localeCompare(a.date);
+        case "location-az":
+          return a.location.localeCompare(b.location);
+        case "location-za":
+          return b.location.localeCompare(a.location);
+        default:
+          return b.date.localeCompare(a.date);
+      }
+    });
+
+    return result;
+  }, [tests, filterSeason, filterType, filterProduct, filterSnowType, filterLocation, filterDate, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, allEntries, weatherById, sortOrder]);
 
   const hasFilters = filterSeason !== "All" || filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || filterDate || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax;
 
@@ -274,17 +292,20 @@ export default function Tests() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="min-w-[150px]">
-                <div className="flex items-center gap-1.5">
-                  <CalendarDays className="h-3.5 w-3.5 text-primary/70" />
-                  <Input
-                    type="date"
-                    value={filterDate}
-                    onChange={(e) => setFilterDate(e.target.value)}
-                    className="h-9"
-                    data-testid="input-filter-date"
-                  />
-                </div>
+              <div className="min-w-[170px]">
+                <Select value={filterDate || "all"} onValueChange={(v) => setFilterDate(v === "all" ? "" : v)}>
+                  <SelectTrigger data-testid="select-filter-date">
+                    <SelectValue placeholder="Date" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All dates</SelectItem>
+                    {availableDates.map((d) => (
+                      <SelectItem key={d} value={d}>
+                        {new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", year: "numeric", month: "short", day: "numeric" })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="min-w-[140px]">
                 <Select value={filterType} onValueChange={setFilterType}>
@@ -331,6 +352,19 @@ export default function Tests() {
                   data-testid="input-filter-location"
                 />
               </div>
+              <div className="min-w-[150px]">
+                <Select value={sortOrder} onValueChange={setSortOrder}>
+                  <SelectTrigger data-testid="select-sort-order">
+                    <SelectValue placeholder="Sort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date-desc">Date ↓</SelectItem>
+                    <SelectItem value="date-asc">Date ↑</SelectItem>
+                    <SelectItem value="location-az">Location A-Z</SelectItem>
+                    <SelectItem value="location-za">Location Z-A</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             {hasFilters && (
               <Button
@@ -357,28 +391,6 @@ export default function Tests() {
               </Button>
             )}
           </div>
-
-          {availableDates.length > 0 && !filterDate && (
-            <div className="mt-3 border-t border-gray-100 pt-3">
-              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                <CalendarDays className="h-3 w-3" />
-                Quick day select
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {availableDates.slice(0, 10).map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setFilterDate(d)}
-                    className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
-                    data-testid={`button-date-${d}`}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="mt-3 border-t border-gray-100 pt-3">
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">

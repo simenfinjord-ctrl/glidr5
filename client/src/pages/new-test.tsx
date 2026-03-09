@@ -132,7 +132,7 @@ export default function NewTest() {
   const [rows, setRows] = useState<EntryRow[]>(() => makeRows(8, 1));
   const [distanceLabels, setDistanceLabels] = useState<string[]>(["0 km"]);
 
-  const defaultLocation = weather[0]?.location ?? "";
+  const defaultLocation = "";
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -200,11 +200,6 @@ export default function NewTest() {
     }
   }, [watchSeriesId, series, form]);
 
-  useEffect(() => {
-    if (!weather.length) return;
-    if (form.getValues("location")) return;
-    form.setValue("location", weather[0]!.location, { shouldValidate: true });
-  }, [weather, form]);
 
   const autoWeather = useMemo(() => {
     if (!watchDate || !watchLocation) return undefined;

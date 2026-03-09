@@ -42,19 +42,21 @@ Glidr is a full-stack React web application designed to manage ski testing and d
 - Brand and product name displayed with space separator (no em dash)
 - Test ski series have optional Brand and Ski type fields
 - Weather logs can be deleted (with confirmation dialog)
+- Weather form has group selector for multi-group users (persists last-used group to localStorage)
 - Series detail page (/testskis/:id) shows all tests for a series with results tables
-- Tests page has day picker: select a date to see all tests stacked with inline results tables
-- Quick day select buttons show recent test dates for fast navigation
+- Tests page has date dropdown filter listing unique test dates (newest first) with "All dates" option
+- Tests page has sort dropdown: Date ↑, Date ↓ (default), Location A-Z, Location Z-A
 - Offline mode: data entry works without internet, changes queue locally and sync when reconnected
 - Service worker caches app shell for offline access
 - IndexedDB stores pending mutations and cached reference data
 - Header shows online/offline status indicator and pending sync count
 - Analytics page (/analytics) with recharts: product wins over time, avg rank by product, tests per month, snow temp vs rank scatter
 - Analytics page has Glide/Structure/All filter
+- Analytics page has product search combobox with detailed stats: total tests, wins, avg rank, win rate, methodology breakdown, performance-over-time chart, and test history table
 - PDF report generation on test detail page (jsPDF + autoTable): includes test info, weather, full results table
 - Test detail page has CSV, PDF, and Hide/Show export buttons
 - Series form has group selector (shown for multi-group users, defaults to first group)
-- New test form has group selector that defaults to selected series' group
+- New test form has group selector that defaults to selected series' group; location field starts empty (no auto-fill from weather)
 - Edit test form has group selector that updates when series changes
 - Group selector hidden for single-group users (auto-assigned)
 - Grinding page has two tabs: Records (grinding log) and Spreadsheets (embedded Google Sheets)

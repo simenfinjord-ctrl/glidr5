@@ -1,13 +1,24 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, TrendingUp, Thermometer, Award, Filter } from "lucide-react";
+import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X } from "lucide-react";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter, Cell,
 } from "recharts";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 type Test = {
   id: number;
@@ -67,6 +78,303 @@ function getRank(entry: TestEntry): number | null {
   return entry.rank0km;
 }
 
+function ProductSearchStats({
+  products,
+  tests,
+  allEntries,
+  productsById,
+  testsById,
+}: {
+  products: Product[];
+  tests: Test[];
+  allEntries: TestEntry[];
+  productsById: Map<number, Product>;
+  testsById: Map<number, Test>;
+}) {
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const selectedProduct = selectedProductId ? productsById.get(selectedProductId) : null;
+
+  const stats = useMemo(() => {
+    if (!selectedProductId) return null;
+
+    const productEntries = allEntries.filter((e) => {
+      if (e.productId === selectedProductId) return true;
+      if (e.additionalProductIds) {
+        const ids = e.additionalProductIds.split(",").map(Number).filter((n) => !isNaN(n));
+        if (ids.includes(selectedProductId)) return true;
+      }
+      return false;
+    });
+
+    if (productEntries.length === 0) return null;
+
+    const testIdsUsed = new Set(productEntries.map((e) => e.testId));
+    const testsUsed = Array.from(testIdsUsed)
+      .map((tid) => testsById.get(tid))
+      .filter(Boolean) as Test[];
+
+    let totalWins = 0;
+    const ranks: number[] = [];
+    const methodologyCount = new Map<string, number>();
+    const performanceByMonth = new Map<string, { ranks: number[]; wins: number; count: number }>();
+
+    const testResults: { test: Test; rank: number | null; entry: TestEntry }[] = [];
+
+    for (const entry of productEntries) {
+      const test = testsById.get(entry.testId);
+      if (!test) continue;
+
+      const rank = getRank(entry);
+      testResults.push({ test, rank, entry });
+
+      if (rank !== null) {
+        ranks.push(rank);
+        if (rank === 1) totalWins++;
+      }
+
+      const method = test.testType;
+      methodologyCount.set(method, (methodologyCount.get(method) || 0) + 1);
+
+      const month = test.date.slice(0, 7);
+      if (!performanceByMonth.has(month)) {
+        performanceByMonth.set(month, { ranks: [], wins: 0, count: 0 });
+      }
+      const pm = performanceByMonth.get(month)!;
+      pm.count++;
+      if (rank !== null) {
+        pm.ranks.push(rank);
+        if (rank === 1) pm.wins++;
+      }
+    }
+
+    const avgRank = ranks.length > 0
+      ? parseFloat((ranks.reduce((a, b) => a + b, 0) / ranks.length).toFixed(2))
+      : null;
+
+    const winRate = ranks.length > 0
+      ? parseFloat(((totalWins / ranks.length) * 100).toFixed(1))
+      : 0;
+
+    const performanceOverTime = Array.from(performanceByMonth.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, data]) => ({
+        month,
+        avgRank: data.ranks.length > 0
+          ? parseFloat((data.ranks.reduce((a, b) => a + b, 0) / data.ranks.length).toFixed(2))
+          : null,
+        wins: data.wins,
+        tests: data.count,
+      }));
+
+    const methodologyBreakdown = Array.from(methodologyCount.entries()).map(([method, count]) => ({
+      method,
+      count,
+      percentage: parseFloat(((count / productEntries.length) * 100).toFixed(1)),
+    }));
+
+    testResults.sort((a, b) => b.test.date.localeCompare(a.test.date));
+
+    return {
+      totalTests: testsUsed.length,
+      totalWins,
+      avgRank,
+      winRate,
+      methodologyBreakdown,
+      performanceOverTime,
+      testResults,
+    };
+  }, [selectedProductId, allEntries, testsById]);
+
+  return (
+    <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-product-search">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-50">
+          <Search className="h-4 w-4 text-cyan-600" />
+        </div>
+        <h2 className="text-base font-semibold">Product performance lookup</h2>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 w-full max-w-sm justify-between bg-background/70"
+              data-testid="button-product-search"
+            >
+              <span className={cn("truncate", !selectedProduct && "text-muted-foreground")}>
+                {selectedProduct ? `${selectedProduct.brand} ${selectedProduct.name}` : "Search for a product..."}
+              </span>
+              <ChevronsUpDown className="h-4 w-4 opacity-60" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[min(380px,calc(100vw-2rem))] p-0" align="start">
+            <Command>
+              <CommandInput data-testid="input-product-search" placeholder="Search products…" />
+              <CommandList>
+                <CommandEmpty>No matches.</CommandEmpty>
+                <CommandGroup heading="Products">
+                  {products.map((p) => (
+                    <CommandItem
+                      key={p.id}
+                      value={`${p.brand} ${p.name}`}
+                      onSelect={() => {
+                        setSelectedProductId(p.id);
+                        setOpen(false);
+                      }}
+                      data-testid={`option-analytics-product-${p.id}`}
+                    >
+                      <span className="truncate">{p.brand} {p.name}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{p.category}</span>
+                      <Check className={cn("ml-2 h-4 w-4", selectedProductId === p.id ? "opacity-100" : "opacity-0")} />
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        {selectedProduct && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedProductId(null)}
+            data-testid="button-clear-product"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      {selectedProduct && stats && (
+        <div className="flex flex-col gap-4" data-testid="card-product-stats">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl border p-3 text-center">
+              <Hash className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+              <div className="text-2xl font-bold" data-testid="text-product-total-tests">{stats.totalTests}</div>
+              <div className="text-xs text-muted-foreground">Total tests</div>
+            </div>
+            <div className="rounded-xl border p-3 text-center">
+              <Trophy className="h-4 w-4 mx-auto text-amber-500 mb-1" />
+              <div className="text-2xl font-bold" data-testid="text-product-total-wins">{stats.totalWins}</div>
+              <div className="text-xs text-muted-foreground">Wins (#1)</div>
+            </div>
+            <div className="rounded-xl border p-3 text-center">
+              <Award className="h-4 w-4 mx-auto text-blue-500 mb-1" />
+              <div className="text-2xl font-bold" data-testid="text-product-avg-rank">{stats.avgRank ?? "—"}</div>
+              <div className="text-xs text-muted-foreground">Avg rank</div>
+            </div>
+            <div className="rounded-xl border p-3 text-center">
+              <Percent className="h-4 w-4 mx-auto text-emerald-500 mb-1" />
+              <div className="text-2xl font-bold" data-testid="text-product-win-rate">{stats.winRate}%</div>
+              <div className="text-xs text-muted-foreground">Win rate</div>
+            </div>
+          </div>
+
+          {stats.methodologyBreakdown.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <FlaskConical className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Methodology breakdown</span>
+              </div>
+              <div className="flex flex-wrap gap-2" data-testid="list-methodology-breakdown">
+                {stats.methodologyBreakdown.map((m) => (
+                  <Badge key={m.method} variant="secondary" className="text-xs" data-testid={`badge-methodology-${m.method.toLowerCase()}`}>
+                    {m.method}: {m.count} ({m.percentage}%)
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {stats.performanceOverTime.length > 1 && (
+            <div>
+              <div className="text-sm font-medium mb-2">Performance over time</div>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={stats.performanceOverTime}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis dataKey="month" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                  <YAxis
+                    reversed
+                    allowDecimals={false}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                    label={{ value: "Avg Rank", angle: -90, position: "insideLeft", style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "12px",
+                      fontSize: "12px",
+                    }}
+                    formatter={(value: any, name: string) => {
+                      if (name === "avgRank") return [value, "Avg Rank"];
+                      if (name === "wins") return [value, "Wins"];
+                      return [value, name];
+                    }}
+                  />
+                  <Line type="monotone" dataKey="avgRank" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          <div>
+            <div className="text-sm font-medium mb-2">Test history ({stats.testResults.length})</div>
+            <div className="max-h-64 overflow-y-auto rounded-lg border" data-testid="list-product-test-history">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-medium">Date</th>
+                    <th className="text-left px-3 py-2 font-medium">Location</th>
+                    <th className="text-left px-3 py-2 font-medium">Type</th>
+                    <th className="text-center px-3 py-2 font-medium">Rank</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.testResults.map(({ test, rank }, i) => (
+                    <tr key={`${test.id}-${i}`} className="border-t hover:bg-muted/30" data-testid={`row-product-test-${test.id}`}>
+                      <td className="px-3 py-2">{test.date}</td>
+                      <td className="px-3 py-2 truncate max-w-[120px]">{test.location}</td>
+                      <td className="px-3 py-2">
+                        <Badge variant="outline" className="text-xs">{test.testType}</Badge>
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {rank !== null ? (
+                          <span className={cn(
+                            "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+                            rank === 1 && "bg-amber-100 text-amber-700",
+                            rank === 2 && "bg-gray-100 text-gray-700",
+                            rank === 3 && "bg-orange-100 text-orange-700",
+                            rank > 3 && "text-muted-foreground",
+                          )}>
+                            {rank}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedProduct && !stats && (
+        <p className="text-sm text-muted-foreground" data-testid="text-product-no-data">
+          No test data found for {selectedProduct.brand} {selectedProduct.name}.
+        </p>
+      )}
+    </Card>
+  );
+}
+
 export default function Analytics() {
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
@@ -90,6 +398,7 @@ export default function Analytics() {
   const [testTypeFilter, setTestTypeFilter] = useState<"All" | "Glide" | "Structure">("All");
 
   const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+  const testsById = useMemo(() => new Map(tests.map((t) => [t.id, t])), [tests]);
   const weatherById = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);
 
   const filteredTests = useMemo(() => {
@@ -252,6 +561,14 @@ export default function Analytics() {
             ))}
           </div>
         </div>
+
+        <ProductSearchStats
+          products={products}
+          tests={tests}
+          allEntries={allEntries}
+          productsById={productsById}
+          testsById={testsById}
+        />
 
         {!hasData ? (
           <Card className="fs-card rounded-2xl p-8 text-center">

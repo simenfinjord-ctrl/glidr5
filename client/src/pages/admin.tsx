@@ -624,7 +624,7 @@ export default function Admin() {
   });
 
   const { data: loginLogs = [] } = useQuery<LoginLog[]>({
-    queryKey: ["/api/login-logs"],
+    queryKey: [`/api/login-logs${teamScopeParam}`],
     enabled: canManage,
   });
 
@@ -654,7 +654,7 @@ export default function Admin() {
   });
 
   const { data: activities = [] } = useQuery<ActivityEntry[]>({
-    queryKey: ["/api/activity"],
+    queryKey: [`/api/activity${teamScopeParam}`],
     enabled: canManage,
   });
 
@@ -1026,7 +1026,7 @@ export default function Admin() {
       toast({ title: "PDF exported", description: sections });
       try {
         await apiRequest("POST", "/api/action-log", { action: "pdf_download", details: "Full data export" });
-        queryClient.invalidateQueries({ queryKey: ["/api/login-logs"] });
+        queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/login-logs") });
       } catch (_) {}
     } catch (err: any) {
       toast({ title: "Export failed", description: err.message, variant: "destructive" });
@@ -1799,7 +1799,7 @@ export default function Admin() {
           </div>
         )}
 
-        {activeTab === "data" && <DataManagementTab />}
+        {activeTab === "data" && <DataManagementTab teamScopeParam={teamScopeParam} />}
 
         {activeTab === "danger" && <DangerZoneTab />}
       </div>
@@ -1807,9 +1807,9 @@ export default function Admin() {
   );
 }
 
-function DataManagementTab() {
+function DataManagementTab({ teamScopeParam }: { teamScopeParam: string }) {
   const { toast } = useToast();
-  const { data: dbStats } = useQuery<any>({ queryKey: ["/api/admin/db-stats"] });
+  const { data: dbStats } = useQuery<any>({ queryKey: [`/api/admin/db-stats${teamScopeParam}`] });
 
   const [csvLoading, setCsvLoading] = useState(false);
 
@@ -1937,8 +1937,8 @@ function DangerZoneTab() {
       return res.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/activity"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/db-stats"] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/activity") });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string).startsWith("/api/admin/db-stats") });
       toast({ title: `${data.deleted} activity log entries removed` });
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -1952,8 +1952,8 @@ function DangerZoneTab() {
       return res.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/login-logs"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/db-stats"] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/login-logs") });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/admin/db-stats") });
       toast({ title: `${data.deleted} login log entries removed` });
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -1965,7 +1965,7 @@ function DangerZoneTab() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/db-stats"] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/admin/db-stats") });
       toast({ title: "All other users have been logged out" });
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),

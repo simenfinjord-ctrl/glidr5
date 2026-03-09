@@ -833,9 +833,9 @@ export async function registerRoutes(
   });
 
   app.get("/api/login-logs", requireAuth, async (req, res) => {
-    const u = userInfo(req);
-    if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
-    const logs = await storage.listLoginLogs();
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const teamId = getAdminTeamScope(req);
+    const logs = await storage.listLoginLogs(teamId);
     res.json(logs);
   });
 
@@ -860,8 +860,10 @@ export async function registerRoutes(
 
   // Activity feed
   app.get("/api/activity", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const limit = parseInt(req.query.limit as string) || 50;
-    const logs = await storage.listActivityLogs(limit);
+    const teamId = getAdminTeamScope(req);
+    const logs = await storage.listActivityLogs(limit, teamId);
     res.json(logs);
   });
 
@@ -994,8 +996,8 @@ export async function registerRoutes(
       storage.countTable("testSkiSeries", teamId),
       storage.countTable("dailyWeather", teamId),
       storage.countTable("grindingRecords", teamId),
-      storage.countTable("loginLogs"),
-      storage.countTable("activityLogs"),
+      storage.countTable("loginLogs", teamId),
+      storage.countTable("activityLogs", teamId),
     ]);
     res.json({ userCount, testCount, productCount, seriesCount, weatherCount, grindingCount, loginCount, activityCount });
   });
@@ -1011,8 +1013,8 @@ export async function registerRoutes(
       storage.listProducts(u.groupScope, true, teamId),
       storage.listUsers(teamId),
       storage.listGroups(teamId),
-      storage.listLoginLogs(),
-      storage.listActivityLogs(5000),
+      storage.listLoginLogs(teamId),
+      storage.listActivityLogs(5000, teamId),
       storage.listAthletes(u.id, true, teamId),
     ]);
     const testIds = allTests.map((t: any) => t.id);
@@ -1091,18 +1093,18 @@ export async function registerRoutes(
     const { pool } = await import("./db");
     const sessionResult = await (pool as any).query(`SELECT count(*) as count FROM user_sessions`);
     const sessionCount = parseInt(sessionResult.rows[0]?.count || "0");
-    const teamId = getActiveTeamId(req);
+    const teamId = getAdminTeamScope(req);
     const [userCount, testCount, productCount, seriesCount, weatherCount, grindingCount, loginCount, activityCount, athleteCount, raceSkiCount] = await Promise.all([
-      storage.countTable("users"),
-      storage.countTable("tests"),
-      storage.countTable("products"),
-      storage.countTable("testSkiSeries"),
-      storage.countTable("dailyWeather"),
-      storage.countTable("grindingRecords"),
-      storage.countTable("loginLogs"),
-      storage.countTable("activityLogs"),
-      storage.countTable("athletes"),
-      storage.countTable("raceSkis"),
+      storage.countTable("users", teamId),
+      storage.countTable("tests", teamId),
+      storage.countTable("products", teamId),
+      storage.countTable("testSkiSeries", teamId),
+      storage.countTable("dailyWeather", teamId),
+      storage.countTable("grindingRecords", teamId),
+      storage.countTable("loginLogs", teamId),
+      storage.countTable("activityLogs", teamId),
+      storage.countTable("athletes", teamId),
+      storage.countTable("raceSkis", teamId),
     ]);
     res.json({ sessionCount, userCount, testCount, productCount, seriesCount, weatherCount, grindingCount, loginCount, activityCount, athleteCount, raceSkiCount });
   });

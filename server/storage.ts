@@ -4,7 +4,7 @@ import {
   users, groups, testSkiSeries, products, dailyWeather, tests, testEntries, loginLogs,
   activityLogs, grindingRecords, grindingSheets,
   athletes, athleteAccess, raceSkis, raceSkiRegrinds, testSkiRegrinds,
-  teams, racePrep,
+  teams,
   type User, type InsertUser,
   type Group, type InsertGroup,
   type Series, type InsertSeries,
@@ -22,7 +22,6 @@ import {
   type RaceSkiRegrind, type InsertRaceSkiRegrind,
   type TestSkiRegrind, type InsertTestSkiRegrind,
   type Team, type InsertTeam,
-  type RacePrep, type InsertRacePrep,
 } from "@shared/schema";
 
 export function parseGroupScopes(groupScope: string): string[] {
@@ -120,12 +119,6 @@ export interface IStorage {
   listTestSkiRegrinds(seriesId: number): Promise<TestSkiRegrind[]>;
   createTestSkiRegrind(r: InsertTestSkiRegrind): Promise<TestSkiRegrind>;
   deleteTestSkiRegrind(id: number): Promise<boolean>;
-
-  listRacePrep(groupScope: string, isAdmin: boolean, teamId?: number): Promise<RacePrep[]>;
-  getRacePrep(id: number): Promise<RacePrep | undefined>;
-  createRacePrep(r: InsertRacePrep): Promise<RacePrep>;
-  updateRacePrep(id: number, data: Partial<InsertRacePrep>): Promise<RacePrep | undefined>;
-  deleteRacePrep(id: number): Promise<boolean>;
 
   countTable(tableName: string, teamId?: number): Promise<number>;
   listAllTestsForTeam(teamId: number): Promise<Test[]>;
@@ -629,36 +622,6 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTestSkiRegrind(id: number): Promise<boolean> {
     const result = await db.delete(testSkiRegrinds).where(eq(testSkiRegrinds.id, id)).returning();
-    return result.length > 0;
-  }
-
-  // --- Race Prep ---
-
-  async listRacePrep(groupScope: string, isAdmin: boolean, teamId?: number): Promise<RacePrep[]> {
-    const filter = this.scopeFilter(groupScope, isAdmin, racePrep, teamId);
-    if (filter) {
-      return db.select().from(racePrep).where(filter).orderBy(sql`${racePrep.id} desc`);
-    }
-    return db.select().from(racePrep).orderBy(sql`${racePrep.id} desc`);
-  }
-
-  async getRacePrep(id: number): Promise<RacePrep | undefined> {
-    const [r] = await db.select().from(racePrep).where(eq(racePrep.id, id));
-    return r;
-  }
-
-  async createRacePrep(r: InsertRacePrep): Promise<RacePrep> {
-    const [created] = await db.insert(racePrep).values(r).returning();
-    return created!;
-  }
-
-  async updateRacePrep(id: number, data: Partial<InsertRacePrep>): Promise<RacePrep | undefined> {
-    const [updated] = await db.update(racePrep).set(data).where(eq(racePrep.id, id)).returning();
-    return updated;
-  }
-
-  async deleteRacePrep(id: number): Promise<boolean> {
-    const result = await db.delete(racePrep).where(eq(racePrep.id, id)).returning();
     return result.length > 0;
   }
 

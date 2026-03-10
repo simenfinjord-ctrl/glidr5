@@ -19,7 +19,6 @@ import {
   Moon,
   Sparkles,
   Trophy,
-  Flag,
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -121,16 +120,6 @@ const nav: NavItem[] = [
     color: "text-muted-foreground",
     activeColor: "text-orange-600",
     activeBg: "bg-orange-50",
-    permArea: "raceskis",
-  },
-  {
-    href: "/raceprep",
-    label: "Race Prep",
-    icon: Flag,
-    testId: "link-raceprep",
-    color: "text-muted-foreground",
-    activeColor: "text-teal-600",
-    activeBg: "bg-teal-50",
     permArea: "raceskis",
   },
   {

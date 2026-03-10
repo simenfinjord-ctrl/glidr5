@@ -5,8 +5,6 @@ using Toybox.Timer;
 
 class HeatDelegate extends WatchUi.BehaviorDelegate {
     var view as HeatView;
-    var holdTimer as Timer.Timer?;
-    var holdDirection as Number = 0;
 
     function initialize(v as HeatView) {
         BehaviorDelegate.initialize();
@@ -19,11 +17,11 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
         if (view.phase == 0) {
             view.selectedWinner = view.pairA;
             view.phase = 1;
-            view.distance = 1;
+            view.distance = 10;
             WatchUi.requestUpdate();
         } else if (view.phase == 1) {
-            view.distance += 1;
-            if (view.distance > 999) { view.distance = 999; }
+            view.distance += 10;
+            if (view.distance > 990) { view.distance = 990; }
             WatchUi.requestUpdate();
         }
         return true;
@@ -35,11 +33,11 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
         if (view.phase == 0) {
             view.selectedWinner = view.pairB;
             view.phase = 1;
-            view.distance = 1;
+            view.distance = 10;
             WatchUi.requestUpdate();
         } else if (view.phase == 1) {
-            view.distance -= 1;
-            if (view.distance < 1) { view.distance = 1; }
+            view.distance -= 10;
+            if (view.distance < 10) { view.distance = 10; }
             WatchUi.requestUpdate();
         }
         return true;

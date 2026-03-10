@@ -26,8 +26,8 @@ Control ski test runsheets from your Garmin watch. Works with the Glidr web app'
 - **DOWN**: Select bottom pair (Par B) as winner
 
 ### Distance Entry Screen
-- **UP**: Increase distance by 1 cm
-- **DOWN**: Decrease distance by 1 cm
+- **UP**: Increase distance by 10 cm
+- **DOWN**: Decrease distance by 10 cm
 - **SELECT**: Confirm and submit result
 - **BACK**: Go back to winner selection
 

@@ -1356,6 +1356,234 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  // --- Runsheet Watch Sessions (in-memory, for Garmin Connect IQ integration) ---
+
+  type WatchHeat = { pairA: number | null; pairB: number | null; distA: string; distB: string };
+  type WatchSession = {
+    code: string;
+    skiPairs: number[];
+    bracket: WatchHeat[][];
+    createdAt: number;
+    userId: number;
+  };
+
+  const runsheetSessions = new Map<string, WatchSession>();
+
+  function generateSessionCode(): string {
+    let code: string;
+    do {
+      code = String(Math.floor(100000 + Math.random() * 900000));
+    } while (runsheetSessions.has(code));
+    return code;
+  }
+
+  function watchInitBracket(pairs: number[]): WatchHeat[][] {
+    if (pairs.length < 2) return [];
+    const totalRounds = Math.ceil(Math.log2(pairs.length));
+    const rounds: WatchHeat[][] = [];
+    const firstRound: WatchHeat[] = [];
+    for (let i = 0; i < pairs.length; i += 2) {
+      firstRound.push({ pairA: pairs[i], pairB: i + 1 < pairs.length ? pairs[i + 1] : null, distA: "", distB: "" });
+    }
+    rounds.push(firstRound);
+    let prevCount = firstRound.length;
+    for (let r = 1; r < totalRounds; r++) {
+      const numHeats = Math.ceil(prevCount / 2);
+      const round: WatchHeat[] = [];
+      for (let h = 0; h < numHeats; h++) round.push({ pairA: null, pairB: null, distA: "", distB: "" });
+      rounds.push(round);
+      prevCount = numHeats;
+    }
+    for (let r = 0; r < rounds.length - 1; r++) {
+      for (let h = 0; h < rounds[r].length; h++) {
+        const heat = rounds[r][h];
+        const byeWinner = (heat.pairA !== null && heat.pairB === null) ? heat.pairA
+          : (heat.pairB !== null && heat.pairA === null) ? heat.pairB : null;
+        if (byeWinner !== null) {
+          const nh = Math.floor(h / 2);
+          const ns = h % 2 === 0 ? "A" : "B";
+          if (rounds[r + 1]?.[nh]) {
+            if (ns === "A") rounds[r + 1][nh].pairA = byeWinner;
+            else rounds[r + 1][nh].pairB = byeWinner;
+          }
+        }
+      }
+    }
+    return rounds;
+  }
+
+  function watchGetWinner(heat: WatchHeat): number | null {
+    if (heat.pairA !== null && heat.pairB === null) return heat.pairA;
+    if (heat.pairB !== null && heat.pairA === null) return heat.pairB;
+    if (heat.pairA === null || heat.pairB === null) return null;
+    const dA = parseFloat(heat.distA), dB = parseFloat(heat.distB);
+    if (isNaN(dA) || isNaN(dB)) return null;
+    if (dA === 0 && dB > 0) return heat.pairA;
+    if (dB === 0 && dA > 0) return heat.pairB;
+    return null;
+  }
+
+  function watchRebuildDownstream(bracket: WatchHeat[][], fromRound: number) {
+    for (let r = fromRound; r < bracket.length; r++) {
+      for (const heat of bracket[r]) { heat.pairA = null; heat.pairB = null; heat.distA = ""; heat.distB = ""; }
+    }
+    for (let r = Math.max(0, fromRound - 1); r < bracket.length - 1; r++) {
+      for (let h = 0; h < bracket[r].length; h++) {
+        const w = watchGetWinner(bracket[r][h]);
+        if (w === null) continue;
+        const nh = Math.floor(h / 2), ns = h % 2 === 0 ? "A" : "B";
+        if (!bracket[r + 1]?.[nh]) continue;
+        if (ns === "A") bracket[r + 1][nh].pairA = w; else bracket[r + 1][nh].pairB = w;
+      }
+    }
+  }
+
+  function watchFindCurrentHeat(bracket: WatchHeat[][]): { roundIndex: number; heatIndex: number; roundName: string; pairA: number; pairB: number } | null {
+    const totalRounds = bracket.length;
+    for (let r = 0; r < bracket.length; r++) {
+      for (let h = 0; h < bracket[r].length; h++) {
+        const heat = bracket[r][h];
+        if (heat.pairA !== null && heat.pairB !== null && watchGetWinner(heat) === null) {
+          const fromEnd = totalRounds - 1 - r;
+          const name = fromEnd === 0 ? "Final" : fromEnd === 1 ? "Semi-final" : fromEnd === 2 ? "Quarter-final" : `Round ${r + 1}`;
+          return { roundIndex: r, heatIndex: h, roundName: name, pairA: heat.pairA, pairB: heat.pairB };
+        }
+      }
+    }
+    return null;
+  }
+
+  function watchCalcDiffs(bracket: WatchHeat[][]): Map<number, number> {
+    const diffs = new Map<number, number>();
+    for (let r = bracket.length - 1; r >= 0; r--) {
+      for (const heat of bracket[r]) {
+        if (heat.pairA === null || heat.pairB === null) continue;
+        const dA = parseFloat(heat.distA), dB = parseFloat(heat.distB);
+        if (isNaN(dA) || isNaN(dB)) continue;
+        if (dA === 0 && dB > 0) {
+          if (!diffs.has(heat.pairA)) diffs.set(heat.pairA, 0);
+          diffs.set(heat.pairB, dB + (diffs.get(heat.pairA) ?? 0));
+        } else if (dB === 0 && dA > 0) {
+          if (!diffs.has(heat.pairB)) diffs.set(heat.pairB, 0);
+          diffs.set(heat.pairA, dA + (diffs.get(heat.pairB) ?? 0));
+        }
+      }
+    }
+    return diffs;
+  }
+
+  app.post("/api/runsheet/sessions", requireAuth, (req, res) => {
+    const u = userInfo(req);
+    const { skiPairs } = req.body;
+    if (!Array.isArray(skiPairs) || skiPairs.length < 2) {
+      return res.status(400).json({ message: "Need at least 2 ski pairs" });
+    }
+    const code = generateSessionCode();
+    const session: WatchSession = {
+      code,
+      skiPairs: skiPairs.map(Number),
+      bracket: watchInitBracket(skiPairs.map(Number)),
+      createdAt: Date.now(),
+      userId: u.id,
+    };
+    runsheetSessions.set(code, session);
+    res.json({ code, bracket: session.bracket });
+  });
+
+  app.get("/api/runsheet/sessions/:code", requireAuth, (req, res) => {
+    const session = runsheetSessions.get(req.params.code as string);
+    if (!session) return res.status(404).json({ message: "Session not found" });
+    const u = userInfo(req);
+    if (session.userId !== u.id && !u.isAdmin) return res.status(403).json({ message: "Forbidden" });
+    const currentHeat = watchFindCurrentHeat(session.bracket);
+    const diffs = watchCalcDiffs(session.bracket);
+    const results = [...diffs.entries()].sort((a, b) => a[1] - b[1]).map(([ski, diff], i, arr) => {
+      let rank = 1;
+      for (let j = 0; j < i; j++) { if (arr[j][1] < diff) rank = j + 2; }
+      return { skiNumber: ski, diff, rank };
+    });
+    res.json({ bracket: session.bracket, currentHeat, results, skiPairs: session.skiPairs, complete: !currentHeat && results.length === session.skiPairs.length });
+  });
+
+  const watchRateLimits = new Map<string, { count: number; resetAt: number }>();
+
+  function checkWatchRateLimit(code: string): boolean {
+    const now = Date.now();
+    let entry = watchRateLimits.get(code);
+    if (!entry || entry.resetAt < now) {
+      entry = { count: 0, resetAt: now + 60 * 1000 };
+      watchRateLimits.set(code, entry);
+    }
+    entry.count++;
+    return entry.count <= 60;
+  }
+
+  app.get("/api/runsheet/watch/:code", (req, res) => {
+    const code = req.params.code as string;
+    if (!checkWatchRateLimit(code)) return res.status(429).json({ message: "Too many requests" });
+    const session = runsheetSessions.get(code);
+    if (!session) return res.status(404).json({ message: "Invalid code" });
+    const currentHeat = watchFindCurrentHeat(session.bracket);
+    const diffs = watchCalcDiffs(session.bracket);
+    const complete = !currentHeat && diffs.size === session.skiPairs.length;
+    let champion: number | null = null;
+    if (complete) {
+      const sorted = [...diffs.entries()].sort((a, b) => a[1] - b[1]);
+      if (sorted.length > 0) champion = sorted[0][0];
+    }
+    res.json({ currentHeat, complete, champion, totalPairs: session.skiPairs.length });
+  });
+
+  app.post("/api/runsheet/watch/:code/result", (req, res) => {
+    const code = req.params.code as string;
+    if (!checkWatchRateLimit(code)) return res.status(429).json({ message: "Too many requests" });
+    const session = runsheetSessions.get(code);
+    if (!session) return res.status(404).json({ message: "Invalid code" });
+    const { roundIndex, heatIndex, winnerPair, loserDistance } = req.body;
+    if (typeof roundIndex !== "number" || typeof heatIndex !== "number" || typeof winnerPair !== "number" || typeof loserDistance !== "number") {
+      return res.status(400).json({ message: "Missing fields" });
+    }
+    if (!Number.isFinite(loserDistance) || loserDistance < 1 || loserDistance > 999 || loserDistance !== Math.floor(loserDistance)) {
+      return res.status(400).json({ message: "Distance must be integer 1-999" });
+    }
+    if (roundIndex < 0 || roundIndex >= session.bracket.length) return res.status(400).json({ message: "Invalid round" });
+    if (heatIndex < 0 || heatIndex >= session.bracket[roundIndex].length) return res.status(400).json({ message: "Invalid heat" });
+    const heat = session.bracket[roundIndex][heatIndex];
+    if (!heat || heat.pairA === null || heat.pairB === null) {
+      return res.status(400).json({ message: "Invalid heat" });
+    }
+    if (heat.pairA !== winnerPair && heat.pairB !== winnerPair) {
+      return res.status(400).json({ message: "Winner not in this heat" });
+    }
+    if (heat.pairA === winnerPair) {
+      heat.distA = "0";
+      heat.distB = String(loserDistance);
+    } else {
+      heat.distB = "0";
+      heat.distA = String(loserDistance);
+    }
+    watchRebuildDownstream(session.bracket, roundIndex + 1);
+    const nextHeat = watchFindCurrentHeat(session.bracket);
+    res.json({ ok: true, nextHeat });
+  });
+
+  app.delete("/api/runsheet/sessions/:code", requireAuth, (req, res) => {
+    const session = runsheetSessions.get(req.params.code as string);
+    if (session) {
+      const u = userInfo(req);
+      if (session.userId !== u.id && !u.isAdmin) return res.status(403).json({ message: "Forbidden" });
+    }
+    runsheetSessions.delete(req.params.code as string);
+    res.json({ ok: true });
+  });
+
+  setInterval(() => {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    for (const [code, session] of runsheetSessions) {
+      if (session.createdAt < cutoff) runsheetSessions.delete(code);
+    }
+  }, 60 * 60 * 1000);
+
   // --- AI Suggestions ---
   app.post("/api/suggestions", requirePermission("suggestions", "view"), async (req, res) => {
     const u = userInfo(req);

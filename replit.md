@@ -86,6 +86,8 @@ Glidr is a full-stack React web application designed to manage ski testing and d
 - Race ski test entry has "Edit Parameters" button: configure which ski columns (Brand, Base, Grind, Heights, Construction, Mold, Serial, Year) are visible and their order; persisted to localStorage
 - Language feature removed: no I18nProvider, no language selector, English-only
 - AI Suggestions page: weather parameter form → OpenAI-powered product recommendations based on historical test data (DB-only, group-scoped)
+- Race Prep page (/raceprep): log race day preparation — race name, date, location, weather notes, grind params (type/stone/pattern), product, methodology, structure, and experiences/notes
+- Dark mode toggle (sun/moon icon) in header and login page, persisted to localStorage
 - Test ski regrind tracking archive per series
 - Multi-team/multi-tenant architecture: teams table sits above groups, all data tables have teamId column
 - Three role levels: Super Admin (cross-team access), Team Admin (full access within their team), Member (granular permissions)

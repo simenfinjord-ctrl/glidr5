@@ -43,7 +43,7 @@ export default function Login() {
     >
       <button
         onClick={toggleTheme}
-        className="absolute top-4 right-4 p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        className="absolute top-4 right-4 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
         data-testid="button-login-theme-toggle"
       >
         {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
@@ -51,16 +51,16 @@ export default function Login() {
       <div className="w-full max-w-[400px]">
         <div className="flex flex-col items-center gap-2 mb-8">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">
               Welcome to Glidr
             </h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-sm text-muted-foreground">
               Sign in to your ski testing account
             </p>
           </div>
         </div>
 
-        <Card className="bg-white dark:bg-gray-900 shadow-xl shadow-gray-200/50 dark:shadow-black/30 border-gray-200/80 dark:border-gray-700/50 rounded-2xl">
+        <Card className="bg-card shadow-xl shadow-foreground/5 border-border rounded-2xl">
           <CardContent className="p-7">
             {showForgot ? (
               <div className="space-y-4">
@@ -68,8 +68,8 @@ export default function Login() {
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
                     <Mail className="h-6 w-6 text-blue-600" />
                   </div>
-                  <h2 className="text-lg font-semibold text-gray-900">Forgot password?</h2>
-                  <p className="text-sm text-gray-500 leading-relaxed">
+                  <h2 className="text-lg font-semibold text-foreground">Forgot password?</h2>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
                     Contact your team administrator to reset your password. Admins can reset passwords from the Admin panel.
                   </p>
                 </div>
@@ -108,15 +108,15 @@ export default function Login() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-gray-700">Email</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground/80">Email</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                               {...field}
                               placeholder="name@team.org"
                               autoComplete="email"
-                              className="pl-10 h-11 bg-gray-50/50 border-gray-200 focus:bg-white"
+                              className="pl-10 h-11 bg-muted/30 border-border focus:bg-card"
                               data-testid="input-email"
                             />
                           </div>
@@ -131,7 +131,7 @@ export default function Login() {
                     render={({ field }) => (
                       <FormItem>
                         <div className="flex items-center justify-between">
-                          <FormLabel className="text-sm font-medium text-gray-700">Password</FormLabel>
+                          <FormLabel className="text-sm font-medium text-foreground/80">Password</FormLabel>
                           <button
                             type="button"
                             className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
@@ -143,13 +143,13 @@ export default function Login() {
                         </div>
                         <FormControl>
                           <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                               {...field}
                               type="password"
                               placeholder="Enter your password"
                               autoComplete="current-password"
-                              className="pl-10 h-11 bg-gray-50/50 border-gray-200 focus:bg-white"
+                              className="pl-10 h-11 bg-muted/30 border-border focus:bg-card"
                               data-testid="input-password"
                             />
                           </div>
@@ -171,7 +171,7 @@ export default function Login() {
                             data-testid="checkbox-remember-me"
                           />
                         </FormControl>
-                        <FormLabel className="text-sm text-gray-500 cursor-pointer">Remember me for 30 days</FormLabel>
+                        <FormLabel className="text-sm text-muted-foreground cursor-pointer">Remember me for 30 days</FormLabel>
                       </FormItem>
                     )}
                   />
@@ -191,7 +191,7 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">
+        <p className="text-center text-xs text-muted-foreground dark:text-muted-foreground mt-6">
           Glidr &middot; A glide and performance database
         </p>
       </div>

@@ -210,7 +210,7 @@ export default function SeriesDetail() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm" data-testid={`table-series-test-${test.id}`}>
                       <thead>
-                        <tr className="border-b border-gray-200 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                           <th className="pb-2 pr-3">Ski</th>
                           <th className="pb-2 pr-3">Product</th>
                           <th className="pb-2 pr-3">Method</th>

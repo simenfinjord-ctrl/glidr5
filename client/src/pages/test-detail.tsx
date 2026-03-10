@@ -358,10 +358,10 @@ export default function TestDetail() {
                       <span className="inline-flex rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700" data-testid="text-grind-type">{grindParams.grindType}</span>
                     )}
                     {grindParams.stone && (
-                      <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700" data-testid="text-grind-stone">{grindParams.stone}</span>
+                      <span className="inline-flex rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground/80" data-testid="text-grind-stone">{grindParams.stone}</span>
                     )}
                     {grindParams.pattern && (
-                      <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700" data-testid="text-grind-pattern">{grindParams.pattern}</span>
+                      <span className="inline-flex rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground/80" data-testid="text-grind-pattern">{grindParams.pattern}</span>
                     )}
                   </div>
                 </div>
@@ -570,7 +570,7 @@ export default function TestDetail() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm" data-testid="table-results">
                 <thead>
-                  <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="pb-3 pr-3">Ski</th>
                     {!isGrind && <th className="pb-3 pr-3">Product</th>}
                     {!isGrind && <th className="pb-3 pr-3">Method</th>}

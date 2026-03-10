@@ -161,7 +161,7 @@ export default function RaceSkis() {
                         </span>
                       </div>
                     </div>
-                    <div className="inline-flex rounded-full border border-gray-100 dark:border-gray-700 bg-background/40 px-3 py-1 text-xs text-muted-foreground">
+                    <div className="inline-flex rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground">
                       {new Date(athlete.createdAt).toLocaleDateString()}
                     </div>
                   </div>

@@ -19,6 +19,7 @@ import {
   Moon,
   Sparkles,
   Trophy,
+  Flag,
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ const nav: NavItem[] = [
     label: "Dashboard",
     icon: LayoutDashboard,
     testId: "link-dashboard",
-    color: "text-gray-500",
+    color: "text-muted-foreground",
     activeColor: "text-blue-600",
     activeBg: "bg-blue-50",
     permArea: "dashboard",
@@ -57,7 +58,7 @@ const nav: NavItem[] = [
     label: "Tests",
     icon: ListChecks,
     testId: "link-tests",
-    color: "text-gray-500",
+    color: "text-muted-foreground",
     activeColor: "text-emerald-600",
     activeBg: "bg-emerald-50",
     permArea: "tests",
@@ -67,7 +68,7 @@ const nav: NavItem[] = [
     label: "Testskis",
     icon: Snowflake,
     testId: "link-testskis",
-    color: "text-gray-500",
+    color: "text-muted-foreground",
     activeColor: "text-sky-600",
     activeBg: "bg-sky-50",
     permArea: "testskis",
@@ -77,7 +78,7 @@ const nav: NavItem[] = [
     label: "Products",
     icon: Package,
     testId: "link-products",
-    color: "text-gray-500",
+    color: "text-muted-foreground",
     activeColor: "text-amber-600",
     activeBg: "bg-amber-50",
     permArea: "products",
@@ -87,7 +88,7 @@ const nav: NavItem[] = [
     label: "Weather",
     icon: CloudSun,
     testId: "link-weather",
-    color: "text-gray-500",
+    color: "text-muted-foreground",
     activeColor: "text-violet-600",
     activeBg: "bg-violet-50",
     permArea: "weather",
@@ -97,7 +98,7 @@ const nav: NavItem[] = [
     label: "Analytics",
     icon: BarChart3,
     testId: "link-analytics",
-    color: "text-gray-500",
+    color: "text-muted-foreground",
     activeColor: "text-pink-600",
     activeBg: "bg-pink-50",
     permArea: "analytics",
@@ -107,7 +108,7 @@ const nav: NavItem[] = [
     label: "Grinding",
     icon: Disc3,
     testId: "link-grinding",
-    color: "text-gray-500",
+    color: "text-muted-foreground",
     activeColor: "text-indigo-600",
     activeBg: "bg-indigo-50",
     permArea: "grinding",
@@ -117,9 +118,19 @@ const nav: NavItem[] = [
     label: "Raceskis",
     icon: Trophy,
     testId: "link-raceskis",
-    color: "text-gray-500",
+    color: "text-muted-foreground",
     activeColor: "text-orange-600",
     activeBg: "bg-orange-50",
+    permArea: "raceskis",
+  },
+  {
+    href: "/raceprep",
+    label: "Race Prep",
+    icon: Flag,
+    testId: "link-raceprep",
+    color: "text-muted-foreground",
+    activeColor: "text-teal-600",
+    activeBg: "bg-teal-50",
     permArea: "raceskis",
   },
   {
@@ -127,7 +138,7 @@ const nav: NavItem[] = [
     label: "Suggestions",
     icon: Sparkles,
     testId: "link-suggestions",
-    color: "text-gray-500",
+    color: "text-muted-foreground",
     activeColor: "text-purple-600",
     activeBg: "bg-purple-50",
     permArea: "suggestions",
@@ -137,7 +148,7 @@ const nav: NavItem[] = [
     label: "Admin",
     icon: Shield,
     testId: "link-admin",
-    color: "text-gray-500",
+    color: "text-muted-foreground",
     activeColor: "text-rose-600",
     activeBg: "bg-rose-50",
     adminOnly: true,
@@ -181,10 +192,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen fs-grid">
-      <header className="sticky top-0 z-40 border-b border-border bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg">
+      <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 py-3">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Glidr</span>
+            <span className="text-xl font-bold tracking-tight text-foreground">Glidr</span>
             <div className={cn(
               "h-2 w-2 rounded-full",
               isOnline ? "bg-emerald-500" : "bg-amber-500"
@@ -195,7 +206,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 onValueChange={(val) => switchTeam(parseInt(val))}
               >
                 <SelectTrigger
-                  className="h-8 w-auto min-w-[140px] border-gray-200 bg-gray-50 text-xs font-medium dark:border-gray-700 dark:bg-gray-800"
+                  className="h-8 w-auto min-w-[140px] border-border bg-muted/50 text-xs font-medium"
                   data-testid="select-team"
                 >
                   <SelectValue placeholder="Select team" />
@@ -240,14 +251,14 @@ export function AppShell({ children }: { children: ReactNode }) {
               size="sm"
               data-testid="button-theme-toggle"
               onClick={toggleTheme}
-              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             <AppLink
               href="/profile"
               testId="link-profile"
-              className="hidden sm:flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mr-1 transition-colors"
+              className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mr-1 transition-colors"
             >
               <UserCircle className="h-4 w-4" />
               <span>{user?.name}</span>
@@ -257,7 +268,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               size="sm"
               data-testid="button-logout"
               onClick={() => logout()}
-              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-gray-800"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               <LogOut className="h-4 w-4" />
             </Button>
@@ -277,7 +288,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     "group inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150",
                     active
                       ? `${item.activeBg} ${item.activeColor} shadow-sm dark:bg-opacity-20`
-                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800",
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
                   )}
                 >
                   <Icon
@@ -299,8 +310,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       <footer className="mx-auto w-full max-w-6xl px-4 sm:px-6 pb-8">
-        <div className="mb-3 h-px bg-gray-100 dark:bg-gray-800" />
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400 dark:text-gray-500">
+        <div className="mb-3 h-px bg-muted" />
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <span className="font-medium">Glidr</span>
           <span>A glide and performance database</span>
         </div>

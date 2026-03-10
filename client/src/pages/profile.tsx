@@ -57,7 +57,7 @@ export default function Profile() {
     <AppShell>
       <div className="flex flex-col gap-6 max-w-2xl">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100" data-testid="text-profile-title">Profile</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-profile-title">Profile</h1>
           <p className="mt-1 text-sm text-muted-foreground">Your account information and settings</p>
         </div>
 
@@ -67,21 +67,21 @@ export default function Profile() {
               <User className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <div className="text-lg font-semibold text-gray-900" data-testid="text-profile-name">{user.name}</div>
+              <div className="text-lg font-semibold text-foreground" data-testid="text-profile-name">{user.name}</div>
               <div className="text-sm text-muted-foreground">{user.isAdmin ? "Administrator" : "Member"}</div>
             </div>
           </div>
 
           <div className="space-y-3">
-            <div className="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-3">
-              <Mail className="h-4 w-4 text-gray-400" />
+            <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-4 py-3">
+              <Mail className="h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="text-xs text-muted-foreground">Email</div>
                 <div className="text-sm font-medium" data-testid="text-profile-email">{user.email}</div>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-3">
-              <Users className="h-4 w-4 text-gray-400" />
+            <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-4 py-3">
+              <Users className="h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="text-xs text-muted-foreground">Groups</div>
                 <div className="flex flex-wrap gap-1 mt-1">
@@ -91,8 +91,8 @@ export default function Profile() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-3">
-              <Shield className="h-4 w-4 text-gray-400" />
+            <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-4 py-3">
+              <Shield className="h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="text-xs text-muted-foreground">Role</div>
                 <div className="text-sm font-medium">{user.isAdmin ? "Admin" : "Member"}</div>
@@ -107,7 +107,7 @@ export default function Profile() {
               <KeyRound className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <div className="text-base font-semibold text-gray-900">Change Password</div>
+              <div className="text-base font-semibold text-foreground">Change Password</div>
               <div className="text-xs text-muted-foreground">Update your login credentials</div>
             </div>
           </div>

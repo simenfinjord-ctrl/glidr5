@@ -344,3 +344,30 @@ export const testSkiRegrinds = pgTable("test_ski_regrinds", {
 export const insertTestSkiRegrindSchema = createInsertSchema(testSkiRegrinds).omit({ id: true });
 export type InsertTestSkiRegrind = z.infer<typeof insertTestSkiRegrindSchema>;
 export type TestSkiRegrind = typeof testSkiRegrinds.$inferSelect;
+
+// --- Race Prep Module ---
+
+export const racePrep = pgTable("race_prep", {
+  id: serial("id").primaryKey(),
+  raceName: text("race_name").notNull(),
+  date: text("date").notNull(),
+  location: text("location").notNull(),
+  weatherNotes: text("weather_notes"),
+  grindType: text("grind_type"),
+  grindStone: text("grind_stone"),
+  grindPattern: text("grind_pattern"),
+  productId: integer("product_id"),
+  productNotes: text("product_notes"),
+  methodology: text("methodology"),
+  structure: text("structure"),
+  notes: text("notes"),
+  groupScope: text("group_scope").notNull(),
+  teamId: integer("team_id").notNull().default(1),
+  createdAt: text("created_at").notNull(),
+  createdById: integer("created_by_id").notNull(),
+  createdByName: text("created_by_name").notNull(),
+});
+
+export const insertRacePrepSchema = createInsertSchema(racePrep).omit({ id: true });
+export type InsertRacePrep = z.infer<typeof insertRacePrepSchema>;
+export type RacePrep = typeof racePrep.$inferSelect;

@@ -301,7 +301,7 @@ function GroupAssignModal({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3">
+      <div className="rounded-xl border border-border bg-muted/30 p-3">
         <div className="text-sm font-medium">{product.brand} {product.name}</div>
         <div className="mt-1 text-xs text-muted-foreground">
           Currently in: <span className="font-medium text-foreground">{product.groupScope}</span>
@@ -317,7 +317,7 @@ function GroupAssignModal({
                 "flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 transition-colors",
                 selected.includes(g)
                   ? "border-primary/40 bg-primary/5"
-                  : "border-gray-100 bg-gray-50/50 hover:bg-background/50"
+                  : "border-border bg-muted/30 hover:bg-background/50"
               )}
             >
               <Checkbox
@@ -596,7 +596,7 @@ function ProductCard({
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <div className="inline-flex rounded-full border border-gray-100 bg-background/40 px-3 py-1 text-xs text-muted-foreground">
+          <div className="inline-flex rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground">
             {new Date(p.createdAt).toLocaleDateString()}
           </div>
           <div className="flex items-center gap-1">

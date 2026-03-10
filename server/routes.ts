@@ -1356,6 +1356,116 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  // --- Race Prep CRUD ---
+  app.get("/api/raceprep", requirePermission("raceskis", "view"), async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const list = await storage.listRacePrep(u.groupScope, u.isAdmin, teamId);
+    res.json(list);
+  });
+
+  app.get("/api/raceprep/:id", requirePermission("raceskis", "view"), async (req, res) => {
+    const id = parseInt(req.params.id);
+    const entry = await storage.getRacePrep(id);
+    if (!entry) return res.status(404).json({ message: "Not found" });
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    if (entry.teamId !== teamId) return res.status(404).json({ message: "Not found" });
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, entry.groupScope)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    res.json(entry);
+  });
+
+  app.post("/api/raceprep", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const now = new Date().toISOString();
+    const groupScope = resolveCreateGroupScope(req);
+    const result = await storage.createRacePrep({
+      raceName: req.body.raceName,
+      date: req.body.date,
+      location: req.body.location?.trim() || "",
+      weatherNotes: req.body.weatherNotes?.trim() || null,
+      grindType: req.body.grindType?.trim() || null,
+      grindStone: req.body.grindStone?.trim() || null,
+      grindPattern: req.body.grindPattern?.trim() || null,
+      productId: req.body.productId || null,
+      productNotes: req.body.productNotes?.trim() || null,
+      methodology: req.body.methodology?.trim() || null,
+      structure: req.body.structure?.trim() || null,
+      notes: req.body.notes?.trim() || null,
+      groupScope,
+      teamId,
+      createdAt: now,
+      createdById: u.id,
+      createdByName: u.name,
+    });
+    try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "created",
+        entityType: "raceprep", entityId: result.id,
+        details: `Race Prep: ${result.raceName}`, createdAt: new Date().toISOString(), groupScope,
+      });
+    } catch (_) {}
+    res.json(result);
+  });
+
+  app.put("/api/raceprep/:id", requirePermission("raceskis", "edit"), async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getRacePrep(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    if (existing.teamId !== teamId) return res.status(404).json({ message: "Not found" });
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const data: any = {};
+    if (req.body.raceName !== undefined) data.raceName = req.body.raceName;
+    if (req.body.date !== undefined) data.date = req.body.date;
+    if (req.body.location !== undefined) data.location = req.body.location;
+    if (req.body.weatherNotes !== undefined) data.weatherNotes = req.body.weatherNotes;
+    if (req.body.grindType !== undefined) data.grindType = req.body.grindType;
+    if (req.body.grindStone !== undefined) data.grindStone = req.body.grindStone;
+    if (req.body.grindPattern !== undefined) data.grindPattern = req.body.grindPattern;
+    if (req.body.productId !== undefined) data.productId = req.body.productId;
+    if (req.body.productNotes !== undefined) data.productNotes = req.body.productNotes;
+    if (req.body.methodology !== undefined) data.methodology = req.body.methodology;
+    if (req.body.structure !== undefined) data.structure = req.body.structure;
+    if (req.body.notes !== undefined) data.notes = req.body.notes;
+    if (req.body.groupScope !== undefined) {
+      const u2 = userInfo(req);
+      const requestedGroup = req.body.groupScope;
+      if (u2.isAdmin || userHasGroupAccess(u2.groupScope, u2.isAdmin, requestedGroup)) {
+        data.groupScope = requestedGroup;
+      }
+    }
+    const updated = await storage.updateRacePrep(id, data);
+    res.json(updated);
+  });
+
+  app.delete("/api/raceprep/:id", requirePermission("raceskis", "edit"), async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getRacePrep(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    if (existing.teamId !== teamId) return res.status(404).json({ message: "Not found" });
+    if (!userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    await storage.deleteRacePrep(id);
+    try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "deleted",
+        entityType: "raceprep", entityId: id,
+        details: "Race prep deleted", createdAt: new Date().toISOString(), groupScope: existing.groupScope,
+      });
+    } catch (_) {}
+    res.json({ ok: true });
+  });
+
   // --- AI Suggestions ---
   app.post("/api/suggestions", requirePermission("suggestions", "view"), async (req, res) => {
     const u = userInfo(req);

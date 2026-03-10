@@ -1046,7 +1046,7 @@ export default function AthleteDetail() {
                           >
                             <div className={cn(
                               "h-4 w-4 rounded border flex items-center justify-center transition-colors",
-                              selectedSkiIds.has(ski.id) ? "bg-indigo-500 border-indigo-500" : "border-gray-300",
+                              selectedSkiIds.has(ski.id) ? "bg-indigo-500 border-indigo-500" : "border-border",
                             )}>
                               {selectedSkiIds.has(ski.id) && (
                                 <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>

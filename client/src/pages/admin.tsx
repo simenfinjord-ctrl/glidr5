@@ -69,7 +69,7 @@ function PermissionsMatrix({
 }) {
   const levels: PermissionLevel[] = ["none", "view", "edit"];
   const levelStyles: Record<PermissionLevel, { active: string; inactive: string }> = {
-    none: { active: "bg-gray-500 text-white", inactive: "text-gray-500 hover:bg-gray-100" },
+    none: { active: "bg-gray-500 text-white", inactive: "text-muted-foreground hover:bg-muted" },
     view: { active: "bg-blue-500 text-white", inactive: "text-blue-600 hover:bg-blue-50" },
     edit: { active: "bg-green-500 text-white", inactive: "text-green-600 hover:bg-green-50" },
   };
@@ -85,12 +85,12 @@ function PermissionsMatrix({
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Permissions</span>
         <div className="flex items-center gap-1">
-          <span className="text-[10px] text-gray-400 mr-1">Set all:</span>
+          <span className="text-[10px] text-muted-foreground mr-1">Set all:</span>
           {levels.map((l) => (
             <button
               key={l}
               type="button"
-              className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium border transition-colors", levelStyles[l].inactive, "border-gray-200")}
+              className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium border transition-colors", levelStyles[l].inactive, "border-border")}
               onClick={() => setAll(l)}
               data-testid={`${testIdPrefix}-setall-${l}`}
             >
@@ -99,10 +99,10 @@ function PermissionsMatrix({
           ))}
         </div>
       </div>
-      <div className="rounded-lg border border-gray-200 divide-y divide-gray-100">
+      <div className="rounded-lg border border-border divide-y divide-border">
         {PERMISSION_AREAS.map((area) => (
           <div key={area} className="flex items-center justify-between px-3 h-8">
-            <span className="text-xs text-gray-700">{AREA_LABELS[area] || area}</span>
+            <span className="text-xs text-foreground/80">{AREA_LABELS[area] || area}</span>
             <div className="flex items-center gap-0.5">
               {levels.map((l) => {
                 const selected = (value[area] || "none") === l;
@@ -193,7 +193,7 @@ function GroupCheckboxes({
               "inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-all",
               checked
                 ? "border-primary/50 bg-primary/10 text-primary ring-1 ring-primary/20"
-                : "border-gray-100 bg-gray-50/50 text-muted-foreground hover:bg-background/50"
+                : "border-border bg-muted/30 text-muted-foreground hover:bg-background/50"
             )}
             data-testid={`${testIdPrefix}-${g}`}
           >
@@ -569,11 +569,11 @@ function StatCard({ label, value, icon: Icon, color, testId }: { label: string; 
   };
   const c = colorMap[color] || colorMap.blue;
   return (
-    <Card className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm" data-testid={testId}>
+    <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm" data-testid={testId}>
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[11px] uppercase tracking-wider text-gray-500">{label}</div>
-          <div className="mt-1 text-2xl font-bold text-gray-900">{value}</div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+          <div className="mt-1 text-2xl font-bold text-foreground">{value}</div>
         </div>
         <div className={cn("inline-flex h-10 w-10 items-center justify-center rounded-2xl ring-1", c.bg, c.ring)}>
           <Icon className={cn("h-5 w-5", c.text)} />
@@ -1209,8 +1209,8 @@ export default function Admin() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin</h1>
-            <p className="mt-1 text-sm text-gray-500" data-testid="text-admin-subtitle">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Admin</h1>
+            <p className="mt-1 text-sm text-muted-foreground" data-testid="text-admin-subtitle">
               Manage users, groups, and access.{scopeLabel ? ` — ${scopeLabel}` : ""}
             </p>
           </div>
@@ -1244,7 +1244,7 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 shadow-sm" data-testid="admin-tab-bar">
+        <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1 shadow-sm" data-testid="admin-tab-bar">
           {ALL_TABS.filter((tab) => !tab.superAdminOnly || isSuperAdmin).map((tab) => (
             <button
               key={tab.id}
@@ -1254,7 +1254,7 @@ export default function Admin() {
                 "rounded-lg px-4 py-2 text-sm font-medium transition-all",
                 activeTab === tab.id
                   ? "bg-blue-600 text-white shadow-sm"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               {tab.label}
@@ -1275,21 +1275,21 @@ export default function Admin() {
               <StatCard label="Activities" value={stats.activityCount} icon={Activity} color="teal" testId="stat-activities" />
             </div>
 
-            <Card className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="card-recent-activity">
+            <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-recent-activity">
               <div className="flex items-center gap-2 mb-4">
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50">
                   <Activity className="h-4 w-4 text-blue-600" />
                 </div>
-                <h2 className="text-sm font-semibold text-gray-900">Recent Activity</h2>
+                <h2 className="text-sm font-semibold text-foreground">Recent Activity</h2>
               </div>
               {activities.length === 0 ? (
-                <p className="text-sm text-gray-400" data-testid="empty-activity">No activity recorded yet.</p>
+                <p className="text-sm text-muted-foreground" data-testid="empty-activity">No activity recorded yet.</p>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {activities.slice(0, 20).map((a) => (
                     <div
                       key={a.id}
-                      className="flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2.5"
+                      className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5"
                       data-testid={`row-activity-${a.id}`}
                     >
                       <div className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 mt-0.5">
@@ -1297,15 +1297,15 @@ export default function Admin() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium text-gray-900">{a.userName}</span>
-                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">{a.action}</span>
+                          <span className="text-sm font-medium text-foreground">{a.userName}</span>
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{a.action}</span>
                           {a.entityType && (
                             <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700">{a.entityType}</span>
                           )}
                         </div>
-                        {a.details && <p className="mt-0.5 text-xs text-gray-500 truncate">{a.details}</p>}
+                        {a.details && <p className="mt-0.5 text-xs text-muted-foreground truncate">{a.details}</p>}
                         <div className="mt-1 flex items-center gap-2">
-                          <span className="text-[10px] text-gray-400">{new Date(a.createdAt).toLocaleString()}</span>
+                          <span className="text-[10px] text-muted-foreground">{new Date(a.createdAt).toLocaleString()}</span>
                           {a.groupScope && (
                             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">{a.groupScope}</span>
                           )}
@@ -1322,7 +1322,7 @@ export default function Admin() {
         {activeTab === "users" && (
           <div className="flex flex-col gap-4" data-testid="tab-content-users">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-900">Users ({users.length})</h2>
+              <h2 className="text-sm font-semibold text-foreground">Users ({users.length})</h2>
               <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                 <DialogTrigger asChild>
                   <Button data-testid="button-add-user" className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white">
@@ -1337,7 +1337,7 @@ export default function Admin() {
               </Dialog>
             </div>
 
-            <Card className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
               <div className="grid grid-cols-1 gap-1.5">
                 {users.map((u) => {
                   const userPerms = parsePermissions(u.permissions);
@@ -1357,16 +1357,16 @@ export default function Admin() {
                   return (
                     <div
                       key={u.id}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-2"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2"
                       data-testid={`row-user-${u.id}`}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900">{u.name}</span>
-                          <span className="text-xs text-gray-400">{u.email}</span>
+                          <span className="text-sm font-medium text-foreground">{u.name}</span>
+                          <span className="text-xs text-muted-foreground">{u.email}</span>
                           <span className={cn(
                             "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                            u.isAdmin ? "bg-amber-50 text-amber-600" : u.isTeamAdmin ? "bg-purple-50 text-purple-600" : "bg-gray-100 text-gray-500"
+                            u.isAdmin ? "bg-amber-50 text-amber-600" : u.isTeamAdmin ? "bg-purple-50 text-purple-600" : "bg-muted text-muted-foreground"
                           )}>
                             {u.isAdmin ? "Super Admin" : u.isTeamAdmin ? "Team Admin" : "Member"}
                           </span>
@@ -1379,7 +1379,7 @@ export default function Admin() {
                             </span>
                           )}
                         </div>
-                        <div className="mt-0.5 text-[11px] text-gray-400 truncate" title={permDetail} data-testid={`text-perm-summary-${u.id}`}>
+                        <div className="mt-0.5 text-[11px] text-muted-foreground truncate" title={permDetail} data-testid={`text-perm-summary-${u.id}`}>
                           {permSummary}{totalActive > 0 && ` — ${permDetail}`}
                         </div>
                       </div>
@@ -1396,7 +1396,7 @@ export default function Admin() {
                           {u.isActive ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
                         </button>
                         <button
-                          className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground/80"
                           data-testid={`button-edit-user-${u.id}`}
                           title="Edit user"
                           onClick={() => setEditUser(u)}
@@ -1404,7 +1404,7 @@ export default function Admin() {
                           <Pencil className="h-4.5 w-4.5" />
                         </button>
                         <button
-                          className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground/80"
                           data-testid={`button-reset-user-${u.id}`}
                           title="Reset password"
                           onClick={() => setResetUser(u)}
@@ -1461,13 +1461,13 @@ export default function Admin() {
 
         {activeTab === "groups" && (
           <div className="flex flex-col gap-4" data-testid="tab-content-groups">
-            <Card className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="card-admin-groups">
-              <div className="text-sm font-semibold text-gray-900 mb-3">Groups ({apiGroups.length})</div>
+            <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-admin-groups">
+              <div className="text-sm font-semibold text-foreground mb-3">Groups ({apiGroups.length})</div>
               <div className="grid grid-cols-1 gap-2">
                 {apiGroups.map((g) => (
                   <div
                     key={g.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2.5"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5"
                     data-testid={`row-group-${g.id}`}
                   >
                     {editingGroup?.id === g.id ? (
@@ -1500,7 +1500,7 @@ export default function Admin() {
                       </div>
                     ) : (
                       <>
-                        <span className="text-sm text-gray-900">{g.name}</span>
+                        <span className="text-sm text-foreground">{g.name}</span>
                         <div className="flex items-center gap-1">
                           <Button
                             variant="ghost"
@@ -1573,13 +1573,13 @@ export default function Admin() {
 
         {activeTab === "teams" && isSuperAdmin && (
           <div className="flex flex-col gap-4" data-testid="tab-content-teams">
-            <Card className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="card-admin-teams">
-              <div className="text-sm font-semibold text-gray-900 mb-3">Teams ({teams.length})</div>
+            <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-admin-teams">
+              <div className="text-sm font-semibold text-foreground mb-3">Teams ({teams.length})</div>
               <div className="grid grid-cols-1 gap-2">
                 {teams.map((team) => (
                   <div
                     key={team.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2.5"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5"
                     data-testid={`row-team-${team.id}`}
                   >
                     {editingTeam?.id === team.id ? (
@@ -1617,11 +1617,11 @@ export default function Admin() {
                     ) : (
                       <>
                         <div className="min-w-0 flex-1">
-                          <span className="text-sm font-medium text-gray-900">{team.name}</span>
+                          <span className="text-sm font-medium text-foreground">{team.name}</span>
                           {team.isDefault === 1 && (
                             <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">Default</span>
                           )}
-                          <div className="text-[10px] text-gray-400 mt-0.5">
+                          <div className="text-[10px] text-muted-foreground mt-0.5">
                             {users.filter((u) => u.teamId === team.id).length} users
                           </div>
                         </div>
@@ -1695,20 +1695,20 @@ export default function Admin() {
 
         {activeTab === "activity" && (
           <div className="flex flex-col gap-4" data-testid="tab-content-activity">
-            <Card className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="card-activity-log">
+            <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-activity-log">
               <div className="flex items-center gap-2 mb-4">
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50">
                   <Activity className="h-4 w-4 text-teal-600" />
                 </div>
-                <h2 className="text-sm font-semibold text-gray-900">Activity Log ({activities.length})</h2>
+                <h2 className="text-sm font-semibold text-foreground">Activity Log ({activities.length})</h2>
               </div>
               {activities.length === 0 ? (
-                <p className="text-sm text-gray-400" data-testid="empty-activity-log">No activity recorded yet.</p>
+                <p className="text-sm text-muted-foreground" data-testid="empty-activity-log">No activity recorded yet.</p>
               ) : (
                 <div className="max-h-[600px] overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wider text-gray-500">
+                      <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
                         <th className="pb-2 pr-3">Time</th>
                         <th className="pb-2 pr-3">User</th>
                         <th className="pb-2 pr-3">Action</th>
@@ -1719,9 +1719,9 @@ export default function Admin() {
                     </thead>
                     <tbody>
                       {activities.slice(0, 200).map((a) => (
-                        <tr key={a.id} className="border-b border-gray-100" data-testid={`row-activitylog-${a.id}`}>
-                          <td className="py-2 pr-3 text-xs text-gray-500 whitespace-nowrap">{new Date(a.createdAt).toLocaleString()}</td>
-                          <td className="py-2 pr-3 font-medium text-gray-900">{a.userName}</td>
+                        <tr key={a.id} className="border-b border-border" data-testid={`row-activitylog-${a.id}`}>
+                          <td className="py-2 pr-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(a.createdAt).toLocaleString()}</td>
+                          <td className="py-2 pr-3 font-medium text-foreground">{a.userName}</td>
                           <td className="py-2 pr-3">
                             <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200">{a.action}</span>
                           </td>
@@ -1730,7 +1730,7 @@ export default function Admin() {
                               <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-200">{a.entityType}</span>
                             )}
                           </td>
-                          <td className="py-2 pr-3 text-xs text-gray-500 max-w-[200px] truncate">{a.details || "—"}</td>
+                          <td className="py-2 pr-3 text-xs text-muted-foreground max-w-[200px] truncate">{a.details || "—"}</td>
                           <td className="py-2">
                             {a.groupScope ? (
                               <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">{a.groupScope}</span>
@@ -1748,20 +1748,20 @@ export default function Admin() {
 
         {activeTab === "logins" && (
           <div className="flex flex-col gap-4" data-testid="tab-content-logins">
-            <Card className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="card-admin-login-history">
+            <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-admin-login-history">
               <div className="flex items-center gap-2 mb-3">
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50">
                   <Clock className="h-4 w-4 text-indigo-600" />
                 </div>
-                <h2 className="text-sm font-semibold text-gray-900">Login History ({loginLogs.length})</h2>
+                <h2 className="text-sm font-semibold text-foreground">Login History ({loginLogs.length})</h2>
               </div>
               {loginLogs.length === 0 ? (
-                <p className="text-sm text-gray-400">No login records yet.</p>
+                <p className="text-sm text-muted-foreground">No login records yet.</p>
               ) : (
                 <div className="max-h-[600px] overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wider text-gray-500">
+                      <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
                         <th className="pb-2 pr-3">Name</th>
                         <th className="pb-2 pr-3">Email</th>
                         <th className="pb-2 pr-3">Action</th>
@@ -1771,9 +1771,9 @@ export default function Admin() {
                     </thead>
                     <tbody>
                       {loginLogs.slice(0, 200).map((log) => (
-                        <tr key={log.id} className="border-b border-gray-100" data-testid={`row-login-${log.id}`}>
-                          <td className="py-2 pr-3 font-medium text-gray-900">{log.name}</td>
-                          <td className="py-2 pr-3 text-gray-500">{log.email}</td>
+                        <tr key={log.id} className="border-b border-border" data-testid={`row-login-${log.id}`}>
+                          <td className="py-2 pr-3 font-medium text-foreground">{log.name}</td>
+                          <td className="py-2 pr-3 text-muted-foreground">{log.email}</td>
                           <td className="py-2 pr-3">
                             {log.action === "login" ? (
                               <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200">Login</span>
@@ -1782,11 +1782,11 @@ export default function Admin() {
                                 PDF {log.details ? `— ${log.details}` : ""}
                               </span>
                             ) : (
-                              <span className="text-xs text-gray-500">{log.action}</span>
+                              <span className="text-xs text-muted-foreground">{log.action}</span>
                             )}
                           </td>
-                          <td className="py-2 pr-3 font-mono text-xs text-gray-500">{log.ipAddress || "—"}</td>
-                          <td className="py-2 text-gray-500">
+                          <td className="py-2 pr-3 font-mono text-xs text-muted-foreground">{log.ipAddress || "—"}</td>
+                          <td className="py-2 text-muted-foreground">
                             {new Date(log.loginAt).toLocaleString()}
                           </td>
                         </tr>
@@ -1864,12 +1864,12 @@ function DataManagementTab({ teamScopeParam }: { teamScopeParam: string }) {
 
   return (
     <div className="flex flex-col gap-4" data-testid="tab-content-data">
-      <Card className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="card-db-stats">
+      <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-db-stats">
         <div className="flex items-center gap-2 mb-4">
           <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-violet-50">
             <Database className="h-4 w-4 text-violet-600" />
           </div>
-          <h2 className="text-sm font-semibold text-gray-900">Database Overview</h2>
+          <h2 className="text-sm font-semibold text-foreground">Database Overview</h2>
         </div>
         {dbStats ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
@@ -1886,35 +1886,35 @@ function DataManagementTab({ teamScopeParam }: { teamScopeParam: string }) {
               { label: "Activity Logs", val: dbStats.activityCount },
               { label: "Active Sessions", val: dbStats.sessionCount },
             ].map((item) => (
-              <div key={item.label} className="rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2.5 text-center">
-                <div className="text-lg font-bold text-gray-900">{item.val ?? 0}</div>
-                <div className="text-[11px] text-gray-500">{item.label}</div>
+              <div key={item.label} className="rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-center">
+                <div className="text-lg font-bold text-foreground">{item.val ?? 0}</div>
+                <div className="text-[11px] text-muted-foreground">{item.label}</div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-gray-400">Loading...</p>
+          <p className="text-sm text-muted-foreground">Loading...</p>
         )}
       </Card>
 
-      <Card className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="card-export-tools">
+      <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-export-tools">
         <div className="flex items-center gap-2 mb-4">
           <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50">
             <Download className="h-4 w-4 text-emerald-600" />
           </div>
-          <h2 className="text-sm font-semibold text-gray-900">Export Tools</h2>
+          <h2 className="text-sm font-semibold text-foreground">Export Tools</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
-            <h3 className="text-sm font-medium text-gray-900 mb-1">Full PDF Report</h3>
-            <p className="text-xs text-gray-500 mb-3">Complete data export with all tests, results, weather, athletes, and history.</p>
+          <div className="rounded-xl border border-border bg-muted/30 p-4">
+            <h3 className="text-sm font-medium text-foreground mb-1">Full PDF Report</h3>
+            <p className="text-xs text-muted-foreground mb-3">Complete data export with all tests, results, weather, athletes, and history.</p>
             <Button size="sm" variant="outline" data-testid="button-export-pdf-data" onClick={() => document.querySelector<HTMLButtonElement>('[data-testid="button-download-pdf"]')?.click()}>
               <Download className="mr-2 h-3.5 w-3.5" /> Export PDF
             </Button>
           </div>
-          <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
-            <h3 className="text-sm font-medium text-gray-900 mb-1">CSV Data Export</h3>
-            <p className="text-xs text-gray-500 mb-3">Export tests, weather, and products in CSV format for spreadsheets.</p>
+          <div className="rounded-xl border border-border bg-muted/30 p-4">
+            <h3 className="text-sm font-medium text-foreground mb-1">CSV Data Export</h3>
+            <p className="text-xs text-muted-foreground mb-3">Export tests, weather, and products in CSV format for spreadsheets.</p>
             <Button size="sm" variant="outline" data-testid="button-export-csv" onClick={downloadCsvExport} disabled={csvLoading}>
               {csvLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
               {csvLoading ? "Exporting…" : "Export CSV"}
@@ -1983,11 +1983,11 @@ function DangerZoneTab() {
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-xl border border-red-200 bg-white p-4">
+          <div className="rounded-xl border border-red-200 bg-card p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-medium text-gray-900">Purge Old Activity Logs</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Remove activity log entries older than a specified period.</p>
+                <h3 className="text-sm font-medium text-foreground">Purge Old Activity Logs</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Remove activity log entries older than a specified period.</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Button
@@ -2020,11 +2020,11 @@ function DangerZoneTab() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-red-200 bg-white p-4">
+          <div className="rounded-xl border border-red-200 bg-card p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-medium text-gray-900">Purge Old Login History</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Remove login history entries older than a specified period.</p>
+                <h3 className="text-sm font-medium text-foreground">Purge Old Login History</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Remove login history entries older than a specified period.</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Button
@@ -2057,11 +2057,11 @@ function DangerZoneTab() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-red-200 bg-white p-4">
+          <div className="rounded-xl border border-red-200 bg-card p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-medium text-gray-900">Force Logout All Users</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Terminate all active sessions except your own. Users will need to log in again.</p>
+                <h3 className="text-sm font-medium text-foreground">Force Logout All Users</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Terminate all active sessions except your own. Users will need to log in again.</p>
               </div>
               <Button
                 size="sm" variant="outline"

@@ -30,14 +30,14 @@ function QuickCard({
     <AppLink
       href={href}
       testId={testId}
-      className="group block rounded-2xl border border-gray-200 bg-white p-4 transition-all duration-200 hover:shadow-md hover:border-gray-300"
+      className="group block rounded-2xl border border-border bg-card p-4 transition-all duration-200 hover:shadow-md hover:border-border"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold tracking-tight text-gray-900">{title}</div>
-          <div className="mt-1 text-xs text-gray-500">{description}</div>
+          <div className="text-sm font-semibold tracking-tight text-foreground">{title}</div>
+          <div className="mt-1 text-xs text-muted-foreground">{description}</div>
         </div>
-        <div className={cn("inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gray-50", iconColor)}>
+        <div className={cn("inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-muted/50", iconColor)}>
           <Icon className="h-5 w-5" />
         </div>
       </div>
@@ -62,8 +62,8 @@ export default function Dashboard() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="mt-1 text-sm text-gray-500" data-testid="text-dashboard-subtitle">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard</h1>
+            <p className="mt-1 text-sm text-muted-foreground" data-testid="text-dashboard-subtitle">
               {user ? `Welcome back, ${user.name}.` : "Quick actions and recent activity."}
             </p>
           </div>
@@ -92,7 +92,7 @@ export default function Dashboard() {
 
         {todayTests.length > 0 && (
           <Card className="fs-card rounded-2xl border-emerald-200 p-4" data-testid="card-today-tests">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50">
                 <Zap className="h-3.5 w-3.5 text-emerald-600" />
               </div>
@@ -102,14 +102,14 @@ export default function Dashboard() {
             <div className="mt-3 space-y-2">
               {todayTests.map((t) => (
                 <AppLink key={t.id} href={`/tests/${t.id}`} testId={`link-today-test-${t.id}`}>
-                  <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2.5 transition hover:bg-white hover:shadow-sm cursor-pointer">
+                  <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2.5 transition hover:bg-card hover:shadow-sm cursor-pointer">
                     <div className="flex items-center gap-2">
                       <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : t.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure")}>
                         {t.testType}
                       </span>
-                      <span className="text-sm font-medium text-gray-900">{t.location}</span>
+                      <span className="text-sm font-medium text-foreground">{t.location}</span>
                     </div>
-                    <span className="text-xs text-gray-500">{t.createdByName}</span>
+                    <span className="text-xs text-muted-foreground">{t.createdByName}</span>
                   </div>
                 </AppLink>
               ))}
@@ -127,7 +127,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {recentTests.length > 0 && (
             <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-tests">
-              <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
                 <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-50">
                   <ListChecks className="h-3.5 w-3.5 text-blue-600" />
                 </div>
@@ -136,15 +136,15 @@ export default function Dashboard() {
               <div className="space-y-2">
                 {recentTests.map((t) => (
                   <AppLink key={t.id} href={`/tests/${t.id}`} testId={`link-recent-test-${t.id}`}>
-                    <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2.5 transition hover:bg-white hover:shadow-sm cursor-pointer">
+                    <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2.5 transition hover:bg-card hover:shadow-sm cursor-pointer">
                       <div className="flex items-center gap-2">
                         <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : t.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure")}>
                           {t.testType}
                         </span>
-                        <span className="text-sm font-medium text-gray-900">{t.location}</span>
-                        <span className="text-xs text-gray-400">{t.date}</span>
+                        <span className="text-sm font-medium text-foreground">{t.location}</span>
+                        <span className="text-xs text-muted-foreground">{t.date}</span>
                       </div>
-                      <span className="text-xs text-gray-500">{t.createdByName}</span>
+                      <span className="text-xs text-muted-foreground">{t.createdByName}</span>
                     </div>
                   </AppLink>
                 ))}
@@ -160,21 +160,21 @@ export default function Dashboard() {
           <div className="flex flex-col gap-5">
             {products.length > 0 && (
               <Card className="fs-card rounded-2xl p-4" data-testid="card-products-overview">
-                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
                   <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50">
                     <Package className="h-3.5 w-3.5 text-amber-600" />
                   </div>
                   Products
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{products.length}</span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{products.length}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {products.slice(0, 8).map((p) => (
-                    <span key={p.id} className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700 ring-1 ring-gray-200" data-testid={`badge-product-${p.id}`}>
+                    <span key={p.id} className="rounded-full bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground/80 ring-1 ring-border" data-testid={`badge-product-${p.id}`}>
                       {p.brand} {p.name}
                     </span>
                   ))}
                   {products.length > 8 && (
-                    <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs text-gray-500">+{products.length - 8} more</span>
+                    <span className="rounded-full bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground">+{products.length - 8} more</span>
                   )}
                 </div>
                 <div className="mt-3 text-center">
@@ -187,7 +187,7 @@ export default function Dashboard() {
 
             {recentWeather.length > 0 && (
               <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-weather">
-                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
                   <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-50">
                     <CloudSun className="h-3.5 w-3.5 text-violet-600" />
                   </div>
@@ -195,10 +195,10 @@ export default function Dashboard() {
                 </div>
                 <div className="space-y-2">
                   {recentWeather.map((w) => (
-                    <div key={w.id} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50/50 px-3 py-2 text-xs" data-testid={`weather-row-${w.id}`}>
+                    <div key={w.id} className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs" data-testid={`weather-row-${w.id}`}>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900">{w.location}</span>
-                        <span className="text-gray-400">{w.date}</span>
+                        <span className="font-medium text-foreground">{w.location}</span>
+                        <span className="text-muted-foreground">{w.date}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-blue-600">Air {w.airTemperatureC}°C</span>

@@ -393,7 +393,7 @@ export default function Tests() {
             )}
           </div>
 
-          <div className="mt-3 border-t border-gray-100 pt-3">
+          <div className="mt-3 border-t border-border pt-3">
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               <Thermometer className="h-3 w-3" />
               Weather conditions
@@ -516,7 +516,7 @@ export default function Tests() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm" data-testid={`table-day-test-${t.id}`}>
                           <thead>
-                            <tr className="border-b border-gray-200 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                            <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                               <th className="pb-2 pr-3">Ski</th>
                               {!hideDayDetails && <th className="pb-2 pr-3">Product</th>}
                               {!hideDayDetails && <th className="pb-2 pr-3">Method</th>}
@@ -664,7 +664,7 @@ export default function Tests() {
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          <div className="inline-flex rounded-full border border-gray-100 bg-background/40 px-3 py-1 text-xs text-muted-foreground">
+                          <div className="inline-flex rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground">
                             {new Date(t.createdAt).toLocaleDateString()}
                           </div>
                           {winner && (

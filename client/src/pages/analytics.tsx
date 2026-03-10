@@ -347,7 +347,7 @@ function ProductSearchStats({
                           <span className={cn(
                             "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
                             rank === 1 && "bg-amber-100 text-amber-700",
-                            rank === 2 && "bg-gray-100 text-gray-700",
+                            rank === 2 && "bg-muted text-foreground/80",
                             rank === 3 && "bg-orange-100 text-orange-700",
                             rank > 3 && "text-muted-foreground",
                           )}>
@@ -861,7 +861,7 @@ export default function Analytics() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900" data-testid="text-analytics-title">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-analytics-title">
               Analytics
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">

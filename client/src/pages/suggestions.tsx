@@ -45,7 +45,7 @@ function getConfidenceBadgeClass(confidence: string) {
     case "medium":
       return "bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:ring-amber-800";
     default:
-      return "bg-gray-100 text-gray-600 ring-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:ring-gray-700";
+      return "bg-muted text-muted-foreground ring-border";
   }
 }
 
@@ -105,7 +105,7 @@ export default function Suggestions() {
     <AppShell>
       <div className="flex flex-col gap-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100" data-testid="text-suggestions-title">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-suggestions-title">
             Suggestions
           </h1>
           <p className="mt-1 text-sm text-muted-foreground" data-testid="text-suggestions-subtitle">
@@ -289,7 +289,7 @@ export default function Suggestions() {
               {suggestions.map((suggestion, index) => (
                 <Card key={index} className="fs-card rounded-2xl p-4 sm:p-5" data-testid={`card-suggestion-${index}`}>
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100" data-testid={`text-suggestion-title-${index}`}>
+                    <h3 className="text-sm font-semibold text-foreground" data-testid={`text-suggestion-title-${index}`}>
                       {suggestion.title}
                     </h3>
                     <span

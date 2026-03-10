@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award } from "lucide-react";
+import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -250,6 +250,7 @@ export default function Tests() {
 
   const hasFilters = filterSeason !== "All" || filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || filterDate || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax;
 
+  const [hideDayDetails, setHideDayDetails] = useState(false);
   const isDayView = !!filterDate;
 
   return (
@@ -293,7 +294,7 @@ export default function Tests() {
                 </Select>
               </div>
               <div className="min-w-[170px]">
-                <Select value={filterDate || "all"} onValueChange={(v) => setFilterDate(v === "all" ? "" : v)}>
+                <Select value={filterDate || "all"} onValueChange={(v) => { setFilterDate(v === "all" ? "" : v); setHideDayDetails(false); }}>
                   <SelectTrigger data-testid="select-filter-date">
                     <SelectValue placeholder="Date" />
                   </SelectTrigger>
@@ -452,6 +453,17 @@ export default function Tests() {
               <CalendarDays className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold">Day view: {filterDate}</h2>
               <span className="rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">{filtered.length} test{filtered.length !== 1 ? "s" : ""}</span>
+              {filtered.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setHideDayDetails((v) => !v)}
+                  data-testid="button-toggle-day-details"
+                >
+                  {hideDayDetails ? <Eye className="mr-1.5 h-3.5 w-3.5" /> : <EyeOff className="mr-1.5 h-3.5 w-3.5" />}
+                  {hideDayDetails ? "Show" : "Hide"}
+                </Button>
+              )}
             </div>
             {filtered.length === 0 ? (
               <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-day-tests">
@@ -506,8 +518,8 @@ export default function Tests() {
                           <thead>
                             <tr className="border-b border-gray-200 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                               <th className="pb-2 pr-3">Ski</th>
-                              <th className="pb-2 pr-3">Product</th>
-                              <th className="pb-2 pr-3">Method</th>
+                              {!hideDayDetails && <th className="pb-2 pr-3">Product</th>}
+                              {!hideDayDetails && <th className="pb-2 pr-3">Method</th>}
                               {distLabels.map((label, i) => (
                                 <th key={i} className="pb-2 pr-3">
                                   {label?.trim() || `R${i + 1}`}
@@ -548,12 +560,16 @@ export default function Tests() {
                                       {entry.skiNumber}
                                     </span>
                                   </td>
-                                  <td className="py-2 pr-3 text-xs">
-                                    {allProducts.length > 0 ? allProducts.join(" + ") : "—"}
-                                  </td>
-                                  <td className="py-2 pr-3 text-xs text-muted-foreground">
-                                    {entry.methodology || "—"}
-                                  </td>
+                                  {!hideDayDetails && (
+                                    <td className="py-2 pr-3 text-xs">
+                                      {allProducts.length > 0 ? allProducts.join(" + ") : "—"}
+                                    </td>
+                                  )}
+                                  {!hideDayDetails && (
+                                    <td className="py-2 pr-3 text-xs text-muted-foreground">
+                                      {entry.methodology || "—"}
+                                    </td>
+                                  )}
                                   {rounds.map((rr, i) => (
                                     <td key={i} className="py-2 pr-3 font-mono text-xs">
                                       {rr.result ?? "—"}

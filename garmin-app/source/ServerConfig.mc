@@ -1,3 +1,3 @@
 module ServerConfig {
-    const BASE_URL = "https://YOUR-APP-NAME.replit.app";
+    const BASE_URL = "https://ski-test-manager.replit.app";
 }

@@ -28,6 +28,7 @@ Glidr is a full-stack React web application designed to manage ski testing and d
 - Admin page has "Download PDF" button to export all app data via dedicated bulk endpoint (users, groups, series, products, tests with entries, weather with full fields, athletes, race skis, race ski regrinds, test ski regrinds, grinding records, grinding sheets, activity logs, login history)
 - PDF export uses /api/admin/full-export endpoint for reliable bulk data retrieval (no N+1 queries); includes race ski regrinds, test ski series regrinds, grinding sheets, and activity logs
 - CSV export available for tests, weather, and products in spreadsheet-friendly format
+- Complete Runsheet: tournament bracket dialog (QF → SF → Final) for single-elimination ski pair testing; enter distances in orange fields, winner (0) auto-advances, cascading diff calculation (loser diff = own distance + winner's accumulated diff), results auto-applied to test entries
 - Tests support dynamic rounds (unlimited distance measurements via + Round button)
 - Distance labels and results stored as JSON (distanceLabels on tests, results on test_entries)
 - Legacy 2-field format (distanceLabel0km/Xkm, result0km/Xkm) auto-converted on load

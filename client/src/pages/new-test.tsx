@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ChevronLeft, Save, Sparkles } from "lucide-react";
+import { ChevronLeft, Save, Sparkles, ClipboardList } from "lucide-react";
 import { useOffline } from "@/lib/offline-context";
 import { OfflineError } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { TestEntryTable, type EntryRow, type RoundResult, type RaceSkiOption, cleanAdditionalIds } from "@/components/test-entry-table";
+import { RunsheetDialog, type BracketResult } from "@/components/runsheet-dialog";
 
 type TestType = "Glide" | "Structure" | "Grind" | "Classic" | "Skating";
 
@@ -133,6 +134,7 @@ export default function NewTest() {
   });
 
   const [duplicateApplied, setDuplicateApplied] = useState(false);
+  const [runsheetOpen, setRunsheetOpen] = useState(false);
 
   const userGroups = useMemo(() => {
     if (user?.isAdmin && groups.length > 0) {
@@ -350,6 +352,16 @@ export default function NewTest() {
               <Sparkles className="mr-2 h-4 w-4" />
               Add ski
             </Button>
+            {rows.length >= 2 && (
+              <Button
+                variant="outline"
+                data-testid="button-open-runsheet"
+                onClick={() => setRunsheetOpen(true)}
+              >
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Complete Runsheet
+              </Button>
+            )}
             <Button
               type="submit"
               form="new-test-form"
@@ -676,6 +688,31 @@ export default function NewTest() {
           </div>
         </div>
       </div>
+
+      <RunsheetDialog
+        open={runsheetOpen}
+        onOpenChange={setRunsheetOpen}
+        skiPairs={rows.map((r) => r.skiNumber)}
+        onApplyResults={(results: BracketResult[]) => {
+          setRows((prev) =>
+            prev.map((row) => {
+              const br = results.find((r) => r.skiNumber === row.skiNumber);
+              if (!br) return row;
+              const newRoundResults = [...row.roundResults];
+              if (newRoundResults.length === 0) {
+                newRoundResults.push({ result: br.diff, rank: br.rank });
+              } else {
+                newRoundResults[0] = { result: br.diff, rank: br.rank };
+              }
+              return { ...row, roundResults: newRoundResults };
+            }),
+          );
+          toast({
+            title: "Runsheet applied",
+            description: "Results and rankings have been applied to the test entries.",
+          });
+        }}
+      />
     </AppShell>
   );
 }

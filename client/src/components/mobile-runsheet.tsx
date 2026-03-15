@@ -158,18 +158,22 @@ function findLastCompletedHeat(bracket: Heat[][]): { roundIndex: number; heatInd
 
 export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Props) {
   const [bracket, setBracket] = useState<Heat[][]>([]);
-  const [phase, setPhase] = useState<"select" | "distance" | "done">("select");
+  const [phase, setPhase] = useState<"loading" | "select" | "distance" | "done">("loading");
   const [selectedWinner, setSelectedWinner] = useState<number | null>(null);
   const [distance, setDistance] = useState(10);
   const distRef = useRef(10);
 
   useEffect(() => {
     if (open && skiPairs.length >= 2) {
-      setBracket(initBracket(skiPairs));
-      setPhase("select");
+      setPhase("loading");
       setSelectedWinner(null);
       setDistance(10);
       distRef.current = 10;
+      const timer = setTimeout(() => {
+        setBracket(initBracket(skiPairs));
+        setPhase("select");
+      }, 50);
+      return () => clearTimeout(timer);
     }
   }, [open, skiPairs.join(",")]);
 
@@ -300,6 +304,14 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
           </button>
         </div>
       </div>
+
+      {phase === "loading" && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <div className="w-12 h-12 border-4 border-zinc-700 border-t-amber-500 rounded-full animate-spin" />
+          <span className="text-xl font-bold text-zinc-400">Setting up bracket...</span>
+          <span className="text-sm text-zinc-600">{skiPairs.length} ski pairs</span>
+        </div>
+      )}
 
       {currentHeat && phase === "select" && (
         <div className="flex-1 flex flex-col">

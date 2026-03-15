@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Trophy, X, ChevronUp, ChevronDown, Check, RotateCcw } from "lucide-react";
+import { Trophy, X, ChevronUp, ChevronDown, Check, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Heat = {
@@ -143,9 +143,22 @@ function findCurrentHeat(bracket: Heat[][]): { roundIndex: number; heatIndex: nu
   return null;
 }
 
+function findLastCompletedHeat(bracket: Heat[][]): { roundIndex: number; heatIndex: number } | null {
+  let last: { roundIndex: number; heatIndex: number } | null = null;
+  for (let r = 0; r < bracket.length; r++) {
+    for (let h = 0; h < bracket[r].length; h++) {
+      const heat = bracket[r][h];
+      if (heat.pairA !== null && heat.pairB !== null && getWinner(heat)) {
+        last = { roundIndex: r, heatIndex: h };
+      }
+    }
+  }
+  return last;
+}
+
 export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Props) {
   const [bracket, setBracket] = useState<Heat[][]>([]);
-  const [phase, setPhase] = useState<"select" | "distance" | "done" | "results">("select");
+  const [phase, setPhase] = useState<"select" | "distance" | "done">("select");
   const [selectedWinner, setSelectedWinner] = useState<number | null>(null);
   const [distance, setDistance] = useState(10);
   const distRef = useRef(10);
@@ -164,7 +177,6 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
 
   useEffect(() => {
     if (!currentHeat && bracket.length > 0) {
-      const diffs = calculateDiffs(bracket);
       const finalRound = bracket[bracket.length - 1];
       if (finalRound?.length === 1 && getWinner(finalRound[0])) {
         setPhase("done");
@@ -181,7 +193,7 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
 
   const handleDistanceChange = useCallback((delta: number) => {
     setDistance(prev => {
-      const next = Math.max(10, Math.min(990, prev + delta));
+      const next = Math.max(5, Math.min(995, prev + delta));
       distRef.current = next;
       return next;
     });
@@ -206,12 +218,27 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
     setSelectedWinner(null);
   }, [currentHeat, selectedWinner]);
 
-  const handleBack = useCallback(() => {
+  const handleBackFromDistance = useCallback(() => {
     if (phase === "distance") {
       setPhase("select");
       setSelectedWinner(null);
     }
   }, [phase]);
+
+  const handleUndo = useCallback(() => {
+    const last = findLastCompletedHeat(bracket);
+    if (!last) return;
+    setBracket(prev => {
+      const nb = prev.map(round => round.map(h => ({ ...h })));
+      const heat = nb[last.roundIndex][last.heatIndex];
+      heat.distA = "";
+      heat.distB = "";
+      rebuildDownstream(nb, last.roundIndex + 1);
+      return nb;
+    });
+    setPhase("select");
+    setSelectedWinner(null);
+  }, [bracket]);
 
   const diffs = useMemo(() => calculateDiffs(bracket), [bracket]);
 
@@ -238,6 +265,7 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
   }, [bracket]);
 
   const isComplete = results.length === skiPairs.length && hasChampion;
+  const canUndo = !!findLastCompletedHeat(bracket);
 
   if (!open) return null;
 
@@ -252,13 +280,25 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
           <Trophy className="h-5 w-5 text-amber-500" />
           <span className="font-bold text-lg">Runsheet</span>
         </div>
-        <button
-          onClick={onClose}
-          className="p-2 rounded-full hover:bg-zinc-800 active:bg-zinc-700"
-          data-testid="button-close-mobile-runsheet"
-        >
-          <X className="h-6 w-6" />
-        </button>
+        <div className="flex items-center gap-2">
+          {canUndo && phase === "select" && (
+            <button
+              onClick={handleUndo}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-800 active:bg-zinc-700 text-sm font-medium text-zinc-300"
+              data-testid="button-undo-heat"
+            >
+              <Undo2 className="h-5 w-5" />
+              Undo
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-zinc-800 active:bg-zinc-700"
+            data-testid="button-close-mobile-runsheet"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
       </div>
 
       {currentHeat && phase === "select" && (
@@ -313,38 +353,60 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
             </span>
           </div>
 
-          <div className="flex-1 flex flex-col items-center justify-center gap-4">
-            <button
-              onClick={() => handleDistanceChange(10)}
-              className="w-32 h-32 rounded-full bg-zinc-800 active:bg-zinc-700 flex items-center justify-center border-2 border-zinc-600"
-              data-testid="button-distance-up"
-            >
-              <ChevronUp className="h-16 w-16 text-white" />
-            </button>
+          <div className="flex-1 flex flex-col items-center justify-center gap-3">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => handleDistanceChange(5)}
+                className="w-24 h-24 rounded-full bg-zinc-800 active:bg-zinc-700 flex flex-col items-center justify-center border-2 border-zinc-600"
+                data-testid="button-distance-up-5"
+              >
+                <ChevronUp className="h-10 w-10 text-zinc-300" />
+                <span className="text-xs font-bold text-zinc-400">+5</span>
+              </button>
+              <button
+                onClick={() => handleDistanceChange(10)}
+                className="w-28 h-28 rounded-full bg-zinc-700 active:bg-zinc-600 flex flex-col items-center justify-center border-2 border-amber-600"
+                data-testid="button-distance-up-10"
+              >
+                <ChevronUp className="h-12 w-12 text-amber-500" />
+                <span className="text-sm font-bold text-amber-400">+10</span>
+              </button>
+            </div>
 
-            <div className="flex items-baseline gap-2">
+            <div className="flex items-baseline gap-2 py-2">
               <span className="text-8xl font-black text-amber-500 tabular-nums" data-testid="text-distance-value">
                 {distance}
               </span>
               <span className="text-3xl text-zinc-500 font-medium">cm</span>
             </div>
 
-            <button
-              onClick={() => handleDistanceChange(-10)}
-              className="w-32 h-32 rounded-full bg-zinc-800 active:bg-zinc-700 flex items-center justify-center border-2 border-zinc-600"
-              data-testid="button-distance-down"
-            >
-              <ChevronDown className="h-16 w-16 text-white" />
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => handleDistanceChange(-5)}
+                className="w-24 h-24 rounded-full bg-zinc-800 active:bg-zinc-700 flex flex-col items-center justify-center border-2 border-zinc-600"
+                data-testid="button-distance-down-5"
+              >
+                <span className="text-xs font-bold text-zinc-400">-5</span>
+                <ChevronDown className="h-10 w-10 text-zinc-300" />
+              </button>
+              <button
+                onClick={() => handleDistanceChange(-10)}
+                className="w-28 h-28 rounded-full bg-zinc-700 active:bg-zinc-600 flex flex-col items-center justify-center border-2 border-amber-600"
+                data-testid="button-distance-down-10"
+              >
+                <span className="text-sm font-bold text-amber-400">-10</span>
+                <ChevronDown className="h-12 w-12 text-amber-500" />
+              </button>
+            </div>
           </div>
 
           <div className="flex gap-3 p-4 pb-8">
             <button
-              onClick={handleBack}
+              onClick={handleBackFromDistance}
               className="flex-1 py-5 rounded-2xl bg-zinc-800 active:bg-zinc-700 text-xl font-bold text-zinc-300 flex items-center justify-center gap-2"
               data-testid="button-distance-back"
             >
-              <RotateCcw className="h-6 w-6" />
+              <Undo2 className="h-6 w-6" />
               Back
             </button>
             <button
@@ -359,7 +421,7 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
         </div>
       )}
 
-      {(phase === "done" || phase === "results") && (
+      {phase === "done" && (
         <div className="flex-1 flex flex-col">
           <div className="text-center py-6 bg-emerald-900/20">
             <Trophy className="h-12 w-12 text-amber-500 mx-auto mb-2" />
@@ -399,13 +461,21 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
             </table>
           </div>
 
-          <div className="p-4 pb-8">
+          <div className="flex gap-3 p-4 pb-8">
+            <button
+              onClick={handleUndo}
+              className="flex-1 py-5 rounded-2xl bg-zinc-800 active:bg-zinc-700 text-xl font-bold text-zinc-300 flex items-center justify-center gap-2"
+              data-testid="button-undo-from-done"
+            >
+              <Undo2 className="h-6 w-6" />
+              Undo
+            </button>
             <button
               onClick={() => {
                 if (isComplete) onApplyResults(results);
                 onClose();
               }}
-              className="w-full py-5 rounded-2xl bg-emerald-600 active:bg-emerald-700 text-xl font-bold text-white flex items-center justify-center gap-2"
+              className="flex-[2] py-5 rounded-2xl bg-emerald-600 active:bg-emerald-700 text-xl font-bold text-white flex items-center justify-center gap-2"
               data-testid="button-apply-mobile-results"
             >
               <Check className="h-6 w-6" />

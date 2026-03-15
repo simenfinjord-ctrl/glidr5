@@ -734,10 +734,13 @@ export async function registerRoutes(
     if (!isIncognito(req)) {
       await storage.createActivityLog({
         userId: u.id,
+        userName: u.name,
         action: "runsheet_applied",
-        entity: "test",
+        entityType: "test",
         entityId: id,
         details: `Applied runsheet results to test ${existing.location} (${existing.date})`,
+        createdAt: new Date().toISOString(),
+        groupScope: existing.groupScope,
         teamId: getActiveTeamId(req),
       });
     }

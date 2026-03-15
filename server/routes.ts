@@ -713,7 +713,9 @@ export async function registerRoutes(
     const existing = await storage.getTest(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
-    let hasAccess = userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope) && u.permissions.tests === "edit";
+    const canEditTests = userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope) && u.permissions.tests === "edit";
+    const canEditRunsheets = userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope) && u.permissions.runsheets === "edit";
+    let hasAccess = canEditTests || canEditRunsheets;
     if (!hasAccess && (existing as any).testSkiSource === "raceskis" && (existing as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((existing as any).athleteId, u.id, u.isAdmin);
     }

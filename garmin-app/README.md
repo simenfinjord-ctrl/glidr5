@@ -45,8 +45,15 @@ const BASE_URL = "https://your-app-name.replit.app";
 
 ### Build
 ```bash
-# From the garmin-app directory
-monkeyc -f monkey.jungle -o bin/GlidrRunsheet.prg -d fenix7 -y /path/to/developer_key.der
+# From the garmin-app directory (use your watch's device ID)
+# Fenix 8 (47mm):
+monkeyc -f monkey.jungle -o bin/GlidrRunsheet.prg -d fenix847mm -y /path/to/developer_key.der
+
+# Fenix 8 (43mm):
+monkeyc -f monkey.jungle -o bin/GlidrRunsheet.prg -d fenix843mm -y /path/to/developer_key.der
+
+# Fenix 8 (51mm):
+monkeyc -f monkey.jungle -o bin/GlidrRunsheet.prg -d fenix851mm -y /path/to/developer_key.der
 ```
 
 ### Install on Watch

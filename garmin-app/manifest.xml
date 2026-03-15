@@ -6,11 +6,16 @@
         name="@Strings.AppName"
         entry="GlidrApp"
         launcherIcon="@Drawables.LauncherIcon"
-        minSdkVersion="3.2.0">
+        minSdkVersion="4.2.0">
         <iq:products>
             <iq:product id="fenix7" />
             <iq:product id="fenix7s" />
             <iq:product id="fenix7x" />
+            <iq:product id="fenix843mm" />
+            <iq:product id="fenix847mm" />
+            <iq:product id="fenix851mm" />
+            <iq:product id="fenix8solar47mm" />
+            <iq:product id="fenix8solar51mm" />
             <iq:product id="fr955" />
             <iq:product id="fr945" />
             <iq:product id="fr265" />
@@ -20,7 +25,6 @@
             <iq:product id="venu2s" />
             <iq:product id="venu3" />
             <iq:product id="venu3s" />
-            <iq:product id="fenix8" />
         </iq:products>
         <iq:permissions>
             <iq:uses-permission id="Communications" />

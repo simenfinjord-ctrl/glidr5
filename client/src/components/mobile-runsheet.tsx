@@ -284,10 +284,10 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
           {canUndo && phase === "select" && (
             <button
               onClick={handleUndo}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-800 active:bg-zinc-700 text-sm font-medium text-zinc-300"
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-zinc-800 active:bg-zinc-700 text-base font-bold text-zinc-300"
               data-testid="button-undo-heat"
             >
-              <Undo2 className="h-5 w-5" />
+              <Undo2 className="h-6 w-6" />
               Undo
             </button>
           )}
@@ -354,7 +354,7 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
           </div>
 
           <div className="flex-1 flex flex-col items-center justify-center gap-3">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-8">
               <button
                 onClick={() => handleDistanceChange(5)}
                 className="w-24 h-24 rounded-full bg-zinc-800 active:bg-zinc-700 flex flex-col items-center justify-center border-2 border-zinc-600"
@@ -380,7 +380,7 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
               <span className="text-3xl text-zinc-500 font-medium">cm</span>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-8">
               <button
                 onClick={() => handleDistanceChange(-5)}
                 className="w-24 h-24 rounded-full bg-zinc-800 active:bg-zinc-700 flex flex-col items-center justify-center border-2 border-zinc-600"

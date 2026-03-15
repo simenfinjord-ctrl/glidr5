@@ -7,9 +7,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, RotateCcw, Trophy, Watch, WifiOff, Wifi } from "lucide-react";
+import { Check, RotateCcw, Trophy, Watch, WifiOff, Wifi, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
+import { MobileRunsheet } from "./mobile-runsheet";
 
 type Heat = {
   pairA: number | null;
@@ -165,6 +166,7 @@ export function RunsheetDialog({
   const [bracket, setBracket] = useState<Heat[][]>([]);
   const [watchCode, setWatchCode] = useState<string | null>(null);
   const [watchActive, setWatchActive] = useState(false);
+  const [mobileMode, setMobileMode] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -299,6 +301,16 @@ export function RunsheetDialog({
               Complete Runsheet
             </DialogTitle>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMobileMode(true)}
+                data-testid="button-mobile-mode"
+                title="Full-screen mobile mode"
+              >
+                <Smartphone className="mr-1 h-4 w-4" />
+                Mobile
+              </Button>
               {!watchActive ? (
                 <Button
                   variant="outline"
@@ -553,6 +565,16 @@ export function RunsheetDialog({
           </div>
         </div>
       </DialogContent>
+      <MobileRunsheet
+        open={mobileMode}
+        onClose={() => setMobileMode(false)}
+        skiPairs={skiPairs}
+        onApplyResults={(results) => {
+          onApplyResults(results);
+          setMobileMode(false);
+          onOpenChange(false);
+        }}
+      />
     </Dialog>
   );
 }

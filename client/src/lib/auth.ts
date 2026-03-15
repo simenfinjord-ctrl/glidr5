@@ -25,6 +25,7 @@ type User = {
   activeTeamId: number | null;
   permissions: string;
   parsedPermissions: UserPermissions;
+  incognito?: boolean;
 };
 
 export function useAuth() {
@@ -68,6 +69,11 @@ export function useAuth() {
   const isTeamAdmin = !!user?.isTeamAdmin;
   const canManage = isSuperAdmin || isTeamAdmin;
 
+  const toggleIncognito = async (enabled: boolean) => {
+    await apiRequest("POST", "/api/auth/incognito", { enabled });
+    await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+  };
+
   return {
     user: user ?? null,
     isLoading,
@@ -79,5 +85,6 @@ export function useAuth() {
     isSuperAdmin,
     isTeamAdmin,
     canManage,
+    toggleIncognito,
   };
 }

@@ -111,21 +111,24 @@ export function setupAuth(app: Express) {
         if (req.body.rememberMe && req.session) {
           req.session.cookie.maxAge = REMEMBER_ME_MAX_AGE;
         }
-        try {
-          const ip = req.headers["x-forwarded-for"]
-            ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
-            : req.socket.remoteAddress || "unknown";
-          await storage.createLoginLog({
-            userId: user.id,
-            email: user.email,
-            name: user.name,
-            loginAt: new Date().toISOString(),
-            ipAddress: ip,
-          });
-        } catch (_) {}
+        const isIncognito = !!(req.session as any)?.incognito;
+        if (!isIncognito) {
+          try {
+            const ip = req.headers["x-forwarded-for"]
+              ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
+              : req.socket.remoteAddress || "unknown";
+            await storage.createLoginLog({
+              userId: user.id,
+              email: user.email,
+              name: user.name,
+              loginAt: new Date().toISOString(),
+              ipAddress: ip,
+            });
+          } catch (_) {}
+        }
         const { password, ...safe } = user;
         const perms = parsePermissions(safe.permissions, !!safe.isAdmin, (safe as any).isTeamAdmin === 1);
-        return res.json({ ...safe, parsedPermissions: perms });
+        return res.json({ ...safe, parsedPermissions: perms, incognito: isIncognito });
       });
     })(req, res, next);
   });
@@ -133,7 +136,10 @@ export function setupAuth(app: Express) {
   app.post("/api/auth/logout", (req, res) => {
     req.logout((err) => {
       if (err) return res.status(500).json({ message: "Logout failed" });
-      res.json({ ok: true });
+      req.session.destroy(() => {
+        res.clearCookie("connect.sid");
+        res.json({ ok: true });
+      });
     });
   });
 
@@ -143,6 +149,21 @@ export function setupAuth(app: Express) {
     }
     const { password, ...safe } = req.user;
     const perms = parsePermissions(safe.permissions, !!safe.isAdmin, safe.isTeamAdmin === 1);
-    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms });
+    const incognito = !!(req.session as any)?.incognito;
+    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito });
+  });
+
+  app.post("/api/auth/incognito", (req, res) => {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    if (req.user.isAdmin !== 1) {
+      return res.status(403).json({ message: "Super Admin only" });
+    }
+    const { enabled } = req.body;
+    (req.session as any).incognito = !!enabled;
+    req.session.save(() => {
+      res.json({ incognito: !!enabled });
+    });
   });
 }

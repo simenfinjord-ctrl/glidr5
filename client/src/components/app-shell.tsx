@@ -20,6 +20,8 @@ import {
   Sparkles,
   Trophy,
   ChevronDown,
+  EyeOff,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -146,7 +148,7 @@ const nav: NavItem[] = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { user, logout, can, isSuperAdmin, canManage, switchTeam } = useAuth();
+  const { user, logout, can, isSuperAdmin, canManage, switchTeam, toggleIncognito } = useAuth();
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -233,6 +235,21 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <CloudUpload className="mr-1.5 h-4 w-4" />
                 )}
                 {pendingCount} pending
+              </Button>
+            )}
+            {isSuperAdmin && (
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="button-incognito-toggle"
+                onClick={() => toggleIncognito(!user?.incognito)}
+                className={cn(
+                  "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  user?.incognito && "text-purple-600 bg-purple-50 dark:bg-purple-900/30 dark:text-purple-400"
+                )}
+                title={user?.incognito ? "Incognito mode ON" : "Incognito mode"}
+              >
+                {user?.incognito ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             )}
             <Button

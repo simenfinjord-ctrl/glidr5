@@ -31,6 +31,10 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+function isIncognito(req: Request): boolean {
+  return !!(req.session as any)?.incognito;
+}
+
 function userInfo(req: Request) {
   const u = req.user!;
   const perms = parsePermissions(u.permissions, u.isAdmin === 1, u.isTeamAdmin === 1);
@@ -247,7 +251,7 @@ export async function registerRoutes(
       groupScope,
       teamId,
     });
-    try {
+    if (!isIncognito(req)) try {
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "created",
         entityType: "series", entityId: result.id,
@@ -347,7 +351,7 @@ export async function registerRoutes(
       groupScope,
       teamId,
     });
-    try {
+    if (!isIncognito(req)) try {
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "created",
         entityType: "product", entityId: result.id,
@@ -378,7 +382,7 @@ export async function registerRoutes(
     if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });
     const id = parseInt(req.params.id);
     await storage.deleteProduct(id);
-    try {
+    if (!isIncognito(req)) try {
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "deleted",
         entityType: "product", entityId: id,
@@ -434,7 +438,7 @@ export async function registerRoutes(
       groupScope,
       teamId,
     });
-    try {
+    if (!isIncognito(req)) try {
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "created",
         entityType: "weather", entityId: result.id,
@@ -484,7 +488,7 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Forbidden" });
     }
     await storage.deleteWeather(id);
-    try {
+    if (!isIncognito(req)) try {
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "deleted",
         entityType: "weather", entityId: id,
@@ -569,7 +573,7 @@ export async function registerRoutes(
       groupScope,
       teamId,
     });
-    try {
+    if (!isIncognito(req)) try {
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "created",
         entityType: "test", entityId: test.id,
@@ -717,7 +721,7 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Forbidden" });
     }
     await storage.deleteTest(id);
-    try {
+    if (!isIncognito(req)) try {
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "deleted",
         entityType: "test", entityId: id,
@@ -846,15 +850,17 @@ export async function registerRoutes(
     const ip = req.headers["x-forwarded-for"]
       ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
       : req.socket.remoteAddress || "unknown";
-    await storage.createLoginLog({
-      userId: u.id,
-      email: u.email,
-      name: u.name,
-      loginAt: new Date().toISOString(),
-      ipAddress: ip,
-      action,
-      details: details || null,
-    });
+    if (!isIncognito(req)) {
+      await storage.createLoginLog({
+        userId: u.id,
+        email: u.email,
+        name: u.name,
+        loginAt: new Date().toISOString(),
+        ipAddress: ip,
+        action,
+        details: details || null,
+      });
+    }
     res.json({ ok: true });
   });
 
@@ -902,11 +908,13 @@ export async function registerRoutes(
       groupScope,
       teamId,
     });
-    await storage.createActivityLog({
-      userId: u.id, userName: u.name, action: "created",
-      entityType: "grinding", entityId: record.id,
-      details: `Grinding: ${record.grindType}`, createdAt: new Date().toISOString(), groupScope,
-    });
+    if (!isIncognito(req)) try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "created",
+        entityType: "grinding", entityId: record.id,
+        details: `Grinding: ${record.grindType}`, createdAt: new Date().toISOString(), groupScope,
+      });
+    } catch (_) {}
     res.json(record);
   });
 

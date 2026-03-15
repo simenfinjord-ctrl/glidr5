@@ -77,6 +77,7 @@ export interface IStorage {
   listEntries(testId: number): Promise<TestEntry[]>;
   createEntry(e: InsertEntry): Promise<TestEntry>;
   deleteEntriesByTestId(testId: number): Promise<void>;
+  updateEntryResults(entryId: number, result0kmCmBehind: number | null, rank0km: number | null): Promise<void>;
 
   createLoginLog(log: InsertLoginLog): Promise<LoginLog>;
   listLoginLogs(teamId?: number): Promise<LoginLog[]>;
@@ -396,6 +397,12 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEntriesByTestId(testId: number): Promise<void> {
     await db.delete(testEntries).where(eq(testEntries.testId, testId));
+  }
+
+  async updateEntryResults(entryId: number, result0kmCmBehind: number | null, rank0km: number | null): Promise<void> {
+    await db.update(testEntries)
+      .set({ result0kmCmBehind, rank0km })
+      .where(eq(testEntries.id, entryId));
   }
 
   async createLoginLog(log: InsertLoginLog): Promise<LoginLog> {

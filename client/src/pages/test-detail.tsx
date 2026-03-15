@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy } from "lucide-react";
 import { generateTestPDF } from "@/lib/pdf-report";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { RunsheetDialog, type BracketResult } from "@/components/runsheet-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -152,6 +153,25 @@ export default function TestDetail() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showRunsheet, setShowRunsheet] = useState(false);
+
+  const runsheetMutation = useMutation({
+    mutationFn: async (results: BracketResult[]) => {
+      await apiRequest("PATCH", `/api/tests/${id}/runsheet-results`, { results });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/tests/${id}/entries`] });
+      toast({ title: "Runsheet results applied" });
+      setShowRunsheet(false);
+    },
+    onError: (e) => {
+      toast({
+        title: "Could not apply runsheet results",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -247,6 +267,12 @@ export default function TestDetail() {
               </Button>
             </AppLink>
             <div className="flex items-center gap-2">
+              {sortedEntries.length >= 2 && (
+                <Button variant="outline" size="sm" onClick={() => setShowRunsheet(true)} data-testid="button-complete-runsheet">
+                  <Trophy className="mr-2 h-4 w-4" />
+                  Complete Runsheet
+                </Button>
+              )}
               <AppLink href={`/tests/new?duplicate=${id}`} testId="link-duplicate-test">
                 <Button variant="outline" size="sm" data-testid="button-duplicate-test">
                   <Copy className="mr-2 h-4 w-4" />
@@ -673,6 +699,14 @@ export default function TestDetail() {
           )}
         </Card>
 
+        {sortedEntries.length >= 2 && (
+          <RunsheetDialog
+            open={showRunsheet}
+            onOpenChange={setShowRunsheet}
+            skiPairs={sortedEntries.map((e) => e.skiNumber)}
+            onApplyResults={(results) => runsheetMutation.mutate(results)}
+          />
+        )}
       </div>
     </AppShell>
   );

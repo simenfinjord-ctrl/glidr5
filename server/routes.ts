@@ -708,6 +708,43 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  app.patch("/api/tests/:id/runsheet-results", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getTest(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    const u = userInfo(req);
+    let hasAccess = userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope) && u.permissions.tests === "edit";
+    if (!hasAccess && (existing as any).testSkiSource === "raceskis" && (existing as any).athleteId) {
+      hasAccess = await storage.hasAthleteAccess((existing as any).athleteId, u.id, u.isAdmin);
+    }
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+
+    const results = req.body.results;
+    if (!Array.isArray(results)) return res.status(400).json({ message: "results array required" });
+
+    const entries = await storage.getEntriesByTestId(id);
+    const entryBySkiNumber = new Map(entries.map((e: any) => [e.skiNumber, e]));
+
+    for (const r of results) {
+      const entry = entryBySkiNumber.get(r.skiNumber);
+      if (!entry) continue;
+      await storage.updateEntryResults((entry as any).id, r.diff ?? null, r.rank ?? null);
+    }
+
+    if (!isIncognito(req)) {
+      await storage.createActivityLog({
+        userId: u.id,
+        action: "runsheet_applied",
+        entity: "test",
+        entityId: id,
+        details: `Applied runsheet results to test ${existing.location} (${existing.date})`,
+        teamId: getActiveTeamId(req),
+      });
+    }
+
+    res.json({ success: true });
+  });
+
   app.delete("/api/tests/:id", requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const existing = await storage.getTest(id);

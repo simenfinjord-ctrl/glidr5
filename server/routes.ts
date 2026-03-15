@@ -748,6 +748,55 @@ export async function registerRoutes(
     res.json({ success: true });
   });
 
+  app.get("/api/runsheets", requirePermission("runsheets", "view"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const items = await storage.listRunsheets(teamId);
+    res.json(items);
+  });
+
+  app.post("/api/runsheets", requirePermission("runsheets", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const testId = parseInt(req.body.testId);
+    const test = await storage.getTest(testId);
+    if (!test || (test as any).teamId !== teamId) return res.status(404).json({ message: "Test not found" });
+
+    const existing = await storage.getRunsheetByTestId(testId, teamId);
+    if (existing) return res.status(409).json({ message: "Test already added to runsheets", runsheet: existing });
+
+    let label = req.body.label?.trim();
+    if (!label) {
+      if ((test as any).testSkiSource === "raceskis" && (test as any).athleteId) {
+        const athlete = await storage.getAthlete((test as any).athleteId);
+        label = athlete ? athlete.name : `Race ski test #${testId}`;
+      } else if (test.seriesId) {
+        const allSeries = await storage.listSeries(u.groupScope, u.isAdmin, teamId);
+        const series = allSeries.find((s: any) => s.id === test.seriesId);
+        label = series ? (series as any).name : `Test #${testId}`;
+      } else {
+        label = `Test #${testId}`;
+      }
+    }
+
+    const runsheet = await storage.createRunsheet({
+      testId,
+      label,
+      createdAt: new Date().toISOString(),
+      createdById: u.id,
+      teamId,
+    });
+    res.json(runsheet);
+  });
+
+  app.delete("/api/runsheets/:id", requirePermission("runsheets", "edit"), async (req, res) => {
+    const id = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    const runsheet = await storage.getRunsheet(id);
+    if (!runsheet || runsheet.teamId !== teamId) return res.status(404).json({ message: "Not found" });
+    await storage.deleteRunsheet(id);
+    res.json({ success: true });
+  });
+
   app.delete("/api/tests/:id", requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const existing = await storage.getTest(id);
@@ -760,6 +809,7 @@ export async function registerRoutes(
     if (!hasAccess) {
       return res.status(403).json({ message: "Forbidden" });
     }
+    await storage.deleteRunsheetsByTestId(id);
     await storage.deleteTest(id);
     if (!isIncognito(req)) try {
       await storage.createActivityLog({

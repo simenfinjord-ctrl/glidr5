@@ -32,6 +32,10 @@ Glidr is a full-stack React web application designed to manage ski testing and d
 - Runsheet Watch Mode: "Watch" button creates server-side session with 6-digit code; Garmin Connect IQ app connects via code, shows heats on watch, user selects winner + distance with physical buttons; results sync live to web bracket via polling (2s interval)
 - Garmin Connect IQ app source in garmin-app/ directory (Monkey C); requires Garmin SDK to build; watch endpoints at /api/runsheet/watch/:code (no auth, session-code based)
 - Mobile Mode: "Mobile" button in runsheet dialog opens full-screen mobile-optimized UI; shows pair matchups with large touch targets for glove use; winner selection by tapping pair, distance entry with +/- 10cm buttons, auto-advances to next heat
+- Runsheets page (/runsheets): standalone page listing saved runsheets; tap card to open bracket dialog; delete with confirmation; tests auto-cleaned from runsheets on test deletion
+- "Add to Runsheets" button on test-detail page creates a runsheet entry (auto-labels from series/athlete name)
+- Runsheets permission area in granular permissions; Skitester role preset (runsheets:edit, tests:view, weather:view) available in admin permission matrix
+- ROLE_PRESETS exported from schema for admin UI preset buttons (teal badges above permission matrix)
 - Incognito mode: Super Admins can toggle via eye icon in header; when active, no login logs or activity logs are recorded; session-based (persists until logout or toggle off)
 - Tests support dynamic rounds (unlimited distance measurements via + Round button)
 - Distance labels and results stored as JSON (distanceLabels on tests, results on test_entries)

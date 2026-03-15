@@ -4,7 +4,7 @@ import {
   users, groups, testSkiSeries, products, dailyWeather, tests, testEntries, loginLogs,
   activityLogs, grindingRecords, grindingSheets,
   athletes, athleteAccess, raceSkis, raceSkiRegrinds, testSkiRegrinds,
-  teams,
+  teams, runsheets,
   type User, type InsertUser,
   type Group, type InsertGroup,
   type Series, type InsertSeries,
@@ -22,6 +22,7 @@ import {
   type RaceSkiRegrind, type InsertRaceSkiRegrind,
   type TestSkiRegrind, type InsertTestSkiRegrind,
   type Team, type InsertTeam,
+  type Runsheet, type InsertRunsheet,
 } from "@shared/schema";
 
 export function parseGroupScopes(groupScope: string): string[] {
@@ -120,6 +121,13 @@ export interface IStorage {
   listTestSkiRegrinds(seriesId: number): Promise<TestSkiRegrind[]>;
   createTestSkiRegrind(r: InsertTestSkiRegrind): Promise<TestSkiRegrind>;
   deleteTestSkiRegrind(id: number): Promise<boolean>;
+
+  listRunsheets(teamId: number): Promise<Runsheet[]>;
+  getRunsheet(id: number): Promise<Runsheet | undefined>;
+  getRunsheetByTestId(testId: number, teamId: number): Promise<Runsheet | undefined>;
+  createRunsheet(r: InsertRunsheet): Promise<Runsheet>;
+  deleteRunsheet(id: number): Promise<boolean>;
+  deleteRunsheetsByTestId(testId: number): Promise<void>;
 
   countTable(tableName: string, teamId?: number): Promise<number>;
   listAllTestsForTeam(teamId: number): Promise<Test[]>;
@@ -417,6 +425,34 @@ export class DatabaseStorage implements IStorage {
     await db.update(testEntries)
       .set({ result0kmCmBehind, rank0km, results: updatedResults })
       .where(eq(testEntries.id, entryId));
+  }
+
+  async listRunsheets(teamId: number): Promise<Runsheet[]> {
+    return db.select().from(runsheets).where(eq(runsheets.teamId, teamId));
+  }
+
+  async getRunsheet(id: number): Promise<Runsheet | undefined> {
+    const [r] = await db.select().from(runsheets).where(eq(runsheets.id, id));
+    return r;
+  }
+
+  async getRunsheetByTestId(testId: number, teamId: number): Promise<Runsheet | undefined> {
+    const [r] = await db.select().from(runsheets).where(and(eq(runsheets.testId, testId), eq(runsheets.teamId, teamId)));
+    return r;
+  }
+
+  async createRunsheet(r: InsertRunsheet): Promise<Runsheet> {
+    const [created] = await db.insert(runsheets).values(r).returning();
+    return created!;
+  }
+
+  async deleteRunsheet(id: number): Promise<boolean> {
+    const result = await db.delete(runsheets).where(eq(runsheets.id, id));
+    return (result as any).rowCount > 0;
+  }
+
+  async deleteRunsheetsByTestId(testId: number): Promise<void> {
+    await db.delete(runsheets).where(eq(runsheets.testId, testId));
   }
 
   async createLoginLog(log: InsertLoginLog): Promise<LoginLog> {

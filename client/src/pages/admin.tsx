@@ -9,7 +9,7 @@ import {
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle,
   HardDrive, UserX, Eraser, RefreshCw, Building2,
 } from "lucide-react";
-import { PERMISSION_AREAS, DEFAULT_PERMISSIONS } from "@shared/schema";
+import { PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS } from "@shared/schema";
 import type { UserPermissions, PermissionLevel } from "@shared/schema";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -47,7 +47,7 @@ type ApiTeam = {
 const AREA_LABELS: Record<string, string> = {
   dashboard: "Dashboard", tests: "Tests", testskis: "Testskis", products: "Products",
   weather: "Weather", analytics: "Analytics", grinding: "Grinding", raceskis: "Raceskis",
-  suggestions: "Suggestions"
+  suggestions: "Suggestions", runsheets: "Runsheets"
 };
 
 function parsePermissions(permStr: string): UserPermissions {
@@ -82,10 +82,22 @@ function PermissionsMatrix({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <span className="text-sm font-medium">Permissions</span>
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] text-muted-foreground mr-1">Set all:</span>
+        <div className="flex items-center gap-1 flex-wrap">
+          <span className="text-[10px] text-muted-foreground mr-1">Presets:</span>
+          {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
+            <button
+              key={key}
+              type="button"
+              className="rounded-full px-2 py-0.5 text-[10px] font-medium border border-teal-300 text-teal-600 hover:bg-teal-50 transition-colors"
+              onClick={() => onChange({ ...preset.permissions })}
+              data-testid={`${testIdPrefix}-preset-${key}`}
+            >
+              {preset.label}
+            </button>
+          ))}
+          <span className="text-[10px] text-muted-foreground ml-1 mr-1">Set all:</span>
           {levels.map((l) => (
             <button
               key={l}

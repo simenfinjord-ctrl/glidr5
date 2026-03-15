@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export * from "./models/chat";
 
-export const PERMISSION_AREAS = ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "suggestions"] as const;
+export const PERMISSION_AREAS = ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "suggestions", "runsheets"] as const;
 export type PermissionArea = typeof PERMISSION_AREAS[number];
 export type PermissionLevel = "none" | "view" | "edit";
 export type UserPermissions = Record<PermissionArea, PermissionLevel>;
@@ -19,6 +19,7 @@ export const DEFAULT_PERMISSIONS: UserPermissions = {
   grinding: "none",
   raceskis: "none",
   suggestions: "none",
+  runsheets: "none",
 };
 
 export const ADMIN_PERMISSIONS: UserPermissions = {
@@ -31,6 +32,23 @@ export const ADMIN_PERMISSIONS: UserPermissions = {
   grinding: "edit",
   raceskis: "edit",
   suggestions: "edit",
+  runsheets: "edit",
+};
+
+export const ROLE_PRESETS: Record<string, { label: string; permissions: UserPermissions }> = {
+  skitester: {
+    label: "Skitester",
+    permissions: {
+      ...DEFAULT_PERMISSIONS,
+      runsheets: "edit",
+      tests: "view",
+      weather: "view",
+    },
+  },
+  member: {
+    label: "Member",
+    permissions: { ...DEFAULT_PERMISSIONS },
+  },
 };
 
 export const teams = pgTable("teams", {
@@ -194,6 +212,19 @@ export const testEntries = pgTable("test_entries", {
 export const insertEntrySchema = createInsertSchema(testEntries).omit({ id: true });
 export type InsertEntry = z.infer<typeof insertEntrySchema>;
 export type TestEntry = typeof testEntries.$inferSelect;
+
+export const runsheets = pgTable("runsheets", {
+  id: serial("id").primaryKey(),
+  testId: integer("test_id").notNull(),
+  label: text("label").notNull(),
+  createdAt: text("created_at").notNull(),
+  createdById: integer("created_by_id").notNull(),
+  teamId: integer("team_id").notNull().default(1),
+});
+
+export const insertRunsheetSchema = createInsertSchema(runsheets).omit({ id: true });
+export type InsertRunsheet = z.infer<typeof insertRunsheetSchema>;
+export type Runsheet = typeof runsheets.$inferSelect;
 
 export const activityLogs = pgTable("activity_logs", {
   id: serial("id").primaryKey(),

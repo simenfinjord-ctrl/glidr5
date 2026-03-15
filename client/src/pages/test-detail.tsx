@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList } from "lucide-react";
 import { generateTestPDF } from "@/lib/pdf-report";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -173,6 +173,24 @@ export default function TestDetail() {
     },
   });
 
+  const addToRunsheetsMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/runsheets", { testId: parseInt(id!) });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/runsheets"] });
+      toast({ title: "Added to Runsheets" });
+    },
+    onError: (e) => {
+      const msg = e instanceof Error ? e.message : "";
+      if (msg.includes("409")) {
+        toast({ title: "Already in Runsheets", description: "This test is already on the runsheets list." });
+      } else {
+        toast({ title: "Could not add to runsheets", description: msg, variant: "destructive" });
+      }
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("DELETE", `/api/tests/${id}`);
@@ -266,12 +284,24 @@ export default function TestDetail() {
                 {isGrind ? "Back to grinding" : "Back to tests"}
               </Button>
             </AppLink>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
               {sortedEntries.length >= 2 && (
-                <Button variant="outline" size="sm" onClick={() => setShowRunsheet(true)} data-testid="button-complete-runsheet">
-                  <Trophy className="mr-2 h-4 w-4" />
-                  Complete Runsheet
-                </Button>
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setShowRunsheet(true)} data-testid="button-complete-runsheet">
+                    <Trophy className="mr-2 h-4 w-4" />
+                    Complete Runsheet
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addToRunsheetsMutation.mutate()}
+                    disabled={addToRunsheetsMutation.isPending}
+                    data-testid="button-add-to-runsheets"
+                  >
+                    <ClipboardList className="mr-2 h-4 w-4" />
+                    {addToRunsheetsMutation.isPending ? "Adding…" : "Add to Runsheets"}
+                  </Button>
+                </>
               )}
               <AppLink href={`/tests/new?duplicate=${id}`} testId="link-duplicate-test">
                 <Button variant="outline" size="sm" data-testid="button-duplicate-test">

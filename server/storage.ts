@@ -400,8 +400,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateEntryResults(entryId: number, result0kmCmBehind: number | null, rank0km: number | null): Promise<void> {
+    const [existing] = await db.select().from(testEntries).where(eq(testEntries.id, entryId));
+    let updatedResults: string | null = null;
+    if (existing?.results) {
+      try {
+        const parsed = JSON.parse(existing.results);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          parsed[0] = { result: result0kmCmBehind, rank: rank0km };
+          updatedResults = JSON.stringify(parsed);
+        }
+      } catch {}
+    }
+    if (!updatedResults) {
+      updatedResults = JSON.stringify([{ result: result0kmCmBehind, rank: rank0km }]);
+    }
     await db.update(testEntries)
-      .set({ result0kmCmBehind, rank0km })
+      .set({ result0kmCmBehind, rank0km, results: updatedResults })
       .where(eq(testEntries.id, entryId));
   }
 

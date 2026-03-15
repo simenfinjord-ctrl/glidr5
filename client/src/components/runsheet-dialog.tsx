@@ -283,7 +283,6 @@ export function RunsheetDialog({
   const handleApply = () => {
     if (watchActive) handleStopWatch();
     onApplyResults(results);
-    onOpenChange(false);
   };
 
   const totalRounds = bracket.length;
@@ -589,7 +588,6 @@ export function RunsheetDialog({
         onApplyResults={(results) => {
           onApplyResults(results);
           setMobileMode(false);
-          onOpenChange(false);
         }}
       />
     </Dialog>

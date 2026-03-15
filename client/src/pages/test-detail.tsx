@@ -161,6 +161,7 @@ export default function TestDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/tests/${id}/entries`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
       toast({ title: "Runsheet results applied" });
       setShowRunsheet(false);
     },

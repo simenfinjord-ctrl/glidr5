@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ClipboardList, Trash2, Trophy, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -46,6 +46,7 @@ export default function Runsheets() {
   const [deleteTarget, setDeleteTarget] = useState<RunsheetItem | null>(null);
 
   const dialogOpen = !!activeRunsheet;
+  const applyingTestIdRef = useRef<number | null>(null);
 
   const { data: items = [], isLoading } = useQuery<RunsheetItem[]>({
     queryKey: ["/api/runsheets"],
@@ -61,12 +62,17 @@ export default function Runsheets() {
 
   const applyMutation = useMutation({
     mutationFn: async (results: BracketResult[]) => {
-      await apiRequest("PATCH", `/api/tests/${activeRunsheet!.testId}/runsheet-results`, { results });
+      const testId = applyingTestIdRef.current;
+      if (!testId) throw new Error("No test selected");
+      await apiRequest("PATCH", `/api/tests/${testId}/runsheet-results`, { results });
+      return testId;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/tests/${activeRunsheet!.testId}/entries`] });
+    onSuccess: (testId) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/tests/${testId}/entries`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
       toast({ title: "Results applied" });
       setActiveRunsheet(null);
+      applyingTestIdRef.current = null;
     },
     onError: (e) => {
       toast({
@@ -74,6 +80,7 @@ export default function Runsheets() {
         description: e instanceof Error ? e.message : "Unknown error",
         variant: "destructive",
       });
+      applyingTestIdRef.current = null;
     },
   });
 
@@ -170,11 +177,14 @@ export default function Runsheets() {
       <RunsheetDialog
         open={dialogOpen}
         onOpenChange={(open) => {
-          if (!open) setActiveRunsheet(null);
+          if (!open && !applyMutation.isPending) setActiveRunsheet(null);
         }}
         skiPairs={skiPairsReady ? skiPairs : []}
         loading={dialogOpen && !skiPairsReady}
-        onApplyResults={(results) => applyMutation.mutate(results)}
+        onApplyResults={(results) => {
+          applyingTestIdRef.current = activeRunsheet?.testId ?? null;
+          applyMutation.mutate(results);
+        }}
       />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>

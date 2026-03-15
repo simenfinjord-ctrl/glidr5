@@ -29,6 +29,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   skiPairs: number[];
+  loading?: boolean;
   onApplyResults: (results: BracketResult[]) => void;
 };
 
@@ -161,6 +162,7 @@ export function RunsheetDialog({
   open,
   onOpenChange,
   skiPairs,
+  loading,
   onApplyResults,
 }: Props) {
   const [bracket, setBracket] = useState<Heat[][]>([]);
@@ -284,9 +286,9 @@ export function RunsheetDialog({
     onOpenChange(false);
   };
 
-  if (bracket.length === 0) return null;
-
   const totalRounds = bracket.length;
+
+  const showLoading = loading || bracket.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={(v) => {
@@ -294,6 +296,19 @@ export function RunsheetDialog({
       onOpenChange(v);
     }}>
       <DialogContent className="max-w-[95vw] w-auto max-h-[90vh] overflow-auto p-4 sm:p-6">
+        {showLoading ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-4" data-testid="loading-runsheet-bracket">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full border-4 border-teal-100 border-t-teal-500 animate-spin" />
+              <Trophy className="absolute inset-0 m-auto h-6 w-6 text-teal-500" />
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-lg">Preparing runsheet…</p>
+              <p className="text-sm text-muted-foreground mt-1">Loading ski pairs and building bracket</p>
+            </div>
+          </div>
+        ) : (
+        <>
         <DialogHeader>
           <div className="flex items-center justify-between gap-3 pr-6">
             <DialogTitle className="flex items-center gap-2">
@@ -564,6 +579,8 @@ export function RunsheetDialog({
             </Button>
           </div>
         </div>
+        </>
+        )}
       </DialogContent>
       <MobileRunsheet
         open={mobileMode}

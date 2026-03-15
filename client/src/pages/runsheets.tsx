@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ClipboardList, Trash2, Trophy } from "lucide-react";
+import { ClipboardList, Trash2, Trophy, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,8 +43,9 @@ type TestEntry = {
 export default function Runsheets() {
   const { toast } = useToast();
   const [activeRunsheet, setActiveRunsheet] = useState<RunsheetItem | null>(null);
-  const [showRunsheetDialog, setShowRunsheetDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<RunsheetItem | null>(null);
+
+  const dialogOpen = !!activeRunsheet;
 
   const { data: items = [], isLoading } = useQuery<RunsheetItem[]>({
     queryKey: ["/api/runsheets"],
@@ -55,7 +56,8 @@ export default function Runsheets() {
     enabled: !!activeRunsheet,
   });
 
-  const skiPairsReady = !entriesLoading && entries.length >= 2;
+  const skiPairs = entries.map((e) => e.skiNumber).sort((a, b) => a - b);
+  const skiPairsReady = !entriesLoading && skiPairs.length >= 2;
 
   const applyMutation = useMutation({
     mutationFn: async (results: BracketResult[]) => {
@@ -64,7 +66,6 @@ export default function Runsheets() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/tests/${activeRunsheet!.testId}/entries`] });
       toast({ title: "Results applied" });
-      setShowRunsheetDialog(false);
       setActiveRunsheet(null);
     },
     onError: (e) => {
@@ -86,18 +87,6 @@ export default function Runsheets() {
       setDeleteTarget(null);
     },
   });
-
-  const handleOpenRunsheet = (item: RunsheetItem) => {
-    setActiveRunsheet(item);
-  };
-
-  const skiPairs = entries.map((e) => e.skiNumber).sort((a, b) => a - b);
-
-  useEffect(() => {
-    if (activeRunsheet && skiPairsReady && !showRunsheetDialog) {
-      setShowRunsheetDialog(true);
-    }
-  }, [activeRunsheet, skiPairsReady, showRunsheetDialog]);
 
   return (
     <AppShell>
@@ -136,17 +125,17 @@ export default function Runsheets() {
               key={item.id}
               className={cn(
                 "fs-card rounded-2xl p-5 cursor-pointer hover:ring-2 hover:ring-teal-500/30 transition-all active:scale-[0.98]",
-                activeRunsheet?.id === item.id && entriesLoading && "ring-2 ring-teal-500/50 animate-pulse"
+                activeRunsheet?.id === item.id && entriesLoading && "ring-2 ring-teal-500/50"
               )}
               data-testid={`card-runsheet-${item.id}`}
-              onClick={() => handleOpenRunsheet(item)}
+              onClick={() => setActiveRunsheet(item)}
               style={{ touchAction: "manipulation" }}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50">
                     {activeRunsheet?.id === item.id && entriesLoading ? (
-                      <div className="w-5 h-5 border-2 border-teal-300 border-t-teal-600 rounded-full animate-spin" />
+                      <Loader2 className="h-5 w-5 text-teal-600 animate-spin" />
                     ) : (
                       <Trophy className="h-5 w-5 text-teal-600" />
                     )}
@@ -178,17 +167,15 @@ export default function Runsheets() {
         </div>
       </div>
 
-      {activeRunsheet && skiPairs.length >= 2 && (
-        <RunsheetDialog
-          open={showRunsheetDialog}
-          onOpenChange={(open) => {
-            setShowRunsheetDialog(open);
-            if (!open) setActiveRunsheet(null);
-          }}
-          skiPairs={skiPairs}
-          onApplyResults={(results) => applyMutation.mutate(results)}
-        />
-      )}
+      <RunsheetDialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!open) setActiveRunsheet(null);
+        }}
+        skiPairs={skiPairsReady ? skiPairs : []}
+        loading={dialogOpen && !skiPairsReady}
+        onApplyResults={(results) => applyMutation.mutate(results)}
+      />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>

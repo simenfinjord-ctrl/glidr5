@@ -310,8 +310,10 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
           </div>
 
           <button
+            onTouchEnd={(e) => { e.preventDefault(); handleSelectWinner(currentHeat.heat.pairA!); }}
             onClick={() => handleSelectWinner(currentHeat.heat.pairA!)}
-            className="flex-1 flex flex-col items-center justify-center gap-2 bg-zinc-900 active:bg-emerald-900/50 transition-colors border-b border-zinc-700"
+            className="flex-1 flex flex-col items-center justify-center gap-2 bg-zinc-900 active:bg-emerald-900/50 transition-colors border-b border-zinc-700 cursor-pointer"
+            style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
             data-testid="button-select-pair-a"
           >
             <span className="text-zinc-400 text-lg">Winner</span>
@@ -326,8 +328,10 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
           </div>
 
           <button
+            onTouchEnd={(e) => { e.preventDefault(); handleSelectWinner(currentHeat.heat.pairB!); }}
             onClick={() => handleSelectWinner(currentHeat.heat.pairB!)}
-            className="flex-1 flex flex-col items-center justify-center gap-2 bg-zinc-900 active:bg-emerald-900/50 transition-colors"
+            className="flex-1 flex flex-col items-center justify-center gap-2 bg-zinc-900 active:bg-emerald-900/50 transition-colors cursor-pointer"
+            style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
             data-testid="button-select-pair-b"
           >
             <ChevronDown className="h-10 w-10 text-zinc-600 mb-2" />
@@ -356,16 +360,20 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
           <div className="flex-1 flex flex-col items-center justify-center gap-3">
             <div className="flex items-center gap-14">
               <button
+                onTouchEnd={(e) => { e.preventDefault(); handleDistanceChange(5); }}
                 onClick={() => handleDistanceChange(5)}
-                className="w-24 h-24 rounded-full bg-zinc-800 active:bg-zinc-700 flex flex-col items-center justify-center border-2 border-zinc-600"
+                className="w-24 h-24 rounded-full bg-zinc-800 active:bg-zinc-700 flex flex-col items-center justify-center border-2 border-zinc-600 cursor-pointer"
+                style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
                 data-testid="button-distance-up-5"
               >
                 <ChevronUp className="h-10 w-10 text-zinc-300" />
                 <span className="text-xs font-bold text-zinc-400">+5</span>
               </button>
               <button
+                onTouchEnd={(e) => { e.preventDefault(); handleDistanceChange(10); }}
                 onClick={() => handleDistanceChange(10)}
-                className="w-28 h-28 rounded-full bg-zinc-700 active:bg-zinc-600 flex flex-col items-center justify-center border-2 border-amber-600"
+                className="w-28 h-28 rounded-full bg-zinc-700 active:bg-zinc-600 flex flex-col items-center justify-center border-2 border-amber-600 cursor-pointer"
+                style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
                 data-testid="button-distance-up-10"
               >
                 <ChevronUp className="h-12 w-12 text-amber-500" />
@@ -382,16 +390,20 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
 
             <div className="flex items-center gap-14">
               <button
+                onTouchEnd={(e) => { e.preventDefault(); handleDistanceChange(-5); }}
                 onClick={() => handleDistanceChange(-5)}
-                className="w-24 h-24 rounded-full bg-zinc-800 active:bg-zinc-700 flex flex-col items-center justify-center border-2 border-zinc-600"
+                className="w-24 h-24 rounded-full bg-zinc-800 active:bg-zinc-700 flex flex-col items-center justify-center border-2 border-zinc-600 cursor-pointer"
+                style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
                 data-testid="button-distance-down-5"
               >
                 <span className="text-xs font-bold text-zinc-400">-5</span>
                 <ChevronDown className="h-10 w-10 text-zinc-300" />
               </button>
               <button
+                onTouchEnd={(e) => { e.preventDefault(); handleDistanceChange(-10); }}
                 onClick={() => handleDistanceChange(-10)}
-                className="w-28 h-28 rounded-full bg-zinc-700 active:bg-zinc-600 flex flex-col items-center justify-center border-2 border-amber-600"
+                className="w-28 h-28 rounded-full bg-zinc-700 active:bg-zinc-600 flex flex-col items-center justify-center border-2 border-amber-600 cursor-pointer"
+                style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
                 data-testid="button-distance-down-10"
               >
                 <span className="text-sm font-bold text-amber-400">-10</span>
@@ -402,16 +414,20 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
 
           <div className="flex gap-3 p-4 pb-8">
             <button
+              onTouchEnd={(e) => { e.preventDefault(); handleBackFromDistance(); }}
               onClick={handleBackFromDistance}
-              className="flex-1 py-5 rounded-2xl bg-zinc-800 active:bg-zinc-700 text-xl font-bold text-zinc-300 flex items-center justify-center gap-2"
+              className="flex-1 py-5 rounded-2xl bg-zinc-800 active:bg-zinc-700 text-xl font-bold text-zinc-300 flex items-center justify-center gap-2 cursor-pointer"
+              style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
               data-testid="button-distance-back"
             >
               <Undo2 className="h-6 w-6" />
               Back
             </button>
             <button
+              onTouchEnd={(e) => { e.preventDefault(); handleConfirm(); }}
               onClick={handleConfirm}
-              className="flex-[2] py-5 rounded-2xl bg-emerald-600 active:bg-emerald-700 text-xl font-bold text-white flex items-center justify-center gap-2"
+              className="flex-[2] py-5 rounded-2xl bg-emerald-600 active:bg-emerald-700 text-xl font-bold text-white flex items-center justify-center gap-2 cursor-pointer"
+              style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
               data-testid="button-distance-confirm"
             >
               <Check className="h-6 w-6" />
@@ -463,19 +479,23 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
 
           <div className="flex gap-3 p-4 pb-8">
             <button
+              onTouchEnd={(e) => { e.preventDefault(); handleUndo(); }}
               onClick={handleUndo}
-              className="flex-1 py-5 rounded-2xl bg-zinc-800 active:bg-zinc-700 text-xl font-bold text-zinc-300 flex items-center justify-center gap-2"
+              className="flex-1 py-5 rounded-2xl bg-zinc-800 active:bg-zinc-700 text-xl font-bold text-zinc-300 flex items-center justify-center gap-2 cursor-pointer"
+              style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
               data-testid="button-undo-from-done"
             >
               <Undo2 className="h-6 w-6" />
               Undo
             </button>
             <button
+              onTouchEnd={(e) => { e.preventDefault(); if (isComplete) onApplyResults(results); onClose(); }}
               onClick={() => {
                 if (isComplete) onApplyResults(results);
                 onClose();
               }}
-              className="flex-[2] py-5 rounded-2xl bg-emerald-600 active:bg-emerald-700 text-xl font-bold text-white flex items-center justify-center gap-2"
+              className="flex-[2] py-5 rounded-2xl bg-emerald-600 active:bg-emerald-700 text-xl font-bold text-white flex items-center justify-center gap-2 cursor-pointer"
+              style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
               data-testid="button-apply-mobile-results"
             >
               <Check className="h-6 w-6" />

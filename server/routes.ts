@@ -722,7 +722,7 @@ export async function registerRoutes(
     const results = req.body.results;
     if (!Array.isArray(results)) return res.status(400).json({ message: "results array required" });
 
-    const entries = await storage.getEntriesByTestId(id);
+    const entries = await storage.listEntries(id);
     const entryBySkiNumber = new Map(entries.map((e: any) => [e.skiNumber, e]));
 
     for (const r of results) {

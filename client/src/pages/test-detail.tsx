@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy } from "lucide-react";
@@ -45,6 +45,8 @@ type Test = {
   createdAt: string;
   createdByName: string;
   groupScope: string;
+  testSkiSource: string;
+  athleteId: number | null;
 };
 
 type TestEntry = {
@@ -62,6 +64,13 @@ type TestEntry = {
   results: string | null;
   feelingRank: number | null;
   kickRank: number | null;
+  raceSkiId: number | null;
+};
+
+type RaceSki = {
+  id: number;
+  serialNumber: string | null;
+  skiId: string;
 };
 
 type Product = {
@@ -220,6 +229,29 @@ export default function TestDetail() {
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
+
+  const isRaceSkiTest = test?.testSkiSource === "raceskis";
+  const athleteId = test?.athleteId;
+
+  const { data: raceSkisData = [] } = useQuery<RaceSki[]>({
+    queryKey: [`/api/athletes/${athleteId}/skis`],
+    enabled: isRaceSkiTest && !!athleteId,
+  });
+
+  const skiLabels = useMemo(() => {
+    if (!isRaceSkiTest || raceSkisData.length === 0) return undefined;
+    const raceSkiById = new Map(raceSkisData.map((rs) => [rs.id, rs]));
+    const labels: Record<number, string> = {};
+    for (const entry of entries) {
+      if (entry.raceSkiId) {
+        const rs = raceSkiById.get(entry.raceSkiId);
+        if (rs) {
+          labels[entry.skiNumber] = rs.serialNumber || rs.skiId;
+        }
+      }
+    }
+    return Object.keys(labels).length > 0 ? labels : undefined;
+  }, [isRaceSkiTest, raceSkisData, entries]);
 
   const seriesById = new Map(series.map((s) => [s.id, s.name] as const));
   const productsById = new Map(products.map((p) => [p.id, p] as const));
@@ -652,8 +684,8 @@ export default function TestDetail() {
                         )}
                       >
                         <td className="py-3 pr-3" data-testid={`text-ski-number-${entry.id}`}>
-                          <span className="inline-flex h-8 w-10 items-center justify-center rounded-lg bg-background/50 text-sm font-semibold ring-1 ring-border/50">
-                            {entry.skiNumber}
+                          <span className="inline-flex h-8 min-w-10 items-center justify-center rounded-lg bg-background/50 px-2 text-sm font-semibold ring-1 ring-border/50">
+                            {skiLabels?.[entry.skiNumber] ?? entry.skiNumber}
                           </span>
                         </td>
                         {!isGrind && (
@@ -714,6 +746,7 @@ export default function TestDetail() {
             open={showRunsheet}
             onOpenChange={setShowRunsheet}
             skiPairs={sortedEntries.map((e) => e.skiNumber)}
+            skiLabels={skiLabels}
             onApplyResults={(results) => runsheetMutation.mutate(results)}
           />
         )}

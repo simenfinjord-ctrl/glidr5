@@ -1417,7 +1417,7 @@ export default function AthleteDetail() {
                 </Card>
               ) : (
                 filteredTests.map((test) => (
-                  <RaceSkiTestCard key={test.id} test={test} skiIds={skiIds} />
+                  <RaceSkiTestCard key={test.id} test={test} skiIds={skiIds} allSkis={skis} />
                 ))
               )}
             </div>
@@ -1916,7 +1916,7 @@ function SkiCard({
   );
 }
 
-function RaceSkiTestCard({ test, skiIds }: { test: RaceSkiTest; skiIds: Set<number> }) {
+function RaceSkiTestCard({ test, skiIds, allSkis }: { test: RaceSkiTest; skiIds: Set<number>; allSkis: RaceSki[] }) {
   const [expanded, setExpanded] = useState(false);
   const [, navigate] = useLocation();
 
@@ -1929,6 +1929,15 @@ function RaceSkiTestCard({ test, skiIds }: { test: RaceSkiTest; skiIds: Set<numb
     if (entries.length === 0) return [];
     return entries.filter((e) => e.raceSkiId && skiIds.has(e.raceSkiId));
   }, [entries, skiIds]);
+
+  const raceSkiById = useMemo(() => new Map(allSkis.map((s) => [s.id, s])), [allSkis]);
+  const getSkiLabel = (entry: TestEntry) => {
+    if (entry.raceSkiId) {
+      const rs = raceSkiById.get(entry.raceSkiId);
+      if (rs) return rs.serialNumber || rs.skiId;
+    }
+    return String(entry.skiNumber);
+  };
 
   if (expanded && entries.length > 0 && relevantEntries.length === 0) {
     return null;
@@ -1989,7 +1998,7 @@ function RaceSkiTestCard({ test, skiIds }: { test: RaceSkiTest; skiIds: Set<numb
               <tbody>
                 {relevantEntries.map((entry) => (
                   <tr key={entry.id} className="border-t" data-testid={`row-test-result-${entry.id}`}>
-                    <td className="px-3 py-1.5 font-medium">{entry.skiNumber}</td>
+                    <td className="px-3 py-1.5 font-medium">{getSkiLabel(entry)}</td>
                     <td className="px-3 py-1.5">{entry.result0kmCmBehind ?? "—"}</td>
                     <td className="px-3 py-1.5">
                       <span className={cn(

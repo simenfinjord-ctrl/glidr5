@@ -29,6 +29,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   skiPairs: number[];
+  skiLabels?: Record<number, string>;
   loading?: boolean;
   error?: string;
   onApplyResults: (results: BracketResult[]) => void;
@@ -163,10 +164,12 @@ export function RunsheetDialog({
   open,
   onOpenChange,
   skiPairs,
+  skiLabels,
   loading,
   error,
   onApplyResults,
 }: Props) {
+  const label = (pair: number | null) => pair !== null && skiLabels?.[pair] ? skiLabels[pair] : pair !== null ? `Par ${pair}` : "—";
   const [bracket, setBracket] = useState<Heat[][]>([]);
   const [watchCode, setWatchCode] = useState<string | null>(null);
   const [watchActive, setWatchActive] = useState(false);
@@ -420,7 +423,7 @@ export function RunsheetDialog({
                       data-testid={`row-runsheet-result-${pair}`}
                     >
                       <td className="border border-border px-3 py-1.5 text-center font-medium">
-                        {pair}
+                        {skiLabels?.[pair] ?? pair}
                       </td>
                       <td className="border border-border px-3 py-1.5 text-center">
                         {r ? (
@@ -496,7 +499,7 @@ export function RunsheetDialog({
                           )}
                         >
                           <span className="text-sm font-medium w-14 truncate">
-                            {heat.pairA !== null ? `Par ${heat.pairA}` : "—"}
+                            {label(heat.pairA)}
                           </span>
                           <Input
                             type="number"
@@ -530,7 +533,7 @@ export function RunsheetDialog({
                           )}
                         >
                           <span className="text-sm font-medium w-14 truncate">
-                            {heat.pairB !== null ? `Par ${heat.pairB}` : "—"}
+                            {label(heat.pairB)}
                           </span>
                           <Input
                             type="number"
@@ -597,6 +600,7 @@ export function RunsheetDialog({
         open={mobileMode}
         onClose={() => setMobileMode(false)}
         skiPairs={skiPairs}
+        skiLabels={skiLabels}
         onApplyResults={(results) => {
           onApplyResults(results);
           setMobileMode(false);

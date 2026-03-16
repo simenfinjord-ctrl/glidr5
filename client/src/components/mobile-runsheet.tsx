@@ -19,6 +19,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   skiPairs: number[];
+  skiLabels?: Record<number, string>;
   onApplyResults: (results: BracketResult[]) => void;
 };
 
@@ -156,7 +157,8 @@ function findLastCompletedHeat(bracket: Heat[][]): { roundIndex: number; heatInd
   return last;
 }
 
-export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Props) {
+export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, onApplyResults }: Props) {
+  const label = (pair: number | null) => pair !== null && skiLabels?.[pair] ? skiLabels[pair] : pair !== null ? `Par ${pair}` : "—";
   const [bracket, setBracket] = useState<Heat[][]>([]);
   const [phase, setPhase] = useState<"loading" | "select" | "distance" | "done">("loading");
   const [selectedWinner, setSelectedWinner] = useState<number | null>(null);
@@ -330,7 +332,7 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
           >
             <span className="text-zinc-400 text-lg">Winner</span>
             <span className="text-7xl font-black text-amber-500">
-              Par {currentHeat.heat.pairA}
+              {label(currentHeat.heat.pairA)}
             </span>
             <ChevronUp className="h-10 w-10 text-zinc-600 mt-2" />
           </button>
@@ -348,7 +350,7 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
           >
             <ChevronDown className="h-10 w-10 text-zinc-600 mb-2" />
             <span className="text-7xl font-black text-amber-500">
-              Par {currentHeat.heat.pairB}
+              {label(currentHeat.heat.pairB)}
             </span>
             <span className="text-zinc-400 text-lg">Winner</span>
           </button>
@@ -359,13 +361,13 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
         <div className="flex-1 flex flex-col">
           <div className="text-center py-4 bg-emerald-900/30">
             <span className="text-emerald-400 text-xl font-bold">
-              Par {selectedWinner} wins!
+              {label(selectedWinner)} wins!
             </span>
           </div>
 
           <div className="text-center py-3">
             <span className="text-zinc-400 text-lg">
-              Par {loserPair} behind:
+              {label(loserPair)} behind:
             </span>
           </div>
 
@@ -481,7 +483,7 @@ export function MobileRunsheet({ open, onClose, skiPairs, onApplyResults }: Prop
                         {r.rank}
                       </span>
                     </td>
-                    <td className="py-4 text-xl font-bold">Par {r.skiNumber}</td>
+                    <td className="py-4 text-xl font-bold">{skiLabels?.[r.skiNumber] ?? `Par ${r.skiNumber}`}</td>
                     <td className="py-4 text-right text-xl tabular-nums text-zinc-300">{r.diff}</td>
                   </tr>
                 ))}

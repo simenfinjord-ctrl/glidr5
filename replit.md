@@ -88,6 +88,7 @@ Glidr is a full-stack React web application for multi-team/multi-tenant organiza
 - All users with athlete access can view AND edit tests associated with that athlete (not just creator), regardless of group scope or tests permission level
 - Race ski test endpoints (list, view, edit, delete, entries) grant access based on athlete access, independent of tests permission — users with raceskis permission but tests:none can still access raceski tests
 - Athlete access sharing via athlete_access join table (creator always has access, admin has full access)
+- Race ski tests display serial numbers (or skiId) instead of ski pair numbers in results table and runsheet bracket
 - Race ski regrinds auto-update ski's current grind field
 - Race ski test entry has "Edit Parameters" button: configure which ski columns (Brand, Base, Grind, Heights, Construction, Mold, Base, Serial, Year) are visible and their order; persisted to localStorage
 - All users with athlete access can view AND edit tests associated with that athlete (not just creator), regardless of group scope or tests permission level

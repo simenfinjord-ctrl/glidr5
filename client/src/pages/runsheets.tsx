@@ -53,13 +53,14 @@ export default function Runsheets() {
     queryKey: ["/api/runsheets"],
   });
 
-  const { data: entries = [], isLoading: entriesLoading } = useQuery<TestEntry[]>({
+  const { data: entries = [], isLoading: entriesLoading, isError: entriesError } = useQuery<TestEntry[]>({
     queryKey: [`/api/tests/${activeRunsheet?.testId}/entries`],
     enabled: !!activeRunsheet,
+    retry: 1,
   });
 
   const skiPairs = entries.map((e) => e.skiNumber).sort((a, b) => a - b);
-  const skiPairsReady = !entriesLoading && skiPairs.length >= 2;
+  const skiPairsReady = !entriesLoading && !entriesError && skiPairs.length >= 2;
 
   const applyMutation = useMutation({
     mutationFn: async ({ testId, results }: { testId: number; results: BracketResult[] }) => {
@@ -189,7 +190,8 @@ export default function Runsheets() {
           }
         }}
         skiPairs={skiPairsReady ? skiPairs : []}
-        loading={dialogOpen && !skiPairsReady}
+        loading={dialogOpen && entriesLoading}
+        error={entriesError ? "Could not load test entries. You may not have access to this test." : undefined}
         onApplyResults={handleApplyResults}
       />
 

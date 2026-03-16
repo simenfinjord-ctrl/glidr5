@@ -30,6 +30,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   skiPairs: number[];
   loading?: boolean;
+  error?: string;
   onApplyResults: (results: BracketResult[]) => void;
 };
 
@@ -163,6 +164,7 @@ export function RunsheetDialog({
   onOpenChange,
   skiPairs,
   loading,
+  error,
   onApplyResults,
 }: Props) {
   const [bracket, setBracket] = useState<Heat[][]>([]);
@@ -287,7 +289,7 @@ export function RunsheetDialog({
 
   const totalRounds = bracket.length;
 
-  const showLoading = loading || bracket.length === 0;
+  const showLoading = !error && (loading || bracket.length === 0);
 
   return (
     <Dialog open={open} onOpenChange={(v) => {
@@ -295,7 +297,17 @@ export function RunsheetDialog({
       onOpenChange(v);
     }}>
       <DialogContent className="max-w-[95vw] w-auto max-h-[90vh] overflow-auto p-4 sm:p-6">
-        {showLoading ? (
+        {error ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-4" data-testid="error-runsheet-bracket">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+              <WifiOff className="h-8 w-8 text-red-400" />
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-lg">Could not load</p>
+              <p className="text-sm text-muted-foreground mt-1">{error}</p>
+            </div>
+          </div>
+        ) : showLoading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-4" data-testid="loading-runsheet-bracket">
             <div className="relative">
               <div className="w-16 h-16 rounded-full border-4 border-teal-100 border-t-teal-500 animate-spin" />

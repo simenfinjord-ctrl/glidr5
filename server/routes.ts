@@ -714,7 +714,7 @@ export async function registerRoutes(
     if (!existing) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
     const canEditTests = userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope) && u.permissions.tests === "edit";
-    const canEditRunsheets = userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope) && u.permissions.runsheets === "edit";
+    const canEditRunsheets = u.permissions.runsheets === "edit" && (existing as any).teamId === u.activeTeamId;
     let hasAccess = canEditTests || canEditRunsheets;
     if (!hasAccess && (existing as any).testSkiSource === "raceskis" && (existing as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((existing as any).athleteId, u.id, u.isAdmin);
@@ -829,7 +829,7 @@ export async function registerRoutes(
     const test = await storage.getTest(testId);
     if (!test) return res.status(404).json({ message: "Not found" });
     const hasTestAccess = userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope) && u.permissions.tests !== "none";
-    const hasRunsheetAccess = userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope) && u.permissions.runsheets !== "none";
+    const hasRunsheetAccess = u.permissions.runsheets !== "none" && (test as any).teamId === u.activeTeamId;
     let hasAccess = hasTestAccess || hasRunsheetAccess;
     if (!hasAccess && (test as any).testSkiSource === "raceskis" && (test as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((test as any).athleteId, u.id, u.isAdmin);

@@ -350,6 +350,7 @@ export default function Products() {
   const isAdmin = !!user?.isAdmin;
   const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"products" | "storage">("products");
+  const [stockSort, setStockSort] = useState<"asc" | "desc">("asc");
   const [category, setCategory] = useState<ProductCategory | "All">("All");
   const [brand, setBrand] = useState("");
   const [nameSearch, setNameSearch] = useState("");
@@ -387,6 +388,15 @@ export default function Products() {
     });
   }, [products, category, brand, nameSearch]);
 
+  const sortedFiltered = useMemo(() => {
+    if (viewMode !== "storage") return filtered;
+    return [...filtered].sort((a, b) =>
+      stockSort === "asc"
+        ? a.stockQuantity - b.stockQuantity
+        : b.stockQuantity - a.stockQuantity
+    );
+  }, [filtered, viewMode, stockSort]);
+
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/products/${id}`);
@@ -422,6 +432,16 @@ export default function Products() {
               <Warehouse className="mr-2 h-4 w-4" />
               Storage
             </Button>
+            {viewMode === "storage" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setStockSort(stockSort === "asc" ? "desc" : "asc")}
+                data-testid="button-sort-stock"
+              >
+                {stockSort === "asc" ? "Least first ↑" : "Most first ↓"}
+              </Button>
+            )}
             {viewMode === "products" && (
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
@@ -497,12 +517,12 @@ export default function Products() {
 
         {viewMode === "storage" ? (
           <div className="space-y-2">
-            {filtered.length === 0 ? (
+            {sortedFiltered.length === 0 ? (
               <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-products">
                 No products match your filters.
               </Card>
             ) : (
-              filtered.map((p) => (
+              sortedFiltered.map((p) => (
                 <StockRow key={p.id} product={p} />
               ))
             )}

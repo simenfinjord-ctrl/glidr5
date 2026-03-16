@@ -714,7 +714,11 @@ export async function registerRoutes(
     if (!existing) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
     const canEditTests = userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope) && u.permissions.tests === "edit";
-    const canEditRunsheets = u.permissions.runsheets === "edit" && (existing as any).teamId === u.activeTeamId;
+    let canEditRunsheets = false;
+    if (u.permissions.runsheets === "edit" && (existing as any).teamId === u.activeTeamId) {
+      const rs = await storage.getRunsheetByTestId(id, u.activeTeamId);
+      canEditRunsheets = !!rs;
+    }
     let hasAccess = canEditTests || canEditRunsheets;
     if (!hasAccess && (existing as any).testSkiSource === "raceskis" && (existing as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((existing as any).athleteId, u.id, u.isAdmin);
@@ -723,6 +727,11 @@ export async function registerRoutes(
 
     const results = req.body.results;
     if (!Array.isArray(results)) return res.status(400).json({ message: "results array required" });
+    for (const r of results) {
+      if (typeof r.skiNumber !== "number" || (r.diff !== null && r.diff !== undefined && typeof r.diff !== "number") || (r.rank !== null && r.rank !== undefined && typeof r.rank !== "number")) {
+        return res.status(400).json({ message: "Invalid result item: skiNumber (number), diff (number|null), rank (number|null) required" });
+      }
+    }
 
     const entries = await storage.listEntries(id);
     const entryBySkiNumber = new Map(entries.map((e: any) => [e.skiNumber, e]));
@@ -829,7 +838,11 @@ export async function registerRoutes(
     const test = await storage.getTest(testId);
     if (!test) return res.status(404).json({ message: "Not found" });
     const hasTestAccess = userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope) && u.permissions.tests !== "none";
-    const hasRunsheetAccess = u.permissions.runsheets !== "none" && (test as any).teamId === u.activeTeamId;
+    let hasRunsheetAccess = false;
+    if (u.permissions.runsheets !== "none" && (test as any).teamId === u.activeTeamId) {
+      const rs = await storage.getRunsheetByTestId(testId, u.activeTeamId);
+      hasRunsheetAccess = !!rs;
+    }
     let hasAccess = hasTestAccess || hasRunsheetAccess;
     if (!hasAccess && (test as any).testSkiSource === "raceskis" && (test as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((test as any).athleteId, u.id, u.isAdmin);

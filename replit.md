@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed to manage ski testing and documentation. It supports a multi-team/multi-tenant architecture with role-based access control (Super Admin, Team Admin, Members) and group-based data scoping. The platform facilitates the management of TestSkis series, Products (glide, topping, structure tools), DailyWeather, and Tests with live-ranking entry. The project aims to provide a robust solution for ski testing, enhancing efficiency and data analysis for ski teams.
+Glidr is a full-stack React web application designed for multi-team/multi-tenant organizations to manage ski testing and documentation. It provides role-based access control (Super Admin, Team Admin, Members) and group-based data scoping. The platform facilitates the management of TestSkis series, Products, DailyWeather, and Tests with live-ranking entry. Its core purpose is to offer comprehensive data insights, streamline operations, and provide collaborative tools for ski testing and product development, ultimately enhancing efficiency and data analysis for ski teams.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -33,7 +33,9 @@ Glidr is a full-stack React web application designed to manage ski testing and d
 - Garmin Connect IQ app source in garmin-app/ directory (Monkey C); requires Garmin SDK to build; watch endpoints at /api/runsheet/watch/:code (no auth, session-code based)
 - Mobile Mode: "Mobile" button in runsheet dialog opens full-screen mobile-optimized UI; shows pair matchups with large touch targets for glove use; winner selection by tapping pair, distance entry with +/- 10cm buttons, auto-advances to next heat
 - Runsheets page (/runsheets): standalone page listing saved runsheets; tap card to open bracket dialog; delete with confirmation; tests auto-cleaned from runsheets on test deletion
-- "Add to Runsheets" button on test-detail page creates a runsheet entry (auto-labels from series/athlete name)
+- "Add to Runsheets" button on test-detail page opens label prompt dialog; user names the runsheet before saving (auto-labels from series/athlete name if left blank)
+- Runsheets page Apply Results: clicking a runsheet card loads bracket dialog with Apply Results button; results save back to the associated test's entries
+- Runsheet access control: entries endpoint grants read access only for tests that have a runsheet entry (team-scoped, no arbitrary test enumeration); PATCH runsheet-results validates result items and checks runsheet membership
 - Runsheets permission area in granular permissions; Skitester role preset (runsheets:edit, tests:view, weather:view) available in admin permission matrix
 - ROLE_PRESETS exported from schema for admin UI preset buttons (teal badges above permission matrix)
 - Incognito mode: Super Admins can toggle via eye icon in header; when active, no login logs or activity logs are recorded; session-based (persists until logout or toggle off)
@@ -92,10 +94,8 @@ Glidr is a full-stack React web application designed to manage ski testing and d
 - Race ski test endpoints (list, view, edit, delete, entries) grant access based on athlete access, independent of tests permission — users with raceskis permission but tests:none can still access raceski tests
 - Athlete access sharing via athlete_access join table (creator always has access, admin has full access)
 - Race ski regrinds auto-update ski's current grind field
-- Race ski test entry has "Edit Parameters" button: configure which ski columns (Brand, Base, Grind, Heights, Construction, Mold, Serial, Year) are visible and their order; persisted to localStorage
-- Language feature removed: no I18nProvider, no language selector, English-only
+- Race ski test entry has "Edit Parameters" button: configure which ski columns (Brand, Base, Grind, Heights, Construction, Mold, Base, Serial, Year) are visible and their order; persisted to localStorage
 - AI Suggestions page: weather parameter form → OpenAI-powered product recommendations based on historical test data (DB-only, group-scoped)
-- Dark mode toggle (sun/moon icon) in header and login page, persisted to localStorage
 - Test ski regrind tracking archive per series
 - Multi-team/multi-tenant architecture: teams table sits above groups, all data tables have teamId column
 - Three role levels: Super Admin (cross-team access), Team Admin (full access within their team), Member (granular permissions)
@@ -112,24 +112,25 @@ Glidr is a full-stack React web application designed to manage ski testing and d
 - Admin overview stats include Athletes and Race Skis counts
 
 ## System Architecture
-The application follows a client-server architecture. The frontend is built with React 19, Vite, TanStack Query for data fetching, wouter for routing, shadcn/ui for UI components, and Tailwind CSS v4 for styling. The design prioritizes a clean, light theme with a professional color palette and uses Space Grotesk and Inter fonts.
+The application employs a client-server architecture.
+The frontend uses React 19, Vite, TanStack Query, wouter for routing, shadcn/ui for components, and Tailwind CSS v4 for styling. The UI/UX emphasizes a clean, light theme with a professional color palette and uses Space Grotesk and Inter fonts.
+The backend is built with Express 5, `passport-local` for session-based authentication, `connect-pg-simple` for PostgreSQL session storage, and Drizzle ORM for PostgreSQL database interactions.
 
-The backend is powered by Express 5, utilizing session-based authentication with `passport-local` and `connect-pg-simple` for PostgreSQL session storage. Drizzle ORM is used for database interactions. Data is stored in a PostgreSQL database.
-
-Core features include:
-- **Authentication**: Session-based with `passport-local`, supporting login, logout, and user session management.
-- **Authorization**: Role-based access control (Super Admin, Team Admin, Member) and granular permissions managed via a JSON text column in the `users` table, enforced both server-side and client-side.
-- **Multi-tenancy**: A `teamId` column scopes all data, ensuring isolation between different teams/organizations. Super Admins can manage and switch between teams.
-- **Data Models**: Comprehensive Drizzle schemas for various entities including `teams`, `users`, `test_ski_series`, `products`, `daily_weather`, `tests`, `test_entries`, `athletes`, `race_skis`, and `regrinds`.
-- **API Design**: A RESTful API (`/api/*`) handles all data operations, with dedicated endpoints for authentication, user management, data CRUD for various entities, and administrative tasks.
-- **UI/UX**: Focus on a streamlined user experience with features like live ranking, intelligent filtering for products and series, offline data entry capabilities, and analytical dashboards.
-- **Data Export**: Support for CSV and PDF exports of various datasets, including a bulk data export for administrators.
-- **AI Integration**: A dedicated page for AI-powered product recommendations based on historical test data.
-- **Grinding Module**: Functionality to log grinding records and embed Google Sheets for grinding management.
+Core architectural decisions include:
+- **Authentication & Authorization**: Session-based authentication with role-based and granular permission control, enforced server-side and client-side.
+- **Multi-tenancy**: Achieved through a `teamId` column across all data tables, ensuring strict data isolation between organizations.
+- **Data Models**: Comprehensive Drizzle schemas define `teams`, `users`, `test_ski_series`, `products`, `daily_weather`, `tests`, `test_entries`, `athletes`, `race_skis`, and `regrinds`.
+- **API Design**: A RESTful API (`/api/*`) for data operations, including dedicated endpoints for CRUD, authentication, and administration.
+- **Offline Capabilities**: Supports offline data entry with local queuing and synchronization upon reconnection, leveraging service workers and IndexedDB.
+- **Analytics & Reporting**: Integrated dashboards with `Recharts` for data visualization and client-side PDF/CSV export functionalities.
+- **AI Integration**: Features AI-powered product recommendations based on historical data.
+- **Grinding Module**: Manages grinding records and embeds Google Sheets for administrative purposes.
+- **Runsheet Module**: Provides single-elimination tournament bracket functionality for ski testing, with live-ranking, mobile optimization, and Garmin Connect IQ app integration.
 
 ## External Dependencies
-- **PostgreSQL**: Primary database for all application data, with Neon-backed hosting via Replit.
-- **OpenAI**: Used for generating AI-powered product recommendations.
+- **PostgreSQL**: The primary database, hosted via Neon on Replit.
+- **OpenAI**: Utilized for AI-powered product recommendations.
 - **Google Sheets**: Integrated for embedding grinding spreadsheets via iframes.
 - **jsPDF + autoTable**: Used for client-side PDF report generation.
-- **Recharts**: Utilized for data visualization and analytics on the dashboard.
+- **Recharts**: Employed for data visualization and analytics.
+- **Garmin Connect IQ SDK**: Required for building the Garmin watch application.

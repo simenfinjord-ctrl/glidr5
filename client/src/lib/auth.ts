@@ -12,6 +12,7 @@ export type UserPermissions = {
   grinding: PermissionLevel;
   raceskis: PermissionLevel;
   suggestions: PermissionLevel;
+  runsheets: PermissionLevel;
 };
 
 type User = {

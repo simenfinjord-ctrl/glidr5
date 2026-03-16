@@ -527,8 +527,11 @@ export async function registerRoutes(
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
     const testSkiSourceCheck = req.body.testSkiSource === "raceskis" ? "raceskis" : "series";
-    const canCreateTest = u.isAdmin || u.isTeamAdmin || u.permissions.tests === "edit"
+    let canCreateTest = u.isAdmin || u.isTeamAdmin || u.permissions.tests === "edit"
       || (testSkiSourceCheck === "raceskis" && u.permissions.raceskis !== "none");
+    if (!canCreateTest && testSkiSourceCheck === "raceskis" && req.body.athleteId) {
+      canCreateTest = await storage.hasAthleteAccess(req.body.athleteId, u.id, u.isAdmin);
+    }
     if (!canCreateTest) return res.status(403).json({ message: "No access" });
     if (req.body.testType === "Grind" && u.permissions.grinding === "none") {
       return res.status(403).json({ message: "Grinding access required" });
@@ -536,9 +539,6 @@ export async function registerRoutes(
     const now = new Date().toISOString();
     const groupScope = resolveCreateGroupScope(req);
     const testSkiSource = req.body.testSkiSource === "raceskis" ? "raceskis" : "series";
-    if (testSkiSource === "raceskis" && u.permissions.raceskis === "none") {
-      return res.status(403).json({ message: "Race skis access required" });
-    }
 
     const entries = req.body.entries || [];
     if (testSkiSource === "raceskis") {

@@ -502,7 +502,6 @@ export async function registerRoutes(
     const u = userInfo(req);
     const hasTestsPerm = u.isAdmin || u.isTeamAdmin || u.permissions.tests !== "none";
     const hasRaceskisPerm = u.isAdmin || u.isTeamAdmin || u.permissions.raceskis !== "none";
-    if (!hasTestsPerm && !hasRaceskisPerm) return res.status(403).json({ message: "No access" });
     const teamId = getActiveTeamId(req);
     let result: any[] = [];
     if (hasTestsPerm) {
@@ -519,6 +518,9 @@ export async function registerRoutes(
         );
         result = [...result, ...athleteTests];
       }
+    }
+    if (result.length === 0 && !hasTestsPerm && !hasRaceskisPerm) {
+      return res.status(403).json({ message: "No access" });
     }
     res.json(result);
   });

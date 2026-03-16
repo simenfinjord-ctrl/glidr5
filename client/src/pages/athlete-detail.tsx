@@ -379,6 +379,32 @@ export default function AthleteDetail() {
 
   const isOwnerOrAdmin =
     user?.isAdmin || (athlete && user?.id === athlete.createdById);
+  const hasAthleteAccess = isOwnerOrAdmin || access.some((a) => a.userId === user?.id);
+
+  const [testDateFilter, setTestDateFilter] = useState<string>("all");
+  const [testTypeFilter, setTestTypeFilter] = useState<string>("all");
+  const [testSortBy, setTestSortBy] = useState<string>("date-desc");
+
+  const testDates = useMemo(() => {
+    const dates = [...new Set(raceSkiTests.map((t) => t.date))].sort((a, b) => b.localeCompare(a));
+    return dates;
+  }, [raceSkiTests]);
+
+  const filteredTests = useMemo(() => {
+    let list = raceSkiTests;
+    if (testDateFilter !== "all") list = list.filter((t) => t.date === testDateFilter);
+    if (testTypeFilter !== "all") list = list.filter((t) => t.testType === testTypeFilter);
+    list = [...list].sort((a, b) => {
+      switch (testSortBy) {
+        case "date-asc": return a.date.localeCompare(b.date);
+        case "date-desc": return b.date.localeCompare(a.date);
+        case "location-asc": return a.location.localeCompare(b.location);
+        case "location-desc": return b.location.localeCompare(a.location);
+        default: return b.date.localeCompare(a.date);
+      }
+    });
+    return list;
+  }, [raceSkiTests, testDateFilter, testTypeFilter, testSortBy]);
 
   function buildSkiBody(data: typeof skiForm) {
     const cp: Record<string, string> = {};
@@ -911,7 +937,7 @@ export default function AthleteDetail() {
                 Tests
               </h2>
             </div>
-            {can("tests", "edit") && (
+            {(can("tests", "edit") || hasAthleteAccess) && (
               <Button
                 data-testid="button-new-test"
                 className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
@@ -926,6 +952,42 @@ export default function AthleteDetail() {
 
           {testsExpanded && (
             <div className="mt-3 space-y-3">
+              {raceSkiTests.length > 0 && !showTestForm && (
+                <div className="flex flex-wrap items-center gap-2" data-testid="test-filters">
+                  <Select value={testDateFilter} onValueChange={setTestDateFilter}>
+                    <SelectTrigger className="h-8 w-[140px] text-xs" data-testid="select-test-date-filter">
+                      <SelectValue placeholder="All dates" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All dates</SelectItem>
+                      {testDates.map((d) => (
+                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={testTypeFilter} onValueChange={setTestTypeFilter}>
+                    <SelectTrigger className="h-8 w-[120px] text-xs" data-testid="select-test-type-filter">
+                      <SelectValue placeholder="All types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All types</SelectItem>
+                      <SelectItem value="Classic">Classic</SelectItem>
+                      <SelectItem value="Skating">Skating</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={testSortBy} onValueChange={setTestSortBy}>
+                    <SelectTrigger className="h-8 w-[130px] text-xs" data-testid="select-test-sort">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="date-desc">Date ↓</SelectItem>
+                      <SelectItem value="date-asc">Date ↑</SelectItem>
+                      <SelectItem value="location-asc">Location A-Z</SelectItem>
+                      <SelectItem value="location-desc">Location Z-A</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               {/* Inline Test Form */}
               {showTestForm && (
                 <Card className="fs-card rounded-2xl p-4" data-testid="card-new-test-form">
@@ -1354,7 +1416,7 @@ export default function AthleteDetail() {
                   No race ski tests yet.
                 </Card>
               ) : (
-                raceSkiTests.map((test) => (
+                filteredTests.map((test) => (
                   <RaceSkiTestCard key={test.id} test={test} skiIds={skiIds} />
                 ))
               )}
@@ -1856,6 +1918,7 @@ function SkiCard({
 
 function RaceSkiTestCard({ test, skiIds }: { test: RaceSkiTest; skiIds: Set<number> }) {
   const [expanded, setExpanded] = useState(false);
+  const [, navigate] = useLocation();
 
   const { data: entries = [] } = useQuery<TestEntry[]>({
     queryKey: [`/api/tests/${test.id}/entries`],
@@ -1873,30 +1936,41 @@ function RaceSkiTestCard({ test, skiIds }: { test: RaceSkiTest; skiIds: Set<numb
 
   return (
     <Card className="fs-card rounded-2xl p-4" data-testid={`card-test-${test.id}`}>
-      <div
-        className="flex items-center gap-2 cursor-pointer select-none"
-        onClick={() => setExpanded(!expanded)}
-        data-testid={`toggle-test-${test.id}`}
-      >
-        {expanded ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-        )}
-        <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
-          <span className="flex items-center gap-1 text-sm font-medium" data-testid={`text-test-date-${test.id}`}>
-            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-            {test.date}
-          </span>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground" data-testid={`text-test-location-${test.id}`}>
-            <MapPin className="h-3 w-3" />
-            {test.location}
-          </span>
-          <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800" data-testid={`text-test-type-${test.id}`}>
-            {test.testType}
-          </span>
-          <span className="text-xs text-muted-foreground">{test.createdByName}</span>
+      <div className="flex items-center gap-2">
+        <div
+          className="flex items-center gap-2 cursor-pointer select-none min-w-0 flex-1"
+          onClick={() => setExpanded(!expanded)}
+          data-testid={`toggle-test-${test.id}`}
+        >
+          {expanded ? (
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )}
+          <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
+            <span className="flex items-center gap-1 text-sm font-medium" data-testid={`text-test-date-${test.id}`}>
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+              {test.date}
+            </span>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground" data-testid={`text-test-location-${test.id}`}>
+              <MapPin className="h-3 w-3" />
+              {test.location}
+            </span>
+            <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800" data-testid={`text-test-type-${test.id}`}>
+              {test.testType}
+            </span>
+            <span className="text-xs text-muted-foreground">{test.createdByName}</span>
+          </div>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => navigate(`/tests/${test.id}`)}
+          data-testid={`button-view-test-${test.id}`}
+        >
+          Open
+        </Button>
       </div>
 
       {expanded && relevantEntries.length > 0 && (

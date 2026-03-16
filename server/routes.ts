@@ -842,18 +842,30 @@ export async function registerRoutes(
     if (u.permissions.runsheets !== "none" && (test as any).teamId === u.activeTeamId) {
       const rs = await storage.getRunsheetByTestId(testId, u.activeTeamId);
       hasRunsheetAccess = !!rs;
+      console.log(`[entries] user=${u.name} testId=${testId} runsheetCheck: runsheetPerm=${u.permissions.runsheets} testTeam=${(test as any).teamId} userTeam=${u.activeTeamId} rsFound=${!!rs}`);
     }
     let hasAccess = hasTestAccess || hasRunsheetAccess;
     if (!hasAccess && (test as any).testSkiSource === "raceskis" && (test as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((test as any).athleteId, u.id, u.isAdmin);
     }
     if (!hasAccess) {
+      console.log(`[entries] DENIED user=${u.name} testId=${testId} testAccess=${hasTestAccess} runsheetAccess=${hasRunsheetAccess}`);
       return res.status(403).json({ message: "Forbidden" });
     }
     if ((test as any).testType === "Grind" && u.permissions.grinding === "none") {
       return res.status(403).json({ message: "Grinding access required" });
     }
     const entries = await storage.listEntries(testId);
+    if (hasRunsheetAccess && !hasTestAccess) {
+      const stripped = entries.map((e: any) => ({
+        ...e,
+        productId: null,
+        additionalProductIds: null,
+        freeTextProduct: null,
+        methodology: null,
+      }));
+      return res.json(stripped);
+    }
     res.json(entries);
   });
 

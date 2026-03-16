@@ -41,7 +41,6 @@ export const ROLE_PRESETS: Record<string, { label: string; permissions: UserPerm
     permissions: {
       ...DEFAULT_PERMISSIONS,
       runsheets: "edit",
-      tests: "view",
       weather: "view",
     },
   },

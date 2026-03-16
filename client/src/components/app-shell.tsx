@@ -22,7 +22,6 @@ import {
   ChevronDown,
   EyeOff,
   Eye,
-  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -124,16 +123,6 @@ const nav: NavItem[] = [
     activeColor: "text-orange-600",
     activeBg: "bg-orange-50",
     permArea: "raceskis",
-  },
-  {
-    href: "/runsheets",
-    label: "Runsheets",
-    icon: ClipboardList,
-    testId: "link-runsheets",
-    color: "text-muted-foreground",
-    activeColor: "text-teal-600",
-    activeBg: "bg-teal-50",
-    permArea: "runsheets",
   },
   {
     href: "/suggestions",

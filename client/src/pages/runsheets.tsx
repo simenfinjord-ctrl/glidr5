@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ClipboardList, Trash2, Trophy, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -44,9 +44,10 @@ export default function Runsheets() {
   const { toast } = useToast();
   const [activeRunsheet, setActiveRunsheet] = useState<RunsheetItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<RunsheetItem | null>(null);
+  const [applyingForTestId, setApplyingForTestId] = useState<number | null>(null);
 
   const dialogOpen = !!activeRunsheet;
-  const applyingTestIdRef = useRef<number | null>(null);
+  const currentTestId = activeRunsheet?.testId ?? applyingForTestId;
 
   const { data: items = [], isLoading } = useQuery<RunsheetItem[]>({
     queryKey: ["/api/runsheets"],
@@ -61,18 +62,16 @@ export default function Runsheets() {
   const skiPairsReady = !entriesLoading && skiPairs.length >= 2;
 
   const applyMutation = useMutation({
-    mutationFn: async (results: BracketResult[]) => {
-      const testId = applyingTestIdRef.current;
-      if (!testId) throw new Error("No test selected");
-      await apiRequest("PATCH", `/api/tests/${testId}/runsheet-results`, { results });
-      return testId;
+    mutationFn: async ({ testId, results }: { testId: number; results: BracketResult[] }) => {
+      const resp = await apiRequest("PATCH", `/api/tests/${testId}/runsheet-results`, { results });
+      return { testId, resp };
     },
-    onSuccess: (testId) => {
+    onSuccess: ({ testId }) => {
       queryClient.invalidateQueries({ queryKey: [`/api/tests/${testId}/entries`] });
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
-      toast({ title: "Results applied" });
+      toast({ title: "Results applied to test" });
       setActiveRunsheet(null);
-      applyingTestIdRef.current = null;
+      setApplyingForTestId(null);
     },
     onError: (e) => {
       toast({
@@ -80,7 +79,7 @@ export default function Runsheets() {
         description: e instanceof Error ? e.message : "Unknown error",
         variant: "destructive",
       });
-      applyingTestIdRef.current = null;
+      setApplyingForTestId(null);
     },
   });
 
@@ -94,6 +93,13 @@ export default function Runsheets() {
       setDeleteTarget(null);
     },
   });
+
+  const handleApplyResults = (results: BracketResult[]) => {
+    const testId = activeRunsheet?.testId;
+    if (!testId) return;
+    setApplyingForTestId(testId);
+    applyMutation.mutate({ testId, results });
+  };
 
   return (
     <AppShell>
@@ -177,14 +183,14 @@ export default function Runsheets() {
       <RunsheetDialog
         open={dialogOpen}
         onOpenChange={(open) => {
-          if (!open && !applyMutation.isPending) setActiveRunsheet(null);
+          if (!open && !applyMutation.isPending) {
+            setActiveRunsheet(null);
+            setApplyingForTestId(null);
+          }
         }}
         skiPairs={skiPairsReady ? skiPairs : []}
         loading={dialogOpen && !skiPairsReady}
-        onApplyResults={(results) => {
-          applyingTestIdRef.current = activeRunsheet?.testId ?? null;
-          applyMutation.mutate(results);
-        }}
+        onApplyResults={handleApplyResults}
       />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>

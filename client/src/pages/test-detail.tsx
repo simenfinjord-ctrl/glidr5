@@ -6,11 +6,18 @@ import { generateTestPDF } from "@/lib/pdf-report";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { RunsheetDialog, type BracketResult } from "@/components/runsheet-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -154,6 +161,8 @@ export default function TestDetail() {
   const { toast } = useToast();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRunsheet, setShowRunsheet] = useState(false);
+  const [showAddRunsheetDialog, setShowAddRunsheetDialog] = useState(false);
+  const [runsheetLabel, setRunsheetLabel] = useState("");
 
   const runsheetMutation = useMutation({
     mutationFn: async (results: BracketResult[]) => {
@@ -175,17 +184,20 @@ export default function TestDetail() {
   });
 
   const addToRunsheetsMutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest("POST", "/api/runsheets", { testId: parseInt(id!) });
+    mutationFn: async (label: string) => {
+      await apiRequest("POST", "/api/runsheets", { testId: parseInt(id!), label: label.trim() || undefined });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/runsheets"] });
       toast({ title: "Added to Runsheets" });
+      setShowAddRunsheetDialog(false);
+      setRunsheetLabel("");
     },
     onError: (e) => {
       const msg = e instanceof Error ? e.message : "";
       if (msg.includes("409")) {
         toast({ title: "Already in Runsheets", description: "This test is already on the runsheets list." });
+        setShowAddRunsheetDialog(false);
       } else {
         toast({ title: "Could not add to runsheets", description: msg, variant: "destructive" });
       }
@@ -295,7 +307,7 @@ export default function TestDetail() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => addToRunsheetsMutation.mutate()}
+                    onClick={() => setShowAddRunsheetDialog(true)}
                     disabled={addToRunsheetsMutation.isPending}
                     data-testid="button-add-to-runsheets"
                   >
@@ -738,6 +750,52 @@ export default function TestDetail() {
             onApplyResults={(results) => runsheetMutation.mutate(results)}
           />
         )}
+
+        <Dialog open={showAddRunsheetDialog} onOpenChange={(open) => {
+          setShowAddRunsheetDialog(open);
+          if (!open) setRunsheetLabel("");
+        }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-teal-600" />
+                Add to Runsheets
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Runsheet name</label>
+                <Input
+                  value={runsheetLabel}
+                  onChange={(e) => setRunsheetLabel(e.target.value)}
+                  placeholder="e.g. Sprint Finals, Glide Test Round 2…"
+                  autoFocus
+                  data-testid="input-runsheet-label"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && runsheetLabel.trim()) {
+                      addToRunsheetsMutation.mutate(runsheetLabel);
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  This name will appear on the Runsheets page
+                </p>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={() => setShowAddRunsheetDialog(false)} data-testid="button-cancel-add-runsheet">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => addToRunsheetsMutation.mutate(runsheetLabel)}
+                  disabled={!runsheetLabel.trim() || addToRunsheetsMutation.isPending}
+                  data-testid="button-confirm-add-runsheet"
+                >
+                  {addToRunsheetsMutation.isPending ? "Adding…" : "Add"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppShell>
   );

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, PackagePlus, Pencil, Trash2, Users } from "lucide-react";
+import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -29,6 +29,7 @@ type Product = {
   createdById: number;
   createdByName: string;
   groupScope: string;
+  stockQuantity: number;
 };
 
 type ApiGroup = { id: number; name: string };
@@ -348,6 +349,7 @@ export default function Products() {
   const { user } = useAuth();
   const isAdmin = !!user?.isAdmin;
   const [open, setOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"products" | "storage">("products");
   const [category, setCategory] = useState<ProductCategory | "All">("All");
   const [brand, setBrand] = useState("");
   const [nameSearch, setNameSearch] = useState("");
@@ -404,26 +406,39 @@ export default function Products() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl">Products</h1>
+            <h1 className="text-2xl sm:text-3xl">{viewMode === "storage" ? "Storage" : "Products"}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-products-subtitle">
               {filtered.length} product{filtered.length !== 1 ? "s" : ""}
             </p>
           </div>
 
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-add-product-prominent" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white">
-                <PackagePlus className="mr-2 h-4 w-4" />
-                Add product
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-xl">
-              <DialogHeader>
-                <DialogTitle>Add product</DialogTitle>
-              </DialogHeader>
-              <AddProductModal onSaved={() => setOpen(false)} />
-            </DialogContent>
-          </Dialog>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={viewMode === "storage" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode(viewMode === "storage" ? "products" : "storage")}
+              data-testid="button-toggle-storage"
+            >
+              <Warehouse className="mr-2 h-4 w-4" />
+              Storage
+            </Button>
+            {viewMode === "products" && (
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button data-testid="button-add-product-prominent" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white">
+                    <PackagePlus className="mr-2 h-4 w-4" />
+                    Add product
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-xl">
+                  <DialogHeader>
+                    <DialogTitle>Add product</DialogTitle>
+                  </DialogHeader>
+                  <AddProductModal onSaved={() => setOpen(false)} />
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
 
         <Card className="fs-card rounded-2xl p-4">
@@ -480,24 +495,38 @@ export default function Products() {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {filtered.length === 0 ? (
-            <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground sm:col-span-2" data-testid="empty-products">
-              No products match your filters.
-            </Card>
-          ) : (
-            filtered.map((p) => (
-              <ProductCard
-                key={p.id}
-                product={p}
-                isAdmin={isAdmin}
-                onEdit={() => setEditingDetailsProduct(p)}
-                onEditGroups={() => setEditingProduct(p)}
-                onDelete={() => setDeletingProduct(p)}
-              />
-            ))
-          )}
-        </div>
+        {viewMode === "storage" ? (
+          <div className="space-y-2">
+            {filtered.length === 0 ? (
+              <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-products">
+                No products match your filters.
+              </Card>
+            ) : (
+              filtered.map((p) => (
+                <StockRow key={p.id} product={p} />
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {filtered.length === 0 ? (
+              <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground sm:col-span-2" data-testid="empty-products">
+                No products match your filters.
+              </Card>
+            ) : (
+              filtered.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  isAdmin={isAdmin}
+                  onEdit={() => setEditingDetailsProduct(p)}
+                  onEditGroups={() => setEditingProduct(p)}
+                  onDelete={() => setDeletingProduct(p)}
+                />
+              ))
+            )}
+          </div>
+        )}
 
         <Dialog open={!!editingProduct} onOpenChange={(v) => { if (!v) setEditingProduct(undefined); }}>
           <DialogContent className="sm:max-w-md">
@@ -550,6 +579,73 @@ export default function Products() {
         </Dialog>
       </div>
     </AppShell>
+  );
+}
+
+function StockRow({ product: p }: { product: Product }) {
+  const { toast } = useToast();
+
+  const mutation = useMutation({
+    mutationFn: async (delta: number) => {
+      const res = await apiRequest("PATCH", `/api/products/${p.id}/stock`, { delta });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+    },
+    onError: (e) => {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    },
+  });
+
+  return (
+    <Card className="fs-card rounded-2xl px-4 py-3" data-testid={`stock-row-${p.id}`}>
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", categoryBadgeClass(p.category))}>
+              {p.category}
+            </span>
+          </div>
+          <div className="mt-1 truncate text-sm font-semibold">{p.brand} {p.name}</div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 rounded-full"
+            disabled={mutation.isPending || p.stockQuantity <= 0}
+            onClick={() => mutation.mutate(-1)}
+            data-testid={`button-stock-minus-${p.id}`}
+          >
+            <Minus className="h-4 w-4" />
+          </Button>
+          <span
+            className={cn(
+              "inline-flex min-w-12 items-center justify-center rounded-xl px-3 py-1.5 text-lg font-bold tabular-nums",
+              p.stockQuantity === 0
+                ? "bg-red-50 text-red-600 ring-1 ring-red-200 dark:bg-red-950/30 dark:text-red-400 dark:ring-red-800"
+                : p.stockQuantity <= 2
+                  ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:ring-amber-800"
+                  : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:ring-emerald-800"
+            )}
+            data-testid={`text-stock-quantity-${p.id}`}
+          >
+            {p.stockQuantity}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 rounded-full"
+            disabled={mutation.isPending}
+            onClick={() => mutation.mutate(1)}
+            data-testid={`button-stock-plus-${p.id}`}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 }
 

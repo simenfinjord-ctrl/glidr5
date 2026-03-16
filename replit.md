@@ -73,6 +73,8 @@ Glidr is a full-stack React web application for multi-team/multi-tenant organiza
 - Sheet URLs auto-converted to embed format (extracts spreadsheet ID and gid)
 - Each sheet has name, URL, edit, and delete controls
 - "Open in Google Sheets" link for direct access to the original spreadsheet
+- Products page has Storage toggle view: shows all products with stock quantity and +/- buttons for quick inventory management
+- Stock quantities color-coded: red (0), amber (1-2), green (3+)
 - Dark mode toggle (sun/moon icon) in header and login page, persisted to localStorage
 - Granular permission system: 9 areas (dashboard, tests, testskis, products, weather, analytics, grinding, raceskis, suggestions) x 3 levels (none, view, edit); runsheets removed as separate permission area
 - Permissions stored as JSON text column on users table, parsed via parsePermissions helper

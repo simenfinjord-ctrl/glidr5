@@ -117,6 +117,7 @@ export const products = pgTable("products", {
   createdByName: text("created_by_name").notNull(),
   groupScope: text("group_scope").notNull(),
   teamId: integer("team_id").notNull().default(1),
+  stockQuantity: integer("stock_quantity").notNull().default(0),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });

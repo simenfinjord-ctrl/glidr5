@@ -377,6 +377,19 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  app.patch("/api/products/:id/stock", requirePermission("products", "view"), async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { delta } = req.body;
+    if (typeof delta !== "number" || !Number.isInteger(delta)) {
+      return res.status(400).json({ message: "delta must be an integer" });
+    }
+    const existing = await storage.getProduct(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    const newQty = Math.max(0, (existing.stockQuantity ?? 0) + delta);
+    const updated = await storage.updateProduct(id, { stockQuantity: newQty } as any);
+    res.json(updated);
+  });
+
   app.delete("/api/products/:id", requirePermission("products", "edit"), async (req, res) => {
     const u = userInfo(req);
     if (!u.isAdmin) return res.status(403).json({ message: "Admin only" });

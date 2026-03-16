@@ -59,6 +59,7 @@ export interface IStorage {
   deleteSeries(id: number): Promise<boolean>;
 
   listProducts(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Product[]>;
+  getProduct(id: number): Promise<Product | undefined>;
   createProduct(p: InsertProduct): Promise<Product>;
   updateProduct(id: number, data: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: number): Promise<boolean>;
@@ -304,6 +305,11 @@ export class DatabaseStorage implements IStorage {
       return db.select().from(products).where(filter);
     }
     return db.select().from(products);
+  }
+
+  async getProduct(id: number): Promise<Product | undefined> {
+    const [found] = await db.select().from(products).where(eq(products.id, id));
+    return found;
   }
 
   async createProduct(p: InsertProduct): Promise<Product> {

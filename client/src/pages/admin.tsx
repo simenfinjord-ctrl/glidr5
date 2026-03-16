@@ -47,7 +47,7 @@ type ApiTeam = {
 const AREA_LABELS: Record<string, string> = {
   dashboard: "Dashboard", tests: "Tests", testskis: "Testskis", products: "Products",
   weather: "Weather", analytics: "Analytics", grinding: "Grinding", raceskis: "Raceskis",
-  suggestions: "Suggestions", runsheets: "Runsheets"
+  suggestions: "Suggestions"
 };
 
 function parsePermissions(permStr: string): UserPermissions {

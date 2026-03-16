@@ -716,12 +716,7 @@ export async function registerRoutes(
     if (!existing) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
     const canEditTests = userHasGroupAccess(u.groupScope, u.isAdmin, existing.groupScope) && u.permissions.tests === "edit";
-    let canEditRunsheets = false;
-    if (u.permissions.runsheets === "edit" && (existing as any).teamId === u.activeTeamId) {
-      const rs = await storage.getRunsheetByTestId(id, u.activeTeamId);
-      canEditRunsheets = !!rs;
-    }
-    let hasAccess = canEditTests || canEditRunsheets;
+    let hasAccess = canEditTests;
     if (!hasAccess && (existing as any).testSkiSource === "raceskis" && (existing as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((existing as any).athleteId, u.id, u.isAdmin);
     }
@@ -761,55 +756,6 @@ export async function registerRoutes(
     res.json({ success: true });
   });
 
-  app.get("/api/runsheets", requirePermission("runsheets", "view"), async (req, res) => {
-    const teamId = getActiveTeamId(req);
-    const items = await storage.listRunsheets(teamId);
-    res.json(items);
-  });
-
-  app.post("/api/runsheets", requirePermission("runsheets", "edit"), async (req, res) => {
-    const u = userInfo(req);
-    const teamId = getActiveTeamId(req);
-    const testId = parseInt(req.body.testId);
-    const test = await storage.getTest(testId);
-    if (!test || (test as any).teamId !== teamId) return res.status(404).json({ message: "Test not found" });
-
-    const existing = await storage.getRunsheetByTestId(testId, teamId);
-    if (existing) return res.status(409).json({ message: "Test already added to runsheets", runsheet: existing });
-
-    let label = req.body.label?.trim();
-    if (!label) {
-      if ((test as any).testSkiSource === "raceskis" && (test as any).athleteId) {
-        const athlete = await storage.getAthlete((test as any).athleteId);
-        label = athlete ? athlete.name : `Race ski test #${testId}`;
-      } else if (test.seriesId) {
-        const allSeries = await storage.listSeries(u.groupScope, u.isAdmin, teamId);
-        const series = allSeries.find((s: any) => s.id === test.seriesId);
-        label = series ? (series as any).name : `Test #${testId}`;
-      } else {
-        label = `Test #${testId}`;
-      }
-    }
-
-    const runsheet = await storage.createRunsheet({
-      testId,
-      label,
-      createdAt: new Date().toISOString(),
-      createdById: u.id,
-      teamId,
-    });
-    res.json(runsheet);
-  });
-
-  app.delete("/api/runsheets/:id", requirePermission("runsheets", "edit"), async (req, res) => {
-    const id = parseInt(req.params.id);
-    const teamId = getActiveTeamId(req);
-    const runsheet = await storage.getRunsheet(id);
-    if (!runsheet || runsheet.teamId !== teamId) return res.status(404).json({ message: "Not found" });
-    await storage.deleteRunsheet(id);
-    res.json({ success: true });
-  });
-
   app.delete("/api/tests/:id", requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const existing = await storage.getTest(id);
@@ -840,34 +786,18 @@ export async function registerRoutes(
     const test = await storage.getTest(testId);
     if (!test) return res.status(404).json({ message: "Not found" });
     const hasTestAccess = userHasGroupAccess(u.groupScope, u.isAdmin, test.groupScope) && u.permissions.tests !== "none";
-    let hasRunsheetAccess = false;
-    if (u.permissions.runsheets !== "none" && (test as any).teamId === u.activeTeamId) {
-      const rs = await storage.getRunsheetByTestId(testId, u.activeTeamId);
-      hasRunsheetAccess = !!rs;
-      console.log(`[entries] user=${u.name} testId=${testId} runsheetCheck: runsheetPerm=${u.permissions.runsheets} testTeam=${(test as any).teamId} userTeam=${u.activeTeamId} rsFound=${!!rs}`);
-    }
-    let hasAccess = hasTestAccess || hasRunsheetAccess;
+    let hasAccess = hasTestAccess;
     if (!hasAccess && (test as any).testSkiSource === "raceskis" && (test as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((test as any).athleteId, u.id, u.isAdmin);
     }
     if (!hasAccess) {
-      console.log(`[entries] DENIED user=${u.name} testId=${testId} testAccess=${hasTestAccess} runsheetAccess=${hasRunsheetAccess}`);
+      console.log(`[entries] DENIED user=${u.name} testId=${testId} testAccess=${hasTestAccess}`);
       return res.status(403).json({ message: "Forbidden" });
     }
     if ((test as any).testType === "Grind" && u.permissions.grinding === "none") {
       return res.status(403).json({ message: "Grinding access required" });
     }
     const entries = await storage.listEntries(testId);
-    if (hasRunsheetAccess && !hasTestAccess) {
-      const stripped = entries.map((e: any) => ({
-        ...e,
-        productId: null,
-        additionalProductIds: null,
-        freeTextProduct: null,
-        methodology: null,
-      }));
-      return res.json(stripped);
-    }
     res.json(entries);
   });
 

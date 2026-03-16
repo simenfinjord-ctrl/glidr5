@@ -31,11 +31,7 @@ Glidr is a full-stack React web application for multi-team/multi-tenant organiza
 - Complete Runsheet: tournament bracket dialog (QF → SF → Final) for single-elimination ski pair testing; enter distances in orange fields, winner (0) auto-advances, cascading diff calculation (loser diff = own distance + winner's accumulated diff), results auto-applied to test entries
 - Runsheet Watch Mode: "Watch" button creates server-side session with 6-digit code; Garmin Connect IQ app connects via code, shows heats on watch, user selects winner + distance with physical buttons; results sync live to web bracket via polling (2s interval)
 - Mobile Mode: "Mobile" button in runsheet dialog opens full-screen mobile-optimized UI; shows pair matchups with large touch targets for glove use; winner selection by tapping pair, distance entry with +/- 10cm buttons, auto-advances to next heat
-- Runsheets page (/runsheets): standalone page listing saved runsheets; tap card to open bracket dialog; delete with confirmation; tests auto-cleaned from runsheets on test deletion
-- "Add to Runsheets" button on test-detail page opens label prompt dialog; user names the runsheet before saving (auto-labels from series/athlete name if left blank)
-- Runsheets page Apply Results: clicking a runsheet card loads bracket dialog with Apply Results button; results save back to the associated test's entries
-- Runsheet access control: entries endpoint grants read access only for tests that have a runsheet entry (team-scoped, no arbitrary test enumeration); PATCH runsheet-results validates result items and checks runsheet membership
-- Runsheets permission area in granular permissions; Skitester role preset (runsheets:edit, tests:view, weather:view) available in admin permission matrix
+- Skitester role preset (weather:view) available in admin permission matrix
 - ROLE_PRESETS exported from schema for admin UI preset buttons (teal badges above permission matrix)
 - Incognito mode: Super Admins can toggle via eye icon in header; when active, no login logs or activity logs are recorded; session-based (persists until logout or toggle off)
 - Tests support dynamic rounds (unlimited distance measurements via + Round button)
@@ -78,7 +74,7 @@ Glidr is a full-stack React web application for multi-team/multi-tenant organiza
 - Each sheet has name, URL, edit, and delete controls
 - "Open in Google Sheets" link for direct access to the original spreadsheet
 - Dark mode toggle (sun/moon icon) in header and login page, persisted to localStorage
-- Granular permission system: 9 areas (dashboard, tests, testskis, products, weather, analytics, grinding, raceskis, suggestions) x 3 levels (none, view, edit)
+- Granular permission system: 9 areas (dashboard, tests, testskis, products, weather, analytics, grinding, raceskis, suggestions) x 3 levels (none, view, edit); runsheets removed as separate permission area
 - Permissions stored as JSON text column on users table, parsed via parsePermissions helper
 - Server-side permission enforcement via requirePermission(area, level) middleware on all API routes
 - Client-side can(area, level) helper in useAuth hook for nav filtering and UI controls

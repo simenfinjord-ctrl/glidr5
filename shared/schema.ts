@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export * from "./models/chat";
 
-export const PERMISSION_AREAS = ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "suggestions", "runsheets"] as const;
+export const PERMISSION_AREAS = ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "suggestions"] as const;
 export type PermissionArea = typeof PERMISSION_AREAS[number];
 export type PermissionLevel = "none" | "view" | "edit";
 export type UserPermissions = Record<PermissionArea, PermissionLevel>;
@@ -19,7 +19,6 @@ export const DEFAULT_PERMISSIONS: UserPermissions = {
   grinding: "none",
   raceskis: "none",
   suggestions: "none",
-  runsheets: "none",
 };
 
 export const ADMIN_PERMISSIONS: UserPermissions = {
@@ -32,7 +31,6 @@ export const ADMIN_PERMISSIONS: UserPermissions = {
   grinding: "edit",
   raceskis: "edit",
   suggestions: "edit",
-  runsheets: "edit",
 };
 
 export const ROLE_PRESETS: Record<string, { label: string; permissions: UserPermissions }> = {
@@ -40,7 +38,6 @@ export const ROLE_PRESETS: Record<string, { label: string; permissions: UserPerm
     label: "Skitester",
     permissions: {
       ...DEFAULT_PERMISSIONS,
-      runsheets: "edit",
       weather: "view",
     },
   },

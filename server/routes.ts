@@ -636,14 +636,31 @@ export async function registerRoutes(
     if (u.permissions.tests === "none" && !u.isAdmin && !u.isTeamAdmin) {
       return res.json([]);
     }
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 10, 1), 50);
     let allTests = await storage.listTests(u.groupScope, u.isAdmin, teamId);
     if (u.permissions.grinding === "none") {
       allTests = allTests.filter((t: any) => t.testType !== "Grind");
     }
-    const sorted = allTests.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || "")).slice(0, 10);
-    const testIds = sorted.map((t: any) => t.id);
-    if (testIds.length === 0) return res.json([]);
-    const entries = await storage.listAllEntriesForTests(testIds);
+    const allTestIds = allTests.map((t: any) => t.id);
+    if (allTestIds.length === 0) return res.json([]);
+    const allEntries = await storage.listAllEntriesForTests(allTestIds);
+
+    const latestEntryByTest: Record<number, string> = {};
+    for (const e of allEntries) {
+      const tid = (e as any).testId;
+      const cat = (e as any).createdAt || "";
+      if (!latestEntryByTest[tid] || cat > latestEntryByTest[tid]) {
+        latestEntryByTest[tid] = cat;
+      }
+    }
+
+    const testsWithResults = allTests.filter((t: any) => latestEntryByTest[t.id]);
+    testsWithResults.sort((a: any, b: any) => (latestEntryByTest[b.id] || "").localeCompare(latestEntryByTest[a.id] || ""));
+    const sorted = testsWithResults.slice(0, limit);
+
+    const sortedIds = new Set(sorted.map((t: any) => t.id));
+    const entries = allEntries.filter((e: any) => sortedIds.has(e.testId));
+
     const productIds = new Set<number>();
     for (const e of entries) {
       if ((e as any).productId) productIds.add((e as any).productId);
@@ -666,6 +683,7 @@ export async function registerRoutes(
         testType: t.testType,
         createdByName: t.createdByName,
         createdAt: t.createdAt,
+        lastResultAt: latestEntryByTest[t.id] || t.createdAt,
         entryCount,
         hasResults,
         winnerProduct,

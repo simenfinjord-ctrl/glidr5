@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -5,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +20,7 @@ type RecentResult = {
   testType: string;
   createdByName: string;
   createdAt: string;
+  lastResultAt: string;
   entryCount: number;
   hasResults: boolean;
   winnerProduct: { id: number; brand: string; name: string } | null;
@@ -60,11 +63,17 @@ function QuickCard({
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [resultLimit, setResultLimit] = useState("10");
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
   const { data: recentResults = [] } = useQuery<RecentResult[]>({
-    queryKey: ["/api/tests/recent-results"],
+    queryKey: ["/api/tests/recent-results", resultLimit],
+    queryFn: async () => {
+      const res = await fetch(`/api/tests/recent-results?limit=${resultLimit}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
     refetchInterval: 10000,
   });
 
@@ -142,15 +151,30 @@ export default function Dashboard() {
           <QuickCard title="Add weather" description="One entry per date + location" href="/weather" icon={CalendarPlus} iconColor="text-violet-600" testId="card-quick-add-weather" />
         </div>
 
-        {recentResults.length > 0 && (
-          <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-results">
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-yellow-50">
-                <Trophy className="h-3.5 w-3.5 text-yellow-600" />
-              </div>
-              Recent results
-              <span className="text-[10px] text-muted-foreground font-normal ml-auto">Auto-updates</span>
+        <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-results">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-yellow-50">
+              <Trophy className="h-3.5 w-3.5 text-yellow-600" />
             </div>
+            Recent results
+            <span className="text-[10px] text-muted-foreground font-normal ml-1">Auto-updates</span>
+            <div className="ml-auto">
+              <Select value={resultLimit} onValueChange={setResultLimit}>
+                <SelectTrigger className="h-7 w-[72px] text-xs" data-testid="select-result-limit">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="15">15</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {recentResults.length === 0 ? (
+            <div className="py-6 text-center text-sm text-muted-foreground italic">No tests with results yet</div>
+          ) : (
             <div className="space-y-2">
               {recentResults.map((t) => (
                 <AppLink key={t.id} href={`/tests/${t.id}`} testId={`link-recent-result-${t.id}`}>
@@ -195,13 +219,13 @@ export default function Dashboard() {
                 </AppLink>
               ))}
             </div>
-            <div className="mt-3 text-center">
-              <AppLink href="/tests" testId="link-all-tests">
-                <span className="text-xs font-medium text-blue-600 hover:text-blue-700">View all tests</span>
-              </AppLink>
-            </div>
-          </Card>
-        )}
+          )}
+          <div className="mt-3 text-center">
+            <AppLink href="/tests" testId="link-all-tests">
+              <span className="text-xs font-medium text-blue-600 hover:text-blue-700">View all tests</span>
+            </AppLink>
+          </div>
+        </Card>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {recentWeather.length > 0 && (

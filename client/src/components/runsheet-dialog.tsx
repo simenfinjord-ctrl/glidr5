@@ -32,6 +32,7 @@ type Props = {
   skiLabels?: Record<number, string>;
   loading?: boolean;
   error?: string;
+  testId?: number;
   onApplyResults: (results: BracketResult[]) => void;
 };
 
@@ -167,6 +168,7 @@ export function RunsheetDialog({
   skiLabels,
   loading,
   error,
+  testId,
   onApplyResults,
 }: Props) {
   const label = (pair: number | null) => pair !== null && skiLabels?.[pair] ? skiLabels[pair] : pair !== null ? `Par ${pair}` : "—";
@@ -210,13 +212,13 @@ export function RunsheetDialog({
 
   const handleStartWatch = useCallback(async () => {
     try {
-      const resp = await apiRequest("POST", "/api/runsheet/sessions", { skiPairs });
+      const resp = await apiRequest("POST", "/api/runsheet/sessions", { skiPairs, testId });
       const data = await resp.json();
       setWatchCode(data.code);
       setWatchActive(true);
       if (data.bracket) setBracket(data.bracket);
     } catch {}
-  }, [skiPairs]);
+  }, [skiPairs, testId]);
 
   const handleStopWatch = useCallback(async () => {
     if (watchCode) {

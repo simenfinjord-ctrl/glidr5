@@ -747,6 +747,7 @@ export default function TestDetail() {
             onOpenChange={setShowRunsheet}
             skiPairs={sortedEntries.map((e) => e.skiNumber)}
             skiLabels={skiLabels}
+            testId={test.id}
             onApplyResults={(results) => runsheetMutation.mutate(results)}
           />
         )}

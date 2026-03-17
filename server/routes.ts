@@ -1437,6 +1437,10 @@ export async function registerRoutes(
     bracket: WatchHeat[][];
     createdAt: number;
     userId: number;
+    userName: string;
+    testId: number | null;
+    testInfo: { date: string; location: string; testType: string } | null;
+    teamId: number;
   };
 
   const runsheetSessions = new Map<string, WatchSession>();
@@ -1546,19 +1550,31 @@ export async function registerRoutes(
 
   app.post("/api/runsheet/sessions", requireAuth, (req, res) => {
     const u = userInfo(req);
-    const { skiPairs } = req.body;
+    const { skiPairs, testId } = req.body;
     if (!Array.isArray(skiPairs) || skiPairs.length < 2) {
       return res.status(400).json({ message: "Need at least 2 ski pairs" });
     }
     const code = generateSessionCode();
+    const teamId = getActiveTeamId(req);
     const session: WatchSession = {
       code,
       skiPairs: skiPairs.map(Number),
       bracket: watchInitBracket(skiPairs.map(Number)),
       createdAt: Date.now(),
       userId: u.id,
+      userName: u.name,
+      testId: testId ? Number(testId) : null,
+      testInfo: null,
+      teamId,
     };
     runsheetSessions.set(code, session);
+    if (session.testId) {
+      storage.getTest(session.testId).then((test: any) => {
+        if (test) {
+          session.testInfo = { date: test.date || "", location: test.location || "", testType: test.testType || "" };
+        }
+      }).catch(() => {});
+    }
     res.json({ code, bracket: session.bracket });
   });
 
@@ -1647,6 +1663,40 @@ export async function registerRoutes(
     }
     runsheetSessions.delete(req.params.code as string);
     res.json({ ok: true });
+  });
+
+  app.get("/api/live/runsheets", requireAuth, (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const isSuperAdmin = u.isAdmin;
+    const sessions: any[] = [];
+    for (const [code, session] of runsheetSessions) {
+      if (!isSuperAdmin && session.teamId !== teamId) continue;
+      const currentHeat = watchFindCurrentHeat(session.bracket);
+      const diffs = watchCalcDiffs(session.bracket);
+      const results = [...diffs.entries()].sort((a, b) => a[1] - b[1]).map(([ski, diff], i, arr) => {
+        let rank = 1;
+        for (let j = 0; j < i; j++) { if (arr[j][1] < diff) rank = j + 2; }
+        return { skiNumber: ski, diff, rank };
+      });
+      const totalHeats = session.bracket.reduce((s, r) => s + r.length, 0);
+      const completedHeats = session.bracket.reduce((s, r) => s + r.filter(h => watchGetWinner(h) !== null).length, 0);
+      const isComplete = !currentHeat && completedHeats > 0;
+      sessions.push({
+        code,
+        userName: session.userName,
+        testId: session.testId,
+        testInfo: session.testInfo,
+        bracket: session.bracket,
+        currentHeat,
+        results,
+        totalHeats,
+        completedHeats,
+        isComplete,
+        createdAt: session.createdAt,
+      });
+    }
+    res.json(sessions);
   });
 
   setInterval(() => {

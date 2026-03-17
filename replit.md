@@ -75,6 +75,11 @@ Glidr is a full-stack React web application for multi-team/multi-tenant organiza
 - "Open in Google Sheets" link for direct access to the original spreadsheet
 - Products page has Storage toggle view: shows all products with stock quantity and +/- buttons for quick inventory management
 - Stock quantities color-coded: red (0), amber (1-2), green (3+)
+- Storage view sortable by stock quantity (least first / most first toggle)
+- Live Board page (/live): shows all active runsheet sessions in real-time with 3-second auto-refresh
+- Live Board displays bracket progress, current heat, user running the runsheet, test info (date/location/type), and ranked results
+- Live Board sessions scoped by team (super admins see all teams)
+- Runsheet watch sessions store testId and userName for live board context
 - Dark mode toggle (sun/moon icon) in header and login page, persisted to localStorage
 - Granular permission system: 9 areas (dashboard, tests, testskis, products, weather, analytics, grinding, raceskis, suggestions) x 3 levels (none, view, edit); runsheets removed as separate permission area
 - Permissions stored as JSON text column on users table, parsed via parsePermissions helper

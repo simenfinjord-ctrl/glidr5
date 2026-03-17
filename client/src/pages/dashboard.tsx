@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -82,7 +82,25 @@ export default function Dashboard() {
 
   const recentWeather = [...weather].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
 
-  const latestResultId = recentResults.length > 0 ? recentResults[0].id : null;
+  const [highlightId, setHighlightId] = useState<number | null>(null);
+  const lastSeenRef = useRef<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (recentResults.length === 0) {
+      lastSeenRef.current = null;
+      setHighlightId(null);
+      return;
+    }
+    const top = recentResults[0];
+    const key = `${top.id}:${top.lastResultAt}`;
+    if (lastSeenRef.current !== null && lastSeenRef.current !== key) {
+      setHighlightId(top.id);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setHighlightId(null), 20000);
+    }
+    lastSeenRef.current = key;
+  }, [recentResults]);
 
   return (
     <AppShell>
@@ -181,8 +199,8 @@ export default function Dashboard() {
                   <div
                     className={cn(
                       "flex items-center justify-between rounded-xl border px-3 py-2.5 transition hover:shadow-sm cursor-pointer",
-                      t.id === latestResultId
-                        ? "border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 dark:border-yellow-700"
+                      t.id === highlightId
+                        ? "animate-highlight-pulse"
                         : "border-border bg-muted/30 hover:bg-card"
                     )}
                   >

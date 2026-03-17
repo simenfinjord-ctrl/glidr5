@@ -220,4 +220,34 @@
   .fs-stat-amber {
     border-left: 3px solid hsl(35 85% 50%);
   }
+
+  @keyframes highlight-pulse {
+    0%, 100% {
+      background-color: hsl(48 96% 89%);
+      border-color: hsl(48 96% 68%);
+    }
+    50% {
+      background-color: hsl(48 96% 95%);
+      border-color: hsl(48 96% 78%);
+    }
+  }
+
+  .dark .animate-highlight-pulse {
+    animation: highlight-pulse-dark 1.5s ease-in-out infinite;
+  }
+
+  @keyframes highlight-pulse-dark {
+    0%, 100% {
+      background-color: hsl(48 50% 12%);
+      border-color: hsl(48 60% 30%);
+    }
+    50% {
+      background-color: hsl(48 50% 8%);
+      border-color: hsl(48 60% 22%);
+    }
+  }
+
+  .animate-highlight-pulse {
+    animation: highlight-pulse 1.5s ease-in-out infinite;
+  }
 }

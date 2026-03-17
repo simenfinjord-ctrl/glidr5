@@ -1989,13 +1989,6 @@ function DataManagementTab({ teamScopeParam }: { teamScopeParam: string }) {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="rounded-xl border border-border bg-muted/30 p-4">
-            <h3 className="text-sm font-medium text-foreground mb-1">Full PDF Report</h3>
-            <p className="text-xs text-muted-foreground mb-3">Complete data export with all tests, results, weather, athletes, and history.</p>
-            <Button size="sm" variant="outline" data-testid="button-export-pdf-data" onClick={() => document.querySelector<HTMLButtonElement>('[data-testid="button-download-pdf"]')?.click()}>
-              <Download className="mr-2 h-3.5 w-3.5" /> Export PDF
-            </Button>
-          </div>
-          <div className="rounded-xl border border-border bg-muted/30 p-4">
             <h3 className="text-sm font-medium text-foreground mb-1">CSV Data Export</h3>
             <p className="text-xs text-muted-foreground mb-3">Export tests, weather, and products in CSV format for spreadsheets.</p>
             <Button size="sm" variant="outline" data-testid="button-export-csv" onClick={downloadCsvExport} disabled={csvLoading}>

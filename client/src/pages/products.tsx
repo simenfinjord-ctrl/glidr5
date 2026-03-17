@@ -350,7 +350,7 @@ export default function Products() {
   const isAdmin = !!user?.isAdmin;
   const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"products" | "storage">("products");
-  const [stockSort, setStockSort] = useState<"asc" | "desc">("asc");
+  const [stockSort, setStockSort] = useState<"asc" | "desc" | "alpha">("asc");
   const [category, setCategory] = useState<ProductCategory | "All">("All");
   const [brand, setBrand] = useState("");
   const [nameSearch, setNameSearch] = useState("");
@@ -390,11 +390,15 @@ export default function Products() {
 
   const sortedFiltered = useMemo(() => {
     if (viewMode !== "storage") return filtered;
-    return [...filtered].sort((a, b) =>
-      stockSort === "asc"
+    return [...filtered].sort((a, b) => {
+      if (stockSort === "alpha") {
+        const cmp = `${a.brand} ${a.name}`.localeCompare(`${b.brand} ${b.name}`);
+        return cmp;
+      }
+      return stockSort === "asc"
         ? a.stockQuantity - b.stockQuantity
-        : b.stockQuantity - a.stockQuantity
-    );
+        : b.stockQuantity - a.stockQuantity;
+    });
   }, [filtered, viewMode, stockSort]);
 
   const deleteMutation = useMutation({
@@ -436,10 +440,10 @@ export default function Products() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setStockSort(stockSort === "asc" ? "desc" : "asc")}
+                onClick={() => setStockSort(stockSort === "asc" ? "desc" : stockSort === "desc" ? "alpha" : "asc")}
                 data-testid="button-sort-stock"
               >
-                {stockSort === "asc" ? "Least first ↑" : "Most first ↓"}
+                {stockSort === "asc" ? "Least first ↑" : stockSort === "desc" ? "Most first ↓" : "A–Z"}
               </Button>
             )}
             {viewMode === "products" && (

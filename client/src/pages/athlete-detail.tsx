@@ -17,6 +17,8 @@ import {
   GripVertical,
   ArrowUp,
   ArrowDown,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -66,6 +68,7 @@ type RaceSki = {
   heights: string | null;
   year: string | null;
   customParams: string | null;
+  archivedAt: string | null;
   createdAt: string;
   createdById: number;
   createdByName: string;
@@ -170,6 +173,7 @@ export default function AthleteDetail() {
   const [accessDialogOpen, setAccessDialogOpen] = useState(false);
   const [editAthleteOpen, setEditAthleteOpen] = useState(false);
   const [expandedSkiId, setExpandedSkiId] = useState<number | null>(null);
+  const [showArchivedSkis, setShowArchivedSkis] = useState(false);
 
   const [testsExpanded, setTestsExpanded] = useState(true);
   const [showTestForm, setShowTestForm] = useState(false);
@@ -352,6 +356,11 @@ export default function AthleteDetail() {
     enabled: !!athleteId,
   });
 
+  const { data: archivedSkis = [] } = useQuery<RaceSki[]>({
+    queryKey: [`/api/athletes/${athleteId}/skis/archived`],
+    enabled: !!athleteId && showArchivedSkis,
+  });
+
   const { data: access = [] } = useQuery<AthleteAccess[]>({
     queryKey: [`/api/athletes/${athleteId}/access`],
     enabled: !!athleteId,
@@ -466,7 +475,36 @@ export default function AthleteDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis`] });
-      toast({ title: "Ski deleted" });
+      queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis/archived`] });
+      toast({ title: "Ski permanently deleted" });
+    },
+    onError: (e) => {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    },
+  });
+
+  const archiveSkiMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("POST", `/api/race-skis/${id}/archive`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis/archived`] });
+      toast({ title: "Ski archived" });
+    },
+    onError: (e) => {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    },
+  });
+
+  const restoreSkiMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("POST", `/api/race-skis/${id}/restore`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis/archived`] });
+      toast({ title: "Ski restored" });
     },
     onError: (e) => {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
@@ -908,12 +946,45 @@ export default function AthleteDetail() {
                 expanded={expandedSkiId === ski.id}
                 onToggle={() => setExpandedSkiId(expandedSkiId === ski.id ? null : ski.id)}
                 onEdit={() => openEditSki(ski)}
-                onDelete={() => {
-                  if (confirm("Delete this ski?")) deleteSkiMutation.mutate(ski.id);
+                onArchive={() => {
+                  if (confirm("Archive this ski? It can be restored later.")) archiveSkiMutation.mutate(ski.id);
                 }}
                 onRegrind={() => openRegrind(ski.id)}
                 onDeleteRegrind={(id) => {
                   if (confirm("Delete this regrind record?")) deleteRegrindMutation.mutate(id);
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="mt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowArchivedSkis(!showArchivedSkis)}
+            className="text-xs text-muted-foreground hover:text-foreground"
+            data-testid="toggle-archived-skis"
+          >
+            <Archive className="mr-1 h-3.5 w-3.5" />
+            {showArchivedSkis ? "Hide archived" : "Show archived"}
+            {showArchivedSkis && archivedSkis.length > 0 && ` (${archivedSkis.length})`}
+          </Button>
+        </div>
+
+        {showArchivedSkis && archivedSkis.length > 0 && (
+          <div className="space-y-3 opacity-70">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Archived Skis</p>
+            {archivedSkis.map((ski) => (
+              <SkiCard
+                key={ski.id}
+                ski={ski}
+                expanded={expandedSkiId === ski.id}
+                onToggle={() => setExpandedSkiId(expandedSkiId === ski.id ? null : ski.id)}
+                isArchived
+                onRestore={() => restoreSkiMutation.mutate(ski.id)}
+                onDelete={() => {
+                  if (confirm("Permanently delete this ski and all its regrind history? This cannot be undone.")) deleteSkiMutation.mutate(ski.id);
                 }}
               />
             ))}
@@ -1778,17 +1849,23 @@ function SkiCard({
   expanded,
   onToggle,
   onEdit,
-  onDelete,
+  onArchive,
   onRegrind,
   onDeleteRegrind,
+  isArchived,
+  onRestore,
+  onDelete,
 }: {
   ski: RaceSki;
   expanded: boolean;
   onToggle: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  onRegrind: () => void;
-  onDeleteRegrind: (id: number) => void;
+  onEdit?: () => void;
+  onArchive?: () => void;
+  onRegrind?: () => void;
+  onDeleteRegrind?: (id: number) => void;
+  isArchived?: boolean;
+  onRestore?: () => void;
+  onDelete?: () => void;
 }) {
   const { data: regrinds = [] } = useQuery<RaceSkiRegrind[]>({
     queryKey: [`/api/race-skis/${ski.id}/regrinds`],
@@ -1848,28 +1925,58 @@ function SkiCard({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            data-testid={`button-regrind-ski-${ski.id}`}
-            onClick={onRegrind}
-            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
-          >
-            <RefreshCw className="mr-1 h-3.5 w-3.5" />
-            Regrind
-          </Button>
-          <Button variant="ghost" size="sm" data-testid={`button-edit-ski-${ski.id}`} onClick={onEdit}>
-            <Edit2 className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            data-testid={`button-delete-ski-${ski.id}`}
-            onClick={onDelete}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {!isArchived && onRegrind && (
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid={`button-regrind-ski-${ski.id}`}
+              onClick={onRegrind}
+              className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
+            >
+              <RefreshCw className="mr-1 h-3.5 w-3.5" />
+              Regrind
+            </Button>
+          )}
+          {!isArchived && onEdit && (
+            <Button variant="ghost" size="sm" data-testid={`button-edit-ski-${ski.id}`} onClick={onEdit}>
+              <Edit2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {!isArchived && onArchive && (
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid={`button-archive-ski-${ski.id}`}
+              onClick={onArchive}
+              className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+              title="Archive ski"
+            >
+              <Archive className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {isArchived && onRestore && (
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid={`button-restore-ski-${ski.id}`}
+              onClick={onRestore}
+              className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+            >
+              <ArchiveRestore className="mr-1 h-3.5 w-3.5" />
+              Restore
+            </Button>
+          )}
+          {isArchived && onDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid={`button-delete-ski-${ski.id}`}
+              onClick={onDelete}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1897,15 +2004,17 @@ function SkiCard({
                     {rg.pattern && <span className="text-muted-foreground">Pattern: {rg.pattern}</span>}
                     {rg.notes && <span className="text-muted-foreground italic">{rg.notes}</span>}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    data-testid={`button-delete-regrind-${rg.id}`}
-                    onClick={() => onDeleteRegrind(rg.id)}
-                    className="h-7 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  {onDeleteRegrind && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      data-testid={`button-delete-regrind-${rg.id}`}
+                      onClick={() => onDeleteRegrind(rg.id)}
+                      className="h-7 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>

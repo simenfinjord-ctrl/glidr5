@@ -13,6 +13,7 @@ import { PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS } from "@shared/sch
 import type { UserPermissions, PermissionLevel } from "@shared/schema";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1824,6 +1825,76 @@ function DataManagementTab({ teamScopeParam }: { teamScopeParam: string }) {
   const { data: dbStats } = useQuery<any>({ queryKey: [`/api/admin/db-stats${teamScopeParam}`] });
 
   const [csvLoading, setCsvLoading] = useState(false);
+  const [xlsLoading, setXlsLoading] = useState(false);
+
+  async function downloadXlsExport() {
+    setXlsLoading(true);
+    try {
+      const exportRes = await apiRequest("GET", "/api/admin/full-export");
+      const rawText = await exportRes.text();
+      let data: any;
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseErr: any) {
+        throw new Error(`Response parse failed: ${parseErr.message}`);
+      }
+
+      const wb = XLSX.utils.book_new();
+
+      const testsRows = data.tests.map((t: any) => {
+        const series = data.series.find((s: any) => s.id === t.seriesId);
+        return { ID: t.id, Date: t.date, Type: t.testType, Location: t.location || "", Series: series?.name || "", Group: t.groupScope, Notes: t.notes || "", Source: t.testSkiSource || "series" };
+      });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(testsRows), "Tests");
+
+      const weatherRows = data.weather.map((w: any) => ({
+        ID: w.id, Date: w.date, Time: w.time || "", Location: w.location || "",
+        "Snow°C": w.snowTemperatureC ?? "", "Air°C": w.airTemperatureC ?? "",
+        "SnowHum%": w.snowHumidityPct ?? "", "AirHum%": w.airHumidityPct ?? "",
+        Clouds: w.clouds ?? "", Wind: w.wind || "", Precip: w.precipitation || "",
+        NaturalSnow: w.naturalSnow || "", ArtificialSnow: w.artificialSnow || "",
+        GrainSize: w.grainSize || "", TrackHardness: w.trackHardness || "",
+        Quality: w.testQuality ?? "", Group: w.groupScope,
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(weatherRows), "Weather");
+
+      const productRows = data.products.map((p: any) => ({
+        ID: p.id, Brand: p.brand || "", Name: p.name, Type: p.category || "", Group: p.groupScope, Stock: p.stockQuantity ?? 0,
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(productRows), "Products");
+
+      if (data.series?.length) {
+        const seriesRows = data.series.map((s: any) => ({
+          ID: s.id, Name: s.name, Brand: s.brand || "", SkiType: s.skiType || "", TestType: s.testType, Group: s.groupScope,
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(seriesRows), "Series");
+      }
+
+      if (data.athletes?.length) {
+        const athleteRows = data.athletes.map((a: any) => ({
+          ID: a.id, Name: a.name, Team: a.team || "", CreatedBy: a.createdByName || "",
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(athleteRows), "Athletes");
+      }
+
+      if (data.raceSkis?.length) {
+        const raceSkiRows = data.raceSkis.map((s: any) => ({
+          ID: s.id, AthleteID: s.athleteId, SkiID: s.skiId, Serial: s.serialNumber || "",
+          Brand: s.brand || "", Discipline: s.discipline, Construction: s.construction || "",
+          Mold: s.mold || "", Base: s.base || "", Grind: s.grind || "",
+          Heights: s.heights || "", Year: s.year || "",
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(raceSkiRows), "Race Skis");
+      }
+
+      XLSX.writeFile(wb, "glidr-export.xlsx");
+      toast({ title: "Excel exported" });
+    } catch (err: any) {
+      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+    } finally {
+      setXlsLoading(false);
+    }
+  }
 
   async function downloadCsvExport() {
     setCsvLoading(true);
@@ -1930,6 +2001,14 @@ function DataManagementTab({ teamScopeParam }: { teamScopeParam: string }) {
             <Button size="sm" variant="outline" data-testid="button-export-csv" onClick={downloadCsvExport} disabled={csvLoading}>
               {csvLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
               {csvLoading ? "Exporting…" : "Export CSV"}
+            </Button>
+          </div>
+          <div className="rounded-xl border border-border bg-muted/30 p-4">
+            <h3 className="text-sm font-medium text-foreground mb-1">Excel Export</h3>
+            <p className="text-xs text-muted-foreground mb-3">Export all data as an Excel workbook with separate sheets per data type.</p>
+            <Button size="sm" variant="outline" data-testid="button-export-xlsx" onClick={downloadXlsExport} disabled={xlsLoading}>
+              {xlsLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
+              {xlsLoading ? "Exporting…" : "Export Excel"}
             </Button>
           </div>
         </div>

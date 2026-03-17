@@ -3,6 +3,7 @@ import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy } from "lucide-react";
 import { generateTestPDF } from "@/lib/pdf-report";
+import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -234,7 +235,7 @@ export default function TestDetail() {
   const athleteId = test?.athleteId;
 
   const { data: raceSkisData = [] } = useQuery<RaceSki[]>({
-    queryKey: [`/api/athletes/${athleteId}/skis`],
+    queryKey: [`/api/athletes/${athleteId}/skis?includeArchived=true`],
     enabled: isRaceSkiTest && !!athleteId,
   });
 
@@ -599,6 +600,47 @@ export default function TestDetail() {
               >
                 <Download className="mr-2 h-4 w-4" />
                 CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid="button-export-xlsx"
+                onClick={() => {
+                  const wb = XLSX.utils.book_new();
+                  const rows = sortedEntries.map((entry) => {
+                    const prod = entry.productId ? productsById.get(entry.productId) : null;
+                    const additionalIds = entry.additionalProductIds
+                      ? entry.additionalProductIds.split(",").map(Number).filter((n) => !isNaN(n) && n > 0)
+                      : [];
+                    const allProducts = [
+                      prod ? `${prod.brand} ${prod.name}` : null,
+                      ...additionalIds.map((aid: number) => {
+                        const p = productsById.get(aid);
+                        return p ? `${p.brand} ${p.name}` : null;
+                      }),
+                    ].filter(Boolean).join(" + ");
+                    const rounds = getEntryRounds(entry, distLabels.length);
+                    const row: Record<string, string | number> = {
+                      Rank: rounds[0]?.rank ?? "",
+                      "Ski No.": entry.skiNumber,
+                      Product: allProducts,
+                      Method: entry.methodology,
+                    };
+                    distLabels.forEach((label, i) => {
+                      const lbl = label?.trim() || `Round ${i + 1}`;
+                      row[`Result ${lbl}`] = rounds[i]?.result ?? "";
+                      row[`Rank ${lbl}`] = rounds[i]?.rank ?? "";
+                    });
+                    row["Feeling"] = entry.feelingRank ?? "";
+                    if (isClassic) row["Kick"] = entry.kickRank ?? "";
+                    return row;
+                  });
+                  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Results");
+                  XLSX.writeFile(wb, `test-${test.location}-${test.date}.xlsx`);
+                }}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Excel
               </Button>
               <Button
                 variant="outline"

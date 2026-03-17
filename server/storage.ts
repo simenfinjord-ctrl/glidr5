@@ -109,6 +109,10 @@ export interface IStorage {
   hasAthleteAccess(athleteId: number, userId: number, isAdmin: boolean): Promise<boolean>;
 
   listRaceSkis(athleteId: number): Promise<RaceSki[]>;
+  listArchivedRaceSkis(athleteId: number): Promise<RaceSki[]>;
+  listAllRaceSkisIncludingArchived(athleteId: number): Promise<RaceSki[]>;
+  archiveRaceSki(id: number): Promise<RaceSki | undefined>;
+  restoreRaceSki(id: number): Promise<RaceSki | undefined>;
   getRaceSki(id: number): Promise<RaceSki | undefined>;
   createRaceSki(s: InsertRaceSki): Promise<RaceSki>;
   updateRaceSki(id: number, data: Partial<InsertRaceSki>): Promise<RaceSki | undefined>;
@@ -117,6 +121,7 @@ export interface IStorage {
 
   listRaceSkiRegrinds(raceSkiId: number): Promise<RaceSkiRegrind[]>;
   createRaceSkiRegrind(r: InsertRaceSkiRegrind): Promise<RaceSkiRegrind>;
+  getRaceSkiRegrind(id: number): Promise<RaceSkiRegrind | undefined>;
   deleteRaceSkiRegrind(id: number): Promise<boolean>;
 
   listTestSkiRegrinds(seriesId: number): Promise<TestSkiRegrind[]>;
@@ -625,7 +630,25 @@ export class DatabaseStorage implements IStorage {
   // --- Race Skis ---
 
   async listRaceSkis(athleteId: number): Promise<RaceSki[]> {
+    return db.select().from(raceSkis).where(and(eq(raceSkis.athleteId, athleteId), isNull(raceSkis.archivedAt))).orderBy(sql`${raceSkis.skiId} asc`);
+  }
+
+  async listArchivedRaceSkis(athleteId: number): Promise<RaceSki[]> {
+    return db.select().from(raceSkis).where(and(eq(raceSkis.athleteId, athleteId), isNotNull(raceSkis.archivedAt))).orderBy(sql`${raceSkis.skiId} asc`);
+  }
+
+  async listAllRaceSkisIncludingArchived(athleteId: number): Promise<RaceSki[]> {
     return db.select().from(raceSkis).where(eq(raceSkis.athleteId, athleteId)).orderBy(sql`${raceSkis.skiId} asc`);
+  }
+
+  async archiveRaceSki(id: number): Promise<RaceSki | undefined> {
+    const [updated] = await db.update(raceSkis).set({ archivedAt: new Date().toISOString() }).where(eq(raceSkis.id, id)).returning();
+    return updated;
+  }
+
+  async restoreRaceSki(id: number): Promise<RaceSki | undefined> {
+    const [updated] = await db.update(raceSkis).set({ archivedAt: null }).where(eq(raceSkis.id, id)).returning();
+    return updated;
   }
 
   async getRaceSki(id: number): Promise<RaceSki | undefined> {
@@ -653,7 +676,7 @@ export class DatabaseStorage implements IStorage {
     const athleteList = await this.listAthletes(userId, isAdmin);
     if (athleteList.length === 0) return [];
     const athleteIds = athleteList.map((a) => a.id);
-    return db.select().from(raceSkis).where(inArray(raceSkis.athleteId, athleteIds)).orderBy(sql`${raceSkis.skiId} asc`);
+    return db.select().from(raceSkis).where(and(inArray(raceSkis.athleteId, athleteIds), isNull(raceSkis.archivedAt))).orderBy(sql`${raceSkis.skiId} asc`);
   }
 
   // --- Race Ski Regrinds ---
@@ -665,6 +688,11 @@ export class DatabaseStorage implements IStorage {
   async createRaceSkiRegrind(r: InsertRaceSkiRegrind): Promise<RaceSkiRegrind> {
     const [created] = await db.insert(raceSkiRegrinds).values(r).returning();
     return created!;
+  }
+
+  async getRaceSkiRegrind(id: number): Promise<RaceSkiRegrind | undefined> {
+    const [r] = await db.select().from(raceSkiRegrinds).where(eq(raceSkiRegrinds.id, id));
+    return r;
   }
 
   async deleteRaceSkiRegrind(id: number): Promise<boolean> {

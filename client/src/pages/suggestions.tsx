@@ -109,7 +109,7 @@ export default function Suggestions() {
             Suggestions
           </h1>
           <p className="mt-1 text-sm text-muted-foreground" data-testid="text-suggestions-subtitle">
-            AI-powered product recommendations based on weather conditions
+            Product recommendations based on your historical test data
           </p>
         </div>
 
@@ -258,14 +258,14 @@ export default function Suggestions() {
           <Card className="fs-card rounded-2xl p-8 text-center" data-testid="card-loading">
             <Sparkles className="mx-auto h-12 w-12 text-violet-500 animate-pulse" />
             <p className="mt-4 text-sm font-medium text-muted-foreground">Analyzing...</p>
-            <p className="mt-1 text-xs text-muted-foreground">AI is analyzing weather conditions and historical test data...</p>
+            <p className="mt-1 text-xs text-muted-foreground">Analyzing weather conditions against historical test data...</p>
           </Card>
         )}
 
         {!mutation.isPending && suggestions === null && (
           <Card className="fs-card rounded-2xl p-8 text-center" data-testid="card-empty-state">
             <Lightbulb className="mx-auto h-12 w-12 text-muted-foreground/40" />
-            <p className="mt-4 text-muted-foreground">Enter weather parameters and click "Get Recommendations" to receive AI-powered product suggestions.</p>
+            <p className="mt-4 text-muted-foreground">Enter weather parameters and click "Get Recommendations" to find the best products based on your test history.</p>
           </Card>
         )}
 

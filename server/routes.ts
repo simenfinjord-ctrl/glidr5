@@ -3,8 +3,6 @@ import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
 import { parsePermissions } from "./auth";
 import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS } from "@shared/schema";
-import OpenAI from "openai";
-
 function sanitizePermissions(input: any): Record<string, string> {
   const result: Record<string, string> = { ...DEFAULT_PERMISSIONS };
   if (!input) return result;
@@ -18,11 +16,6 @@ function sanitizePermissions(input: any): Record<string, string> {
   }
   return result;
 }
-
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated() || !req.user) {
@@ -1165,7 +1158,7 @@ export async function registerRoutes(
     }
     const allRaceSkis: any[] = [];
     for (const ath of allAthletes) {
-      const skis = await storage.listRaceSkis(ath.id);
+      const skis = await storage.listAllRaceSkisIncludingArchived(ath.id);
       allRaceSkis.push(...skis.map((s) => ({ ...s, athleteName: ath.name })));
     }
     const grindingRecords = await storage.listGrindingRecords(u.groupScope, true, teamId);
@@ -1336,6 +1329,17 @@ export async function registerRoutes(
   // --- Race Skis CRUD ---
   app.get("/api/race-skis/all", requirePermission("raceskis", "view"), async (req, res) => {
     const u = userInfo(req);
+    const includeArchived = req.query.includeArchived === "true";
+    if (includeArchived) {
+      const athleteList = await storage.listAthletes(u.id, u.isAdmin);
+      if (athleteList.length === 0) return res.json([]);
+      const all: any[] = [];
+      for (const ath of athleteList) {
+        const skis = await storage.listAllRaceSkisIncludingArchived(ath.id);
+        all.push(...skis);
+      }
+      return res.json(all);
+    }
     const list = await storage.listAllRaceSkisForUser(u.id, u.isAdmin);
     res.json(list);
   });
@@ -1345,7 +1349,10 @@ export async function registerRoutes(
     const athleteId = parseInt(req.params.athleteId);
     const hasAccess = await storage.hasAthleteAccess(athleteId, u.id, u.isAdmin);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
-    const list = await storage.listRaceSkis(athleteId);
+    const includeArchived = req.query.includeArchived === "true";
+    const list = includeArchived
+      ? await storage.listAllRaceSkisIncludingArchived(athleteId)
+      : await storage.listRaceSkis(athleteId);
     res.json(list);
   });
 
@@ -1398,6 +1405,37 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  app.get("/api/athletes/:athleteId/skis/archived", requirePermission("raceskis", "view"), async (req, res) => {
+    const u = userInfo(req);
+    const athleteId = parseInt(req.params.athleteId);
+    const hasAccess = await storage.hasAthleteAccess(athleteId, u.id, u.isAdmin);
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const list = await storage.listArchivedRaceSkis(athleteId);
+    res.json(list);
+  });
+
+  app.post("/api/race-skis/:id/archive", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const ski = await storage.getRaceSki(id);
+    if (!ski) return res.status(404).json({ message: "Not found" });
+    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isAdmin);
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const updated = await storage.archiveRaceSki(id);
+    res.json(updated);
+  });
+
+  app.post("/api/race-skis/:id/restore", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const ski = await storage.getRaceSki(id);
+    if (!ski) return res.status(404).json({ message: "Not found" });
+    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isAdmin);
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const updated = await storage.restoreRaceSki(id);
+    res.json(updated);
+  });
+
   app.delete("/api/race-skis/:id", requirePermission("raceskis", "edit"), async (req, res) => {
     const u = userInfo(req);
     const id = parseInt(req.params.id);
@@ -1405,6 +1443,9 @@ export async function registerRoutes(
     if (!ski) return res.status(404).json({ message: "Not found" });
     const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isAdmin);
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    if (!ski.archivedAt) {
+      return res.status(400).json({ message: "Ski must be archived before permanent deletion" });
+    }
     await storage.deleteRaceSki(id);
     res.json({ ok: true });
   });
@@ -1445,9 +1486,15 @@ export async function registerRoutes(
   });
 
   app.delete("/api/race-ski-regrinds/:id", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
     const id = parseInt(req.params.id);
-    const deleted = await storage.deleteRaceSkiRegrind(id);
-    if (!deleted) return res.status(404).json({ message: "Not found" });
+    const regrind = await storage.getRaceSkiRegrind(id);
+    if (!regrind) return res.status(404).json({ message: "Not found" });
+    const ski = await storage.getRaceSki(regrind.raceSkiId);
+    if (!ski) return res.status(404).json({ message: "Not found" });
+    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isAdmin);
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    await storage.deleteRaceSkiRegrind(id);
     res.json({ ok: true });
   });
 
@@ -1739,7 +1786,7 @@ export async function registerRoutes(
     }
   }, 60 * 60 * 1000);
 
-  // --- AI Suggestions ---
+  // --- DB-based Suggestions ---
   app.post("/api/suggestions", requirePermission("suggestions", "view"), async (req, res) => {
     const u = userInfo(req);
     const { snowTemperatureC, airTemperatureC, snowHumidityPct, airHumidityPct,
@@ -1753,75 +1800,96 @@ export async function registerRoutes(
       const weatherMap = new Map(allWeather.map((w) => [w.id, w]));
       const productMap = new Map(products.map((p) => [p.id, p]));
 
-      const testsWithWeather = allTests.filter((t) => t.weatherId && weatherMap.has(t.weatherId));
-
-      const dataSummary: string[] = [];
-      for (const test of testsWithWeather.slice(0, 100)) {
-        const weather = weatherMap.get(test.weatherId!);
-        if (!weather) continue;
-        const entries = await storage.listEntries(test.id);
-        if (entries.length === 0) continue;
-
-        const sorted = [...entries].sort((a, b) => (a.rank0km ?? 999) - (b.rank0km ?? 999));
-        const topEntries = sorted.slice(0, 3).map((e) => {
-          const prod = e.productId ? productMap.get(e.productId) : null;
-          return prod ? `${prod.brand} ${prod.name}` : (e.freeTextProduct || "Unknown");
-        });
-
-        dataSummary.push(
-          `Test ${test.date} ${test.location} (${test.testType}): ` +
-          `Snow ${weather.snowTemperatureC}°C, Air ${weather.airTemperatureC}°C, ` +
-          `Snow humidity ${weather.snowHumidityPct}%, Air humidity ${weather.airHumidityPct}%, ` +
-          `${weather.artificialSnow ? 'Artificial snow' : ''}${weather.naturalSnow ? 'Natural snow' : ''} ` +
-          `Grain: ${weather.grainSize || 'N/A'}, Track: ${weather.trackHardness || 'N/A'} ` +
-          `Top products: ${topEntries.join(", ")}`
-        );
-      }
-
-      const productCatalog = products.map((p) => `${p.brand} ${p.name}`);
-      const productCatalogStr = productCatalog.join("\n");
-
-      const systemPrompt = `You are an expert ski wax/glide/structure recommendation assistant. Based on historical test data and current weather conditions, provide 4-6 product recommendations.
-
-CRITICAL: You MUST ONLY recommend products from the available product catalog below. Do NOT invent, suggest, or reference any products that are not in this list. Each product name in the "products" array must be copied exactly from this list.
-
-Available product catalog:
-${productCatalogStr}
-
-Return ONLY valid JSON in this format: {"suggestions": [{"title": "string", "description": "string", "products": ["${productCatalog[0] || "Brand ProductName"}"], "confidence": "High|Medium|Low"}]}`;
-
-      const userPrompt = `Current conditions:
-- Snow temperature: ${snowTemperatureC}°C
-- Air temperature: ${airTemperatureC}°C
-- Snow humidity: ${snowHumidityPct}%
-- Air humidity: ${airHumidityPct}%
-- Artificial snow: ${artificialSnow || 'N/A'}
-- Natural snow: ${naturalSnow || 'N/A'}
-- Grain size: ${grainSize || 'N/A'}
-- Snow humidity type: ${snowHumidityType || 'N/A'}
-- Track hardness: ${trackHardness || 'N/A'}
-- Test type: ${testType || 'Glide'}
-
-Historical test data (${dataSummary.length} tests):
-${dataSummary.join("\n")}
-
-Based on the above historical data and current conditions, recommend the best products. Only use products from the catalog provided in the system prompt.`;
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.7,
+      const filteredTests = allTests.filter((t) => {
+        if (testType && t.testType !== testType) return false;
+        return t.weatherId && weatherMap.has(t.weatherId);
       });
 
-      const content = completion.choices[0]?.message?.content || "{}";
-      const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      const parsed = JSON.parse(cleaned);
-      res.json(parsed);
+      function weatherSimilarity(w: any): number {
+        let score = 0;
+        const snowTDiff = Math.abs((w.snowTemperatureC ?? 0) - (snowTemperatureC ?? 0));
+        const airTDiff = Math.abs((w.airTemperatureC ?? 0) - (airTemperatureC ?? 0));
+        score += Math.max(0, 10 - snowTDiff * 2);
+        score += Math.max(0, 8 - airTDiff * 1.5);
+        const snowHDiff = Math.abs((w.snowHumidityPct ?? 50) - (snowHumidityPct ?? 50));
+        const airHDiff = Math.abs((w.airHumidityPct ?? 50) - (airHumidityPct ?? 50));
+        score += Math.max(0, 5 - snowHDiff / 10);
+        score += Math.max(0, 4 - airHDiff / 10);
+        if (artificialSnow && w.artificialSnow) score += 6;
+        if (naturalSnow && w.naturalSnow === naturalSnow) score += 6;
+        if (grainSize && w.grainSize === grainSize) score += 3;
+        if (snowHumidityType && w.snowHumidityType === snowHumidityType) score += 3;
+        if (trackHardness && w.trackHardness === trackHardness) score += 3;
+        return score;
+      }
+
+      const scoredTests: { test: any; weather: any; similarity: number }[] = [];
+      for (const test of filteredTests) {
+        const weather = weatherMap.get(test.weatherId!);
+        if (!weather) continue;
+        const similarity = weatherSimilarity(weather);
+        if (similarity > 5) {
+          scoredTests.push({ test, weather, similarity });
+        }
+      }
+      scoredTests.sort((a, b) => b.similarity - a.similarity);
+
+      const productStats = new Map<number, { totalRank: number; count: number; wins: number; testCount: number; bestSimilarity: number }>();
+      const topTests = scoredTests.slice(0, 50);
+
+      for (const { test, similarity } of topTests) {
+        const entries = await storage.listEntries(test.id);
+        if (entries.length === 0) continue;
+        const sorted = [...entries].sort((a, b) => (a.rank0km ?? 999) - (b.rank0km ?? 999));
+        for (const entry of sorted) {
+          if (!entry.productId) continue;
+          const rank = entry.rank0km ?? 999;
+          const stats = productStats.get(entry.productId) || { totalRank: 0, count: 0, wins: 0, testCount: 0, bestSimilarity: 0 };
+          stats.totalRank += rank;
+          stats.count += 1;
+          if (rank === 1) stats.wins += 1;
+          stats.testCount += 1;
+          if (similarity > stats.bestSimilarity) stats.bestSimilarity = similarity;
+          productStats.set(entry.productId, stats);
+        }
+      }
+
+      const ranked = Array.from(productStats.entries())
+        .map(([productId, stats]) => {
+          const avgRank = stats.totalRank / stats.count;
+          const winRate = stats.wins / stats.count;
+          const compositeScore = (1 / avgRank) * 0.4 + winRate * 0.3 + (stats.bestSimilarity / 40) * 0.3;
+          return { productId, avgRank, winRate, compositeScore, ...stats };
+        })
+        .sort((a, b) => b.compositeScore - a.compositeScore)
+        .slice(0, 6);
+
+      const suggestions = ranked.map((r, idx) => {
+        const prod = productMap.get(r.productId);
+        const productName = prod ? `${prod.brand} ${prod.name}` : "Unknown";
+        let confidence: string;
+        if (r.count >= 3 && r.bestSimilarity > 20) confidence = "High";
+        else if (r.count >= 2 && r.bestSimilarity > 10) confidence = "Medium";
+        else confidence = "Low";
+
+        const avgRankStr = r.avgRank.toFixed(1);
+        const winPct = (r.winRate * 100).toFixed(0);
+
+        return {
+          title: `#${idx + 1} ${productName}`,
+          description: `Avg rank ${avgRankStr} across ${r.count} similar test${r.count > 1 ? "s" : ""}. Win rate: ${winPct}%. Based on ${topTests.length} matching tests.`,
+          products: [productName],
+          confidence,
+        };
+      });
+
+      if (suggestions.length === 0) {
+        res.json({ suggestions: [{ title: "No data", description: "Not enough historical test data matching these conditions. Try adjusting the parameters or run more tests.", products: [], confidence: "Low" }] });
+      } else {
+        res.json({ suggestions });
+      }
     } catch (err: any) {
-      console.error("AI suggestion error:", err);
+      console.error("Suggestion error:", err);
       res.status(500).json({ message: "Failed to generate suggestions", error: err.message });
     }
   });

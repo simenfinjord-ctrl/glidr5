@@ -379,13 +379,17 @@ export async function registerRoutes(
 
   app.patch("/api/products/:id/stock", requirePermission("products", "view"), async (req, res) => {
     const id = parseInt(req.params.id);
-    const { delta } = req.body;
-    if (typeof delta !== "number" || !Number.isInteger(delta)) {
-      return res.status(400).json({ message: "delta must be an integer" });
-    }
+    const { delta, quantity } = req.body;
     const existing = await storage.getProduct(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
-    const newQty = Math.max(0, (existing.stockQuantity ?? 0) + delta);
+    let newQty: number;
+    if (typeof quantity === "number" && Number.isInteger(quantity)) {
+      newQty = Math.max(0, quantity);
+    } else if (typeof delta === "number" && Number.isInteger(delta)) {
+      newQty = Math.max(0, (existing.stockQuantity ?? 0) + delta);
+    } else {
+      return res.status(400).json({ message: "delta or quantity must be an integer" });
+    }
     const updated = await storage.updateProduct(id, { stockQuantity: newQty } as any);
     res.json(updated);
   });

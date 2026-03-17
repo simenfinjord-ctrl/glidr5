@@ -604,8 +604,10 @@ export default function Products() {
 
 function StockRow({ product: p }: { product: Product }) {
   const { toast } = useToast();
+  const [editing, setEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(String(p.stockQuantity));
 
-  const mutation = useMutation({
+  const deltaMutation = useMutation({
     mutationFn: async (delta: number) => {
       const res = await apiRequest("PATCH", `/api/products/${p.id}/stock`, { delta });
       return res.json();
@@ -617,6 +619,32 @@ function StockRow({ product: p }: { product: Product }) {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
     },
   });
+
+  const setMutation = useMutation({
+    mutationFn: async (quantity: number) => {
+      const res = await apiRequest("PATCH", `/api/products/${p.id}/stock`, { quantity });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      setEditing(false);
+    },
+    onError: (e) => {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    },
+  });
+
+  const commitInput = () => {
+    const num = parseInt(inputValue, 10);
+    if (!isNaN(num) && num >= 0 && num !== p.stockQuantity) {
+      setMutation.mutate(num);
+    } else {
+      setInputValue(String(p.stockQuantity));
+      setEditing(false);
+    }
+  };
+
+  const isPending = deltaMutation.isPending || setMutation.isPending;
 
   return (
     <Card className="fs-card rounded-2xl px-4 py-3" data-testid={`stock-row-${p.id}`}>
@@ -634,31 +662,49 @@ function StockRow({ product: p }: { product: Product }) {
             variant="outline"
             size="icon"
             className="h-9 w-9 rounded-full"
-            disabled={mutation.isPending || p.stockQuantity <= 0}
-            onClick={() => mutation.mutate(-1)}
+            disabled={isPending || p.stockQuantity <= 0}
+            onClick={() => deltaMutation.mutate(-1)}
             data-testid={`button-stock-minus-${p.id}`}
           >
             <Minus className="h-4 w-4" />
           </Button>
-          <span
-            className={cn(
-              "inline-flex min-w-12 items-center justify-center rounded-xl px-3 py-1.5 text-lg font-bold tabular-nums",
-              p.stockQuantity === 0
-                ? "bg-red-50 text-red-600 ring-1 ring-red-200 dark:bg-red-950/30 dark:text-red-400 dark:ring-red-800"
-                : p.stockQuantity <= 2
-                  ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:ring-amber-800"
-                  : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:ring-emerald-800"
-            )}
-            data-testid={`text-stock-quantity-${p.id}`}
-          >
-            {p.stockQuantity}
-          </span>
+          {editing ? (
+            <input
+              type="number"
+              min="0"
+              autoFocus
+              className={cn(
+                "w-16 rounded-xl border px-2 py-1.5 text-center text-lg font-bold tabular-nums outline-none focus:ring-2 focus:ring-blue-400",
+                "bg-white dark:bg-zinc-900"
+              )}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onBlur={commitInput}
+              onKeyDown={(e) => { if (e.key === "Enter") commitInput(); if (e.key === "Escape") { setInputValue(String(p.stockQuantity)); setEditing(false); } }}
+              data-testid={`input-stock-quantity-${p.id}`}
+            />
+          ) : (
+            <button
+              onClick={() => { setInputValue(String(p.stockQuantity)); setEditing(true); }}
+              className={cn(
+                "inline-flex min-w-12 items-center justify-center rounded-xl px-3 py-1.5 text-lg font-bold tabular-nums cursor-text hover:ring-2 hover:ring-blue-300 transition-all",
+                p.stockQuantity === 0
+                  ? "bg-red-50 text-red-600 ring-1 ring-red-200 dark:bg-red-950/30 dark:text-red-400 dark:ring-red-800"
+                  : p.stockQuantity <= 2
+                    ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:ring-amber-800"
+                    : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:ring-emerald-800"
+              )}
+              data-testid={`text-stock-quantity-${p.id}`}
+            >
+              {p.stockQuantity}
+            </button>
+          )}
           <Button
             variant="outline"
             size="icon"
             className="h-9 w-9 rounded-full"
-            disabled={mutation.isPending}
-            onClick={() => mutation.mutate(1)}
+            disabled={isPending}
+            onClick={() => deltaMutation.mutate(1)}
             data-testid={`button-stock-plus-${p.id}`}
           >
             <Plus className="h-4 w-4" />

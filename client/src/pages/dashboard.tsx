@@ -142,126 +142,124 @@ export default function Dashboard() {
           <QuickCard title="Add weather" description="One entry per date + location" href="/weather" icon={CalendarPlus} iconColor="text-violet-600" testId="card-quick-add-weather" />
         </div>
 
+        {recentResults.length > 0 && (
+          <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-results">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-yellow-50">
+                <Trophy className="h-3.5 w-3.5 text-yellow-600" />
+              </div>
+              Recent results
+              <span className="text-[10px] text-muted-foreground font-normal ml-auto">Auto-updates</span>
+            </div>
+            <div className="space-y-2">
+              {recentResults.map((t) => (
+                <AppLink key={t.id} href={`/tests/${t.id}`} testId={`link-recent-result-${t.id}`}>
+                  <div
+                    className={cn(
+                      "flex items-center justify-between rounded-xl border px-3 py-2.5 transition hover:shadow-sm cursor-pointer",
+                      t.id === latestResultId
+                        ? "border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 dark:border-yellow-700"
+                        : "border-border bg-muted/30 hover:bg-card"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0",
+                        t.testType === "Glide" ? "fs-badge-glide"
+                          : t.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+                          : t.testType === "Classic" ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200"
+                          : t.testType === "Skating" ? "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200"
+                          : "fs-badge-structure"
+                      )}>
+                        {t.testType}
+                      </span>
+                      <span className="text-sm font-medium text-foreground truncate">{t.location}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">{t.date}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      {t.hasResults && t.winnerProduct ? (
+                        <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-300 dark:border-yellow-700">
+                          <Trophy className="mr-1 h-2.5 w-2.5" />
+                          {t.winnerProduct.brand} {t.winnerProduct.name}
+                        </Badge>
+                      ) : t.hasResults ? (
+                        <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-300 dark:border-yellow-700">
+                          <Trophy className="mr-1 h-2.5 w-2.5" />
+                          Pair {t.winnerSkiNumber}
+                        </Badge>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground italic">No results</span>
+                      )}
+                      <span className="text-xs text-muted-foreground">{t.createdByName}</span>
+                    </div>
+                  </div>
+                </AppLink>
+              ))}
+            </div>
+            <div className="mt-3 text-center">
+              <AppLink href="/tests" testId="link-all-tests">
+                <span className="text-xs font-medium text-blue-600 hover:text-blue-700">View all tests</span>
+              </AppLink>
+            </div>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          {recentResults.length > 0 && (
-            <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-results">
+          {recentWeather.length > 0 && (
+            <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-weather">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-yellow-50">
-                  <Trophy className="h-3.5 w-3.5 text-yellow-600" />
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-50">
+                  <CloudSun className="h-3.5 w-3.5 text-violet-600" />
                 </div>
-                Recent results
-                <span className="text-[10px] text-muted-foreground font-normal ml-auto">Auto-updates</span>
+                Recent weather
               </div>
               <div className="space-y-2">
-                {recentResults.map((t) => (
-                  <AppLink key={t.id} href={`/tests/${t.id}`} testId={`link-recent-result-${t.id}`}>
-                    <div
-                      className={cn(
-                        "flex items-center justify-between rounded-xl border px-3 py-2.5 transition hover:shadow-sm cursor-pointer",
-                        t.id === latestResultId
-                          ? "border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 dark:border-yellow-700"
-                          : "border-border bg-muted/30 hover:bg-card"
-                      )}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0",
-                          t.testType === "Glide" ? "fs-badge-glide"
-                            : t.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
-                            : t.testType === "Classic" ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200"
-                            : t.testType === "Skating" ? "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200"
-                            : "fs-badge-structure"
-                        )}>
-                          {t.testType}
-                        </span>
-                        <span className="text-sm font-medium text-foreground truncate">{t.location}</span>
-                        <span className="text-xs text-muted-foreground shrink-0">{t.date}</span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-2">
-                        {t.hasResults && t.winnerProduct ? (
-                          <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-300 dark:border-yellow-700">
-                            <Trophy className="mr-1 h-2.5 w-2.5" />
-                            {t.winnerProduct.brand} {t.winnerProduct.name}
-                          </Badge>
-                        ) : t.hasResults ? (
-                          <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-300 dark:border-yellow-700">
-                            <Trophy className="mr-1 h-2.5 w-2.5" />
-                            Pair {t.winnerSkiNumber}
-                          </Badge>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground italic">No results</span>
-                        )}
-                        <span className="text-xs text-muted-foreground">{t.createdByName}</span>
-                      </div>
+                {recentWeather.map((w) => (
+                  <div key={w.id} className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs" data-testid={`weather-row-${w.id}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-foreground">{w.location}</span>
+                      <span className="text-muted-foreground">{w.date}</span>
                     </div>
-                  </AppLink>
+                    <div className="flex items-center gap-3">
+                      <span className="text-blue-600">Air {w.airTemperatureC}°C</span>
+                      <span className="text-cyan-600">Snow {w.snowTemperatureC}°C</span>
+                    </div>
+                  </div>
                 ))}
               </div>
               <div className="mt-3 text-center">
-                <AppLink href="/tests" testId="link-all-tests">
-                  <span className="text-xs font-medium text-blue-600 hover:text-blue-700">View all tests</span>
+                <AppLink href="/weather" testId="link-all-weather">
+                  <span className="text-xs font-medium text-violet-600 hover:text-violet-700">View all weather</span>
                 </AppLink>
               </div>
             </Card>
           )}
 
-          <div className="flex flex-col gap-5">
-            {products.length > 0 && (
-              <Card className="fs-card rounded-2xl p-4" data-testid="card-products-overview">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50">
-                    <Package className="h-3.5 w-3.5 text-amber-600" />
-                  </div>
-                  Products
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{products.length}</span>
+          {products.length > 0 && (
+            <Card className="fs-card rounded-2xl p-4" data-testid="card-products-overview">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50">
+                  <Package className="h-3.5 w-3.5 text-amber-600" />
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {products.slice(0, 8).map((p) => (
-                    <span key={p.id} className="rounded-full bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground/80 ring-1 ring-border" data-testid={`badge-product-${p.id}`}>
-                      {p.brand} {p.name}
-                    </span>
-                  ))}
-                  {products.length > 8 && (
-                    <span className="rounded-full bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground">+{products.length - 8} more</span>
-                  )}
-                </div>
-                <div className="mt-3 text-center">
-                  <AppLink href="/products" testId="link-all-products">
-                    <span className="text-xs font-medium text-amber-600 hover:text-amber-700">View all products</span>
-                  </AppLink>
-                </div>
-              </Card>
-            )}
-
-            {recentWeather.length > 0 && (
-              <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-weather">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-50">
-                    <CloudSun className="h-3.5 w-3.5 text-violet-600" />
-                  </div>
-                  Recent weather
-                </div>
-                <div className="space-y-2">
-                  {recentWeather.map((w) => (
-                    <div key={w.id} className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs" data-testid={`weather-row-${w.id}`}>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground">{w.location}</span>
-                        <span className="text-muted-foreground">{w.date}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-blue-600">Air {w.airTemperatureC}°C</span>
-                        <span className="text-cyan-600">Snow {w.snowTemperatureC}°C</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-3 text-center">
-                  <AppLink href="/weather" testId="link-all-weather">
-                    <span className="text-xs font-medium text-violet-600 hover:text-violet-700">View all weather</span>
-                  </AppLink>
-                </div>
-              </Card>
-            )}
-          </div>
+                Products
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{products.length}</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {products.slice(0, 8).map((p) => (
+                  <span key={p.id} className="rounded-full bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground/80 ring-1 ring-border" data-testid={`badge-product-${p.id}`}>
+                    {p.brand} {p.name}
+                  </span>
+                ))}
+                {products.length > 8 && (
+                  <span className="rounded-full bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground">+{products.length - 8} more</span>
+                )}
+              </div>
+              <div className="mt-3 text-center">
+                <AppLink href="/products" testId="link-all-products">
+                  <span className="text-xs font-medium text-amber-600 hover:text-amber-700">View all products</span>
+                </AppLink>
+              </div>
+            </Card>
+          )}
         </div>
 
       </div>

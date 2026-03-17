@@ -626,6 +626,51 @@ export async function registerRoutes(
     res.json(test);
   });
 
+  app.get("/api/tests/recent-results", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    if (u.permissions.tests === "none" && !u.isAdmin && !u.isTeamAdmin) {
+      return res.json([]);
+    }
+    let allTests = await storage.listTests(u.groupScope, u.isAdmin, teamId);
+    if (u.permissions.grinding === "none") {
+      allTests = allTests.filter((t: any) => t.testType !== "Grind");
+    }
+    const sorted = allTests.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || "")).slice(0, 10);
+    const testIds = sorted.map((t: any) => t.id);
+    if (testIds.length === 0) return res.json([]);
+    const entries = await storage.listAllEntriesForTests(testIds);
+    const productIds = new Set<number>();
+    for (const e of entries) {
+      if ((e as any).productId) productIds.add((e as any).productId);
+    }
+    const productMap: Record<number, any> = {};
+    for (const pid of productIds) {
+      const p = await storage.getProduct(pid);
+      if (p) productMap[pid] = { id: p.id, brand: p.brand, name: p.name };
+    }
+    const result = sorted.map((t: any) => {
+      const testEntries = entries.filter((e: any) => e.testId === t.id);
+      const winner = testEntries.find((e: any) => e.rank0km === 1);
+      const winnerProduct = winner && (winner as any).productId ? productMap[(winner as any).productId] : null;
+      const entryCount = testEntries.length;
+      const hasResults = testEntries.some((e: any) => e.rank0km !== null);
+      return {
+        id: t.id,
+        date: t.date,
+        location: t.location,
+        testType: t.testType,
+        createdByName: t.createdByName,
+        createdAt: t.createdAt,
+        entryCount,
+        hasResults,
+        winnerProduct,
+        winnerSkiNumber: winner?.skiNumber ?? null,
+      };
+    });
+    res.json(result);
+  });
+
   app.get("/api/tests/:id", requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const test = await storage.getTest(id);
@@ -1663,40 +1708,6 @@ export async function registerRoutes(
     }
     runsheetSessions.delete(req.params.code as string);
     res.json({ ok: true });
-  });
-
-  app.get("/api/live/runsheets", requireAuth, (req, res) => {
-    const u = userInfo(req);
-    const teamId = getActiveTeamId(req);
-    const isSuperAdmin = u.isAdmin;
-    const sessions: any[] = [];
-    for (const [code, session] of runsheetSessions) {
-      if (!isSuperAdmin && session.teamId !== teamId) continue;
-      const currentHeat = watchFindCurrentHeat(session.bracket);
-      const diffs = watchCalcDiffs(session.bracket);
-      const results = [...diffs.entries()].sort((a, b) => a[1] - b[1]).map(([ski, diff], i, arr) => {
-        let rank = 1;
-        for (let j = 0; j < i; j++) { if (arr[j][1] < diff) rank = j + 2; }
-        return { skiNumber: ski, diff, rank };
-      });
-      const totalHeats = session.bracket.reduce((s, r) => s + r.length, 0);
-      const completedHeats = session.bracket.reduce((s, r) => s + r.filter(h => watchGetWinner(h) !== null).length, 0);
-      const isComplete = !currentHeat && completedHeats > 0;
-      sessions.push({
-        code,
-        userName: session.userName,
-        testId: session.testId,
-        testInfo: session.testInfo,
-        bracket: session.bracket,
-        currentHeat,
-        results,
-        totalHeats,
-        completedHeats,
-        isComplete,
-        createdAt: session.createdAt,
-      });
-    }
-    res.json(sessions);
   });
 
   setInterval(() => {

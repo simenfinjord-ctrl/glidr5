@@ -22,7 +22,6 @@ import {
   ChevronDown,
   EyeOff,
   Eye,
-  MonitorPlay,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -134,15 +133,6 @@ const nav: NavItem[] = [
     activeColor: "text-purple-600",
     activeBg: "bg-purple-50",
     permArea: "suggestions",
-  },
-  {
-    href: "/live",
-    label: "Live",
-    icon: MonitorPlay,
-    testId: "link-live",
-    color: "text-muted-foreground",
-    activeColor: "text-red-600",
-    activeBg: "bg-red-50",
   },
   {
     href: "/admin",

@@ -1,5 +1,6 @@
 import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,18 @@ import { cn } from "@/lib/utils";
 type Test = { id: number; date: string; location: string; testType: string; createdByName: string; groupScope: string; weatherId: number | null; seriesId: number; createdAt: string };
 type Product = { id: number; brand: string; name: string; category: string; groupScope: string };
 type Weather = { id: number; date: string; location: string; airTemperatureC: number; snowTemperatureC: number; time: string | null };
+type RecentResult = {
+  id: number;
+  date: string;
+  location: string;
+  testType: string;
+  createdByName: string;
+  createdAt: string;
+  entryCount: number;
+  hasResults: boolean;
+  winnerProduct: { id: number; brand: string; name: string } | null;
+  winnerSkiNumber: number | null;
+};
 
 function QuickCard({
   title,
@@ -50,12 +63,17 @@ export default function Dashboard() {
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
+  const { data: recentResults = [] } = useQuery<RecentResult[]>({
+    queryKey: ["/api/tests/recent-results"],
+    refetchInterval: 10000,
+  });
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayTests = tests.filter((t) => t.date === todayStr);
 
-  const recentTests = [...tests].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
   const recentWeather = [...weather].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+
+  const latestResultId = recentResults.length > 0 ? recentResults[0].id : null;
 
   return (
     <AppShell>
@@ -125,26 +143,55 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          {recentTests.length > 0 && (
-            <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-tests">
+          {recentResults.length > 0 && (
+            <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-results">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-50">
-                  <ListChecks className="h-3.5 w-3.5 text-blue-600" />
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-yellow-50">
+                  <Trophy className="h-3.5 w-3.5 text-yellow-600" />
                 </div>
-                Recent tests
+                Recent results
+                <span className="text-[10px] text-muted-foreground font-normal ml-auto">Auto-updates</span>
               </div>
               <div className="space-y-2">
-                {recentTests.map((t) => (
-                  <AppLink key={t.id} href={`/tests/${t.id}`} testId={`link-recent-test-${t.id}`}>
-                    <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2.5 transition hover:bg-card hover:shadow-sm cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : t.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure")}>
+                {recentResults.map((t) => (
+                  <AppLink key={t.id} href={`/tests/${t.id}`} testId={`link-recent-result-${t.id}`}>
+                    <div
+                      className={cn(
+                        "flex items-center justify-between rounded-xl border px-3 py-2.5 transition hover:shadow-sm cursor-pointer",
+                        t.id === latestResultId
+                          ? "border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 dark:border-yellow-700"
+                          : "border-border bg-muted/30 hover:bg-card"
+                      )}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0",
+                          t.testType === "Glide" ? "fs-badge-glide"
+                            : t.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+                            : t.testType === "Classic" ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200"
+                            : t.testType === "Skating" ? "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200"
+                            : "fs-badge-structure"
+                        )}>
                           {t.testType}
                         </span>
-                        <span className="text-sm font-medium text-foreground">{t.location}</span>
-                        <span className="text-xs text-muted-foreground">{t.date}</span>
+                        <span className="text-sm font-medium text-foreground truncate">{t.location}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">{t.date}</span>
                       </div>
-                      <span className="text-xs text-muted-foreground">{t.createdByName}</span>
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        {t.hasResults && t.winnerProduct ? (
+                          <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-300 dark:border-yellow-700">
+                            <Trophy className="mr-1 h-2.5 w-2.5" />
+                            {t.winnerProduct.brand} {t.winnerProduct.name}
+                          </Badge>
+                        ) : t.hasResults ? (
+                          <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-300 dark:border-yellow-700">
+                            <Trophy className="mr-1 h-2.5 w-2.5" />
+                            Pair {t.winnerSkiNumber}
+                          </Badge>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground italic">No results</span>
+                        )}
+                        <span className="text-xs text-muted-foreground">{t.createdByName}</span>
+                      </div>
                     </div>
                   </AppLink>
                 ))}

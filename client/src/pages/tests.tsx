@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
 
 type Test = {
   id: number;
@@ -109,6 +110,7 @@ function RankBadge({ rank }: { rank: number | null }) {
 }
 
 export default function Tests() {
+  const { isBlindTester } = useAuth();
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
@@ -250,7 +252,8 @@ export default function Tests() {
 
   const hasFilters = filterSeason !== "All" || filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || filterDate || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax;
 
-  const [hideDayDetails, setHideDayDetails] = useState(false);
+  const [hideDayDetailsState, setHideDayDetails] = useState(false);
+  const hideDayDetails = isBlindTester || hideDayDetailsState;
   const isDayView = !!filterDate;
 
   return (
@@ -322,7 +325,7 @@ export default function Tests() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="min-w-[200px]">
+              {!isBlindTester && <div className="min-w-[200px]">
                 <Select value={filterProduct} onValueChange={setFilterProduct}>
                   <SelectTrigger data-testid="select-filter-product">
                     <SelectValue placeholder="Product" />
@@ -336,7 +339,7 @@ export default function Tests() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </div>}
               <div className="min-w-[160px]">
                 <Input
                   value={filterSnowType}
@@ -453,7 +456,7 @@ export default function Tests() {
               <CalendarDays className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold">Day view: {filterDate}</h2>
               <span className="rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">{filtered.length} test{filtered.length !== 1 ? "s" : ""}</span>
-              {filtered.length > 0 && (
+              {filtered.length > 0 && !isBlindTester && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -502,7 +505,7 @@ export default function Tests() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        {winner && (
+                        {!isBlindTester && winner && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500/15 to-emerald-400/5 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-200">
                             <Trophy className="h-3 w-3" />
                             {winner.productName}
@@ -667,7 +670,7 @@ export default function Tests() {
                           <div className="inline-flex rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground">
                             {new Date(t.createdAt).toLocaleDateString()}
                           </div>
-                          {winner && (
+                          {!isBlindTester && winner && (
                             <div
                               className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500/15 to-emerald-400/5 px-3 py-1 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-200"
                               data-testid={`badge-winner-${t.id}`}

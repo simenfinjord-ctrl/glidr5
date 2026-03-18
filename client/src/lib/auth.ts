@@ -26,6 +26,7 @@ type User = {
   permissions: string;
   parsedPermissions: UserPermissions;
   incognito?: boolean;
+  isBlindTester?: boolean;
 };
 
 export function useAuth() {
@@ -68,6 +69,7 @@ export function useAuth() {
   const isSuperAdmin = !!user?.isAdmin;
   const isTeamAdmin = !!user?.isTeamAdmin;
   const canManage = isSuperAdmin || isTeamAdmin;
+  const isBlindTester = !!user?.isBlindTester;
 
   const toggleIncognito = async (enabled: boolean) => {
     await apiRequest("POST", "/api/auth/incognito", { enabled });
@@ -85,6 +87,7 @@ export function useAuth() {
     isSuperAdmin,
     isTeamAdmin,
     canManage,
+    isBlindTester,
     toggleIncognito,
   };
 }

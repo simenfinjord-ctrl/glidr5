@@ -625,6 +625,7 @@ export async function registerRoutes(
 
   app.get("/api/tests/recent-results", requireAuth, async (req, res) => {
     const u = userInfo(req);
+    const isBlind = req.user!.isBlindTester === 1;
     const teamId = getActiveTeamId(req);
     if (u.permissions.tests === "none" && !u.isAdmin && !u.isTeamAdmin) {
       return res.json([]);
@@ -679,8 +680,8 @@ export async function registerRoutes(
         lastResultAt: latestEntryByTest[t.id] || t.createdAt,
         entryCount,
         hasResults,
-        winnerProduct,
-        winnerSkiNumber: winner?.skiNumber ?? null,
+        winnerProduct: isBlind ? null : winnerProduct,
+        winnerSkiNumber: isBlind ? null : (winner?.skiNumber ?? null),
       };
     });
     res.json(result);
@@ -871,6 +872,16 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Grinding access required" });
     }
     const entries = await storage.listEntries(testId);
+    if (req.user!.isBlindTester === 1) {
+      const redacted = entries.map((e: any) => ({
+        ...e,
+        productId: null,
+        additionalProductIds: null,
+        freeTextProduct: null,
+        methodology: null,
+      }));
+      return res.json(redacted);
+    }
     res.json(entries);
   });
 
@@ -898,6 +909,7 @@ export async function registerRoutes(
       isTeamAdmin: req.body.isTeamAdmin ? 1 : 0,
       permissions: JSON.stringify(sanitizedPerms),
       teamId,
+      isBlindTester: req.body.isBlindTester ? 1 : 0,
     });
     const { password, ...safe } = created;
     res.json(safe);
@@ -922,6 +934,7 @@ export async function registerRoutes(
     if (req.body.permissions !== undefined) data.permissions = JSON.stringify(sanitizePermissions(req.body.permissions));
     if (req.body.isActive !== undefined) data.isActive = req.body.isActive ? 1 : 0;
     if (u.isAdmin === 1 && req.body.teamId !== undefined) data.teamId = req.body.teamId;
+    if (req.body.isBlindTester !== undefined) data.isBlindTester = req.body.isBlindTester ? 1 : 0;
     const updated = await storage.updateUser(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });
     const { password, ...safe } = updated;

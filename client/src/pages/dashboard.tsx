@@ -62,7 +62,7 @@ function QuickCard({
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, isBlindTester } = useAuth();
   const [resultLimit, setResultLimit] = useState("10");
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
@@ -218,7 +218,13 @@ export default function Dashboard() {
                       <span className="text-xs text-muted-foreground shrink-0">{t.date}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
-                      {t.hasResults && t.winnerProduct ? (
+                      {isBlindTester ? (
+                        t.hasResults ? (
+                          <span className="text-[10px] text-muted-foreground italic">Results available</span>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground italic">No results</span>
+                        )
+                      ) : t.hasResults && t.winnerProduct ? (
                         <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-300 dark:border-yellow-700">
                           <Trophy className="mr-1 h-2.5 w-2.5" />
                           {t.winnerProduct.brand} {t.winnerProduct.name}
@@ -276,7 +282,7 @@ export default function Dashboard() {
             </Card>
           )}
 
-          {products.length > 0 && (
+          {products.length > 0 && !isBlindTester && (
             <Card className="fs-card rounded-2xl p-4" data-testid="card-products-overview">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
                 <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50">

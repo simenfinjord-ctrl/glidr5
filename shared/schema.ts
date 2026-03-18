@@ -33,11 +33,15 @@ export const ADMIN_PERMISSIONS: UserPermissions = {
   suggestions: "edit",
 };
 
-export const ROLE_PRESETS: Record<string, { label: string; permissions: UserPermissions }> = {
+export const ROLE_PRESETS: Record<string, { label: string; permissions: UserPermissions; blindTester?: boolean }> = {
   skitester: {
     label: "Skitester",
+    blindTester: true,
     permissions: {
       ...DEFAULT_PERMISSIONS,
+      dashboard: "view",
+      tests: "view",
+      testskis: "view",
       weather: "view",
     },
   },
@@ -70,6 +74,7 @@ export const users = pgTable("users", {
   activeTeamId: integer("active_team_id"),
   permissions: text("permissions").notNull().default(JSON.stringify(DEFAULT_PERMISSIONS)),
   isActive: integer("is_active").notNull().default(1),
+  isBlindTester: integer("is_blind_tester").notNull().default(0),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });

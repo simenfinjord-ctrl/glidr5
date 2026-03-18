@@ -20,6 +20,7 @@ declare global {
       activeTeamId: number | null;
       permissions: string;
       isActive: number;
+      isBlindTester: number;
       password: string;
     }
   }
@@ -128,7 +129,7 @@ export function setupAuth(app: Express) {
         }
         const { password, ...safe } = user;
         const perms = parsePermissions(safe.permissions, !!safe.isAdmin, (safe as any).isTeamAdmin === 1);
-        return res.json({ ...safe, parsedPermissions: perms, incognito: isIncognito });
+        return res.json({ ...safe, parsedPermissions: perms, incognito: isIncognito, isBlindTester: !!safe.isBlindTester });
       });
     })(req, res, next);
   });
@@ -150,7 +151,7 @@ export function setupAuth(app: Express) {
     const { password, ...safe } = req.user;
     const perms = parsePermissions(safe.permissions, !!safe.isAdmin, safe.isTeamAdmin === 1);
     const incognito = !!(req.session as any)?.incognito;
-    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito });
+    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, isBlindTester: !!safe.isBlindTester });
   });
 
   app.post("/api/auth/incognito", (req, res) => {

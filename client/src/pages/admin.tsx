@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {
-  Plus, Pencil, Trash2, KeyRound, Check, X, Clock, Download,
+  Plus, Pencil, Trash2, KeyRound, Check, X, Clock, Download, EyeOff,
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle,
   HardDrive, UserX, Eraser, RefreshCw, Building2,
@@ -33,6 +33,7 @@ type ApiUser = {
   groupScope: string;
   isAdmin: number;
   isTeamAdmin: number;
+  isBlindTester: number;
   teamId: number;
   permissions: string;
   isActive: number;
@@ -63,10 +64,12 @@ function PermissionsMatrix({
   value,
   onChange,
   testIdPrefix,
+  onPresetApplied,
 }: {
   value: UserPermissions;
   onChange: (perms: UserPermissions) => void;
   testIdPrefix: string;
+  onPresetApplied?: (blindTester: boolean) => void;
 }) {
   const levels: PermissionLevel[] = ["none", "view", "edit"];
   const levelStyles: Record<PermissionLevel, { active: string; inactive: string }> = {
@@ -92,7 +95,7 @@ function PermissionsMatrix({
               key={key}
               type="button"
               className="rounded-full px-2 py-0.5 text-[10px] font-medium border border-teal-300 text-teal-600 hover:bg-teal-50 transition-colors"
-              onClick={() => onChange({ ...preset.permissions })}
+              onClick={() => { onChange({ ...preset.permissions }); onPresetApplied?.(!!preset.blindTester); }}
               data-testid={`${testIdPrefix}-preset-${key}`}
             >
               {preset.label}
@@ -243,6 +246,7 @@ const userSchema = z.object({
   groupScope: z.string().min(1, "At least one group is required"),
   isAdmin: z.boolean(),
   isTeamAdmin: z.boolean(),
+  isBlindTester: z.boolean(),
   permissions: z.string(),
   isActive: z.boolean(),
   teamId: z.number().optional(),
@@ -254,6 +258,7 @@ const editSchema = z.object({
   groupScope: z.string().min(1, "At least one group is required"),
   isAdmin: z.boolean(),
   isTeamAdmin: z.boolean(),
+  isBlindTester: z.boolean(),
   permissions: z.string(),
   isActive: z.boolean(),
   teamId: z.number().optional(),
@@ -277,7 +282,7 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
   const groupNames = effectiveGroups.filter((g) => g.teamId === selectedTeamId).map((g) => g.name);
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
-    defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, isTeamAdmin: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true, teamId: defaultTeamId },
+    defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, isTeamAdmin: false, isBlindTester: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true, teamId: defaultTeamId },
   });
 
   const selectedGroups = parseGroups(form.watch("groupScope"));
@@ -368,7 +373,30 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
           value={perms}
           onChange={(p) => { setPerms(p); form.setValue("permissions", JSON.stringify(p)); }}
           testIdPrefix="select-create-perm"
+          onPresetApplied={(blind) => form.setValue("isBlindTester", blind)}
         />
+        <FormField control={form.control} name="isBlindTester" render={({ field }) => (
+          <FormItem>
+            <div className="flex items-center gap-3">
+              <label
+                className={cn(
+                  "inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-all",
+                  field.value
+                    ? "border-orange-300 bg-orange-50 text-orange-700 ring-1 ring-orange-200"
+                    : "border-border bg-muted/30 text-muted-foreground hover:bg-background/50"
+                )}
+                data-testid="checkbox-create-blind-tester"
+              >
+                <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} className="sr-only" />
+                <EyeOff className="h-3.5 w-3.5" />
+                Blind tester
+              </label>
+              {field.value && (
+                <span className="text-[10px] text-muted-foreground">Products & methodology hidden from this user</span>
+              )}
+            </div>
+          </FormItem>
+        )} />
         <FormField control={form.control} name="isActive" render={({ field }) => (
           <FormItem>
             <FormLabel>Status</FormLabel>
@@ -410,6 +438,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
       groupScope: user.groupScope,
       isAdmin: !!user.isAdmin,
       isTeamAdmin: !!user.isTeamAdmin,
+      isBlindTester: !!user.isBlindTester,
       permissions: user.permissions || JSON.stringify(DEFAULT_PERMISSIONS),
       isActive: !!user.isActive,
       teamId: user.teamId,
@@ -501,7 +530,30 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
           value={perms}
           onChange={(p) => { setPerms(p); form.setValue("permissions", JSON.stringify(p)); }}
           testIdPrefix="select-edit-perm"
+          onPresetApplied={(blind) => form.setValue("isBlindTester", blind)}
         />
+        <FormField control={form.control} name="isBlindTester" render={({ field }) => (
+          <FormItem>
+            <div className="flex items-center gap-3">
+              <label
+                className={cn(
+                  "inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-all",
+                  field.value
+                    ? "border-orange-300 bg-orange-50 text-orange-700 ring-1 ring-orange-200"
+                    : "border-border bg-muted/30 text-muted-foreground hover:bg-background/50"
+                )}
+                data-testid="checkbox-edit-blind-tester"
+              >
+                <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} className="sr-only" />
+                <EyeOff className="h-3.5 w-3.5" />
+                Blind tester
+              </label>
+              {field.value && (
+                <span className="text-[10px] text-muted-foreground">Products & methodology hidden from this user</span>
+              )}
+            </div>
+          </FormItem>
+        )} />
         <FormField control={form.control} name="isActive" render={({ field }) => (
           <FormItem>
             <FormLabel>Status</FormLabel>
@@ -1383,6 +1435,11 @@ export default function Admin() {
                           )}>
                             {u.isAdmin ? "Super Admin" : u.isTeamAdmin ? "Team Admin" : "Member"}
                           </span>
+                          {!!u.isBlindTester && (
+                            <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-600">
+                              <EyeOff className="inline h-2.5 w-2.5 mr-0.5" />Blind
+                            </span>
+                          )}
                           {!u.isActive && (
                             <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600">Inactive</span>
                           )}

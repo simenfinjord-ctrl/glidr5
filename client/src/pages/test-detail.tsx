@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
 import { RunsheetDialog, type BracketResult } from "@/components/runsheet-dialog";
 import {
   Dialog,
@@ -166,7 +167,9 @@ function RankBadge({ rank, size = "sm" }: { rank: number | null; size?: "sm" | "
 export default function TestDetail() {
   const [, params] = useRoute("/tests/:id");
   const id = params?.id;
-  const [hideDetails, setHideDetails] = useState(false);
+  const { isBlindTester } = useAuth();
+  const [hideDetailsState, setHideDetails] = useState(false);
+  const hideDetails = isBlindTester || hideDetailsState;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -550,6 +553,7 @@ export default function TestDetail() {
               <span className="rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">{sortedEntries.length} entries</span>
             </div>
             <div className="flex items-center gap-2">
+              {!isBlindTester && <>
               <Button
                 variant="outline"
                 size="sm"
@@ -661,15 +665,18 @@ export default function TestDetail() {
                 <FileText className="mr-2 h-4 w-4" />
                 PDF
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                data-testid="button-toggle-hide"
-                onClick={() => setHideDetails((v) => !v)}
-              >
-                {hideDetails ? <Eye className="mr-2 h-4 w-4" /> : <EyeOff className="mr-2 h-4 w-4" />}
-                {hideDetails ? "Show" : "Hide"}
-              </Button>
+              </>}
+              {!isBlindTester && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-toggle-hide"
+                  onClick={() => setHideDetails((v) => !v)}
+                >
+                  {hideDetails ? <Eye className="mr-2 h-4 w-4" /> : <EyeOff className="mr-2 h-4 w-4" />}
+                  {hideDetails ? "Show" : "Hide"}
+                </Button>
+              )}
             </div>
           </div>
           {sortedEntries.length === 0 ? (
@@ -748,7 +755,7 @@ export default function TestDetail() {
                         <td className="py-3 pr-3">
                           <div className="flex items-center gap-2">
                             <RankBadge rank={firstRank} size="lg" />
-                            {firstRank === 1 && (
+                            {!isBlindTester && firstRank === 1 && (
                               <span
                                 className="rounded-full bg-gradient-to-r from-emerald-500/20 to-emerald-400/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 ring-1 ring-emerald-500/30"
                                 data-testid={`badge-winner-${entry.id}`}

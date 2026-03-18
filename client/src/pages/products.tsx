@@ -352,6 +352,7 @@ export default function Products() {
   const [viewMode, setViewMode] = useState<"products" | "storage">("products");
   const [stockSort, setStockSort] = useState<"asc" | "desc" | "alpha">("asc");
   const [category, setCategory] = useState<ProductCategory | "All">("All");
+  const [groupFilter, setGroupFilter] = useState("All");
   const [brand, setBrand] = useState("");
   const [nameSearch, setNameSearch] = useState("");
   const [editingProduct, setEditingProduct] = useState<Product | undefined>();
@@ -384,9 +385,10 @@ export default function Products() {
       const okCategory = category === "All" ? true : p.category === category;
       const okBrand = b ? p.brand.toLowerCase().includes(b) : true;
       const okName = n ? p.name.toLowerCase().includes(n) : true;
-      return okCategory && okBrand && okName;
+      const okGroup = groupFilter === "All" ? true : p.groupScope.split(",").map((g) => g.trim()).includes(groupFilter);
+      return okCategory && okBrand && okName && okGroup;
     });
-  }, [products, category, brand, nameSearch]);
+  }, [products, category, brand, nameSearch, groupFilter]);
 
   const sortedFiltered = useMemo(() => {
     if (viewMode !== "storage") return filtered;
@@ -487,6 +489,21 @@ export default function Products() {
                   </SelectContent>
                 </Select>
               </div>
+              {uniqueGroups.length > 1 && (
+                <div className="min-w-[180px]">
+                  <Select value={groupFilter} onValueChange={setGroupFilter}>
+                    <SelectTrigger data-testid="select-filter-group">
+                      <SelectValue placeholder="Group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All groups</SelectItem>
+                      {uniqueGroups.map((g) => (
+                        <SelectItem key={g} value={g}>{g}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="min-w-[220px]">
                 <Input
                   value={brand}
@@ -510,6 +527,7 @@ export default function Products() {
               data-testid="button-clear-filters"
               onClick={() => {
                 setCategory("All");
+                setGroupFilter("All");
                 setBrand("");
                 setNameSearch("");
               }}
@@ -520,16 +538,62 @@ export default function Products() {
         </Card>
 
         {viewMode === "storage" ? (
-          <div className="space-y-2">
-            {sortedFiltered.length === 0 ? (
-              <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-products">
-                No products match your filters.
+          <div className="space-y-4">
+            {uniqueGroups.length > 1 && (
+              <Card className="fs-card rounded-2xl p-4" data-testid="card-storage-summary">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40">
+                    <Users className="h-3.5 w-3.5 text-blue-600" />
+                  </div>
+                  Stock by group
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {uniqueGroups.map((g) => {
+                    const groupProducts = products.filter((p) => p.groupScope.split(",").map((s) => s.trim()).includes(g));
+                    const totalStock = groupProducts.reduce((sum, p) => sum + (p.stockQuantity ?? 0), 0);
+                    return (
+                      <button
+                        key={g}
+                        onClick={() => setGroupFilter(groupFilter === g ? "All" : g)}
+                        className={cn(
+                          "flex items-center justify-between rounded-xl px-3 py-2.5 text-left transition-all",
+                          groupFilter === g
+                            ? "bg-blue-50 ring-2 ring-blue-400 dark:bg-blue-950/40 dark:ring-blue-600"
+                            : "bg-muted/40 hover:bg-muted/70 ring-1 ring-border"
+                        )}
+                        data-testid={`button-group-summary-${g}`}
+                      >
+                        <div>
+                          <div className="text-sm font-semibold">{g}</div>
+                          <div className="text-xs text-muted-foreground">{groupProducts.length} product{groupProducts.length !== 1 ? "s" : ""}</div>
+                        </div>
+                        <div className={cn(
+                          "rounded-xl px-3 py-1 text-lg font-bold tabular-nums",
+                          totalStock === 0
+                            ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
+                            : totalStock <= 5
+                              ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+                              : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                        )}>
+                          {totalStock}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </Card>
-            ) : (
-              sortedFiltered.map((p) => (
-                <StockRow key={p.id} product={p} />
-              ))
             )}
+            <div className="space-y-2">
+              {sortedFiltered.length === 0 ? (
+                <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-products">
+                  No products match your filters.
+                </Card>
+              ) : (
+                sortedFiltered.map((p) => (
+                  <StockRow key={p.id} product={p} />
+                ))
+              )}
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -660,6 +724,11 @@ function StockRow({ product: p }: { product: Product }) {
             </span>
           </div>
           <div className="mt-1 truncate text-sm font-semibold">{p.brand} {p.name}</div>
+          <div className="mt-0.5 flex flex-wrap gap-1">
+            {p.groupScope.split(",").map((g) => g.trim()).filter(Boolean).map((g) => (
+              <span key={g} className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:ring-blue-800">{g}</span>
+            ))}
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button

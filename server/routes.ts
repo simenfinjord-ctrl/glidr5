@@ -375,15 +375,34 @@ export async function registerRoutes(
     const { delta, quantity } = req.body;
     const existing = await storage.getProduct(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
+    const oldQty = existing.stockQuantity ?? 0;
     let newQty: number;
     if (typeof quantity === "number" && Number.isInteger(quantity)) {
       newQty = Math.max(0, quantity);
     } else if (typeof delta === "number" && Number.isInteger(delta)) {
-      newQty = Math.max(0, (existing.stockQuantity ?? 0) + delta);
+      newQty = Math.max(0, oldQty + delta);
     } else {
       return res.status(400).json({ message: "delta or quantity must be an integer" });
     }
     const updated = await storage.updateProduct(id, { stockQuantity: newQty } as any);
+    const u = userInfo(req);
+    if (!isIncognito(req)) {
+      const change = newQty - oldQty;
+      const action = change > 0 ? "stock_added" : change < 0 ? "stock_removed" : "stock_set";
+      try {
+        await storage.createActivityLog({
+          userId: u.id,
+          userName: u.name,
+          action,
+          entityType: "product",
+          entityId: id,
+          details: `${existing.brand} ${existing.name}: ${oldQty} → ${newQty} (${change >= 0 ? "+" : ""}${change})`,
+          createdAt: new Date().toISOString(),
+          groupScope: existing.groupScope,
+          teamId: getActiveTeamId(req),
+        });
+      } catch (_) {}
+    }
     res.json(updated);
   });
 

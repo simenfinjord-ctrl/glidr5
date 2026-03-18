@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown } from "lucide-react";
+import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, ChevronDown } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -364,6 +364,7 @@ export default function Products() {
   const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"products" | "storage" | "stock-changes">("products");
   const [stockChangeGroupFilter, setStockChangeGroupFilter] = useState("All");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [stockSort, setStockSort] = useState<"asc" | "desc" | "alpha">("asc");
   const [category, setCategory] = useState<ProductCategory | "All">("All");
   const [groupFilter, setGroupFilter] = useState("All");
@@ -495,73 +496,86 @@ export default function Products() {
         </div>
 
         {viewMode !== "stock-changes" && (<Card className="fs-card rounded-2xl p-4">
-          <div className="flex flex-wrap items-center gap-3">
+          <button
+            className="flex w-full items-center justify-between"
+            onClick={() => setFiltersOpen((v) => !v)}
+            data-testid="button-toggle-filters"
+          >
             <div className="inline-flex items-center gap-2 text-sm font-semibold">
               <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50">
                 <Filter className="h-3.5 w-3.5 text-amber-600" />
               </div>
               Filters
+              {(category !== "All" || groupFilter !== "All" || brand || nameSearch) && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                  {[category !== "All", groupFilter !== "All", !!brand, !!nameSearch].filter(Boolean).length}
+                </span>
+              )}
             </div>
-            <div className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="min-w-[220px]">
-                <Select value={category} onValueChange={(v) => setCategory(v as any)}>
-                  <SelectTrigger data-testid="select-filter-category">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All categories</SelectItem>
-                    <SelectItem value="Glide product">Glide product</SelectItem>
-                    <SelectItem value="Topping product">Topping product</SelectItem>
-                    <SelectItem value="Structure tool">Structure tool</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {uniqueGroups.length > 1 && (
-                <div className="min-w-[180px]">
-                  <Select value={groupFilter} onValueChange={setGroupFilter}>
-                    <SelectTrigger data-testid="select-filter-group">
-                      <SelectValue placeholder="Group" />
+            <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", filtersOpen && "rotate-180")} />
+          </button>
+          {filtersOpen && (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <div className="flex flex-1 flex-wrap items-center gap-3">
+                <div className="min-w-[220px]">
+                  <Select value={category} onValueChange={(v) => setCategory(v as any)}>
+                    <SelectTrigger data-testid="select-filter-category">
+                      <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="All">All groups</SelectItem>
-                      {uniqueGroups.map((g) => (
-                        <SelectItem key={g} value={g}>{g}</SelectItem>
-                      ))}
+                      <SelectItem value="All">All categories</SelectItem>
+                      <SelectItem value="Glide product">Glide product</SelectItem>
+                      <SelectItem value="Topping product">Topping product</SelectItem>
+                      <SelectItem value="Structure tool">Structure tool</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-              <div className="min-w-[220px]">
-                <Input
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  placeholder="Brand contains…"
-                  data-testid="input-filter-brand"
-                />
+                {uniqueGroups.length > 1 && (
+                  <div className="min-w-[180px]">
+                    <Select value={groupFilter} onValueChange={setGroupFilter}>
+                      <SelectTrigger data-testid="select-filter-group">
+                        <SelectValue placeholder="Group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="All">All groups</SelectItem>
+                        {uniqueGroups.map((g) => (
+                          <SelectItem key={g} value={g}>{g}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="min-w-[220px]">
+                  <Input
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
+                    placeholder="Brand contains…"
+                    data-testid="input-filter-brand"
+                  />
+                </div>
+                <div className="min-w-[220px]">
+                  <Input
+                    value={nameSearch}
+                    onChange={(e) => setNameSearch(e.target.value)}
+                    placeholder="Name contains…"
+                    data-testid="input-filter-name"
+                  />
+                </div>
               </div>
-              <div className="min-w-[220px]">
-                <Input
-                  value={nameSearch}
-                  onChange={(e) => setNameSearch(e.target.value)}
-                  placeholder="Name contains…"
-                  data-testid="input-filter-name"
-                />
-              </div>
+              <Button
+                variant="secondary"
+                data-testid="button-clear-filters"
+                onClick={() => {
+                  setCategory("All");
+                  setGroupFilter("All");
+                  setBrand("");
+                  setNameSearch("");
+                }}
+              >
+                Clear
+              </Button>
             </div>
-
-            <Button
-              variant="secondary"
-              data-testid="button-clear-filters"
-              onClick={() => {
-                setCategory("All");
-                setGroupFilter("All");
-                setBrand("");
-                setNameSearch("");
-              }}
-            >
-              Clear
-            </Button>
-          </div>
+          )}
         </Card>)}
 
         {viewMode === "stock-changes" ? (
@@ -718,6 +732,7 @@ function StockChangesView({
   setGroupFilter: (v: string) => void;
 }) {
   const [sort, setSort] = useState<StockSort>("date-desc");
+  const [scFiltersOpen, setScFiltersOpen] = useState(false);
 
   const filtered = useMemo(() => {
     if (groupFilter === "All") return stockChanges;
@@ -765,33 +780,47 @@ function StockChangesView({
   return (
     <div className="space-y-3">
       <Card className="fs-card rounded-2xl p-4">
-        <div className="flex flex-wrap items-center gap-3">
+        <button
+          className="flex w-full items-center justify-between"
+          onClick={() => setScFiltersOpen((v) => !v)}
+          data-testid="button-toggle-sc-filters"
+        >
           <div className="inline-flex items-center gap-2 text-sm font-semibold">
             <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950/40">
               <History className="h-3.5 w-3.5 text-violet-600" />
             </div>
-            Filters
+            Filters & Sort
+            {(groupFilter !== "All" || sort !== "date-desc") && (
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700 dark:bg-violet-900/40 dark:text-violet-400">
+                {[groupFilter !== "All", sort !== "date-desc"].filter(Boolean).length}
+              </span>
+            )}
+            <span className="text-xs font-normal text-muted-foreground">{sorted.length} entries</span>
           </div>
-          {uniqueGroups.length > 1 && (
-            <div className="min-w-[180px]">
-              <Select value={groupFilter} onValueChange={setGroupFilter}>
-                <SelectTrigger data-testid="select-stock-change-group">
-                  <SelectValue placeholder="Group" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All groups</SelectItem>
-                  {uniqueGroups.map((g) => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          <Button variant="outline" size="sm" onClick={nextSort} data-testid="button-sort-stock-changes">
-            {sortLabel[sort]}
-          </Button>
-          <span className="ml-auto text-xs text-muted-foreground">{sorted.length} entries</span>
-        </div>
+          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", scFiltersOpen && "rotate-180")} />
+        </button>
+        {scFiltersOpen && (
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {uniqueGroups.length > 1 && (
+              <div className="min-w-[180px]">
+                <Select value={groupFilter} onValueChange={setGroupFilter}>
+                  <SelectTrigger data-testid="select-stock-change-group">
+                    <SelectValue placeholder="Group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All groups</SelectItem>
+                    {uniqueGroups.map((g) => (
+                      <SelectItem key={g} value={g}>{g}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <Button variant="outline" size="sm" onClick={nextSort} data-testid="button-sort-stock-changes">
+              {sortLabel[sort]}
+            </Button>
+          </div>
+        )}
       </Card>
 
       {sorted.length === 0 ? (

@@ -1020,6 +1020,13 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  app.get("/api/stock-changes", requirePermission("products", "view"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const limit = parseInt(req.query.limit as string) || 500;
+    const logs = await storage.listStockChanges(limit, teamId);
+    res.json(logs);
+  });
+
   // Activity feed
   app.get("/api/activity", requireAuth, async (req, res) => {
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });

@@ -86,6 +86,7 @@ export interface IStorage {
 
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
   listActivityLogs(limit?: number, teamId?: number): Promise<ActivityLog[]>;
+  listStockChanges(limit?: number, teamId?: number): Promise<ActivityLog[]>;
 
   listGrindingRecords(groupScope: string, isAdmin: boolean, teamId?: number): Promise<GrindingRecord[]>;
   createGrindingRecord(r: InsertGrindingRecord): Promise<GrindingRecord>;
@@ -491,6 +492,14 @@ export class DatabaseStorage implements IStorage {
       return db.select().from(activityLogs).where(eq(activityLogs.teamId, teamId)).orderBy(sql`${activityLogs.id} desc`).limit(limit);
     }
     return db.select().from(activityLogs).orderBy(sql`${activityLogs.id} desc`).limit(limit);
+  }
+
+  async listStockChanges(limit = 500, teamId?: number): Promise<ActivityLog[]> {
+    const stockActions = sql`${activityLogs.action} IN ('stock_added', 'stock_removed', 'stock_set')`;
+    if (teamId) {
+      return db.select().from(activityLogs).where(sql`${stockActions} AND ${activityLogs.teamId} = ${teamId}`).orderBy(sql`${activityLogs.id} desc`).limit(limit);
+    }
+    return db.select().from(activityLogs).where(stockActions).orderBy(sql`${activityLogs.id} desc`).limit(limit);
   }
 
   async listGrindingRecords(groupScope: string, isAdmin: boolean, teamId?: number): Promise<GrindingRecord[]> {

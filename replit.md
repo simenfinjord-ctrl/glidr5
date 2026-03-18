@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application for multi-team organizations, designed to optimize ski testing and documentation. It manages test series, products, daily weather, and individual tests, offering deep data insights, live-ranking, race ski management, and advanced analytics. The application aims to enhance product performance through rigorous testing and data analysis, leading to superior ski products and a competitive market advantage.
+Glidr is a full-stack React web application designed to optimize ski testing and documentation for multi-team organizations. It provides a comprehensive platform for managing test series, products, daily weather, and individual tests. The platform offers deep data insights, live-ranking, race ski management, and advanced analytics to enhance product performance through rigorous testing and data analysis, ultimately leading to superior ski products and a competitive market advantage.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -121,10 +121,10 @@ Glidr is a full-stack React web application for multi-team organizations, design
 - Admin overview stats include Athletes and Race Skis counts
 
 ## System Architecture
-- **UI/UX Decisions**: Modern, responsive interface using `shadcn/ui` and `Tailwind CSS v4`, with dark mode, table-first data entry, and mobile optimization. Includes colored rank badges and stock quantity indicators.
+- **UI/UX Decisions**: Modern, responsive interface using `shadcn/ui` and `Tailwind CSS v4`, featuring a dark mode, table-first data entry, and mobile optimization. Includes colored rank badges and stock quantity indicators.
 - **Authentication & Authorization**: Session-based, role-based, and granular permission control (Super Admin, Team Admin, Member) within a multi-team framework, enforced both server-side and client-side.
 - **Multi-tenancy**: Achieved by scoping all primary data tables with a `teamId` column for complete data isolation.
-- **Data Models**: Drizzle ORM defines database schemas for `teams`, `users`, `test_ski_series`, `products`, `daily_weather`, `tests`, `test_entries`, `athletes`, `race_skis`, and `regrinds`.
+- **Data Models**: Drizzle ORM defines database schemas for core entities like `teams`, `users`, `test_ski_series`, `products`, `daily_weather`, `tests`, `test_entries`, `athletes`, `race_skis`, and `regrinds`.
 - **API Design**: A RESTful API (`/api/*`) handles data operations, user authentication, and administration.
 - **Offline Capabilities**: Utilizes Service Workers and IndexedDB for offline data entry, local mutation queuing, and synchronization upon reconnection.
 - **Analytics & Reporting**: `Recharts` integrates for data visualization, complemented by client-side PDF, CSV, and Excel export functionalities.

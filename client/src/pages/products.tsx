@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse } from "lucide-react";
+import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -33,6 +33,19 @@ type Product = {
 };
 
 type ApiGroup = { id: number; name: string };
+
+type StockChange = {
+  id: number;
+  userId: number;
+  userName: string;
+  action: string;
+  entityType: string;
+  entityId: number | null;
+  details: string | null;
+  createdAt: string;
+  groupScope: string | null;
+  teamId: number;
+};
 
 const schema = z.object({
   category: z.enum(["Glide product", "Topping product", "Structure tool"]),
@@ -349,7 +362,8 @@ export default function Products() {
   const { user } = useAuth();
   const isAdmin = !!user?.isAdmin;
   const [open, setOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"products" | "storage">("products");
+  const [viewMode, setViewMode] = useState<"products" | "storage" | "stock-changes">("products");
+  const [stockChangeGroupFilter, setStockChangeGroupFilter] = useState("All");
   const [stockSort, setStockSort] = useState<"asc" | "desc" | "alpha">("asc");
   const [category, setCategory] = useState<ProductCategory | "All">("All");
   const [groupFilter, setGroupFilter] = useState("All");
@@ -361,6 +375,10 @@ export default function Products() {
   const { toast } = useToast();
 
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
+  const { data: stockChanges = [] } = useQuery<StockChange[]>({
+    queryKey: ["/api/stock-changes"],
+    enabled: viewMode === "stock-changes",
+  });
   const { data: apiGroups = [] } = useQuery<ApiGroup[]>({
     queryKey: ["/api/groups"],
     enabled: isAdmin,
@@ -422,9 +440,9 @@ export default function Products() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl">{viewMode === "storage" ? "Storage" : "Products"}</h1>
+            <h1 className="text-2xl sm:text-3xl">{viewMode === "stock-changes" ? "Stock Changes" : viewMode === "storage" ? "Storage" : "Products"}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-products-subtitle">
-              {filtered.length} product{filtered.length !== 1 ? "s" : ""}
+              {viewMode === "stock-changes" ? `${stockChanges.length} log entries` : `${filtered.length} product${filtered.length !== 1 ? "s" : ""}`}
             </p>
           </div>
 
@@ -437,6 +455,15 @@ export default function Products() {
             >
               <Warehouse className="mr-2 h-4 w-4" />
               Storage
+            </Button>
+            <Button
+              variant={viewMode === "stock-changes" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode(viewMode === "stock-changes" ? "products" : "stock-changes")}
+              data-testid="button-toggle-stock-changes"
+            >
+              <History className="mr-2 h-4 w-4" />
+              Stock Changes
             </Button>
             {viewMode === "storage" && (
               <Button
@@ -467,7 +494,7 @@ export default function Products() {
           </div>
         </div>
 
-        <Card className="fs-card rounded-2xl p-4">
+        {viewMode !== "stock-changes" && (<Card className="fs-card rounded-2xl p-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="inline-flex items-center gap-2 text-sm font-semibold">
               <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50">
@@ -535,9 +562,16 @@ export default function Products() {
               Clear
             </Button>
           </div>
-        </Card>
+        </Card>)}
 
-        {viewMode === "storage" ? (
+        {viewMode === "stock-changes" ? (
+          <StockChangesView
+            stockChanges={stockChanges}
+            uniqueGroups={uniqueGroups}
+            groupFilter={stockChangeGroupFilter}
+            setGroupFilter={setStockChangeGroupFilter}
+          />
+        ) : viewMode === "storage" ? (
           <div className="space-y-4">
             {uniqueGroups.length > 1 && (
               <Card className="fs-card rounded-2xl p-4" data-testid="card-storage-summary">
@@ -667,6 +701,155 @@ export default function Products() {
         </Dialog>
       </div>
     </AppShell>
+  );
+}
+
+type StockSort = "date-desc" | "date-asc" | "product-az" | "product-za" | "user-az" | "user-za";
+
+function StockChangesView({
+  stockChanges,
+  uniqueGroups,
+  groupFilter,
+  setGroupFilter,
+}: {
+  stockChanges: StockChange[];
+  uniqueGroups: string[];
+  groupFilter: string;
+  setGroupFilter: (v: string) => void;
+}) {
+  const [sort, setSort] = useState<StockSort>("date-desc");
+
+  const filtered = useMemo(() => {
+    if (groupFilter === "All") return stockChanges;
+    return stockChanges.filter((sc) =>
+      sc.groupScope?.split(",").map((g) => g.trim()).includes(groupFilter)
+    );
+  }, [stockChanges, groupFilter]);
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    switch (sort) {
+      case "date-desc":
+        return arr.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      case "date-asc":
+        return arr.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      case "product-az": {
+        const getName = (sc: StockChange) => (sc.details?.split(":")[0] ?? "").trim();
+        return arr.sort((a, b) => getName(a).localeCompare(getName(b)));
+      }
+      case "product-za": {
+        const getName = (sc: StockChange) => (sc.details?.split(":")[0] ?? "").trim();
+        return arr.sort((a, b) => getName(b).localeCompare(getName(a)));
+      }
+      case "user-az":
+        return arr.sort((a, b) => a.userName.localeCompare(b.userName));
+      case "user-za":
+        return arr.sort((a, b) => b.userName.localeCompare(a.userName));
+    }
+  }, [filtered, sort]);
+
+  const sortLabel: Record<StockSort, string> = {
+    "date-desc": "Newest first",
+    "date-asc": "Oldest first",
+    "product-az": "Product A–Z",
+    "product-za": "Product Z–A",
+    "user-az": "User A–Z",
+    "user-za": "User Z–A",
+  };
+  const sortCycle: StockSort[] = ["date-desc", "date-asc", "product-az", "product-za", "user-az", "user-za"];
+  const nextSort = () => {
+    const idx = sortCycle.indexOf(sort);
+    setSort(sortCycle[(idx + 1) % sortCycle.length]!);
+  };
+
+  return (
+    <div className="space-y-3">
+      <Card className="fs-card rounded-2xl p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex items-center gap-2 text-sm font-semibold">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950/40">
+              <History className="h-3.5 w-3.5 text-violet-600" />
+            </div>
+            Filters
+          </div>
+          {uniqueGroups.length > 1 && (
+            <div className="min-w-[180px]">
+              <Select value={groupFilter} onValueChange={setGroupFilter}>
+                <SelectTrigger data-testid="select-stock-change-group">
+                  <SelectValue placeholder="Group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All groups</SelectItem>
+                  {uniqueGroups.map((g) => (
+                    <SelectItem key={g} value={g}>{g}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <Button variant="outline" size="sm" onClick={nextSort} data-testid="button-sort-stock-changes">
+            {sortLabel[sort]}
+          </Button>
+          <span className="ml-auto text-xs text-muted-foreground">{sorted.length} entries</span>
+        </div>
+      </Card>
+
+      {sorted.length === 0 ? (
+        <Card className="fs-card rounded-2xl p-6 text-center text-sm text-muted-foreground" data-testid="empty-stock-changes">
+          No stock changes recorded yet.
+        </Card>
+      ) : (
+        <div className="space-y-1.5">
+          {sorted.map((sc) => {
+            const productName = sc.details?.split(":")[0]?.trim() ?? "Unknown";
+            const changeInfo = sc.details?.split(":").slice(1).join(":").trim() ?? "";
+            const isAdd = sc.action === "stock_added";
+            const isRemove = sc.action === "stock_removed";
+            const d = new Date(sc.createdAt);
+            const dateStr = d.toLocaleDateString("nb-NO", { day: "2-digit", month: "short", year: "numeric" });
+            const timeStr = d.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+            const groups = sc.groupScope?.split(",").map((g) => g.trim()).filter(Boolean) ?? [];
+
+            return (
+              <Card key={sc.id} className="fs-card rounded-2xl px-4 py-3" data-testid={`stock-change-${sc.id}`}>
+                <div className="flex items-start gap-3">
+                  <div className={cn(
+                    "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                    isAdd
+                      ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
+                      : isRemove
+                        ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
+                        : "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400"
+                  )}>
+                    {isAdd ? <ArrowUp className="h-3.5 w-3.5" /> : isRemove ? <ArrowDown className="h-3.5 w-3.5" /> : <History className="h-3.5 w-3.5" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold">{productName}</span>
+                      {groups.map((g) => (
+                        <span key={g} className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:ring-blue-800">{g}</span>
+                      ))}
+                    </div>
+                    <div className="mt-0.5 text-sm text-muted-foreground">
+                      <span className={cn(
+                        "font-semibold",
+                        isAdd ? "text-emerald-600 dark:text-emerald-400" : isRemove ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400"
+                      )}>
+                        {changeInfo}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>{sc.userName}</span>
+                      <span>{dateStr} {timeStr}</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

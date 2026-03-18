@@ -81,6 +81,8 @@ Glidr is a full-stack React web application designed to optimize ski testing and
 - Storage view shows "Stock by group" summary card: product count and total stock per group, clickable to filter
 - Storage view shows group badges on each product row
 - Stock changes (add/remove/set) are logged to activity log with user name, product, old→new quantity
+- "Stock Changes" tab under Storage: full log of all stock changes with product name, group, user, date/time, and change details
+- Stock Changes tab has group filter, and sort cycling through: date (newest/oldest), product (A–Z/Z–A), user (A–Z/Z–A)
 - Stock quantities color-coded: red (0), amber (1-2), green (3+)
 - Storage view sortable by stock quantity (least first / most first toggle)
 - Dashboard "Recent results" widget: auto-refreshes every 10s, shows 10 most recent tests with winner product/pair, latest test highlighted in yellow

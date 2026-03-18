@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, ChevronDown } from "lucide-react";
+import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -364,7 +364,6 @@ export default function Products() {
   const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"products" | "storage" | "stock-changes">("products");
   const [stockChangeGroupFilter, setStockChangeGroupFilter] = useState("All");
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [stockSort, setStockSort] = useState<"asc" | "desc" | "alpha">("asc");
   const [category, setCategory] = useState<ProductCategory | "All">("All");
   const [groupFilter, setGroupFilter] = useState("All");
@@ -467,14 +466,16 @@ export default function Products() {
               Stock Changes
             </Button>
             {viewMode === "storage" && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setStockSort(stockSort === "asc" ? "desc" : stockSort === "desc" ? "alpha" : "asc")}
-                data-testid="button-sort-stock"
-              >
-                {stockSort === "asc" ? "Least first ↑" : stockSort === "desc" ? "Most first ↓" : "A–Z"}
-              </Button>
+              <Select value={stockSort} onValueChange={(v) => setStockSort(v as "asc" | "desc" | "alpha")}>
+                <SelectTrigger className="w-[150px] h-9 text-sm" data-testid="select-sort-stock">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="asc">Least first ↑</SelectItem>
+                  <SelectItem value="desc">Most first ↓</SelectItem>
+                  <SelectItem value="alpha">A–Z</SelectItem>
+                </SelectContent>
+              </Select>
             )}
             {viewMode === "products" && (
               <Dialog open={open} onOpenChange={setOpen}>
@@ -496,86 +497,72 @@ export default function Products() {
         </div>
 
         {viewMode !== "stock-changes" && (<Card className="fs-card rounded-2xl p-4">
-          <button
-            className="flex w-full items-center justify-between"
-            onClick={() => setFiltersOpen((v) => !v)}
-            data-testid="button-toggle-filters"
-          >
+          <div className="flex flex-wrap items-center gap-3">
             <div className="inline-flex items-center gap-2 text-sm font-semibold">
               <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50">
                 <Filter className="h-3.5 w-3.5 text-amber-600" />
               </div>
               Filters
-              {(category !== "All" || groupFilter !== "All" || brand || nameSearch) && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
-                  {[category !== "All", groupFilter !== "All", !!brand, !!nameSearch].filter(Boolean).length}
-                </span>
-              )}
             </div>
-            <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", filtersOpen && "rotate-180")} />
-          </button>
-          {filtersOpen && (
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <div className="flex flex-1 flex-wrap items-center gap-3">
-                <div className="min-w-[220px]">
-                  <Select value={category} onValueChange={(v) => setCategory(v as any)}>
-                    <SelectTrigger data-testid="select-filter-category">
-                      <SelectValue placeholder="Category" />
+            <div className="flex flex-1 flex-wrap items-center gap-3">
+              <div className="min-w-[220px]">
+                <Select value={category} onValueChange={(v) => setCategory(v as any)}>
+                  <SelectTrigger data-testid="select-filter-category">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All categories</SelectItem>
+                    <SelectItem value="Glide product">Glide product</SelectItem>
+                    <SelectItem value="Topping product">Topping product</SelectItem>
+                    <SelectItem value="Structure tool">Structure tool</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {uniqueGroups.length > 1 && (
+                <div className="min-w-[180px]">
+                  <Select value={groupFilter} onValueChange={setGroupFilter}>
+                    <SelectTrigger data-testid="select-filter-group">
+                      <SelectValue placeholder="Group" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="All">All categories</SelectItem>
-                      <SelectItem value="Glide product">Glide product</SelectItem>
-                      <SelectItem value="Topping product">Topping product</SelectItem>
-                      <SelectItem value="Structure tool">Structure tool</SelectItem>
+                      <SelectItem value="All">All groups</SelectItem>
+                      {uniqueGroups.map((g) => (
+                        <SelectItem key={g} value={g}>{g}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-                {uniqueGroups.length > 1 && (
-                  <div className="min-w-[180px]">
-                    <Select value={groupFilter} onValueChange={setGroupFilter}>
-                      <SelectTrigger data-testid="select-filter-group">
-                        <SelectValue placeholder="Group" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="All">All groups</SelectItem>
-                        {uniqueGroups.map((g) => (
-                          <SelectItem key={g} value={g}>{g}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                <div className="min-w-[220px]">
-                  <Input
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                    placeholder="Brand contains…"
-                    data-testid="input-filter-brand"
-                  />
-                </div>
-                <div className="min-w-[220px]">
-                  <Input
-                    value={nameSearch}
-                    onChange={(e) => setNameSearch(e.target.value)}
-                    placeholder="Name contains…"
-                    data-testid="input-filter-name"
-                  />
-                </div>
+              )}
+              <div className="min-w-[220px]">
+                <Input
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
+                  placeholder="Brand contains…"
+                  data-testid="input-filter-brand"
+                />
               </div>
-              <Button
-                variant="secondary"
-                data-testid="button-clear-filters"
-                onClick={() => {
-                  setCategory("All");
-                  setGroupFilter("All");
-                  setBrand("");
-                  setNameSearch("");
-                }}
-              >
-                Clear
-              </Button>
+              <div className="min-w-[220px]">
+                <Input
+                  value={nameSearch}
+                  onChange={(e) => setNameSearch(e.target.value)}
+                  placeholder="Name contains…"
+                  data-testid="input-filter-name"
+                />
+              </div>
             </div>
-          )}
+            <Button
+              variant="secondary"
+              data-testid="button-clear-filters"
+              onClick={() => {
+                setCategory("All");
+                setGroupFilter("All");
+                setBrand("");
+                setNameSearch("");
+              }}
+            >
+              Clear
+            </Button>
+          </div>
         </Card>)}
 
         {viewMode === "stock-changes" ? (
@@ -732,7 +719,6 @@ function StockChangesView({
   setGroupFilter: (v: string) => void;
 }) {
   const [sort, setSort] = useState<StockSort>("date-desc");
-  const [scFiltersOpen, setScFiltersOpen] = useState(false);
 
   const filtered = useMemo(() => {
     if (groupFilter === "All") return stockChanges;
@@ -763,64 +749,48 @@ function StockChangesView({
     }
   }, [filtered, sort]);
 
-  const sortLabel: Record<StockSort, string> = {
-    "date-desc": "Newest first",
-    "date-asc": "Oldest first",
-    "product-az": "Product A–Z",
-    "product-za": "Product Z–A",
-    "user-az": "User A–Z",
-    "user-za": "User Z–A",
-  };
-  const sortCycle: StockSort[] = ["date-desc", "date-asc", "product-az", "product-za", "user-az", "user-za"];
-  const nextSort = () => {
-    const idx = sortCycle.indexOf(sort);
-    setSort(sortCycle[(idx + 1) % sortCycle.length]!);
-  };
-
   return (
     <div className="space-y-3">
       <Card className="fs-card rounded-2xl p-4">
-        <button
-          className="flex w-full items-center justify-between"
-          onClick={() => setScFiltersOpen((v) => !v)}
-          data-testid="button-toggle-sc-filters"
-        >
+        <div className="flex flex-wrap items-center gap-3">
           <div className="inline-flex items-center gap-2 text-sm font-semibold">
             <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950/40">
               <History className="h-3.5 w-3.5 text-violet-600" />
             </div>
-            Filters & Sort
-            {(groupFilter !== "All" || sort !== "date-desc") && (
-              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700 dark:bg-violet-900/40 dark:text-violet-400">
-                {[groupFilter !== "All", sort !== "date-desc"].filter(Boolean).length}
-              </span>
-            )}
-            <span className="text-xs font-normal text-muted-foreground">{sorted.length} entries</span>
+            Filters
           </div>
-          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", scFiltersOpen && "rotate-180")} />
-        </button>
-        {scFiltersOpen && (
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            {uniqueGroups.length > 1 && (
-              <div className="min-w-[180px]">
-                <Select value={groupFilter} onValueChange={setGroupFilter}>
-                  <SelectTrigger data-testid="select-stock-change-group">
-                    <SelectValue placeholder="Group" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All groups</SelectItem>
-                    {uniqueGroups.map((g) => (
-                      <SelectItem key={g} value={g}>{g}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <Button variant="outline" size="sm" onClick={nextSort} data-testid="button-sort-stock-changes">
-              {sortLabel[sort]}
-            </Button>
+          {uniqueGroups.length > 1 && (
+            <div className="min-w-[180px]">
+              <Select value={groupFilter} onValueChange={setGroupFilter}>
+                <SelectTrigger data-testid="select-stock-change-group">
+                  <SelectValue placeholder="Group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All groups</SelectItem>
+                  {uniqueGroups.map((g) => (
+                    <SelectItem key={g} value={g}>{g}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="min-w-[170px]">
+            <Select value={sort} onValueChange={(v) => setSort(v as StockSort)}>
+              <SelectTrigger data-testid="select-sort-stock-changes">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date-desc">Newest first</SelectItem>
+                <SelectItem value="date-asc">Oldest first</SelectItem>
+                <SelectItem value="product-az">Product A–Z</SelectItem>
+                <SelectItem value="product-za">Product Z–A</SelectItem>
+                <SelectItem value="user-az">User A–Z</SelectItem>
+                <SelectItem value="user-za">User Z–A</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        )}
+          <span className="ml-auto text-xs text-muted-foreground">{sorted.length} entries</span>
+        </div>
       </Card>
 
       {sorted.length === 0 ? (

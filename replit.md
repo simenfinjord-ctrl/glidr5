@@ -123,21 +123,21 @@ Glidr is a full-stack React web application designed to optimize ski testing and
 - Admin overview stats include Athletes and Race Skis counts
 
 ## System Architecture
-- **UI/UX Decisions**: Modern, responsive interface using `shadcn/ui` and `Tailwind CSS v4`, featuring a dark mode, table-first data entry, and mobile optimization. Includes colored rank badges and stock quantity indicators.
-- **Authentication & Authorization**: Session-based, role-based, and granular permission control (Super Admin, Team Admin, Member) within a multi-team framework, enforced both server-side and client-side.
-- **Multi-tenancy**: Achieved by scoping all primary data tables with a `teamId` column for complete data isolation.
-- **Data Models**: Drizzle ORM defines database schemas for core entities like `teams`, `users`, `test_ski_series`, `products`, `daily_weather`, `tests`, `test_entries`, `athletes`, `race_skis`, and `regrinds`.
-- **API Design**: A RESTful API (`/api/*`) handles data operations, user authentication, and administration.
-- **Offline Capabilities**: Utilizes Service Workers and IndexedDB for offline data entry, local mutation queuing, and synchronization upon reconnection.
-- **Analytics & Reporting**: `Recharts` integrates for data visualization, complemented by client-side PDF, CSV, and Excel export functionalities.
-- **Suggestions**: Provides database-driven product recommendations based on weather similarity scoring against historical test data.
-- **Grinding Module**: Manages grinding records and embeds Google Sheets for tracking.
-- **Runsheet Module**: Features single-elimination tournament brackets with live-ranking, mobile optimization, and Garmin Connect IQ application integration for real-time data input.
+-   **UI/UX Decisions**: Modern, responsive interface using `shadcn/ui` and `Tailwind CSS v4`, featuring a dark mode, table-first data entry, and mobile optimization. Includes colored rank badges and stock quantity indicators.
+-   **Authentication & Authorization**: Session-based, role-based, and granular permission control (Super Admin, Team Admin, Member) within a multi-team framework, enforced both server-side and client-side.
+-   **Multi-tenancy**: Achieved by scoping all primary data tables with a `teamId` column for complete data isolation.
+-   **Data Models**: Drizzle ORM defines database schemas for core entities like `teams`, `users`, `test_ski_series`, `products`, `daily_weather`, `tests`, `test_entries`, `athletes`, `race_skis`, and `regrinds`.
+-   **API Design**: A RESTful API (`/api/*`) handles data operations, user authentication, and administration.
+-   **Offline Capabilities**: Utilizes Service Workers and IndexedDB for offline data entry, local mutation queuing, and synchronization upon reconnection.
+-   **Analytics & Reporting**: `Recharts` integrates for data visualization, complemented by client-side PDF, CSV, and Excel export functionalities.
+-   **Suggestions**: Provides database-driven product recommendations based on weather similarity scoring against historical test data.
+-   **Grinding Module**: Manages grinding records and embeds Google Sheets for tracking.
+-   **Runsheet Module**: Features single-elimination tournament brackets with live-ranking, mobile optimization, and Garmin Connect IQ application integration for real-time data input.
 
 ## External Dependencies
-- **PostgreSQL**: Primary relational database.
-- **Google Sheets**: Used for embedding grinding-related spreadsheets.
-- **jsPDF + autoTable**: Client-side PDF report generation.
-- **xlsx (SheetJS)**: Client-side Excel export functionality.
-- **Recharts**: Charting library for analytics.
-- **Garmin Connect IQ SDK**: For companion Garmin smartwatch application integration.
+-   **PostgreSQL**: Primary relational database.
+-   **Google Sheets**: Used for embedding grinding-related spreadsheets.
+-   **jsPDF + autoTable**: Client-side PDF report generation.
+-   **xlsx (SheetJS)**: Client-side Excel export functionality.
+-   **Recharts**: Charting library for analytics.
+-   **Garmin Connect IQ SDK**: For companion Garmin smartwatch application integration.

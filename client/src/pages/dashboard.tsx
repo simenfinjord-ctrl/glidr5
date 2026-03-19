@@ -10,13 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
-type Test = { id: number; date: string; location: string; testType: string; createdByName: string; groupScope: string; weatherId: number | null; seriesId: number; createdAt: string };
+type Test = { id: number; date: string; location: string; testName: string | null; testType: string; createdByName: string; groupScope: string; weatherId: number | null; seriesId: number; createdAt: string };
 type Product = { id: number; brand: string; name: string; category: string; groupScope: string };
 type Weather = { id: number; date: string; location: string; airTemperatureC: number; snowTemperatureC: number; time: string | null };
 type RecentResult = {
   id: number;
   date: string;
   location: string;
+  testName: string | null;
   testType: string;
   createdByName: string;
   createdAt: string;
@@ -152,7 +153,7 @@ export default function Dashboard() {
                       <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : t.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure")}>
                         {t.testType}
                       </span>
-                      <span className="text-sm font-medium text-foreground">{t.location}</span>
+                      <span className="text-sm font-medium text-foreground">{t.testName || t.location}</span>
                     </div>
                     <span className="text-xs text-muted-foreground">{t.createdByName}</span>
                   </div>
@@ -214,7 +215,7 @@ export default function Dashboard() {
                       )}>
                         {t.testType}
                       </span>
-                      <span className="text-sm font-medium text-foreground truncate">{t.location}</span>
+                      <span className="text-sm font-medium text-foreground truncate">{t.testName || t.location}</span>
                       <span className="text-xs text-muted-foreground shrink-0">{t.date}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">

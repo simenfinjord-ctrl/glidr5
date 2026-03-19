@@ -342,7 +342,7 @@ export default function TestDetail() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete this test?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will permanently delete the test "{test.location}" ({test.date}) and all its entries. This action cannot be undone.
+                      This will permanently delete the test "{(test as any).testName || test.location}" ({test.date}) and all its entries. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -362,7 +362,7 @@ export default function TestDetail() {
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h1 className="text-2xl sm:text-3xl" data-testid="text-test-title">
-              {test.location}
+              {(test as any).testName || test.location}
             </h1>
             <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", testTypeBadgeClass)} data-testid="badge-test-type">
               {test.testType}

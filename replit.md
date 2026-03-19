@@ -43,8 +43,10 @@ Glidr is a full-stack React web application designed to optimize ski testing and
 - Test entries support feeling rank (subjective ski pair ranking column)
 - Test entries support kick rank (only shown for Classic test type, orange badge styling)
 - Test types include Glide, Structure, Classic, Skating, and Grind
-- Race ski tests only allow Classic and Skating test types (Glide/Structure/Grind removed from race ski dropdown)
+- Race ski tests only allow Classic and Skating test types (Glide/Structure/Grind removed from race ski dropdown); series tests only allow Glide/Structure/Grind (enforced server-side and client-side)
 - Classic/Skating test types filter series by skiType (matching discipline)
+- Tests have optional testName field; displayed as title everywhere (tests list, dashboard, test detail header), falls back to location if empty
+- Blind testers can see test series names (only product names, methodology, and winners are hidden)
 - Kick column included in CSV and PDF exports for Classic tests
 - Test entries support multiple products per line (inline + button, additionalProductIds field)
 - Combined products displayed with "+" separator between names (e.g., "Brand A + Brand B")
@@ -82,7 +84,7 @@ Glidr is a full-stack React web application designed to optimize ski testing and
 - Storage view shows group badges on each product row
 - Stock changes (add/remove/set) are logged to activity log with user name, product, old→new quantity
 - "Stock Changes" tab under Storage: full log of all stock changes with product name, group, user, date/time, and change details
-- Stock Changes tab has group filter, and sort cycling through: date (newest/oldest), product (A–Z/Z–A), user (A–Z/Z–A)
+- Stock Changes tab has group filter, and sort cycling through: date (newest/oldest), product (A–Z/A–Z), user (A–Z/A–Z)
 - Stock quantities color-coded: red (0), amber (1-2), green (3+)
 - Storage view sortable by stock quantity (least first / most first toggle)
 - Dashboard "Recent results" widget: auto-refreshes every 10s, shows 10 most recent tests with winner product/pair, latest test highlighted in yellow

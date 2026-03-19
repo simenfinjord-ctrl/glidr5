@@ -14,6 +14,7 @@ type Test = {
   id: number;
   date: string;
   location: string;
+  testName: string | null;
   weatherId: number | null;
   testType: string;
   seriesId: number;
@@ -486,7 +487,7 @@ export default function Tests() {
                       <div className="flex flex-wrap items-center gap-2">
                         <AppLink href={`/tests/${t.id}`} testId={`link-test-${t.id}`}>
                           <span className="text-base font-semibold hover:text-primary transition-colors cursor-pointer">
-                            {t.location}
+                            {t.testName || t.location}
                           </span>
                         </AppLink>
                         <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
@@ -628,7 +629,7 @@ export default function Tests() {
                             <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
                               {t.testType}
                             </span>
-                            <span className="text-base font-semibold">{t.location}</span>
+                            <span className="text-base font-semibold">{t.testName || t.location}</span>
                           </div>
                           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                             <span>{t.date}</span>

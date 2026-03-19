@@ -77,6 +77,7 @@ const formSchema = z.object({
   seriesId: z.string().optional(),
   testType: z.enum(["Glide", "Structure", "Grind", "Classic", "Skating"]),
   location: z.string().min(1, "Location is required"),
+  testName: z.string().optional(),
   weatherId: z.string().optional(),
   notes: z.string().optional(),
   groupScope: z.string().min(1, "Select a group"),
@@ -155,6 +156,7 @@ export default function NewTest() {
       testType: initialType,
       seriesId: "",
       location: defaultLocation,
+      testName: "",
       weatherId: undefined,
       notes: "",
       groupScope: userGroups[0] ?? "",
@@ -389,6 +391,7 @@ export default function NewTest() {
                 saveMutation.mutate({
                   date: values.date,
                   location: values.location,
+                  testName: values.testName || null,
                   weatherId: chosenWeatherId,
                   testType: values.testType,
                   testSkiSource,
@@ -429,11 +432,12 @@ export default function NewTest() {
                         value={testSkiSource}
                         onValueChange={(v) => {
                           setTestSkiSource(v as "series" | "raceskis");
-                          if (v === "raceskis") {
-                            const currentType = form.getValues("testType");
-                            if (["Glide", "Structure", "Grind"].includes(currentType)) {
-                              form.setValue("testType", "Classic");
-                            }
+                          const currentType = form.getValues("testType");
+                          if (v === "raceskis" && ["Glide", "Structure", "Grind"].includes(currentType)) {
+                            form.setValue("testType", "Classic");
+                          }
+                          if (v === "series" && ["Classic", "Skating"].includes(currentType)) {
+                            form.setValue("testType", "Glide");
                           }
                         }}
                       >
@@ -513,8 +517,12 @@ export default function NewTest() {
                                 <SelectItem value="Structure">Structure</SelectItem>
                               </>
                             )}
-                            <SelectItem value="Classic">Classic</SelectItem>
-                            <SelectItem value="Skating">Skating</SelectItem>
+                            {testSkiSource === "raceskis" && (
+                              <>
+                                <SelectItem value="Classic">Classic</SelectItem>
+                                <SelectItem value="Skating">Skating</SelectItem>
+                              </>
+                            )}
                             {can("grinding") && testSkiSource !== "raceskis" && (
                               <SelectItem value="Grind">Grind</SelectItem>
                             )}
@@ -546,7 +554,7 @@ export default function NewTest() {
                   />
                 </div>
 
-                <div className="lg:col-span-3">
+                <div className="lg:col-span-2">
                   <FormField
                     control={form.control}
                     name="location"
@@ -566,7 +574,27 @@ export default function NewTest() {
                   />
                 </div>
 
-                <div className="lg:col-span-4">
+                <div className="lg:col-span-2">
+                  <FormField
+                    control={form.control}
+                    name="testName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Test name</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            data-testid="input-test-name"
+                            placeholder="Uses location if empty"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="lg:col-span-3">
                   <FormField
                     control={form.control}
                     name="weatherId"

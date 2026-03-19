@@ -164,6 +164,7 @@ export const tests = pgTable("tests", {
   id: serial("id").primaryKey(),
   date: text("date").notNull(),
   location: text("location").notNull(),
+  testName: text("test_name"),
   weatherId: integer("weather_id"),
   testType: text("test_type").notNull(),
   testSkiSource: text("test_ski_source").notNull().default("series"),

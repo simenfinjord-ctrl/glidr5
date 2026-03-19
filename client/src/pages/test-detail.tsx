@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy } from "lucide-react";
 import { generateTestPDF } from "@/lib/pdf-report";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
@@ -194,24 +194,6 @@ export default function TestDetail() {
     },
   });
 
-  const addToRunsheetsMutation = useMutation({
-    mutationFn: async () => {
-      const label = `${test?.location || "Test"} — ${test?.date || ""}`.trim();
-      await apiRequest("POST", "/api/runsheets", { testId: Number(id), label });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/runsheets"] });
-      toast({ title: "Added to runsheets" });
-    },
-    onError: (e) => {
-      toast({
-        title: "Could not add to runsheets",
-        description: e instanceof Error ? e.message : "Unknown error",
-        variant: "destructive",
-      });
-    },
-  });
-
   const deleteMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("DELETE", `/api/tests/${id}`);
@@ -334,16 +316,6 @@ export default function TestDetail() {
                   <Button variant="outline" size="sm" onClick={() => setShowRunsheet(true)} data-testid="button-complete-runsheet">
                     <Trophy className="mr-2 h-4 w-4" />
                     Complete Runsheet
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addToRunsheetsMutation.mutate()}
-                    disabled={addToRunsheetsMutation.isPending}
-                    data-testid="button-add-to-runsheets"
-                  >
-                    <ClipboardList className="mr-2 h-4 w-4" />
-                    Add to Runsheets
                   </Button>
                 </>
               )}

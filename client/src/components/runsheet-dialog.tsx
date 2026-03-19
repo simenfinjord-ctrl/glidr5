@@ -298,7 +298,7 @@ export function RunsheetDialog({
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(v) => {
+    <Dialog open={open && !mobileMode} onOpenChange={(v) => {
       if (!v && watchActive) handleStopWatch();
       onOpenChange(v);
     }}>

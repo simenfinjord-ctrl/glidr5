@@ -297,6 +297,7 @@ export function RunsheetDialog({
   const showLoading = !error && (loading || bracket.length === 0);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(v) => {
       if (!v && watchActive) handleStopWatch();
       onOpenChange(v);
@@ -598,16 +599,17 @@ export function RunsheetDialog({
         </>
         )}
       </DialogContent>
-      <MobileRunsheet
-        open={mobileMode}
-        onClose={() => setMobileMode(false)}
-        skiPairs={skiPairs}
-        skiLabels={skiLabels}
-        onApplyResults={(results) => {
-          onApplyResults(results);
-          setMobileMode(false);
-        }}
-      />
     </Dialog>
+    <MobileRunsheet
+      open={mobileMode}
+      onClose={() => setMobileMode(false)}
+      skiPairs={skiPairs}
+      skiLabels={skiLabels}
+      onApplyResults={(results) => {
+        onApplyResults(results);
+        setMobileMode(false);
+      }}
+    />
+    </>
   );
 }

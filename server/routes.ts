@@ -1581,6 +1581,38 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  // --- Runsheets CRUD ---
+
+  app.get("/api/runsheets", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const items = await storage.listRunsheets(teamId);
+    res.json(items);
+  });
+
+  app.post("/api/runsheets", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const { testId, label } = req.body;
+    if (!testId || !label) return res.status(400).json({ message: "testId and label required" });
+    const existing = await storage.getRunsheetByTestId(testId, teamId);
+    if (existing) return res.status(409).json({ message: "This test already has a runsheet" });
+    const created = await storage.createRunsheet({
+      testId,
+      label,
+      createdAt: new Date().toISOString(),
+      createdById: u.id,
+      teamId,
+    });
+    res.status(201).json(created);
+  });
+
+  app.delete("/api/runsheets/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const deleted = await storage.deleteRunsheet(id);
+    if (!deleted) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
   // --- Runsheet Watch Sessions (in-memory, for Garmin Connect IQ integration) ---
 
   type WatchHeat = { pairA: number | null; pairB: number | null; distA: string; distB: string };

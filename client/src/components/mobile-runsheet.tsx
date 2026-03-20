@@ -280,8 +280,8 @@ export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, onApplyResu
     : null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black text-white flex flex-col select-none" style={{ touchAction: "manipulation" }} data-testid="mobile-runsheet">
-      <div className="flex items-center justify-between px-4 py-3 bg-zinc-900">
+    <div className="fixed inset-0 z-[100] bg-black text-white flex flex-col select-none" style={{ touchAction: "manipulation", height: "100dvh", maxHeight: "100dvh" }} data-testid="mobile-runsheet">
+      <div className="flex-none flex items-center justify-between px-4 py-3 bg-zinc-900">
         <div className="flex items-center gap-2">
           <Trophy className="h-5 w-5 text-amber-500" />
           <span className="font-bold text-lg">Runsheet</span>
@@ -358,75 +358,72 @@ export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, onApplyResu
       )}
 
       {phase === "distance" && selectedWinner !== null && (
-        <div className="flex-1 flex flex-col">
-          <div className="text-center py-4 bg-emerald-900/30">
-            <span className="text-emerald-400 text-xl font-bold">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-none text-center py-3 bg-emerald-900/30">
+            <span className="text-emerald-400 text-lg font-bold">
               {label(selectedWinner)} wins!
             </span>
-          </div>
-
-          <div className="text-center py-3">
-            <span className="text-zinc-400 text-lg">
+            <span className="block text-zinc-400 text-sm mt-0.5">
               {label(loserPair)} behind:
             </span>
           </div>
 
-          <div className="flex-1 flex flex-col items-center justify-center gap-3">
-            <div className="flex items-center gap-14">
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 overflow-auto py-2">
+            <div className="flex items-center gap-10">
               <button
                 onTouchEnd={(e) => { e.preventDefault(); handleDistanceChange(5); }}
                 onClick={() => handleDistanceChange(5)}
-                className="w-24 h-24 rounded-full bg-zinc-800 active:bg-zinc-700 flex flex-col items-center justify-center border-2 border-zinc-600 cursor-pointer"
+                className="w-20 h-20 rounded-full bg-zinc-800 active:bg-zinc-700 flex flex-col items-center justify-center border-2 border-zinc-600 cursor-pointer"
                 style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
                 data-testid="button-distance-up-5"
               >
-                <ChevronUp className="h-10 w-10 text-zinc-300" />
+                <ChevronUp className="h-8 w-8 text-zinc-300" />
                 <span className="text-xs font-bold text-zinc-400">+5</span>
               </button>
               <button
                 onTouchEnd={(e) => { e.preventDefault(); handleDistanceChange(10); }}
                 onClick={() => handleDistanceChange(10)}
-                className="w-28 h-28 rounded-full bg-zinc-700 active:bg-zinc-600 flex flex-col items-center justify-center border-2 border-amber-600 cursor-pointer"
+                className="w-24 h-24 rounded-full bg-zinc-700 active:bg-zinc-600 flex flex-col items-center justify-center border-2 border-amber-600 cursor-pointer"
                 style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
                 data-testid="button-distance-up-10"
               >
-                <ChevronUp className="h-12 w-12 text-amber-500" />
+                <ChevronUp className="h-10 w-10 text-amber-500" />
                 <span className="text-sm font-bold text-amber-400">+10</span>
               </button>
             </div>
 
-            <div className="flex items-baseline gap-2 py-2">
-              <span className="text-8xl font-black text-amber-500 tabular-nums" data-testid="text-distance-value">
+            <div className="flex items-baseline gap-2 py-1">
+              <span className="text-7xl font-black text-amber-500 tabular-nums" data-testid="text-distance-value">
                 {distance}
               </span>
-              <span className="text-3xl text-zinc-500 font-medium">cm</span>
+              <span className="text-2xl text-zinc-500 font-medium">cm</span>
             </div>
 
-            <div className="flex items-center gap-14">
+            <div className="flex items-center gap-10">
               <button
                 onTouchEnd={(e) => { e.preventDefault(); handleDistanceChange(-5); }}
                 onClick={() => handleDistanceChange(-5)}
-                className="w-24 h-24 rounded-full bg-zinc-800 active:bg-zinc-700 flex flex-col items-center justify-center border-2 border-zinc-600 cursor-pointer"
+                className="w-20 h-20 rounded-full bg-zinc-800 active:bg-zinc-700 flex flex-col items-center justify-center border-2 border-zinc-600 cursor-pointer"
                 style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
                 data-testid="button-distance-down-5"
               >
                 <span className="text-xs font-bold text-zinc-400">-5</span>
-                <ChevronDown className="h-10 w-10 text-zinc-300" />
+                <ChevronDown className="h-8 w-8 text-zinc-300" />
               </button>
               <button
                 onTouchEnd={(e) => { e.preventDefault(); handleDistanceChange(-10); }}
                 onClick={() => handleDistanceChange(-10)}
-                className="w-28 h-28 rounded-full bg-zinc-700 active:bg-zinc-600 flex flex-col items-center justify-center border-2 border-amber-600 cursor-pointer"
+                className="w-24 h-24 rounded-full bg-zinc-700 active:bg-zinc-600 flex flex-col items-center justify-center border-2 border-amber-600 cursor-pointer"
                 style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
                 data-testid="button-distance-down-10"
               >
                 <span className="text-sm font-bold text-amber-400">-10</span>
-                <ChevronDown className="h-12 w-12 text-amber-500" />
+                <ChevronDown className="h-10 w-10 text-amber-500" />
               </button>
             </div>
           </div>
 
-          <div className="flex gap-3 p-4 pb-8">
+          <div className="flex-none flex gap-3 p-4" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom, 1rem))" }}>
             <button
               onTouchEnd={(e) => { e.preventDefault(); handleBackFromDistance(); }}
               onClick={handleBackFromDistance}
@@ -452,28 +449,28 @@ export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, onApplyResu
       )}
 
       {phase === "done" && (
-        <div className="flex-1 flex flex-col">
-          <div className="text-center py-6 bg-emerald-900/20">
-            <Trophy className="h-12 w-12 text-amber-500 mx-auto mb-2" />
-            <span className="text-2xl font-bold text-emerald-400">All heats complete!</span>
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-none text-center py-4 bg-emerald-900/20">
+            <Trophy className="h-10 w-10 text-amber-500 mx-auto mb-1" />
+            <span className="text-xl font-bold text-emerald-400">All heats complete!</span>
           </div>
 
-          <div className="flex-1 overflow-auto px-4 py-4">
-            <table className="w-full text-lg" data-testid="table-mobile-results">
+          <div className="flex-1 min-h-0 overflow-auto px-4 py-2">
+            <table className="w-full text-base" data-testid="table-mobile-results">
               <thead>
                 <tr className="text-zinc-400 border-b border-zinc-700">
-                  <th className="py-3 text-left font-medium">Rank</th>
-                  <th className="py-3 text-left font-medium">Ski pair</th>
-                  <th className="py-3 text-right font-medium">Diff (cm)</th>
+                  <th className="py-2 text-left font-medium">Rank</th>
+                  <th className="py-2 text-left font-medium">Ski pair</th>
+                  <th className="py-2 text-right font-medium">Diff (cm)</th>
                 </tr>
               </thead>
               <tbody>
                 {results.map((r) => (
                   <tr key={r.skiNumber} className="border-b border-zinc-800">
-                    <td className="py-4">
+                    <td className="py-2.5">
                       <span
                         className={cn(
-                          "inline-flex items-center justify-center w-10 h-10 rounded-full text-lg font-bold",
+                          "inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold",
                           r.rank === 1 && "bg-yellow-500 text-yellow-900",
                           r.rank === 2 && "bg-gray-400 text-gray-900",
                           r.rank === 3 && "bg-amber-700 text-white",
@@ -483,23 +480,23 @@ export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, onApplyResu
                         {r.rank}
                       </span>
                     </td>
-                    <td className="py-4 text-xl font-bold">{skiLabels?.[r.skiNumber] ?? `Par ${r.skiNumber}`}</td>
-                    <td className="py-4 text-right text-xl tabular-nums text-zinc-300">{r.diff}</td>
+                    <td className="py-2.5 text-lg font-bold">{skiLabels?.[r.skiNumber] ?? `Par ${r.skiNumber}`}</td>
+                    <td className="py-2.5 text-right text-lg tabular-nums text-zinc-300">{r.diff}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <div className="flex gap-3 p-4 pb-8">
+          <div className="flex-none flex gap-3 p-4" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom, 1rem))" }}>
             <button
               onTouchEnd={(e) => { e.preventDefault(); handleUndo(); }}
               onClick={handleUndo}
-              className="flex-1 py-5 rounded-2xl bg-zinc-800 active:bg-zinc-700 text-xl font-bold text-zinc-300 flex items-center justify-center gap-2 cursor-pointer"
+              className="flex-1 py-4 rounded-2xl bg-zinc-800 active:bg-zinc-700 text-lg font-bold text-zinc-300 flex items-center justify-center gap-2 cursor-pointer"
               style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
               data-testid="button-undo-from-done"
             >
-              <Undo2 className="h-6 w-6" />
+              <Undo2 className="h-5 w-5" />
               Undo
             </button>
             <button
@@ -508,11 +505,11 @@ export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, onApplyResu
                 if (isComplete) onApplyResults(results);
                 onClose();
               }}
-              className="flex-[2] py-5 rounded-2xl bg-emerald-600 active:bg-emerald-700 text-xl font-bold text-white flex items-center justify-center gap-2 cursor-pointer"
+              className="flex-[2] py-4 rounded-2xl bg-emerald-600 active:bg-emerald-700 text-lg font-bold text-white flex items-center justify-center gap-2 cursor-pointer"
               style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
               data-testid="button-apply-mobile-results"
             >
-              <Check className="h-6 w-6" />
+              <Check className="h-5 w-5" />
               {isComplete ? "Apply Results" : "Close"}
             </button>
           </div>

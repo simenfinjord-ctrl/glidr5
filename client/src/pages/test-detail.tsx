@@ -315,7 +315,7 @@ export default function TestDetail() {
                 <>
                   <Button variant="outline" size="sm" onClick={() => setShowRunsheet(true)} data-testid="button-complete-runsheet">
                     <Trophy className="mr-2 h-4 w-4" />
-                    Complete Runsheet
+                    Review runsheet
                   </Button>
                 </>
               )}

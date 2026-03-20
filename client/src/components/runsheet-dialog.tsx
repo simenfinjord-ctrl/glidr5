@@ -426,7 +426,7 @@ export function RunsheetDialog({
           <div className="flex items-center justify-between gap-3 pr-6">
             <DialogTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-amber-500" />
-              Complete Runsheet
+              Review runsheet
               {hasProgress && !isComplete && (
                 <span className="ml-2 text-xs font-normal text-amber-600 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded-full">
                   In progress

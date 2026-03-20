@@ -361,7 +361,7 @@ export default function NewTest() {
                 onClick={() => setRunsheetOpen(true)}
               >
                 <ClipboardList className="mr-2 h-4 w-4" />
-                Complete Runsheet
+                Review runsheet
               </Button>
             )}
             <Button

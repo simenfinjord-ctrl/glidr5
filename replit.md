@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed to optimize ski testing and documentation for multi-team organizations. It provides a comprehensive platform for managing test series, products, daily weather, and individual tests. Key capabilities include deep data insights, live-ranking, race ski management, and advanced analytics. The project's vision is to enhance product performance through rigorous data-driven testing, aiming to develop superior ski products and gain a competitive market advantage.
+Glidr is a full-stack React web application designed to optimize ski testing and documentation for multi-team organizations. It provides a comprehensive platform for managing test series, products, daily weather, and individual tests. The application offers deep data insights, live-ranking, race ski management, and advanced analytics, aiming to enhance product performance through rigorous data-driven testing to develop superior ski products and gain a competitive market advantage.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -85,7 +85,7 @@ Glidr is a full-stack React web application designed to optimize ski testing and
 - "Stock Changes" tab under Storage: full log of all stock changes with product name, group, user, date/time, and change details
 - Stock Changes tab has group filter, and sort cycling through: date (newest/oldest), product (A–Z/A–Z), user (A–Z/A–Z)
 - Stock quantities color-coded: red (0), amber (1-2), green (3+)
-- Storage view sortable by stock quantity (least first / most first toggle)
+- Storage view sortable by stock quantity (least first / most first first toggle)
 - Dashboard "Recent results" widget: auto-refreshes every 10s, shows 10 most recent tests with winner product/pair, latest test highlighted in yellow
 - Dark mode toggle (sun/moon icon) in header and login page, persisted to localStorage
 - Granular permission system: 9 areas (dashboard, tests, testskis, products, weather, analytics, grinding, raceskis, suggestions) x 3 levels (none, view, edit); runsheets removed as separate permission area
@@ -124,7 +124,7 @@ Glidr is a full-stack React web application designed to optimize ski testing and
 - Admin overview stats include Athletes and Race Skis counts
 
 ## System Architecture
--   **UI/UX Decisions**: Modern, responsive interface utilizing `shadcn/ui` and `Tailwind CSS v4`, including a dark mode, table-first data entry, and mobile optimization. Features colored rank badges and stock quantity indicators.
+-   **UI/UX Decisions**: Modern, responsive interface using `shadcn/ui` and `Tailwind CSS v4`, including a dark mode, table-first data entry, and mobile optimization. Features colored rank badges and stock quantity indicators.
 -   **Authentication & Authorization**: Implemented with session-based, role-based, and granular permission control (Super Admin, Team Admin, Member) within a multi-team framework, enforced both server-side and client-side.
 -   **Multi-tenancy**: Achieved by scoping all primary data tables with a `teamId` column, ensuring complete data isolation between teams/organizations.
 -   **Data Models**: Drizzle ORM defines database schemas for core entities such as `teams`, `users`, `test_ski_series`, `products`, `daily_weather`, `tests`, `test_entries`, `athletes`, `race_skis`, and `regrinds`.

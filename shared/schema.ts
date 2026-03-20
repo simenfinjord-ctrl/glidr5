@@ -380,3 +380,11 @@ export const insertTestSkiRegrindSchema = createInsertSchema(testSkiRegrinds).om
 export type InsertTestSkiRegrind = z.infer<typeof insertTestSkiRegrindSchema>;
 export type TestSkiRegrind = typeof testSkiRegrinds.$inferSelect;
 
+export const runsheetProgress = pgTable("runsheet_progress", {
+  id: serial("id").primaryKey(),
+  testId: integer("test_id").notNull(),
+  userId: integer("user_id").notNull(),
+  bracket: text("bracket").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+

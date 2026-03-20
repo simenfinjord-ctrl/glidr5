@@ -2,7 +2,9 @@ import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
 import { parsePermissions } from "./auth";
-import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS } from "@shared/schema";
+import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, sql } from "drizzle-orm";
 function sanitizePermissions(input: any): Record<string, string> {
   const result: Record<string, string> = { ...DEFAULT_PERMISSIONS };
   if (!input) return result;
@@ -866,6 +868,40 @@ export async function registerRoutes(
     }
 
     res.json({ success: true });
+  });
+
+  app.get("/api/tests/:id/runsheet-progress", requireAuth, async (req, res) => {
+    const testId = parseInt(req.params.id);
+    const u = userInfo(req);
+    const row = await db.select().from(runsheetProgress).where(
+      and(eq(runsheetProgress.testId, testId), eq(runsheetProgress.userId, u.id))
+    ).limit(1);
+    if (row.length === 0) return res.json(null);
+    try {
+      res.json({ bracket: JSON.parse(row[0].bracket), updatedAt: row[0].updatedAt });
+    } catch {
+      res.json(null);
+    }
+  });
+
+  app.put("/api/tests/:id/runsheet-progress", requireAuth, async (req, res) => {
+    const testId = parseInt(req.params.id);
+    const u = userInfo(req);
+    const { bracket } = req.body;
+    if (!Array.isArray(bracket)) return res.status(400).json({ message: "bracket array required" });
+    const now = new Date().toISOString();
+    const bracketJson = JSON.stringify(bracket);
+    await db.execute(sql`INSERT INTO runsheet_progress (test_id, user_id, bracket, updated_at) VALUES (${testId}, ${u.id}, ${bracketJson}, ${now}) ON CONFLICT (test_id, user_id) DO UPDATE SET bracket = ${bracketJson}, updated_at = ${now}`);
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/tests/:id/runsheet-progress", requireAuth, async (req, res) => {
+    const testId = parseInt(req.params.id);
+    const u = userInfo(req);
+    await db.delete(runsheetProgress).where(
+      and(eq(runsheetProgress.testId, testId), eq(runsheetProgress.userId, u.id))
+    );
+    res.json({ ok: true });
   });
 
   app.delete("/api/tests/:id", requireAuth, async (req, res) => {

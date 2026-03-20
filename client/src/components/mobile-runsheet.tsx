@@ -20,6 +20,8 @@ type Props = {
   onClose: () => void;
   skiPairs: number[];
   skiLabels?: Record<number, string>;
+  bracket?: Heat[][];
+  onBracketChange?: (bracket: Heat[][]) => void;
   onApplyResults: (results: BracketResult[]) => void;
 };
 
@@ -157,25 +159,50 @@ function findLastCompletedHeat(bracket: Heat[][]): { roundIndex: number; heatInd
   return last;
 }
 
-export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, onApplyResults }: Props) {
+export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, bracket: externalBracket, onBracketChange, onApplyResults }: Props) {
   const label = (pair: number | null) => pair !== null && skiLabels?.[pair] ? skiLabels[pair] : pair !== null ? `Par ${pair}` : "—";
-  const [bracket, setBracket] = useState<Heat[][]>([]);
+  const [bracket, setBracketInternal] = useState<Heat[][]>([]);
   const [phase, setPhase] = useState<"loading" | "select" | "distance" | "done">("loading");
   const [selectedWinner, setSelectedWinner] = useState<number | null>(null);
   const [distance, setDistance] = useState(10);
   const distRef = useRef(10);
 
+  const setBracket = useCallback((updater: Heat[][] | ((prev: Heat[][]) => Heat[][])) => {
+    setBracketInternal(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (onBracketChange) onBracketChange(next);
+      return next;
+    });
+  }, [onBracketChange]);
+
   useEffect(() => {
-    if (open && skiPairs.length >= 2) {
-      setPhase("loading");
+    if (open) {
       setSelectedWinner(null);
       setDistance(10);
       distRef.current = 10;
-      const timer = setTimeout(() => {
-        setBracket(initBracket(skiPairs));
-        setPhase("select");
-      }, 50);
-      return () => clearTimeout(timer);
+
+      if (externalBracket && externalBracket.length > 0) {
+        setBracketInternal(externalBracket);
+        const hasCurrentHeat = findCurrentHeat(externalBracket);
+        const finalRound = externalBracket[externalBracket.length - 1];
+        const isDone = finalRound?.length === 1 && getWinner(finalRound[0]);
+        if (isDone) {
+          setPhase("done");
+        } else if (hasCurrentHeat) {
+          setPhase("select");
+        } else {
+          setPhase("select");
+        }
+      } else if (skiPairs.length >= 2) {
+        setPhase("loading");
+        const timer = setTimeout(() => {
+          const fresh = initBracket(skiPairs);
+          setBracketInternal(fresh);
+          if (onBracketChange) onBracketChange(fresh);
+          setPhase("select");
+        }, 50);
+        return () => clearTimeout(timer);
+      }
     }
   }, [open, skiPairs.join(",")]);
 
@@ -222,7 +249,7 @@ export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, onApplyResu
     });
     setPhase("select");
     setSelectedWinner(null);
-  }, [currentHeat, selectedWinner]);
+  }, [currentHeat, selectedWinner, setBracket]);
 
   const handleBackFromDistance = useCallback(() => {
     if (phase === "distance") {
@@ -244,7 +271,7 @@ export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, onApplyResu
     });
     setPhase("select");
     setSelectedWinner(null);
-  }, [bracket]);
+  }, [bracket, setBracket]);
 
   const diffs = useMemo(() => calculateDiffs(bracket), [bracket]);
 

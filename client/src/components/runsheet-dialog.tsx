@@ -161,6 +161,30 @@ function calculateDiffs(bracket: Heat[][]): Map<number, number> {
   return diffs;
 }
 
+function bracketMatchesPairs(bracket: Heat[][], pairs: number[]): boolean {
+  if (bracket.length === 0 || pairs.length < 2) return false;
+  const firstRound = bracket[0];
+  const bracketPairs = new Set<number>();
+  for (const h of firstRound) {
+    if (h.pairA !== null) bracketPairs.add(h.pairA);
+    if (h.pairB !== null) bracketPairs.add(h.pairB);
+  }
+  if (bracketPairs.size !== pairs.length) return false;
+  for (const p of pairs) {
+    if (!bracketPairs.has(p)) return false;
+  }
+  return true;
+}
+
+function bracketHasProgress(bracket: Heat[][]): boolean {
+  for (const round of bracket) {
+    for (const heat of round) {
+      if (heat.distA || heat.distB) return true;
+    }
+  }
+  return false;
+}
+
 export function RunsheetDialog({
   open,
   onOpenChange,
@@ -176,18 +200,73 @@ export function RunsheetDialog({
   const [watchCode, setWatchCode] = useState<string | null>(null);
   const [watchActive, setWatchActive] = useState(false);
   const [mobileMode, setMobileMode] = useState(false);
+  const [resumed, setResumed] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const initializedRef = useRef<string | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const saveBracketToServer = useCallback((b: Heat[][]) => {
+    if (!testId || b.length === 0) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      fetch(`/api/tests/${testId}/runsheet-progress`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ bracket: b }),
+      }).catch(() => {});
+    }, 500);
+  }, [testId]);
+
+  const clearBracketFromServer = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    if (!testId) return;
+    fetch(`/api/tests/${testId}/runsheet-progress`, {
+      method: "DELETE",
+      credentials: "include",
+    }).catch(() => {});
+  }, [testId]);
 
   useEffect(() => {
-    if (open && skiPairs.length >= 2) {
-      setBracket(initBracket(skiPairs));
+    if (open && skiPairs.length >= 2 && testId) {
+      const pairsKey = `${testId}:${skiPairs.join(",")}`;
+      if (initializedRef.current === pairsKey) return;
+      initializedRef.current = pairsKey;
+      setResumed(false);
+
+      fetch(`/api/tests/${testId}/runsheet-progress`, { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data && data.bracket && Array.isArray(data.bracket) && bracketMatchesPairs(data.bracket, skiPairs) && bracketHasProgress(data.bracket)) {
+            setBracket(data.bracket);
+            setResumed(true);
+          } else {
+            setBracket(initBracket(skiPairs));
+          }
+        })
+        .catch(() => {
+          setBracket(initBracket(skiPairs));
+        });
+
       setWatchCode(null);
       setWatchActive(false);
+    }
+    if (!open) {
+      initializedRef.current = null;
     }
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [open, skiPairs.join(",")]);
+  }, [open, skiPairs.join(","), testId]);
+
+  useEffect(() => {
+    if (bracket.length > 0 && bracketHasProgress(bracket)) {
+      saveBracketToServer(bracket);
+    }
+  }, [bracket, saveBracketToServer]);
 
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -244,15 +323,19 @@ export function RunsheetDialog({
 
         return nb;
       });
+      setResumed(false);
     },
     [],
   );
 
   const handleReset = useCallback(() => {
     if (skiPairs.length >= 2) {
-      setBracket(initBracket(skiPairs));
+      const fresh = initBracket(skiPairs);
+      setBracket(fresh);
+      clearBracketFromServer();
+      setResumed(false);
     }
-  }, [skiPairs]);
+  }, [skiPairs, clearBracketFromServer]);
 
   const diffs = useMemo(() => calculateDiffs(bracket), [bracket]);
 
@@ -286,11 +369,22 @@ export function RunsheetDialog({
   }, [bracket]);
 
   const isComplete = results.length === skiPairs.length && hasChampion;
+  const hasProgress = bracketHasProgress(bracket);
 
   const handleApply = () => {
     if (watchActive) handleStopWatch();
+    clearBracketFromServer();
     onApplyResults(results);
   };
+
+  const handleClose = () => {
+    if (watchActive) handleStopWatch();
+    onOpenChange(false);
+  };
+
+  const handleMobileBracketUpdate = useCallback((updatedBracket: Heat[][]) => {
+    setBracket(updatedBracket);
+  }, []);
 
   const totalRounds = bracket.length;
 
@@ -299,7 +393,9 @@ export function RunsheetDialog({
   return (
     <>
     <Dialog open={open && !mobileMode} onOpenChange={(v) => {
-      if (!v && watchActive) handleStopWatch();
+      if (!v) {
+        if (watchActive) handleStopWatch();
+      }
       onOpenChange(v);
     }}>
       <DialogContent className="max-w-[95vw] w-auto max-h-[90vh] overflow-auto p-4 sm:p-6">
@@ -331,6 +427,11 @@ export function RunsheetDialog({
             <DialogTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-amber-500" />
               Complete Runsheet
+              {hasProgress && !isComplete && (
+                <span className="ml-2 text-xs font-normal text-amber-600 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded-full">
+                  In progress
+                </span>
+              )}
             </DialogTitle>
             <div className="flex items-center gap-2">
               <Button
@@ -393,6 +494,12 @@ export function RunsheetDialog({
             <div className="text-3xl font-mono font-bold tracking-[0.3em] text-green-700 dark:text-green-300 select-all" data-testid="text-watch-code">
               {watchCode}
             </div>
+          </div>
+        )}
+
+        {resumed && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-300" data-testid="resumed-banner">
+            Resumed from where you left off. Use Reset to start over.
           </div>
         )}
 
@@ -578,13 +685,10 @@ export function RunsheetDialog({
           <div className="flex gap-2">
             <Button
               variant="secondary"
-              onClick={() => {
-                if (watchActive) handleStopWatch();
-                onOpenChange(false);
-              }}
+              onClick={handleClose}
               data-testid="button-cancel-runsheet"
             >
-              Cancel
+              Close
             </Button>
             <Button
               onClick={handleApply}
@@ -605,7 +709,10 @@ export function RunsheetDialog({
       onClose={() => setMobileMode(false)}
       skiPairs={skiPairs}
       skiLabels={skiLabels}
+      bracket={bracket}
+      onBracketChange={handleMobileBracketUpdate}
       onApplyResults={(results) => {
+        clearBracketFromServer();
         onApplyResults(results);
         setMobileMode(false);
       }}

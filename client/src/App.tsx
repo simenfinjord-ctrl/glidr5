@@ -24,7 +24,6 @@ import Grinding from "@/pages/grinding";
 import RaceSkis from "@/pages/race-skis";
 import AthleteDetail from "@/pages/athlete-detail";
 import Suggestions from "@/pages/suggestions";
-import Runsheets from "@/pages/runsheets";
 
 import Login from "@/pages/login";
 
@@ -48,7 +47,7 @@ function Router() {
       <Route path="/raceskis" component={RaceSkis} />
       <Route path="/raceskis/:id" component={AthleteDetail} />
 
-      <Route path="/runsheets" component={Runsheets} />
+
       <Route path="/suggestions" component={Suggestions} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />

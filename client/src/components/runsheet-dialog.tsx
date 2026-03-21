@@ -195,7 +195,7 @@ export function RunsheetDialog({
   testId,
   onApplyResults,
 }: Props) {
-  const label = (pair: number | null) => pair !== null && skiLabels?.[pair] ? skiLabels[pair] : pair !== null ? `Par ${pair}` : "—";
+  const label = (pair: number | null) => pair !== null && skiLabels?.[pair] ? skiLabels[pair] : pair !== null ? String(pair) : "—";
   const [bracket, setBracket] = useState<Heat[][]>([]);
   const [watchCode, setWatchCode] = useState<string | null>(null);
   const [watchActive, setWatchActive] = useState(false);

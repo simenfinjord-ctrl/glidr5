@@ -182,7 +182,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
                         )}
                       >
                         <span className="font-medium truncate">
-                          {heat.pairA !== null ? `Par ${heat.pairA}` : "—"}
+                          {heat.pairA !== null ? heat.pairA : "—"}
                         </span>
                         <span className={cn(
                           "tabular-nums font-mono min-w-[2.5rem] text-center rounded px-1 py-0.5",
@@ -198,7 +198,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
                         )}
                       >
                         <span className="font-medium truncate">
-                          {heat.pairB !== null ? `Par ${heat.pairB}` : "—"}
+                          {heat.pairB !== null ? heat.pairB : "—"}
                         </span>
                         <span className={cn(
                           "tabular-nums font-mono min-w-[2.5rem] text-center rounded px-1 py-0.5",

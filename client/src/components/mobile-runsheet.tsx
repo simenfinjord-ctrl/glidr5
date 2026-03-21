@@ -160,7 +160,7 @@ function findLastCompletedHeat(bracket: Heat[][]): { roundIndex: number; heatInd
 }
 
 export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, bracket: externalBracket, onBracketChange, onApplyResults }: Props) {
-  const label = (pair: number | null) => pair !== null && skiLabels?.[pair] ? skiLabels[pair] : pair !== null ? `Par ${pair}` : "—";
+  const label = (pair: number | null) => pair !== null && skiLabels?.[pair] ? skiLabels[pair] : pair !== null ? String(pair) : "—";
   const [bracket, setBracketInternal] = useState<Heat[][]>([]);
   const [phase, setPhase] = useState<"loading" | "select" | "distance" | "done">("loading");
   const [selectedWinner, setSelectedWinner] = useState<number | null>(null);
@@ -494,7 +494,7 @@ export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, bracket: ex
               <tbody>
                 {[...results].sort((a, b) => a.skiNumber - b.skiNumber).map((r) => (
                   <tr key={r.skiNumber} className="border-b border-zinc-800">
-                    <td className="py-2.5 text-lg font-bold">{skiLabels?.[r.skiNumber] ?? `Par ${r.skiNumber}`}</td>
+                    <td className="py-2.5 text-lg font-bold">{skiLabels?.[r.skiNumber] ?? r.skiNumber}</td>
                     <td className="py-2.5 text-center">
                       <span
                         className={cn(

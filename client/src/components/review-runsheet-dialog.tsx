@@ -65,7 +65,7 @@ function calculateDiffs(bracket: Heat[][]): Map<number, number> {
 
 export function ReviewRunsheetDialog({ open, onOpenChange, bracketJson, skiLabels }: Props) {
   const label = (pair: number | null) =>
-    pair !== null && skiLabels?.[pair] ? skiLabels[pair] : pair !== null ? `Par ${pair}` : "—";
+    pair !== null && skiLabels?.[pair] ? skiLabels[pair] : pair !== null ? String(pair) : "—";
 
   const bracket: Heat[][] = useMemo(() => {
     try {

@@ -90,13 +90,13 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
             <h3 className="text-lg font-bold truncate" data-testid={`text-live-title-${session.id}`}>
               {session.testName || session.testLocation}
             </h3>
-            {champion !== null && (
+            {isCompleted && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
                 <Trophy className="h-3 w-3" />
                 Done
               </span>
             )}
-            {!champion && (
+            {!isCompleted && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 animate-pulse">
                 <Radio className="h-3 w-3" />
                 Live

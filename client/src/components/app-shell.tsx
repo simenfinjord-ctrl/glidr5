@@ -47,16 +47,6 @@ type NavItem = {
 
 const nav: NavItem[] = [
   {
-    href: "/live-runsheets",
-    label: "Live Runsheets",
-    icon: Radio,
-    testId: "link-live-runsheets",
-    color: "text-muted-foreground",
-    activeColor: "text-green-600",
-    activeBg: "bg-green-50",
-    permArea: "liverunsheets",
-  },
-  {
     href: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
@@ -145,6 +135,16 @@ const nav: NavItem[] = [
     activeColor: "text-purple-600",
     activeBg: "bg-purple-50",
     permArea: "suggestions",
+  },
+  {
+    href: "/live-runsheets",
+    label: "Live Runsheets",
+    icon: Radio,
+    testId: "link-live-runsheets",
+    color: "text-muted-foreground",
+    activeColor: "text-green-600",
+    activeBg: "bg-green-50",
+    permArea: "liverunsheets",
   },
   {
     href: "/admin",

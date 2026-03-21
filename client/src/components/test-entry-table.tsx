@@ -86,6 +86,7 @@ export function TestEntryTable({
   onDistanceLabelsChange,
   testSkiSource = "series",
   raceSkis = [],
+  skiLabels,
 }: {
   testType: TestType;
   products: Product[];
@@ -95,6 +96,7 @@ export function TestEntryTable({
   onDistanceLabelsChange: (labels: string[]) => void;
   testSkiSource?: "series" | "raceskis";
   raceSkis?: RaceSkiOption[];
+  skiLabels?: Record<number, string>;
 }) {
   const roundRanks = useMemo(() => {
     return distanceLabels.map((_, roundIdx) => {
@@ -245,7 +247,7 @@ export function TestEntryTable({
                     className="inline-flex h-9 w-14 items-center justify-center rounded-xl border bg-background/70 text-sm font-semibold"
                     data-testid={`text-ski-number-${row.id}`}
                   >
-                    {row.skiNumber}
+                    {skiLabels?.[row.skiNumber] ?? row.skiNumber}
                   </div>
                 </td>
                 {!isGrind && (

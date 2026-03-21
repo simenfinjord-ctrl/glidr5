@@ -239,6 +239,7 @@ export async function registerRoutes(
       skiType: req.body.skiType?.trim() || null,
       grind: req.body.grind || null,
       numberOfSkis: req.body.numberOfSkis ?? 8,
+      pairLabels: req.body.pairLabels || null,
       lastRegrind: req.body.lastRegrind || null,
       createdAt: now,
       createdById: u.id,
@@ -269,8 +270,10 @@ export async function registerRoutes(
       type: req.body.type,
       grind: req.body.grind || null,
       numberOfSkis: req.body.numberOfSkis,
+      pairLabels: req.body.pairLabels !== undefined ? (req.body.pairLabels || null) : undefined,
       lastRegrind: req.body.lastRegrind || null,
     };
+    if (data.pairLabels === undefined) delete data.pairLabels;
     if (req.body.brand !== undefined) data.brand = req.body.brand;
     if (req.body.skiType !== undefined) data.skiType = req.body.skiType;
     if (req.body.groupScope) data.groupScope = req.body.groupScope;

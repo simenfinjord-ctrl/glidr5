@@ -73,6 +73,8 @@ type Series = {
   type: string;
   skiType?: string | null;
   groupScope: string;
+  numberOfSkis: number;
+  pairLabels: string | null;
 };
 
 type Product = {
@@ -266,6 +268,23 @@ export default function EditTest() {
   const watchTestType = form.watch("testType") as TestType;
   const watchDate = form.watch("date");
   const watchLocation = form.watch("location");
+
+  const seriesPairLabels = useMemo(() => {
+    if (testSkiSource === "raceskis" || !watchSeriesId) return undefined;
+    const selected = series.find((s) => String(s.id) === watchSeriesId);
+    if (!selected?.pairLabels) return undefined;
+    try {
+      const parsed = JSON.parse(selected.pairLabels);
+      if (typeof parsed === "object" && parsed !== null) {
+        const labels: Record<number, string> = {};
+        for (const [k, v] of Object.entries(parsed)) {
+          if (typeof v === "string" && v) labels[Number(k)] = v;
+        }
+        return Object.keys(labels).length > 0 ? labels : undefined;
+      }
+    } catch {}
+    return undefined;
+  }, [watchSeriesId, series, testSkiSource]);
 
   const filteredSeries = useMemo(() => {
     if (watchTestType === "Classic" || watchTestType === "Skating") {
@@ -731,6 +750,7 @@ export default function EditTest() {
             onDistanceLabelsChange={setDistanceLabels}
             testSkiSource={testSkiSource}
             raceSkis={raceSkiOptions}
+            skiLabels={seriesPairLabels}
           />
           <div className="mt-2 text-xs text-muted-foreground" data-testid="text-ranking-hint">
             Ranking uses dense ranking: same result = same rank. Click "+ Round" to add more distance tests.

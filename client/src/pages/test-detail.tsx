@@ -247,19 +247,37 @@ export default function TestDetail() {
   });
 
   const skiLabels = useMemo(() => {
-    if (!isRaceSkiTest || raceSkisData.length === 0) return undefined;
-    const raceSkiById = new Map(raceSkisData.map((rs) => [rs.id, rs]));
-    const labels: Record<number, string> = {};
-    for (const entry of entries) {
-      if (entry.raceSkiId) {
-        const rs = raceSkiById.get(entry.raceSkiId);
-        if (rs) {
-          labels[entry.skiNumber] = rs.serialNumber || rs.skiId;
+    if (isRaceSkiTest) {
+      if (raceSkisData.length === 0) return undefined;
+      const raceSkiById = new Map(raceSkisData.map((rs) => [rs.id, rs]));
+      const labels: Record<number, string> = {};
+      for (const entry of entries) {
+        if (entry.raceSkiId) {
+          const rs = raceSkiById.get(entry.raceSkiId);
+          if (rs) {
+            labels[entry.skiNumber] = rs.serialNumber || rs.skiId;
+          }
         }
       }
+      return Object.keys(labels).length > 0 ? labels : undefined;
     }
-    return Object.keys(labels).length > 0 ? labels : undefined;
-  }, [isRaceSkiTest, raceSkisData, entries]);
+    if (test?.seriesId) {
+      const s = series.find((sr) => sr.id === test.seriesId);
+      if (s && (s as any).pairLabels) {
+        try {
+          const parsed = JSON.parse((s as any).pairLabels);
+          if (typeof parsed === "object" && parsed !== null) {
+            const labels: Record<number, string> = {};
+            for (const [k, v] of Object.entries(parsed)) {
+              if (typeof v === "string" && v) labels[Number(k)] = v;
+            }
+            if (Object.keys(labels).length > 0) return labels;
+          }
+        } catch {}
+      }
+    }
+    return undefined;
+  }, [isRaceSkiTest, raceSkisData, entries, test?.seriesId, series]);
 
   const seriesById = new Map(series.map((s) => [s.id, s.name] as const));
   const productsById = new Map(products.map((p) => [p.id, p] as const));

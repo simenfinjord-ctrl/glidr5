@@ -26,6 +26,7 @@ type Series = {
   skiType: string | null;
   grind: string | null;
   numberOfSkis: number;
+  pairLabels: string | null;
   lastRegrind: string | null;
   createdAt: string;
   createdById: number;
@@ -63,6 +64,13 @@ function SeriesForm({
   const { toast } = useToast();
   const { queueMutation } = useOffline();
 
+  const parsedInitialLabels = useMemo(() => {
+    if (!initial?.pairLabels) return {};
+    try { return JSON.parse(initial.pairLabels); } catch { return {}; }
+  }, [initial?.pairLabels]);
+
+  const [pairLabels, setPairLabels] = useState<Record<string, string>>(parsedInitialLabels);
+
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -77,9 +85,12 @@ function SeriesForm({
     },
   });
 
+  const watchNumberOfSkis = form.watch("numberOfSkis");
+
   const createMutation = useMutation({
     mutationFn: async (data: z.infer<typeof schema>) => {
       try {
+        const labelsToSave = Object.keys(pairLabels).length > 0 ? JSON.stringify(pairLabels) : null;
         const res = await apiRequest("POST", "/api/series", {
           name: data.name,
           type: data.type,
@@ -87,6 +98,7 @@ function SeriesForm({
           skiType: data.skiType?.trim() || null,
           grind: data.grind?.trim() || null,
           numberOfSkis: data.numberOfSkis,
+          pairLabels: labelsToSave,
           lastRegrind: data.lastRegrind || null,
           groupScope: data.groupScope,
         });
@@ -120,6 +132,7 @@ function SeriesForm({
 
   const updateMutation = useMutation({
     mutationFn: async (data: z.infer<typeof schema>) => {
+      const labelsToSave = Object.keys(pairLabels).length > 0 ? JSON.stringify(pairLabels) : null;
       const res = await apiRequest("PUT", `/api/series/${initial!.id}`, {
         name: data.name,
         type: data.type,
@@ -127,6 +140,7 @@ function SeriesForm({
         skiType: data.skiType?.trim() || null,
         grind: data.grind?.trim() || null,
         numberOfSkis: data.numberOfSkis,
+        pairLabels: labelsToSave,
         lastRegrind: data.lastRegrind || null,
         groupScope: data.groupScope,
       });
@@ -231,7 +245,7 @@ function SeriesForm({
             name="numberOfSkis"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Number of skis</FormLabel>
+                <FormLabel>Number of pairs</FormLabel>
                 <FormControl>
                   <Input {...field} type="number" inputMode="numeric" data-testid="input-series-count" />
                 </FormControl>
@@ -240,6 +254,38 @@ function SeriesForm({
             )}
           />
         </div>
+
+        {watchNumberOfSkis > 0 && (
+          <div className="space-y-2">
+            <FormLabel>Pair labels</FormLabel>
+            <p className="text-xs text-muted-foreground">Name or number each pair. Leave blank to use default numbers (1, 2, 3…)</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {Array.from({ length: Math.min(watchNumberOfSkis, 32) }).map((_, i) => {
+                const pairNum = i + 1;
+                return (
+                  <div key={pairNum} className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground w-4 text-right shrink-0">{pairNum}.</span>
+                    <Input
+                      className="h-8 text-sm"
+                      placeholder={String(pairNum)}
+                      value={pairLabels[String(pairNum)] ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value.trim();
+                        setPairLabels((prev) => {
+                          const next = { ...prev };
+                          if (val) next[String(pairNum)] = val;
+                          else delete next[String(pairNum)];
+                          return next;
+                        });
+                      }}
+                      data-testid={`input-pair-label-${pairNum}`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField

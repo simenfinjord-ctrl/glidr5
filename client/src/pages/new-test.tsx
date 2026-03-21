@@ -55,6 +55,8 @@ type Series = {
   type: string;
   skiType?: string | null;
   groupScope: string;
+  numberOfSkis: number;
+  pairLabels: string | null;
 };
 
 type Product = {
@@ -84,6 +86,11 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+function parsePairLabels(raw: string | null | undefined): Record<string, string> {
+  if (!raw) return {};
+  try { const p = JSON.parse(raw); return typeof p === "object" && p !== null ? p : {}; } catch { return {}; }
+}
 
 function makeRows(n = 8, numRounds = 1): EntryRow[] {
   return Array.from({ length: n }).map((_, i) => ({
@@ -196,6 +203,18 @@ export default function NewTest() {
       });
   }, [allRaceSkis, athletes, watchTestType]);
 
+  const seriesPairLabels = useMemo(() => {
+    if (testSkiSource === "raceskis" || !watchSeriesId) return undefined;
+    const selected = series.find((s) => String(s.id) === watchSeriesId);
+    if (!selected?.pairLabels) return undefined;
+    const parsed = parsePairLabels(selected.pairLabels);
+    const labels: Record<number, string> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      if (v) labels[Number(k)] = v;
+    }
+    return Object.keys(labels).length > 0 ? labels : undefined;
+  }, [watchSeriesId, series, testSkiSource]);
+
   useEffect(() => {
     if (testSkiSource === "raceskis") return;
     if (!filteredSeries.length) return;
@@ -213,6 +232,10 @@ export default function NewTest() {
     const selected = series.find((s) => String(s.id) === watchSeriesId);
     if (selected?.groupScope) {
       form.setValue("groupScope", selected.groupScope, { shouldValidate: true });
+    }
+    if (selected && testSkiSource !== "raceskis" && !duplicateApplied) {
+      const n = selected.numberOfSkis || 8;
+      setRows(makeRows(n, distanceLabels.length));
     }
   }, [watchSeriesId, series, form]);
 
@@ -707,6 +730,7 @@ export default function NewTest() {
             onDistanceLabelsChange={setDistanceLabels}
             testSkiSource={testSkiSource}
             raceSkis={raceSkiOptions}
+            skiLabels={seriesPairLabels}
           />
           <div
             className="mt-2 text-xs text-muted-foreground"
@@ -721,6 +745,7 @@ export default function NewTest() {
         open={runsheetOpen}
         onOpenChange={setRunsheetOpen}
         skiPairs={rows.map((r) => r.skiNumber)}
+        skiLabels={seriesPairLabels}
         onApplyResults={(results: BracketResult[], _bracket: any) => {
           setRows((prev) =>
             prev.map((row) => {

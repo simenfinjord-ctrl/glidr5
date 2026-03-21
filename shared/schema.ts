@@ -107,6 +107,7 @@ export const testSkiSeries = pgTable("test_ski_series", {
   createdByName: text("created_by_name").notNull(),
   groupScope: text("group_scope").notNull(),
   teamId: integer("team_id").notNull().default(1),
+  pairLabels: text("pair_labels"),
   archivedAt: text("archived_at"),
 });
 

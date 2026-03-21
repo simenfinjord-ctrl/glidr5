@@ -180,9 +180,10 @@ export const tests = pgTable("tests", {
   createdByName: text("created_by_name").notNull(),
   groupScope: text("group_scope").notNull(),
   teamId: integer("team_id").notNull().default(1),
+  runsheetBracket: text("runsheet_bracket"),
 });
 
-export const insertTestSchema = createInsertSchema(tests).omit({ id: true });
+export const insertTestSchema = createInsertSchema(tests).omit({ id: true, runsheetBracket: true });
 export type InsertTest = z.infer<typeof insertTestSchema>;
 export type Test = typeof tests.$inferSelect;
 

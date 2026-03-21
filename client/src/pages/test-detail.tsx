@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList } from "lucide-react";
 import { generateTestPDF } from "@/lib/pdf-report";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
@@ -14,6 +14,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { RunsheetDialog, type BracketResult } from "@/components/runsheet-dialog";
+import { ReviewRunsheetDialog } from "@/components/review-runsheet-dialog";
 import {
   Dialog,
   DialogContent,
@@ -175,13 +176,16 @@ export default function TestDetail() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRunsheet, setShowRunsheet] = useState(false);
 
+  const [showReviewRunsheet, setShowReviewRunsheet] = useState(false);
+
   const runsheetMutation = useMutation({
-    mutationFn: async (results: BracketResult[]) => {
-      await apiRequest("PATCH", `/api/tests/${id}/runsheet-results`, { results });
+    mutationFn: async ({ results, bracket }: { results: BracketResult[]; bracket: any[][] }) => {
+      await apiRequest("PATCH", `/api/tests/${id}/runsheet-results`, { results, bracket });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/tests/${id}/entries`] });
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/tests/${id}`] });
       toast({ title: "Runsheet results applied" });
       setShowRunsheet(false);
     },
@@ -312,12 +316,16 @@ export default function TestDetail() {
             </AppLink>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               {sortedEntries.length >= 2 && (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => setShowRunsheet(true)} data-testid="button-complete-runsheet">
-                    <Trophy className="mr-2 h-4 w-4" />
-                    Review runsheet
-                  </Button>
-                </>
+                <Button variant="outline" size="sm" onClick={() => setShowRunsheet(true)} data-testid="button-complete-runsheet">
+                  <Trophy className="mr-2 h-4 w-4" />
+                  Complete Runsheet
+                </Button>
+              )}
+              {(test as any)?.runsheetBracket && (
+                <Button variant="outline" size="sm" onClick={() => setShowReviewRunsheet(true)} data-testid="button-review-runsheet">
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  Review runsheet
+                </Button>
               )}
               <AppLink href={`/tests/new?duplicate=${id}`} testId="link-duplicate-test">
                 <Button variant="outline" size="sm" data-testid="button-duplicate-test">
@@ -797,7 +805,16 @@ export default function TestDetail() {
             skiPairs={sortedEntries.map((e) => e.skiNumber)}
             skiLabels={skiLabels}
             testId={test.id}
-            onApplyResults={(results) => runsheetMutation.mutate(results)}
+            onApplyResults={(results, bracket) => runsheetMutation.mutate({ results, bracket })}
+          />
+        )}
+
+        {(test as any)?.runsheetBracket && (
+          <ReviewRunsheetDialog
+            open={showReviewRunsheet}
+            onOpenChange={setShowReviewRunsheet}
+            bracketJson={(test as any).runsheetBracket}
+            skiLabels={skiLabels}
           />
         )}
 

@@ -63,8 +63,8 @@ export default function Runsheets() {
   const skiPairsReady = !entriesLoading && !entriesError && skiPairs.length >= 2;
 
   const applyMutation = useMutation({
-    mutationFn: async ({ testId, results }: { testId: number; results: BracketResult[] }) => {
-      const resp = await apiRequest("PATCH", `/api/tests/${testId}/runsheet-results`, { results });
+    mutationFn: async ({ testId, results, bracket }: { testId: number; results: BracketResult[]; bracket?: any[][] }) => {
+      const resp = await apiRequest("PATCH", `/api/tests/${testId}/runsheet-results`, { results, bracket });
       return { testId, resp };
     },
     onSuccess: ({ testId }) => {
@@ -95,11 +95,11 @@ export default function Runsheets() {
     },
   });
 
-  const handleApplyResults = (results: BracketResult[]) => {
+  const handleApplyResults = (results: BracketResult[], bracket?: any[][]) => {
     const testId = activeRunsheet?.testId;
     if (!testId) return;
     setApplyingForTestId(testId);
-    applyMutation.mutate({ testId, results });
+    applyMutation.mutate({ testId, results, bracket });
   };
 
   return (

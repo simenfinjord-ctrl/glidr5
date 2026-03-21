@@ -22,7 +22,7 @@ type Props = {
   skiLabels?: Record<number, string>;
   bracket?: Heat[][];
   onBracketChange?: (bracket: Heat[][]) => void;
-  onApplyResults: (results: BracketResult[]) => void;
+  onApplyResults: (results: BracketResult[], bracket?: Heat[][]) => void;
 };
 
 function getRoundName(roundIndex: number, totalRounds: number): string {
@@ -527,9 +527,9 @@ export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, bracket: ex
               Undo
             </button>
             <button
-              onTouchEnd={(e) => { e.preventDefault(); if (isComplete) onApplyResults(results); onClose(); }}
+              onTouchEnd={(e) => { e.preventDefault(); if (isComplete) onApplyResults(results, bracket); onClose(); }}
               onClick={() => {
-                if (isComplete) onApplyResults(results);
+                if (isComplete) onApplyResults(results, bracket);
                 onClose();
               }}
               className="flex-[2] py-4 rounded-2xl bg-emerald-600 active:bg-emerald-700 text-lg font-bold text-white flex items-center justify-center gap-2 cursor-pointer"

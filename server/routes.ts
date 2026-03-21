@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
 import { parsePermissions } from "./auth";
-import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress } from "@shared/schema";
+import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, tests } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql } from "drizzle-orm";
 function sanitizePermissions(input: any): Record<string, string> {
@@ -837,6 +837,7 @@ export async function registerRoutes(
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
 
     const results = req.body.results;
+    const bracket = req.body.bracket;
     if (!Array.isArray(results)) return res.status(400).json({ message: "results array required" });
     for (const r of results) {
       if (typeof r.skiNumber !== "number" || (r.diff !== null && r.diff !== undefined && typeof r.diff !== "number") || (r.rank !== null && r.rank !== undefined && typeof r.rank !== "number")) {
@@ -851,6 +852,10 @@ export async function registerRoutes(
       const entry = entryBySkiNumber.get(r.skiNumber);
       if (!entry) continue;
       await storage.updateEntryResults((entry as any).id, r.diff ?? null, r.rank ?? null);
+    }
+
+    if (Array.isArray(bracket)) {
+      await db.update(tests).set({ runsheetBracket: JSON.stringify(bracket) }).where(eq(tests.id, id));
     }
 
     if (!isIncognito(req)) {

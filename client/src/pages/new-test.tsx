@@ -361,7 +361,7 @@ export default function NewTest() {
                 onClick={() => setRunsheetOpen(true)}
               >
                 <ClipboardList className="mr-2 h-4 w-4" />
-                Review runsheet
+                Complete Runsheet
               </Button>
             )}
             <Button
@@ -721,7 +721,7 @@ export default function NewTest() {
         open={runsheetOpen}
         onOpenChange={setRunsheetOpen}
         skiPairs={rows.map((r) => r.skiNumber)}
-        onApplyResults={(results: BracketResult[]) => {
+        onApplyResults={(results: BracketResult[], _bracket: any) => {
           setRows((prev) =>
             prev.map((row) => {
               const br = results.find((r) => r.skiNumber === row.skiNumber);

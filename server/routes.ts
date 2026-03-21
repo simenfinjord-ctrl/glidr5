@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
 import { parsePermissions } from "./auth";
-import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, tests } from "@shared/schema";
+import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, tests, users, testSkiSeries } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql } from "drizzle-orm";
 function sanitizePermissions(input: any): Record<string, string> {
@@ -553,7 +553,14 @@ export async function registerRoutes(
     if (result.length === 0 && !hasTestsPerm && !hasRaceskisPerm) {
       return res.status(403).json({ message: "No access" });
     }
-    res.json(result);
+    const seriesIds = [...new Set(result.filter((t: any) => t.seriesId).map((t: any) => t.seriesId))];
+    let seriesNameMap: Record<number, string> = {};
+    if (seriesIds.length > 0) {
+      const seriesList = await db.select({ id: testSkiSeries.id, name: testSkiSeries.name }).from(testSkiSeries).where(sql`${testSkiSeries.id} IN ${seriesIds}`);
+      for (const s of seriesList) seriesNameMap[s.id] = s.name;
+    }
+    const enriched = result.map((t: any) => ({ ...t, seriesName: t.seriesId ? (seriesNameMap[t.seriesId] || null) : null }));
+    res.json(enriched);
   });
 
   app.post("/api/tests", requireAuth, async (req, res) => {
@@ -879,7 +886,11 @@ export async function registerRoutes(
     const testId = parseInt(req.params.id);
     const u = userInfo(req);
     const row = await db.select().from(runsheetProgress).where(
-      and(eq(runsheetProgress.testId, testId), eq(runsheetProgress.userId, u.id))
+      and(
+        eq(runsheetProgress.testId, testId),
+        eq(runsheetProgress.userId, u.id),
+        sql`${runsheetProgress.completedAt} IS NULL`
+      )
     ).limit(1);
     if (row.length === 0) return res.json(null);
     try {
@@ -896,7 +907,17 @@ export async function registerRoutes(
     if (!Array.isArray(bracket)) return res.status(400).json({ message: "bracket array required" });
     const now = new Date().toISOString();
     const bracketJson = JSON.stringify(bracket);
-    await db.execute(sql`INSERT INTO runsheet_progress (test_id, user_id, bracket, updated_at) VALUES (${testId}, ${u.id}, ${bracketJson}, ${now}) ON CONFLICT (test_id, user_id) DO UPDATE SET bracket = ${bracketJson}, updated_at = ${now}`);
+    await db.execute(sql`INSERT INTO runsheet_progress (test_id, user_id, bracket, updated_at, completed_at) VALUES (${testId}, ${u.id}, ${bracketJson}, ${now}, NULL) ON CONFLICT (test_id, user_id) DO UPDATE SET bracket = ${bracketJson}, updated_at = ${now}, completed_at = NULL`);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/tests/:id/runsheet-progress/complete", requireAuth, async (req, res) => {
+    const testId = parseInt(req.params.id);
+    const u = userInfo(req);
+    const now = new Date().toISOString();
+    await db.update(runsheetProgress)
+      .set({ completedAt: now, updatedAt: now })
+      .where(and(eq(runsheetProgress.testId, testId), eq(runsheetProgress.userId, u.id)));
     res.json({ ok: true });
   });
 
@@ -907,6 +928,71 @@ export async function registerRoutes(
       and(eq(runsheetProgress.testId, testId), eq(runsheetProgress.userId, u.id))
     );
     res.json({ ok: true });
+  });
+
+  app.get("/api/live-runsheets", requireAuth, requirePermission("liverunsheets", "view"), async (req, res) => {
+    try {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayIso = todayStart.toISOString();
+
+      const rows = await db
+        .select({
+          id: runsheetProgress.id,
+          testId: runsheetProgress.testId,
+          userId: runsheetProgress.userId,
+          bracket: runsheetProgress.bracket,
+          updatedAt: runsheetProgress.updatedAt,
+          completedAt: runsheetProgress.completedAt,
+          userName: users.name,
+          testDate: tests.date,
+          testLocation: tests.location,
+          testName: tests.testName,
+          testType: tests.testType,
+          seriesId: tests.seriesId,
+          testSkiSource: tests.testSkiSource,
+        })
+        .from(runsheetProgress)
+        .innerJoin(users, eq(users.id, runsheetProgress.userId))
+        .innerJoin(tests, eq(tests.id, runsheetProgress.testId))
+        .where(sql`${runsheetProgress.updatedAt} >= ${todayIso}`);
+
+      const seriesIds = [...new Set(rows.filter(r => r.seriesId).map(r => r.seriesId!))];
+      let seriesMap: Record<number, string> = {};
+      if (seriesIds.length > 0) {
+        const seriesList = await db
+          .select({ id: testSkiSeries.id, name: testSkiSeries.name })
+          .from(testSkiSeries)
+          .where(sql`${testSkiSeries.id} IN ${seriesIds}`);
+        for (const s of seriesList) {
+          seriesMap[s.id] = s.name;
+        }
+      }
+
+      const result = rows.map(r => {
+        let bracket: any = null;
+        try { bracket = JSON.parse(r.bracket); } catch {}
+        return {
+          id: r.id,
+          testId: r.testId,
+          userId: r.userId,
+          userName: r.userName,
+          testDate: r.testDate,
+          testLocation: r.testLocation,
+          testName: r.testName,
+          testType: r.testType,
+          seriesName: r.seriesId ? (seriesMap[r.seriesId] || null) : null,
+          testSkiSource: r.testSkiSource,
+          bracket,
+          updatedAt: r.updatedAt,
+          completedAt: r.completedAt,
+        };
+      });
+
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message || "Failed to fetch live runsheets" });
+    }
   });
 
   app.delete("/api/tests/:id", requireAuth, async (req, res) => {

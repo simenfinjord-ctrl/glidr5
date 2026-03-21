@@ -24,6 +24,7 @@ import Grinding from "@/pages/grinding";
 import RaceSkis from "@/pages/race-skis";
 import AthleteDetail from "@/pages/athlete-detail";
 import Suggestions from "@/pages/suggestions";
+import LiveRunsheets from "@/pages/live-runsheets";
 
 import Login from "@/pages/login";
 
@@ -32,6 +33,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/" component={() => <Redirect to="/dashboard" />} />
+      <Route path="/live-runsheets" component={LiveRunsheets} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/testskis" component={TestSkis} />
       <Route path="/testskis/:id" component={SeriesDetail} />

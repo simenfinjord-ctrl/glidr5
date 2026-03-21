@@ -230,6 +230,18 @@ export function RunsheetDialog({
     }).catch(() => {});
   }, [testId]);
 
+  const completeBracketOnServer = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    if (!testId) return;
+    fetch(`/api/tests/${testId}/runsheet-progress/complete`, {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => {});
+  }, [testId]);
+
   useEffect(() => {
     if (open && skiPairs.length >= 2 && testId) {
       const pairsKey = `${testId}:${skiPairs.join(",")}`;
@@ -373,7 +385,7 @@ export function RunsheetDialog({
 
   const handleApply = () => {
     if (watchActive) handleStopWatch();
-    clearBracketFromServer();
+    completeBracketOnServer();
     onApplyResults(results, bracket);
   };
 
@@ -712,7 +724,7 @@ export function RunsheetDialog({
       bracket={bracket}
       onBracketChange={handleMobileBracketUpdate}
       onApplyResults={(results, mobileBracket) => {
-        clearBracketFromServer();
+        completeBracketOnServer();
         onApplyResults(results, mobileBracket || bracket);
         setMobileMode(false);
       }}

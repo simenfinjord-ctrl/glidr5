@@ -493,7 +493,7 @@ export default function Tests() {
                         <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
                           {t.testType}
                         </span>
-                        <span className="text-xs text-muted-foreground">{seriesById.get(t.seriesId) ?? "Series"}</span>
+                        <span className="text-xs text-muted-foreground">{(t as any).seriesName || seriesById.get(t.seriesId) || ""}</span>
                         {w && (
                           <>
                             <span className="inline-flex items-center gap-1 rounded-full fs-gradient-blue px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-500/10">
@@ -634,7 +634,7 @@ export default function Tests() {
                           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                             <span>{t.date}</span>
                             <span className="text-border">·</span>
-                            <span>{seriesById.get(t.seriesId) ?? "Series"}</span>
+                            <span>{(t as any).seriesName || seriesById.get(t.seriesId) || ""}</span>
                           </div>
                           {w && (
                             <div className="mt-2 flex flex-wrap gap-1.5">

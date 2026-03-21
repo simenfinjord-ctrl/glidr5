@@ -486,15 +486,16 @@ export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, bracket: ex
             <table className="w-full text-base" data-testid="table-mobile-results">
               <thead>
                 <tr className="text-zinc-400 border-b border-zinc-700">
-                  <th className="py-2 text-left font-medium">Rank</th>
                   <th className="py-2 text-left font-medium">Ski pair</th>
+                  <th className="py-2 text-center font-medium">Rank</th>
                   <th className="py-2 text-right font-medium">Diff (cm)</th>
                 </tr>
               </thead>
               <tbody>
-                {results.map((r) => (
+                {[...results].sort((a, b) => a.skiNumber - b.skiNumber).map((r) => (
                   <tr key={r.skiNumber} className="border-b border-zinc-800">
-                    <td className="py-2.5">
+                    <td className="py-2.5 text-lg font-bold">{skiLabels?.[r.skiNumber] ?? `Par ${r.skiNumber}`}</td>
+                    <td className="py-2.5 text-center">
                       <span
                         className={cn(
                           "inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold",
@@ -507,7 +508,6 @@ export function MobileRunsheet({ open, onClose, skiPairs, skiLabels, bracket: ex
                         {r.rank}
                       </span>
                     </td>
-                    <td className="py-2.5 text-lg font-bold">{skiLabels?.[r.skiNumber] ?? `Par ${r.skiNumber}`}</td>
                     <td className="py-2.5 text-right text-lg tabular-nums text-zinc-300">{r.diff}</td>
                   </tr>
                 ))}

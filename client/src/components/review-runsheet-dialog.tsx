@@ -120,7 +120,7 @@ export function ReviewRunsheetDialog({ open, onOpenChange, bracketJson, skiLabel
                 </tr>
               </thead>
               <tbody>
-                {results.map((r) => (
+                {[...results].sort((a, b) => a.skiNumber - b.skiNumber).map((r) => (
                   <tr
                     key={r.skiNumber}
                     className={cn(r.rank === 1 && "bg-amber-50 dark:bg-amber-900/20")}

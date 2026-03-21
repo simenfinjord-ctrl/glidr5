@@ -255,12 +255,12 @@ function SeriesForm({
           />
         </div>
 
-        {watchNumberOfSkis > 0 && (
+        {Number(watchNumberOfSkis) > 0 && (
           <div className="space-y-2">
-            <FormLabel>Pair labels</FormLabel>
+            <label className="text-sm font-medium leading-none">Pair labels</label>
             <p className="text-xs text-muted-foreground">Name or number each pair. Leave blank to use default numbers (1, 2, 3…)</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {Array.from({ length: Math.min(watchNumberOfSkis, 32) }).map((_, i) => {
+              {Array.from({ length: Math.min(Number(watchNumberOfSkis) || 0, 32) }).map((_, i) => {
                 const pairNum = i + 1;
                 return (
                   <div key={pairNum} className="flex items-center gap-1.5">

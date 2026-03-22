@@ -4,7 +4,7 @@ import { storage, parseGroupScopes } from "./storage";
 import { parsePermissions } from "./auth";
 import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, tests, users, testSkiSeries } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 function sanitizePermissions(input: any): Record<string, string> {
   const result: Record<string, string> = { ...DEFAULT_PERMISSIONS };
   if (!input) return result;
@@ -559,7 +559,7 @@ export async function registerRoutes(
     const seriesIds = [...new Set(result.filter((t: any) => t.seriesId).map((t: any) => t.seriesId))];
     let seriesNameMap: Record<number, string> = {};
     if (seriesIds.length > 0) {
-      const seriesList = await db.select({ id: testSkiSeries.id, name: testSkiSeries.name }).from(testSkiSeries).where(sql`${testSkiSeries.id} IN ${seriesIds}`);
+      const seriesList = await db.select({ id: testSkiSeries.id, name: testSkiSeries.name }).from(testSkiSeries).where(inArray(testSkiSeries.id, seriesIds));
       for (const s of seriesList) seriesNameMap[s.id] = s.name;
     }
     const enriched = result.map((t: any) => ({ ...t, seriesName: t.seriesId ? (seriesNameMap[t.seriesId] || null) : null }));
@@ -954,7 +954,6 @@ export async function registerRoutes(
           testType: tests.testType,
           seriesId: tests.seriesId,
           testSkiSource: tests.testSkiSource,
-          pairLabels: tests.pairLabels,
         })
         .from(runsheetProgress)
         .innerJoin(users, eq(users.id, runsheetProgress.userId))
@@ -962,14 +961,14 @@ export async function registerRoutes(
         .where(sql`${runsheetProgress.updatedAt} >= ${todayIso}`);
 
       const seriesIds = [...new Set(rows.filter(r => r.seriesId).map(r => r.seriesId!))];
-      let seriesMap: Record<number, string> = {};
+      let seriesMap: Record<number, { name: string; pairLabels: string | null }> = {};
       if (seriesIds.length > 0) {
         const seriesList = await db
-          .select({ id: testSkiSeries.id, name: testSkiSeries.name })
+          .select({ id: testSkiSeries.id, name: testSkiSeries.name, pairLabels: testSkiSeries.pairLabels })
           .from(testSkiSeries)
-          .where(sql`${testSkiSeries.id} IN ${seriesIds}`);
+          .where(inArray(testSkiSeries.id, seriesIds));
         for (const s of seriesList) {
-          seriesMap[s.id] = s.name;
+          seriesMap[s.id] = { name: s.name, pairLabels: s.pairLabels };
         }
       }
 
@@ -977,7 +976,9 @@ export async function registerRoutes(
         let bracket: any = null;
         try { bracket = JSON.parse(r.bracket); } catch {}
         let pairLabels: Record<string, string> | null = null;
-        try { if (r.pairLabels) pairLabels = JSON.parse(r.pairLabels); } catch {}
+        const seriesInfo = r.seriesId ? seriesMap[r.seriesId] : null;
+        const rawPl = seriesInfo?.pairLabels;
+        try { if (rawPl) pairLabels = JSON.parse(rawPl); } catch {}
         return {
           id: r.id,
           testId: r.testId,
@@ -987,7 +988,7 @@ export async function registerRoutes(
           testLocation: r.testLocation,
           testName: r.testName,
           testType: r.testType,
-          seriesName: r.seriesId ? (seriesMap[r.seriesId] || null) : null,
+          seriesName: seriesInfo?.name || null,
           testSkiSource: r.testSkiSource,
           pairLabels,
           bracket,
@@ -998,6 +999,7 @@ export async function registerRoutes(
 
       res.json(result);
     } catch (e: any) {
+      console.error("live-runsheets error:", e.stack || e.message || e);
       res.status(500).json({ message: e.message || "Failed to fetch live runsheets" });
     }
   });

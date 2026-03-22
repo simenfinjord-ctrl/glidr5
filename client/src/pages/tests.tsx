@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye } from "lucide-react";
+import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -254,6 +254,7 @@ export default function Tests() {
   const hasFilters = filterSeason !== "All" || filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || filterDate || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax;
 
   const [hideDayDetailsState, setHideDayDetails] = useState(false);
+  const [twoColLayout, setTwoColLayout] = useState(() => localStorage.getItem("glidr-tests-twocol") === "true");
   const hideDayDetails = isBlindTester || hideDayDetailsState;
   const isDayView = !!filterDate;
 
@@ -371,6 +372,16 @@ export default function Tests() {
                   </SelectContent>
                 </Select>
               </div>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => { const next = !twoColLayout; setTwoColLayout(next); localStorage.setItem("glidr-tests-twocol", String(next)); }}
+                data-testid="button-toggle-layout-list"
+                title={twoColLayout ? "Single column" : "Two columns"}
+              >
+                {twoColLayout ? <LayoutList className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+              </Button>
             </div>
             {hasFilters && (
               <Button
@@ -454,7 +465,7 @@ export default function Tests() {
 
         {isDayView ? (
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <CalendarDays className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold">Day view: {filterDate}</h2>
               <span className="rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">{filtered.length} test{filtered.length !== 1 ? "s" : ""}</span>
@@ -469,13 +480,23 @@ export default function Tests() {
                   {hideDayDetails ? "Show" : "Hide"}
                 </Button>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { const next = !twoColLayout; setTwoColLayout(next); localStorage.setItem("glidr-tests-twocol", String(next)); }}
+                data-testid="button-toggle-layout"
+                title={twoColLayout ? "Single column" : "Two columns"}
+              >
+                {twoColLayout ? <LayoutList className="h-3.5 w-3.5" /> : <LayoutGrid className="h-3.5 w-3.5" />}
+              </Button>
             </div>
             {filtered.length === 0 ? (
               <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-day-tests">
                 No tests on this date.
               </Card>
             ) : (
-              filtered.map((t) => {
+              <div className={cn("grid gap-4", twoColLayout ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1")}>
+              {filtered.map((t) => {
                 const distLabels = getDistanceLabels(t);
                 const testEntries = allEntries.filter((e) => e.testId === t.id);
                 const sortedEntries = [...testEntries].sort((a, b) => a.skiNumber - b.skiNumber);
@@ -608,11 +629,12 @@ export default function Tests() {
                     )}
                   </Card>
                 );
-              })
+              })}
+              </div>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3">
+          <div className={cn("grid gap-3", twoColLayout ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1")}>
             {filtered.length === 0 ? (
               <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-tests">
                 {hasFilters ? "No tests match your filters." : "No tests yet."}

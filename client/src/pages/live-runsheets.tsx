@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Radio, Trophy, User, Calendar, MapPin, Snowflake } from "lucide-react";
+import { Radio, Trophy, User, Calendar, MapPin, Snowflake, LayoutGrid, LayoutList } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,36 @@ function getWinner(heat: Heat): number | null {
   if (dA === 0 && dB > 0) return heat.pairA;
   if (dB === 0 && dA > 0) return heat.pairB;
   return null;
+}
+
+function calculateResults(bracket: Heat[][]): { pair: number; rank: number; diff: number }[] {
+  const diffs = new Map<number, number>();
+  for (let r = bracket.length - 1; r >= 0; r--) {
+    for (const heat of bracket[r]) {
+      if (heat.pairA === null || heat.pairB === null) continue;
+      const dA = parseFloat(heat.distA);
+      const dB = parseFloat(heat.distB);
+      if (isNaN(dA) || isNaN(dB)) continue;
+      if (dA === 0 && dB > 0) {
+        if (!diffs.has(heat.pairA)) diffs.set(heat.pairA, 0);
+        diffs.set(heat.pairB, dB + (diffs.get(heat.pairA) ?? 0));
+      } else if (dB === 0 && dA > 0) {
+        if (!diffs.has(heat.pairB)) diffs.set(heat.pairB, 0);
+        diffs.set(heat.pairA, dA + (diffs.get(heat.pairB) ?? 0));
+      }
+    }
+  }
+  const sorted = [...diffs.entries()].sort((a, b) => a[1] - b[1]);
+  const list: { pair: number; rank: number; diff: number }[] = [];
+  let prevDiff: number | null = null;
+  let currentRank = 1;
+  for (let i = 0; i < sorted.length; i++) {
+    const [pair, diff] = sorted[i];
+    if (prevDiff !== null && diff !== prevDiff) currentRank = i + 1;
+    list.push({ pair, rank: currentRank, diff });
+    prevDiff = diff;
+  }
+  return list;
 }
 
 function getProgress(bracket: Heat[][]): { completed: number; total: number } {
@@ -146,6 +177,36 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
         </div>
       </div>
 
+      {isCompleted && bracket.length > 0 && (() => {
+        const res = calculateResults(bracket);
+        if (res.length === 0) return null;
+        return (
+          <div className="mb-3 p-3 rounded-lg bg-amber-50/50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
+            <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+              <Trophy className="h-3.5 w-3.5" />
+              Results
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {res.map((r) => (
+                <div key={r.pair} className="flex items-center gap-1.5 text-sm">
+                  <span className={cn(
+                    "inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold",
+                    r.rank === 1 && "bg-yellow-400 text-yellow-900",
+                    r.rank === 2 && "bg-gray-300 text-gray-800",
+                    r.rank === 3 && "bg-amber-600 text-white",
+                    r.rank > 3 && "bg-muted text-muted-foreground",
+                  )}>
+                    {r.rank}
+                  </span>
+                  <span className="font-medium">Pair {r.pair}</span>
+                  {r.diff > 0 && <span className="text-xs text-muted-foreground">+{r.diff}cm</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="flex gap-4 overflow-x-auto pb-2">
         {bracket.map((round, rIdx) => {
           const roundSpacing =
@@ -224,6 +285,7 @@ export default function LiveRunsheets() {
     queryKey: ["/api/live-runsheets"],
     refetchInterval: 3000,
   });
+  const [twoCol, setTwoCol] = useState(() => localStorage.getItem("glidr-live-twocol") === "true");
 
   const sorted = useMemo(() =>
     [...sessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
@@ -238,9 +300,21 @@ export default function LiveRunsheets() {
             <Radio className="h-7 w-7 text-green-500" />
             Live Runsheets
           </h1>
-          <span className="text-sm text-muted-foreground">
-            Auto-updates every 3s
-          </span>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => { const next = !twoCol; setTwoCol(next); localStorage.setItem("glidr-live-twocol", String(next)); }}
+              data-testid="button-toggle-live-layout"
+              title={twoCol ? "Single column" : "Two columns"}
+            >
+              {twoCol ? <LayoutList className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Auto-updates every 3s
+            </span>
+          </div>
         </div>
 
         {isLoading && (
@@ -259,7 +333,7 @@ export default function LiveRunsheets() {
           </Card>
         )}
 
-        <div className="space-y-4">
+        <div className={cn("grid gap-4", twoCol ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1")}>
           {sorted.map((session) => (
             <LiveBracket key={session.id} session={session} />
           ))}

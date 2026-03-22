@@ -515,6 +515,35 @@ export function RunsheetDialog({
           </div>
         )}
 
+        {isComplete && (
+          <div className="p-3 rounded-lg bg-amber-50/60 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 mb-2">
+            <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+              <Trophy className="h-3.5 w-3.5" />
+              Final Results
+            </div>
+            <table className="text-sm border-collapse w-auto" data-testid="table-runsheet-final-results">
+              <thead>
+                <tr>
+                  <th className="border border-amber-200 dark:border-amber-800 px-3 py-1.5 text-left bg-amber-100/50 dark:bg-amber-900/30">Ski pair</th>
+                  <th className="border border-amber-200 dark:border-amber-800 px-3 py-1.5 text-center bg-amber-100/50 dark:bg-amber-900/30">Rank</th>
+                  <th className="border border-amber-200 dark:border-amber-800 px-3 py-1.5 text-center bg-amber-100/50 dark:bg-amber-900/30">Diff</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...results].sort((a, b) => a.rank - b.rank).map((r) => (
+                  <tr key={r.skiNumber} className={cn(r.rank === 1 && "bg-amber-50 dark:bg-amber-900/20")} data-testid={`row-final-result-${r.skiNumber}`}>
+                    <td className="border border-amber-200 dark:border-amber-800 px-3 py-1.5 text-center font-medium">{skiLabels?.[r.skiNumber] ?? r.skiNumber}</td>
+                    <td className="border border-amber-200 dark:border-amber-800 px-3 py-1.5 text-center">
+                      <span className={cn("inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold", r.rank === 1 && "bg-yellow-400 text-yellow-900", r.rank === 2 && "bg-gray-300 text-gray-800", r.rank === 3 && "bg-amber-600 text-white", r.rank > 3 && "bg-muted text-muted-foreground")}>{r.rank}</span>
+                    </td>
+                    <td className="border border-amber-200 dark:border-amber-800 px-3 py-1.5 text-center tabular-nums">{r.diff}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         <div className="flex gap-6 overflow-x-auto py-2 min-h-[200px]">
           <div className="shrink-0">
             <h3 className="text-xs font-semibold mb-2 uppercase tracking-wide text-muted-foreground">
@@ -576,7 +605,8 @@ export function RunsheetDialog({
             </table>
           </div>
 
-          {bracket.map((round, rIdx) => {
+          {[...bracket].reverse().map((round, revIdx) => {
+            const rIdx = bracket.length - 1 - revIdx;
             const roundSpacing =
               rIdx === 0
                 ? "gap-3"

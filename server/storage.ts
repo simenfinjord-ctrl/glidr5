@@ -235,18 +235,16 @@ export class DatabaseStorage implements IStorage {
 
   private scopeFilter(groupScope: string, isAdmin: boolean, table: any, teamId?: number) {
     const conditions: any[] = [];
-    if (teamId && !isAdmin) {
-      conditions.push(eq(table.teamId, teamId));
-    }
-    if (!isAdmin) {
+    if (isAdmin) {
+      if (teamId) conditions.push(eq(table.teamId, teamId));
+    } else {
+      if (teamId) conditions.push(eq(table.teamId, teamId));
       const scopes = parseGroupScopes(groupScope);
       if (scopes.length <= 1) {
         conditions.push(eq(table.groupScope, scopes[0] || groupScope));
       } else {
         conditions.push(inArray(table.groupScope, scopes));
       }
-    } else if (teamId) {
-      conditions.push(eq(table.teamId, teamId));
     }
     return conditions.length > 0 ? and(...conditions) : undefined;
   }
@@ -510,6 +508,11 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(grindingRecords).orderBy(sql`${grindingRecords.id} desc`);
   }
 
+  async getGrindingRecord(id: number): Promise<GrindingRecord | undefined> {
+    const [record] = await db.select().from(grindingRecords).where(eq(grindingRecords.id, id));
+    return record;
+  }
+
   async createGrindingRecord(r: InsertGrindingRecord): Promise<GrindingRecord> {
     const [created] = await db.insert(grindingRecords).values(r).returning();
     return created!;
@@ -625,10 +628,13 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async hasAthleteAccess(athleteId: number, userId: number, isAdmin: boolean): Promise<boolean> {
-    if (isAdmin) return true;
+  async hasAthleteAccess(athleteId: number, userId: number, isAdmin: boolean, teamId?: number): Promise<boolean> {
     const athlete = await this.getAthlete(athleteId);
     if (!athlete) return false;
+    if (isAdmin) {
+      if (teamId && athlete.teamId && athlete.teamId !== teamId) return false;
+      return true;
+    }
     if (athlete.createdById === userId) return true;
     const [access] = await db.select().from(athleteAccess).where(
       and(eq(athleteAccess.athleteId, athleteId), eq(athleteAccess.userId, userId))

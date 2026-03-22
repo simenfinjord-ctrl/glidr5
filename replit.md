@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed for multi-team organizations in the ski industry. Its primary purpose is to centralize and optimize ski testing and documentation processes. The application provides comprehensive features for data collection, advanced analysis, and reporting, covering test series, products, weather conditions, and results. Glidr includes live-ranking, analytical tools, and granular permission controls, aiming to enhance ski product development and performance globally.
+Glidr is a full-stack React web application designed to optimize ski testing and documentation processes for multi-team organizations in the ski industry. It centralizes data collection, provides advanced analytics, and generates comprehensive reports on test series, products, weather, and performance. Key features include live-ranking, granular permissions, and robust offline functionality. The project aims to become the leading platform for ski testing, driving product innovation and competitive advantage.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -131,21 +131,21 @@ Glidr is a full-stack React web application designed for multi-team organization
 - Admin overview stats include Athletes and Race Skis counts
 
 ## System Architecture
-- **UI/UX Decisions**: Built with `shadcn/ui` and `Tailwind CSS v4` for a responsive interface. Features dark mode, a table-first approach for data entry, and visual cues like colored rank badges.
-- **Authentication & Authorization**: Session-based authentication with granular, role-based access control (Super Admin, Team Admin, Member) enforced via server-side middleware and client-side logic.
-- **Multi-tenancy**: Implemented using a `teamId` column across all core data tables, ensuring data isolation. Super Admins can manage and switch between teams. Team Admins bypass groupScope filtering (via `isScopeAdmin`) but are confined to their team. All mutation endpoints enforce `verifyTeamOwnership` to prevent cross-team IDOR. `hasAthleteAccess` is team-aware (validates athlete.teamId matches user's activeTeamId).
-- **Data Models**: `Drizzle ORM` defines database schemas for entities including teams, users, test series, products, weather data, tests, test entries, athletes, race skis, and regrinds.
-- **API Design**: A RESTful API at `/api/*` handles data operations, user authentication, and administration, with server-side validation and permission enforcement.
-- **Offline Capabilities**: Service Workers and IndexedDB provide offline data entry, queuing local changes for synchronization upon reconnection, with real-time status indicators.
-- **Analytics & Reporting**: `Recharts` is used for dynamic data visualizations, complemented by client-side PDF, CSV, and Excel export functionalities.
-- **Suggestions Module**: Provides database-driven product recommendations based on weather similarity scoring against historical test data.
-- **Grinding Module**: Manages grinding records and facilitates embedding of Google Sheets.
-- **Runsheet Module**: Features a single-elimination tournament bracket system for ski testing, including live-ranking, mobile optimization, and integration with a Garmin Connect IQ application.
+- **UI/UX Decisions**: The application uses `shadcn/ui` and `Tailwind CSS v4` for a responsive, dark mode-enabled interface. A table-first approach for data entry and visual cues like colored rank badges enhance usability.
+- **Authentication & Authorization**: Session-based authentication with a granular Role-Based Access Control (RBAC) system (Super Admin, Team Admin, Member roles). Permissions are enforced via server-side middleware for API access and client-side logic for UI control.
+- **Multi-tenancy**: Implemented with a `teamId` column across all primary data tables, ensuring strict data isolation between teams/organizations. Super Admins can manage and switch between teams.
+- **Data Models**: `Drizzle ORM` defines and manages all database schemas, including teams, users, test series, products, weather, tests, test entries, athletes, race skis, and regrind records.
+- **API Design**: A comprehensive RESTful API (`/api/*` endpoint) handles data operations, user authentication, and administrative functions, with integrated server-side validation and permission enforcement.
+- **Offline Capabilities**: Service Workers and IndexedDB enable offline data entry, queuing changes locally and synchronizing upon reconnection. Real-time indicators show online/offline status and pending synchronizations.
+- **Analytics & Reporting**: `Recharts` provides dynamic data visualizations. Client-side exports to PDF, CSV, and Excel are supported.
+- **Suggestions Module**: A product recommendation system uses database-driven weather similarity scoring against historical test data, without external AI/OpenAI services.
+- **Grinding Module**: Manages grinding records and embeds multiple Google Sheets via iframes.
+- **Runsheet Module**: Features a sophisticated single-elimination tournament bracket system for ski testing, with live-ranking, mobile optimization, and integration with a companion Garmin Connect IQ smartwatch application for real-time data input.
 
 ## External Dependencies
 - **PostgreSQL**: Primary relational database.
-- **Google Sheets**: Used for embedding grinding-related spreadsheets via iframes.
-- **jsPDF + autoTable**: Libraries for client-side PDF document generation.
-- **xlsx (SheetJS)**: Library for client-side Excel export functionality.
-- **Recharts**: JavaScript library for interactive charts and data visualizations.
-- **Garmin Connect IQ SDK**: For integration with a companion Garmin smartwatch application.
+- **Google Sheets**: Integrated for embedding grinding-related spreadsheets via iframes.
+- **jsPDF + autoTable**: Client-side JavaScript libraries for PDF report generation.
+- **xlsx (SheetJS)**: JavaScript library for client-side Excel data export.
+- **Recharts**: JavaScript charting library for analytics and data visualizations.
+- **Garmin Connect IQ SDK**: Used for developing and integrating with the companion Garmin smartwatch application for live runsheet functionality.

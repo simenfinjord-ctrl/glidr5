@@ -142,7 +142,14 @@ export async function registerRoutes(
     if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
     const name = req.body.name?.trim();
     if (!name) return res.status(400).json({ message: "Name is required" });
-    const team = await storage.createTeam({ name, createdAt: new Date().toISOString() });
+    const data: any = { name, createdAt: new Date().toISOString() };
+    if (req.body.enabledAreas !== undefined) {
+      data.enabledAreas = JSON.stringify(req.body.enabledAreas);
+    }
+    if (req.body.superAdminAccess !== undefined) {
+      data.superAdminAccess = req.body.superAdminAccess ? 1 : 0;
+    }
+    const team = await storage.createTeam(data);
     res.json(team);
   });
 
@@ -152,7 +159,14 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const name = req.body.name?.trim();
     if (!name) return res.status(400).json({ message: "Name is required" });
-    const updated = await storage.updateTeam(id, { name });
+    const data: any = { name };
+    if (req.body.enabledAreas !== undefined) {
+      data.enabledAreas = JSON.stringify(req.body.enabledAreas);
+    }
+    if (req.body.superAdminAccess !== undefined) {
+      data.superAdminAccess = req.body.superAdminAccess ? 1 : 0;
+    }
+    const updated = await storage.updateTeam(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });
     res.json(updated);
   });

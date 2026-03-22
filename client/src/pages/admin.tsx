@@ -44,12 +44,14 @@ type ApiTeam = {
   name: string;
   createdAt: string;
   isDefault: number;
+  enabledAreas: string | null;
+  superAdminAccess: number;
 };
 
 const AREA_LABELS: Record<string, string> = {
-  dashboard: "Dashboard", tests: "Tests", testskis: "Testskis", products: "Products",
-  weather: "Weather", analytics: "Analytics", grinding: "Grinding", raceskis: "Raceskis",
-  suggestions: "Suggestions"
+  dashboard: "Dashboard", tests: "Tests", testskis: "Test Skis", products: "Products",
+  weather: "Weather", analytics: "Analytics", grinding: "Grinding", raceskis: "Race Skis",
+  suggestions: "Suggestions", liverunsheets: "Live Runsheet"
 };
 
 function parsePermissions(permStr: string): UserPermissions {
@@ -662,6 +664,10 @@ export default function Admin() {
   const [editingTeam, setEditingTeam] = useState<ApiTeam | null>(null);
   const [editingTeamName, setEditingTeamName] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamAreas, setNewTeamAreas] = useState<string[]>([...PERMISSION_AREAS]);
+  const [newTeamSuperAdminAccess, setNewTeamSuperAdminAccess] = useState(true);
+  const [editingTeamAreas, setEditingTeamAreas] = useState<string[]>([]);
+  const [editingTeamSuperAdminAccess, setEditingTeamSuperAdminAccess] = useState(true);
 
   const [adminTeamScope, setAdminTeamScope] = useState<string>("current");
 
@@ -1187,13 +1193,15 @@ export default function Admin() {
   });
 
   const createTeamMutation = useMutation({
-    mutationFn: async (name: string) => {
-      const res = await apiRequest("POST", "/api/teams", { name });
+    mutationFn: async (payload: { name: string; enabledAreas: string[]; superAdminAccess: boolean }) => {
+      const res = await apiRequest("POST", "/api/teams", payload);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       setNewTeamName("");
+      setNewTeamAreas([...PERMISSION_AREAS]);
+      setNewTeamSuperAdminAccess(true);
       toast({ title: "Team created" });
     },
     onError: (e: Error) => {
@@ -1202,12 +1210,13 @@ export default function Admin() {
   });
 
   const updateTeamMutation = useMutation({
-    mutationFn: async ({ id, name }: { id: number; name: string }) => {
-      const res = await apiRequest("PUT", `/api/teams/${id}`, { name });
+    mutationFn: async ({ id, name, enabledAreas, superAdminAccess }: { id: number; name: string; enabledAreas: string[]; superAdminAccess: boolean }) => {
+      const res = await apiRequest("PUT", `/api/teams/${id}`, { name, enabledAreas, superAdminAccess });
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      setEditingTeam(null);
       toast({ title: "Team updated" });
     },
     onError: (e: Error) => {
@@ -1653,46 +1662,94 @@ export default function Admin() {
                     data-testid={`row-team-${team.id}`}
                   >
                     {editingTeam?.id === team.id ? (
-                      <div className="flex flex-1 items-center gap-2">
-                        <Input
-                          value={editingTeamName}
-                          onChange={(e) => setEditingTeamName(e.target.value)}
-                          className="h-8 text-sm"
-                          data-testid="input-edit-team-name"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && editingTeamName.trim()) {
-                              updateTeamMutation.mutate({ id: team.id, name: editingTeamName.trim() });
-                              setEditingTeam(null);
-                            }
-                            if (e.key === "Escape") setEditingTeam(null);
-                          }}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          data-testid="button-save-team"
-                          disabled={!editingTeamName.trim() || updateTeamMutation.isPending}
-                          onClick={() => {
-                            updateTeamMutation.mutate({ id: team.id, name: editingTeamName.trim() });
-                            setEditingTeam(null);
-                          }}
-                        >
-                          <Check className="h-4 w-4 text-emerald-600" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setEditingTeam(null)} data-testid="button-cancel-edit-team">
-                          <X className="h-4 w-4" />
-                        </Button>
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={editingTeamName}
+                            onChange={(e) => setEditingTeamName(e.target.value)}
+                            className="h-8 text-sm"
+                            data-testid="input-edit-team-name"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") setEditingTeam(null);
+                            }}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            data-testid="button-save-team"
+                            disabled={!editingTeamName.trim() || updateTeamMutation.isPending}
+                            onClick={() => {
+                              updateTeamMutation.mutate({ id: team.id, name: editingTeamName.trim(), enabledAreas: editingTeamAreas, superAdminAccess: editingTeamSuperAdminAccess });
+                            }}
+                          >
+                            <Check className="h-4 w-4 text-emerald-600" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => setEditingTeam(null)} data-testid="button-cancel-edit-team">
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div>
+                          <div className="text-xs font-medium text-muted-foreground mb-1.5">Enabled areas</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {PERMISSION_AREAS.map((area) => {
+                              const enabled = editingTeamAreas.includes(area);
+                              return (
+                                <button
+                                  key={area}
+                                  type="button"
+                                  data-testid={`edit-team-area-${area}`}
+                                  className={cn(
+                                    "rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors border",
+                                    enabled
+                                      ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                                      : "bg-muted text-muted-foreground border-border opacity-50"
+                                  )}
+                                  onClick={() => {
+                                    setEditingTeamAreas(prev =>
+                                      enabled ? prev.filter(a => a !== area) : [...prev, area]
+                                    );
+                                  }}
+                                >
+                                  {AREA_LABELS[area] || area}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <label className="flex items-center gap-2 cursor-pointer" data-testid="edit-team-superadmin-toggle">
+                          <input
+                            type="checkbox"
+                            checked={editingTeamSuperAdminAccess}
+                            onChange={(e) => setEditingTeamSuperAdminAccess(e.target.checked)}
+                            className="rounded border-border"
+                          />
+                          <span className="text-xs text-foreground/80">Super Admin access</span>
+                        </label>
                       </div>
                     ) : (
                       <>
                         <div className="min-w-0 flex-1">
-                          <span className="text-sm font-medium text-foreground">{team.name}</span>
-                          {team.isDefault === 1 && (
-                            <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">Default</span>
-                          )}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-sm font-medium text-foreground">{team.name}</span>
+                            {team.isDefault === 1 && (
+                              <span className="rounded-full bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-300">Default</span>
+                            )}
+                            {team.superAdminAccess === 0 && (
+                              <span className="rounded-full bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-300">No SA</span>
+                            )}
+                          </div>
                           <div className="text-[10px] text-muted-foreground mt-0.5">
                             {users.filter((u) => u.teamId === team.id).length} users
+                            {(() => {
+                              try {
+                                const areas: string[] = team.enabledAreas ? JSON.parse(team.enabledAreas) : [];
+                                if (areas.length > 0 && areas.length < PERMISSION_AREAS.length) {
+                                  return <> · {areas.map(a => AREA_LABELS[a] || a).join(", ")}</>;
+                                }
+                              } catch {}
+                              return null;
+                            })()}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
@@ -1712,7 +1769,14 @@ export default function Admin() {
                             variant="ghost"
                             size="sm"
                             data-testid={`button-edit-team-${team.id}`}
-                            onClick={() => { setEditingTeam(team); setEditingTeamName(team.name); }}
+                            onClick={() => {
+                              setEditingTeam(team);
+                              setEditingTeamName(team.name);
+                              try {
+                                setEditingTeamAreas(team.enabledAreas ? JSON.parse(team.enabledAreas) : [...PERMISSION_AREAS]);
+                              } catch { setEditingTeamAreas([...PERMISSION_AREAS]); }
+                              setEditingTeamSuperAdminAccess(team.superAdminAccess !== 0);
+                            }}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -1736,27 +1800,60 @@ export default function Admin() {
                   </div>
                 ))}
               </div>
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-4 rounded-xl border border-border bg-muted/20 p-3 space-y-3">
+                <div className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">New team</div>
                 <Input
                   value={newTeamName}
                   onChange={(e) => setNewTeamName(e.target.value)}
-                  placeholder="New team name…"
+                  placeholder="Team name…"
                   className="h-8 text-sm"
                   data-testid="input-new-team"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && newTeamName.trim()) {
-                      createTeamMutation.mutate(newTeamName.trim());
-                    }
-                  }}
                 />
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground mb-1.5">Enabled areas</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PERMISSION_AREAS.map((area) => {
+                      const enabled = newTeamAreas.includes(area);
+                      return (
+                        <button
+                          key={area}
+                          type="button"
+                          data-testid={`new-team-area-${area}`}
+                          className={cn(
+                            "rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors border",
+                            enabled
+                              ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                              : "bg-muted text-muted-foreground border-border opacity-50"
+                          )}
+                          onClick={() => {
+                            setNewTeamAreas(prev =>
+                              enabled ? prev.filter(a => a !== area) : [...prev, area]
+                            );
+                          }}
+                        >
+                          {AREA_LABELS[area] || area}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer" data-testid="new-team-superadmin-toggle">
+                  <input
+                    type="checkbox"
+                    checked={newTeamSuperAdminAccess}
+                    onChange={(e) => setNewTeamSuperAdminAccess(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  <span className="text-xs text-foreground/80">Super Admin access</span>
+                </label>
                 <Button
                   size="sm"
                   data-testid="button-add-team"
                   disabled={!newTeamName.trim() || createTeamMutation.isPending}
-                  onClick={() => createTeamMutation.mutate(newTeamName.trim())}
+                  onClick={() => createTeamMutation.mutate({ name: newTeamName.trim(), enabledAreas: newTeamAreas, superAdminAccess: newTeamSuperAdminAccess })}
                 >
                   <Plus className="mr-1 h-4 w-4" />
-                  Add
+                  Add team
                 </Button>
               </div>
             </Card>

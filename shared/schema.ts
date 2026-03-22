@@ -58,6 +58,8 @@ export const teams = pgTable("teams", {
   name: text("name").notNull(),
   createdAt: text("created_at").notNull(),
   isDefault: integer("is_default").notNull().default(0),
+  enabledAreas: text("enabled_areas"),
+  superAdminAccess: integer("super_admin_access").notNull().default(1),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });

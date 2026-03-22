@@ -24,6 +24,7 @@ type LiveRunsheet = {
   testType: string;
   seriesName: string | null;
   testSkiSource: string;
+  pairLabels: Record<string, string> | null;
   bracket: Heat[][] | null;
   updatedAt: string;
   completedAt: string | null;
@@ -108,6 +109,13 @@ function timeAgo(iso: string): string {
 function LiveBracket({ session }: { session: LiveRunsheet }) {
   const bracket = session.bracket;
   if (!bracket || bracket.length === 0) return null;
+
+  const pl = session.pairLabels;
+  const label = (pair: number | null) => {
+    if (pair === null) return "—";
+    if (pl && pl[String(pair)]) return pl[String(pair)];
+    return String(pair);
+  };
 
   const progress = getProgress(bracket);
   const totalRounds = bracket.length;
@@ -213,13 +221,13 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
                               )}>
                                 {r.rank}
                               </span>
-                              <span className="font-medium">{pair}</span>
+                              <span className="font-medium">{label(pair)}</span>
                               <span className="text-muted-foreground tabular-nums ml-auto">
                                 {r.diff > 0 ? `+${r.diff}` : "0"}cm
                               </span>
                             </>
                           ) : (
-                            <span className="text-muted-foreground">{pair} —</span>
+                            <span className="text-muted-foreground">{label(pair)} —</span>
                           )}
                         </div>
                       );
@@ -266,7 +274,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
                         )}
                       >
                         <span className="font-medium truncate">
-                          {heat.pairA !== null ? heat.pairA : "—"}
+                          {label(heat.pairA)}
                         </span>
                         <span className={cn(
                           "tabular-nums font-mono min-w-[2.5rem] text-center rounded px-1 py-0.5",
@@ -282,7 +290,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
                         )}
                       >
                         <span className="font-medium truncate">
-                          {heat.pairB !== null ? heat.pairB : "—"}
+                          {label(heat.pairB)}
                         </span>
                         <span className={cn(
                           "tabular-nums font-mono min-w-[2.5rem] text-center rounded px-1 py-0.5",

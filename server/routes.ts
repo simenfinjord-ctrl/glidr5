@@ -954,6 +954,7 @@ export async function registerRoutes(
           testType: tests.testType,
           seriesId: tests.seriesId,
           testSkiSource: tests.testSkiSource,
+          pairLabels: tests.pairLabels,
         })
         .from(runsheetProgress)
         .innerJoin(users, eq(users.id, runsheetProgress.userId))
@@ -975,6 +976,8 @@ export async function registerRoutes(
       const result = rows.map(r => {
         let bracket: any = null;
         try { bracket = JSON.parse(r.bracket); } catch {}
+        let pairLabels: Record<string, string> | null = null;
+        try { if (r.pairLabels) pairLabels = JSON.parse(r.pairLabels); } catch {}
         return {
           id: r.id,
           testId: r.testId,
@@ -986,6 +989,7 @@ export async function registerRoutes(
           testType: r.testType,
           seriesName: r.seriesId ? (seriesMap[r.seriesId] || null) : null,
           testSkiSource: r.testSkiSource,
+          pairLabels,
           bracket,
           updatedAt: r.updatedAt,
           completedAt: r.completedAt,

@@ -245,13 +245,15 @@ export function TestEntryTable({
                 )}
               >
                 <td className="sticky left-0 z-10 bg-inherit px-3 py-2">
-                  <div className="flex items-center gap-1">
-                    <div className="flex flex-col">
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex flex-col gap-0.5">
                       <button
                         type="button"
                         disabled={idx === 0}
-                        className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"
-                        onClick={() => {
+                        className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:hover:bg-transparent transition-colors"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           const next = [...rows];
                           [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
                           const renumbered = next.map((r, i) => ({ ...r, skiNumber: i + 1 }));
@@ -259,13 +261,15 @@ export function TestEntryTable({
                         }}
                         data-testid={`button-move-up-${row.id}`}
                       >
-                        <ArrowUp className="h-3 w-3" />
+                        <ArrowUp className="h-3.5 w-3.5" />
                       </button>
                       <button
                         type="button"
                         disabled={idx === rows.length - 1}
-                        className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"
-                        onClick={() => {
+                        className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:hover:bg-transparent transition-colors"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           const next = [...rows];
                           [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
                           const renumbered = next.map((r, i) => ({ ...r, skiNumber: i + 1 }));
@@ -273,7 +277,7 @@ export function TestEntryTable({
                         }}
                         data-testid={`button-move-down-${row.id}`}
                       >
-                        <ArrowDown className="h-3 w-3" />
+                        <ArrowDown className="h-3.5 w-3.5" />
                       </button>
                     </div>
                     <div

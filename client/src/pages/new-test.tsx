@@ -33,7 +33,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { TestEntryTable, type EntryRow, type RoundResult, type RaceSkiOption, cleanAdditionalIds } from "@/components/test-entry-table";
 import { RunsheetDialog, type BracketResult } from "@/components/runsheet-dialog";
 
-type TestType = "Glide" | "Structure" | "Grind" | "Classic" | "Skating";
+type TestType = "Glide" | "Structure" | "Grind" | "Classic" | "Skating" | "Double Poling";
 
 type Athlete = {
   id: number;
@@ -77,7 +77,7 @@ type Weather = {
 const formSchema = z.object({
   date: z.string().min(1, "Date is required"),
   seriesId: z.string().optional(),
-  testType: z.enum(["Glide", "Structure", "Grind", "Classic", "Skating"]),
+  testType: z.enum(["Glide", "Structure", "Grind", "Classic", "Skating", "Double Poling"]),
   location: z.string().min(1, "Location is required"),
   testName: z.string().optional(),
   weatherId: z.string().optional(),
@@ -176,7 +176,7 @@ export default function NewTest() {
   const watchTestType = form.watch("testType") as TestType;
 
   const filteredSeries = useMemo(() => {
-    if (watchTestType === "Classic" || watchTestType === "Skating") {
+    if (watchTestType === "Classic" || watchTestType === "Skating" || watchTestType === "Double Poling") {
       return series.filter((s) => s.skiType?.toLowerCase() === watchTestType.toLowerCase());
     }
     return series.filter((s) => s.type === watchTestType);
@@ -185,7 +185,7 @@ export default function NewTest() {
   const raceSkiOptions: RaceSkiOption[] = useMemo(() => {
     return allRaceSkis
       .filter((ski) => {
-        if (watchTestType === "Classic" || watchTestType === "Skating") {
+        if (watchTestType === "Classic" || watchTestType === "Skating" || watchTestType === "Double Poling") {
           return ski.discipline === watchTestType;
         }
         return true;
@@ -459,7 +459,7 @@ export default function NewTest() {
                           if (v === "raceskis" && ["Glide", "Structure", "Grind"].includes(currentType)) {
                             form.setValue("testType", "Classic");
                           }
-                          if (v === "series" && ["Classic", "Skating"].includes(currentType)) {
+                          if (v === "series" && ["Classic", "Skating", "Double Poling"].includes(currentType)) {
                             form.setValue("testType", "Glide");
                           }
                         }}
@@ -544,6 +544,7 @@ export default function NewTest() {
                               <>
                                 <SelectItem value="Classic">Classic</SelectItem>
                                 <SelectItem value="Skating">Skating</SelectItem>
+                                <SelectItem value="Double Poling">Double Poling</SelectItem>
                               </>
                             )}
                             {can("grinding") && testSkiSource !== "raceskis" && (

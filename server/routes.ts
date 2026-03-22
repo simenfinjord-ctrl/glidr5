@@ -582,13 +582,13 @@ export async function registerRoutes(
     const now = new Date().toISOString();
     const groupScope = resolveCreateGroupScope(req);
     const testSkiSource = req.body.testSkiSource === "raceskis" ? "raceskis" : "series";
-    const raceOnly = ["Classic", "Skating"];
+    const raceOnly = ["Classic", "Skating", "Double Poling"];
     const seriesOnly = ["Glide", "Structure", "Grind"];
     if (testSkiSource === "raceskis" && seriesOnly.includes(req.body.testType)) {
-      return res.status(400).json({ message: "Race ski tests only allow Classic or Skating" });
+      return res.status(400).json({ message: "Race ski tests only allow Classic, Skating, or Double Poling" });
     }
     if (testSkiSource !== "raceskis" && raceOnly.includes(req.body.testType)) {
-      return res.status(400).json({ message: "Classic/Skating are only for race ski tests" });
+      return res.status(400).json({ message: "Classic/Skating/Double Poling are only for race ski tests" });
     }
 
     const entries = req.body.entries || [];
@@ -759,13 +759,13 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Forbidden" });
     }
     const testSkiSource = req.body.testSkiSource === "raceskis" ? "raceskis" : (existing as any).testSkiSource || "series";
-    const raceOnly = ["Classic", "Skating"];
+    const raceOnly = ["Classic", "Skating", "Double Poling"];
     const seriesOnly = ["Glide", "Structure", "Grind"];
     if (testSkiSource === "raceskis" && seriesOnly.includes(req.body.testType)) {
-      return res.status(400).json({ message: "Race ski tests only allow Classic or Skating" });
+      return res.status(400).json({ message: "Race ski tests only allow Classic, Skating, or Double Poling" });
     }
     if (testSkiSource !== "raceskis" && raceOnly.includes(req.body.testType)) {
-      return res.status(400).json({ message: "Classic/Skating are only for race ski tests" });
+      return res.status(400).json({ message: "Classic/Skating/Double Poling are only for race ski tests" });
     }
     const testData: any = {
       date: req.body.date,

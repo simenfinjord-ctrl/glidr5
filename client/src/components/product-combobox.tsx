@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
-type TestType = "Glide" | "Structure" | "Classic" | "Skating";
+type TestType = "Glide" | "Structure" | "Classic" | "Skating" | "Double Poling";
 type ProductCategory = "Glide product" | "Topping product" | "Structure tool";
 
 type Product = {
@@ -23,7 +23,7 @@ type Product = {
 };
 
 function categoriesFor(testType: TestType): ProductCategory[] {
-  if (testType === "Glide" || testType === "Classic" || testType === "Skating")
+  if (testType === "Glide" || testType === "Classic" || testType === "Skating" || testType === "Double Poling")
     return ["Glide product", "Topping product"];
   return ["Structure tool"];
 }

@@ -323,6 +323,7 @@ export default function Tests() {
                     <SelectItem value="Structure">Structure</SelectItem>
                     <SelectItem value="Classic">Classic</SelectItem>
                     <SelectItem value="Skating">Skating</SelectItem>
+                    <SelectItem value="Double Poling">Double Poling</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -5,7 +5,7 @@ import { ProductCombobox } from "@/components/product-combobox";
 import { PlusCircle, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-type TestType = "Glide" | "Structure" | "Grind" | "Classic" | "Skating";
+type TestType = "Glide" | "Structure" | "Grind" | "Classic" | "Skating" | "Double Poling";
 
 type Product = {
   id: number;
@@ -273,7 +273,7 @@ export function TestEntryTable({
                   ) : (
                   <div className="flex items-center gap-1">
                     <ProductCombobox
-                      testType={testType as "Glide" | "Structure" | "Classic" | "Skating"}
+                      testType={testType as "Glide" | "Structure" | "Classic" | "Skating" | "Double Poling"}
                       products={products}
                       value={row.productId}
                       onChange={(id) => {
@@ -286,7 +286,7 @@ export function TestEntryTable({
                       <div key={addIdx} className="flex items-center gap-0.5">
                         <span className="text-xs font-bold text-muted-foreground">+</span>
                         <ProductCombobox
-                          testType={testType as "Glide" | "Structure" | "Classic" | "Skating"}
+                          testType={testType as "Glide" | "Structure" | "Classic" | "Skating" | "Double Poling"}
                           products={products}
                           value={addId || undefined}
                           onChange={(newId) => {

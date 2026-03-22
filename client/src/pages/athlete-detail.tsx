@@ -19,6 +19,7 @@ import {
   ArrowDown,
   Archive,
   ArchiveRestore,
+  Warehouse,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -40,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -174,13 +176,14 @@ export default function AthleteDetail() {
   const [editAthleteOpen, setEditAthleteOpen] = useState(false);
   const [expandedSkiId, setExpandedSkiId] = useState<number | null>(null);
   const [showArchivedSkis, setShowArchivedSkis] = useState(false);
+  const [skiGarageOpen, setSkiGarageOpen] = useState(true);
 
   const [testsExpanded, setTestsExpanded] = useState(true);
   const [showTestForm, setShowTestForm] = useState(false);
   const [testForm, setTestForm] = useState({
     date: new Date().toISOString().split("T")[0],
     location: "",
-    testType: "Classic" as "Classic" | "Skating",
+    testType: "Classic" as "Classic" | "Skating" | "Double Poling",
     notes: "",
     weatherId: undefined as number | undefined,
   });
@@ -917,79 +920,93 @@ export default function AthleteDetail() {
           </Card>
         )}
 
-        {/* Race Skis */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold" data-testid="text-skis-heading">
-            Skis ({skis.length})
-          </h2>
-          <Button
-            data-testid="button-add-ski"
-            className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
-            size="sm"
-            onClick={openAddSki}
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Add Ski
-          </Button>
-        </div>
-
-        {skis.length === 0 ? (
-          <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-skis">
-            No skis yet. Add the first ski for this athlete.
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {skis.map((ski) => (
-              <SkiCard
-                key={ski.id}
-                ski={ski}
-                expanded={expandedSkiId === ski.id}
-                onToggle={() => setExpandedSkiId(expandedSkiId === ski.id ? null : ski.id)}
-                onEdit={() => openEditSki(ski)}
-                onArchive={() => {
-                  if (confirm("Archive this ski? It can be restored later.")) archiveSkiMutation.mutate(ski.id);
-                }}
-                onRegrind={() => openRegrind(ski.id)}
-                onDeleteRegrind={(id) => {
-                  if (confirm("Delete this regrind record?")) deleteRegrindMutation.mutate(id);
-                }}
-              />
-            ))}
+        {/* Ski Garage */}
+        <Collapsible open={skiGarageOpen} onOpenChange={setSkiGarageOpen} data-testid="section-ski-garage">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 cursor-pointer select-none group" data-testid="toggle-ski-garage">
+                <Warehouse className="h-4.5 w-4.5 text-muted-foreground" />
+                <h2 className="text-lg font-semibold">
+                  Ski Garage ({skis.length})
+                </h2>
+                {skiGarageOpen ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform" />
+                )}
+              </button>
+            </CollapsibleTrigger>
+            <Button
+              data-testid="button-add-ski"
+              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+              size="sm"
+              onClick={openAddSki}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add Ski
+            </Button>
           </div>
-        )}
 
-        <div className="mt-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowArchivedSkis(!showArchivedSkis)}
-            className="text-xs text-muted-foreground hover:text-foreground"
-            data-testid="toggle-archived-skis"
-          >
-            <Archive className="mr-1 h-3.5 w-3.5" />
-            {showArchivedSkis ? "Hide archived" : "Show archived"}
-            {showArchivedSkis && archivedSkis.length > 0 && ` (${archivedSkis.length})`}
-          </Button>
-        </div>
+          <CollapsibleContent>
+            {skis.length === 0 ? (
+              <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground mt-3" data-testid="empty-skis">
+                No skis yet. Add the first ski for this athlete.
+              </Card>
+            ) : (
+              <div className="space-y-3 mt-3">
+                {skis.map((ski) => (
+                  <SkiCard
+                    key={ski.id}
+                    ski={ski}
+                    expanded={expandedSkiId === ski.id}
+                    onToggle={() => setExpandedSkiId(expandedSkiId === ski.id ? null : ski.id)}
+                    onEdit={() => openEditSki(ski)}
+                    onArchive={() => {
+                      if (confirm("Archive this ski? It can be restored later.")) archiveSkiMutation.mutate(ski.id);
+                    }}
+                    onRegrind={() => openRegrind(ski.id)}
+                    onDeleteRegrind={(id) => {
+                      if (confirm("Delete this regrind record?")) deleteRegrindMutation.mutate(id);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
 
-        {showArchivedSkis && archivedSkis.length > 0 && (
-          <div className="space-y-3 opacity-70">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Archived Skis</p>
-            {archivedSkis.map((ski) => (
-              <SkiCard
-                key={ski.id}
-                ski={ski}
-                expanded={expandedSkiId === ski.id}
-                onToggle={() => setExpandedSkiId(expandedSkiId === ski.id ? null : ski.id)}
-                isArchived
-                onRestore={() => restoreSkiMutation.mutate(ski.id)}
-                onDelete={() => {
-                  if (confirm("Permanently delete this ski and all its regrind history? This cannot be undone.")) deleteSkiMutation.mutate(ski.id);
-                }}
-              />
-            ))}
-          </div>
-        )}
+            <div className="mt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowArchivedSkis(!showArchivedSkis)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+                data-testid="toggle-archived-skis"
+              >
+                <Archive className="mr-1 h-3.5 w-3.5" />
+                {showArchivedSkis ? "Hide archived" : "Show archived"}
+                {showArchivedSkis && archivedSkis.length > 0 && ` (${archivedSkis.length})`}
+              </Button>
+            </div>
+
+            {showArchivedSkis && archivedSkis.length > 0 && (
+              <div className="space-y-3 opacity-70">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Archived Skis</p>
+                {archivedSkis.map((ski) => (
+                  <SkiCard
+                    key={ski.id}
+                    ski={ski}
+                    expanded={expandedSkiId === ski.id}
+                    onToggle={() => setExpandedSkiId(expandedSkiId === ski.id ? null : ski.id)}
+                    isArchived
+                    onRestore={() => restoreSkiMutation.mutate(ski.id)}
+                    onDelete={() => {
+                      if (confirm("Permanently delete this ski and all its regrind history? This cannot be undone.")) deleteSkiMutation.mutate(ski.id);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Race Ski Tests Section */}
         <div className="border-t border-border/40 pt-4" data-testid="section-race-ski-tests">
@@ -1044,6 +1061,7 @@ export default function AthleteDetail() {
                       <SelectItem value="all">All types</SelectItem>
                       <SelectItem value="Classic">Classic</SelectItem>
                       <SelectItem value="Skating">Skating</SelectItem>
+                      <SelectItem value="Double Poling">Double Poling</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={testSortBy} onValueChange={setTestSortBy}>
@@ -1098,7 +1116,7 @@ export default function AthleteDetail() {
                       <label className="mb-1 block text-sm font-medium">Test Type</label>
                       <Select
                         value={testForm.testType}
-                        onValueChange={(v) => setTestForm((f) => ({ ...f, testType: v as "Classic" | "Skating" }))}
+                        onValueChange={(v) => setTestForm((f) => ({ ...f, testType: v as "Classic" | "Skating" | "Double Poling" }))}
                       >
                         <SelectTrigger data-testid="select-test-type">
                           <SelectValue />
@@ -1106,6 +1124,7 @@ export default function AthleteDetail() {
                         <SelectContent>
                           <SelectItem value="Classic">Classic</SelectItem>
                           <SelectItem value="Skating">Skating</SelectItem>
+                          <SelectItem value="Double Poling">Double Poling</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1155,12 +1174,13 @@ export default function AthleteDetail() {
                   <div className="mb-4">
                     <label className="mb-2 block text-sm font-medium">Select skis for this test</label>
                     {(() => {
-                      const filteredSkis = (testForm.testType === "Classic" || testForm.testType === "Skating")
+                      const raceTestTypes = ["Classic", "Skating", "Double Poling"];
+                      const filteredSkis = raceTestTypes.includes(testForm.testType)
                         ? skis.filter((s) => s.discipline === testForm.testType)
                         : skis;
                       return filteredSkis.length === 0 ? (
                       <p className="text-sm text-muted-foreground" data-testid="text-no-skis-for-test">
-                        No {testForm.testType === "Classic" || testForm.testType === "Skating" ? `${testForm.testType} ` : ""}skis available. {skis.length > 0 ? "Try a different test type or add skis with the right discipline." : "Add skis to this athlete first."}
+                        No {raceTestTypes.includes(testForm.testType) ? `${testForm.testType} ` : ""}skis available. {skis.length > 0 ? "Try a different test type or add skis with the right discipline." : "Add skis to this athlete first."}
                       </p>
                     ) : (
                       <div className="flex flex-wrap gap-2">
@@ -1536,6 +1556,7 @@ export default function AthleteDetail() {
                       <SelectContent>
                         <SelectItem value="Classic">Classic</SelectItem>
                         <SelectItem value="Skating">Skating</SelectItem>
+                        <SelectItem value="Double Poling">Double Poling</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

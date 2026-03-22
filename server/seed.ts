@@ -1,4 +1,6 @@
 import { storage } from "./storage";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 import { log } from "./index";
 
 async function seedGroups() {
@@ -25,7 +27,22 @@ async function seedAdmin() {
   log("Seeded admin account", "seed");
 }
 
+async function runMigrations() {
+  const migrations: { name: string; query: ReturnType<typeof sql> }[] = [
+    { name: "pair_labels on tests", query: sql`ALTER TABLE tests ADD COLUMN IF NOT EXISTS pair_labels TEXT` },
+  ];
+  for (const m of migrations) {
+    try {
+      await db.execute(m.query);
+      log(`Migration OK: ${m.name}`, "seed");
+    } catch (e: any) {
+      log(`Migration FAILED (${m.name}): ${e.message}`, "seed");
+    }
+  }
+}
+
 export async function seedDatabase() {
+  await runMigrations();
   await seedGroups();
   await seedAdmin();
 }

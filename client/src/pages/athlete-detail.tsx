@@ -20,6 +20,7 @@ import {
   Archive,
   ArchiveRestore,
   Warehouse,
+  Search,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -188,6 +189,7 @@ export default function AthleteDetail() {
     weatherId: undefined as number | undefined,
   });
   const [selectedSkiIds, setSelectedSkiIds] = useState<Set<number>>(new Set());
+  const [skiSearchQuery, setSkiSearchQuery] = useState("");
   const [testRows, setTestRows] = useState<RaceSkiTestRow[]>([]);
   const [distanceLabels, setDistanceLabels] = useState<string[]>([""]);
 
@@ -786,6 +788,7 @@ export default function AthleteDetail() {
     setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Classic", notes: "", weatherId: undefined });
     setDistanceLabels([""]);
     setSelectedSkiIds(new Set());
+    setSkiSearchQuery("");
     setTestRows([]);
     setShowTestForm(true);
   }
@@ -1175,44 +1178,69 @@ export default function AthleteDetail() {
                     <label className="mb-2 block text-sm font-medium">Select skis for this test</label>
                     {(() => {
                       const raceTestTypes = ["Classic", "Skating", "Double Poling"];
-                      const filteredSkis = raceTestTypes.includes(testForm.testType)
+                      const disciplineFiltered = raceTestTypes.includes(testForm.testType)
                         ? skis.filter((s) => s.discipline === testForm.testType)
                         : skis;
-                      return filteredSkis.length === 0 ? (
+                      const q = skiSearchQuery.toLowerCase().trim();
+                      const filteredSkis = q
+                        ? disciplineFiltered.filter((s) =>
+                            [s.skiId, s.serialNumber, s.brand, s.grind, s.discipline]
+                              .filter(Boolean)
+                              .some((field) => field!.toLowerCase().includes(q))
+                          )
+                        : disciplineFiltered;
+                      return disciplineFiltered.length === 0 ? (
                       <p className="text-sm text-muted-foreground" data-testid="text-no-skis-for-test">
                         No {raceTestTypes.includes(testForm.testType) ? `${testForm.testType} ` : ""}skis available. {skis.length > 0 ? "Try a different test type or add skis with the right discipline." : "Add skis to this athlete first."}
                       </p>
                     ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {filteredSkis.map((ski) => (
-                          <button
-                            key={ski.id}
-                            type="button"
-                            onClick={() => toggleSkiSelection(ski.id)}
-                            className={cn(
-                              "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-all",
-                              selectedSkiIds.has(ski.id)
-                                ? "border-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800"
-                                : "border-border bg-background/50 text-muted-foreground hover:border-indigo-300 hover:bg-indigo-50/50",
-                            )}
-                            data-testid={`button-select-ski-${ski.id}`}
-                          >
-                            <div className={cn(
-                              "h-4 w-4 rounded border flex items-center justify-center transition-colors",
-                              selectedSkiIds.has(ski.id) ? "bg-indigo-500 border-indigo-500" : "border-border",
-                            )}>
-                              {selectedSkiIds.has(ski.id) && (
-                                <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </div>
-                            <span className="font-semibold">{ski.skiId}</span>
-                            {ski.brand && <span className="text-xs text-muted-foreground">{ski.brand}</span>}
-                            {ski.grind && <span className="text-xs text-muted-foreground">· {ski.grind}</span>}
-                          </button>
-                        ))}
-                      </div>
+                      <>
+                        <div className="relative mb-2">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <Input
+                            value={skiSearchQuery}
+                            onChange={(e) => setSkiSearchQuery(e.target.value)}
+                            placeholder="Search serial number, ski ID, brand, grind…"
+                            className="h-8 pl-8 text-sm"
+                            data-testid="input-ski-search"
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {filteredSkis.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No skis matching "{skiSearchQuery}"</p>
+                          ) : (
+                            filteredSkis.map((ski) => (
+                              <button
+                                key={ski.id}
+                                type="button"
+                                onClick={() => toggleSkiSelection(ski.id)}
+                                className={cn(
+                                  "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-all",
+                                  selectedSkiIds.has(ski.id)
+                                    ? "border-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800"
+                                    : "border-border bg-background/50 text-muted-foreground hover:border-indigo-300 hover:bg-indigo-50/50",
+                                )}
+                                data-testid={`button-select-ski-${ski.id}`}
+                              >
+                                <div className={cn(
+                                  "h-4 w-4 rounded border flex items-center justify-center transition-colors",
+                                  selectedSkiIds.has(ski.id) ? "bg-indigo-500 border-indigo-500" : "border-border",
+                                )}>
+                                  {selectedSkiIds.has(ski.id) && (
+                                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
+                                </div>
+                                <span className="font-semibold">{ski.skiId}</span>
+                                {ski.serialNumber && <span className="text-xs text-muted-foreground">#{ski.serialNumber}</span>}
+                                {ski.brand && <span className="text-xs text-muted-foreground">{ski.brand}</span>}
+                                {ski.grind && <span className="text-xs text-muted-foreground">· {ski.grind}</span>}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </>
                     );
                     })()}
                   </div>

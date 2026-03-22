@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application for multi-team organizations, designed to streamline ski testing and documentation. It provides comprehensive tracking of test series, products, weather conditions, and individual test results. The platform offers advanced data insights, live-ranking, analytical tools, and granular permission controls within a multi-team/multi-tenant architecture. Glidr's main purpose is to enhance product performance through data-driven testing, efficient data collection, analysis, and reporting, thereby offering a competitive market advantage.
+Glidr is a full-stack React web application designed for multi-team organizations to streamline ski testing and documentation. Its primary purpose is to enhance product performance through data-driven testing, efficient data collection, analysis, and reporting, offering a competitive market advantage. The platform provides comprehensive tracking of test series, products, weather conditions, and individual test results, alongside advanced data insights, live-ranking, analytical tools, and granular permission controls within a multi-team/multi-tenant architecture.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -136,7 +136,7 @@ Glidr is a full-stack React web application for multi-team organizations, design
 - **API Design**: A RESTful API (`/api/*` endpoints) handles all data operations, user authentication, and administrative functions with server-side validation and permission enforcement.
 - **Offline Capabilities**: Service Workers and IndexedDB enable offline data entry, queuing mutations locally for synchronization upon reconnection, with real-time online/offline status in the header.
 - **Analytics & Reporting**: Integrates `Recharts` for comprehensive data visualizations and provides client-side PDF, CSV, and Excel export functionalities.
-- **Suggestions Module**: Offers database-driven product recommendations based on weather similarity with historical test data, without AI/OpenAI.
+- **Suggestions Module**: Offers database-driven product recommendations based on weather similarity with historical test data.
 - **Grinding Module**: Manages grinding records and allows embedding of Google Sheets for detailed tracking.
 - **Runsheet Module**: Implements single-elimination tournament brackets with live-ranking, mobile optimization, and integration with a companion Garmin Connect IQ application for real-time data input.
 

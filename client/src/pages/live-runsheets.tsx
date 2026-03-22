@@ -177,37 +177,60 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
         </div>
       </div>
 
-      {isCompleted && bracket.length > 0 && (() => {
-        const res = calculateResults(bracket);
-        if (res.length === 0) return null;
-        return (
-          <div className="mb-3 p-3 rounded-lg bg-amber-50/50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
-            <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-              <Trophy className="h-3.5 w-3.5" />
-              Results
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {res.map((r) => (
-                <div key={r.pair} className="flex items-center gap-1.5 text-sm">
-                  <span className={cn(
-                    "inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold",
-                    r.rank === 1 && "bg-yellow-400 text-yellow-900",
-                    r.rank === 2 && "bg-gray-300 text-gray-800",
-                    r.rank === 3 && "bg-amber-600 text-white",
-                    r.rank > 3 && "bg-muted text-muted-foreground",
-                  )}>
-                    {r.rank}
-                  </span>
-                  <span className="font-medium">Pair {r.pair}</span>
-                  {r.diff > 0 && <span className="text-xs text-muted-foreground">+{r.diff}cm</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
       <div className="flex gap-4 overflow-x-auto pb-2">
+        {(() => {
+          const res = calculateResults(bracket);
+          const resMap = new Map(res.map((r) => [r.pair, r]));
+          const firstRound = bracket[0];
+          if (res.length === 0 || !firstRound) return null;
+          const roundSpacing = "gap-2";
+          return (
+            <div className="shrink-0 flex flex-col">
+              <div className="text-[10px] font-semibold mb-1.5 text-center uppercase tracking-wider text-muted-foreground">
+                Results
+              </div>
+              <div className={cn("flex flex-col justify-around flex-1", roundSpacing)}>
+                {firstRound.map((heat, hIdx) => (
+                  <div key={hIdx} className="min-w-[120px] text-xs">
+                    {[heat.pairA, heat.pairB].filter((p) => p !== null).map((pair) => {
+                      const r = resMap.get(pair!);
+                      return (
+                        <div
+                          key={pair}
+                          className={cn(
+                            "flex items-center gap-1.5 px-2 py-1.5",
+                            r?.rank === 1 && "bg-amber-50 dark:bg-amber-900/20 rounded",
+                          )}
+                        >
+                          {r ? (
+                            <>
+                              <span className={cn(
+                                "inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold shrink-0",
+                                r.rank === 1 && "bg-yellow-400 text-yellow-900",
+                                r.rank === 2 && "bg-gray-300 text-gray-800",
+                                r.rank === 3 && "bg-amber-600 text-white",
+                                r.rank > 3 && "bg-muted text-muted-foreground",
+                              )}>
+                                {r.rank}
+                              </span>
+                              <span className="font-medium">{pair}</span>
+                              <span className="text-muted-foreground tabular-nums ml-auto">
+                                {r.diff > 0 ? `+${r.diff}` : "0"}cm
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground">{pair} —</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {bracket.map((round, rIdx) => {
           const roundSpacing =
             rIdx === 0 ? "gap-2" : rIdx === 1 ? "gap-6" : rIdx === 2 ? "gap-12" : "gap-20";

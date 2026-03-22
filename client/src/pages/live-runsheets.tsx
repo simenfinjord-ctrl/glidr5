@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Radio, Trophy, User, Calendar, MapPin, Snowflake, LayoutGrid, LayoutList } from "lucide-react";
+import { Radio, Trophy, User, Calendar, MapPin, Snowflake, LayoutGrid, LayoutList, Filter } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 type Heat = {
@@ -317,11 +318,22 @@ export default function LiveRunsheets() {
     refetchInterval: 3000,
   });
   const [twoCol, setTwoCol] = useState(() => localStorage.getItem("glidr-live-twocol") === "true");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
 
-  const sorted = useMemo(() =>
-    [...sessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
-    [sessions]
-  );
+  const testTypes = useMemo(() => {
+    const types = new Set(sessions.map(s => s.testType));
+    return [...types].sort();
+  }, [sessions]);
+
+  const filtered = useMemo(() => {
+    let list = [...sessions];
+    if (typeFilter !== "all") list = list.filter(s => s.testType === typeFilter);
+    if (sourceFilter !== "all") list = list.filter(s => s.testSkiSource === sourceFilter);
+    return list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [sessions, typeFilter, sourceFilter]);
+
+  const activeFilters = (typeFilter !== "all" ? 1 : 0) + (sourceFilter !== "all" ? 1 : 0);
 
   return (
     <AppShell>
@@ -348,24 +360,64 @@ export default function LiveRunsheets() {
           </div>
         </div>
 
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Filter className="h-4 w-4" />
+            Filters
+            {activeFilters > 0 && (
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white text-[10px] font-bold">{activeFilters}</span>
+            )}
+          </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[150px] h-9" data-testid="select-live-type-filter">
+              <SelectValue placeholder="Test type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              {testTypes.map(t => (
+                <SelectItem key={t} value={t}>{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="w-[150px] h-9" data-testid="select-live-source-filter">
+              <SelectValue placeholder="Source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              <SelectItem value="series">Test skis</SelectItem>
+              <SelectItem value="raceskis">Race skis</SelectItem>
+            </SelectContent>
+          </Select>
+          {activeFilters > 0 && (
+            <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={() => { setTypeFilter("all"); setSourceFilter("all"); }} data-testid="button-clear-live-filters">
+              Clear filters
+            </Button>
+          )}
+        </div>
+
         {isLoading && (
           <div className="flex items-center justify-center py-20 text-muted-foreground" data-testid="loading-live-runsheets">
             <div className="w-8 h-8 border-4 border-muted border-t-green-500 rounded-full animate-spin" />
           </div>
         )}
 
-        {!isLoading && sorted.length === 0 && (
+        {!isLoading && filtered.length === 0 && (
           <Card className="p-8 text-center" data-testid="empty-live-runsheets">
             <Radio className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground font-medium">No active runsheets right now</p>
+            <p className="text-muted-foreground font-medium">
+              {activeFilters > 0 ? "No runsheets match your filters" : "No active runsheets right now"}
+            </p>
             <p className="text-sm text-muted-foreground/60 mt-1">
-              When someone starts a Complete Runsheet, it will appear here in real time.
+              {activeFilters > 0
+                ? "Try adjusting the filters to see more results."
+                : "When someone starts a Complete Runsheet, it will appear here in real time."}
             </p>
           </Card>
         )}
 
         <div className={cn("grid gap-4", twoCol ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1")}>
-          {sorted.map((session) => (
+          {filtered.map((session) => (
             <LiveBracket key={session.id} session={session} />
           ))}
         </div>

@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed for multi-team organizations to streamline ski testing and documentation. Its primary purpose is to enhance product performance through data-driven testing, efficient data collection, analysis, and reporting, offering a competitive market advantage. The platform provides comprehensive tracking of test series, products, weather conditions, and individual test results, alongside advanced data insights, live-ranking, analytical tools, and granular permission controls within a multi-team/multi-tenant architecture.
+Glidr is a full-stack React web application designed for multi-team organizations to streamline ski testing and documentation. It enhances product performance through efficient data collection, analysis, and reporting, aiming to provide a competitive market advantage. The platform tracks test series, products, weather, and test results, offering advanced data insights, live-ranking, analytical tools, and granular permission controls within a multi-team/multi-tenant architecture. The business vision is to become the leading platform for ski product development and performance optimization.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -93,7 +93,9 @@ Glidr is a full-stack React web application designed for multi-team organization
 - Storage view sortable by stock quantity (least first / most first first toggle)
 - Dashboard "Recent results" widget: auto-refreshes every 10s, shows 10 most recent tests with winner product/pair, latest test highlighted in yellow
 - Dark mode toggle (sun/moon icon) in header and login page, persisted to localStorage
-- Granular permission system: 9 areas (dashboard, tests, testskis, products, weather, analytics, grinding, raceskis, suggestions) x 3 levels (none, view, edit); runsheets removed as separate permission area
+- Granular permission system: 10 areas (dashboard, tests, testskis, products, weather, analytics, grinding, raceskis, suggestions, liverunsheets) x 3 levels (none, view, edit)
+- Live Runsheets has its own permission area (liverunsheets) controllable from Admin; defaults to "none" for new users
+- Live Runsheets page has type filter (Glide/Structure/Classic etc.) and source filter (Test skis / Race skis)
 - Permissions stored as JSON text column on users table, parsed via parsePermissions helper
 - Server-side permission enforcement via requirePermission(area, level) middleware on all API routes
 - Client-side can(area, level) helper in useAuth hook for nav filtering and UI controls

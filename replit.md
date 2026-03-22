@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed for multi-team organizations to optimize ski testing and documentation. It provides tools for managing test series, products, daily weather, and individual tests, offering deep data insights, live-ranking, advanced analytics, and granular permission controls within a multi-team/multi-tenant architecture. The primary goal is to enhance product performance through data-driven testing, aiming to produce superior ski products and gain a competitive market advantage.
+Glidr is a full-stack React web application designed for multi-team organizations to optimize ski testing and documentation. It enables the management of test series, products, daily weather, and individual tests, providing deep data insights, live-ranking, advanced analytics, and granular permission controls. The application supports a multi-team/multi-tenant architecture to enhance product performance through data-driven testing, aiming for superior ski products and a competitive market advantage.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -135,7 +135,7 @@ Glidr is a full-stack React web application designed for multi-team organization
 - **Data Models**: Drizzle ORM defines database schemas for `teams`, `users`, `test_ski_series`, `products`, `daily_weather`, `tests`, `test_entries`, `athletes`, `race_skis`, and `regrinds`.
 - **API Design**: A RESTful API (`/api/*`) handles data operations, authentication, and administration, with robust server-side validation and permission enforcement.
 - **Offline Capabilities**: Utilizes Service Workers and IndexedDB for offline data entry, local mutation queuing, and automatic synchronization upon reconnection. Real-time status indicators are present in the header.
-- **Analytics & Reporting**: Integrates `Recharts` for data visualization (e.g., product wins over time, average rank by product, snow temperature vs. rank scatter). Client-side PDF, CSV, and Excel export functionalities are available.
+- **Analytics & Reporting**: Integrates `Recharts` for data visualization (e.g., product wins over time, average rank by product, tests per month, snow temperature vs. rank scatter). Client-side PDF, CSV, and Excel export functionalities are available.
 - **Suggestions Module**: Provides database-driven product recommendations based on weather similarity scoring against historical test data.
 - **Grinding Module**: Manages grinding records and embeds Google Sheets for tracking.
 - **Runsheet Module**: Implements single-elimination tournament brackets with live-ranking, mobile optimization, and integration with a Garmin Connect IQ application for real-time data input and synchronization.

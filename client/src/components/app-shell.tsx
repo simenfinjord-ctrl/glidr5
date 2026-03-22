@@ -144,7 +144,7 @@ const nav: NavItem[] = [
     color: "text-muted-foreground",
     activeColor: "text-green-600",
     activeBg: "bg-green-50",
-    permArea: "liverunsheets",
+    permArea: "tests",
   },
   {
     href: "/admin",

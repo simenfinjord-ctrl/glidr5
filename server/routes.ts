@@ -933,7 +933,7 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
-  app.get("/api/live-runsheets", requireAuth, requirePermission("liverunsheets", "view"), async (req, res) => {
+  app.get("/api/live-runsheets", requireAuth, requirePermission("tests", "view"), async (req, res) => {
     try {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);

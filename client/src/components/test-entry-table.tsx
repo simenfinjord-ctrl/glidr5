@@ -2,7 +2,8 @@ import { useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ProductCombobox } from "@/components/product-combobox";
-import { PlusCircle, X, Plus } from "lucide-react";
+import { RaceSkiCombobox } from "@/components/raceski-combobox";
+import { PlusCircle, X, Plus, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type TestType = "Glide" | "Structure" | "Grind" | "Classic" | "Skating" | "Double Poling";
@@ -71,6 +72,7 @@ export function cleanAdditionalIds(ids?: string): string | undefined {
 export type RaceSkiOption = {
   id: number;
   skiId: string;
+  serialNumber: string | null;
   brand: string | null;
   discipline: string;
   athleteName: string;
@@ -243,33 +245,57 @@ export function TestEntryTable({
                 )}
               >
                 <td className="sticky left-0 z-10 bg-inherit px-3 py-2">
-                  <div
-                    className="inline-flex h-9 w-14 items-center justify-center rounded-xl border bg-background/70 text-sm font-semibold"
-                    data-testid={`text-ski-number-${row.id}`}
-                  >
-                    {skiLabels?.[row.skiNumber] ?? row.skiNumber}
+                  <div className="flex items-center gap-1">
+                    <div className="flex flex-col">
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"
+                        onClick={() => {
+                          const next = [...rows];
+                          [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                          const renumbered = next.map((r, i) => ({ ...r, skiNumber: i + 1 }));
+                          setRows(renumbered);
+                        }}
+                        data-testid={`button-move-up-${row.id}`}
+                      >
+                        <ArrowUp className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={idx === rows.length - 1}
+                        className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"
+                        onClick={() => {
+                          const next = [...rows];
+                          [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+                          const renumbered = next.map((r, i) => ({ ...r, skiNumber: i + 1 }));
+                          setRows(renumbered);
+                        }}
+                        data-testid={`button-move-down-${row.id}`}
+                      >
+                        <ArrowDown className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <div
+                      className="inline-flex h-9 w-14 items-center justify-center rounded-xl border bg-background/70 text-sm font-semibold"
+                      data-testid={`text-ski-number-${row.id}`}
+                    >
+                      {skiLabels?.[row.skiNumber] ?? row.skiNumber}
+                    </div>
                   </div>
                 </td>
                 {!isGrind && (
                 <td className="px-3 py-2">
                   {isRaceSki ? (
-                    <select
-                      value={row.raceSkiId || ""}
-                      onChange={(e) => {
-                        const val = e.target.value ? Number(e.target.value) : undefined;
+                    <RaceSkiCombobox
+                      raceSkis={raceSkis}
+                      value={row.raceSkiId}
+                      onChange={(val) => {
                         const next = rows.map((r) => (r.id === row.id ? { ...r, raceSkiId: val } : r));
                         setRows(next);
                       }}
-                      className="h-9 w-full min-w-[180px] rounded-md border bg-background/70 px-2 text-sm"
-                      data-testid={`select-raceski-${row.id}`}
-                    >
-                      <option value="">Select race ski...</option>
-                      {raceSkis.map((ski) => (
-                        <option key={ski.id} value={ski.id}>
-                          {ski.athleteName} — {ski.brand ? `${ski.brand} ` : ""}{ski.skiId} ({ski.discipline}{ski.grind ? `, ${ski.grind}` : ""})
-                        </option>
-                      ))}
-                    </select>
+                      testId={`select-raceski-${row.id}`}
+                    />
                   ) : (
                   <div className="flex items-center gap-1">
                     <ProductCombobox

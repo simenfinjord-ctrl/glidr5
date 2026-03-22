@@ -44,6 +44,7 @@ type RaceSki = {
   id: number;
   athleteId: number;
   skiId: string;
+  serialNumber: string | null;
   brand: string | null;
   discipline: string;
   grind: string | null;
@@ -195,6 +196,7 @@ export default function NewTest() {
         return {
           id: ski.id,
           skiId: ski.skiId,
+          serialNumber: ski.serialNumber,
           brand: ski.brand,
           discipline: ski.discipline,
           athleteName: athlete?.name || "Unknown",

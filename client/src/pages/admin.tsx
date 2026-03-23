@@ -2053,7 +2053,7 @@ export default function Admin() {
           </div>
         )}
 
-        {activeTab === "data" && <DataManagementTab teamScopeParam={teamScopeParam} />}
+        {activeTab === "data" && <DataManagementTab teamScopeParam={teamScopeParam} downloadFullPdf={downloadFullPdf} pdfLoading={pdfLoading} />}
 
         {activeTab === "danger" && <DangerZoneTab />}
       </div>
@@ -2061,11 +2061,10 @@ export default function Admin() {
   );
 }
 
-function DataManagementTab({ teamScopeParam }: { teamScopeParam: string }) {
+function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { teamScopeParam: string; downloadFullPdf: () => void; pdfLoading: boolean }) {
   const { toast } = useToast();
   const { data: dbStats } = useQuery<any>({ queryKey: [`/api/admin/db-stats${teamScopeParam}`] });
 
-  const [csvLoading, setCsvLoading] = useState(false);
   const [xlsLoading, setXlsLoading] = useState(false);
 
   async function downloadXlsExport() {
@@ -2137,54 +2136,6 @@ function DataManagementTab({ teamScopeParam }: { teamScopeParam: string }) {
     }
   }
 
-  async function downloadCsvExport() {
-    setCsvLoading(true);
-    try {
-      const exportRes = await apiRequest("GET", "/api/admin/full-export");
-      const rawText = await exportRes.text();
-      let data: any;
-      try {
-        data = JSON.parse(rawText);
-      } catch (parseErr: any) {
-        throw new Error(`Response parse failed (${rawText.length} chars): ${parseErr.message}`);
-      }
-
-      const csvRows: string[] = [];
-      csvRows.push("=== TESTS ===");
-      csvRows.push("ID,Date,Type,Location,Series,Group,Notes,Source");
-      for (const t of data.tests) {
-        const series = data.series.find((s: any) => s.id === t.seriesId);
-        csvRows.push([t.id, t.date, t.testType, `"${t.location || ""}"`, `"${series?.name || ""}"`, t.groupScope, `"${(t.notes || "").replace(/"/g, '""')}"`, t.testSkiSource || "series"].join(","));
-      }
-
-      csvRows.push("");
-      csvRows.push("=== WEATHER ===");
-      csvRows.push("ID,Date,Time,Location,Snow°C,Air°C,SnowHum%,AirHum%,Clouds,Wind,Precip,NaturalSnow,ArtificialSnow,GrainSize,TrackHardness,Quality,Group");
-      for (const w of data.weather) {
-        csvRows.push([w.id, w.date, w.time || "", `"${w.location || ""}"`, w.snowTemperatureC ?? "", w.airTemperatureC ?? "", w.snowHumidityPct ?? "", w.airHumidityPct ?? "", w.clouds ?? "", w.wind || "", w.precipitation || "", w.naturalSnow || "", w.artificialSnow || "", w.grainSize || "", w.trackHardness || "", w.testQuality ?? "", w.groupScope].join(","));
-      }
-
-      csvRows.push("");
-      csvRows.push("=== PRODUCTS ===");
-      csvRows.push("ID,Brand,Name,Type,Group");
-      for (const p of data.products) {
-        csvRows.push([p.id, `"${p.brand || ""}"`, `"${p.name}"`, p.category || "", p.groupScope].join(","));
-      }
-
-      const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "glidr-export.csv";
-      a.click();
-      URL.revokeObjectURL(url);
-      toast({ title: "CSV exported" });
-    } catch (err: any) {
-      toast({ title: "Export failed", description: err.message, variant: "destructive" });
-    } finally {
-      setCsvLoading(false);
-    }
-  }
 
   return (
     <div className="flex flex-col gap-4" data-testid="tab-content-data">
@@ -2230,11 +2181,11 @@ function DataManagementTab({ teamScopeParam }: { teamScopeParam: string }) {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="rounded-xl border border-border bg-muted/30 p-4">
-            <h3 className="text-sm font-medium text-foreground mb-1">CSV Data Export</h3>
-            <p className="text-xs text-muted-foreground mb-3">Export tests, weather, and products in CSV format for spreadsheets.</p>
-            <Button size="sm" variant="outline" data-testid="button-export-csv" onClick={downloadCsvExport} disabled={csvLoading}>
-              {csvLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
-              {csvLoading ? "Exporting…" : "Export CSV"}
+            <h3 className="text-sm font-medium text-foreground mb-1">PDF Export</h3>
+            <p className="text-xs text-muted-foreground mb-3">Export all app data as a comprehensive PDF document.</p>
+            <Button size="sm" variant="outline" data-testid="button-export-pdf-data" onClick={downloadFullPdf} disabled={pdfLoading}>
+              {pdfLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
+              {pdfLoading ? "Exporting…" : "Export PDF"}
             </Button>
           </div>
           <div className="rounded-xl border border-border bg-muted/30 p-4">

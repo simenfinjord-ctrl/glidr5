@@ -583,53 +583,21 @@ export default function TestDetail() {
               <Button
                 variant="outline"
                 size="sm"
-                data-testid="button-export-csv"
-                onClick={() => {
-                  const headers = ["Rank", "Ski No.", "Product", "Method"];
-                  for (const label of distLabels) {
-                    const lbl = label?.trim() || "Round";
-                    headers.push(`Result ${lbl} (cm)`, `Rank ${lbl}`);
-                  }
-                  headers.push("Feeling");
-                  if (isClassic) headers.push("Kick");
-                  const csvRows = sortedEntries.map((entry) => {
-                    const prod = entry.productId ? productsById.get(entry.productId) : null;
-                    const additionalIds = entry.additionalProductIds
-                      ? entry.additionalProductIds.split(",").map(Number).filter((n) => !isNaN(n) && n > 0)
-                      : [];
-                    const allProducts = [
-                      prod ? `${prod.brand} ${prod.name}` : null,
-                      ...additionalIds.map((aid) => {
-                        const p = productsById.get(aid);
-                        return p ? `${p.brand} ${p.name}` : null;
-                      }),
-                    ].filter(Boolean);
-                    const rounds = getEntryRounds(entry, distLabels.length);
-                    const vals: (string | number)[] = [
-                      rounds[0]?.rank ?? "",
-                      entry.skiNumber,
-                      allProducts.join(" + "),
-                      entry.methodology,
-                    ];
-                    for (const rr of rounds) {
-                      vals.push(rr.result ?? "", rr.rank ?? "");
-                    }
-                    vals.push(entry.feelingRank ?? "");
-                    if (isClassic) vals.push(entry.kickRank ?? "");
-                    return vals.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
-                  });
-                  const csv = [headers.join(","), ...csvRows].join("\n");
-                  const blob = new Blob([csv], { type: "text/csv" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `test-${test.location}-${test.date}.csv`;
-                  a.click();
-                  URL.revokeObjectURL(url);
+                data-testid="button-export-pdf"
+                onClick={async () => {
+                  const seriesMap = new Map(series.map((s) => [s.id, s]));
+                  generateTestPDF(test, entries, productsById, seriesMap, weather ?? null);
+                  try {
+                    const s = seriesMap.get(test.seriesId);
+                    await apiRequest("POST", "/api/action-log", {
+                      action: "pdf_download",
+                      details: `Test ${test.date} — ${s?.name || ""}`,
+                    });
+                  } catch (_) {}
                 }}
               >
-                <Download className="mr-2 h-4 w-4" />
-                CSV
+                <FileText className="mr-2 h-4 w-4" />
+                PDF
               </Button>
               <Button
                 variant="outline"
@@ -671,25 +639,6 @@ export default function TestDetail() {
               >
                 <Download className="mr-2 h-4 w-4" />
                 Excel
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                data-testid="button-export-pdf"
-                onClick={async () => {
-                  const seriesMap = new Map(series.map((s) => [s.id, s]));
-                  generateTestPDF(test, entries, productsById, seriesMap, weather ?? null);
-                  try {
-                    const s = seriesMap.get(test.seriesId);
-                    await apiRequest("POST", "/api/action-log", {
-                      action: "pdf_download",
-                      details: `Test ${test.date} — ${s?.name || ""}`,
-                    });
-                  } catch (_) {}
-                }}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                PDF
               </Button>
               </>}
               {!isBlindTester && (

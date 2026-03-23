@@ -26,7 +26,6 @@ Glidr is a full-stack React web application designed to streamline ski testing a
 - Login page has "Remember me" checkbox (extends session to 30 days)
 - Admin page has "Download PDF" button to export all app data via dedicated bulk endpoint (users, groups, series, products, tests with entries, weather with full fields, athletes, race skis, race ski regrinds, test ski regrinds, grinding records, grinding sheets, activity logs, login history)
 - PDF export uses /api/admin/full-export endpoint for reliable bulk data retrieval (no N+1 queries); includes race ski regrinds, test ski series regrinds, grinding sheets, and activity logs
-- CSV export available for tests, weather, and products in spreadsheet-friendly format
 - Complete Runsheet: tournament bracket dialog (Final → SF → QF display order, final first) for single-elimination ski pair testing; enter distances in orange fields, winner (0) auto-advances, cascading diff calculation (loser diff = own distance + winner's accumulated diff), results auto-applied to test entries; "Final Results" table shown at top when bracket is complete
 - Runsheet Watch Mode: "Watch" button creates server-side session with 6-digit code; Garmin Connect IQ app connects via code, shows heats on watch, user selects winner + distance with physical buttons; results sync live to web bracket via polling (2s interval)
 - Mobile Mode: "Mobile" button in runsheet dialog opens full-screen mobile-optimized UI; shows pair matchups with large touch targets for glove use; winner selection by tapping pair, distance entry with +/- 10cm buttons, auto-advances to next heat
@@ -49,7 +48,7 @@ Glidr is a full-stack React web application designed to streamline ski testing a
 - Test entry table rows have up/down reorder arrows to change ski pair order before running tests
 - Tests have optional testName field; displayed as title everywhere (tests list, dashboard, test detail header), falls back to location if empty
 - Blind testers can see test series names (only product names, methodology, and winners are hidden)
-- Kick column included in CSV and PDF exports for Classic tests
+- Kick column included in PDF and Excel exports for Classic tests
 - Test entries support multiple products per line (inline + button, additionalProductIds field)
 - Combined products displayed with "+" separator between names (e.g., "Brand A + Brand B")
 - Hide/Show on test detail blanks Product/Method cells instead of removing columns
@@ -71,7 +70,7 @@ Glidr is a full-stack React web application designed to streamline ski testing a
 - Analytics page has product search combobox with detailed stats: total tests, wins, avg rank, win rate, methodology breakdown, performance-over-time chart, and test history table
 - Analytics page has product comparison tool: select 2+ products to compare side-by-side with summary table, avg rank over time chart, and head-to-head results in shared tests
 - PDF report generation on test detail page (jsPDF + autoTable): includes test info, weather, full results table
-- Test detail page has CSV, Excel, PDF, and Hide/Show export buttons
+- Test detail page has PDF, Excel, and Hide/Show export buttons (PDF first, then Excel)
 - Series form has group selector (shown for multi-group users, defaults to first group)
 - New test form has group selector that defaults to selected series' group; location field starts empty (no auto-fill from weather)
 - Edit test form has group selector that updates when series changes

@@ -144,14 +144,24 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/auth/me", (req, res) => {
+  app.get("/api/auth/me", async (req, res) => {
     if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
     const { password, ...safe } = req.user;
     const perms = parsePermissions(safe.permissions, !!safe.isAdmin, safe.isTeamAdmin === 1);
     const incognito = !!(req.session as any)?.incognito;
-    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, isBlindTester: !!safe.isBlindTester });
+    let teamEnabledAreas: string[] | null = null;
+    const effectiveTeamId = safe.activeTeamId ?? safe.teamId;
+    if (effectiveTeamId && safe.isAdmin !== 1) {
+      try {
+        const team = await storage.getTeam(effectiveTeamId);
+        if (team?.enabledAreas) {
+          teamEnabledAreas = JSON.parse(team.enabledAreas);
+        }
+      } catch {}
+    }
+    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, isBlindTester: !!safe.isBlindTester, teamEnabledAreas });
   });
 
   app.post("/api/auth/incognito", (req, res) => {

@@ -48,11 +48,25 @@ function userInfo(req: Request) {
 }
 
 function requirePermission(area: PermissionArea, level: PermissionLevel) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
     const u = req.user!;
+    if (u.isAdmin !== 1) {
+      const effectiveTeamId = getActiveTeamId(req);
+      if (effectiveTeamId) {
+        try {
+          const team = await storage.getTeam(effectiveTeamId);
+          if (team?.enabledAreas) {
+            const enabled: string[] = JSON.parse(team.enabledAreas);
+            if (!enabled.includes(area)) {
+              return res.status(403).json({ message: "This area is not enabled for your team" });
+            }
+          }
+        } catch {}
+      }
+    }
     const perms = parsePermissions(u.permissions, u.isAdmin === 1, u.isTeamAdmin === 1);
     const userLevel = perms[area];
     if (userLevel === "none") {

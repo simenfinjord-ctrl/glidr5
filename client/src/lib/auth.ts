@@ -27,6 +27,7 @@ type User = {
   parsedPermissions: UserPermissions;
   incognito?: boolean;
   isBlindTester?: boolean;
+  teamEnabledAreas?: string[] | null;
 };
 
 export function useAuth() {
@@ -55,12 +56,13 @@ export function useAuth() {
 
   const perms = user?.parsedPermissions;
 
-  const can = (area: keyof UserPermissions, level: PermissionLevel = "view"): boolean => {
+  const can = (area: keyof UserPermissions | string, level: PermissionLevel = "view"): boolean => {
     if (!user) return false;
     if (user.isAdmin) return true;
+    if (user.teamEnabledAreas && !user.teamEnabledAreas.includes(area)) return false;
     if (user.isTeamAdmin) return true;
     if (!perms) return false;
-    const userLevel = perms[area];
+    const userLevel = perms[area as keyof UserPermissions];
     if (userLevel === "none") return false;
     if (level === "edit") return userLevel === "edit";
     return true;

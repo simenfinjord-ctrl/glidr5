@@ -12,8 +12,10 @@ function sanitizePermissions(input: any): Record<string, string> {
   if (typeof raw !== "object" || raw === null) return result;
   for (const area of PERMISSION_AREAS) {
     const val = raw[area];
-    if (val === "none" || val === "view" || val === "edit") {
+    if (val === "none" || val === "edit") {
       result[area] = val;
+    } else if (val === "view") {
+      result[area] = "edit";
     }
   }
   return result;
@@ -71,9 +73,6 @@ function requirePermission(area: PermissionArea, level: PermissionLevel) {
     const userLevel = perms[area];
     if (userLevel === "none") {
       return res.status(403).json({ message: "No access" });
-    }
-    if (level === "edit" && userLevel === "view") {
-      return res.status(403).json({ message: "Read-only access" });
     }
     next();
   };

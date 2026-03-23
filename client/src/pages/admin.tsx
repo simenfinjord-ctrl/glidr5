@@ -58,7 +58,11 @@ const AREA_LABELS: Record<string, string> = {
 
 function parsePermissions(permStr: string): UserPermissions {
   try {
-    return JSON.parse(permStr);
+    const parsed = JSON.parse(permStr);
+    for (const key of Object.keys(parsed)) {
+      if (parsed[key] === "view") parsed[key] = "edit";
+    }
+    return parsed;
   } catch {
     return { ...DEFAULT_PERMISSIONS };
   }
@@ -75,7 +79,7 @@ function PermissionsMatrix({
   testIdPrefix: string;
   onPresetApplied?: (blindTester: boolean) => void;
 }) {
-  const levels: PermissionLevel[] = ["none", "view", "edit"];
+  const levels: PermissionLevel[] = ["none", "edit"];
   const levelStyles: Record<PermissionLevel, { active: string; inactive: string }> = {
     none: { active: "bg-gray-500 text-white", inactive: "text-muted-foreground hover:bg-muted" },
     view: { active: "bg-blue-500 text-white", inactive: "text-blue-600 hover:bg-blue-50" },
@@ -1447,17 +1451,13 @@ export default function Admin() {
               <div className="grid grid-cols-1 gap-1.5">
                 {users.map((u) => {
                   const userPerms = parsePermissions(u.permissions);
-                  const viewAreas = PERMISSION_AREAS.filter((a) => userPerms[a] === "view");
-                  const editAreas = PERMISSION_AREAS.filter((a) => userPerms[a] === "edit");
-                  const totalActive = viewAreas.length + editAreas.length;
+                  const activeAreas = PERMISSION_AREAS.filter((a) => userPerms[a] !== "none");
+                  const totalActive = activeAreas.length;
                   const permSummary = totalActive === 0
                     ? "No permissions"
-                    : `${totalActive} area${totalActive > 1 ? "s" : ""}` +
-                      (viewAreas.length ? ` · ${viewAreas.length} view` : "") +
-                      (editAreas.length ? ` · ${editAreas.length} edit` : "");
+                    : `${totalActive} area${totalActive > 1 ? "s" : ""}`;
                   const permDetail = [
-                    ...(viewAreas.length ? [`${viewAreas.map((a) => AREA_LABELS[a]).join(", ")} (view)`] : []),
-                    ...(editAreas.length ? [`${editAreas.map((a) => AREA_LABELS[a]).join(", ")} (edit)`] : []),
+                    ...(activeAreas.length ? [activeAreas.map((a) => AREA_LABELS[a]).join(", ")] : []),
                   ].join(" · ");
 
                   return (

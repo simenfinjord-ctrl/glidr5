@@ -64,7 +64,6 @@ export function useAuth() {
     if (!perms) return false;
     const userLevel = perms[area as keyof UserPermissions];
     if (userLevel === "none") return false;
-    if (level === "edit") return userLevel === "edit";
     return true;
   };
 

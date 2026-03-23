@@ -41,10 +41,10 @@ export const ROLE_PRESETS: Record<string, { label: string; permissions: UserPerm
     blindTester: true,
     permissions: {
       ...DEFAULT_PERMISSIONS,
-      dashboard: "view",
-      tests: "view",
-      testskis: "view",
-      weather: "view",
+      dashboard: "edit",
+      tests: "edit",
+      testskis: "edit",
+      weather: "edit",
     },
   },
   member: {

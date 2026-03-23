@@ -30,7 +30,11 @@ export function parsePermissions(permissionsStr: string | null | undefined, isAd
   if (isAdmin || isTeamAdmin) return { ...ADMIN_PERMISSIONS };
   try {
     const parsed = JSON.parse(permissionsStr || "{}");
-    return { ...DEFAULT_PERMISSIONS, ...parsed };
+    const merged = { ...DEFAULT_PERMISSIONS, ...parsed };
+    for (const key of Object.keys(merged)) {
+      if (merged[key] === "view") merged[key] = "edit";
+    }
+    return merged;
   } catch {
     return { ...DEFAULT_PERMISSIONS };
   }

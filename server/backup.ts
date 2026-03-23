@@ -40,14 +40,24 @@ async function clearAndWrite(sheets: any, spreadsheetId: string, sheetTitle: str
   }
 }
 
-function parseResults(resultsJson: string | null): Record<string, number | null> {
-  if (!resultsJson) return {};
-  try { return JSON.parse(resultsJson); } catch { return {}; }
+type RoundResult = { result: number | null; rank: number | null };
+
+function parseResultsArray(resultsJson: string | null): RoundResult[] {
+  if (!resultsJson) return [];
+  try {
+    const parsed = JSON.parse(resultsJson);
+    if (Array.isArray(parsed)) return parsed;
+    return [];
+  } catch { return []; }
 }
 
 function parseDistanceLabels(labelsJson: string | null): string[] {
   if (!labelsJson) return [];
-  try { return JSON.parse(labelsJson); } catch { return []; }
+  try {
+    const parsed = JSON.parse(labelsJson);
+    if (Array.isArray(parsed)) return parsed;
+    return [];
+  } catch { return []; }
 }
 
 export async function runBackupForTeam(teamId: number): Promise<{ success: boolean; error?: string }> {
@@ -187,16 +197,27 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
           if (test.testType === 'Classic') row.push(entry.kickRank ?? '');
 
           if (distLabels.length > 0) {
-            const results = parseResults(entry.results);
-            for (const label of distLabels) {
-              row.push(results[`result_${label}`] ?? '');
-              row.push(results[`rank_${label}`] ?? '');
+            const rounds = parseResultsArray(entry.results);
+            for (let ri = 0; ri < distLabels.length; ri++) {
+              const r = rounds[ri];
+              row.push(r?.result ?? entry.result0kmCmBehind ?? '');
+              row.push(r?.rank ?? entry.rank0km ?? '');
             }
           } else {
-            row.push(entry.result0kmCmBehind ?? '');
-            row.push(entry.rank0km ?? '');
-            row.push(entry.resultXkmCmBehind ?? '');
-            row.push(entry.rankXkm ?? '');
+            const rounds = parseResultsArray(entry.results);
+            if (rounds.length > 0) {
+              row.push(rounds[0]?.result ?? '');
+              row.push(rounds[0]?.rank ?? '');
+              if (rounds.length > 1) {
+                row.push(rounds[1]?.result ?? '');
+                row.push(rounds[1]?.rank ?? '');
+              }
+            } else {
+              row.push(entry.result0kmCmBehind ?? '');
+              row.push(entry.rank0km ?? '');
+              row.push(entry.resultXkmCmBehind ?? '');
+              row.push(entry.rankXkm ?? '');
+            }
           }
           rows.push(row);
         }
@@ -265,16 +286,27 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
           const row: any[] = [entry.skiNumber, skiLabel, entry.feelingRank ?? ''];
           if (test.testType === 'Classic') row.push(entry.kickRank ?? '');
           if (distLabels.length > 0) {
-            const results = parseResults(entry.results);
-            for (const label of distLabels) {
-              row.push(results[`result_${label}`] ?? '');
-              row.push(results[`rank_${label}`] ?? '');
+            const rounds = parseResultsArray(entry.results);
+            for (let ri = 0; ri < distLabels.length; ri++) {
+              const r = rounds[ri];
+              row.push(r?.result ?? entry.result0kmCmBehind ?? '');
+              row.push(r?.rank ?? entry.rank0km ?? '');
             }
           } else {
-            row.push(entry.result0kmCmBehind ?? '');
-            row.push(entry.rank0km ?? '');
-            row.push(entry.resultXkmCmBehind ?? '');
-            row.push(entry.rankXkm ?? '');
+            const rounds = parseResultsArray(entry.results);
+            if (rounds.length > 0) {
+              row.push(rounds[0]?.result ?? '');
+              row.push(rounds[0]?.rank ?? '');
+              if (rounds.length > 1) {
+                row.push(rounds[1]?.result ?? '');
+                row.push(rounds[1]?.rank ?? '');
+              }
+            } else {
+              row.push(entry.result0kmCmBehind ?? '');
+              row.push(entry.rank0km ?? '');
+              row.push(entry.resultXkmCmBehind ?? '');
+              row.push(entry.rankXkm ?? '');
+            }
           }
           rows.push(row);
         }

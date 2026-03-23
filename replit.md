@@ -144,7 +144,7 @@ Glidr is a full-stack React web application designed to optimize ski testing and
 
 ## External Dependencies
 - **PostgreSQL**: Primary relational database.
-- **Google Sheets**: Integrated for embedding grinding-related spreadsheets via iframes and for automated data backup.
+- **Google Sheets**: Integrated for embedding grinding-related spreadsheets via iframes.
 - **jsPDF + autoTable**: Client-side JavaScript libraries for PDF report generation.
 - **xlsx (SheetJS)**: JavaScript library for client-side Excel data export.
 - **Recharts**: JavaScript charting library for analytics and data visualizations.

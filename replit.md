@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed to optimize ski testing and documentation processes for multi-team organizations in the ski industry. It centralizes data collection, provides advanced analytics, and generates comprehensive reports on test series, products, weather, and performance. Key features include live-ranking, granular permissions, and robust offline functionality. The project aims to become the leading platform for ski testing, driving product innovation and competitive advantage.
+Glidr is a full-stack React web application designed to optimize ski testing and documentation processes for multi-team organizations in the ski industry. It centralizes data collection, provides advanced analytics, and generates comprehensive reports on test series, products, weather, and performance. Key capabilities include live-ranking, granular permissions, robust offline functionality, and real-time data input via smartwatch integration. The project aims to become the leading platform for ski testing, driving product innovation and competitive advantage.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -144,7 +144,7 @@ Glidr is a full-stack React web application designed to optimize ski testing and
 
 ## External Dependencies
 - **PostgreSQL**: Primary relational database.
-- **Google Sheets**: Integrated for embedding grinding-related spreadsheets via iframes.
+- **Google Sheets**: Integrated for embedding grinding-related spreadsheets via iframes and for automated data backup.
 - **jsPDF + autoTable**: Client-side JavaScript libraries for PDF report generation.
 - **xlsx (SheetJS)**: JavaScript library for client-side Excel data export.
 - **Recharts**: JavaScript charting library for analytics and data visualizations.

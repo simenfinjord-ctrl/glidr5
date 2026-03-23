@@ -46,6 +46,8 @@ type ApiTeam = {
   isDefault: number;
   enabledAreas: string | null;
   superAdminAccess: number;
+  backupSheetUrl: string | null;
+  lastBackupAt: string | null;
 };
 
 const AREA_LABELS: Record<string, string> = {
@@ -1252,6 +1254,36 @@ export default function Admin() {
     },
   });
 
+  const saveBackupSheetMutation = useMutation({
+    mutationFn: async ({ id, url }: { id: number; url: string }) => {
+      const res = await apiRequest("PUT", `/api/teams/${id}/backup-sheet`, { url });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      toast({ title: "Backup sheet saved" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const runBackupMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/teams/${id}/backup`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      toast({ title: "Backup completed successfully" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Backup failed", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const [backupSheetInputs, setBackupSheetInputs] = useState<Record<number, string>>({});
+
   if (!user) return null;
 
   if (!canManage) {
@@ -1800,6 +1832,61 @@ export default function Admin() {
                   </div>
                 ))}
               </div>
+
+              <div className="mt-4 rounded-xl border border-border bg-muted/20 p-3 space-y-4">
+                <div className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">Google Sheets Backup</div>
+                <p className="text-xs text-muted-foreground">Paste a Google Sheets URL for each team. All data is backed up automatically every 30 minutes and can also be triggered manually.</p>
+                {teams.map((team) => {
+                  const inputVal = backupSheetInputs[team.id] ?? team.backupSheetUrl ?? '';
+                  const hasChanged = inputVal !== (team.backupSheetUrl ?? '');
+                  return (
+                    <div key={`backup-${team.id}`} className="space-y-1.5">
+                      <div className="text-xs font-medium text-foreground/80">{team.name}</div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={inputVal}
+                          onChange={(e) => setBackupSheetInputs(prev => ({ ...prev, [team.id]: e.target.value }))}
+                          placeholder="https://docs.google.com/spreadsheets/d/..."
+                          className="h-8 text-xs flex-1"
+                          data-testid={`input-backup-sheet-${team.id}`}
+                        />
+                        <Button
+                          size="sm"
+                          variant={hasChanged ? "default" : "outline"}
+                          data-testid={`button-save-backup-sheet-${team.id}`}
+                          disabled={!hasChanged || saveBackupSheetMutation.isPending}
+                          onClick={() => {
+                            saveBackupSheetMutation.mutate({ id: team.id, url: inputVal });
+                            setBackupSheetInputs(prev => { const n = { ...prev }; delete n[team.id]; return n; });
+                          }}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          data-testid={`button-run-backup-${team.id}`}
+                          disabled={!team.backupSheetUrl || runBackupMutation.isPending}
+                          onClick={() => runBackupMutation.mutate(team.id)}
+                        >
+                          {runBackupMutation.isPending ? (
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Download className="h-3.5 w-3.5" />
+                          )}
+                          <span className="ml-1 text-xs">Backup</span>
+                        </Button>
+                      </div>
+                      {team.lastBackupAt && (
+                        <div className="text-[10px] text-muted-foreground">
+                          Last backup: {new Date(team.lastBackupAt).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
               <div className="mt-4 rounded-xl border border-border bg-muted/20 p-3 space-y-3">
                 <div className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">New team</div>
                 <Input

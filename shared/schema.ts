@@ -60,6 +60,8 @@ export const teams = pgTable("teams", {
   isDefault: integer("is_default").notNull().default(0),
   enabledAreas: text("enabled_areas"),
   superAdminAccess: integer("super_admin_access").notNull().default(1),
+  backupSheetUrl: text("backup_sheet_url"),
+  lastBackupAt: text("last_backup_at"),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });

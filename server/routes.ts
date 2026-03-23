@@ -193,6 +193,41 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  app.put("/api/teams/:id/backup-sheet", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const id = parseInt(req.params.id);
+    const url = req.body.url?.trim() || null;
+    if (url && !url.includes('docs.google.com/spreadsheets')) {
+      return res.status(400).json({ message: "Must be a Google Sheets URL" });
+    }
+    const updated = await storage.updateTeam(id, { backupSheetUrl: url });
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    const { startAutoBackup, stopAutoBackup } = await import('./backup');
+    if (url) {
+      startAutoBackup(id);
+    } else {
+      stopAutoBackup(id);
+    }
+    res.json(updated);
+  });
+
+  app.post("/api/teams/:id/backup", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const id = parseInt(req.params.id);
+    const team = await storage.getTeam(id);
+    if (!team) return res.status(404).json({ message: "Team not found" });
+    if (!team.backupSheetUrl) return res.status(400).json({ message: "No backup sheet URL configured" });
+    const { runBackupForTeam } = await import('./backup');
+    const result = await runBackupForTeam(id);
+    if (result.success) {
+      res.json({ ok: true, lastBackupAt: new Date().toISOString() });
+    } else {
+      res.status(500).json({ message: result.error || "Backup failed" });
+    }
+  });
+
   app.post("/api/teams/switch", requireAuth, async (req, res) => {
     const u = req.user!;
     if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });

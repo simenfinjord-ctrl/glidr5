@@ -25,6 +25,8 @@ import RaceSkis from "@/pages/race-skis";
 import AthleteDetail from "@/pages/athlete-detail";
 import Suggestions from "@/pages/suggestions";
 import LiveRunsheets from "@/pages/live-runsheets";
+import WhatIsGlidr from "@/pages/what-is-glidr";
+import Legal from "@/pages/legal";
 
 import Login from "@/pages/login";
 
@@ -52,6 +54,8 @@ function Router() {
 
       <Route path="/suggestions" component={Suggestions} />
       <Route path="/admin" component={Admin} />
+      <Route path="/what-is-glidr" component={WhatIsGlidr} />
+      <Route path="/legal" component={Legal} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -69,7 +73,8 @@ function AuthGuard() {
     );
   }
 
-  if (!user && location !== "/login") {
+  const publicPaths = ["/login", "/what-is-glidr", "/legal"];
+  if (!user && !publicPaths.includes(location)) {
     return <Redirect to="/login" />;
   }
 

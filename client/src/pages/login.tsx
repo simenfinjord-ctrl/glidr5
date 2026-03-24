@@ -191,9 +191,14 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-muted-foreground dark:text-muted-foreground mt-6">
-          Glidr &middot; A glide and performance database
-        </p>
+        <div className="text-center text-xs text-muted-foreground dark:text-muted-foreground mt-6 space-y-1">
+          <p>Glidr &middot; A glide and performance database</p>
+          <p>
+            <a href="/what-is-glidr" className="underline hover:text-foreground transition-colors" data-testid="link-login-features">What is Glidr?</a>
+            <span className="mx-2">|</span>
+            <a href="/legal" className="underline hover:text-foreground transition-colors" data-testid="link-login-legal">Legal</a>
+          </p>
+        </div>
       </div>
     </div>
   );

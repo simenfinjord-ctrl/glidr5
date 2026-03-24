@@ -328,10 +328,18 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       <footer className="mx-auto w-full max-w-6xl px-4 sm:px-6 pb-8">
-        <div className="mb-3 h-px bg-muted" />
+        <div className="mb-3 h-px bg-border" />
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <span className="font-medium">Glidr</span>
-          <span>A glide and performance database</span>
+          <div className="flex items-center gap-3">
+            <AppLink href="/what-is-glidr" testId="link-what-is-glidr" className="underline hover:text-foreground transition-colors">
+              What is Glidr?
+            </AppLink>
+            <span className="text-border">|</span>
+            <AppLink href="/legal" testId="link-legal" className="underline hover:text-foreground transition-colors">
+              Legal
+            </AppLink>
+          </div>
         </div>
       </footer>
     </div>

@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application for multi-team organizations in the ski industry. It streamlines ski testing and documentation through data collection, advanced analytics, and reporting, including live-ranking and extensive offline functionality. Its purpose is to accelerate product development and provide a competitive advantage in the ski market.
+Glidr is a full-stack React web application designed for multi-team organizations in the ski industry. It aims to accelerate product development by streamlining ski testing and documentation through efficient data collection, advanced analytics, and comprehensive reporting. Key capabilities include live-ranking, extensive offline functionality, and competitive advantage through data-driven insights in the ski market.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -137,7 +137,7 @@ Glidr is a full-stack React web application for multi-team organizations in the 
 - **API Design**: A RESTful API (`/api/*`) handles data operations, authentication, and administration, incorporating server-side validation and permission enforcement.
 - **Offline Capabilities**: Enhanced with Service Workers and IndexedDB for offline data entry, queuing changes locally for synchronization upon reconnection.
 - **Analytics & Reporting**: `Recharts` provides dynamic data visualizations. Client-side exports to PDF, CSV, and Excel are also supported.
-- **Suggestions Module**: Offers product recommendations based on historical test data and weather similarity scoring via database analysis, without external AI/OpenAI services.
+- **Suggestions Module**: Offers product recommendations based on historical test data and weather similarity scoring via database analysis.
 - **Grinding Module**: Manages grinding records and embeds multiple Google Sheets via iframes.
 - **Runsheet Module**: Implements a single-elimination tournament bracket system for ski testing, featuring live-ranking, a mobile-optimized interface, and integration with a Garmin Connect IQ smartwatch app for real-time data input.
 

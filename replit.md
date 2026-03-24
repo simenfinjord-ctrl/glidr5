@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed for multi-team organizations in the ski industry. It aims to accelerate product development by streamlining ski testing and documentation through efficient data collection, advanced analytics, and comprehensive reporting. Key capabilities include live-ranking, extensive offline functionality, and competitive advantage through data-driven insights in the ski market.
+Glidr is a full-stack React web application designed for multi-team organizations in the ski industry. Its primary purpose is to enhance ski product development by streamlining testing and documentation workflows. This is achieved through efficient data collection, advanced analytics, and comprehensive reporting, including live-ranking, extensive offline functionality, and data-driven insights. Glidr aims to become the leading platform for ski product development and testing, providing users with a significant competitive advantage in the market.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -130,21 +130,22 @@ Glidr is a full-stack React web application designed for multi-team organization
 - Admin overview stats include Athletes and Race Skis counts
 
 ## System Architecture
-- **UI/UX Decisions**: Utilizes `shadcn/ui` and `Tailwind CSS v4` for a responsive, dark-mode-enabled interface with a table-first approach for data input.
-- **Authentication & Authorization**: Implements session-based authentication with a granular Role-Based Access Control (RBAC) system supporting Super Admin, Team Admin, and Member roles. Permissions are enforced server-side and client-side.
-- **Multi-tenancy**: Achieved by integrating a `teamId` column across all core data tables for strict data isolation. Super Admins can manage and switch between teams.
-- **Data Models**: `Drizzle ORM` defines and manages database schemas, ensuring data integrity.
-- **API Design**: A RESTful API (`/api/*`) handles data operations, authentication, and administration, incorporating server-side validation and permission enforcement.
-- **Offline Capabilities**: Enhanced with Service Workers and IndexedDB for offline data entry, queuing changes locally for synchronization upon reconnection.
-- **Analytics & Reporting**: `Recharts` provides dynamic data visualizations. Client-side exports to PDF, CSV, and Excel are also supported.
-- **Suggestions Module**: Offers product recommendations based on historical test data and weather similarity scoring via database analysis.
-- **Grinding Module**: Manages grinding records and embeds multiple Google Sheets via iframes.
-- **Runsheet Module**: Implements a single-elimination tournament bracket system for ski testing, featuring live-ranking, a mobile-optimized interface, and integration with a Garmin Connect IQ smartwatch app for real-time data input.
+- **UI/UX Decisions**: Utilizes `shadcn/ui` and `Tailwind CSS v4` for a responsive interface with dark mode, prioritizing a table-first approach for efficient data input.
+- **Authentication & Authorization**: Implements session-based authentication and a granular Role-Based Access Control (RBAC) system with Super Admin, Team Admin, and Member roles, enforced both server-side and client-side.
+- **Multi-tenancy**: Achieved by incorporating a `teamId` column across all primary data tables, ensuring strict data isolation between different teams. Super Admins have the ability to manage and switch between teams.
+- **Data Models**: `Drizzle ORM` is employed for defining and managing database schemas, ensuring data integrity and consistency.
+- **API Design**: A RESTful API (`/api/*`) handles all data operations, user authentication, and administrative tasks, featuring integrated server-side validation and permission enforcement.
+- **Offline Capabilities**: Leverages Service Workers and IndexedDB to provide robust offline data entry, queuing local changes for automatic synchronization when connectivity is restored.
+- **Analytics & Reporting**: `Recharts` is used for creating dynamic data visualizations. Client-side data export functionalities are available for PDF, CSV, and Excel formats.
+- **Suggestions Module**: Offers product recommendations based on an analysis of historical test data and weather similarity, relying solely on database analysis without external AI.
+- **Grinding Module**: Manages grinding records and supports embedding multiple Google Sheets directly into the application via iframes.
+- **Runsheet Module**: Features a single-elimination tournament bracket system for ski testing, complete with live-ranking, a mobile-optimized user interface, and integration with a Garmin Connect IQ smartwatch app for real-time data input.
+- **Race Skis Module**: Manages athlete profiles, ski inventory, and tracks regrind history, with access control defined by athlete associations.
 
 ## External Dependencies
-- **PostgreSQL**: Primary relational database.
-- **Google Sheets**: Integrated for embedding grinding-related spreadsheets.
-- **jsPDF + autoTable**: JavaScript libraries for client-side PDF generation.
-- **xlsx (SheetJS)**: JavaScript library for client-side Excel data export.
-- **Recharts**: JavaScript charting library for analytics and data visualization.
-- **Garmin Connect IQ SDK**: Used for Garmin smartwatch application development and integration.
+- **PostgreSQL**: The primary relational database used for all data storage.
+- **Google Sheets**: Integrated for embedding grinding-related spreadsheets within the application.
+- **jsPDF + autoTable**: Used for generating PDF documents on the client-side.
+- **xlsx (SheetJS)**: Utilized for exporting data to Excel files from the client-side.
+- **Recharts**: A JavaScript charting library specifically for analytics and data visualization.
+- **Garmin Connect IQ SDK**: Employed for developing and integrating with Garmin smartwatch applications, particularly for the Runsheet Watch Mode.

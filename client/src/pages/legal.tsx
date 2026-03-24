@@ -84,6 +84,93 @@ export default function Legal() {
         </p>
       </section>
 
+      <div className="my-12 border-t border-border" />
+
+      <h1 className="text-2xl font-bold mb-6" data-testid="heading-privacy">Privacy Policy</h1>
+
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold mb-3">What Data We Collect</h2>
+        <p className="text-sm text-foreground/80 leading-relaxed mb-2">
+          Glidr collects only the data necessary to provide the service:
+        </p>
+        <ul className="text-sm text-foreground/80 leading-relaxed list-disc pl-6 space-y-1">
+          <li>Account information: name, email address, and encrypted password</li>
+          <li>Testing data: test results, products, weather logs, grinding records, athlete profiles, race ski records, and related content entered by your team</li>
+          <li>Usage data: login timestamps and activity logs for security and audit purposes</li>
+          <li>Session data: session tokens for authentication</li>
+        </ul>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold mb-3">How We Use Your Data</h2>
+        <p className="text-sm text-foreground/80 leading-relaxed mb-2">
+          Your data is used exclusively to provide the Glidr service to your team:
+        </p>
+        <ul className="text-sm text-foreground/80 leading-relaxed list-disc pl-6 space-y-1">
+          <li>Displaying and analyzing test results, rankings, and analytics within your team</li>
+          <li>Generating product recommendations based on your historical test data</li>
+          <li>Providing login security and activity audit trails</li>
+          <li>Enabling offline synchronization of your data</li>
+        </ul>
+        <p className="text-sm text-foreground/80 leading-relaxed mt-2">
+          We do not use your data for advertising, profiling, machine learning training, or any purpose other than delivering the service.
+        </p>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold mb-3">Data Sharing & Third Parties</h2>
+        <p className="text-sm text-foreground/80 leading-relaxed mb-2">
+          We do not sell, rent, or share your data with third parties. Your data may only be processed by:
+        </p>
+        <ul className="text-sm text-foreground/80 leading-relaxed list-disc pl-6 space-y-1">
+          <li>Infrastructure providers (database hosting, server hosting) under strict data processing agreements</li>
+          <li>Google Sheets, only when your team explicitly configures a backup integration — data is sent to sheets you own</li>
+        </ul>
+        <p className="text-sm text-foreground/80 leading-relaxed mt-2">
+          No data is shared across teams. Each team's data is isolated and inaccessible to other teams.
+        </p>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold mb-3">Data Retention</h2>
+        <p className="text-sm text-foreground/80 leading-relaxed mb-2">
+          Your testing data is retained for as long as your team's account is active. Activity logs and login history may be purged by your team administrator using the built-in admin tools.
+        </p>
+        <p className="text-sm text-foreground/80 leading-relaxed">
+          Upon account termination, data is retained for 30 days to allow for export, after which it is permanently deleted from all systems, including backups.
+        </p>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold mb-3">Cookies & Local Storage</h2>
+        <p className="text-sm text-foreground/80 leading-relaxed">
+          Glidr uses a server-side session cookie for authentication. We use localStorage for user preferences (theme, layout, last-used group) and IndexedDB for offline data caching. We do not use tracking cookies, analytics cookies, or any third-party cookies.
+        </p>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold mb-3">Your Rights</h2>
+        <p className="text-sm text-foreground/80 leading-relaxed mb-2">
+          As a user or team administrator, you have the right to:
+        </p>
+        <ul className="text-sm text-foreground/80 leading-relaxed list-disc pl-6 space-y-1">
+          <li>Access all data stored about you or your team via the built-in export tools (PDF, Excel)</li>
+          <li>Correct any inaccurate data through the application interface</li>
+          <li>Delete your data — administrators can delete individual records, purge logs, or request full account deletion</li>
+          <li>Export your data in standard formats at any time</li>
+          <li>Withdraw consent by deactivating your account</li>
+        </ul>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold mb-3">Contact</h2>
+        <p className="text-sm text-foreground/80 leading-relaxed">
+          For privacy-related inquiries or to exercise your data rights, contact your team administrator or reach out to us directly at the address provided in your service agreement.
+        </p>
+      </section>
+
+      <div className="my-12 border-t border-border" />
+
       <section className="mb-8">
         <h2 className="text-lg font-semibold mb-3">9. Changes to Terms</h2>
         <p className="text-sm text-foreground/80 leading-relaxed">

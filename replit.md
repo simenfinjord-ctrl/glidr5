@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed for multi-team organizations in the ski industry. Its primary purpose is to enhance ski product development by streamlining testing and documentation workflows. This is achieved through efficient data collection, advanced analytics, and comprehensive reporting, including live-ranking, extensive offline functionality, and data-driven insights. Glidr aims to become the leading platform for ski product development and testing, providing users with a significant competitive advantage in the market.
+Glidr is a full-stack React web application designed for multi-team organizations in the ski industry. Its core purpose is to enhance ski product development by optimizing testing and documentation workflows. It achieves this through efficient data collection, advanced analytics, and comprehensive reporting, offering features like live-ranking, extensive offline functionality, and data-driven insights. Glidr aims to be the leading platform for ski product development and testing, providing a competitive advantage in the market.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry

@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed for multi-team organizations in the ski industry to streamline ski testing and documentation. It provides robust data collection, advanced analytics, and comprehensive reporting across various testing parameters, including live-ranking and extensive offline functionality. The project aims to innovate product development and enhance competitive advantage within the ski market.
+Glidr is a full-stack React web application designed for multi-team organizations in the ski industry. It revolutionizes ski testing and documentation by providing robust data collection, advanced analytics, and comprehensive reporting, including live-ranking and extensive offline functionality. The project's vision is to accelerate product development and establish a significant competitive advantage in the ski market.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -130,15 +130,15 @@ Glidr is a full-stack React web application designed for multi-team organization
 - Admin overview stats include Athletes and Race Skis counts
 
 ## System Architecture
-- **UI/UX Decisions**: The application utilizes `shadcn/ui` and `Tailwind CSS v4` for a responsive interface with dark mode, emphasizing a table-first approach for efficient data entry.
-- **Authentication & Authorization**: Session-based authentication and granular Role-Based Access Control (RBAC) (Super Admin, Team Admin, Member) with strict server-side and client-side permission enforcement.
-- **Multi-tenancy**: Achieved by a `teamId` column across all core data tables for complete data isolation between teams. Super Admins can manage and switch between teams.
-- **Data Models**: `Drizzle ORM` defines and manages database schemas for all entities.
-- **API Design**: A RESTful API via `/api/*` handles data operations, authentication, and administrative functions, with integrated server-side validation and permission enforcement.
-- **Offline Capabilities**: Service Workers and IndexedDB enable offline data entry, local queuing of changes, and automatic synchronization upon reconnection.
-- **Analytics & Reporting**: `Recharts` provides dynamic data visualizations, with client-side PDF, CSV, and Excel export functionalities.
-- **Suggestions Module**: Offers product recommendations based on weather similarity scoring against historical test data via database analysis.
-- **Grinding Module**: Manages grinding records and supports embedding multiple Google Sheets via iframes.
+- **UI/UX Decisions**: Utilizes `shadcn/ui` and `Tailwind CSS v4` for a responsive, dark-mode enabled interface, prioritizing a table-first approach for data entry.
+- **Authentication & Authorization**: Session-based authentication with granular Role-Based Access Control (RBAC) across Super Admin, Team Admin, and Member levels, enforced both server-side and client-side.
+- **Multi-tenancy**: Achieved via a `teamId` column in all core data tables, ensuring data isolation between teams. Super Admins can manage and switch between teams.
+- **Data Models**: `Drizzle ORM` defines and manages all database schemas.
+- **API Design**: A RESTful API (`/api/*`) handles data operations, authentication, and administration, with integrated server-side validation and permission enforcement.
+- **Offline Capabilities**: Service Workers and IndexedDB facilitate offline data entry, local queuing of changes, and automatic synchronization upon reconnection.
+- **Analytics & Reporting**: `Recharts` powers dynamic data visualizations, complemented by client-side PDF, CSV, and Excel export functionalities.
+- **Suggestions Module**: Provides product recommendations based on weather similarity scoring against historical test data using database analysis.
+- **Grinding Module**: Manages grinding records and allows embedding multiple Google Sheets via iframes.
 - **Runsheet Module**: Implements a single-elimination tournament bracket system for ski testing, featuring live-ranking, mobile optimization, and integration with a Garmin Connect IQ smartwatch app for real-time data input.
 
 ## External Dependencies

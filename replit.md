@@ -42,7 +42,7 @@ Glidr is a full-stack React web application designed to optimize ski product dev
 - Test entries support kick rank (only shown for Classic test type, orange badge styling)
 - Test types include Glide, Structure, Classic, Skating, Double Poling, and Grind
 - Race ski tests only allow Classic, Skating, and Double Poling test types (Glide/Structure/Grind removed from race ski dropdown); series tests only allow Glide/Structure/Grind (enforced server-side and client-side)
-- Classic/Skating/Double Poling test types filter series by skiType (matching discipline)
+- Classic/Skaing/Double Poling test types filter series by skiType (matching discipline)
 - Athlete detail page has collapsible "Ski Garage" section wrapping the skis list (open by default, toggle via header click)
 - Race ski selection uses searchable combobox (search by serial number, ski ID, athlete name, brand, grind)
 - Test entry table rows have up/down reorder arrows to change ski pair order before running tests

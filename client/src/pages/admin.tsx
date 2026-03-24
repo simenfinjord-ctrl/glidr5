@@ -73,11 +73,13 @@ function PermissionsMatrix({
   onChange,
   testIdPrefix,
   onPresetApplied,
+  disabledAreas,
 }: {
   value: UserPermissions;
   onChange: (perms: UserPermissions) => void;
   testIdPrefix: string;
   onPresetApplied?: (blindTester: boolean) => void;
+  disabledAreas?: string[];
 }) {
   const levels: PermissionLevel[] = ["none", "edit"];
   const levelStyles: Record<PermissionLevel, { active: string; inactive: string }> = {
@@ -88,7 +90,13 @@ function PermissionsMatrix({
 
   const setAll = (level: PermissionLevel) => {
     const next = { ...value };
-    for (const area of PERMISSION_AREAS) next[area] = level;
+    for (const area of PERMISSION_AREAS) {
+      if (disabledAreas?.includes(area)) {
+        next[area] = "none";
+      } else {
+        next[area] = level;
+      }
+    }
     onChange(next);
   };
 
@@ -124,22 +132,26 @@ function PermissionsMatrix({
         </div>
       </div>
       <div className="rounded-lg border border-border divide-y divide-border">
-        {PERMISSION_AREAS.map((area) => (
-          <div key={area} className="flex items-center justify-between px-3 h-8">
-            <span className="text-xs text-foreground/80">{AREA_LABELS[area] || area}</span>
+        {PERMISSION_AREAS.map((area) => {
+          const isDisabled = disabledAreas?.includes(area);
+          return (
+          <div key={area} className={cn("flex items-center justify-between px-3 h-8", isDisabled && "opacity-40")}>
+            <span className="text-xs text-foreground/80">{AREA_LABELS[area] || area}{isDisabled ? " (not available)" : ""}</span>
             <div className="flex items-center gap-0.5">
               {levels.map((l) => {
-                const selected = (value[area] || "none") === l;
+                const selected = isDisabled ? l === "none" : (value[area] || "none") === l;
                 return (
                   <button
                     key={l}
                     type="button"
+                    disabled={isDisabled}
                     data-testid={`${testIdPrefix}-${area}${selected ? "" : `-opt-${l}`}`}
                     className={cn(
                       "rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors",
-                      selected ? levelStyles[l].active : levelStyles[l].inactive
+                      selected ? levelStyles[l].active : levelStyles[l].inactive,
+                      isDisabled && "cursor-not-allowed"
                     )}
-                    onClick={() => onChange({ ...value, [area]: l })}
+                    onClick={() => !isDisabled && onChange({ ...value, [area]: l })}
                   >
                     {l.charAt(0).toUpperCase() + l.slice(1)}
                   </button>
@@ -147,7 +159,8 @@ function PermissionsMatrix({
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -276,6 +289,18 @@ const resetSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+function getTeamDisabledAreas(teams: ApiTeam[], teamId: number, isSuperAdmin: boolean): string[] {
+  if (isSuperAdmin) return [];
+  const team = teams.find((t) => t.id === teamId);
+  if (!team || !team.enabledAreas) return [];
+  try {
+    const enabled: string[] = JSON.parse(team.enabledAreas);
+    return PERMISSION_AREAS.filter((a) => !enabled.includes(a));
+  } catch {
+    return [];
+  }
+}
+
 function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: () => void; allGroups: ApiGroup[]; defaultTeamId: number; teams: ApiTeam[] }) {
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
@@ -382,6 +407,7 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
           onChange={(p) => { setPerms(p); form.setValue("permissions", JSON.stringify(p)); }}
           testIdPrefix="select-create-perm"
           onPresetApplied={(blind) => form.setValue("isBlindTester", blind)}
+          disabledAreas={getTeamDisabledAreas(teams, selectedTeamId, isSuperAdmin)}
         />
         <FormField control={form.control} name="isBlindTester" render={({ field }) => (
           <FormItem>
@@ -539,6 +565,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
           onChange={(p) => { setPerms(p); form.setValue("permissions", JSON.stringify(p)); }}
           testIdPrefix="select-edit-perm"
           onPresetApplied={(blind) => form.setValue("isBlindTester", blind)}
+          disabledAreas={getTeamDisabledAreas(teams, selectedTeamId, isSuperAdmin)}
         />
         <FormField control={form.control} name="isBlindTester" render={({ field }) => (
           <FormItem>

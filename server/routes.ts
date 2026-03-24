@@ -5,6 +5,24 @@ import { parsePermissions } from "./auth";
 import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, tests, users, testSkiSeries } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql, inArray } from "drizzle-orm";
+async function enforceTeamAreas(perms: Record<string, string>, teamId: number | undefined): Promise<Record<string, string>> {
+  if (!teamId) return perms;
+  const team = await storage.getTeam(teamId);
+  if (!team || !team.enabledAreas) return perms;
+  try {
+    const enabled: string[] = JSON.parse(team.enabledAreas as string);
+    const result = { ...perms };
+    for (const area of PERMISSION_AREAS) {
+      if (!enabled.includes(area)) {
+        result[area] = "none";
+      }
+    }
+    return result;
+  } catch {
+    return perms;
+  }
+}
+
 function sanitizePermissions(input: any): Record<string, string> {
   const result: Record<string, string> = { ...DEFAULT_PERMISSIONS };
   if (!input) return result;
@@ -1161,9 +1179,12 @@ export async function registerRoutes(
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const existing = await storage.getUserByEmail(req.body.email);
     if (existing) return res.status(409).json({ message: "Email already in use" });
-    const sanitizedPerms = sanitizePermissions(req.body.permissions);
+    let sanitizedPerms = sanitizePermissions(req.body.permissions);
     const teamId = u.isAdmin === 1 ? (req.body.teamId || getActiveTeamId(req)) : u.teamId;
     const isSuperAdmin = u.isAdmin === 1;
+    if (!isSuperAdmin) {
+      sanitizedPerms = await enforceTeamAreas(sanitizedPerms, teamId);
+    }
     const created = await storage.createUser({
       email: req.body.email,
       password: req.body.password,
@@ -1195,7 +1216,14 @@ export async function registerRoutes(
     if (req.body.groupScope !== undefined) data.groupScope = req.body.groupScope;
     if (u.isAdmin === 1 && req.body.isAdmin !== undefined) data.isAdmin = req.body.isAdmin ? 1 : 0;
     if (req.body.isTeamAdmin !== undefined) data.isTeamAdmin = req.body.isTeamAdmin ? 1 : 0;
-    if (req.body.permissions !== undefined) data.permissions = JSON.stringify(sanitizePermissions(req.body.permissions));
+    if (req.body.permissions !== undefined) {
+      let perms = sanitizePermissions(req.body.permissions);
+      if (u.isAdmin !== 1) {
+        const targetTeamId = data.teamId || (await storage.getUser(id))?.teamId;
+        perms = await enforceTeamAreas(perms, targetTeamId);
+      }
+      data.permissions = JSON.stringify(perms);
+    }
     if (req.body.isActive !== undefined) data.isActive = req.body.isActive ? 1 : 0;
     if (u.isAdmin === 1 && req.body.teamId !== undefined) data.teamId = req.body.teamId;
     if (req.body.isBlindTester !== undefined) data.isBlindTester = req.body.isBlindTester ? 1 : 0;

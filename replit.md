@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed to optimize ski product development for multi-team organizations. It provides a platform for streamlined data collection, advanced analytics, and detailed report generation, significantly enhancing efficiency and precision in product development. Key capabilities include live-ranking, robust offline functionality, sophisticated data visualization, and a multi-tenant architecture. The project aims to be the leading platform in the ski industry for data-driven product innovation, improving decision-making and accelerating product development cycles.
+Glidr is a full-stack React web application designed to optimize ski product development for multi-team organizations. It provides streamlined data collection, advanced analytics, and detailed report generation to enhance efficiency and precision in the ski industry. Key capabilities include live-ranking, robust offline functionality, sophisticated data visualization, and a multi-tenant architecture. The project aims to be the leading platform for data-driven product innovation in the ski sector, improving decision-making and accelerating product development cycles.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -140,7 +140,7 @@ Glidr is a full-stack React web application designed to optimize ski product dev
 - **Suggestions Module**: Offers product recommendations based on an analysis of historical test data and weather similarity, relying solely on database analysis without external AI.
 - **Grinding Module**: Manages grinding records and supports embedding multiple Google Sheets directly into the application via iframes.
 - **Runsheet Module**: Features a single-elimination tournament bracket system for ski testing, complete with live-ranking, a mobile-optimized user interface, and integration with a Garmin Connect IQ smartwatch app for real-time data input.
-- **Race Skis Module**: Manages athlete profiles, ski inventory, and tracks regrind history, with access control defined by athlete associations.
+- **Race Skis Module**: Managers athlete profiles, ski inventory, and tracks regrind history, with access control defined by athlete associations.
 
 ## External Dependencies
 - **PostgreSQL**: The primary relational database used for all data storage.

@@ -704,7 +704,7 @@ export default function Admin() {
 
   const { data: teams = [] } = useQuery<ApiTeam[]>({
     queryKey: ["/api/teams"],
-    enabled: isSuperAdmin,
+    enabled: canManage,
   });
 
   const teamScopeParam = isSuperAdmin

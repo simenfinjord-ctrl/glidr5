@@ -343,6 +343,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <AppLink href="/legal" testId="link-legal" className="underline hover:text-foreground transition-colors">
               Legal
             </AppLink>
+            <span className="text-border">|</span>
+            <AppLink href="/contact" testId="link-contact" className="underline hover:text-foreground transition-colors">
+              Contact
+            </AppLink>
           </div>
         </div>
       </footer>

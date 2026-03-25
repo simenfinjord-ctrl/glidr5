@@ -53,9 +53,9 @@ export function setupAuth(app: Express) {
     proxy: true,
     cookie: {
       maxAge: DEFAULT_MAX_AGE,
-      secure: true,
-      sameSite: "none" as const,
-      partitioned: true,
+      secure: process.env.SCREENSHOT_MODE === "1" ? false : true,
+      sameSite: process.env.SCREENSHOT_MODE === "1" ? "lax" as const : "none" as const,
+      ...(process.env.SCREENSHOT_MODE === "1" ? {} : { partitioned: true }),
     } as any,
     store: new PgStore({
       pool: pool as any,

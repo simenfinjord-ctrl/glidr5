@@ -11,54 +11,61 @@ async function run() {
   });
   const page = await context.newPage();
 
-  await page.goto(`${BASE}/login`);
-  await page.fill('[data-testid="input-email"]', 'admin@fastski.local');
-  await page.fill('[data-testid="input-password"]', 'password');
-  await page.click('[data-testid="button-login"]');
-  await page.waitForURL('**/dashboard');
+  await page.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(2000);
-  console.log('Logged in');
+
+  await page.locator('input[type="email"]').first().fill('admin@fastski.local');
+  await page.locator('input[type="password"]').first().fill('password');
+  await page.locator('button[type="submit"]').first().click();
+  await page.waitForTimeout(5000);
+  console.log('After login, URL:', page.url());
+
+  const cookies = await context.cookies();
+  const sid = cookies.find(c => c.name === 'connect.sid');
+  if (!sid) {
+    console.log('No session cookie! Cookies:', cookies.map(c => c.name));
+    await page.screenshot({ path: `${OUT}/debug-check.png` });
+    await browser.close();
+    process.exit(1);
+  }
+  console.log('Got session cookie');
 
   const shots = [
-    { route: '/dashboard', file: 'glidr-hero.png', wait: 3000 },
-    { route: '/tests', file: 'glidr-tests.png', wait: 2000 },
-    { route: '/analytics', file: 'glidr-analytics.png', wait: 3000 },
-    { route: '/weather', file: 'glidr-weather.png', wait: 2000 },
-    { route: '/products', file: 'glidr-products.png', wait: 2000 },
-    { route: '/testskis', file: 'glidr-testskis.png', wait: 2000 },
-    { route: '/raceskis', file: 'glidr-raceskis.png', wait: 2000 },
-    { route: '/admin', file: 'glidr-security.png', wait: 2000 },
+    { route: '/dashboard', file: 'glidr-hero.png', wait: 4000 },
+    { route: '/tests', file: 'glidr-tests.png', wait: 3000 },
+    { route: '/analytics', file: 'glidr-analytics.png', wait: 4000 },
+    { route: '/weather', file: 'glidr-weather.png', wait: 3000 },
+    { route: '/testskis', file: 'glidr-testskis.png', wait: 3000 },
+    { route: '/products', file: 'glidr-products.png', wait: 3000 },
+    { route: '/raceskis', file: 'glidr-raceskis.png', wait: 3000 },
+    { route: '/admin', file: 'glidr-security.png', wait: 3000 },
   ];
 
   for (const s of shots) {
     await page.goto(`${BASE}${s.route}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(s.wait);
+    const currentUrl = page.url();
+    if (currentUrl.includes('/login')) {
+      console.log(`WARNING: Redirected to login for ${s.route}`);
+      continue;
+    }
     await page.screenshot({ path: `${OUT}/${s.file}` });
-    console.log(`Screenshot: ${s.file}`);
+    console.log(`OK: ${s.file}`);
   }
 
-  // Test detail page (first test with data)
-  await page.goto(`${BASE}/tests/3`, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(2000);
-  await page.screenshot({ path: `${OUT}/glidr-runsheet.png` });
-  console.log('Screenshot: glidr-runsheet.png');
-
   // Mobile view
-  const mobilePage = await browser.newPage();
-  await mobilePage.setViewportSize({ width: 390, height: 844 });
-  await mobilePage.goto(`${BASE}/login`);
-  await mobilePage.fill('[data-testid="input-email"]', 'admin@fastski.local');
-  await mobilePage.fill('[data-testid="input-password"]', 'password');
-  await mobilePage.click('[data-testid="button-login"]');
-  await mobilePage.waitForURL('**/dashboard');
-  await mobilePage.waitForTimeout(2000);
+  const mobileContext = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 2,
+  });
+  await mobileContext.addCookies(cookies);
+  const mobilePage = await mobileContext.newPage();
   await mobilePage.goto(`${BASE}/tests`, { waitUntil: 'networkidle' });
-  await mobilePage.waitForTimeout(2000);
-  await mobilePage.screenshot({ path: `${OUT}/glidr-offline.png` });
-  console.log('Screenshot: glidr-offline.png (mobile)');
-
-  // Watch mode mockup - screenshot the runsheet dialog if possible
-  // For now, just use the test detail with bracket
+  await mobilePage.waitForTimeout(3000);
+  if (!mobilePage.url().includes('/login')) {
+    await mobilePage.screenshot({ path: `${OUT}/glidr-offline.png` });
+    console.log('OK: glidr-offline.png (mobile)');
+  }
 
   await browser.close();
   console.log('Done!');

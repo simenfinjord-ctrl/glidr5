@@ -3,8 +3,8 @@ import { Check } from "lucide-react";
 const tiers = [
   {
     name: "Starter",
-    price: "Free",
-    period: "",
+    price: "€25",
+    period: "/month per team",
     description: "For small teams getting started with structured ski testing.",
     color: "border-border",
     badge: null,
@@ -30,7 +30,7 @@ const tiers = [
   },
   {
     name: "Team",
-    price: "$49",
+    price: "€99",
     period: "/month per team",
     description: "For competitive teams that need full testing capabilities.",
     color: "border-blue-500 ring-2 ring-blue-500/20",
@@ -40,7 +40,6 @@ const tiers = [
       "All 6 test types",
       "Unlimited tests",
       "Complete Runsheet brackets",
-      "Garmin smartwatch integration",
       "Mobile runsheet mode",
       "Full analytics & product comparison",
       "Weather auto-linking & suggestions",
@@ -59,7 +58,7 @@ const tiers = [
   },
   {
     name: "Pro",
-    price: "$89",
+    price: "€179",
     period: "/month per team",
     description: "For national teams and organizations with athlete management needs.",
     color: "border-border",
@@ -229,7 +228,7 @@ export default function Pricing() {
                   ["Products", "20", "Unlimited", "Unlimited", "Unlimited"],
                   ["Test types", "Glide, Structure", "All 6", "All 6", "All 6"],
                   ["Runsheet brackets", "—", "✓", "✓", "✓"],
-                  ["Smartwatch mode", "—", "✓", "✓", "✓"],
+                  ["Mobile runsheet mode", "—", "✓", "✓", "✓"],
                   ["Analytics", "—", "✓", "✓", "✓"],
                   ["Offline mode", "—", "✓", "✓", "✓"],
                   ["Race ski management", "—", "—", "✓", "✓"],

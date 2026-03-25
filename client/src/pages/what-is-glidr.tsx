@@ -67,7 +67,7 @@ const sections = [
   {
     title: "Mobile & Offline Ready",
     description:
-      "Responsive design works on any device. Enter data without internet — on the mountain, in the wax cabin, wherever you are. Changes queue locally and sync automatically when you're back online. Plus Garmin smartwatch integration for live runsheet data entry.",
+      "Responsive design works on any device. Enter data without internet — on the mountain, in the wax cabin, wherever you are. Changes queue locally and sync automatically when you're back online.",
     image: "/images/glidr-offline.png",
     alt: "Glidr mobile view showing responsive test interface",
   },
@@ -125,7 +125,7 @@ export default function WhatIsGlidr() {
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-w-3xl mx-auto text-sm text-muted-foreground">
             {[
-              "Garmin Watch Mode",
+              "Blind Tester Mode",
               "Google Sheets Backup",
               "PDF & Excel Export",
               "Dark Mode",

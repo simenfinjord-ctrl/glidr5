@@ -540,7 +540,18 @@ export default function Tests() {
 
                     {sortedEntries.length > 0 && (
                       <div className="overflow-x-auto">
-                        <table className="w-full text-sm" data-testid={`table-day-test-${t.id}`}>
+                        <table className="w-full text-sm table-fixed" data-testid={`table-day-test-${t.id}`}>
+                          <colgroup>
+                            <col style={{ width: 52 }} />
+                            {!hideDayDetails && <col style={{ width: "30%" }} />}
+                            {!hideDayDetails && <col style={{ width: "20%" }} />}
+                            {distLabels.map((_, i) => (
+                              <col key={i} style={{ width: 64 }} />
+                            ))}
+                            <col style={{ width: 52 }} />
+                            <col style={{ width: 44 }} />
+                            {t.testType === "Classic" && <col style={{ width: 44 }} />}
+                          </colgroup>
                           <thead>
                             <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                               <th className="pb-2 pr-3">Ski</th>
@@ -587,12 +598,12 @@ export default function Tests() {
                                     </span>
                                   </td>
                                   {!hideDayDetails && (
-                                    <td className="py-2 pr-3 text-xs">
+                                    <td className="py-2 pr-3 text-xs truncate">
                                       {allProducts.length > 0 ? allProducts.join(" + ") : "—"}
                                     </td>
                                   )}
                                   {!hideDayDetails && (
-                                    <td className="py-2 pr-3 text-xs text-muted-foreground">
+                                    <td className="py-2 pr-3 text-xs text-muted-foreground truncate">
                                       {entry.methodology || "—"}
                                     </td>
                                   )}

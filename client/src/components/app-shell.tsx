@@ -336,6 +336,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               What is Glidr?
             </AppLink>
             <span className="text-border">|</span>
+            <AppLink href="/pricing" testId="link-pricing" className="underline hover:text-foreground transition-colors">
+              Pricing
+            </AppLink>
+            <span className="text-border">|</span>
             <AppLink href="/legal" testId="link-legal" className="underline hover:text-foreground transition-colors">
               Legal
             </AppLink>

@@ -196,6 +196,8 @@ export default function Login() {
           <p>
             <a href="/what-is-glidr" className="underline hover:text-foreground transition-colors" data-testid="link-login-features">What is Glidr?</a>
             <span className="mx-2">|</span>
+            <a href="/pricing" className="underline hover:text-foreground transition-colors" data-testid="link-login-pricing">Pricing</a>
+            <span className="mx-2">|</span>
             <a href="/legal" className="underline hover:text-foreground transition-colors" data-testid="link-login-legal">Legal</a>
           </p>
         </div>

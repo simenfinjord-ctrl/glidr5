@@ -2,60 +2,74 @@ import { AppLink } from "@/components/app-link";
 
 const sections = [
   {
-    title: "Fast On-Snow Data Entry",
+    title: "Dashboard & Live Results",
     description:
-      "Table-first workflow designed for speed. Enter test results directly on the mountain with dynamic rounds, live ranking (competition rules: ties skip next numbers), and medal badges. Support for Glide, Structure, Classic, Skating, Double Poling, and Grind test types. Filter, sort, and compare instantly.",
+      "Your team's testing hub at a glance. Recent results auto-refresh every 10 seconds with winner highlights and medal badges. Instantly see which products are performing — gold, silver, and bronze rank badges make it clear who's on top.",
     image: "/images/glidr-hero.png",
-    alt: "Glidr dashboard showing test data tables and rankings",
+    alt: "Glidr dashboard showing recent test results with winner badges",
   },
   {
-    title: "Tournament Bracket Runsheets",
+    title: "Test Management",
     description:
-      "Single-elimination bracket system for head-to-head ski pair testing. Visual bracket display from Final down through Semi-Finals and Quarter-Finals. Enter distances, winners auto-advance, cascading diff calculations run automatically, and results feed straight back into your test entries.",
+      "Table-first workflow designed for speed on snow. Dynamic rounds, live ranking with competition rules (ties skip next numbers: 1-1-3), and support for Glide, Structure, Classic, Skating, Double Poling, and Grind test types. Filter by date, product, snow type, location, and temperature.",
+    image: "/images/glidr-tests.png",
+    alt: "Tests list page showing filtered test results",
+  },
+  {
+    title: "Test Detail & Runsheets",
+    description:
+      "Full results table with winner highlighting, feeling rank, and multi-round distance data. Start a single-elimination tournament bracket (Complete Runsheet) for head-to-head ski pair testing. Export any test to PDF or Excel with one click.",
     image: "/images/glidr-runsheet.png",
-    alt: "Tournament bracket system for ski testing",
+    alt: "Test detail page with results table and export options",
   },
   {
-    title: "Smartwatch & Mobile Integration",
+    title: "Analytics & Product Comparison",
     description:
-      "Connect a Garmin smartwatch directly to a live runsheet session with a 6-digit code. Select winners and enter distances using physical buttons — results sync to the web bracket in real time. Mobile Mode provides a full-screen interface with large touch targets designed for glove use.",
-    image: "/images/glidr-watch.png",
-    alt: "Smartwatch syncing test data to Glidr",
-  },
-  {
-    title: "Race Ski & Athlete Management",
-    description:
-      "Full athlete profiles with ski inventory tracking: serial numbers, brands, disciplines, construction, grinds, and more. Track regrind history with automatic grind field updates. Archive and restore skis. Control access per athlete — only authorized users see the data.",
-    image: "/images/glidr-raceskis.png",
-    alt: "Race ski inventory management system",
-  },
-  {
-    title: "Analytics & Insights",
-    description:
-      "Interactive charts powered by your own data: product wins over time, average rank, tests per month, and temperature-vs-rank scatter plots. Compare products side-by-side with head-to-head stats. Search any product for detailed win rate, methodology breakdown, and performance history.",
+      "Interactive charts powered by your data: product wins over time, average rank, tests per month, and temperature-vs-rank scatter. Compare products side-by-side with head-to-head stats, win rates, and methodology breakdowns.",
     image: "/images/glidr-analytics.png",
-    alt: "Analytics dashboard with performance charts",
+    alt: "Analytics page with performance charts and product comparison",
   },
   {
     title: "Weather Documentation",
     description:
-      "Log snow and air conditions — temperature, humidity, wind, precipitation, grain size, track hardness, and test quality. Weather records auto-link to tests by matching date, location, and group. The Suggestions engine uses your historical weather data to recommend products for any conditions.",
+      "Log snow and air conditions — temperature, humidity, wind, precipitation, grain size, track hardness, and test quality. Weather auto-links to tests by matching date, location, and group. The Suggestions engine uses your historical data to recommend products for any conditions.",
     image: "/images/glidr-weather.png",
-    alt: "Weather logging and monitoring interface",
+    alt: "Weather logging page with temperature and condition data",
   },
   {
-    title: "Multi-Team Security & Permissions",
+    title: "Test Ski Series",
     description:
-      "Built for commercial SaaS: complete data isolation between teams, three role levels (Super Admin, Team Admin, Member), and granular permissions across 10 functional areas. Blind Tester mode hides product identities for unbiased testing. Incognito mode, activity logging, and per-team feature control.",
+      "Organize testing around ski series with brand, ski type, and pair labels. Track regrind history per series. Series filter by test type so you always work with the right set. Click into any series to see all associated tests and results.",
+    image: "/images/glidr-testskis.png",
+    alt: "Test ski series management page",
+  },
+  {
+    title: "Product Inventory & Stock",
+    description:
+      "Centralized product catalog with stock tracking. Quick +/- buttons for inventory, color-coded stock levels (red/amber/green), change audit log, and group filtering. Switch between list and storage view to manage your wax room.",
+    image: "/images/glidr-products.png",
+    alt: "Products page with inventory and stock management",
+  },
+  {
+    title: "Race Ski & Athlete Management",
+    description:
+      "Full athlete profiles with ski inventory: serial numbers, brands, disciplines, construction, grinds, and more. Track regrind history with automatic updates. Archive/restore skis. Access control per athlete — only authorized users see the data.",
+    image: "/images/glidr-raceskis.png",
+    alt: "Race ski and athlete management page",
+  },
+  {
+    title: "Admin & Team Security",
+    description:
+      "Built for commercial multi-team SaaS: complete data isolation, three role levels (Super Admin, Team Admin, Member), and granular permissions across 10 areas. Blind Tester mode, activity logging, and per-team feature control.",
     image: "/images/glidr-security.png",
-    alt: "Security and permission management",
+    alt: "Admin page with user management and permission controls",
   },
   {
-    title: "Works Offline",
+    title: "Mobile & Offline Ready",
     description:
-      "Enter data without internet — on the mountain, in the wax cabin, wherever you are. Service workers cache the app, IndexedDB queues your changes, and everything syncs automatically when you're back online. A status indicator and pending count keep you informed.",
+      "Responsive design works on any device. Enter data without internet — on the mountain, in the wax cabin, wherever you are. Changes queue locally and sync automatically when you're back online. Plus Garmin smartwatch integration for live runsheet data entry.",
     image: "/images/glidr-offline.png",
-    alt: "Offline mode with data syncing",
+    alt: "Glidr mobile view showing responsive test interface",
   },
 ];
 
@@ -71,12 +85,11 @@ export default function WhatIsGlidr() {
             What is Glidr?
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            The ski testing and documentation platform that streamlines product development
-            for competitive teams.
+            The ski testing and documentation platform that streamlines product development for competitive teams.
           </p>
         </div>
 
-        <div className="space-y-20">
+        <div className="space-y-24">
           {sections.map((s, i) => {
             const reversed = i % 2 === 1;
             return (
@@ -85,15 +98,15 @@ export default function WhatIsGlidr() {
                 className={`flex flex-col ${reversed ? "md:flex-row-reverse" : "md:flex-row"} gap-8 items-center`}
                 data-testid={`section-feature-${i}`}
               >
-                <div className="md:w-1/2">
+                <div className={i === sections.length - 1 ? "md:w-1/3 flex justify-center" : "md:w-3/5"}>
                   <img
                     src={s.image}
                     alt={s.alt}
-                    className="w-full rounded-xl shadow-lg border border-border"
+                    className={`rounded-xl shadow-lg border border-border ${i === sections.length - 1 ? "max-w-[280px]" : "w-full"}`}
                     loading={i < 2 ? "eager" : "lazy"}
                   />
                 </div>
-                <div className="md:w-1/2">
+                <div className={i === sections.length - 1 ? "md:w-2/3" : "md:w-2/5"}>
                   <h2 className="text-2xl font-bold text-foreground mb-3">
                     {s.title}
                   </h2>
@@ -106,27 +119,27 @@ export default function WhatIsGlidr() {
           })}
         </div>
 
-        <div className="mt-20 text-center border-t border-border pt-12">
+        <div className="mt-24 text-center border-t border-border pt-12">
           <h2 className="text-2xl font-bold text-foreground mb-4">
             Plus everything else you need
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-w-3xl mx-auto text-sm text-muted-foreground">
             {[
-              "Test Ski Series",
-              "Product Inventory",
-              "Stock Management",
-              "Grinding Records",
+              "Garmin Watch Mode",
               "Google Sheets Backup",
               "PDF & Excel Export",
               "Dark Mode",
               "Duplicate Tests",
               "Feeling & Kick Rank",
               "Multiple Products/Line",
-              "Date & Sort Filters",
               "Live Runsheet Monitor",
-              "Dashboard Widgets",
+              "Grinding Records",
+              "Stock Management",
               "Group Management",
               "Activity Logging",
+              "Blind Tester Mode",
+              "Complete Runsheet Bracket",
+              "Date & Sort Filters",
               "Admin Data Tools",
             ].map((f) => (
               <div
@@ -139,12 +152,13 @@ export default function WhatIsGlidr() {
           </div>
         </div>
 
-        <div className="mt-16 text-center">
-          <p className="text-xs text-muted-foreground">
-            <AppLink href="/legal" testId="link-legal-from-features" className="underline hover:text-foreground">
-              Terms of Service & Privacy Policy
-            </AppLink>
-          </p>
+        <div className="mt-16 flex justify-center gap-6 text-xs text-muted-foreground">
+          <AppLink href="/pricing" testId="link-pricing-from-features" className="underline hover:text-foreground">
+            Pricing
+          </AppLink>
+          <AppLink href="/legal" testId="link-legal-from-features" className="underline hover:text-foreground">
+            Terms of Service & Privacy Policy
+          </AppLink>
         </div>
       </div>
     </div>

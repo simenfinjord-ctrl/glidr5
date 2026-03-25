@@ -27,6 +27,7 @@ import Suggestions from "@/pages/suggestions";
 import LiveRunsheets from "@/pages/live-runsheets";
 import WhatIsGlidr from "@/pages/what-is-glidr";
 import Legal from "@/pages/legal";
+import Pricing from "@/pages/pricing";
 
 import Login from "@/pages/login";
 
@@ -56,6 +57,7 @@ function Router() {
       <Route path="/admin" component={Admin} />
       <Route path="/what-is-glidr" component={WhatIsGlidr} />
       <Route path="/legal" component={Legal} />
+      <Route path="/pricing" component={Pricing} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -73,7 +75,7 @@ function AuthGuard() {
     );
   }
 
-  const publicPaths = ["/login", "/what-is-glidr", "/legal"];
+  const publicPaths = ["/login", "/what-is-glidr", "/legal", "/pricing"];
   if (!user && !publicPaths.includes(location)) {
     return <Redirect to="/login" />;
   }

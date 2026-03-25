@@ -177,9 +177,6 @@ export async function registerRoutes(
     if (req.body.enabledAreas !== undefined) {
       data.enabledAreas = JSON.stringify(req.body.enabledAreas);
     }
-    if (req.body.superAdminAccess !== undefined) {
-      data.superAdminAccess = req.body.superAdminAccess ? 1 : 0;
-    }
     const team = await storage.createTeam(data);
     res.json(team);
   });
@@ -193,9 +190,6 @@ export async function registerRoutes(
     const data: any = { name };
     if (req.body.enabledAreas !== undefined) {
       data.enabledAreas = JSON.stringify(req.body.enabledAreas);
-    }
-    if (req.body.superAdminAccess !== undefined) {
-      data.superAdminAccess = req.body.superAdminAccess ? 1 : 0;
     }
     const updated = await storage.updateTeam(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });

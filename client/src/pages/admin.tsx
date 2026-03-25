@@ -45,7 +45,6 @@ type ApiTeam = {
   createdAt: string;
   isDefault: number;
   enabledAreas: string | null;
-  superAdminAccess: number;
   backupSheetUrl: string | null;
   lastBackupAt: string | null;
 };
@@ -698,9 +697,7 @@ export default function Admin() {
   const [editingTeamName, setEditingTeamName] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamAreas, setNewTeamAreas] = useState<string[]>([...PERMISSION_AREAS]);
-  const [newTeamSuperAdminAccess, setNewTeamSuperAdminAccess] = useState(true);
   const [editingTeamAreas, setEditingTeamAreas] = useState<string[]>([]);
-  const [editingTeamSuperAdminAccess, setEditingTeamSuperAdminAccess] = useState(true);
 
   const [adminTeamScope, setAdminTeamScope] = useState<string>("current");
 
@@ -1226,7 +1223,7 @@ export default function Admin() {
   });
 
   const createTeamMutation = useMutation({
-    mutationFn: async (payload: { name: string; enabledAreas: string[]; superAdminAccess: boolean }) => {
+    mutationFn: async (payload: { name: string; enabledAreas: string[] }) => {
       const res = await apiRequest("POST", "/api/teams", payload);
       return res.json();
     },
@@ -1234,7 +1231,6 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       setNewTeamName("");
       setNewTeamAreas([...PERMISSION_AREAS]);
-      setNewTeamSuperAdminAccess(true);
       toast({ title: "Team created" });
     },
     onError: (e: Error) => {
@@ -1243,8 +1239,8 @@ export default function Admin() {
   });
 
   const updateTeamMutation = useMutation({
-    mutationFn: async ({ id, name, enabledAreas, superAdminAccess }: { id: number; name: string; enabledAreas: string[]; superAdminAccess: boolean }) => {
-      const res = await apiRequest("PUT", `/api/teams/${id}`, { name, enabledAreas, superAdminAccess });
+    mutationFn: async ({ id, name, enabledAreas }: { id: number; name: string; enabledAreas: string[] }) => {
+      const res = await apiRequest("PUT", `/api/teams/${id}`, { name, enabledAreas });
       return res.json();
     },
     onSuccess: () => {
@@ -1739,7 +1735,7 @@ export default function Admin() {
                             data-testid="button-save-team"
                             disabled={!editingTeamName.trim() || updateTeamMutation.isPending}
                             onClick={() => {
-                              updateTeamMutation.mutate({ id: team.id, name: editingTeamName.trim(), enabledAreas: editingTeamAreas, superAdminAccess: editingTeamSuperAdminAccess });
+                              updateTeamMutation.mutate({ id: team.id, name: editingTeamName.trim(), enabledAreas: editingTeamAreas });
                             }}
                           >
                             <Check className="h-4 w-4 text-emerald-600" />
@@ -1776,15 +1772,6 @@ export default function Admin() {
                             })}
                           </div>
                         </div>
-                        <label className="flex items-center gap-2 cursor-pointer" data-testid="edit-team-superadmin-toggle">
-                          <input
-                            type="checkbox"
-                            checked={editingTeamSuperAdminAccess}
-                            onChange={(e) => setEditingTeamSuperAdminAccess(e.target.checked)}
-                            className="rounded border-border"
-                          />
-                          <span className="text-xs text-foreground/80">Super Admin access</span>
-                        </label>
                       </div>
                     ) : (
                       <>
@@ -1793,9 +1780,6 @@ export default function Admin() {
                             <span className="text-sm font-medium text-foreground">{team.name}</span>
                             {team.isDefault === 1 && (
                               <span className="rounded-full bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-300">Default</span>
-                            )}
-                            {team.superAdminAccess === 0 && (
-                              <span className="rounded-full bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-300">No SA</span>
                             )}
                           </div>
                           <div className="text-[10px] text-muted-foreground mt-0.5">
@@ -1834,7 +1818,6 @@ export default function Admin() {
                               try {
                                 setEditingTeamAreas(team.enabledAreas ? JSON.parse(team.enabledAreas) : [...PERMISSION_AREAS]);
                               } catch { setEditingTeamAreas([...PERMISSION_AREAS]); }
-                              setEditingTeamSuperAdminAccess(team.superAdminAccess !== 0);
                             }}
                           >
                             <Pencil className="h-4 w-4" />
@@ -1951,20 +1934,11 @@ export default function Admin() {
                     })}
                   </div>
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer" data-testid="new-team-superadmin-toggle">
-                  <input
-                    type="checkbox"
-                    checked={newTeamSuperAdminAccess}
-                    onChange={(e) => setNewTeamSuperAdminAccess(e.target.checked)}
-                    className="rounded border-border"
-                  />
-                  <span className="text-xs text-foreground/80">Super Admin access</span>
-                </label>
                 <Button
                   size="sm"
                   data-testid="button-add-team"
                   disabled={!newTeamName.trim() || createTeamMutation.isPending}
-                  onClick={() => createTeamMutation.mutate({ name: newTeamName.trim(), enabledAreas: newTeamAreas, superAdminAccess: newTeamSuperAdminAccess })}
+                  onClick={() => createTeamMutation.mutate({ name: newTeamName.trim(), enabledAreas: newTeamAreas })}
                 >
                   <Plus className="mr-1 h-4 w-4" />
                   Add team

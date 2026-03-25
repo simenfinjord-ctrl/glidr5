@@ -133,7 +133,17 @@ export function setupAuth(app: Express) {
         }
         const { password, ...safe } = user;
         const perms = parsePermissions(safe.permissions, !!safe.isAdmin, (safe as any).isTeamAdmin === 1);
-        return res.json({ ...safe, parsedPermissions: perms, incognito: isIncognito, isBlindTester: !!safe.isBlindTester });
+        let teamEnabledAreas: string[] | null = null;
+        const effectiveTeamId = safe.activeTeamId ?? safe.teamId;
+        if (effectiveTeamId && safe.isAdmin !== 1) {
+          try {
+            const team = await storage.getTeam(effectiveTeamId);
+            if (team?.enabledAreas) {
+              teamEnabledAreas = JSON.parse(team.enabledAreas);
+            }
+          } catch {}
+        }
+        return res.json({ ...safe, parsedPermissions: perms, incognito: isIncognito, isBlindTester: !!safe.isBlindTester, teamEnabledAreas });
       });
     })(req, res, next);
   });

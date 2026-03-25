@@ -1,75 +1,77 @@
 import { AppLink } from "@/components/app-link";
+import {
+  DashboardAnim,
+  TestsAnim,
+  RunsheetAnim,
+  AnalyticsAnim,
+  WeatherAnim,
+  TestSkisAnim,
+  ProductsAnim,
+  RaceSkisAnim,
+  AdminAnim,
+  MobileAnim,
+} from "@/components/feature-animations";
 
 const sections = [
   {
     title: "Dashboard & Live Results",
     description:
       "Your team's testing hub at a glance. Recent results auto-refresh every 10 seconds with winner highlights and medal badges. Instantly see which products are performing — gold, silver, and bronze rank badges make it clear who's on top.",
-    image: "/images/glidr-hero.png",
-    alt: "Glidr dashboard showing recent test results with winner badges",
+    anim: DashboardAnim,
   },
   {
     title: "Test Management",
     description:
       "Table-first workflow designed for speed on snow. Dynamic rounds, live ranking with competition rules (ties skip next numbers: 1-1-3), and support for Glide, Structure, Classic, Skating, Double Poling, and Grind test types. Filter by date, product, snow type, location, and temperature.",
-    image: "/images/glidr-tests.png",
-    alt: "Tests list page showing filtered test results",
+    anim: TestsAnim,
   },
   {
-    title: "Test Detail & Runsheets",
+    title: "Complete Runsheet",
     description:
-      "Full results table with winner highlighting, feeling rank, and multi-round distance data. Start a single-elimination tournament bracket (Complete Runsheet) for head-to-head ski pair testing. Export any test to PDF or Excel with one click.",
-    image: "/images/glidr-runsheet.png",
-    alt: "Test detail page with results table and export options",
+      "Single-elimination tournament bracket for head-to-head ski pair testing. Enter distances, winners auto-advance, and cascading diff calculations show exactly how much each pair lost by. Mobile mode with large touch targets for glove use on snow.",
+    anim: RunsheetAnim,
   },
   {
     title: "Analytics & Product Comparison",
     description:
       "Interactive charts powered by your data: product wins over time, average rank, tests per month, and temperature-vs-rank scatter. Compare products side-by-side with head-to-head stats, win rates, and methodology breakdowns.",
-    image: "/images/glidr-analytics.png",
-    alt: "Analytics page with performance charts and product comparison",
+    anim: AnalyticsAnim,
   },
   {
     title: "Weather Documentation",
     description:
       "Log snow and air conditions — temperature, humidity, wind, precipitation, grain size, track hardness, and test quality. Weather auto-links to tests by matching date, location, and group. The Suggestions engine uses your historical data to recommend products for any conditions.",
-    image: "/images/glidr-weather.png",
-    alt: "Weather logging page with temperature and condition data",
+    anim: WeatherAnim,
   },
   {
     title: "Test Ski Series",
     description:
       "Organize testing around ski series with brand, ski type, and pair labels. Track regrind history per series. Series filter by test type so you always work with the right set. Click into any series to see all associated tests and results.",
-    image: "/images/glidr-testskis.png",
-    alt: "Test ski series management page",
+    anim: TestSkisAnim,
   },
   {
     title: "Product Inventory & Stock",
     description:
-      "Centralized product catalog with stock tracking. Quick +/- buttons for inventory, color-coded stock levels (red/amber/green), change audit log, and group filtering. Switch between list and storage view to manage your wax room.",
-    image: "/images/glidr-products.png",
-    alt: "Products page with inventory and stock management",
+      "Centralized product catalog with stock tracking. Quick +/− buttons for inventory, color-coded stock levels (red/amber/green), change audit log, and group filtering. Switch between list and storage view to manage your wax room.",
+    anim: ProductsAnim,
   },
   {
     title: "Race Ski & Athlete Management",
     description:
       "Full athlete profiles with ski inventory: serial numbers, brands, disciplines, construction, grinds, and more. Track regrind history with automatic updates. Archive/restore skis. Access control per athlete — only authorized users see the data.",
-    image: "/images/glidr-raceskis.png",
-    alt: "Race ski and athlete management page",
+    anim: RaceSkisAnim,
   },
   {
     title: "Admin & Team Security",
     description:
       "Built for commercial multi-team SaaS: complete data isolation, three role levels (Super Admin, Team Admin, Member), and granular permissions across 10 areas. Blind Tester mode, activity logging, and per-team feature control.",
-    image: "/images/glidr-security.png",
-    alt: "Admin page with user management and permission controls",
+    anim: AdminAnim,
   },
   {
     title: "Mobile & Offline Ready",
     description:
       "Responsive design works on any device. Enter data without internet — on the mountain, in the wax cabin, wherever you are. Changes queue locally and sync automatically when you're back online.",
-    image: "/images/glidr-offline.png",
-    alt: "Glidr mobile view showing responsive test interface",
+    anim: MobileAnim,
   },
 ];
 
@@ -92,21 +94,18 @@ export default function WhatIsGlidr() {
         <div className="space-y-24">
           {sections.map((s, i) => {
             const reversed = i % 2 === 1;
+            const Anim = s.anim;
+            const isMobile = i === sections.length - 1;
             return (
               <div
                 key={i}
                 className={`flex flex-col ${reversed ? "md:flex-row-reverse" : "md:flex-row"} gap-8 items-center`}
                 data-testid={`section-feature-${i}`}
               >
-                <div className={i === sections.length - 1 ? "md:w-1/3 flex justify-center" : "md:w-3/5"}>
-                  <img
-                    src={s.image}
-                    alt={s.alt}
-                    className={`rounded-xl shadow-lg border border-border ${i === sections.length - 1 ? "max-w-[280px]" : "w-full"}`}
-                    loading={i < 2 ? "eager" : "lazy"}
-                  />
+                <div className={isMobile ? "md:w-1/3 flex justify-center" : "md:w-3/5"}>
+                  <Anim />
                 </div>
-                <div className={i === sections.length - 1 ? "md:w-2/3" : "md:w-2/5"}>
+                <div className={isMobile ? "md:w-2/3" : "md:w-2/5"}>
                   <h2 className="text-2xl font-bold text-foreground mb-3">
                     {s.title}
                   </h2>
@@ -137,7 +136,7 @@ export default function WhatIsGlidr() {
               "Stock Management",
               "Group Management",
               "Activity Logging",
-              "Blind Tester Mode",
+              "Suggestions Engine",
               "Complete Runsheet Bracket",
               "Date & Sort Filters",
               "Admin Data Tools",

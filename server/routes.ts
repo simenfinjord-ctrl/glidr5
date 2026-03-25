@@ -220,8 +220,10 @@ export async function registerRoutes(
 
   app.put("/api/teams/:id/backup-sheet", requireAuth, async (req, res) => {
     const u = req.user!;
-    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
     const id = parseInt(req.params.id);
+    if (u.isAdmin !== 1 && !(u.isTeamAdmin === 1 && u.teamId === id)) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
     const url = req.body.url?.trim() || null;
     if (url && !url.includes('docs.google.com/spreadsheets')) {
       return res.status(400).json({ message: "Must be a Google Sheets URL" });
@@ -239,8 +241,10 @@ export async function registerRoutes(
 
   app.post("/api/teams/:id/backup", requireAuth, async (req, res) => {
     const u = req.user!;
-    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
     const id = parseInt(req.params.id);
+    if (u.isAdmin !== 1 && !(u.isTeamAdmin === 1 && u.teamId === id)) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
     const team = await storage.getTeam(id);
     if (!team) return res.status(404).json({ message: "Team not found" });
     if (!team.backupSheetUrl) return res.status(400).json({ message: "No backup sheet URL configured" });

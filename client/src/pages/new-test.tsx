@@ -235,7 +235,7 @@ export default function NewTest() {
     if (selected?.groupScope) {
       form.setValue("groupScope", selected.groupScope, { shouldValidate: true });
     }
-    if (selected && testSkiSource !== "raceskis" && !duplicateApplied) {
+    if (selected && testSkiSource !== "raceskis" && !duplicateApplied && !duplicateId) {
       const n = selected.numberOfSkis || 8;
       setRows(makeRows(n, distanceLabels.length));
     }

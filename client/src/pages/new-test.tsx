@@ -241,9 +241,12 @@ export default function NewTest() {
     }
   }, [watchSeriesId, series, form]);
 
+  const [dupFormApplied, setDupFormApplied] = useState(false);
+  const [dupEntriesApplied, setDupEntriesApplied] = useState(false);
+
   useEffect(() => {
-    if (duplicateApplied || !sourceTest) return;
-    setDuplicateApplied(true);
+    if (dupFormApplied || !sourceTest) return;
+    setDupFormApplied(true);
 
     form.setValue("testType", sourceTest.testType as TestType, { shouldValidate: true });
     if (sourceTest.seriesId) {
@@ -263,27 +266,35 @@ export default function NewTest() {
       ? (() => { try { const p = JSON.parse(sourceTest.distanceLabels); return Array.isArray(p) ? p : ["0 km"]; } catch { return ["0 km"]; } })()
       : [sourceTest.distanceLabel0km || "0 km", ...(sourceTest.distanceLabelXkm ? [sourceTest.distanceLabelXkm] : [])];
     setDistanceLabels(srcLabels);
+  }, [sourceTest, dupFormApplied, form]);
 
-    if (sourceEntries.length > 0) {
-      const dupRows: EntryRow[] = [...sourceEntries]
-        .sort((a: any, b: any) => a.skiNumber - b.skiNumber)
-        .map((e: any) => ({
-          id: `row_${e.skiNumber}_${Math.random().toString(16).slice(2)}`,
-          skiNumber: e.skiNumber,
-          productId: e.productId || undefined,
-          additionalProductIds: e.additionalProductIds || undefined,
-          methodology: e.methodology || "",
-          roundResults: Array.from({ length: srcLabels.length }, () => ({ result: null, rank: null })),
-          feelingRank: null,
-          kickRank: null,
-          grindType: e.grindType || undefined,
-          grindStone: e.grindStone || undefined,
-          grindPattern: e.grindPattern || undefined,
-          raceSkiId: e.raceSkiId || undefined,
-        }));
-      setRows(dupRows);
-    }
-  }, [sourceTest, sourceEntries, duplicateApplied, form]);
+  useEffect(() => {
+    if (dupEntriesApplied || !sourceTest || sourceEntries.length === 0) return;
+    setDupEntriesApplied(true);
+    setDuplicateApplied(true);
+
+    const srcLabels: string[] = sourceTest.distanceLabels
+      ? (() => { try { const p = JSON.parse(sourceTest.distanceLabels); return Array.isArray(p) ? p : ["0 km"]; } catch { return ["0 km"]; } })()
+      : [sourceTest.distanceLabel0km || "0 km", ...(sourceTest.distanceLabelXkm ? [sourceTest.distanceLabelXkm] : [])];
+
+    const dupRows: EntryRow[] = [...sourceEntries]
+      .sort((a: any, b: any) => a.skiNumber - b.skiNumber)
+      .map((e: any) => ({
+        id: `row_${e.skiNumber}_${Math.random().toString(16).slice(2)}`,
+        skiNumber: e.skiNumber,
+        productId: e.productId || undefined,
+        additionalProductIds: e.additionalProductIds || undefined,
+        methodology: e.methodology || "",
+        roundResults: Array.from({ length: srcLabels.length }, () => ({ result: null, rank: null })),
+        feelingRank: null,
+        kickRank: null,
+        grindType: e.grindType || undefined,
+        grindStone: e.grindStone || undefined,
+        grindPattern: e.grindPattern || undefined,
+        raceSkiId: e.raceSkiId || undefined,
+      }));
+    setRows(dupRows);
+  }, [sourceTest, sourceEntries, dupEntriesApplied, form]);
 
   const autoWeather = useMemo(() => {
     if (!watchDate || !watchLocation) return undefined;

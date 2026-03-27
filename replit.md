@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed to optimize ski product development for multi-team organizations in the ski industry. It streamlines data collection, provides advanced analytics, and generates detailed reports, aiming to enhance efficiency and precision. Key capabilities include live-ranking, robust offline functionality, sophisticated data visualization, and a multi-tenant architecture. The project's vision is to be the leading platform for data-driven product innovation in the ski sector, improving decision-making and accelerating product development cycles.
+Glidr is a full-stack React web application designed to optimize ski product development for multi-team organizations in the ski industry. It streamlines data collection, provides advanced analytics, and generates detailed reports. Key capabilities include live-ranking, robust offline functionality, sophisticated data visualization, and a multi-tenant architecture. The project's vision is to be the leading platform for data-driven product innovation in the ski sector, improving decision-making and accelerating product development cycles.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -24,7 +24,7 @@ Glidr is a full-stack React web application designed to optimize ski product dev
 - Admin can see products from all groups, filtered by group, and move products between groups
 - Scope filtering supports multi-group users (data from all assigned groups is visible)
 - Login page has "Remember me" checkbox (extends session to 30 days)
-- Admin page has "Download PDF" button to export all app data via dedicated bulk endpoint (users, groups, series, products, tests with entries, weather with full fields, athletes, race skis, race ski regrinds, test ski regrinds, grinding records, grinding sheets, activity logs, login history)
+- Admin page has "Download PDF" button to export all app data via dedicated bulk endpoint (users, groups, series, products, tests with entries, weather with full fields, athletes, race skis, race ski regrinds, grinding records, grinding sheets, activity logs, login history)
 - PDF export uses /api/admin/full-export endpoint for reliable bulk data retrieval (no N+1 queries); includes race ski regrinds, test ski series regrinds, grinding sheets, and activity logs
 - Complete Runsheet: tournament bracket dialog (Final → SF → QF display order, final first) for single-elimination ski pair testing; enter distances in orange fields, winner (0) auto-advances, cascading diff calculation (loser diff = own distance + winner's accumulated diff), results auto-applied to test entries; "Final Results" table shown at top when bracket is complete
 - Runsheet Watch Mode: "Watch" button creates server-side session with 6-digit code; Garmin Connect IQ app connects via code, shows heats on watch, user selects winner + distance with physical buttons; results sync live to web bracket via polling (2s interval)

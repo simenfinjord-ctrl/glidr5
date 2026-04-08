@@ -101,7 +101,7 @@ const tiers = [
       "Custom SLA",
     ],
     limits: [],
-    cta: "Contact sales",
+    cta: "Contact",
     ctaStyle: "bg-muted text-foreground hover:bg-muted/80",
   },
 ];

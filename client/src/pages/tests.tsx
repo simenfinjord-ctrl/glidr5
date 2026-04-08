@@ -528,7 +528,7 @@ export default function Tests() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        {!isBlindTester && winner && (
+                        {!hideDayDetails && winner && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500/15 to-emerald-400/5 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-200">
                             <Trophy className="h-3 w-3" />
                             {winner.productName}
@@ -705,7 +705,7 @@ export default function Tests() {
                           <div className="inline-flex rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground">
                             {new Date(t.createdAt).toLocaleDateString()}
                           </div>
-                          {!isBlindTester && winner && (
+                          {!hideDayDetails && winner && (
                             <div
                               className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500/15 to-emerald-400/5 px-3 py-1 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-200"
                               data-testid={`badge-winner-${t.id}`}

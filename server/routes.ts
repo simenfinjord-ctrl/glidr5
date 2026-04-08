@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
-import { parsePermissions } from "./auth";
+import { parsePermissions, hashPassword } from "./auth";
 import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, tests, users, testSkiSeries } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql, inArray } from "drizzle-orm";
@@ -1063,7 +1063,7 @@ export async function registerRoutes(
         .from(runsheetProgress)
         .innerJoin(users, eq(users.id, runsheetProgress.userId))
         .innerJoin(tests, eq(tests.id, runsheetProgress.testId))
-        .where(sql`${runsheetProgress.updatedAt} >= ${todayIso}`);
+        .where(sql`${runsheetProgress.updatedAt} >= ${todayIso} AND ${tests.teamId} = ${getActiveTeamId(req)}`);
 
       const seriesIds = [...new Set(rows.filter(r => r.seriesId).map(r => r.seriesId!))];
       let seriesMap: Record<number, { name: string; pairLabels: string | null }> = {};
@@ -1183,9 +1183,10 @@ export async function registerRoutes(
     if (!isSuperAdmin) {
       sanitizedPerms = await enforceTeamAreas(sanitizedPerms, teamId);
     }
+    const hashedPw = await hashPassword(req.body.password);
     const created = await storage.createUser({
       email: req.body.email,
-      password: req.body.password,
+      password: hashedPw,
       name: req.body.name,
       groupScope: req.body.groupScope,
       isAdmin: isSuperAdmin && req.body.isAdmin ? 1 : 0,
@@ -1242,7 +1243,8 @@ export async function registerRoutes(
       }
     }
     const newPassword = req.body.password || "password";
-    const updated = await storage.updateUser(id, { password: newPassword });
+    const hashedPw = await hashPassword(newPassword);
+    const updated = await storage.updateUser(id, { password: hashedPw });
     if (!updated) return res.status(404).json({ message: "Not found" });
     res.json({ ok: true });
   });

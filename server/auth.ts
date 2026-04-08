@@ -3,9 +3,21 @@ import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import pgSession from "connect-pg-simple";
 import { type Express, type Request } from "express";
+import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { type User, type UserPermissions, DEFAULT_PERMISSIONS, ADMIN_PERMISSIONS } from "@shared/schema";
+
+export async function hashPassword(plain: string): Promise<string> {
+  return bcrypt.hash(plain, 10);
+}
+
+export async function verifyPassword(plain: string, hashed: string): Promise<boolean> {
+  if (!hashed.startsWith("$2")) {
+    return plain === hashed;
+  }
+  return bcrypt.compare(plain, hashed);
+}
 
 declare global {
   namespace Express {
@@ -78,7 +90,8 @@ export function setupAuth(app: Express) {
           if (!user) {
             return done(null, false, { message: "No user found for that email." });
           }
-          if (user.password !== password) {
+          const valid = await verifyPassword(password, user.password);
+          if (!valid) {
             return done(null, false, { message: "Invalid password." });
           }
           if (user.isActive === 0) {

@@ -25,7 +25,7 @@ const tiers = [
       "No offline mode",
       "Community support",
     ],
-    cta: "Get started",
+    cta: "Contact",
     ctaStyle: "bg-muted text-foreground hover:bg-muted/80",
   },
   {
@@ -53,7 +53,7 @@ const tiers = [
       "Email support",
     ],
     limits: [],
-    cta: "Start free trial",
+    cta: "Contact",
     ctaStyle: "bg-blue-600 text-white hover:bg-blue-700",
   },
   {
@@ -76,7 +76,7 @@ const tiers = [
       "Priority support",
     ],
     limits: [],
-    cta: "Start free trial",
+    cta: "Contact",
     ctaStyle: "bg-foreground text-background hover:opacity-90",
   },
   {
@@ -113,7 +113,7 @@ const faqs = [
   },
   {
     q: "Can we try before we buy?",
-    a: "Yes. Team and Pro plans include a 14-day free trial with full access to all features. No credit card required to start.",
+    a: "Yes, reach out to us and we'll set up a demo or trial for your team. No commitment required.",
   },
   {
     q: "Who owns the data?",
@@ -193,12 +193,13 @@ export default function Pricing() {
                 ))}
               </ul>
 
-              <button
-                className={`w-full rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${t.ctaStyle}`}
+              <a
+                href="/contact"
+                className={`block w-full rounded-lg px-4 py-2.5 text-sm font-medium text-center transition-colors ${t.ctaStyle}`}
                 data-testid={`button-${t.name.toLowerCase()}-cta`}
               >
                 {t.cta}
-              </button>
+              </a>
             </div>
           ))}
         </div>
@@ -273,6 +274,7 @@ export default function Pricing() {
           </p>
           <div className="flex justify-center gap-6 text-xs text-muted-foreground">
             <a href="/what-is-glidr" className="underline hover:text-foreground" data-testid="link-features-from-pricing">What is Glidr?</a>
+            <a href="/contact" className="underline hover:text-foreground" data-testid="link-contact-from-pricing">Contact</a>
             <a href="/legal" className="underline hover:text-foreground" data-testid="link-legal-from-pricing">Legal & Privacy</a>
           </div>
         </div>

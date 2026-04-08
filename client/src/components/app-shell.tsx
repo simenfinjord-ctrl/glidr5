@@ -174,6 +174,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const filteredNav = nav.filter((item) => {
     if (item.adminOnly) return canManage;
+    if (isSuperAdmin) {
+      return item.permArea === "dashboard";
+    }
     if (item.permArea) return can(item.permArea);
     return true;
   });

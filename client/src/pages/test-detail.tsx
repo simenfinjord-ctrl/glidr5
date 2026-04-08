@@ -730,7 +730,7 @@ export default function TestDetail() {
                         <td className="py-3 pr-3">
                           <div className="flex items-center gap-2">
                             <RankBadge rank={firstRank} size="lg" />
-                            {!isBlindTester && firstRank === 1 && (
+                            {!hideDetails && firstRank === 1 && (
                               <span
                                 className="rounded-full bg-gradient-to-r from-emerald-500/20 to-emerald-400/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 ring-1 ring-emerald-500/30"
                                 data-testid={`badge-winner-${entry.id}`}

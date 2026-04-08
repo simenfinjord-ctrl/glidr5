@@ -155,6 +155,9 @@ export default function WhatIsGlidr() {
           <AppLink href="/pricing" testId="link-pricing-from-features" className="underline hover:text-foreground">
             Pricing
           </AppLink>
+          <AppLink href="/contact" testId="link-contact-from-features" className="underline hover:text-foreground">
+            Contact
+          </AppLink>
           <AppLink href="/legal" testId="link-legal-from-features" className="underline hover:text-foreground">
             Terms of Service & Privacy Policy
           </AppLink>

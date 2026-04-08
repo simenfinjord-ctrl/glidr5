@@ -172,9 +172,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const activeTeamId = user?.activeTeamId || user?.teamId || 1;
   const activeTeam = teams.find((t: any) => t.id === activeTeamId);
 
+  const isViewingOwnTeam = !isSuperAdmin || activeTeamId === user?.teamId;
+
   const filteredNav = nav.filter((item) => {
     if (item.adminOnly) return canManage;
-    if (isSuperAdmin) {
+    if (isSuperAdmin && !isViewingOwnTeam) {
       return item.permArea === "dashboard";
     }
     if (item.permArea) return can(item.permArea);

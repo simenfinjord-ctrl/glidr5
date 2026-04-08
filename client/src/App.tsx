@@ -66,7 +66,7 @@ function Router() {
 }
 
 function AuthGuard() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isSuperAdmin } = useAuth();
   const [location] = useLocation();
 
   if (isLoading) {
@@ -84,6 +84,18 @@ function AuthGuard() {
 
   if (user && location === "/login") {
     return <Redirect to="/dashboard" />;
+  }
+
+  if (isSuperAdmin) {
+    const activeTeamId = user?.activeTeamId || user?.teamId;
+    const isViewingOwnTeam = activeTeamId === user?.teamId;
+    if (!isViewingOwnTeam) {
+      const dataPages = ["/tests", "/testskis", "/products", "/weather", "/analytics", "/grinding", "/raceskis", "/suggestions", "/live-runsheets", "/dashboard"];
+      const isDataPage = dataPages.some(p => location === p || location.startsWith(p + "/"));
+      if (isDataPage) {
+        return <Redirect to="/admin" />;
+      }
+    }
   }
 
   return <Router />;

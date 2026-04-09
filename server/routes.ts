@@ -1015,7 +1015,22 @@ export async function registerRoutes(
     if (!Array.isArray(bracket)) return res.status(400).json({ message: "bracket array required" });
     const now = new Date().toISOString();
     const bracketJson = JSON.stringify(bracket);
-    await db.execute(sql`INSERT INTO runsheet_progress (test_id, user_id, bracket, updated_at, completed_at) VALUES (${testId}, ${u.id}, ${bracketJson}, ${now}, NULL) ON CONFLICT (test_id, user_id) DO UPDATE SET bracket = ${bracketJson}, updated_at = ${now}, completed_at = NULL`);
+    const existing = await db.select({ id: runsheetProgress.id }).from(runsheetProgress).where(
+      and(eq(runsheetProgress.testId, testId), eq(runsheetProgress.userId, u.id))
+    ).limit(1);
+    if (existing.length > 0) {
+      await db.update(runsheetProgress)
+        .set({ bracket: bracketJson, updatedAt: now, completedAt: null })
+        .where(eq(runsheetProgress.id, existing[0].id));
+    } else {
+      await db.insert(runsheetProgress).values({
+        testId,
+        userId: u.id,
+        bracket: bracketJson,
+        updatedAt: now,
+        completedAt: null,
+      });
+    }
     res.json({ ok: true });
   });
 

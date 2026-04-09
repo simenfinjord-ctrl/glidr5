@@ -72,7 +72,7 @@ export function setupAuth(app: Express) {
     store: new PgStore({
       pool: pool as any,
       tableName: "user_sessions",
-      createTableIfMissing: false,
+      createTableIfMissing: true,
     }),
   };
 

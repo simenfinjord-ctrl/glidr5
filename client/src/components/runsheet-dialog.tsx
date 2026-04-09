@@ -199,7 +199,6 @@ export function RunsheetDialog({
   const [bracket, setBracket] = useState<Heat[][]>([]);
   const [mobileMode, setMobileMode] = useState(false);
   const [resumed, setResumed] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initializedRef = useRef<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -261,15 +260,10 @@ export function RunsheetDialog({
           setBracket(initBracket(skiPairs));
         });
 
-      setWatchCode(null);
-      setWatchActive(false);
     }
     if (!open) {
       initializedRef.current = null;
     }
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
   }, [open, skiPairs.join(","), testId]);
 
   useEffect(() => {
@@ -340,13 +334,11 @@ export function RunsheetDialog({
   const hasProgress = bracketHasProgress(bracket);
 
   const handleApply = () => {
-    if (watchActive) handleStopWatch();
     completeBracketOnServer();
     onApplyResults(results, bracket);
   };
 
   const handleClose = () => {
-    if (watchActive) handleStopWatch();
     onOpenChange(false);
   };
 
@@ -361,9 +353,6 @@ export function RunsheetDialog({
   return (
     <>
     <Dialog open={open && !mobileMode} onOpenChange={(v) => {
-      if (!v) {
-        if (watchActive) handleStopWatch();
-      }
       onOpenChange(v);
     }}>
       <DialogContent className="max-w-[95vw] w-auto max-h-[90vh] overflow-auto p-4 sm:p-6">
@@ -579,7 +568,7 @@ export function RunsheetDialog({
                               "focus:ring-amber-400",
                             )}
                             value={heat.distA}
-                            disabled={heat.pairA === null || isBye || watchActive}
+                            disabled={heat.pairA === null || isBye}
                             onChange={(e) =>
                               handleDistanceChange(
                                 rIdx,
@@ -613,7 +602,7 @@ export function RunsheetDialog({
                               "focus:ring-amber-400",
                             )}
                             value={heat.distB}
-                            disabled={heat.pairB === null || isBye || watchActive}
+                            disabled={heat.pairB === null || isBye}
                             onChange={(e) =>
                               handleDistanceChange(
                                 rIdx,
@@ -636,9 +625,7 @@ export function RunsheetDialog({
 
         <div className="flex items-center justify-between pt-3 border-t border-border">
           <p className="text-xs text-muted-foreground">
-            {watchActive
-              ? "Watch mode active — results update live from your Garmin."
-              : "Enter 0 for the winning pair in each heat. Winners auto-advance."}
+            Enter 0 for the winning pair in each heat. Winners auto-advance.
           </p>
           <div className="flex gap-2">
             <Button

@@ -52,7 +52,17 @@ export function parsePermissions(permissionsStr: string | null | undefined, isAd
   }
 }
 
-export function setupAuth(app: Express) {
+export async function setupAuth(app: Express) {
+  await (pool as any).query(`
+    CREATE TABLE IF NOT EXISTS "user_sessions" (
+      "sid" varchar NOT NULL COLLATE "default",
+      "sess" json NOT NULL,
+      "expire" timestamp(6) NOT NULL,
+      CONSTRAINT "user_sessions_pkey" PRIMARY KEY ("sid")
+    ) WITH (OIDS=FALSE);
+    CREATE INDEX IF NOT EXISTS "IDX_user_sessions_expire" ON "user_sessions" ("expire");
+  `);
+
   const PgStore = pgSession(session);
 
   const REMEMBER_ME_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
@@ -72,7 +82,7 @@ export function setupAuth(app: Express) {
     store: new PgStore({
       pool: pool as any,
       tableName: "user_sessions",
-      createTableIfMissing: true,
+      createTableIfMissing: false,
     }),
   };
 

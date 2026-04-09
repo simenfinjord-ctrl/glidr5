@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed to optimize ski product development for multi-team organizations. It provides a comprehensive platform for streamlined data collection, advanced analytics, and detailed report generation, aiming to be the leading platform for data-driven product innovation in the ski industry. Glidr centralizes ski testing data, accelerates product iteration, and supports informed decision-making, driving innovation and market leadership. Key capabilities include live-ranking, robust offline functionality, sophisticated data visualization, and a multi-tenant architecture.
+Glidr is a full-stack React web application designed to optimize ski product development for multi-team organizations in the ski industry. It provides a comprehensive platform for streamlined data collection, advanced analytics, and detailed report generation. The platform aims to centralize ski testing data, accelerate product iteration, and support informed decision-making, driving innovation and market leadership. Key capabilities include live-ranking, robust offline functionality, sophisticated data visualization, and a multi-tenant architecture. The business vision is to enable multi-team organizations in the ski industry to enhance their product development lifecycle, achieve faster iterations, and maintain market leadership through data-driven insights.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -125,7 +125,7 @@ Glidr is a full-stack React web application designed to optimize ski product dev
 - Existing data migrated to teamId=1 (default team)
 - Groups.name unique constraint removed to allow same group names across different teams
 - Race ski archiving: soft-delete via archivedAt column, archive/restore buttons on athlete detail page, permanent delete only for archived skis, "Show archived" toggle reveals archived section
-- Admin page has Data Management tab: database overview (all table counts + active sessions), export tools (PDF + CSV + Excel)
+- Admin page has Data Management tab: database overview (all table counts + active sessions), export tools (PDF + CSV + HExcel)
 - Admin page has Danger Zone tab: purge old activity/login logs (30/90+ days), force logout all users
 - Admin overview stats include Athletes and Race Skis counts
 

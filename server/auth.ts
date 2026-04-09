@@ -144,7 +144,7 @@ export function setupAuth(app: Express) {
             });
           } catch (_) {}
         }
-        const { password, ...safe } = user;
+        const { password, garminAccessToken, garminTokenSecret, ...safe } = user;
         const perms = parsePermissions(safe.permissions, !!safe.isAdmin, (safe as any).isTeamAdmin === 1);
         let teamEnabledAreas: string[] | null = null;
         const effectiveTeamId = safe.activeTeamId ?? safe.teamId;
@@ -175,7 +175,7 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    const { password, ...safe } = req.user;
+    const { password, garminAccessToken, garminTokenSecret, ...safe } = req.user;
     const perms = parsePermissions(safe.permissions, !!safe.isAdmin, safe.isTeamAdmin === 1);
     const incognito = !!(req.session as any)?.incognito;
     let teamEnabledAreas: string[] | null = null;

@@ -28,6 +28,7 @@ type User = {
   incognito?: boolean;
   isBlindTester?: boolean;
   teamEnabledAreas?: string[] | null;
+  garminUserId?: string | null;
 };
 
 export function useAuth() {

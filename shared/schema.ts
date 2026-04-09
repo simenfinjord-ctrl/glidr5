@@ -81,6 +81,9 @@ export const users = pgTable("users", {
   permissions: text("permissions").notNull().default(JSON.stringify(DEFAULT_PERMISSIONS)),
   isActive: integer("is_active").notNull().default(1),
   isBlindTester: integer("is_blind_tester").notNull().default(0),
+  garminUserId: text("garmin_user_id"),
+  garminAccessToken: text("garmin_access_token"),
+  garminTokenSecret: text("garmin_token_secret"),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });

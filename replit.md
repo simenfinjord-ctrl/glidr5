@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed to optimize ski product development for multi-team organizations in the ski industry. It provides a comprehensive platform for streamlining data collection, advanced analytics, and detailed report generation. Key capabilities include live-ranking, robust offline functionality, sophisticated data visualization, and a multi-tenant architecture. The project aims to become the leading platform for data-driven product innovation in the ski sector, thereby improving decision-making and accelerating product development cycles.
+Glidr is a full-stack React web application designed to optimize ski product development for multi-team organizations. It provides a comprehensive platform for streamlined data collection, advanced analytics, and detailed report generation. Key capabilities include live-ranking, robust offline functionality, sophisticated data visualization, and a multi-tenant architecture. The project aims to become the leading platform for data-driven product innovation in the ski industry, improving decision-making and accelerating product development cycles.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -28,6 +28,7 @@ Glidr is a full-stack React web application designed to optimize ski product dev
 - PDF export uses /api/admin/full-export endpoint for reliable bulk data retrieval (no N+1 queries); includes race ski regrinds, test ski series regrinds, grinding sheets, and activity logs
 - Complete Runsheet: tournament bracket dialog (Final → SF → QF display order, final first) for single-elimination ski pair testing; enter distances in orange fields, winner (0) auto-advances, cascading diff calculation (loser diff = own distance + winner's accumulated diff), results auto-applied to test entries; "Final Results" table shown at top when bracket is complete
 - Runsheet Watch Mode: "Watch" button creates server-side session with 6-digit code; Garmin Connect IQ app connects via code, shows heats on watch, user selects winner + distance with physical buttons; results sync live to web bracket via polling (2s interval)
+- Garmin auto-connect: when Garmin is linked, runsheet "Send to Watch" button creates session associated with garminUserId; CIQ app auto-discovers session via /api/runsheet/watch/garmin/:garminUserId endpoint (no 6-digit code needed); falls back to manual code entry
 - Mobile Mode: "Mobile" button in runsheet dialog opens full-screen mobile-optimized UI; shows pair matchups with large touch targets for glove use; winner selection by tapping pair, distance entry with +/- 10cm buttons, auto-advances to next heat
 - Skitester role preset (weather:view) available in admin permission matrix
 - ROLE_PRESETS exported from schema for admin UI preset buttons (teal badges above permission matrix)
@@ -140,7 +141,7 @@ Glidr is a full-stack React web application designed to optimize ski product dev
 - **Suggestions Module**: Offers product recommendations based on an analysis of historical test data and weather similarity, relying solely on database analysis without external AI.
 - **Grinding Module**: Manages grinding records and supports embedding multiple Google Sheets directly into the application via iframes.
 - **Runsheet Module**: Features a single-elimination tournament bracket system for ski testing, complete with live-ranking, a mobile-optimized user interface, and integration with a Garmin Connect IQ smartwatch app for real-time data input.
-- **Race Skis Module**: Managers athlete profiles, ski inventory, and tracks regrind history, with access control defined by athlete associations.
+- **Race Skis Module**: Manages athlete profiles, ski inventory, and tracks regrind history, with access control defined by athlete associations.
 
 ## External Dependencies
 - **PostgreSQL**: The primary relational database used for all data storage.

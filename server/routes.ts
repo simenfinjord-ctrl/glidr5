@@ -1169,7 +1169,7 @@ export async function registerRoutes(
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const teamId = getAdminTeamScope(req);
     const list = await storage.listUsers(teamId);
-    res.json(list.map(({ password, ...rest }) => rest));
+    res.json(list.map(({ password, garminAccessToken, garminTokenSecret, ...rest }) => rest));
   });
 
   app.post("/api/users", requireAuth, async (req, res) => {
@@ -1498,7 +1498,7 @@ export async function registerRoutes(
       weather: allWeather,
       series: allSeries,
       products: allProducts,
-      users: allUsers.map(({ password, ...rest }) => rest),
+      users: allUsers.map(({ password, garminAccessToken, garminTokenSecret, ...rest }) => rest),
       groups: allGroups,
       loginLogs: allLoginLogs,
       activities: allActivities,
@@ -1895,6 +1895,103 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  // --- Garmin Connect OAuth (OAuth 1.0a) ---
+  const GARMIN_CONSUMER_KEY = process.env.GARMIN_CONSUMER_KEY || "";
+  const GARMIN_CONSUMER_SECRET = process.env.GARMIN_CONSUMER_SECRET || "";
+  const GARMIN_REQUEST_TOKEN_URL = "https://connectapi.garmin.com/oauth-service/oauth/request_token";
+  const GARMIN_AUTH_URL = "https://connect.garmin.com/oauthConfirm";
+  const GARMIN_ACCESS_TOKEN_URL = "https://connectapi.garmin.com/oauth-service/oauth/access_token";
+
+  const garminOAuthTempTokens = new Map<string, { token: string; tokenSecret: string; userId: number }>();
+
+  app.get("/api/garmin/auth", requireAuth, async (req, res) => {
+    if (!GARMIN_CONSUMER_KEY || !GARMIN_CONSUMER_SECRET) {
+      return res.status(503).json({ message: "Garmin integration not configured. Set GARMIN_CONSUMER_KEY and GARMIN_CONSUMER_SECRET." });
+    }
+    try {
+      const OAuth = (await import("oauth-1.0a")).default;
+      const crypto = await import("crypto");
+      const oauth = new OAuth({
+        consumer: { key: GARMIN_CONSUMER_KEY, secret: GARMIN_CONSUMER_SECRET },
+        signature_method: "HMAC-SHA1",
+        hash_function(base_string: string, key: string) {
+          return crypto.createHmac("sha1", key).update(base_string).digest("base64");
+        },
+      });
+      const callbackUrl = `${req.protocol}://${req.get("host")}/api/garmin/callback`;
+      const requestData = { url: GARMIN_REQUEST_TOKEN_URL, method: "POST", data: { oauth_callback: callbackUrl } };
+      const headers = oauth.toHeader(oauth.authorize(requestData));
+      const resp = await fetch(GARMIN_REQUEST_TOKEN_URL, { method: "POST", headers: { ...headers, "Content-Type": "application/x-www-form-urlencoded" } });
+      if (!resp.ok) return res.status(502).json({ message: "Failed to get Garmin request token" });
+      const body = await resp.text();
+      const params = new URLSearchParams(body);
+      const token = params.get("oauth_token") || "";
+      const tokenSecret = params.get("oauth_token_secret") || "";
+      const u = userInfo(req);
+      garminOAuthTempTokens.set(token, { token, tokenSecret, userId: u.id });
+      setTimeout(() => garminOAuthTempTokens.delete(token), 10 * 60 * 1000);
+      res.json({ authUrl: `${GARMIN_AUTH_URL}?oauth_token=${token}` });
+    } catch (err: any) {
+      console.error("Garmin OAuth error:", err);
+      res.status(500).json({ message: "Garmin OAuth failed" });
+    }
+  });
+
+  app.get("/api/garmin/callback", async (req, res) => {
+    const oauthToken = req.query.oauth_token as string;
+    const oauthVerifier = req.query.oauth_verifier as string;
+    if (!oauthToken || !oauthVerifier) return res.status(400).send("Missing OAuth parameters");
+    const temp = garminOAuthTempTokens.get(oauthToken);
+    if (!temp) return res.status(400).send("Invalid or expired OAuth token");
+    garminOAuthTempTokens.delete(oauthToken);
+    try {
+      const OAuth = (await import("oauth-1.0a")).default;
+      const crypto = await import("crypto");
+      const oauth = new OAuth({
+        consumer: { key: GARMIN_CONSUMER_KEY, secret: GARMIN_CONSUMER_SECRET },
+        signature_method: "HMAC-SHA1",
+        hash_function(base_string: string, key: string) {
+          return crypto.createHmac("sha1", key).update(base_string).digest("base64");
+        },
+      });
+      const requestData = { url: GARMIN_ACCESS_TOKEN_URL, method: "POST", data: { oauth_verifier: oauthVerifier } };
+      const tokenPair = { key: oauthToken, secret: temp.tokenSecret };
+      const headers = oauth.toHeader(oauth.authorize(requestData, tokenPair));
+      const resp = await fetch(GARMIN_ACCESS_TOKEN_URL, { method: "POST", headers: { ...headers, "Content-Type": "application/x-www-form-urlencoded" } });
+      if (!resp.ok) return res.status(502).send("Failed to exchange Garmin access token");
+      const body = await resp.text();
+      const params = new URLSearchParams(body);
+      const accessToken = params.get("oauth_token") || "";
+      const accessSecret = params.get("oauth_token_secret") || "";
+      const garminUserId = params.get("encoded_user_id") || params.get("userId") || accessToken.split("-")[0] || "";
+      await db.update(users).set({
+        garminAccessToken: accessToken,
+        garminTokenSecret: accessSecret,
+        garminUserId: garminUserId,
+      }).where(eq(users.id, temp.userId));
+      res.redirect("/profile?garmin=connected");
+    } catch (err: any) {
+      console.error("Garmin callback error:", err);
+      res.redirect("/profile?garmin=error");
+    }
+  });
+
+  app.post("/api/garmin/disconnect", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    await db.update(users).set({
+      garminAccessToken: null,
+      garminTokenSecret: null,
+      garminUserId: null,
+    }).where(eq(users.id, u.id));
+    res.json({ ok: true });
+  });
+
+  app.get("/api/garmin/status", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const [user] = await db.select({ garminUserId: users.garminUserId }).from(users).where(eq(users.id, u.id));
+    res.json({ connected: !!user?.garminUserId, garminUserId: user?.garminUserId || null });
+  });
+
   // --- Runsheet Watch Sessions (in-memory, for Garmin Connect IQ integration) ---
 
   type WatchHeat = { pairA: number | null; pairB: number | null; distA: string; distB: string };
@@ -1908,6 +2005,8 @@ export async function registerRoutes(
     testId: number | null;
     testInfo: { date: string; location: string; testType: string } | null;
     teamId: number;
+    garminUserId: string | null;
+    garminToken: string | null;
   };
 
   const runsheetSessions = new Map<string, WatchSession>();
@@ -2015,7 +2114,7 @@ export async function registerRoutes(
     return diffs;
   }
 
-  app.post("/api/runsheet/sessions", requireAuth, (req, res) => {
+  app.post("/api/runsheet/sessions", requireAuth, async (req, res) => {
     const u = userInfo(req);
     const { skiPairs, testId } = req.body;
     if (!Array.isArray(skiPairs) || skiPairs.length < 2) {
@@ -2023,6 +2122,9 @@ export async function registerRoutes(
     }
     const code = generateSessionCode();
     const teamId = getActiveTeamId(req);
+    const [dbUser] = await db.select({ garminUserId: users.garminUserId }).from(users).where(eq(users.id, u.id));
+    const crypto = await import("crypto");
+    const garminToken = dbUser?.garminUserId ? crypto.randomBytes(32).toString("hex") : null;
     const session: WatchSession = {
       code,
       skiPairs: skiPairs.map(Number),
@@ -2033,6 +2135,8 @@ export async function registerRoutes(
       testId: testId ? Number(testId) : null,
       testInfo: null,
       teamId,
+      garminUserId: dbUser?.garminUserId || null,
+      garminToken,
     };
     runsheetSessions.set(code, session);
     if (session.testId) {
@@ -2042,7 +2146,7 @@ export async function registerRoutes(
         }
       }).catch(() => {});
     }
-    res.json({ code, bracket: session.bracket });
+    res.json({ code, bracket: session.bracket, garminToken });
   });
 
   app.get("/api/runsheet/sessions/:code", requireAuth, (req, res) => {
@@ -2072,6 +2176,28 @@ export async function registerRoutes(
     entry.count++;
     return entry.count <= 60;
   }
+
+  app.get("/api/runsheet/watch/garmin/:garminUserId", (req, res) => {
+    const gid = req.params.garminUserId as string;
+    const token = req.query.token as string;
+    if (!gid) return res.status(400).json({ message: "Missing garminUserId" });
+    if (!token) return res.status(401).json({ message: "Missing token" });
+    if (!checkWatchRateLimit(`garmin-${gid}`)) return res.status(429).json({ message: "Too many requests" });
+    for (const [code, session] of runsheetSessions) {
+      if (session.garminUserId === gid && session.garminToken === token) {
+        const currentHeat = watchFindCurrentHeat(session.bracket);
+        const diffs = watchCalcDiffs(session.bracket);
+        const complete = !currentHeat && diffs.size === session.skiPairs.length;
+        let champion: number | null = null;
+        if (complete) {
+          const sorted = [...diffs.entries()].sort((a, b) => a[1] - b[1]);
+          if (sorted.length > 0) champion = sorted[0][0];
+        }
+        return res.json({ code, currentHeat, complete, champion, totalPairs: session.skiPairs.length });
+      }
+    }
+    return res.status(404).json({ message: "No active session for this Garmin user" });
+  });
 
   app.get("/api/runsheet/watch/:code", (req, res) => {
     const code = req.params.code as string;

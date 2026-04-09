@@ -343,7 +343,7 @@ export async function registerRoutes(
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "created",
         entityType: "series", entityId: result.id,
-        details: `Series: ${result.name}`, createdAt: new Date().toISOString(), groupScope,
+        details: `Series: ${result.name}`, createdAt: new Date().toISOString(), groupScope, teamId,
       });
     } catch (_) {}
     res.json(result);
@@ -449,7 +449,7 @@ export async function registerRoutes(
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "created",
         entityType: "product", entityId: result.id,
-        details: `Product: ${result.brand} ${result.name}`, createdAt: new Date().toISOString(), groupScope,
+        details: `Product: ${result.brand} ${result.name}`, createdAt: new Date().toISOString(), groupScope, teamId,
       });
     } catch (_) {}
     res.json(result);
@@ -522,7 +522,7 @@ export async function registerRoutes(
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "deleted",
         entityType: "product", entityId: id,
-        details: "Product deleted", createdAt: new Date().toISOString(), groupScope: u.groupScope,
+        details: "Product deleted", createdAt: new Date().toISOString(), groupScope: u.groupScope, teamId: getActiveTeamId(req),
       });
     } catch (_) {}
     res.json({ ok: true });
@@ -578,7 +578,7 @@ export async function registerRoutes(
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "created",
         entityType: "weather", entityId: result.id,
-        details: `Weather: ${req.body.date} ${req.body.location}`, createdAt: new Date().toISOString(), groupScope,
+        details: `Weather: ${req.body.date} ${req.body.location}`, createdAt: new Date().toISOString(), groupScope, teamId,
       });
     } catch (_) {}
     res.json(result);
@@ -630,7 +630,7 @@ export async function registerRoutes(
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "deleted",
         entityType: "weather", entityId: id,
-        details: "Weather deleted", createdAt: new Date().toISOString(), groupScope: existing.groupScope,
+        details: "Weather deleted", createdAt: new Date().toISOString(), groupScope: existing.groupScope, teamId: getActiveTeamId(req),
       });
     } catch (_) {}
     res.json({ ok: true });
@@ -733,7 +733,7 @@ export async function registerRoutes(
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "created",
         entityType: "test", entityId: test.id,
-        details: `Test: ${req.body.testType} on ${req.body.date}`, createdAt: new Date().toISOString(), groupScope,
+        details: `Test: ${req.body.testType} on ${req.body.date}`, createdAt: new Date().toISOString(), groupScope, teamId,
       });
     } catch (_) {}
 
@@ -1143,7 +1143,7 @@ export async function registerRoutes(
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "deleted",
         entityType: "test", entityId: id,
-        details: "Test deleted", createdAt: new Date().toISOString(), groupScope: existing.groupScope,
+        details: "Test deleted", createdAt: new Date().toISOString(), groupScope: existing.groupScope, teamId: getActiveTeamId(req),
       });
     } catch (_) {}
     res.json({ ok: true });
@@ -1363,7 +1363,7 @@ export async function registerRoutes(
       await storage.createActivityLog({
         userId: u.id, userName: u.name, action: "created",
         entityType: "grinding", entityId: record.id,
-        details: `Grinding: ${record.grindType}`, createdAt: new Date().toISOString(), groupScope,
+        details: `Grinding: ${record.grindType}`, createdAt: new Date().toISOString(), groupScope, teamId,
       });
     } catch (_) {}
     res.json(record);

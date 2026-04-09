@@ -7,11 +7,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, RotateCcw, Trophy, Watch, WifiOff, Wifi, Smartphone, Send } from "lucide-react";
+import { Check, RotateCcw, Trophy, WifiOff, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { MobileRunsheet } from "./mobile-runsheet";
-import { useAuth } from "@/lib/auth";
 
 type Heat = {
   pairA: number | null;
@@ -196,12 +195,8 @@ export function RunsheetDialog({
   testId,
   onApplyResults,
 }: Props) {
-  const { user } = useAuth();
-  const garminLinked = !!user?.garminUserId;
   const label = (pair: number | null) => pair !== null && skiLabels?.[pair] ? skiLabels[pair] : pair !== null ? String(pair) : "—";
   const [bracket, setBracket] = useState<Heat[][]>([]);
-  const [watchCode, setWatchCode] = useState<string | null>(null);
-  const [watchActive, setWatchActive] = useState(false);
   const [mobileMode, setMobileMode] = useState(false);
   const [resumed, setResumed] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -282,48 +277,6 @@ export function RunsheetDialog({
       saveBracketToServer(bracket);
     }
   }, [bracket, saveBracketToServer]);
-
-  useEffect(() => {
-    if (pollRef.current) clearInterval(pollRef.current);
-
-    if (watchActive && watchCode) {
-      pollRef.current = setInterval(async () => {
-        try {
-          const resp = await fetch(`/api/runsheet/sessions/${watchCode}`, { credentials: "include" });
-          if (!resp.ok) return;
-          const data = await resp.json();
-          if (data.bracket) {
-            setBracket(data.bracket);
-          }
-        } catch {}
-      }, 2000);
-    }
-
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [watchActive, watchCode]);
-
-  const handleStartWatch = useCallback(async () => {
-    try {
-      const resp = await apiRequest("POST", "/api/runsheet/sessions", { skiPairs, testId });
-      const data = await resp.json();
-      setWatchCode(data.code);
-      setWatchActive(true);
-      if (data.bracket) setBracket(data.bracket);
-    } catch {}
-  }, [skiPairs, testId]);
-
-  const handleStopWatch = useCallback(async () => {
-    if (watchCode) {
-      try {
-        await apiRequest("DELETE", `/api/runsheet/sessions/${watchCode}`);
-      } catch {}
-    }
-    setWatchActive(false);
-    setWatchCode(null);
-    if (pollRef.current) clearInterval(pollRef.current);
-  }, [watchCode]);
 
   const handleDistanceChange = useCallback(
     (roundIndex: number, heatIndex: number, slot: "A" | "B", value: string) => {
@@ -459,30 +412,6 @@ export function RunsheetDialog({
                 <Smartphone className="mr-1 h-4 w-4" />
                 Mobile
               </Button>
-              {!watchActive ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleStartWatch}
-                  data-testid="button-start-watch"
-                  title={garminLinked ? "Send to your linked Garmin watch" : "Enable Garmin watch remote control"}
-                  className={garminLinked ? "border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20" : ""}
-                >
-                  {garminLinked ? <Send className="mr-1 h-4 w-4" /> : <Watch className="mr-1 h-4 w-4" />}
-                  {garminLinked ? "Send to Watch" : "Watch"}
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleStopWatch}
-                  data-testid="button-stop-watch"
-                  className="border-green-500 text-green-600"
-                >
-                  <Wifi className="mr-1 h-4 w-4 animate-pulse" />
-                  Disconnect
-                </Button>
-              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -495,25 +424,6 @@ export function RunsheetDialog({
             </div>
           </div>
         </DialogHeader>
-
-        {watchActive && watchCode && (
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800" data-testid="watch-session-info">
-            <Watch className="h-5 w-5 text-green-600 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                {garminLinked ? "Sent to Garmin watch" : "Garmin watch session active"}
-              </p>
-              <p className="text-xs text-green-600 dark:text-green-400">
-                {garminLinked
-                  ? "Auto-connected via your linked Garmin account"
-                  : "Enter this code on your watch to connect"}
-              </p>
-            </div>
-            <div className="text-3xl font-mono font-bold tracking-[0.3em] text-green-700 dark:text-green-300 select-all" data-testid="text-watch-code">
-              {watchCode}
-            </div>
-          </div>
-        )}
 
         {resumed && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-300" data-testid="resumed-banner">

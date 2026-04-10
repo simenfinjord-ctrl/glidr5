@@ -201,7 +201,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen fs-grid">
       <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 py-3">
+        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-6 py-3">
           <div className="flex items-center gap-2">
             <span className="text-xl font-bold tracking-tight text-foreground">Glidr</span>
             <div className={cn(
@@ -297,7 +297,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Button>
           </div>
         </div>
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 pb-3">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 pb-3">
           <nav className="flex flex-wrap items-center gap-1" data-testid="nav-primary">
             {visibleNav.map((item) => {
               const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
@@ -328,11 +328,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-6">
+      <main className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 py-6">
         <div className="fs-card rounded-2xl p-4 sm:p-6">{children}</div>
       </main>
 
-      <footer className="mx-auto w-full max-w-6xl px-4 sm:px-6 pb-8">
+      <footer className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 pb-8">
         <div className="mb-3 h-px bg-border" />
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <span className="font-medium">Glidr</span>

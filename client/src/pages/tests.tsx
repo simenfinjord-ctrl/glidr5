@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList } from "lucide-react";
+import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -111,6 +112,7 @@ function RankBadge({ rank }: { rank: number | null }) {
 }
 
 export default function Tests() {
+  const [, navigate] = useLocation();
   const { isBlindTester } = useAuth();
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
@@ -254,9 +256,22 @@ export default function Tests() {
   const hasFilters = filterSeason !== "All" || filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || filterDate || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax;
 
   const [hideDayDetailsState, setHideDayDetails] = useState(false);
-  const [twoColLayout, setTwoColLayout] = useState(() => localStorage.getItem("glidr-tests-twocol") === "true");
+  const [viewMode, setViewMode] = useState<"cards" | "cards2" | "table">(() => {
+    const saved = localStorage.getItem("glidr-tests-viewmode");
+    if (saved === "table" || saved === "cards2") return saved;
+    if (localStorage.getItem("glidr-tests-twocol") === "true") return "cards2";
+    return "cards";
+  });
+  const twoColLayout = viewMode === "cards2";
   const hideDayDetails = isBlindTester || hideDayDetailsState;
   const isDayView = !!filterDate;
+
+  function cycleViewMode() {
+    const next = viewMode === "cards" ? "cards2" : viewMode === "cards2" ? "table" : "cards";
+    setViewMode(next);
+    localStorage.setItem("glidr-tests-viewmode", next);
+    localStorage.setItem("glidr-tests-twocol", String(next === "cards2"));
+  }
 
   return (
     <AppShell>
@@ -376,11 +391,11 @@ export default function Tests() {
                 variant="outline"
                 size="icon"
                 className="h-9 w-9 shrink-0"
-                onClick={() => { const next = !twoColLayout; setTwoColLayout(next); localStorage.setItem("glidr-tests-twocol", String(next)); }}
+                onClick={cycleViewMode}
                 data-testid="button-toggle-layout-list"
-                title={twoColLayout ? "Single column" : "Two columns"}
+                title={viewMode === "cards" ? "Single column" : viewMode === "cards2" ? "Two columns" : "Table view"}
               >
-                {twoColLayout ? <LayoutList className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+                {viewMode === "table" ? <Table2 className="h-4 w-4" /> : viewMode === "cards2" ? <LayoutGrid className="h-4 w-4" /> : <LayoutList className="h-4 w-4" />}
               </Button>
             </div>
             {hasFilters && (
@@ -483,16 +498,75 @@ export default function Tests() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => { const next = !twoColLayout; setTwoColLayout(next); localStorage.setItem("glidr-tests-twocol", String(next)); }}
+                onClick={cycleViewMode}
                 data-testid="button-toggle-layout"
-                title={twoColLayout ? "Single column" : "Two columns"}
+                title={viewMode === "cards" ? "Single column" : viewMode === "cards2" ? "Two columns" : "Table view"}
               >
-                {twoColLayout ? <LayoutList className="h-3.5 w-3.5" /> : <LayoutGrid className="h-3.5 w-3.5" />}
+                {viewMode === "table" ? <Table2 className="h-3.5 w-3.5" /> : viewMode === "cards2" ? <LayoutGrid className="h-3.5 w-3.5" /> : <LayoutList className="h-3.5 w-3.5" />}
               </Button>
             </div>
             {filtered.length === 0 ? (
               <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-day-tests">
                 No tests on this date.
+              </Card>
+            ) : viewMode === "table" ? (
+              <Card className="fs-card rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm" data-testid="table-day-tests-overview">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                        <th className="px-4 py-3 font-semibold">Name</th>
+                        <th className="px-4 py-3 font-semibold">Location</th>
+                        <th className="px-4 py-3 font-semibold">Type</th>
+                        <th className="px-4 py-3 font-semibold">Series</th>
+                        <th className="px-4 py-3 font-semibold">Air temp</th>
+                        <th className="px-4 py-3 font-semibold">Snow temp</th>
+                        <th className="px-4 py-3 font-semibold">Created by</th>
+                        {!isBlindTester && <th className="px-4 py-3 font-semibold">Winner</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((t) => {
+                        const winner = winnersByTest.get(t.id);
+                        const w = t.weatherId ? weatherById.get(t.weatherId) : null;
+                        return (
+                          <tr
+                            key={t.id}
+                            className="border-b border-border/30 transition-colors hover:bg-muted/20 cursor-pointer"
+                            onClick={() => navigate(`/tests/${t.id}`)}
+                            data-testid={`row-day-test-${t.id}`}
+                          >
+                            <td className="px-4 py-3 font-medium">{t.testName || t.location}</td>
+                            <td className="px-4 py-3">{t.location}</td>
+                            <td className="px-4 py-3">
+                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
+                                {t.testType}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-muted-foreground">{(t as any).seriesName || seriesById.get(t.seriesId) || "—"}</td>
+                            <td className="px-4 py-3 text-xs">
+                              {w ? <span className="text-sky-600">{w.airTemperatureC}°C</span> : "—"}
+                            </td>
+                            <td className="px-4 py-3 text-xs">
+                              {w ? <span className="text-emerald-600">{w.snowTemperatureC}°C</span> : "—"}
+                            </td>
+                            <td className="px-4 py-3 text-xs text-muted-foreground">{t.createdByName}</td>
+                            {!isBlindTester && (
+                              <td className="px-4 py-3 text-xs">
+                                {winner ? (
+                                  <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                                    <Trophy className="h-3 w-3" />
+                                    {winner.productName}
+                                  </span>
+                                ) : "—"}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </Card>
             ) : (
               <div className={cn("grid gap-4", twoColLayout ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1")}>
@@ -644,6 +718,81 @@ export default function Tests() {
               </div>
             )}
           </div>
+        ) : viewMode === "table" ? (
+          <Card className="fs-card rounded-2xl overflow-hidden">
+            {filtered.length === 0 ? (
+              <div className="p-6 text-sm text-muted-foreground" data-testid="empty-tests">
+                {hasFilters ? "No tests match your filters." : "No tests yet."}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm" data-testid="table-tests-overview">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <th className="px-4 py-3 font-semibold">Date</th>
+                      <th className="px-4 py-3 font-semibold">Name</th>
+                      <th className="px-4 py-3 font-semibold">Location</th>
+                      <th className="px-4 py-3 font-semibold">Type</th>
+                      <th className="px-4 py-3 font-semibold">Series</th>
+                      <th className="px-4 py-3 font-semibold">Air temp</th>
+                      <th className="px-4 py-3 font-semibold">Snow temp</th>
+                      <th className="px-4 py-3 font-semibold">Created by</th>
+                      {!isBlindTester && <th className="px-4 py-3 font-semibold">Winner</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((t) => {
+                      const winner = winnersByTest.get(t.id);
+                      const w = t.weatherId ? weatherById.get(t.weatherId) : null;
+                      return (
+                        <tr
+                          key={t.id}
+                          className="border-b border-border/30 transition-colors hover:bg-muted/20 cursor-pointer"
+                          onClick={() => navigate(`/tests/${t.id}`)}
+                          data-testid={`row-test-${t.id}`}
+                        >
+                          <td className="px-4 py-3 whitespace-nowrap text-xs">{t.date}</td>
+                          <td className="px-4 py-3 font-medium">{t.testName || t.location}</td>
+                          <td className="px-4 py-3">{t.location}</td>
+                          <td className="px-4 py-3">
+                            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
+                              {t.testType}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{(t as any).seriesName || seriesById.get(t.seriesId) || "—"}</td>
+                          <td className="px-4 py-3 text-xs">
+                            {w ? (
+                              <span className="inline-flex items-center gap-1 text-sky-600">
+                                {w.airTemperatureC}°C
+                              </span>
+                            ) : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-xs">
+                            {w ? (
+                              <span className="inline-flex items-center gap-1 text-emerald-600">
+                                {w.snowTemperatureC}°C
+                              </span>
+                            ) : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{t.createdByName}</td>
+                          {!isBlindTester && (
+                            <td className="px-4 py-3 text-xs">
+                              {winner ? (
+                                <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                                  <Trophy className="h-3 w-3" />
+                                  {winner.productName}
+                                </span>
+                              ) : "—"}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
         ) : (
           <div className={cn("grid gap-3", twoColLayout ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1")}>
             {filtered.length === 0 ? (

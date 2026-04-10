@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed to optimize ski product development for multi-team organizations in the ski industry. It provides a comprehensive platform for streamlined data collection, advanced analytics, and detailed report generation. The platform aims to centralize ski testing data, accelerate product iteration, and support informed decision-making, driving innovation and market leadership. Key capabilities include live-ranking, robust offline functionality, sophisticated data visualization, and a multi-tenant architecture. The business vision is to enable multi-team organizations in the ski industry to enhance their product development lifecycle, achieve faster iterations, and maintain market leadership through data-driven insights.
+Glidr is a full-stack React web application that optimizes ski product development for multi-team organizations in the ski industry. It provides a platform for streamlined data collection, advanced analytics, and detailed report generation. The platform aims to centralize ski testing data, accelerate product iteration, and support informed decision-making, driving innovation and market leadership. Key capabilities include live-ranking, robust offline functionality, sophisticated data visualization, and a multi-tenant architecture. The business vision is to enable multi-team organizations to enhance their product development lifecycle, achieve faster iterations, and maintain market leadership through data-driven insights.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -59,7 +59,9 @@ Glidr is a full-stack React web application designed to optimize ski product dev
 - Series detail page (/testskis/:id) shows all tests for a series with results tables
 - Tests page has date dropdown filter listing unique test dates (newest first) with "All dates" option
 - Tests page has sort dropdown: Date ↑, Date ↓ (default), Location A-Z, Location Z-A
-- Tests page and Live Runsheets have layout toggle button: switch between 1-column and 2-column grid view, persisted to localStorage
+- Tests page has layout toggle button: cycles between 1-column cards, 2-column cards, and table view, persisted to localStorage
+- Tests table view shows all tests as rows with columns: Date, Name, Location, Type, Series, Air temp, Snow temp, Created by, Winner
+- Live Runsheets has layout toggle button: switch between 1-column and 2-column grid view, persisted to localStorage
 - Live Runsheets shows results summary (rank badges + diff) on completed runsheets
 - Offline mode: data entry works without internet, changes queue locally and sync when reconnected
 - Service worker caches app shell for offline access

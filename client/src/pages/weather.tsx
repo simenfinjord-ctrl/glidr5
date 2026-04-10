@@ -315,7 +315,7 @@ function WeatherForm({
                 <FormItem>
                   <FormLabel>Snow temp (°C)</FormLabel>
                   <FormControl>
-                    <Input {...field} type="number" step="0.1" inputMode="decimal" data-testid="input-weather-snowtemp" />
+                    <Input {...field} type="number" step="0.1" data-testid="input-weather-snowtemp" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -328,7 +328,7 @@ function WeatherForm({
                 <FormItem>
                   <FormLabel>Air temp (°C)</FormLabel>
                   <FormControl>
-                    <Input {...field} type="number" step="0.1" inputMode="decimal" data-testid="input-weather-airtemp" />
+                    <Input {...field} type="number" step="0.1" data-testid="input-weather-airtemp" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

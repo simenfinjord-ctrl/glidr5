@@ -914,6 +914,8 @@ export async function registerRoutes(
     const sourceEntries = await storage.listEntries(testId);
     const now = new Date().toISOString();
     const sharedTeamNames: string[] = [];
+    const sharerName = `Shared by ${u.name}`;
+    const sharerId = u.id;
 
     const allProductIds = new Set<number>();
     for (const entry of sourceEntries) {
@@ -954,8 +956,8 @@ export async function registerRoutes(
               brand: srcProd.brand,
               name: srcProd.name,
               createdAt: now,
-              createdById: 0,
-              createdByName: "System",
+              createdById: sharerId,
+              createdByName: sharerName,
               groupScope: defaultGroup,
               teamId: targetTeamId,
               stockQuantity: 0,
@@ -989,8 +991,8 @@ export async function registerRoutes(
               testQuality: srcWeather.testQuality ?? null,
               snowType: srcWeather.snowType || null,
               createdAt: now,
-              createdById: 0,
-              createdByName: "System",
+              createdById: sharerId,
+              createdByName: sharerName,
               groupScope: defaultGroup,
               teamId: targetTeamId,
             }).returning();
@@ -1013,8 +1015,8 @@ export async function registerRoutes(
           distanceLabelXkm: sourceTest.distanceLabelXkm || null,
           distanceLabels: sourceTest.distanceLabels || null,
           createdAt: now,
-          createdById: 0,
-          createdByName: "System",
+          createdById: sharerId,
+          createdByName: sharerName,
           groupScope: defaultGroup,
           teamId: targetTeamId,
         }).returning();
@@ -1049,8 +1051,8 @@ export async function registerRoutes(
             grindPattern: entry.grindPattern || null,
             raceSkiId: null,
             createdAt: now,
-            createdById: 0,
-            createdByName: "System",
+            createdById: sharerId,
+            createdByName: sharerName,
             groupScope: defaultGroup,
             teamId: targetTeamId,
           });

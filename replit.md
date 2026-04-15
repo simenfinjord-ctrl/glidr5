@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed for the ski industry to centralize ski testing data, provide advanced analytics, and generate detailed reports. Its core purpose is to accelerate product iteration, enable data-driven decision-making, and enhance product development through insightful analysis and multi-team collaboration. Key features include live-ranking, robust offline functionality, sophisticated data visualization, and a multi-tenant architecture. Glidr aims to be the leading platform for ski product development by offering comprehensive tools for managing tests, products, and user roles efficiently, ultimately driving innovation and improving product quality.
+Glidr is a full-stack React web application for the ski industry, designed to centralize ski testing data, provide advanced analytics, and generate detailed reports. Its primary purpose is to accelerate product iteration, enable data-driven decision-making, and improve product quality. Glidr aims to become the leading platform for multi-team collaboration in ski product development, offering comprehensive tools for managing tests, products, and user roles efficiently.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -134,21 +134,21 @@ Glidr is a full-stack React web application designed for the ski industry to cen
 - Admin overview stats include Athletes and Race Skis counts
 
 ## System Architecture
-- **UI/UX Decisions**: Leverages `shadcn/ui` and `Tailwind CSS v4` for a responsive design with dark mode, emphasizing a table-first approach for efficient data entry.
-- **Authentication & Authorization**: Implements session-based authentication and a granular Role-Based Access Control (RBAC) system with Super Admin, Team Admin, and Member roles, enforced both server-side and client-side via middleware and hooks.
-- **Multi-tenancy**: Achieved through a `teamId` column across all core data tables, ensuring strict data isolation between organizations. Super Admins can manage and switch between teams.
-- **Data Models**: `Drizzle ORM` is used for defining database schemas, ensuring data integrity and consistency.
-- **API Design**: A RESTful API (`/api/*`) handles all data operations, user authentication, and administrative tasks, with integrated server-side validation and permission enforcement.
-- **Offline Capabilities**: Utilizes Service Workers and IndexedDB for robust offline data entry, queuing mutations locally for automatic synchronization upon reconnection.
-- **Analytics & Reporting**: `Recharts` provides dynamic data visualizations. Client-side data export functionalities are available for PDF, CSV, and Excel formats.
-- **Suggestions Module**: Offers product recommendations based on historical test data and weather similarity analysis, using only database-driven logic.
+- **UI/UX Decisions**: Utilizes `shadcn/ui` and `Tailwind CSS v4` for a responsive design with dark mode, focusing on a table-first approach for data entry.
+- **Authentication & Authorization**: Implements session-based authentication and a granular Role-Based Access Control (RBAC) system with Super Admin, Team Admin, and Member roles, enforced both server-side and client-side.
+- **Multi-tenancy**: Achieved through a `teamId` column across all core data tables, ensuring data isolation. Super Admins can manage and switch between teams.
+- **Data Models**: `Drizzle ORM` defines database schemas, ensuring data integrity.
+- **API Design**: A RESTful API (`/api/*`) handles data operations, authentication, and administration, with integrated server-side validation and permission enforcement.
+- **Offline Capabilities**: Uses Service Workers and IndexedDB for offline data entry, queuing mutations for automatic synchronization.
+- **Analytics & Reporting**: `Recharts` provides dynamic data visualizations. Client-side data export functionalities are available for PDF, CSV, and Excel.
+- **Suggestions Module**: Offers product recommendations based on historical test data and weather similarity analysis using database logic.
 - **Grinding Module**: Manages grinding records and allows embedding multiple Google Sheets via iframes.
 - **Runsheet Module**: Features a single-elimination tournament bracket system for ski testing, including live-ranking and a mobile-optimized UI.
 - **Race Skis Module**: Manages athlete profiles, ski inventory, and tracks regrind history, with access control based on athlete associations.
 
 ## External Dependencies
-- **PostgreSQL**: The primary relational database for all persistent data storage.
-- **Google Sheets**: Integrated for embedding grinding-related spreadsheets within the application via iframes.
+- **PostgreSQL**: Primary relational database.
+- **Google Sheets**: Integrated for embedding grinding-related spreadsheets.
 - **jsPDF + autoTable**: Used for client-side PDF document generation.
 - **xlsx (SheetJS)**: Utilized for client-side data export to Excel files.
-- **Recharts**: A JavaScript charting library for analytics and data visualization.
+- **Recharts**: JavaScript charting library for analytics and data visualization.

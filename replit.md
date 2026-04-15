@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application for the ski industry, centralizing ski testing data, providing advanced analytics, and generating detailed reports. Its core purpose is to accelerate product iteration, enable data-driven decision-making, and enhance product development through insights and multi-team collaboration. Key features include live-ranking, robust offline functionality, sophisticated data visualization, and a multi-tenant architecture. Glidr aims to be the leading platform for ski product development, fostering innovation with significant market potential.
+Glidr is a full-stack React web application designed for the ski industry to centralize ski testing data, provide advanced analytics, and generate detailed reports. Its core purpose is to accelerate product iteration, enable data-driven decision-making, and enhance product development through insightful analysis and multi-team collaboration. Key features include live-ranking, robust offline functionality, sophisticated data visualization, and a multi-tenant architecture. Glidr aims to be the leading platform for ski product development by offering comprehensive tools for managing tests, products, and user roles efficiently, ultimately driving innovation and improving product quality.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -125,6 +125,8 @@ Glidr is a full-stack React web application for the ski industry, centralizing s
 - Admin page has Teams tab (super admin only) for managing teams
 - User create/edit forms include Team Admin role option
 - Existing data migrated to teamId=1 (default team)
+- Super Admin stealth mode: discrete lock/unlock icon in header when viewing another team; activates read-only full access to all team content; automatically suppresses all logging; session-based, resets on logout
+- Super Admin can share tests with other teams via "Share with" button on test detail page; products referenced in the test are auto-created in the target team if they don't already exist (matched by brand+name+category)
 - Groups.name unique constraint removed to allow same group names across different teams
 - Race ski archiving: soft-delete via archivedAt column, archive/restore buttons on athlete detail page, permanent delete only for archived skis, "Show archived" toggle reveals archived section
 - Admin page has Data Management tab: database overview (all table counts + active sessions), export tools (PDF + CSV + HExcel)
@@ -132,21 +134,21 @@ Glidr is a full-stack React web application for the ski industry, centralizing s
 - Admin overview stats include Athletes and Race Skis counts
 
 ## System Architecture
-- **UI/UX Decisions**: Utilizes `shadcn/ui` and `Tailwind CSS v4` for a responsive interface with dark mode, prioritizing a table-first approach for efficient data input.
-- **Authentication & Authorization**: Implements session-based authentication and a granular Role-Based Access Control (RBAC) system with Super Admin, Team Admin, and Member roles, enforced both server-side and client-side.
-- **Multi-tenancy**: Achieved by incorporating a `teamId` column across all primary data tables, ensuring strict data isolation between different teams. Super Admins have the ability to manage and switch between teams.
-- **Data Models**: `Drizzle ORM` is employed for defining and managing database schemas, ensuring data integrity and consistency.
-- **API Design**: A RESTful API (`/api/*`) handles all data operations, user authentication, and administrative tasks, featuring integrated server-side validation and permission enforcement.
-- **Offline Capabilities**: Leverages Service Workers and IndexedDB to provide robust offline data entry, queuing local changes for automatic synchronization when connectivity is restored.
-- **Analytics & Reporting**: `Recharts` is used for creating dynamic data visualizations. Client-side data export functionalities are available for PDF, CSV, and Excel formats.
-- **Suggestions Module**: Offers product recommendations based on an analysis of historical test data and weather similarity, relying solely on database analysis without external AI.
-- **Grinding Module**: Manages grinding records and supports embedding multiple Google Sheets directly into the application via iframes.
-- **Runsheet Module**: Features a single-elimination tournament bracket system for ski testing, complete with live-ranking and a mobile-optimized user interface.
-- **Race Skis Module**: Manages athlete profiles, ski inventory, and tracks regrind history, with access control defined by athlete associations.
+- **UI/UX Decisions**: Leverages `shadcn/ui` and `Tailwind CSS v4` for a responsive design with dark mode, emphasizing a table-first approach for efficient data entry.
+- **Authentication & Authorization**: Implements session-based authentication and a granular Role-Based Access Control (RBAC) system with Super Admin, Team Admin, and Member roles, enforced both server-side and client-side via middleware and hooks.
+- **Multi-tenancy**: Achieved through a `teamId` column across all core data tables, ensuring strict data isolation between organizations. Super Admins can manage and switch between teams.
+- **Data Models**: `Drizzle ORM` is used for defining database schemas, ensuring data integrity and consistency.
+- **API Design**: A RESTful API (`/api/*`) handles all data operations, user authentication, and administrative tasks, with integrated server-side validation and permission enforcement.
+- **Offline Capabilities**: Utilizes Service Workers and IndexedDB for robust offline data entry, queuing mutations locally for automatic synchronization upon reconnection.
+- **Analytics & Reporting**: `Recharts` provides dynamic data visualizations. Client-side data export functionalities are available for PDF, CSV, and Excel formats.
+- **Suggestions Module**: Offers product recommendations based on historical test data and weather similarity analysis, using only database-driven logic.
+- **Grinding Module**: Manages grinding records and allows embedding multiple Google Sheets via iframes.
+- **Runsheet Module**: Features a single-elimination tournament bracket system for ski testing, including live-ranking and a mobile-optimized UI.
+- **Race Skis Module**: Manages athlete profiles, ski inventory, and tracks regrind history, with access control based on athlete associations.
 
 ## External Dependencies
-- **PostgreSQL**: The primary relational database used for all data storage.
-- **Google Sheets**: Integrated for embedding grinding-related spreadsheets within the application.
-- **jsPDF + autoTable**: Used for generating PDF documents on the client-side.
-- **xlsx (SheetJS)**: Utilized for exporting data to Excel files from the client-side.
-- **Recharts**: A JavaScript charting library specifically for analytics and data visualization.
+- **PostgreSQL**: The primary relational database for all persistent data storage.
+- **Google Sheets**: Integrated for embedding grinding-related spreadsheets within the application via iframes.
+- **jsPDF + autoTable**: Used for client-side PDF document generation.
+- **xlsx (SheetJS)**: Utilized for client-side data export to Excel files.
+- **Recharts**: A JavaScript charting library for analytics and data visualization.

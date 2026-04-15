@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
 import { parsePermissions, hashPassword } from "./auth";
-import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, tests, testEntries, users, testSkiSeries } from "@shared/schema";
+import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, tests, testEntries, users, testSkiSeries, products } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql, inArray } from "drizzle-orm";
 async function enforceTeamAreas(perms: Record<string, string>, teamId: number | undefined): Promise<Record<string, string>> {
@@ -914,13 +914,57 @@ export async function registerRoutes(
     const sourceEntries = await storage.listEntries(testId);
     const now = new Date().toISOString();
     const sharedTeamNames: string[] = [];
+
+    const allProductIds = new Set<number>();
+    for (const entry of sourceEntries) {
+      if (entry.productId) allProductIds.add(entry.productId);
+      if (entry.additionalProductIds) {
+        for (const idStr of entry.additionalProductIds.split(",")) {
+          const id = parseInt(idStr.trim(), 10);
+          if (!isNaN(id) && id > 0) allProductIds.add(id);
+        }
+      }
+    }
+    const sourceProducts = new Map<number, any>();
+    for (const pid of allProductIds) {
+      const p = await storage.getProduct(pid);
+      if (p) sourceProducts.set(pid, p);
+    }
+
     for (const targetTeamId of targetTeamIds) {
       if (targetTeamId === sourceTest.teamId) continue;
       const team = await storage.getTeam(targetTeamId);
       if (!team) continue;
       const teamGroups = await storage.listGroups(targetTeamId);
       const defaultGroup = teamGroups.length > 0 ? teamGroups[0].name : "default";
+
+      const existingProducts = await storage.listProducts("", true, targetTeamId);
+      const productIdMap = new Map<number, number>();
+
       await db.transaction(async (tx) => {
+        for (const [sourceId, srcProd] of sourceProducts) {
+          const match = existingProducts.find(
+            (ep) => ep.brand === srcProd.brand && ep.name === srcProd.name && ep.category === srcProd.category
+          );
+          if (match) {
+            productIdMap.set(sourceId, match.id);
+          } else {
+            const [newProd] = await tx.insert(products).values({
+              category: srcProd.category,
+              brand: srcProd.brand,
+              name: srcProd.name,
+              createdAt: now,
+              createdById: 0,
+              createdByName: "System",
+              groupScope: defaultGroup,
+              teamId: targetTeamId,
+              stockQuantity: 0,
+            }).returning();
+            productIdMap.set(sourceId, newProd.id);
+            existingProducts.push(newProd);
+          }
+        }
+
         const [newTest] = await tx.insert(tests).values({
           date: sourceTest.date,
           location: sourceTest.location,
@@ -941,12 +985,23 @@ export async function registerRoutes(
           groupScope: defaultGroup,
           teamId: targetTeamId,
         }).returning();
+
         for (const entry of sourceEntries) {
+          const mappedProductId = entry.productId ? (productIdMap.get(entry.productId) || null) : null;
+          let mappedAdditionalIds: string | null = null;
+          if (entry.additionalProductIds) {
+            const mapped = entry.additionalProductIds.split(",").map((s) => {
+              const id = parseInt(s.trim(), 10);
+              return !isNaN(id) && id > 0 ? (productIdMap.get(id) || id) : id;
+            });
+            mappedAdditionalIds = mapped.join(",");
+          }
+
           await tx.insert(testEntries).values({
             testId: newTest.id,
             skiNumber: entry.skiNumber,
-            productId: entry.productId || null,
-            additionalProductIds: entry.additionalProductIds || null,
+            productId: mappedProductId,
+            additionalProductIds: mappedAdditionalIds,
             freeTextProduct: entry.freeTextProduct || null,
             methodology: entry.methodology || "",
             result0kmCmBehind: entry.result0kmCmBehind ?? null,

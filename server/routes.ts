@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
 import { parsePermissions, hashPassword } from "./auth";
-import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, tests, users, testSkiSeries } from "@shared/schema";
+import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, tests, testEntries, users, testSkiSeries } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql, inArray } from "drizzle-orm";
 async function enforceTeamAreas(perms: Record<string, string>, teamId: number | undefined): Promise<Record<string, string>> {
@@ -895,6 +895,82 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Grinding access required" });
     }
     res.json(test);
+  });
+
+  app.post("/api/tests/:id/share", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const testId = parseInt(req.params.id);
+    const rawIds = req.body.targetTeamIds;
+    if (!Array.isArray(rawIds) || rawIds.length === 0) {
+      return res.status(400).json({ message: "targetTeamIds must be a non-empty array" });
+    }
+    const targetTeamIds = [...new Set(rawIds.map(Number).filter((n: number) => !isNaN(n) && n > 0))] as number[];
+    if (targetTeamIds.length === 0) {
+      return res.status(400).json({ message: "targetTeamIds must contain valid team IDs" });
+    }
+    const sourceTest = await storage.getTest(testId);
+    if (!sourceTest) return res.status(404).json({ message: "Test not found" });
+    const sourceEntries = await storage.listEntries(testId);
+    const now = new Date().toISOString();
+    const sharedTeamNames: string[] = [];
+    for (const targetTeamId of targetTeamIds) {
+      if (targetTeamId === sourceTest.teamId) continue;
+      const team = await storage.getTeam(targetTeamId);
+      if (!team) continue;
+      const teamGroups = await storage.listGroups(targetTeamId);
+      const defaultGroup = teamGroups.length > 0 ? teamGroups[0].name : "default";
+      await db.transaction(async (tx) => {
+        const [newTest] = await tx.insert(tests).values({
+          date: sourceTest.date,
+          location: sourceTest.location,
+          testName: sourceTest.testName || null,
+          weatherId: null,
+          testType: sourceTest.testType,
+          testSkiSource: sourceTest.testSkiSource || "series",
+          seriesId: null,
+          athleteId: null,
+          notes: sourceTest.notes || null,
+          grindParameters: sourceTest.grindParameters || null,
+          distanceLabel0km: sourceTest.distanceLabel0km || null,
+          distanceLabelXkm: sourceTest.distanceLabelXkm || null,
+          distanceLabels: sourceTest.distanceLabels || null,
+          createdAt: now,
+          createdById: 0,
+          createdByName: "System",
+          groupScope: defaultGroup,
+          teamId: targetTeamId,
+        }).returning();
+        for (const entry of sourceEntries) {
+          await tx.insert(testEntries).values({
+            testId: newTest.id,
+            skiNumber: entry.skiNumber,
+            productId: entry.productId || null,
+            additionalProductIds: entry.additionalProductIds || null,
+            freeTextProduct: entry.freeTextProduct || null,
+            methodology: entry.methodology || "",
+            result0kmCmBehind: entry.result0kmCmBehind ?? null,
+            rank0km: entry.rank0km ?? null,
+            resultXkmCmBehind: entry.resultXkmCmBehind ?? null,
+            rankXkm: entry.rankXkm ?? null,
+            results: entry.results || null,
+            feelingRank: entry.feelingRank ?? null,
+            kickRank: entry.kickRank ?? null,
+            grindType: entry.grindType || null,
+            grindStone: entry.grindStone || null,
+            grindPattern: entry.grindPattern || null,
+            raceSkiId: null,
+            createdAt: now,
+            createdById: 0,
+            createdByName: "System",
+            groupScope: defaultGroup,
+            teamId: targetTeamId,
+          });
+        }
+      });
+      sharedTeamNames.push(team.name);
+    }
+    res.json({ success: true, sharedTeams: sharedTeamNames });
   });
 
   app.put("/api/tests/:id", requireAuth, async (req, res) => {

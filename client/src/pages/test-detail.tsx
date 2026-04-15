@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2 } from "lucide-react";
 import { generateTestPDF } from "@/lib/pdf-report";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +51,7 @@ type Test = {
   groupScope: string;
   testSkiSource: string;
   athleteId: number | null;
+  teamId: number;
 };
 
 type TestEntry = {
@@ -168,13 +170,15 @@ function RankBadge({ rank, size = "sm" }: { rank: number | null; size?: "sm" | "
 export default function TestDetail() {
   const [, params] = useRoute("/tests/:id");
   const id = params?.id;
-  const { isBlindTester } = useAuth();
+  const { isBlindTester, isSuperAdmin } = useAuth();
   const [hideDetailsState, setHideDetails] = useState(false);
   const hideDetails = isBlindTester || hideDetailsState;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRunsheet, setShowRunsheet] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
 
   const [showReviewRunsheet, setShowReviewRunsheet] = useState(false);
 
@@ -210,6 +214,31 @@ export default function TestDetail() {
     onError: (e) => {
       toast({
         title: "Could not delete test",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
+
+  type TeamItem = { id: number; name: string };
+  const { data: allTeams = [] } = useQuery<TeamItem[]>({
+    queryKey: ["/api/teams"],
+    enabled: isSuperAdmin && showShareDialog,
+  });
+
+  const shareMutation = useMutation({
+    mutationFn: async (targetTeamIds: number[]) => {
+      const res = await apiRequest("POST", `/api/tests/${id}/share`, { targetTeamIds });
+      return res.json();
+    },
+    onSuccess: (data: { sharedTeams: string[] }) => {
+      setShowShareDialog(false);
+      setSelectedTeamIds([]);
+      toast({ title: `Test shared with: ${data.sharedTeams.join(", ")}` });
+    },
+    onError: (e) => {
+      toast({
+        title: "Could not share test",
         description: e instanceof Error ? e.message : "Unknown error",
         variant: "destructive",
       });
@@ -343,6 +372,12 @@ export default function TestDetail() {
                 <Button variant="outline" size="sm" onClick={() => setShowReviewRunsheet(true)} data-testid="button-review-runsheet">
                   <ClipboardList className="mr-2 h-4 w-4" />
                   Review runsheet
+                </Button>
+              )}
+              {isSuperAdmin && (
+                <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} data-testid="button-share-test">
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share with
                 </Button>
               )}
               <AppLink href={`/tests/new?duplicate=${id}`} testId="link-duplicate-test">
@@ -783,6 +818,50 @@ export default function TestDetail() {
             bracketJson={(test as any).runsheetBracket}
             skiLabels={skiLabels}
           />
+        )}
+
+        {isSuperAdmin && (
+          <Dialog open={showShareDialog} onOpenChange={(open) => { setShowShareDialog(open); if (!open) setSelectedTeamIds([]); }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Share test with other teams</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto py-2">
+                {allTeams
+                  .filter((t: TeamItem) => t.id !== test?.teamId)
+                  .map((t: TeamItem) => (
+                    <div key={t.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`team-${t.id}`}
+                        checked={selectedTeamIds.includes(t.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedTeamIds((prev) =>
+                            checked ? [...prev, t.id] : prev.filter((tid) => tid !== t.id)
+                          );
+                        }}
+                        data-testid={`checkbox-team-${t.id}`}
+                      />
+                      <label htmlFor={`team-${t.id}`} className="cursor-pointer text-sm">{t.name}</label>
+                    </div>
+                  ))}
+                {allTeams.filter((t: TeamItem) => t.id !== test?.teamId).length === 0 && (
+                  <p className="text-sm text-muted-foreground">No other teams available.</p>
+                )}
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => { setShowShareDialog(false); setSelectedTeamIds([]); }} data-testid="button-cancel-share">
+                  Cancel
+                </Button>
+                <Button
+                  disabled={selectedTeamIds.length === 0 || shareMutation.isPending}
+                  onClick={() => shareMutation.mutate(selectedTeamIds)}
+                  data-testid="button-confirm-share"
+                >
+                  {shareMutation.isPending ? "Sharing..." : `Share with ${selectedTeamIds.length} team${selectedTeamIds.length !== 1 ? "s" : ""}`}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         )}
 
       </div>

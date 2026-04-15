@@ -965,11 +965,44 @@ export async function registerRoutes(
           }
         }
 
+        let newWeatherId: number | null = null;
+        if (sourceTest.weatherId) {
+          const srcWeather = await storage.getWeather(sourceTest.weatherId);
+          if (srcWeather) {
+            const [newW] = await tx.insert(dailyWeather).values({
+              date: srcWeather.date,
+              time: srcWeather.time,
+              location: srcWeather.location,
+              snowTemperatureC: srcWeather.snowTemperatureC,
+              airTemperatureC: srcWeather.airTemperatureC,
+              snowHumidityPct: srcWeather.snowHumidityPct,
+              airHumidityPct: srcWeather.airHumidityPct,
+              clouds: srcWeather.clouds ?? null,
+              visibility: srcWeather.visibility || null,
+              wind: srcWeather.wind || null,
+              precipitation: srcWeather.precipitation || null,
+              artificialSnow: srcWeather.artificialSnow || null,
+              naturalSnow: srcWeather.naturalSnow || null,
+              grainSize: srcWeather.grainSize || null,
+              snowHumidityType: srcWeather.snowHumidityType || null,
+              trackHardness: srcWeather.trackHardness || null,
+              testQuality: srcWeather.testQuality ?? null,
+              snowType: srcWeather.snowType || null,
+              createdAt: now,
+              createdById: 0,
+              createdByName: "System",
+              groupScope: defaultGroup,
+              teamId: targetTeamId,
+            }).returning();
+            newWeatherId = newW.id;
+          }
+        }
+
         const [newTest] = await tx.insert(tests).values({
           date: sourceTest.date,
           location: sourceTest.location,
           testName: sourceTest.testName || null,
-          weatherId: null,
+          weatherId: newWeatherId,
           testType: sourceTest.testType,
           testSkiSource: sourceTest.testSkiSource || "series",
           seriesId: null,

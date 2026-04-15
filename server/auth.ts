@@ -166,7 +166,8 @@ export async function setupAuth(app: Express) {
             }
           } catch {}
         }
-        return res.json({ ...safe, parsedPermissions: perms, incognito: isIncognito, isBlindTester: !!safe.isBlindTester, teamEnabledAreas });
+        const isStealth = !!(req.session as any)?.stealth;
+        return res.json({ ...safe, parsedPermissions: perms, incognito: isIncognito, stealth: isStealth, isBlindTester: !!safe.isBlindTester, teamEnabledAreas });
       });
     })(req, res, next);
   });
@@ -188,6 +189,7 @@ export async function setupAuth(app: Express) {
     const { password, ...safe } = req.user;
     const perms = parsePermissions(safe.permissions, !!safe.isAdmin, safe.isTeamAdmin === 1);
     const incognito = !!(req.session as any)?.incognito;
+    const stealth = !!(req.session as any)?.stealth;
     let teamEnabledAreas: string[] | null = null;
     const effectiveTeamId = safe.activeTeamId ?? safe.teamId;
     if (effectiveTeamId && safe.isAdmin !== 1) {
@@ -198,7 +200,7 @@ export async function setupAuth(app: Express) {
         }
       } catch {}
     }
-    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, isBlindTester: !!safe.isBlindTester, teamEnabledAreas });
+    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, teamEnabledAreas });
   });
 
   app.post("/api/auth/incognito", (req, res) => {
@@ -212,6 +214,34 @@ export async function setupAuth(app: Express) {
     (req.session as any).incognito = !!enabled;
     req.session.save(() => {
       res.json({ incognito: !!enabled });
+    });
+  });
+
+  app.post("/api/auth/stealth", (req, res) => {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    if (req.user.isAdmin !== 1) {
+      return res.status(403).json({ message: "Super Admin only" });
+    }
+    const { enabled } = req.body;
+    if (enabled) {
+      const activeTeamId = (req.user as any).activeTeamId || req.user.teamId;
+      if (activeTeamId === req.user.teamId) {
+        return res.status(400).json({ message: "Stealth mode is only available when viewing another team" });
+      }
+    }
+    (req.session as any).stealth = !!enabled;
+    if (enabled) {
+      (req.session as any).incognitoBeforeStealth = !!(req.session as any).incognito;
+      (req.session as any).incognito = true;
+    } else {
+      const prev = (req.session as any).incognitoBeforeStealth;
+      (req.session as any).incognito = !!prev;
+      delete (req.session as any).incognitoBeforeStealth;
+    }
+    req.session.save(() => {
+      res.json({ stealth: !!enabled, incognito: !!(req.session as any).incognito });
     });
   });
 }

@@ -47,7 +47,44 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 function isIncognito(req: Request): boolean {
-  return !!(req.session as any)?.incognito;
+  return !!(req.session as any)?.incognito || !!(req.session as any)?.stealth;
+}
+
+function isStealth(req: Request): boolean {
+  return !!(req.session as any)?.stealth;
+}
+
+function isStealthViewingOtherTeam(req: Request): boolean {
+  if (!req.user || req.user.isAdmin !== 1) return false;
+  if (!isStealth(req)) return false;
+  const activeTeamId = (req.user as any).activeTeamId || req.user.teamId;
+  return activeTeamId !== req.user.teamId;
+}
+
+function enforceStealthReadOnly(req: Request, res: Response, next: NextFunction) {
+  if (isStealthViewingOtherTeam(req)) {
+    const method = req.method.toUpperCase();
+    if (method === "PUT" || method === "PATCH" || method === "DELETE") {
+      const url = req.originalUrl || req.url;
+      const allowedPaths = ["/api/auth/stealth", "/api/auth/incognito", "/api/auth/logout", "/api/teams/switch"];
+      if (allowedPaths.some(p => url.startsWith(p))) {
+        return next();
+      }
+      return res.status(403).json({ message: "Read-only access in stealth mode" });
+    }
+    if (method === "POST") {
+      const url = req.originalUrl || req.url;
+      const safePostPaths = [
+        "/api/auth/stealth", "/api/auth/incognito", "/api/auth/logout",
+        "/api/teams/switch",
+      ];
+      if (safePostPaths.some(p => url.startsWith(p))) {
+        return next();
+      }
+      return res.status(403).json({ message: "Read-only access in stealth mode" });
+    }
+  }
+  next();
 }
 
 function userInfo(req: Request) {
@@ -157,6 +194,8 @@ export async function registerRoutes(
   app: Express,
 ): Promise<Server> {
 
+  app.use("/api", enforceStealthReadOnly);
+
   // --- Teams CRUD ---
   app.get("/api/teams", requireAuth, async (req, res) => {
     const u = req.user!;
@@ -265,7 +304,15 @@ export async function registerRoutes(
     const team = await storage.getTeam(teamId);
     if (!team) return res.status(404).json({ message: "Team not found" });
     await storage.updateUser(u.id, { activeTeamId: teamId } as any);
-    res.json({ ok: true });
+    if (teamId === u.teamId && (req.session as any).stealth) {
+      (req.session as any).stealth = false;
+      const prev = (req.session as any).incognitoBeforeStealth;
+      (req.session as any).incognito = !!prev;
+      delete (req.session as any).incognitoBeforeStealth;
+    }
+    req.session.save(() => {
+      res.json({ ok: true });
+    });
   });
 
   app.get("/api/groups", requireAuth, async (req, res) => {

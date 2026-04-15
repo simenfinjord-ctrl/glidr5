@@ -26,6 +26,7 @@ type User = {
   permissions: string;
   parsedPermissions: UserPermissions;
   incognito?: boolean;
+  stealth?: boolean;
   isBlindTester?: boolean;
   teamEnabledAreas?: string[] | null;
 };
@@ -77,6 +78,14 @@ export function useAuth() {
     await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
   };
 
+  const toggleStealth = async (enabled: boolean) => {
+    await apiRequest("POST", "/api/auth/stealth", { enabled });
+    await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+  };
+
+  const isViewingOtherTeam = isSuperAdmin && user?.activeTeamId != null && user.activeTeamId !== user.teamId;
+  const isStealthActive = !!user?.stealth && isViewingOtherTeam;
+
   return {
     user: user ?? null,
     isLoading,
@@ -90,5 +99,8 @@ export function useAuth() {
     canManage,
     isBlindTester,
     toggleIncognito,
+    toggleStealth,
+    isViewingOtherTeam,
+    isStealthActive,
   };
 }

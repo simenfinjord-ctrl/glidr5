@@ -24,6 +24,8 @@ import {
   ChevronDown,
   EyeOff,
   Eye,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -160,7 +162,7 @@ const nav: NavItem[] = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { user, logout, can, isSuperAdmin, canManage, switchTeam, toggleIncognito } = useAuth();
+  const { user, logout, can, isSuperAdmin, canManage, switchTeam, toggleIncognito, toggleStealth, isViewingOtherTeam, isStealthActive } = useAuth();
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -176,6 +178,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const filteredNav = nav.filter((item) => {
     if (item.adminOnly) return canManage;
+    if (isSuperAdmin && !isViewingOwnTeam && isStealthActive) {
+      return true;
+    }
     if (isSuperAdmin && !isViewingOwnTeam) {
       return false;
     }
@@ -252,6 +257,21 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <CloudUpload className="mr-1.5 h-4 w-4" />
                 )}
                 {pendingCount} pending
+              </Button>
+            )}
+            {isSuperAdmin && isViewingOtherTeam && (
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="button-stealth-toggle"
+                onClick={() => toggleStealth(!user?.stealth)}
+                className={cn(
+                  "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  isStealthActive && "text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400"
+                )}
+                title={isStealthActive ? "Stealth mode ON (read-only)" : "Stealth mode"}
+              >
+                {isStealthActive ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
               </Button>
             )}
             {isSuperAdmin && (

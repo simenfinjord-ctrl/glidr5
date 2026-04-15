@@ -66,7 +66,7 @@ function Router() {
 }
 
 function AuthGuard() {
-  const { user, isLoading, isSuperAdmin } = useAuth();
+  const { user, isLoading, isSuperAdmin, isStealthActive } = useAuth();
   const [location] = useLocation();
 
   if (isLoading) {
@@ -86,7 +86,7 @@ function AuthGuard() {
     return <Redirect to="/dashboard" />;
   }
 
-  if (isSuperAdmin) {
+  if (isSuperAdmin && !isStealthActive) {
     const activeTeamId = user?.activeTeamId || user?.teamId;
     const isViewingOwnTeam = activeTeamId === user?.teamId;
     if (!isViewingOwnTeam) {

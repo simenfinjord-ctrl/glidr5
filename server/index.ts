@@ -6,6 +6,7 @@ import { createServer } from "http";
 import { seedDatabase } from "./seed";
 
 const app = express();
+app.set("trust proxy", 1);
 const httpServer = createServer(app);
 
 declare module "http" {
@@ -63,7 +64,11 @@ app.use((req, res, next) => {
 
 (async () => {
   await setupAuth(app);
-  await seedDatabase();
+  try {
+    await seedDatabase();
+  } catch (err) {
+    console.error("[seed] Database seeding failed (continuing startup):", err);
+  }
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
@@ -98,7 +103,6 @@ app.use((req, res, next) => {
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
     },
     async () => {
       log(`serving on port ${port}`);

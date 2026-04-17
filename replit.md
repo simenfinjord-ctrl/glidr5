@@ -1,7 +1,7 @@
 # Glidr — Ski Testing & Documentation
 
 ## Overview
-Glidr is a full-stack React web application designed for the ski industry to centralize ski testing data, provide advanced analytics, and generate detailed reports. Its core purpose is to accelerate product iteration, enable data-driven decision-making, and enhance product quality for ski manufacturers and testers. Glidr aims to become the global standard for ski testing, significantly reducing development cycles and improving product performance through managing product testing, athlete profiles, grinding records, and facilitating multi-team collaboration.
+Glidr is a full-stack React web application designed for the ski industry to centralize ski testing data, provide advanced analytics, and generate detailed reports. Its core purpose is to accelerate product iteration, enable data-driven decision-making, and enhance product quality for ski manufacturers and testers. Glidr aims to become the global standard for ski testing, significantly reducing development cycles and improving product performance by managing product testing, athlete profiles, grinding records, and facilitating multi-team collaboration.
 
 ## User Preferences
 - Table-first workflow for fast on-snow data entry
@@ -125,7 +125,7 @@ Glidr is a full-stack React web application designed for the ski industry to cen
 - Admin page has Teams tab (super admin only) for managing teams
 - User create/edit forms include Team Admin role option
 - Existing data migrated to teamId=1 (default team)
-- Super Admin stealth mode: discrete lock/unlock icon in header when viewing another team; activates read-only full access to all team content; automatically suppresses all logging; session-based, resets on logout
+- Super Admin stealth mode: discrete lock/unlock icon in header when viewing another team; when active, no login logs or activity logs are recorded; session-based, resets on logout
 - Super Admin can share tests with other teams via "Share with" button on test detail page; products referenced in the test are auto-created in the target team if they don't exist (matched by brand+name+category)
 - Groups.name unique constraint removed to allow same group names across different teams
 - Race ski archiving: soft-delete via archivedAt column, archive/restore buttons on athlete detail page, permanent delete only for archived skis, "Show archived" toggle reveals archived section

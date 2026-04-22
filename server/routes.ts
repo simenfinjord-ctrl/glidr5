@@ -625,6 +625,27 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  app.post("/api/products/bulk-assign-team", requirePermission("products", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isScopeAdmin) return res.status(403).json({ message: "Admin only" });
+    const { ids, teamId } = req.body as { ids: number[]; teamId: number };
+    if (!Array.isArray(ids) || !teamId) return res.status(400).json({ message: "ids and teamId required" });
+    const team = await storage.getTeam(teamId);
+    if (!team) return res.status(404).json({ message: "Team not found" });
+    for (const id of ids) {
+      await storage.updateProduct(id, { teamId } as any);
+    }
+    if (!isIncognito(req) && ids.length > 0) try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "updated",
+        entityType: "product", entityId: 0,
+        details: `Assigned ${ids.length} product(s) to team: ${team.name}`,
+        createdAt: new Date().toISOString(), groupScope: u.groupScope, teamId: getActiveTeamId(req),
+      });
+    } catch (_) {}
+    res.json({ updated: ids.length });
+  });
+
   app.post("/api/products/remove-duplicates", requirePermission("products", "edit"), async (req, res) => {
     const u = userInfo(req);
     if (!u.isScopeAdmin) return res.status(403).json({ message: "Admin only" });

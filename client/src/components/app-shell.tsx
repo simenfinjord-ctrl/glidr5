@@ -162,7 +162,7 @@ const nav: NavItem[] = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { user, logout, can, isSuperAdmin, canManage, switchTeam, toggleIncognito, toggleStealth, isViewingOtherTeam, isStealthActive } = useAuth();
+  const { user, logout, can, isSuperAdmin, canManage, switchTeam, toggleIncognito, toggleStealth, isViewingOtherTeam, isStealthActive, userTeams } = useAuth();
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -172,7 +172,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
 
   const activeTeamId = user?.activeTeamId || user?.teamId || 1;
-  const activeTeam = teams.find((t: any) => t.id === activeTeamId);
+  const activeTeam = isSuperAdmin
+    ? teams.find((t: any) => t.id === activeTeamId)
+    : userTeams.find((t) => t.id === activeTeamId);
 
   const isViewingOwnTeam = !isSuperAdmin || activeTeamId === user?.teamId;
 
@@ -226,6 +228,26 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </SelectTrigger>
                 <SelectContent>
                   {teams.map((team: any) => (
+                    <SelectItem key={team.id} value={String(team.id)}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!isSuperAdmin && userTeams.length > 1 && (
+              <Select
+                value={String(activeTeamId)}
+                onValueChange={(val) => switchTeam(parseInt(val))}
+              >
+                <SelectTrigger
+                  className="h-8 w-auto min-w-[140px] border-border bg-muted/50 text-xs font-medium"
+                  data-testid="select-user-team"
+                >
+                  <SelectValue placeholder="Select team" />
+                </SelectTrigger>
+                <SelectContent>
+                  {userTeams.map((team) => (
                     <SelectItem key={team.id} value={String(team.id)}>
                       {team.name}
                     </SelectItem>

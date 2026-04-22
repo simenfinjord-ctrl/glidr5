@@ -298,11 +298,22 @@ export async function registerRoutes(
 
   app.post("/api/teams/switch", requireAuth, async (req, res) => {
     const u = req.user!;
-    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
-    const teamId = req.body.teamId;
+    const teamId = parseInt(req.body.teamId);
     if (!teamId) return res.status(400).json({ message: "teamId required" });
     const team = await storage.getTeam(teamId);
     if (!team) return res.status(404).json({ message: "Team not found" });
+
+    // Super admins can switch to any team; regular users can only switch to their own teams
+    if (u.isAdmin !== 1) {
+      const memberships = await storage.getUserTeams(u.id);
+      const allowed = memberships.map((m) => m.teamId);
+      // Also always allow their primary teamId
+      if (!allowed.includes(u.teamId)) allowed.push(u.teamId);
+      if (!allowed.includes(teamId)) {
+        return res.status(403).json({ message: "You do not belong to that team" });
+      }
+    }
+
     await storage.updateUser(u.id, { activeTeamId: teamId } as any);
     if (teamId === u.teamId && (req.session as any).stealth) {
       (req.session as any).stealth = false;
@@ -313,6 +324,45 @@ export async function registerRoutes(
     req.session.save(() => {
       res.json({ ok: true });
     });
+  });
+
+  // Get all teams the current user belongs to
+  app.get("/api/user/teams", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const memberships = await storage.getUserTeams(u.id);
+    const teamIds = [...new Set([u.teamId, ...memberships.map((m) => m.teamId)])];
+    const allTeams = await storage.listTeams();
+    const userTeams = allTeams.filter((t) => teamIds.includes(t.id));
+    res.json(userTeams);
+  });
+
+  // Admin: add a user to a team
+  app.post("/api/users/:id/teams", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const userId = parseInt(req.params.id);
+    const teamId = parseInt(req.body.teamId);
+    if (!teamId) return res.status(400).json({ message: "teamId required" });
+    const team = await storage.getTeam(teamId);
+    if (!team) return res.status(404).json({ message: "Team not found" });
+    await storage.addUserToTeam(userId, teamId);
+    res.json({ ok: true });
+  });
+
+  // Admin: remove a user from a team
+  app.delete("/api/users/:id/teams/:teamId", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const userId = parseInt(req.params.id);
+    const teamId = parseInt(req.params.teamId);
+    await storage.removeUserFromTeam(userId, teamId);
+    res.json({ ok: true });
+  });
+
+  // Admin: list teams for a user
+  app.get("/api/users/:id/teams", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const userId = parseInt(req.params.id);
+    const memberships = await storage.getUserTeams(userId);
+    res.json(memberships);
   });
 
   app.get("/api/groups", requireAuth, async (req, res) => {

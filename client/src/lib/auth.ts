@@ -37,6 +37,11 @@ export function useAuth() {
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
+  const { data: userTeams = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/user/teams"],
+    enabled: !!user,
+  });
+
   const login = async (email: string, password: string, rememberMe?: boolean) => {
     const res = await apiRequest("POST", "/api/auth/login", { email, password, rememberMe });
     const data = await res.json();
@@ -102,5 +107,6 @@ export function useAuth() {
     toggleStealth,
     isViewingOtherTeam,
     isStealthActive,
+    userTeams,
   };
 }

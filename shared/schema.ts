@@ -388,6 +388,18 @@ export const insertTestSkiRegrindSchema = createInsertSchema(testSkiRegrinds).om
 export type InsertTestSkiRegrind = z.infer<typeof insertTestSkiRegrindSchema>;
 export type TestSkiRegrind = typeof testSkiRegrinds.$inferSelect;
 
+// --- User-Team membership (many-to-many) ---
+
+export const userTeams = pgTable("user_teams", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  teamId: integer("team_id").notNull(),
+});
+
+export const insertUserTeamSchema = createInsertSchema(userTeams).omit({ id: true });
+export type InsertUserTeam = z.infer<typeof insertUserTeamSchema>;
+export type UserTeam = typeof userTeams.$inferSelect;
+
 export const runsheetProgress = pgTable("runsheet_progress", {
   id: serial("id").primaryKey(),
   testId: integer("test_id").notNull(),

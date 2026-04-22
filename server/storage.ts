@@ -4,7 +4,7 @@ import {
   users, groups, testSkiSeries, products, dailyWeather, tests, testEntries, loginLogs,
   activityLogs, grindingRecords, grindingSheets,
   athletes, athleteAccess, raceSkis, raceSkiRegrinds, testSkiRegrinds,
-  teams, runsheets,
+  teams, runsheets, userTeams,
   type User, type InsertUser,
   type Group, type InsertGroup,
   type Series, type InsertSeries,
@@ -23,6 +23,7 @@ import {
   type TestSkiRegrind, type InsertTestSkiRegrind,
   type Team, type InsertTeam,
   type Runsheet, type InsertRunsheet,
+  type UserTeam,
 } from "@shared/schema";
 
 export function parseGroupScopes(groupScope: string): string[] {
@@ -135,6 +136,10 @@ export interface IStorage {
   createRunsheet(r: InsertRunsheet): Promise<Runsheet>;
   deleteRunsheet(id: number): Promise<boolean>;
   deleteRunsheetsByTestId(testId: number): Promise<void>;
+
+  getUserTeams(userId: number): Promise<UserTeam[]>;
+  addUserToTeam(userId: number, teamId: number): Promise<void>;
+  removeUserFromTeam(userId: number, teamId: number): Promise<void>;
 
   countTable(tableName: string, teamId?: number): Promise<number>;
   listAllTestsForTeam(teamId: number): Promise<Test[]>;
@@ -729,6 +734,25 @@ export class DatabaseStorage implements IStorage {
   async deleteTestSkiRegrind(id: number): Promise<boolean> {
     const result = await db.delete(testSkiRegrinds).where(eq(testSkiRegrinds.id, id)).returning();
     return result.length > 0;
+  }
+
+  async getUserTeams(userId: number): Promise<UserTeam[]> {
+    return db.select().from(userTeams).where(eq(userTeams.userId, userId));
+  }
+
+  async addUserToTeam(userId: number, teamId: number): Promise<void> {
+    const existing = await db.select().from(userTeams).where(
+      and(eq(userTeams.userId, userId), eq(userTeams.teamId, teamId))
+    );
+    if (existing.length === 0) {
+      await db.insert(userTeams).values({ userId, teamId });
+    }
+  }
+
+  async removeUserFromTeam(userId: number, teamId: number): Promise<void> {
+    await db.delete(userTeams).where(
+      and(eq(userTeams.userId, userId), eq(userTeams.teamId, teamId))
+    );
   }
 
   async countTable(tableName: string, teamId?: number): Promise<number> {

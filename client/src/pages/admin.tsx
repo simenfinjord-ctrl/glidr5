@@ -455,6 +455,29 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
   const [selectedTeamId, setSelectedTeamId] = useState(user.teamId);
+  const { data: userTeamMemberships = [] } = useQuery<{ id: number; userId: number; teamId: number }[]>({
+    queryKey: [`/api/users/${user.id}/teams`],
+    enabled: isSuperAdmin && teams.length > 1,
+  });
+  const memberTeamIds = userTeamMemberships.map((m) => m.teamId);
+
+  const addTeamMutation = useMutation({
+    mutationFn: async (teamId: number) => {
+      const res = await apiRequest("POST", `/api/users/${user.id}/teams`, { teamId });
+      return res.json();
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/users/${user.id}/teams`] }); },
+    onError: (e: Error) => { toast({ title: "Error", description: e.message, variant: "destructive" }); },
+  });
+
+  const removeTeamMutation = useMutation({
+    mutationFn: async (teamId: number) => {
+      const res = await apiRequest("DELETE", `/api/users/${user.id}/teams/${teamId}`);
+      return res.json();
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/users/${user.id}/teams`] }); },
+    onError: (e: Error) => { toast({ title: "Error", description: e.message, variant: "destructive" }); },
+  });
   const teamChanged = selectedTeamId !== user.teamId;
   const { data: teamGroups } = useQuery<ApiGroup[]>({
     queryKey: [`/api/groups?teamScope=${selectedTeamId}`],
@@ -506,7 +529,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
         )} />
         {isSuperAdmin && teams.length > 1 && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">Team</label>
+            <label className="text-sm font-medium">Primary Team</label>
             <Select
               value={String(selectedTeamId)}
               onValueChange={(v) => {
@@ -523,6 +546,33 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        )}
+        {isSuperAdmin && teams.length > 1 && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Additional Teams</label>
+            <div className="flex flex-wrap gap-2">
+              {teams.filter((t) => t.id !== selectedTeamId).map((t) => {
+                const isMember = memberTeamIds.includes(t.id);
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => isMember ? removeTeamMutation.mutate(t.id) : addTeamMutation.mutate(t.id)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                      isMember
+                        ? "border-blue-300 bg-blue-50 text-blue-700"
+                        : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {isMember ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                    {t.name}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground">Click to toggle access. User can switch between primary and additional teams.</p>
           </div>
         )}
         <FormField control={form.control} name="groupScope" render={({ field }) => (

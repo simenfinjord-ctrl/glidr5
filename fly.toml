@@ -1,4 +1,4 @@
-app = 'glidr5'
+app = 'glidr5-app'
 primary_region = 'ams'
 
 [build]

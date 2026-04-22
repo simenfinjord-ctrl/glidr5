@@ -2,10 +2,10 @@ services:
   - type: web
     name: glidr
     runtime: node
-    plan: starter
+    plan: free
     region: frankfurt
     buildCommand: npm ci --include=dev && npm run build
-    startCommand: npx --yes -p drizzle-kit@0.31.4 drizzle-kit push --force && npm start
+    startCommand: ./node_modules/.bin/drizzle-kit push --force && npm start
     healthCheckPath: /
     envVars:
       - key: NODE_ENV
@@ -21,6 +21,6 @@ services:
 
 databases:
   - name: glidr-db
-    plan: basic-256mb
+    plan: free
     region: frankfurt
     postgresMajorVersion: "16"

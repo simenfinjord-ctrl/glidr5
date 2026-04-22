@@ -625,6 +625,34 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  app.post("/api/products/remove-duplicates", requirePermission("products", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isScopeAdmin) return res.status(403).json({ message: "Admin only" });
+    const teamId = getActiveTeamId(req);
+    const all = await storage.listProducts(u.groupScope, u.isScopeAdmin, teamId);
+    const seen = new Map<string, number>();
+    const toDelete: number[] = [];
+    for (const p of all.sort((a, b) => a.id - b.id)) {
+      const key = `${p.teamId}|${p.category}|${(p.brand || "").toLowerCase().trim()}|${(p.name || "").toLowerCase().trim()}`;
+      if (seen.has(key)) {
+        toDelete.push(p.id);
+      } else {
+        seen.set(key, p.id);
+      }
+    }
+    for (const id of toDelete) {
+      await storage.deleteProduct(id);
+    }
+    if (!isIncognito(req) && toDelete.length > 0) try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "deleted",
+        entityType: "product", entityId: 0,
+        details: `Removed ${toDelete.length} duplicate product(s)`, createdAt: new Date().toISOString(), groupScope: u.groupScope, teamId,
+      });
+    } catch (_) {}
+    res.json({ removed: toDelete.length });
+  });
+
   app.get("/api/weather", requirePermission("weather", "view"), async (req, res) => {
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);

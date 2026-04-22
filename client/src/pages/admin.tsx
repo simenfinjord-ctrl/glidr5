@@ -2141,12 +2141,12 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
       const res = await apiRequest("POST", "/api/admin/import", data);
       const result = await res.json();
       toast({
-        title: "Import fullført",
-        description: `Importert: ${result.imported.series} serier, ${result.imported.products} produkter, ${result.imported.tests} tester, ${result.imported.weather} værmeldinger. Hoppet over: ${result.imported.skipped} duplikater.`,
+        title: "Import complete",
+        description: `Imported: ${result.imported.series} series, ${result.imported.products} products, ${result.imported.tests} tests, ${result.imported.weather} weather logs. Skipped: ${result.imported.skipped} duplicates.`,
       });
       queryClient.invalidateQueries();
     } catch (err: any) {
-      toast({ title: "Import feilet", description: err.message, variant: "destructive" });
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
     } finally {
       setImporting(false);
       e.target.value = "";
@@ -2286,11 +2286,11 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
                   a.click();
                   URL.revokeObjectURL(url);
                 } catch (err: any) {
-                  toast({ title: "Export feilet", description: err.message, variant: "destructive" });
+                  toast({ title: "Export failed", description: err.message, variant: "destructive" });
                 }
               }}>
                 <Download className="mr-2 h-3.5 w-3.5" />
-                Last ned JSON
+                Download JSON
               </Button>
             </div>
           </div>
@@ -2310,12 +2310,12 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
           <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-green-50">
             <HardDrive className="h-4 w-4 text-green-600" />
           </div>
-          <h2 className="text-sm font-semibold text-foreground">Importer data</h2>
+          <h2 className="text-sm font-semibold text-foreground">Import Data</h2>
         </div>
         <div className="rounded-xl border border-border bg-muted/30 p-4">
-          <h3 className="text-sm font-medium text-foreground mb-1">Importer fra Glidr-backup</h3>
+          <h3 className="text-sm font-medium text-foreground mb-1">Import from Glidr backup</h3>
           <p className="text-xs text-muted-foreground mb-3">
-            Last opp en JSON-eksport fra Glidr (fra PDF-eksport → last ned som JSON). Importerer testserier, produkter, tester og værmeldinger. Duplikater hoppes automatisk over.
+            Upload a JSON export from Glidr. Imports test series, products, tests and weather logs. Duplicates are automatically skipped.
           </p>
           <label className={cn(
             "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium cursor-pointer transition-all",
@@ -2324,8 +2324,8 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
               : "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
           )}>
             {importing
-              ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Importerer…</>
-              : <><HardDrive className="h-3.5 w-3.5" /> Velg JSON-fil</>
+              ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Importing…</>
+              : <><HardDrive className="h-3.5 w-3.5" /> Choose JSON file</>
             }
             <input
               type="file"
@@ -2336,7 +2336,7 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
             />
           </label>
           <p className="text-[11px] text-muted-foreground mt-2">
-            Støttet format: JSON-eksport fra Glidr (samme format som PDF-eksporten henter data fra).
+            Supported format: Glidr JSON export (use "Download JSON" in the Export Tools section above).
           </p>
         </div>
       </Card>

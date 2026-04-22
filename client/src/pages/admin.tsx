@@ -2130,6 +2130,19 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
 
   const [xlsLoading, setXlsLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importSelections, setImportSelections] = useState({
+    series: true,
+    products: true,
+    tests: true,
+    weather: true,
+  });
+
+  const importOptions = [
+    { key: "series" as const, label: "Test Series" },
+    { key: "products" as const, label: "Products" },
+    { key: "tests" as const, label: "Tests & Results" },
+    { key: "weather" as const, label: "Weather Logs" },
+  ];
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -2137,12 +2150,24 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
     setImporting(true);
     try {
       const text = await file.text();
-      const data = JSON.parse(text);
+      const raw = JSON.parse(text);
+      const data = {
+        series: importSelections.series ? raw.series : [],
+        products: importSelections.products ? raw.products : [],
+        tests: importSelections.tests ? raw.tests : [],
+        entriesByTest: importSelections.tests ? raw.entriesByTest : {},
+        weather: importSelections.weather ? raw.weather : [],
+      };
       const res = await apiRequest("POST", "/api/admin/import", data);
       const result = await res.json();
+      const parts = [];
+      if (importSelections.series) parts.push(`${result.imported.series} series`);
+      if (importSelections.products) parts.push(`${result.imported.products} products`);
+      if (importSelections.tests) parts.push(`${result.imported.tests} tests`);
+      if (importSelections.weather) parts.push(`${result.imported.weather} weather logs`);
       toast({
         title: "Import complete",
-        description: `Imported: ${result.imported.series} series, ${result.imported.products} products, ${result.imported.tests} tests, ${result.imported.weather} weather logs. Skipped: ${result.imported.skipped} duplicates.`,
+        description: `Imported: ${parts.join(", ")}. Skipped: ${result.imported.skipped} duplicates.`,
       });
       queryClient.invalidateQueries();
     } catch (err: any) {
@@ -2312,32 +2337,66 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
           </div>
           <h2 className="text-sm font-semibold text-foreground">Import Data</h2>
         </div>
-        <div className="rounded-xl border border-border bg-muted/30 p-4">
-          <h3 className="text-sm font-medium text-foreground mb-1">Import from Glidr backup</h3>
-          <p className="text-xs text-muted-foreground mb-3">
-            Upload a JSON export from Glidr. Imports test series, products, tests and weather logs. Duplicates are automatically skipped.
-          </p>
-          <label className={cn(
-            "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium cursor-pointer transition-all",
-            importing
-              ? "border-border bg-muted/30 text-muted-foreground cursor-not-allowed"
-              : "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
-          )}>
-            {importing
-              ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Importing…</>
-              : <><HardDrive className="h-3.5 w-3.5" /> Choose JSON file</>
-            }
-            <input
-              type="file"
-              accept=".json"
-              className="sr-only"
-              disabled={importing}
-              onChange={handleImport}
-            />
-          </label>
-          <p className="text-[11px] text-muted-foreground mt-2">
-            Supported format: Glidr JSON export (use "Download JSON" in the Export Tools section above).
-          </p>
+        <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-4">
+          <div>
+            <h3 className="text-sm font-medium text-foreground mb-1">Import from Glidr backup</h3>
+            <p className="text-xs text-muted-foreground">
+              Upload a Glidr JSON export and choose what to import. Duplicates are automatically skipped.
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-foreground mb-2">Select what to import:</p>
+            <div className="grid grid-cols-2 gap-2">
+              {importOptions.map((opt) => (
+                <label
+                  key={opt.key}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium cursor-pointer transition-all select-none",
+                    importSelections[opt.key]
+                      ? "border-green-300 bg-green-50 text-green-700"
+                      : "border-border bg-background text-muted-foreground hover:bg-muted/50"
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={importSelections[opt.key]}
+                    onChange={(e) => setImportSelections((prev) => ({ ...prev, [opt.key]: e.target.checked }))}
+                  />
+                  <div className={cn(
+                    "h-3.5 w-3.5 rounded border flex items-center justify-center flex-shrink-0",
+                    importSelections[opt.key] ? "bg-green-600 border-green-600" : "border-border bg-background"
+                  )}>
+                    {importSelections[opt.key] && <Check className="h-2.5 w-2.5 text-white" />}
+                  </div>
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className={cn(
+              "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium cursor-pointer transition-all",
+              importing || Object.values(importSelections).every((v) => !v)
+                ? "border-border bg-muted/30 text-muted-foreground cursor-not-allowed opacity-50"
+                : "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
+            )}>
+              {importing
+                ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Importing…</>
+                : <><HardDrive className="h-3.5 w-3.5" /> Choose JSON file</>
+              }
+              <input
+                type="file"
+                accept=".json"
+                className="sr-only"
+                disabled={importing || Object.values(importSelections).every((v) => !v)}
+                onChange={handleImport}
+              />
+            </label>
+            <p className="text-[11px] text-muted-foreground">
+              Use "Download JSON" above to get the export file.
+            </p>
+          </div>
         </div>
       </Card>
     </div>

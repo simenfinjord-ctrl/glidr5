@@ -1789,6 +1789,188 @@ export async function registerRoutes(
     });
   });
 
+  app.post("/api/admin/import", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req) ?? u.teamId;
+    const data = req.body;
+
+    if (!data || typeof data !== "object") {
+      return res.status(400).json({ message: "Invalid import data" });
+    }
+
+    const result = { series: 0, products: 0, tests: 0, entries: 0, weather: 0, skipped: 0 };
+
+    // Import series
+    const seriesIdMap: Record<number, number> = {};
+    if (Array.isArray(data.series)) {
+      const existingSeries = await storage.listSeries(u.groupScope, true, teamId);
+      for (const s of data.series) {
+        const exists = existingSeries.find((e) => e.name === s.name && e.type === s.type);
+        if (exists) {
+          seriesIdMap[s.id] = exists.id;
+          result.skipped++;
+        } else {
+          const created = await storage.createSeries({
+            name: s.name,
+            type: s.type,
+            brand: s.brand || null,
+            skiType: s.skiType || null,
+            grind: s.grind || null,
+            numberOfSkis: s.numberOfSkis ?? 8,
+            lastRegrind: s.lastRegrind || null,
+            createdAt: new Date().toISOString(),
+            createdById: u.id,
+            createdByName: u.name,
+            groupScope: s.groupScope || u.groupScope,
+            teamId,
+            pairLabels: s.pairLabels || null,
+            archivedAt: null,
+          });
+          seriesIdMap[s.id] = created.id;
+          result.series++;
+        }
+      }
+    }
+
+    // Import products
+    const productIdMap: Record<number, number> = {};
+    if (Array.isArray(data.products)) {
+      const existingProducts = await storage.listProducts(u.groupScope, true, teamId);
+      for (const p of data.products) {
+        const exists = existingProducts.find((e) => e.brand === p.brand && e.name === p.name);
+        if (exists) {
+          productIdMap[p.id] = exists.id;
+          result.skipped++;
+        } else {
+          const created = await storage.createProduct({
+            category: p.category || "Other",
+            brand: p.brand || "",
+            name: p.name,
+            createdAt: new Date().toISOString(),
+            createdById: u.id,
+            createdByName: u.name,
+            groupScope: p.groupScope || u.groupScope,
+            teamId,
+            stockQuantity: p.stockQuantity ?? 0,
+          });
+          productIdMap[p.id] = created.id;
+          result.products++;
+        }
+      }
+    }
+
+    // Import tests + entries
+    if (Array.isArray(data.tests)) {
+      const existingTests = await storage.listTests(u.groupScope, true, teamId);
+      for (const t of data.tests) {
+        const exists = existingTests.find(
+          (e) => e.date === t.date && e.location === t.location && e.testType === t.testType
+        );
+        if (exists) {
+          result.skipped++;
+          continue;
+        }
+        const newSeriesId = t.seriesId ? (seriesIdMap[t.seriesId] ?? t.seriesId) : null;
+        const created = await storage.createTest({
+          date: t.date,
+          location: t.location,
+          testName: t.testName || null,
+          weatherId: null,
+          testType: t.testType,
+          testSkiSource: t.testSkiSource || "series",
+          seriesId: newSeriesId,
+          athleteId: t.athleteId || null,
+          notes: t.notes || null,
+          grindParameters: t.grindParameters || null,
+          distanceLabel0km: t.distanceLabel0km || null,
+          distanceLabelXkm: t.distanceLabelXkm || null,
+          distanceLabels: t.distanceLabels || null,
+          createdAt: new Date().toISOString(),
+          createdById: u.id,
+          createdByName: u.name,
+          groupScope: t.groupScope || u.groupScope,
+          teamId,
+        });
+        result.tests++;
+
+        const entries = data.entriesByTest?.[t.id] ?? [];
+        for (const e of entries) {
+          const newProductId = e.productId ? (productIdMap[e.productId] ?? null) : null;
+          const additionalIds = e.additionalProductIds
+            ? e.additionalProductIds.split(",").map((id: string) => {
+                const n = parseInt(id);
+                return productIdMap[n] ?? n;
+              }).join(",")
+            : null;
+          await storage.createEntry({
+            testId: created.id,
+            skiNumber: e.skiNumber,
+            productId: newProductId,
+            additionalProductIds: additionalIds,
+            freeTextProduct: e.freeTextProduct || null,
+            methodology: e.methodology || "",
+            result0kmCmBehind: e.result0kmCmBehind ?? null,
+            rank0km: e.rank0km ?? null,
+            resultXkmCmBehind: e.resultXkmCmBehind ?? null,
+            rankXkm: e.rankXkm ?? null,
+            results: e.results || null,
+            feelingRank: e.feelingRank ?? null,
+            kickRank: e.kickRank ?? null,
+            grindType: e.grindType || null,
+            grindStone: e.grindStone || null,
+            grindPattern: e.grindPattern || null,
+            raceSkiId: null,
+            createdAt: new Date().toISOString(),
+            createdById: u.id,
+            createdByName: u.name,
+            groupScope: e.groupScope || u.groupScope,
+            teamId,
+          });
+          result.entries++;
+        }
+      }
+    }
+
+    // Import weather
+    if (Array.isArray(data.weather)) {
+      for (const w of data.weather) {
+        const exists = await storage.findWeather(w.date, w.location, w.groupScope || u.groupScope, teamId);
+        if (exists) {
+          result.skipped++;
+          continue;
+        }
+        await storage.createWeather({
+          date: w.date,
+          time: w.time || "12:00",
+          location: w.location,
+          snowTemperatureC: w.snowTemperatureC,
+          airTemperatureC: w.airTemperatureC,
+          snowHumidityPct: w.snowHumidityPct,
+          airHumidityPct: w.airHumidityPct,
+          clouds: w.clouds ?? null,
+          visibility: w.visibility || null,
+          wind: w.wind || null,
+          precipitation: w.precipitation || null,
+          artificialSnow: w.artificialSnow || null,
+          naturalSnow: w.naturalSnow || null,
+          grainSize: w.grainSize || null,
+          snowHumidityType: w.snowHumidityType || null,
+          trackHardness: w.trackHardness || null,
+          testQuality: w.testQuality ?? null,
+          createdAt: new Date().toISOString(),
+          createdById: u.id,
+          createdByName: u.name,
+          groupScope: w.groupScope || u.groupScope,
+          teamId,
+        });
+        result.weather++;
+      }
+    }
+
+    res.json({ ok: true, imported: result });
+  });
+
   app.post("/api/admin/purge-activity-logs", requireAuth, async (req, res) => {
     const u = userInfo(req);
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });

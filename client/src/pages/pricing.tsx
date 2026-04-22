@@ -33,7 +33,7 @@ const tiers = [
     price: "€99",
     period: "/month per team",
     description: "For competitive teams that need full testing capabilities.",
-    color: "border-blue-500 ring-2 ring-blue-500/20",
+    color: "border-green-500 ring-2 ring-green-500/20",
     badge: "Most popular",
     features: [
       "1 team, up to 10 users",
@@ -54,7 +54,7 @@ const tiers = [
     ],
     limits: [],
     cta: "Contact",
-    ctaStyle: "bg-blue-600 text-white hover:bg-blue-700",
+    ctaStyle: "bg-green-600 text-white hover:bg-green-700",
   },
   {
     name: "Pro",
@@ -165,7 +165,7 @@ export default function Pricing() {
               data-testid={`pricing-tier-${t.name.toLowerCase()}`}
             >
               {t.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-3 py-0.5 text-xs font-medium text-white">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-green-600 px-3 py-0.5 text-xs font-medium text-white">
                   {t.badge}
                 </div>
               )}
@@ -216,7 +216,7 @@ export default function Pricing() {
                 <tr className="border-b border-border">
                   <th className="text-left py-3 pr-4 font-medium text-foreground w-1/3">Feature</th>
                   <th className="text-center py-3 px-2 font-medium text-foreground">Starter</th>
-                  <th className="text-center py-3 px-2 font-medium text-blue-600">Team</th>
+                  <th className="text-center py-3 px-2 font-medium text-green-600">Team</th>
                   <th className="text-center py-3 px-2 font-medium text-foreground">Pro</th>
                   <th className="text-center py-3 px-2 font-medium text-foreground">Enterprise</th>
                 </tr>

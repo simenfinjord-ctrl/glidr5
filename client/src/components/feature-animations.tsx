@@ -45,7 +45,7 @@ export function DashboardAnim() {
   ];
   const highlight = useLoop(3000, tests.length);
   const typeBadge = (t: string) => {
-    if (t === "Glide") return "bg-blue-50 text-blue-700 ring-1 ring-blue-200";
+    if (t === "Glide") return "bg-green-50 text-green-700 ring-1 ring-green-200";
     if (t === "Structure") return "bg-violet-50 text-violet-700 ring-1 ring-violet-200";
     if (t === "Classic") return "bg-teal-50 text-teal-700 ring-1 ring-teal-200";
     if (t === "Skating") return "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200";
@@ -101,7 +101,7 @@ export function TestsAnim() {
   return (
     <Shell title="Glidr — Glide Test: Holmenkollen">
       <div className="flex items-center gap-2 mb-2">
-        <span className="rounded-full px-1.5 py-0.5 text-[9px] font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-200">Glide</span>
+        <span className="rounded-full px-1.5 py-0.5 text-[9px] font-medium bg-green-50 text-green-700 ring-1 ring-green-200">Glide</span>
         <span className="text-xs font-semibold text-foreground">Holmenkollen</span>
         <span className="text-[9px] text-muted-foreground ml-auto">Mar 24, 2026</span>
       </div>
@@ -120,7 +120,7 @@ export function TestsAnim() {
           </thead>
           <tbody>
             {entries.map((e, i) => (
-              <tr key={i} className={`border-b border-border/50 transition-all duration-500 ${i === activeRow ? "bg-blue-50/40 dark:bg-blue-900/10" : ""}`}>
+              <tr key={i} className={`border-b border-border/50 transition-all duration-500 ${i === activeRow ? "bg-green-50/40 dark:bg-green-900/10" : ""}`}>
                 <td className="px-2 py-1"><span className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted text-[9px] font-bold">{e.ski}</span></td>
                 <td className="px-2 py-1 text-foreground/80">{e.product}</td>
                 <td className="px-2 py-1 text-muted-foreground">{e.method}</td>
@@ -166,7 +166,7 @@ export function RunsheetAnim() {
                 const isActive = (ri === 0 && step === 0) || (ri === 1 && step === 1) || (ri === 2 && step === 2);
                 const winnerIdx = step > ri ? 0 : -1;
                 return (
-                  <div key={pi} className={`rounded border transition-all duration-500 ${isActive ? "border-blue-400 ring-1 ring-blue-400/30" : "border-border"}`}>
+                  <div key={pi} className={`rounded border transition-all duration-500 ${isActive ? "border-green-400 ring-1 ring-green-400/30" : "border-border"}`}>
                     {pair.map((p, i) => (
                       <div
                         key={i}
@@ -282,7 +282,7 @@ export function WeatherAnim() {
     <Shell title="Glidr — Weather">
       <div className="space-y-2">
         {logs.map((w, i) => (
-          <div key={i} className={`rounded-lg border p-2 transition-all duration-500 ${i === active ? "border-blue-300 ring-1 ring-blue-300/30 dark:border-blue-600" : "border-border"}`}>
+          <div key={i} className={`rounded-lg border p-2 transition-all duration-500 ${i === active ? "border-green-300 ring-1 ring-green-300/30 dark:border-green-600" : "border-border"}`}>
             <div className="flex items-center justify-between mb-1.5">
               <span className="font-semibold text-foreground text-[11px]">{w.loc}</span>
               <span className="text-[9px] text-muted-foreground">{w.date}</span>
@@ -310,7 +310,7 @@ export function TestSkisAnim() {
   ];
   const active = useLoop(3000, series.length);
   const typeBadge = (t: string) => {
-    if (t === "Glide") return "bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-700";
+    if (t === "Glide") return "bg-green-50 text-green-700 ring-1 ring-green-200 dark:bg-green-900/30 dark:text-green-300 dark:ring-green-700";
     if (t === "Structure") return "bg-violet-50 text-violet-700 ring-1 ring-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:ring-violet-700";
     return "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:ring-indigo-700";
   };
@@ -365,7 +365,7 @@ export function ProductsAnim() {
   }, [animIdx]);
 
   const catBadge = (c: string) => {
-    if (c === "Glide") return "bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-700";
+    if (c === "Glide") return "bg-green-50 text-green-700 ring-1 ring-green-200 dark:bg-green-900/30 dark:text-green-300 dark:ring-green-700";
     if (c === "Topping") return "bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:ring-amber-700";
     return "bg-violet-50 text-violet-700 ring-1 ring-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:ring-violet-700";
   };
@@ -386,7 +386,7 @@ export function ProductsAnim() {
           </thead>
           <tbody>
             {products.map((p, i) => (
-              <tr key={i} className={`border-b border-border/50 transition-all duration-500 ${i === animIdx ? "bg-blue-50/30 dark:bg-blue-900/10" : ""}`}>
+              <tr key={i} className={`border-b border-border/50 transition-all duration-500 ${i === animIdx ? "bg-green-50/30 dark:bg-green-900/10" : ""}`}>
                 <td className="px-2 py-1 text-foreground/80 font-medium">{p.brand} {p.name}</td>
                 <td className="px-2 py-1"><span className={`rounded-full px-1.5 py-0.5 text-[8px] font-medium ${catBadge(p.cat)}`}>{p.cat}</span></td>
                 <td className="px-2 py-1 text-center text-[9px] text-muted-foreground">{p.group}</td>
@@ -528,7 +528,7 @@ export function MobileAnim() {
           ].map((t, i) => (
             <div key={i} className="rounded-lg border border-border p-1.5">
               <div className="flex items-center gap-1 mb-0.5">
-                <span className="rounded-full px-1 py-0.5 text-[7px] font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-700">{t.type}</span>
+                <span className="rounded-full px-1 py-0.5 text-[7px] font-medium bg-green-50 text-green-700 ring-1 ring-green-200 dark:bg-green-900/30 dark:text-green-300 dark:ring-green-700">{t.type}</span>
                 <span className="text-[9px] font-semibold text-foreground truncate">{t.name}</span>
               </div>
               <div className="text-[8px] text-muted-foreground">🏆 {t.winner}</div>

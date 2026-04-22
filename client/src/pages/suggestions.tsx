@@ -115,8 +115,8 @@ export default function Suggestions() {
 
         <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-weather-params">
           <div className="flex items-center gap-2 mb-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-900/30">
-              <ThermometerSnowflake className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-green-50 dark:bg-green-900/30">
+              <ThermometerSnowflake className="h-4 w-4 text-green-600 dark:text-green-400" />
             </div>
             <h2 className="text-base font-semibold">Weather Parameters</h2>
           </div>
@@ -311,7 +311,7 @@ export default function Suggestions() {
                         {suggestion.products.map((product, pIdx) => (
                           <span
                             key={pIdx}
-                            className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/30 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800"
+                            className="inline-flex items-center rounded-full bg-green-50 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-300 ring-1 ring-green-200 dark:ring-green-800"
                             data-testid={`badge-product-${index}-${pIdx}`}
                           >
                             {product}

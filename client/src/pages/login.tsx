@@ -65,8 +65,8 @@ export default function Login() {
             {showForgot ? (
               <div className="space-y-4">
                 <div className="text-center space-y-2">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
-                    <Mail className="h-6 w-6 text-blue-600" />
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-50">
+                    <Mail className="h-6 w-6 text-green-600" />
                   </div>
                   <h2 className="text-lg font-semibold text-foreground">Forgot password?</h2>
                   <p className="text-sm text-muted-foreground leading-relaxed">
@@ -134,7 +134,7 @@ export default function Login() {
                           <FormLabel className="text-sm font-medium text-foreground/80">Password</FormLabel>
                           <button
                             type="button"
-                            className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                            className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors"
                             onClick={() => setShowForgot(true)}
                             data-testid="button-forgot-password"
                           >
@@ -178,7 +178,7 @@ export default function Login() {
 
                   <Button
                     type="submit"
-                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm"
+                    className="w-full h-11 bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm"
                     data-testid="button-login"
                     disabled={isSubmitting}
                   >

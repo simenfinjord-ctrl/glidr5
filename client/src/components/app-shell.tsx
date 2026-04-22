@@ -54,8 +54,8 @@ const nav: NavItem[] = [
     icon: LayoutDashboard,
     testId: "link-dashboard",
     color: "text-muted-foreground",
-    activeColor: "text-blue-600",
-    activeBg: "bg-blue-50",
+    activeColor: "text-green-600",
+    activeBg: "bg-green-50",
     permArea: "dashboard",
   },
   {

@@ -63,8 +63,8 @@ export default function Profile() {
 
         <Card className="fs-card rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-5">
-            <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center">
-              <User className="h-6 w-6 text-blue-600" />
+            <div className="h-12 w-12 rounded-xl bg-green-50 flex items-center justify-center">
+              <User className="h-6 w-6 text-green-600" />
             </div>
             <div>
               <div className="text-lg font-semibold text-foreground" data-testid="text-profile-name">{user.name}</div>
@@ -86,7 +86,7 @@ export default function Profile() {
                 <div className="text-xs text-muted-foreground">Groups</div>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {groups.map((g: string) => (
-                    <span key={g} className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200">{g}</span>
+                    <span key={g} className="inline-flex rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-200">{g}</span>
                   ))}
                 </div>
               </div>

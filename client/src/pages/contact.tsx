@@ -20,10 +20,10 @@ export default function Contact() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-lg mx-auto mb-16">
           <a
             href="mailto:Simen.finjord@hotmail.com"
-            className="flex items-start gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm hover:border-blue-300 hover:ring-1 hover:ring-blue-300/30 transition-all"
+            className="flex items-start gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm hover:border-green-300 hover:ring-1 hover:ring-green-300/30 transition-all"
             data-testid="link-contact-email"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400">
               <Mail className="h-5 w-5" />
             </div>
             <div>

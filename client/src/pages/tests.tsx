@@ -284,7 +284,7 @@ export default function Tests() {
             </p>
           </div>
           <AppLink href="/tests/new">
-            <Button data-testid="button-new-test" className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+            <Button data-testid="button-new-test" className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
               <Plus className="mr-2 h-4 w-4" />
               New test
             </Button>

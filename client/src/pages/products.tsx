@@ -577,8 +577,8 @@ export default function Products() {
             {uniqueGroups.length > 1 && (
               <Card className="fs-card rounded-2xl p-4" data-testid="card-storage-summary">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40">
-                    <Users className="h-3.5 w-3.5 text-blue-600" />
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-green-50 dark:bg-green-950/40">
+                    <Users className="h-3.5 w-3.5 text-green-600" />
                   </div>
                   Stock by group
                 </div>
@@ -593,7 +593,7 @@ export default function Products() {
                         className={cn(
                           "flex items-center justify-between rounded-xl px-3 py-2.5 text-left transition-all",
                           groupFilter === g
-                            ? "bg-blue-50 ring-2 ring-blue-400 dark:bg-blue-950/40 dark:ring-blue-600"
+                            ? "bg-green-50 ring-2 ring-green-400 dark:bg-green-950/40 dark:ring-green-600"
                             : "bg-muted/40 hover:bg-muted/70 ring-1 ring-border"
                         )}
                         data-testid={`button-group-summary-${g}`}
@@ -818,7 +818,7 @@ function StockChangesView({
                       ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
                       : isRemove
                         ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
-                        : "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400"
+                        : "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400"
                   )}>
                     {isAdd ? <ArrowUp className="h-3.5 w-3.5" /> : isRemove ? <ArrowDown className="h-3.5 w-3.5" /> : <History className="h-3.5 w-3.5" />}
                   </div>
@@ -826,13 +826,13 @@ function StockChangesView({
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-semibold">{productName}</span>
                       {groups.map((g) => (
-                        <span key={g} className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:ring-blue-800">{g}</span>
+                        <span key={g} className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700 ring-1 ring-green-200 dark:bg-green-950/30 dark:text-green-400 dark:ring-green-800">{g}</span>
                       ))}
                     </div>
                     <div className="mt-0.5 text-sm text-muted-foreground">
                       <span className={cn(
                         "font-semibold",
-                        isAdd ? "text-emerald-600 dark:text-emerald-400" : isRemove ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400"
+                        isAdd ? "text-emerald-600 dark:text-emerald-400" : isRemove ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
                       )}>
                         {changeInfo}
                       </span>
@@ -908,7 +908,7 @@ function StockRow({ product: p }: { product: Product }) {
           <div className="mt-1 truncate text-sm font-semibold">{p.brand} {p.name}</div>
           <div className="mt-0.5 flex flex-wrap gap-1">
             {p.groupScope.split(",").map((g) => g.trim()).filter(Boolean).map((g) => (
-              <span key={g} className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:ring-blue-800">{g}</span>
+              <span key={g} className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700 ring-1 ring-green-200 dark:bg-green-950/30 dark:text-green-400 dark:ring-green-800">{g}</span>
             ))}
           </div>
         </div>
@@ -929,7 +929,7 @@ function StockRow({ product: p }: { product: Product }) {
               min="0"
               autoFocus
               className={cn(
-                "w-16 rounded-xl border px-2 py-1.5 text-center text-lg font-bold tabular-nums outline-none focus:ring-2 focus:ring-blue-400",
+                "w-16 rounded-xl border px-2 py-1.5 text-center text-lg font-bold tabular-nums outline-none focus:ring-2 focus:ring-green-400",
                 "bg-white dark:bg-zinc-900"
               )}
               value={inputValue}
@@ -942,7 +942,7 @@ function StockRow({ product: p }: { product: Product }) {
             <button
               onClick={() => { setInputValue(String(p.stockQuantity)); setEditing(true); }}
               className={cn(
-                "inline-flex min-w-12 items-center justify-center rounded-xl px-3 py-1.5 text-lg font-bold tabular-nums cursor-text hover:ring-2 hover:ring-blue-300 transition-all",
+                "inline-flex min-w-12 items-center justify-center rounded-xl px-3 py-1.5 text-lg font-bold tabular-nums cursor-text hover:ring-2 hover:ring-green-300 transition-all",
                 p.stockQuantity === 0
                   ? "bg-red-50 text-red-600 ring-1 ring-red-200 dark:bg-red-950/30 dark:text-red-400 dark:ring-red-800"
                   : p.stockQuantity <= 2

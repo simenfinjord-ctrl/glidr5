@@ -275,7 +275,7 @@ export function generateTestPDF(
           data.cell.styles.textColor = [16, 185, 129];
           data.cell.styles.fontStyle = "bold";
         } else if (rank === 2) {
-          data.cell.styles.textColor = [59, 130, 246];
+          data.cell.styles.textColor = [22, 163, 74];
           data.cell.styles.fontStyle = "bold";
         } else if (rank === 3) {
           data.cell.styles.textColor = [245, 158, 11];

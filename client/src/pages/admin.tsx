@@ -83,7 +83,7 @@ function PermissionsMatrix({
   const levels: PermissionLevel[] = ["none", "edit"];
   const levelStyles: Record<PermissionLevel, { active: string; inactive: string }> = {
     none: { active: "bg-gray-500 text-white", inactive: "text-muted-foreground hover:bg-muted" },
-    view: { active: "bg-blue-500 text-white", inactive: "text-blue-600 hover:bg-blue-50" },
+    view: { active: "bg-green-500 text-white", inactive: "text-green-600 hover:bg-green-50" },
     edit: { active: "bg-green-500 text-white", inactive: "text-green-600 hover:bg-green-50" },
   };
 
@@ -562,7 +562,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all",
                       isMember
-                        ? "border-blue-300 bg-blue-50 text-blue-700"
+                        ? "border-green-300 bg-green-50 text-green-700"
                         : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
                     )}
                   >
@@ -708,7 +708,7 @@ const ALL_TABS: { id: TabId; label: string; superAdminOnly?: boolean }[] = [
 
 function StatCard({ label, value, icon: Icon, color, testId }: { label: string; value: number; icon: React.ComponentType<{ className?: string }>; color: string; testId: string }) {
   const colorMap: Record<string, { bg: string; text: string; ring: string }> = {
-    blue: { bg: "bg-blue-50", text: "text-blue-600", ring: "ring-blue-200" },
+    blue: { bg: "bg-green-50", text: "text-green-600", ring: "ring-green-200" },
     emerald: { bg: "bg-emerald-50", text: "text-emerald-600", ring: "ring-emerald-200" },
     amber: { bg: "bg-amber-50", text: "text-amber-600", ring: "ring-amber-200" },
     violet: { bg: "bg-violet-50", text: "text-violet-600", ring: "ring-violet-200" },
@@ -840,7 +840,7 @@ export default function Admin() {
       let y = 15;
       const pageH = doc.internal.pageSize.getHeight();
       const checkPage = (need: number = 40) => { if (y > pageH - need) { doc.addPage(); y = 15; } };
-      const hStyle = { fillColor: [59, 130, 246] as [number, number, number] };
+      const hStyle = { fillColor: [22, 163, 74] as [number, number, number] };
 
       doc.setFontSize(18);
       doc.text("Glidr — Full Data Export", 14, y);
@@ -1437,7 +1437,7 @@ export default function Admin() {
               className={cn(
                 "rounded-lg px-4 py-2 text-sm font-medium transition-all",
                 activeTab === tab.id
-                  ? "bg-blue-600 text-white shadow-sm"
+                  ? "bg-green-600 text-white shadow-sm"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
@@ -1461,8 +1461,8 @@ export default function Admin() {
 
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-recent-activity">
               <div className="flex items-center gap-2 mb-4">
-                <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50">
-                  <Activity className="h-4 w-4 text-blue-600" />
+                <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-green-50">
+                  <Activity className="h-4 w-4 text-green-600" />
                 </div>
                 <h2 className="text-sm font-semibold text-foreground">Recent Activity</h2>
               </div>
@@ -1476,15 +1476,15 @@ export default function Admin() {
                       className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5"
                       data-testid={`row-activity-${a.id}`}
                     >
-                      <div className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 mt-0.5">
-                        <Activity className="h-3.5 w-3.5 text-blue-500" />
+                      <div className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-50 mt-0.5">
+                        <Activity className="h-3.5 w-3.5 text-green-500" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-medium text-foreground">{a.userName}</span>
                           <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{a.action}</span>
                           {a.entityType && (
-                            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700">{a.entityType}</span>
+                            <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">{a.entityType}</span>
                           )}
                         </div>
                         {a.details && <p className="mt-0.5 text-xs text-muted-foreground truncate">{a.details}</p>}
@@ -1830,7 +1830,7 @@ export default function Admin() {
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-sm font-medium text-foreground">{team.name}</span>
                             {team.isDefault === 1 && (
-                              <span className="rounded-full bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-300">Default</span>
+                              <span className="rounded-full bg-green-50 dark:bg-green-900/30 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-300">Default</span>
                             )}
                           </div>
                           <div className="text-[10px] text-muted-foreground mt-0.5">
@@ -1856,7 +1856,7 @@ export default function Admin() {
                               disabled={setDefaultTeamMutation.isPending}
                               title="Set as default"
                             >
-                              <Shield className="h-4 w-4 text-blue-500" />
+                              <Shield className="h-4 w-4 text-green-500" />
                             </Button>
                           )}
                           <Button
@@ -2040,7 +2040,7 @@ export default function Admin() {
                           <td className="py-2 pr-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(a.createdAt).toLocaleString()}</td>
                           <td className="py-2 pr-3 font-medium text-foreground">{a.userName}</td>
                           <td className="py-2 pr-3">
-                            <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200">{a.action}</span>
+                            <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-200">{a.action}</span>
                           </td>
                           <td className="py-2 pr-3">
                             {a.entityType && (
@@ -2093,7 +2093,7 @@ export default function Admin() {
                           <td className="py-2 pr-3 text-muted-foreground">{log.email}</td>
                           <td className="py-2 pr-3">
                             {log.action === "login" ? (
-                              <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200">Login</span>
+                              <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-200">Login</span>
                             ) : log.action === "pdf_download" ? (
                               <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
                                 PDF {log.details ? `— ${log.details}` : ""}
@@ -2129,6 +2129,29 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
   const { data: dbStats } = useQuery<any>({ queryKey: [`/api/admin/db-stats${teamScopeParam}`] });
 
   const [xlsLoading, setXlsLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const res = await apiRequest("POST", "/api/admin/import", data);
+      const result = await res.json();
+      toast({
+        title: "Import fullført",
+        description: `Importert: ${result.imported.series} serier, ${result.imported.products} produkter, ${result.imported.tests} tester, ${result.imported.weather} værmeldinger. Hoppet over: ${result.imported.skipped} duplikater.`,
+      });
+      queryClient.invalidateQueries();
+    } catch (err: any) {
+      toast({ title: "Import feilet", description: err.message, variant: "destructive" });
+    } finally {
+      setImporting(false);
+      e.target.value = "";
+    }
+  }
 
   async function downloadXlsExport() {
     setXlsLoading(true);
@@ -2246,10 +2269,30 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
           <div className="rounded-xl border border-border bg-muted/30 p-4">
             <h3 className="text-sm font-medium text-foreground mb-1">PDF Export</h3>
             <p className="text-xs text-muted-foreground mb-3">Export all app data as a comprehensive PDF document.</p>
-            <Button size="sm" variant="outline" data-testid="button-export-pdf-data" onClick={downloadFullPdf} disabled={pdfLoading}>
-              {pdfLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
-              {pdfLoading ? "Exporting…" : "Export PDF"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" data-testid="button-export-pdf-data" onClick={downloadFullPdf} disabled={pdfLoading}>
+                {pdfLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
+                {pdfLoading ? "Exporting…" : "Export PDF"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={async () => {
+                try {
+                  const res = await apiRequest("GET", "/api/admin/full-export");
+                  const json = await res.text();
+                  const blob = new Blob([json], { type: "application/json" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `glidr-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch (err: any) {
+                  toast({ title: "Export feilet", description: err.message, variant: "destructive" });
+                }
+              }}>
+                <Download className="mr-2 h-3.5 w-3.5" />
+                Last ned JSON
+              </Button>
+            </div>
           </div>
           <div className="rounded-xl border border-border bg-muted/30 p-4">
             <h3 className="text-sm font-medium text-foreground mb-1">Excel Export</h3>
@@ -2259,6 +2302,42 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
               {xlsLoading ? "Exporting…" : "Export Excel"}
             </Button>
           </div>
+        </div>
+      </Card>
+
+      <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-green-50">
+            <HardDrive className="h-4 w-4 text-green-600" />
+          </div>
+          <h2 className="text-sm font-semibold text-foreground">Importer data</h2>
+        </div>
+        <div className="rounded-xl border border-border bg-muted/30 p-4">
+          <h3 className="text-sm font-medium text-foreground mb-1">Importer fra Glidr-backup</h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            Last opp en JSON-eksport fra Glidr (fra PDF-eksport → last ned som JSON). Importerer testserier, produkter, tester og værmeldinger. Duplikater hoppes automatisk over.
+          </p>
+          <label className={cn(
+            "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium cursor-pointer transition-all",
+            importing
+              ? "border-border bg-muted/30 text-muted-foreground cursor-not-allowed"
+              : "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
+          )}>
+            {importing
+              ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Importerer…</>
+              : <><HardDrive className="h-3.5 w-3.5" /> Velg JSON-fil</>
+            }
+            <input
+              type="file"
+              accept=".json"
+              className="sr-only"
+              disabled={importing}
+              onChange={handleImport}
+            />
+          </label>
+          <p className="text-[11px] text-muted-foreground mt-2">
+            Støttet format: JSON-eksport fra Glidr (samme format som PDF-eksporten henter data fra).
+          </p>
         </div>
       </Card>
     </div>

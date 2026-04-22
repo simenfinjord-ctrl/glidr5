@@ -190,7 +190,7 @@
   }
 
   .fs-gradient-blue {
-    background: hsl(215 80% 48% / 0.04);
+    background: hsl(142 76% 36% / 0.04);
   }
 
   .fs-gradient-emerald {
@@ -206,7 +206,7 @@
   }
 
   .fs-stat-blue {
-    border-left: 3px solid hsl(215 80% 48%);
+    border-left: 3px solid hsl(142 76% 36%);
   }
 
   .fs-stat-emerald {

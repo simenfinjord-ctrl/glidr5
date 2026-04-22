@@ -116,7 +116,7 @@ export default function Dashboard() {
 
           <div className="flex flex-wrap items-center gap-2">
             <AppLink href="/tests/new">
-              <Button data-testid="button-new-test" className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+              <Button data-testid="button-new-test" className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
                 <Plus className="mr-2 h-4 w-4" />
                 New test
               </Button>
@@ -247,7 +247,7 @@ export default function Dashboard() {
           )}
           <div className="mt-3 text-center">
             <AppLink href="/tests" testId="link-all-tests">
-              <span className="text-xs font-medium text-blue-600 hover:text-blue-700">View all tests</span>
+              <span className="text-xs font-medium text-green-600 hover:text-green-700">View all tests</span>
             </AppLink>
           </div>
         </Card>
@@ -269,7 +269,7 @@ export default function Dashboard() {
                       <span className="text-muted-foreground">{w.date}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-blue-600">Air {w.airTemperatureC}°C</span>
+                      <span className="text-green-600">Air {w.airTemperatureC}°C</span>
                       <span className="text-cyan-600">Snow {w.snowTemperatureC}°C</span>
                     </div>
                   </div>

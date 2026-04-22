@@ -263,7 +263,7 @@ function ProductSearchStats({
               <div className="text-xs text-muted-foreground">Wins (#1)</div>
             </div>
             <div className="rounded-xl border p-3 text-center">
-              <Award className="h-4 w-4 mx-auto text-blue-500 mb-1" />
+              <Award className="h-4 w-4 mx-auto text-green-500 mb-1" />
               <div className="text-2xl font-bold" data-testid="text-product-avg-rank">{stats.avgRank ?? "—"}</div>
               <div className="text-xs text-muted-foreground">Avg rank</div>
             </div>
@@ -950,8 +950,8 @@ export default function Analytics() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-avg-rank">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50">
-                    <Award className="h-4 w-4 text-blue-600" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-green-50">
+                    <Award className="h-4 w-4 text-green-600" />
                   </div>
                   <h2 className="text-base font-semibold">Average rank by product</h2>
                   <span className="text-xs text-muted-foreground">(min 2 tests)</span>

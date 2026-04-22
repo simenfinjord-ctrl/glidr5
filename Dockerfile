@@ -15,9 +15,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/shared ./shared
+COPY --from=build /app/drizzle.config.ts ./
 
 ENV NODE_ENV=production
-ENV PORT=3000
-EXPOSE 3000
 
-CMD ["node", "dist/index.cjs"]
+CMD ["sh", "-c", "npx -y -p drizzle-kit@0.31.4 drizzle-kit push --force && node dist/index.cjs"]

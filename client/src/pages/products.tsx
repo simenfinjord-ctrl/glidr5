@@ -373,7 +373,7 @@ export default function Products() {
   const [editingDetailsProduct, setEditingDetailsProduct] = useState<Product | undefined>();
   const [deletingProduct, setDeletingProduct] = useState<Product | undefined>();
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [bulkTeamId, setBulkTeamId] = useState<string>("");
+  const [bulkGroup, setBulkGroup] = useState<string>("");
   const { toast } = useToast();
 
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
@@ -383,10 +383,6 @@ export default function Products() {
   });
   const { data: apiGroups = [] } = useQuery<ApiGroup[]>({
     queryKey: ["/api/groups"],
-    enabled: isAdmin,
-  });
-  const { data: teams = [] } = useQuery<{ id: number; name: string }[]>({
-    queryKey: ["/api/teams"],
     enabled: isAdmin,
   });
   const groupNames = apiGroups.map((g) => g.name);
@@ -456,15 +452,15 @@ export default function Products() {
   });
 
   const bulkAssignMutation = useMutation({
-    mutationFn: async ({ ids, teamId }: { ids: number[]; teamId: number }) => {
-      const res = await apiRequest("POST", "/api/products/bulk-assign-team", { ids, teamId });
+    mutationFn: async ({ ids, groupScope }: { ids: number[]; groupScope: string }) => {
+      const res = await apiRequest("POST", "/api/products/bulk-assign-group", { ids, groupScope });
       return res.json();
     },
     onSuccess: (data: { updated: number }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       setSelectedIds(new Set());
-      setBulkTeamId("");
-      toast({ title: `Assigned ${data.updated} product${data.updated !== 1 ? "s" : ""} to team` });
+      setBulkGroup("");
+      toast({ title: `Assigned ${data.updated} product${data.updated !== 1 ? "s" : ""} to group` });
     },
     onError: (e) => {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
@@ -702,25 +698,25 @@ export default function Products() {
                     ? <><CheckSquare className="mr-2 h-4 w-4" />Deselect all</>
                     : <><Square className="mr-2 h-4 w-4" />Select all</>}
                 </Button>
-                {selectedIds.size > 0 && teams.length > 0 && (
+                {selectedIds.size > 0 && groupNames.length > 0 && (
                   <>
                     <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
-                    <Select value={bulkTeamId} onValueChange={setBulkTeamId}>
+                    <Select value={bulkGroup} onValueChange={setBulkGroup}>
                       <SelectTrigger className="h-9 w-auto min-w-[160px] text-sm">
-                        <SelectValue placeholder="Assign to team…" />
+                        <SelectValue placeholder="Assign to group…" />
                       </SelectTrigger>
                       <SelectContent>
-                        {teams.map((t) => (
-                          <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                        {groupNames.map((g) => (
+                          <SelectItem key={g} value={g}>{g}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     <Button
                       size="sm"
-                      disabled={!bulkTeamId || bulkAssignMutation.isPending}
-                      onClick={() => bulkAssignMutation.mutate({ ids: Array.from(selectedIds), teamId: parseInt(bulkTeamId) })}
+                      disabled={!bulkGroup || bulkAssignMutation.isPending}
+                      onClick={() => bulkAssignMutation.mutate({ ids: Array.from(selectedIds), groupScope: bulkGroup })}
                     >
-                      Assign to team
+                      Assign to group
                     </Button>
                   </>
                 )}

@@ -2417,57 +2417,75 @@ export async function registerRoutes(
     teamId: number;
   };
 
+  // In-memory fallback if DB table doesn't exist yet
+  const watchSessionsMemory = new Map<string, WatchSession>();
+
   async function generateSessionCode(): Promise<string> {
-    let code: string;
-    do {
-      code = String(Math.floor(100000 + Math.random() * 900000));
-      const existing = await db.select().from(watchSessions).where(eq(watchSessions.code, code));
-      if (existing.length === 0) break;
-    } while (true);
+    const code = String(Math.floor(100000 + Math.random() * 900000));
     return code;
   }
 
   async function getWatchSession(code: string): Promise<WatchSession | null> {
-    const rows = await db.select().from(watchSessions).where(eq(watchSessions.code, code));
-    if (rows.length === 0) return null;
-    const row = rows[0];
-    if (new Date(row.expiresAt) < new Date()) {
-      await db.delete(watchSessions).where(eq(watchSessions.code, code));
-      return null;
-    }
-    return {
-      code: row.code,
-      skiPairs: JSON.parse(row.skiPairs),
-      bracket: JSON.parse(row.bracket),
-      createdAt: new Date(row.createdAt).getTime(),
-      userId: row.userId,
-      userName: row.userName,
-      testId: row.testId ?? null,
-      testInfo: null,
-      teamId: row.teamId ?? 0,
-    };
+    // Try DB first, fall back to memory
+    try {
+      const rows = await db.select().from(watchSessions).where(eq(watchSessions.code, code));
+      if (rows.length > 0) {
+        const row = rows[0];
+        if (new Date(row.expiresAt) < new Date()) {
+          await db.delete(watchSessions).where(eq(watchSessions.code, code)).catch(() => {});
+          return null;
+        }
+        return {
+          code: row.code,
+          skiPairs: JSON.parse(row.skiPairs),
+          bracket: JSON.parse(row.bracket),
+          createdAt: new Date(row.createdAt).getTime(),
+          userId: row.userId,
+          userName: row.userName,
+          testId: row.testId ?? null,
+          testInfo: null,
+          teamId: row.teamId ?? 0,
+        };
+      }
+    } catch (_) {}
+    // Fall back to memory
+    return watchSessionsMemory.get(code) ?? null;
   }
 
   async function saveWatchSession(session: WatchSession): Promise<void> {
-    await db.insert(watchSessions).values({
-      code: session.code,
-      skiPairs: JSON.stringify(session.skiPairs),
-      bracket: JSON.stringify(session.bracket),
-      testId: session.testId ?? null,
-      userId: session.userId,
-      userName: session.userName,
-      teamId: session.teamId ?? null,
-      createdAt: new Date(session.createdAt).toISOString(),
-      expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-    }).onConflictDoUpdate({ target: watchSessions.code, set: { bracket: JSON.stringify(session.bracket) } });
+    // Save to memory always (instant)
+    watchSessionsMemory.set(session.code, session);
+    // Also try DB
+    try {
+      await db.insert(watchSessions).values({
+        code: session.code,
+        skiPairs: JSON.stringify(session.skiPairs),
+        bracket: JSON.stringify(session.bracket),
+        testId: session.testId ?? null,
+        userId: session.userId,
+        userName: session.userName,
+        teamId: session.teamId ?? null,
+        createdAt: new Date(session.createdAt).toISOString(),
+        expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+      }).onConflictDoUpdate({ target: watchSessions.code, set: { bracket: JSON.stringify(session.bracket) } });
+    } catch (_) {}
   }
 
   async function updateWatchBracket(code: string, bracket: WatchHeat[][]): Promise<void> {
-    await db.update(watchSessions).set({ bracket: JSON.stringify(bracket) }).where(eq(watchSessions.code, code));
+    // Update memory
+    const mem = watchSessionsMemory.get(code);
+    if (mem) mem.bracket = bracket;
+    // Also try DB
+    try {
+      await db.update(watchSessions).set({ bracket: JSON.stringify(bracket) }).where(eq(watchSessions.code, code));
+    } catch (_) {}
   }
 
   async function deleteWatchSession(code: string): Promise<void> {
-    await db.delete(watchSessions).where(eq(watchSessions.code, code));
+    watchSessionsMemory.delete(code);
+    try {
+      await db.delete(watchSessions).where(eq(watchSessions.code, code));
+    } catch (_) {}
   }
 
   function watchInitBracket(pairs: number[]): WatchHeat[][] {

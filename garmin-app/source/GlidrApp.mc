@@ -6,13 +6,13 @@ class GlidrApp extends Application.AppBase {
         AppBase.initialize();
     }
 
-    function onStart(state as Dictionary?) as Void {
+    function onStart(state) {
     }
 
-    function onStop(state as Dictionary?) as Void {
+    function onStop(state) {
     }
 
-    function getInitialView() as [Views] or [Views, InputDelegates] {
+    function getInitialView() {
         var view = new CodeEntryView();
         var delegate = new CodeEntryDelegate(view);
         return [view, delegate];

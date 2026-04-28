@@ -1,28 +1,27 @@
 using Toybox.WatchUi;
 using Toybox.Communications;
-using Toybox.System;
 
 class CodeEntryDelegate extends WatchUi.BehaviorDelegate {
-    var view as CodeEntryView;
+    var view;
 
-    function initialize(v as CodeEntryView) {
+    function initialize(v) {
         BehaviorDelegate.initialize();
         view = v;
     }
 
-    function onNextPage() as Boolean {
+    function onNextPage() {
         view.digits[view.cursorPos] = (view.digits[view.cursorPos] + 1) % 10;
         WatchUi.requestUpdate();
         return true;
     }
 
-    function onPreviousPage() as Boolean {
+    function onPreviousPage() {
         view.digits[view.cursorPos] = (view.digits[view.cursorPos] + 9) % 10;
         WatchUi.requestUpdate();
         return true;
     }
 
-    function onSelect() as Boolean {
+    function onSelect() {
         if (view.cursorPos < 5) {
             view.cursorPos++;
             WatchUi.requestUpdate();
@@ -32,7 +31,7 @@ class CodeEntryDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
-    function onBack() as Boolean {
+    function onBack() {
         if (view.cursorPos > 0) {
             view.cursorPos--;
             WatchUi.requestUpdate();
@@ -41,7 +40,7 @@ class CodeEntryDelegate extends WatchUi.BehaviorDelegate {
         return false;
     }
 
-    function connectToSession() as Void {
+    function connectToSession() {
         view.isConnecting = true;
         view.statusText = "Connecting...";
         WatchUi.requestUpdate();
@@ -60,7 +59,7 @@ class CodeEntryDelegate extends WatchUi.BehaviorDelegate {
         );
     }
 
-    function onConnectResponse(responseCode as Number, data as Dictionary or Null or String) as Void {
+    function onConnectResponse(responseCode, data) {
         view.isConnecting = false;
 
         if (responseCode == 200 && data != null && data instanceof Dictionary) {
@@ -68,12 +67,12 @@ class CodeEntryDelegate extends WatchUi.BehaviorDelegate {
             var heatView = new HeatView(code);
 
             if (data["currentHeat"] != null && data["currentHeat"] instanceof Dictionary) {
-                var ch = data["currentHeat"] as Dictionary;
-                heatView.roundName = ch["roundName"] as String;
-                heatView.pairA = ch["pairA"] as Number;
-                heatView.pairB = ch["pairB"] as Number;
-                heatView.roundIndex = ch["roundIndex"] as Number;
-                heatView.heatIndex = ch["heatIndex"] as Number;
+                var ch = data["currentHeat"];
+                heatView.roundName = ch["roundName"];
+                heatView.pairA = ch["pairA"];
+                heatView.pairB = ch["pairB"];
+                heatView.roundIndex = ch["roundIndex"];
+                heatView.heatIndex = ch["heatIndex"];
                 heatView.statusText = "Select winner";
             } else if (data["complete"] == true) {
                 heatView.statusText = "All heats complete!";

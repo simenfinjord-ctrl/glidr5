@@ -1,17 +1,15 @@
 using Toybox.WatchUi;
 using Toybox.Communications;
-using Toybox.System;
-using Toybox.Timer;
 
 class HeatDelegate extends WatchUi.BehaviorDelegate {
-    var view as HeatView;
+    var view;
 
-    function initialize(v as HeatView) {
+    function initialize(v) {
         BehaviorDelegate.initialize();
         view = v;
     }
 
-    function onNextPage() as Boolean {
+    function onNextPage() {
         if (view.allDone || view.isSending) { return true; }
 
         if (view.phase == 0) {
@@ -27,7 +25,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
-    function onPreviousPage() as Boolean {
+    function onPreviousPage() {
         if (view.allDone || view.isSending) { return true; }
 
         if (view.phase == 0) {
@@ -43,7 +41,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
-    function onSelect() as Boolean {
+    function onSelect() {
         if (view.allDone || view.isSending) { return true; }
 
         if (view.phase == 1) {
@@ -52,7 +50,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
-    function onBack() as Boolean {
+    function onBack() {
         if (view.phase == 1) {
             view.phase = 0;
             view.distance = 0;
@@ -62,7 +60,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
         return false;
     }
 
-    function submitResult() as Void {
+    function submitResult() {
         view.isSending = true;
         WatchUi.requestUpdate();
 
@@ -89,17 +87,17 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
         );
     }
 
-    function onSubmitResponse(responseCode as Number, data as Dictionary or Null or String) as Void {
+    function onSubmitResponse(responseCode, data) {
         view.isSending = false;
 
         if (responseCode == 200 && data != null && data instanceof Dictionary) {
             if (data["nextHeat"] != null && data["nextHeat"] instanceof Dictionary) {
-                var nh = data["nextHeat"] as Dictionary;
-                view.roundName = nh["roundName"] as String;
-                view.pairA = nh["pairA"] as Number;
-                view.pairB = nh["pairB"] as Number;
-                view.roundIndex = nh["roundIndex"] as Number;
-                view.heatIndex = nh["heatIndex"] as Number;
+                var nh = data["nextHeat"];
+                view.roundName = nh["roundName"];
+                view.pairA = nh["pairA"];
+                view.pairB = nh["pairB"];
+                view.roundIndex = nh["roundIndex"];
+                view.heatIndex = nh["heatIndex"];
                 view.statusText = "Select winner";
                 view.phase = 0;
                 view.distance = 0;

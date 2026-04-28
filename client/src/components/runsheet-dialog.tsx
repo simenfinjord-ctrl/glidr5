@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, RotateCcw, Trophy, WifiOff, Smartphone } from "lucide-react";
+import { Check, RotateCcw, Trophy, WifiOff, Smartphone, Watch, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { MobileRunsheet } from "./mobile-runsheet";
@@ -199,6 +199,9 @@ export function RunsheetDialog({
   const [bracket, setBracket] = useState<Heat[][]>([]);
   const [mobileMode, setMobileMode] = useState(false);
   const [resumed, setResumed] = useState(false);
+  const [watchCode, setWatchCode] = useState<string | null>(null);
+  const [watchLoading, setWatchLoading] = useState(false);
+  const watchPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initializedRef = useRef<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -346,6 +349,46 @@ export function RunsheetDialog({
     setBracket(updatedBracket);
   }, []);
 
+  const startWatchSession = useCallback(async () => {
+    setWatchLoading(true);
+    try {
+      const res = await apiRequest("POST", "/api/runsheet/sessions", { skiPairs, testId });
+      const data = await res.json();
+      setWatchCode(data.code);
+    } catch {
+      alert("Could not start watch session");
+    } finally {
+      setWatchLoading(false);
+    }
+  }, [skiPairs, testId]);
+
+  const stopWatchSession = useCallback(() => {
+    if (watchPollRef.current) clearInterval(watchPollRef.current);
+    if (watchCode) {
+      fetch(`/api/runsheet/sessions/${watchCode}`, { method: "DELETE", credentials: "include" }).catch(() => {});
+    }
+    setWatchCode(null);
+  }, [watchCode]);
+
+  useEffect(() => {
+    if (!watchCode) return;
+    if (watchPollRef.current) clearInterval(watchPollRef.current);
+    watchPollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/runsheet/sessions/${watchCode}`, { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.bracket) {
+          setBracket(data.bracket);
+        }
+        if (data.complete) {
+          clearInterval(watchPollRef.current!);
+        }
+      } catch {}
+    }, 2000);
+    return () => { if (watchPollRef.current) clearInterval(watchPollRef.current); };
+  }, [watchCode]);
+
   const totalRounds = bracket.length;
 
   const showLoading = !error && (loading || bracket.length === 0);
@@ -401,6 +444,29 @@ export function RunsheetDialog({
                 <Smartphone className="mr-1 h-4 w-4" />
                 Mobile
               </Button>
+              {!watchCode ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={startWatchSession}
+                  disabled={watchLoading}
+                  data-testid="button-watch-mode"
+                  title="Control from Garmin watch"
+                >
+                  <Watch className="mr-1 h-4 w-4" />
+                  {watchLoading ? "Starting…" : "Watch"}
+                </Button>
+              ) : (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={stopWatchSession}
+                  data-testid="button-stop-watch"
+                >
+                  <X className="mr-1 h-4 w-4" />
+                  Stop Watch
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -413,6 +479,17 @@ export function RunsheetDialog({
             </div>
           </div>
         </DialogHeader>
+
+        {watchCode && (
+          <div className="flex items-center gap-4 px-4 py-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700" data-testid="watch-code-banner">
+            <Watch className="h-5 w-5 text-green-600 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400">Watch session active – enter this code on your Garmin</p>
+              <p className="text-3xl font-mono font-bold tracking-widest text-green-800 dark:text-green-300 mt-0.5">{watchCode}</p>
+            </div>
+            <span className="ml-auto text-xs text-green-600 animate-pulse">Live ●</span>
+          </div>
+        )}
 
         {resumed && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-300" data-testid="resumed-banner">

@@ -2,27 +2,27 @@ using Toybox.WatchUi;
 using Toybox.Graphics;
 
 class HeatView extends WatchUi.View {
-    var sessionCode as String;
-    var roundName as String = "";
-    var pairA as Number = 0;
-    var pairB as Number = 0;
-    var roundIndex as Number = 0;
-    var heatIndex as Number = 0;
-    var statusText as String = "Loading...";
-    var allDone as Boolean = false;
+    var sessionCode;
+    var roundName = "";
+    var pairA = 0;
+    var pairB = 0;
+    var roundIndex = 0;
+    var heatIndex = 0;
+    var statusText = "Loading...";
+    var allDone = false;
 
-    var selectedWinner as Number = 0;
-    var phase as Number = 0;
+    var selectedWinner = 0;
+    var phase = 0;
 
-    var distance as Number = 0;
-    var isSending as Boolean = false;
+    var distance = 0;
+    var isSending = false;
 
-    function initialize(code as String) {
+    function initialize(code) {
         View.initialize();
         sessionCode = code;
     }
 
-    function onUpdate(dc as Dc) as Void {
+    function onUpdate(dc) {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
 

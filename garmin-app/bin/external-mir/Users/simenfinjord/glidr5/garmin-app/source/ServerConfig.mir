@@ -1,0 +1,11 @@
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/ServerConfig.mc"; @line = 1; @symbol_moduledef = [ServerConfig,1,7,19]; ]
+module ServerConfig {
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/ServerConfig.mc"; @line = 1; ]
+    <init> {
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/ServerConfig.mc"; @line = 2; @position = 10; @symbol_constdef = [BASE_URL,2,10,18]; ]
+    const BASE_URL = "https://glidr.onrender.com";
+}
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/ServerConfig.mc"; @line = 1; ]
+<init> {
+}

@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<debugInfo>
+<manifest filename="/Users/simenfinjord/glidr5/garmin-app/manifest.xml"/>
+<pcToLineNum>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="1" lineNum="4" parent="globals/HeatDelegate" pc="268435460" symbol="&lt;init&gt;"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="2" lineNum="4" parent="globals/CodeEntryDelegate" pc="268435479" symbol="&lt;init&gt;"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/bin/gen/006-B3113-00/source/Rez.mcgen" id="3" lineNum="7" parent="globals/Rez" pc="268435498" symbol="&lt;init&gt;"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc" id="4" lineNum="4" parent="globals/GlidrApp" pc="268435522" symbol="&lt;init&gt;"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="5" lineNum="4" parent="globals/CodeEntryView" pc="268435541" symbol="&lt;init&gt;"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="5" lineNum="5" parent="globals/CodeEntryView" pc="268435559" symbol="&lt;init&gt;"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="6" lineNum="4" parent="globals/HeatView" pc="268435652" symbol="&lt;init&gt;"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="7" lineNum="53" parent="globals/HeatDelegate" pc="268435671" symbol="onBack"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="7" lineNum="54" parent="globals/HeatDelegate" pc="268435673" symbol="onBack"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="7" lineNum="55" parent="globals/HeatDelegate" pc="268435696" symbol="onBack"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="7" lineNum="56" parent="globals/HeatDelegate" pc="268435715" symbol="onBack"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="7" lineNum="57" parent="globals/HeatDelegate" pc="268435734" symbol="onBack"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="7" lineNum="58" parent="globals/HeatDelegate" pc="268435750" symbol="onBack"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="7" lineNum="60" parent="globals/HeatDelegate" pc="268435756" symbol="onBack"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="8" lineNum="63" parent="globals/HeatDelegate" pc="268435759" symbol="submitResult"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="8" lineNum="64" parent="globals/HeatDelegate" pc="268435763" symbol="submitResult"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="8" lineNum="65" parent="globals/HeatDelegate" pc="268435779" symbol="submitResult"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="8" lineNum="67" parent="globals/HeatDelegate" pc="268435795" symbol="submitResult"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="8" lineNum="69" parent="globals/HeatDelegate" pc="268435823" symbol="submitResult"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="8" lineNum="76" parent="globals/HeatDelegate" pc="268435919" symbol="submitResult"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="9" lineNum="28" parent="globals/HeatDelegate" pc="268436015" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="9" lineNum="29" parent="globals/HeatDelegate" pc="268436017" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="9" lineNum="29" parent="globals/HeatDelegate" pc="268436051" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="9" lineNum="31" parent="globals/HeatDelegate" pc="268436057" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="9" lineNum="32" parent="globals/HeatDelegate" pc="268436080" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="9" lineNum="33" parent="globals/HeatDelegate" pc="268436108" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="9" lineNum="34" parent="globals/HeatDelegate" pc="268436127" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="9" lineNum="35" parent="globals/HeatDelegate" pc="268436146" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="9" lineNum="36" parent="globals/HeatDelegate" pc="268436165" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="9" lineNum="37" parent="globals/HeatDelegate" pc="268436188" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="9" lineNum="38" parent="globals/HeatDelegate" pc="268436213" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="9" lineNum="38" parent="globals/HeatDelegate" pc="268436236" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="9" lineNum="39" parent="globals/HeatDelegate" pc="268436258" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="9" lineNum="41" parent="globals/HeatDelegate" pc="268436277" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="10" lineNum="7" parent="globals/HeatDelegate" pc="268436280" symbol="initialize"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="10" lineNum="8" parent="globals/HeatDelegate" pc="268436282" symbol="initialize"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="10" lineNum="9" parent="globals/HeatDelegate" pc="268436300" symbol="initialize"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="90" parent="globals/HeatDelegate" pc="268436311" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="91" parent="globals/HeatDelegate" pc="268436315" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="93" parent="globals/HeatDelegate" pc="268436331" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="94" parent="globals/HeatDelegate" pc="268436363" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="95" parent="globals/HeatDelegate" pc="268436396" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="96" parent="globals/HeatDelegate" pc="268436406" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="97" parent="globals/HeatDelegate" pc="268436428" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="98" parent="globals/HeatDelegate" pc="268436450" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="99" parent="globals/HeatDelegate" pc="268436472" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="100" parent="globals/HeatDelegate" pc="268436494" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="101" parent="globals/HeatDelegate" pc="268436516" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="102" parent="globals/HeatDelegate" pc="268436535" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="103" parent="globals/HeatDelegate" pc="268436554" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="105" parent="globals/HeatDelegate" pc="268436576" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="108" parent="globals/HeatDelegate" pc="268436595" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="109" parent="globals/HeatDelegate" pc="268436614" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="11" lineNum="112" parent="globals/HeatDelegate" pc="268436633" symbol="onSubmitResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="12" lineNum="12" parent="globals/HeatDelegate" pc="268436650" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="12" lineNum="13" parent="globals/HeatDelegate" pc="268436652" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="12" lineNum="13" parent="globals/HeatDelegate" pc="268436686" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="12" lineNum="15" parent="globals/HeatDelegate" pc="268436692" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="12" lineNum="16" parent="globals/HeatDelegate" pc="268436715" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="12" lineNum="17" parent="globals/HeatDelegate" pc="268436743" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="12" lineNum="18" parent="globals/HeatDelegate" pc="268436762" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="12" lineNum="19" parent="globals/HeatDelegate" pc="268436781" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="12" lineNum="20" parent="globals/HeatDelegate" pc="268436800" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="12" lineNum="21" parent="globals/HeatDelegate" pc="268436823" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="12" lineNum="22" parent="globals/HeatDelegate" pc="268436848" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="12" lineNum="22" parent="globals/HeatDelegate" pc="268436871" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="12" lineNum="23" parent="globals/HeatDelegate" pc="268436893" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="12" lineNum="25" parent="globals/HeatDelegate" pc="268436912" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="13" lineNum="44" parent="globals/HeatDelegate" pc="268436915" symbol="onSelect"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="13" lineNum="45" parent="globals/HeatDelegate" pc="268436917" symbol="onSelect"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="13" lineNum="45" parent="globals/HeatDelegate" pc="268436951" symbol="onSelect"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="13" lineNum="47" parent="globals/HeatDelegate" pc="268436957" symbol="onSelect"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="13" lineNum="48" parent="globals/HeatDelegate" pc="268436980" symbol="onSelect"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" id="13" lineNum="50" parent="globals/HeatDelegate" pc="268436995" symbol="onSelect"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="14" lineNum="34" parent="globals/CodeEntryDelegate" pc="268436998" symbol="onBack"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="14" lineNum="35" parent="globals/CodeEntryDelegate" pc="268437000" symbol="onBack"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="14" lineNum="36" parent="globals/CodeEntryDelegate" pc="268437023" symbol="onBack"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="14" lineNum="37" parent="globals/CodeEntryDelegate" pc="268437048" symbol="onBack"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="14" lineNum="38" parent="globals/CodeEntryDelegate" pc="268437064" symbol="onBack"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="14" lineNum="40" parent="globals/CodeEntryDelegate" pc="268437070" symbol="onBack"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="15" lineNum="18" parent="globals/CodeEntryDelegate" pc="268437073" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="15" lineNum="19" parent="globals/CodeEntryDelegate" pc="268437075" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="15" lineNum="20" parent="globals/CodeEntryDelegate" pc="268437145" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="15" lineNum="21" parent="globals/CodeEntryDelegate" pc="268437161" symbol="onPreviousPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="16" lineNum="43" parent="globals/CodeEntryDelegate" pc="268437164" symbol="connectToSession"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="16" lineNum="44" parent="globals/CodeEntryDelegate" pc="268437168" symbol="connectToSession"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="16" lineNum="45" parent="globals/CodeEntryDelegate" pc="268437184" symbol="connectToSession"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="16" lineNum="46" parent="globals/CodeEntryDelegate" pc="268437203" symbol="connectToSession"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="16" lineNum="48" parent="globals/CodeEntryDelegate" pc="268437219" symbol="connectToSession"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="16" lineNum="49" parent="globals/CodeEntryDelegate" pc="268437238" symbol="connectToSession"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="16" lineNum="51" parent="globals/CodeEntryDelegate" pc="268437248" symbol="connectToSession"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="17" lineNum="7" parent="globals/CodeEntryDelegate" pc="268437316" symbol="initialize"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="17" lineNum="8" parent="globals/CodeEntryDelegate" pc="268437318" symbol="initialize"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="17" lineNum="9" parent="globals/CodeEntryDelegate" pc="268437336" symbol="initialize"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="62" parent="globals/CodeEntryDelegate" pc="268437347" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="63" parent="globals/CodeEntryDelegate" pc="268437351" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="65" parent="globals/CodeEntryDelegate" pc="268437367" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="66" parent="globals/CodeEntryDelegate" pc="268437399" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="67" parent="globals/CodeEntryDelegate" pc="268437418" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="69" parent="globals/CodeEntryDelegate" pc="268437444" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="70" parent="globals/CodeEntryDelegate" pc="268437477" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="71" parent="globals/CodeEntryDelegate" pc="268437487" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="72" parent="globals/CodeEntryDelegate" pc="268437503" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="73" parent="globals/CodeEntryDelegate" pc="268437519" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="74" parent="globals/CodeEntryDelegate" pc="268437535" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="75" parent="globals/CodeEntryDelegate" pc="268437551" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="76" parent="globals/CodeEntryDelegate" pc="268437567" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="77" parent="globals/CodeEntryDelegate" pc="268437583" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="78" parent="globals/CodeEntryDelegate" pc="268437597" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="79" parent="globals/CodeEntryDelegate" pc="268437610" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="81" parent="globals/CodeEntryDelegate" pc="268437623" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="84" parent="globals/CodeEntryDelegate" pc="268437636" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="85" parent="globals/CodeEntryDelegate" pc="268437662" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="87" parent="globals/CodeEntryDelegate" pc="268437690" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="88" parent="globals/CodeEntryDelegate" pc="268437709" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="18" lineNum="89" parent="globals/CodeEntryDelegate" pc="268437728" symbol="onConnectResponse"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="19" lineNum="12" parent="globals/CodeEntryDelegate" pc="268437745" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="19" lineNum="13" parent="globals/CodeEntryDelegate" pc="268437747" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="19" lineNum="14" parent="globals/CodeEntryDelegate" pc="268437817" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="19" lineNum="15" parent="globals/CodeEntryDelegate" pc="268437833" symbol="onNextPage"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="20" lineNum="24" parent="globals/CodeEntryDelegate" pc="268437836" symbol="onSelect"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="20" lineNum="25" parent="globals/CodeEntryDelegate" pc="268437838" symbol="onSelect"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="20" lineNum="26" parent="globals/CodeEntryDelegate" pc="268437861" symbol="onSelect"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="20" lineNum="27" parent="globals/CodeEntryDelegate" pc="268437886" symbol="onSelect"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="20" lineNum="29" parent="globals/CodeEntryDelegate" pc="268437905" symbol="onSelect"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryDelegate.mc" id="20" lineNum="31" parent="globals/CodeEntryDelegate" pc="268437917" symbol="onSelect"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc" id="21" lineNum="9" parent="globals/GlidrApp" pc="268437920" symbol="onStart"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc" id="22" lineNum="15" parent="globals/GlidrApp" pc="268437923" symbol="getInitialView"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc" id="22" lineNum="16" parent="globals/GlidrApp" pc="268437927" symbol="getInitialView"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc" id="22" lineNum="17" parent="globals/GlidrApp" pc="268437951" symbol="getInitialView"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc" id="22" lineNum="18" parent="globals/GlidrApp" pc="268437977" symbol="getInitialView"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc" id="23" lineNum="5" parent="globals/GlidrApp" pc="268438004" symbol="initialize"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc" id="23" lineNum="6" parent="globals/GlidrApp" pc="268438006" symbol="initialize"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc" id="24" lineNum="12" parent="globals/GlidrApp" pc="268438025" symbol="onStop"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="25" lineNum="10" parent="globals/CodeEntryView" pc="268438028" symbol="initialize"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="25" lineNum="11" parent="globals/CodeEntryView" pc="268438030" symbol="initialize"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="14" parent="globals/CodeEntryView" pc="268438049" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="15" parent="globals/CodeEntryView" pc="268438053" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="16" parent="globals/CodeEntryView" pc="268438075" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="18" parent="globals/CodeEntryView" pc="268438087" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="19" parent="globals/CodeEntryView" pc="268438100" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="20" parent="globals/CodeEntryView" pc="268438113" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="22" parent="globals/CodeEntryView" pc="268438123" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="23" parent="globals/CodeEntryView" pc="268438145" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="25" parent="globals/CodeEntryView" pc="268438182" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="26" parent="globals/CodeEntryView" pc="268438204" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="28" parent="globals/CodeEntryView" pc="268438244" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="29" parent="globals/CodeEntryView" pc="268438251" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="30" parent="globals/CodeEntryView" pc="268438267" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="31" parent="globals/CodeEntryView" pc="268438280" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="33" parent="globals/CodeEntryView" pc="268438290" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="34" parent="globals/CodeEntryView" pc="268438308" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="36" parent="globals/CodeEntryView" pc="268438343" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="37" parent="globals/CodeEntryView" pc="268438357" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="38" parent="globals/CodeEntryView" pc="268438379" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="39" parent="globals/CodeEntryView" pc="268438425" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="41" parent="globals/CodeEntryView" pc="268438450" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="44" parent="globals/CodeEntryView" pc="268438472" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="48" parent="globals/CodeEntryView" pc="268438546" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="49" parent="globals/CodeEntryView" pc="268438568" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="50" parent="globals/CodeEntryView" pc="268438605" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="26" lineNum="51" parent="globals/CodeEntryView" pc="268438642" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="27" lineNum="54" parent="globals/CodeEntryView" pc="268438680" symbol="getCode"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="27" lineNum="55" parent="globals/CodeEntryView" pc="268438684" symbol="getCode"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="27" lineNum="56" parent="globals/CodeEntryView" pc="268438691" symbol="getCode"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="27" lineNum="57" parent="globals/CodeEntryView" pc="268438709" symbol="getCode"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/CodeEntryView.mc" id="27" lineNum="59" parent="globals/CodeEntryView" pc="268438747" symbol="getCode"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="28" lineNum="20" parent="globals/HeatView" pc="268438750" symbol="initialize"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="28" lineNum="21" parent="globals/HeatView" pc="268438752" symbol="initialize"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="28" lineNum="22" parent="globals/HeatView" pc="268438770" symbol="initialize"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="25" parent="globals/HeatView" pc="268438781" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="26" parent="globals/HeatView" pc="268438785" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="27" parent="globals/HeatView" pc="268438807" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="29" parent="globals/HeatView" pc="268438819" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="30" parent="globals/HeatView" pc="268438832" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="31" parent="globals/HeatView" pc="268438845" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="33" parent="globals/HeatView" pc="268438855" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="34" parent="globals/HeatView" pc="268438866" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="35" parent="globals/HeatView" pc="268438888" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="36" parent="globals/HeatView" pc="268438925" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="37" parent="globals/HeatView" pc="268438947" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="38" parent="globals/HeatView" pc="268438984" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="39" parent="globals/HeatView" pc="268439006" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="40" parent="globals/HeatView" pc="268439043" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="43" parent="globals/HeatView" pc="268439047" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="44" parent="globals/HeatView" pc="268439058" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="45" parent="globals/HeatView" pc="268439080" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="46" parent="globals/HeatView" pc="268439117" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="49" parent="globals/HeatView" pc="268439121" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="50" parent="globals/HeatView" pc="268439143" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="52" parent="globals/HeatView" pc="268439183" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="53" parent="globals/HeatView" pc="268439200" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="54" parent="globals/HeatView" pc="268439222" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="56" parent="globals/HeatView" pc="268439259" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="57" parent="globals/HeatView" pc="268439281" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="59" parent="globals/HeatView" pc="268439336" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="60" parent="globals/HeatView" pc="268439358" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="62" parent="globals/HeatView" pc="268439395" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="63" parent="globals/HeatView" pc="268439417" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="65" parent="globals/HeatView" pc="268439472" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="66" parent="globals/HeatView" pc="268439494" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="67" parent="globals/HeatView" pc="268439549" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="69" parent="globals/HeatView" pc="268439607" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="70" parent="globals/HeatView" pc="268439624" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="72" parent="globals/HeatView" pc="268439665" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="73" parent="globals/HeatView" pc="268439687" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="75" parent="globals/HeatView" pc="268439748" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="76" parent="globals/HeatView" pc="268439770" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="78" parent="globals/HeatView" pc="268439825" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="79" parent="globals/HeatView" pc="268439847" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="81" parent="globals/HeatView" pc="268439896" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="82" parent="globals/HeatView" pc="268439918" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="84" parent="globals/HeatView" pc="268439955" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="85" parent="globals/HeatView" pc="268439977" symbol="onUpdate"/>
+<entry filename="/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" id="29" lineNum="86" parent="globals/HeatView" pc="268440014" symbol="onUpdate"/>
+</pcToLineNum>
+<symbolTable>
+<entry id="8388639" module="true" symbol="Graphics"/>
+<entry id="5" module="true" symbol="globals/ServerConfig"/>
+<entry id="8388632" method="true" symbol="&lt;init&gt;"/>
+<entry field="true" id="21" symbol="statusText"/>
+<entry field="true" id="27" symbol="phase"/>
+<entry id="13" method="true" symbol="submitResult"/>
+<entry field="true" id="23" symbol="heatIndex"/>
+<entry id="19" method="true" symbol="getCode"/>
+<entry field="true" id="28" symbol="roundIndex"/>
+<entry field="true" id="18" symbol="digits"/>
+<entry field="true" id="8388611" module="true" symbol="Toybox"/>
+<entry field="true" id="20" symbol="isConnecting"/>
+<entry id="16" method="true" symbol="onConnectResponse"/>
+<entry field="true" id="22" symbol="allDone"/>
+<entry field="true" id="33" symbol="AppName"/>
+<entry field="true" id="17" symbol="cursorPos"/>
+<entry id="4" module="true" symbol="globals/Rez/Strings"/>
+<entry id="8389594" symbol="headers"/>
+<entry id="8388648" module="true" symbol="WatchUi"/>
+<entry id="8389081" method="true" symbol="onBack"/>
+<entry id="2" module="true" symbol="globals/Rez"/>
+<entry id="8" object="true" symbol="GlidrApp"/>
+<entry id="12" method="true" symbol="onSubmitResponse"/>
+<entry id="8389124" method="true" symbol="onUpdate"/>
+<entry id="8388771" module="true" object="true" symbol="Drawables"/>
+<entry id="8389079" method="true" symbol="onPreviousPage"/>
+<entry field="true" id="29" symbol="roundName"/>
+<entry field="true" id="8388911" symbol="distance"/>
+<entry id="8388637" module="true" symbol="Communications"/>
+<entry id="3" module="true" symbol="globals/Rez/Drawables"/>
+<entry id="8389844" symbol="responseType"/>
+<entry id="8388786" method="true" symbol="method"/>
+<entry id="8389619" method="true" symbol="onSelect"/>
+<entry id="8388769" module="true" object="true" symbol="Rez"/>
+<entry field="true" id="30" symbol="selectedWinner"/>
+<entry id="7" object="true" symbol="CodeEntryView"/>
+<entry id="8388640" module="true" symbol="Lang"/>
+<entry field="true" id="32" symbol="LauncherIcon"/>
+<entry id="8388610" symbol="statics"/>
+<entry id="9" object="true" symbol="HeatDelegate"/>
+<entry id="8389350" module="true" symbol="globals"/>
+<entry id="8388770" module="true" object="true" symbol="Strings"/>
+<entry id="11" module="true" symbol="ServerConfig"/>
+<entry id="8388702" method="true" symbol="initialize"/>
+<entry id="15" method="true" symbol="connectToSession"/>
+<entry id="8389279" method="true" symbol="onStart"/>
+<entry field="true" id="24" symbol="isSending"/>
+<entry field="true" id="14" symbol="view"/>
+<entry field="true" id="26" symbol="pairB"/>
+<entry field="true" id="25" symbol="pairA"/>
+<entry id="8389280" method="true" symbol="getInitialView"/>
+<entry id="8389281" method="true" symbol="onStop"/>
+<entry id="10" object="true" symbol="HeatView"/>
+<entry id="6" object="true" symbol="CodeEntryDelegate"/>
+<entry id="8389078" method="true" symbol="onNextPage"/>
+<entry field="true" id="31" symbol="sessionCode"/>
+<entry id="8388635" module="true" symbol="Application"/>
+</symbolTable>
+<localVars>
+<entry endPc="268436013" name="url" stackId="1" startPc="268435763"/>
+<entry endPc="268436013" name="body" stackId="2" startPc="268435763"/>
+<entry arg="true" endPc="268436310" name="v" stackId="1" startPc="268436280"/>
+<entry arg="true" endPc="268436649" name="responseCode" stackId="1" startPc="268436311"/>
+<entry arg="true" endPc="268436649" name="data" stackId="2" startPc="268436311"/>
+<entry endPc="268436572" name="nh" stackId="3" startPc="268436396"/>
+<entry endPc="268437314" name="code" stackId="1" startPc="268437168"/>
+<entry endPc="268437314" name="url" stackId="2" startPc="268437168"/>
+<entry arg="true" endPc="268437346" name="v" stackId="1" startPc="268437316"/>
+<entry arg="true" endPc="268437744" name="responseCode" stackId="1" startPc="268437347"/>
+<entry arg="true" endPc="268437744" name="data" stackId="2" startPc="268437347"/>
+<entry endPc="268437686" name="code" stackId="3" startPc="268437399"/>
+<entry endPc="268437686" name="heatView" stackId="4" startPc="268437399"/>
+<entry endPc="268437579" name="ch" stackId="5" startPc="268437477"/>
+<entry endPc="268437686" name="heatDelegate" stackId="6" startPc="268437399"/>
+<entry endPc="268438003" name="view" stackId="1" startPc="268437927"/>
+<entry endPc="268438003" name="delegate" stackId="2" startPc="268437927"/>
+<entry arg="true" endPc="268438679" name="dc" stackId="1" startPc="268438049"/>
+<entry endPc="268438678" name="w" stackId="2" startPc="268438053"/>
+<entry endPc="268438678" name="h" stackId="3" startPc="268438053"/>
+<entry endPc="268438678" name="cx" stackId="4" startPc="268438053"/>
+<entry endPc="268438678" name="digitWidth" stackId="5" startPc="268438053"/>
+<entry endPc="268438678" name="totalWidth" stackId="6" startPc="268438053"/>
+<entry endPc="268438678" name="startX" stackId="7" startPc="268438053"/>
+<entry endPc="268438678" name="digitY" stackId="8" startPc="268438053"/>
+<entry endPc="268438545" name="i" stackId="9" startPc="268438308"/>
+<entry endPc="268438532" name="dx" stackId="10" startPc="268438308"/>
+<entry endPc="268438749" name="code" stackId="1" startPc="268438684"/>
+<entry endPc="268438746" name="i" stackId="2" startPc="268438709"/>
+<entry arg="true" endPc="268438780" name="code" stackId="1" startPc="268438750"/>
+<entry arg="true" endPc="268440054" name="dc" stackId="1" startPc="268438781"/>
+<entry endPc="268440053" name="w" stackId="2" startPc="268438785"/>
+<entry endPc="268440053" name="h" stackId="3" startPc="268438785"/>
+<entry endPc="268440053" name="cx" stackId="4" startPc="268438785"/>
+<entry endPc="268440050" name="loserPair" stackId="5" startPc="268439624"/>
+</localVars>
+<deviceInfo deviceVersion="8fc30743a4191ec19bcafa28e3ffcc2b5a958a17" partNumber="006-B3113-00"/>
+<annotations>
+<annotationEntry annotation="initialized" class="Drawables" module="globals/Rez" symbol="LauncherIcon"/>
+<annotationEntry annotation="initialized" class="Strings" module="globals/Rez" symbol="AppName"/>
+</annotations>
+<dataEntryOffsetMappings>
+<dataEntry label="globals" offset="63" parentId="" symbolId="globals" type="module"/>
+<dataEntry label="globals/ServerConfig" offset="158" parentId="globals" symbolId="ServerConfig" type="module"/>
+<dataEntry label="globals/HeatDelegate" offset="189" parentId="globals" symbolId="HeatDelegate" type="class"/>
+<dataEntry label="globals/CodeEntryDelegate" offset="292" parentId="globals" symbolId="CodeEntryDelegate" type="class"/>
+<dataEntry label="globals/Rez" offset="395" parentId="globals" symbolId="Rez" type="module"/>
+<dataEntry label="globals/GlidrApp" offset="442" parentId="globals" symbolId="GlidrApp" type="class"/>
+<dataEntry label="globals/CodeEntryView" offset="513" parentId="globals" symbolId="CodeEntryView" type="class"/>
+<dataEntry label="globals/HeatView" offset="608" parentId="globals" symbolId="HeatView" type="class"/>
+<dataEntry label="globals/Rez/Drawables" offset="759" parentId="Rez" symbolId="Drawables" type="module"/>
+<dataEntry label="globals/Rez/Strings" offset="798" parentId="Rez" symbolId="Strings" type="module"/>
+</dataEntryOffsetMappings>
+<functions>
+<functionEntry accessMode="public" name="&lt;init&gt;" parent="ServerConfig">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268435478" name="&lt;init&gt;" parent="HeatDelegate" startPc="268435460">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268435497" name="&lt;init&gt;" parent="CodeEntryDelegate" startPc="268435479">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268435521" name="&lt;init&gt;" parent="Rez" startPc="268435498">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268435540" name="&lt;init&gt;" parent="GlidrApp" startPc="268435522">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268435651" name="&lt;init&gt;" parent="CodeEntryView" startPc="268435541">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268435670" name="&lt;init&gt;" parent="HeatView" startPc="268435652">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268435758" name="onBack" parent="HeatDelegate" startPc="268435671">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268436014" name="submitResult" parent="HeatDelegate" startPc="268435759">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268436279" name="onPreviousPage" parent="HeatDelegate" startPc="268436015">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268436310" name="initialize" parent="HeatDelegate" startPc="268436280">
+<param id="v"/>
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268436649" name="onSubmitResponse" parent="HeatDelegate" startPc="268436311">
+<param id="responseCode"/>
+<param id="data"/>
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268436914" name="onNextPage" parent="HeatDelegate" startPc="268436650">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268436997" name="onSelect" parent="HeatDelegate" startPc="268436915">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268437072" name="onBack" parent="CodeEntryDelegate" startPc="268436998">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268437163" name="onPreviousPage" parent="CodeEntryDelegate" startPc="268437073">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268437315" name="connectToSession" parent="CodeEntryDelegate" startPc="268437164">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268437346" name="initialize" parent="CodeEntryDelegate" startPc="268437316">
+<param id="v"/>
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268437744" name="onConnectResponse" parent="CodeEntryDelegate" startPc="268437347">
+<param id="responseCode"/>
+<param id="data"/>
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268437835" name="onNextPage" parent="CodeEntryDelegate" startPc="268437745">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268437919" name="onSelect" parent="CodeEntryDelegate" startPc="268437836">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" name="&lt;init&gt;" parent="Drawables">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" name="&lt;init&gt;" parent="Strings">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268437922" name="onStart" parent="GlidrApp" startPc="268437920">
+<param id="state"/>
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268438003" name="getInitialView" parent="GlidrApp" startPc="268437923">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268438024" name="initialize" parent="GlidrApp" startPc="268438004">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268438027" name="onStop" parent="GlidrApp" startPc="268438025">
+<param id="state"/>
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268438048" name="initialize" parent="CodeEntryView" startPc="268438028">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268438679" name="onUpdate" parent="CodeEntryView" startPc="268438049">
+<param id="dc"/>
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268438749" name="getCode" parent="CodeEntryView" startPc="268438680">
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268438780" name="initialize" parent="HeatView" startPc="268438750">
+<param id="code"/>
+<documentation/>
+</functionEntry>
+<functionEntry accessMode="public" endPc="268440054" name="onUpdate" parent="HeatView" startPc="268438781">
+<param id="dc"/>
+<documentation/>
+</functionEntry>
+</functions>
+</debugInfo>

@@ -1,0 +1,70 @@
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc"; @line = 1; @symbol_usingdef<0> = [Toybox,1,6,12]; @symbol_usingdef<1> = [Application,1,13,24]; ]
+using Toybox.Application;
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc"; @line = 2; @symbol_usingdef<0> = [Toybox,2,6,12]; @symbol_usingdef<1> = [WatchUi,2,13,20]; ]
+using Toybox.WatchUi;
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc"; @line = 4; @symbol_classdef = [GlidrApp,4,6,14]; @symbol_extends<0> = [Application,4,23,34]; @symbol_extends<1> = [AppBase,4,35,42]; ]
+class GlidrApp extends Application.AppBase {
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc"; @line = 4; ]
+    <init> {
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc"; @line = 4; ]
+    static
+    <init> {
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc"; @line = 5; @symbol_functiondef = [initialize,5,13,23]; ]
+    function initialize() as Void {
+_Users_simenfinjord_glidr5_garmin_app_source_GlidrApp_mc_5_26_7_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc" 6 8 ]
+        symbol [ AppBase %tmp.2 6 8 15 ];
+        %tmp.2 = getv ? :AppBase;
+        symbol [ initialize %tmp.3 6 16 26 ];
+        %tmp.3 = getv function %tmp.2 :initialize;
+        invoke %tmp.2 %tmp.3();
+_Users_simenfinjord_glidr5_garmin_app_source_GlidrApp_mc_5_26_7_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc"; @line = 9; @symbol_functiondef = [onStart,9,13,20]; @symbol_param<0> = [state,9,21,26]; ]
+    function onStart(state) {
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc"; @line = 12; @symbol_functiondef = [onStop,12,13,19]; @symbol_param<0> = [state,12,20,25]; ]
+    function onStop(state) {
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc"; @line = 15; @symbol_functiondef = [getInitialView,15,13,27]; ]
+    function getInitialView() {
+_Users_simenfinjord_glidr5_garmin_app_source_GlidrApp_mc_15_30_19_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc" 16 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_GlidrApp_mc_15_30_19_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_GlidrApp_mc_15_30_19_4_stop" ]
+        %view.1 = local;
+        symbol [ view %view.1 16 12 16 ];
+        symbol [ CodeEntryView %tmp.4 16 23 36 ];
+        %tmp.4 = getv ? :CodeEntryView;
+        %tmp.1 = newc %tmp.4 ();
+        lputv %view.1 %tmp.1;
+        symbol [ view %view.1 16 12 16 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc" 17 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_GlidrApp_mc_15_30_19_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_GlidrApp_mc_15_30_19_4_stop" ]
+        %delegate.2 = local;
+        symbol [ delegate %delegate.2 17 12 20 ];
+        symbol [ CodeEntryDelegate %tmp.8 17 27 44 ];
+        %tmp.8 = getv ? :CodeEntryDelegate;
+        %tmp.9 = lgetv %view.1;
+        symbol [ view %tmp.9 17 45 49 ];
+        %tmp.5 = newc %tmp.8 (%tmp.9);
+        lputv %delegate.2 %tmp.5;
+        symbol [ delegate %delegate.2 17 12 20 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc" 18 8 ]
+        %tmp.10 = newa 2;
+        %tmp.11 = lgetv %view.1;
+        symbol [ view %tmp.11 18 16 20 ];
+        %tmp.12 = dup %tmp.10;
+        %tmp.13 = aputv %tmp.12 0 %tmp.11;
+        %tmp.14 = lgetv %delegate.2;
+        symbol [ delegate %tmp.14 18 22 30 ];
+        %tmp.15 = dup %tmp.13;
+        %tmp.16 = aputv %tmp.15 1 %tmp.14;
+        ret %tmp.16;
+_Users_simenfinjord_glidr5_garmin_app_source_GlidrApp_mc_15_30_19_4_stop:
+    }
+}
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/GlidrApp.mc"; @line = 1; ]
+<init> {
+}

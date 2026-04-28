@@ -400,6 +400,19 @@ export const insertUserTeamSchema = createInsertSchema(userTeams).omit({ id: tru
 export type InsertUserTeam = z.infer<typeof insertUserTeamSchema>;
 export type UserTeam = typeof userTeams.$inferSelect;
 
+// --- Watch sessions (persisted so Render restarts don't lose them) ---
+export const watchSessions = pgTable("watch_sessions", {
+  code: varchar("code", { length: 6 }).primaryKey(),
+  skiPairs: text("ski_pairs").notNull(), // JSON array
+  bracket: text("bracket").notNull(),    // JSON array
+  testId: integer("test_id"),
+  userId: integer("user_id").notNull(),
+  userName: text("user_name").notNull(),
+  teamId: integer("team_id"),
+  createdAt: text("created_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
+});
+
 export const runsheetProgress = pgTable("runsheet_progress", {
   id: serial("id").primaryKey(),
   testId: integer("test_id").notNull(),

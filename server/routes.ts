@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
 import { parsePermissions, hashPassword } from "./auth";
-import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, tests, testEntries, users, testSkiSeries, products, dailyWeather } from "@shared/schema";
+import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, watchSessions, tests, testEntries, users, testSkiSeries, products, dailyWeather } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql, inArray } from "drizzle-orm";
 async function enforceTeamAreas(perms: Record<string, string>, teamId: number | undefined): Promise<Record<string, string>> {
@@ -2417,14 +2417,57 @@ export async function registerRoutes(
     teamId: number;
   };
 
-  const runsheetSessions = new Map<string, WatchSession>();
-
-  function generateSessionCode(): string {
+  async function generateSessionCode(): Promise<string> {
     let code: string;
     do {
       code = String(Math.floor(100000 + Math.random() * 900000));
-    } while (runsheetSessions.has(code));
+      const existing = await db.select().from(watchSessions).where(eq(watchSessions.code, code));
+      if (existing.length === 0) break;
+    } while (true);
     return code;
+  }
+
+  async function getWatchSession(code: string): Promise<WatchSession | null> {
+    const rows = await db.select().from(watchSessions).where(eq(watchSessions.code, code));
+    if (rows.length === 0) return null;
+    const row = rows[0];
+    if (new Date(row.expiresAt) < new Date()) {
+      await db.delete(watchSessions).where(eq(watchSessions.code, code));
+      return null;
+    }
+    return {
+      code: row.code,
+      skiPairs: JSON.parse(row.skiPairs),
+      bracket: JSON.parse(row.bracket),
+      createdAt: new Date(row.createdAt).getTime(),
+      userId: row.userId,
+      userName: row.userName,
+      testId: row.testId ?? null,
+      testInfo: null,
+      teamId: row.teamId ?? 0,
+    };
+  }
+
+  async function saveWatchSession(session: WatchSession): Promise<void> {
+    await db.insert(watchSessions).values({
+      code: session.code,
+      skiPairs: JSON.stringify(session.skiPairs),
+      bracket: JSON.stringify(session.bracket),
+      testId: session.testId ?? null,
+      userId: session.userId,
+      userName: session.userName,
+      teamId: session.teamId ?? null,
+      createdAt: new Date(session.createdAt).toISOString(),
+      expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+    }).onConflictDoUpdate({ target: watchSessions.code, set: { bracket: JSON.stringify(session.bracket) } });
+  }
+
+  async function updateWatchBracket(code: string, bracket: WatchHeat[][]): Promise<void> {
+    await db.update(watchSessions).set({ bracket: JSON.stringify(bracket) }).where(eq(watchSessions.code, code));
+  }
+
+  async function deleteWatchSession(code: string): Promise<void> {
+    await db.delete(watchSessions).where(eq(watchSessions.code, code));
   }
 
   function watchInitBracket(pairs: number[]): WatchHeat[][] {
@@ -2528,7 +2571,7 @@ export async function registerRoutes(
     if (!Array.isArray(skiPairs) || skiPairs.length < 2) {
       return res.status(400).json({ message: "Need at least 2 ski pairs" });
     }
-    const code = generateSessionCode();
+    const code = await generateSessionCode();
     const teamId = getActiveTeamId(req);
     const session: WatchSession = {
       code,
@@ -2541,19 +2584,12 @@ export async function registerRoutes(
       testInfo: null,
       teamId,
     };
-    runsheetSessions.set(code, session);
-    if (session.testId) {
-      storage.getTest(session.testId).then((test: any) => {
-        if (test) {
-          session.testInfo = { date: test.date || "", location: test.location || "", testType: test.testType || "" };
-        }
-      }).catch(() => {});
-    }
+    await saveWatchSession(session);
     res.json({ code, bracket: session.bracket });
   });
 
-  app.get("/api/runsheet/sessions/:code", requireAuth, (req, res) => {
-    const session = runsheetSessions.get(req.params.code as string);
+  app.get("/api/runsheet/sessions/:code", requireAuth, async (req, res) => {
+    const session = await getWatchSession(req.params.code as string);
     if (!session) return res.status(404).json({ message: "Session not found" });
     const u = userInfo(req);
     if (session.userId !== u.id && !u.isScopeAdmin) return res.status(403).json({ message: "Forbidden" });
@@ -2567,23 +2603,9 @@ export async function registerRoutes(
     res.json({ bracket: session.bracket, currentHeat, results, skiPairs: session.skiPairs, complete: !currentHeat && results.length === session.skiPairs.length });
   });
 
-  const watchRateLimits = new Map<string, { count: number; resetAt: number }>();
-
-  function checkWatchRateLimit(code: string): boolean {
-    const now = Date.now();
-    let entry = watchRateLimits.get(code);
-    if (!entry || entry.resetAt < now) {
-      entry = { count: 0, resetAt: now + 60 * 1000 };
-      watchRateLimits.set(code, entry);
-    }
-    entry.count++;
-    return entry.count <= 60;
-  }
-
-  app.get("/api/runsheet/watch/:code", (req, res) => {
+  app.get("/api/runsheet/watch/:code", async (req, res) => {
     const code = req.params.code as string;
-    if (!checkWatchRateLimit(code)) return res.status(429).json({ message: "Too many requests" });
-    const session = runsheetSessions.get(code);
+    const session = await getWatchSession(code);
     if (!session) return res.status(404).json({ message: "Invalid code" });
     const currentHeat = watchFindCurrentHeat(session.bracket);
     const diffs = watchCalcDiffs(session.bracket);
@@ -2596,10 +2618,9 @@ export async function registerRoutes(
     res.json({ currentHeat, complete, champion, totalPairs: session.skiPairs.length });
   });
 
-  app.post("/api/runsheet/watch/:code/result", (req, res) => {
+  app.post("/api/runsheet/watch/:code/result", async (req, res) => {
     const code = req.params.code as string;
-    if (!checkWatchRateLimit(code)) return res.status(429).json({ message: "Too many requests" });
-    const session = runsheetSessions.get(code);
+    const session = await getWatchSession(code);
     if (!session) return res.status(404).json({ message: "Invalid code" });
     const { roundIndex, heatIndex, winnerPair, loserDistance } = req.body;
     if (typeof roundIndex !== "number" || typeof heatIndex !== "number" || typeof winnerPair !== "number" || typeof loserDistance !== "number") {
@@ -2625,25 +2646,25 @@ export async function registerRoutes(
       heat.distA = String(loserDistance);
     }
     watchRebuildDownstream(session.bracket, roundIndex + 1);
+    await updateWatchBracket(code, session.bracket);
     const nextHeat = watchFindCurrentHeat(session.bracket);
     res.json({ ok: true, nextHeat });
   });
 
-  app.delete("/api/runsheet/sessions/:code", requireAuth, (req, res) => {
-    const session = runsheetSessions.get(req.params.code as string);
+  app.delete("/api/runsheet/sessions/:code", requireAuth, async (req, res) => {
+    const session = await getWatchSession(req.params.code as string);
     if (session) {
       const u = userInfo(req);
       if (session.userId !== u.id && !u.isScopeAdmin) return res.status(403).json({ message: "Forbidden" });
     }
-    runsheetSessions.delete(req.params.code as string);
+    await deleteWatchSession(req.params.code as string);
     res.json({ ok: true });
   });
 
-  setInterval(() => {
-    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-    for (const [code, session] of runsheetSessions) {
-      if (session.createdAt < cutoff) runsheetSessions.delete(code);
-    }
+  setInterval(async () => {
+    try {
+      await db.delete(watchSessions).where(sql`expires_at < NOW()`);
+    } catch (_) {}
   }, 60 * 60 * 1000);
 
   // --- DB-based Suggestions ---

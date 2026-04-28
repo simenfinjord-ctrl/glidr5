@@ -1,0 +1,799 @@
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 1; @symbol_usingdef<0> = [Toybox,1,6,12]; @symbol_usingdef<1> = [WatchUi,1,13,20]; ]
+using Toybox.WatchUi;
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 2; @symbol_usingdef<0> = [Toybox,2,6,12]; @symbol_usingdef<1> = [Graphics,2,13,21]; ]
+using Toybox.Graphics;
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 4; @symbol_classdef = [HeatView,4,6,14]; @symbol_extends<0> = [WatchUi,4,23,30]; @symbol_extends<1> = [View,4,31,35]; ]
+class HeatView extends WatchUi.View {
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 4; ]
+    <init> {
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 4; ]
+    static
+    <init> {
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 5; @position = 8; @symbol_vardef = [sessionCode,5,8,19]; ]
+    var sessionCode;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 6; @position = 8; @symbol_vardef = [roundName,6,8,17]; ]
+    var roundName = "";
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 7; @position = 8; @symbol_vardef = [pairA,7,8,13]; ]
+    var pairA = 0;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 8; @position = 8; @symbol_vardef = [pairB,8,8,13]; ]
+    var pairB = 0;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 9; @position = 8; @symbol_vardef = [roundIndex,9,8,18]; ]
+    var roundIndex = 0;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 10; @position = 8; @symbol_vardef = [heatIndex,10,8,17]; ]
+    var heatIndex = 0;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 11; @position = 8; @symbol_vardef = [statusText,11,8,18]; ]
+    var statusText = "Loading...";
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 12; @position = 8; @symbol_vardef = [allDone,12,8,15]; ]
+    var allDone = false;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 14; @position = 8; @symbol_vardef = [selectedWinner,14,8,22]; ]
+    var selectedWinner = 0;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 15; @position = 8; @symbol_vardef = [phase,15,8,13]; ]
+    var phase = 0;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 17; @position = 8; @symbol_vardef = [distance,17,8,16]; ]
+    var distance = 0;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 18; @position = 8; @symbol_vardef = [isSending,18,8,17]; ]
+    var isSending = false;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 20; @symbol_functiondef = [initialize,20,13,23]; @symbol_param<0> = [code,20,24,28]; ]
+    function initialize(code) as Void {
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_20_30_23_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 21 8 ]
+        symbol [ View %tmp.2 21 8 12 ];
+        %tmp.2 = getv ? :View;
+        symbol [ initialize %tmp.3 21 13 23 ];
+        %tmp.3 = getv function %tmp.2 :initialize;
+        invoke %tmp.2 %tmp.3();
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 22 8 ]
+        %tmp.4 = lgetv %code;
+        symbol [ code %tmp.4 22 22 26 ];
+        symbol [ sessionCode ? 22 8 19 ];
+        putv self :sessionCode %tmp.4;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_20_30_23_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 25; @symbol_functiondef = [onUpdate,25,13,21]; @symbol_param<0> = [dc,25,22,24]; ]
+    function onUpdate(dc) {
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_25_26_88_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 26 8 ]
+        %tmp.1 = lgetv %dc;
+        symbol [ dc %tmp.1 26 8 10 ];
+        symbol [ setColor %tmp.2 26 11 19 ];
+        %tmp.2 = getv function %tmp.1 :setColor;
+        symbol [ Graphics %tmp.3 26 20 28 ];
+        %tmp.3 = getm $.Toybox.Graphics;
+        symbol [ COLOR_BLACK %tmp.4 26 29 40 ];
+        %tmp.4 = getv %tmp.3 :COLOR_BLACK;
+        symbol [ Graphics %tmp.5 26 42 50 ];
+        %tmp.5 = getm $.Toybox.Graphics;
+        symbol [ COLOR_BLACK %tmp.6 26 51 62 ];
+        %tmp.6 = getv %tmp.5 :COLOR_BLACK;
+        invoke %tmp.1 %tmp.2(%tmp.4, %tmp.6);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 27 8 ]
+        %tmp.7 = lgetv %dc;
+        symbol [ dc %tmp.7 27 8 10 ];
+        symbol [ clear %tmp.8 27 11 16 ];
+        %tmp.8 = getv function %tmp.7 :clear;
+        invoke %tmp.7 %tmp.8();
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 29 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_25_26_88_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_25_26_88_4_stop" ]
+        %w.1 = local;
+        symbol [ w %w.1 29 12 13 ];
+        %tmp.9 = lgetv %dc;
+        symbol [ dc %tmp.9 29 16 18 ];
+        symbol [ getWidth %tmp.10 29 19 27 ];
+        %tmp.10 = getv function %tmp.9 :getWidth;
+        %tmp.11 = invoke %tmp.9 %tmp.10();
+        lputv %w.1 %tmp.11;
+        symbol [ w %w.1 29 12 13 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 30 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_25_26_88_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_25_26_88_4_stop" ]
+        %h.2 = local;
+        symbol [ h %h.2 30 12 13 ];
+        %tmp.12 = lgetv %dc;
+        symbol [ dc %tmp.12 30 16 18 ];
+        symbol [ getHeight %tmp.13 30 19 28 ];
+        %tmp.13 = getv function %tmp.12 :getHeight;
+        %tmp.14 = invoke %tmp.12 %tmp.13();
+        lputv %h.2 %tmp.14;
+        symbol [ h %h.2 30 12 13 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 31 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_25_26_88_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_25_26_88_4_stop" ]
+        %cx.3 = local;
+        symbol [ cx %cx.3 31 12 14 ];
+        %tmp.15 = lgetv %w.1;
+        symbol [ w %tmp.15 31 17 18 ];
+        %tmp.16 = 2;
+        %tmp.17 = div %tmp.15 %tmp.16;
+        lputv %cx.3 %tmp.17;
+        symbol [ cx %cx.3 31 12 14 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 33 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_33_8_41_8_if_stmt:
+        symbol [ allDone %tmp.19 33 12 19 ];
+        %tmp.19 = getv ? :allDone;
+        bf %tmp.19 @_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_33_8_41_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_33_8_41_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_33_21_41_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 34 12 ]
+        %tmp.20 = lgetv %dc;
+        symbol [ dc %tmp.20 34 12 14 ];
+        symbol [ setColor %tmp.21 34 15 23 ];
+        %tmp.21 = getv function %tmp.20 :setColor;
+        symbol [ Graphics %tmp.22 34 24 32 ];
+        %tmp.22 = getm $.Toybox.Graphics;
+        symbol [ COLOR_GREEN %tmp.23 34 33 44 ];
+        %tmp.23 = getv %tmp.22 :COLOR_GREEN;
+        symbol [ Graphics %tmp.24 34 46 54 ];
+        %tmp.24 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.25 34 55 72 ];
+        %tmp.25 = getv %tmp.24 :COLOR_TRANSPARENT;
+        invoke %tmp.20 %tmp.21(%tmp.23, %tmp.25);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 35 12 ]
+        %tmp.26 = lgetv %dc;
+        symbol [ dc %tmp.26 35 12 14 ];
+        symbol [ drawText %tmp.27 35 15 23 ];
+        %tmp.27 = getv function %tmp.26 :drawText;
+        %tmp.28 = lgetv %cx.3;
+        symbol [ cx %tmp.28 35 24 26 ];
+        %tmp.29 = lgetv %h.2;
+        symbol [ h %tmp.29 35 28 29 ];
+        %tmp.30 = 0.35;
+        %tmp.31 = mul %tmp.29 %tmp.30;
+        symbol [ Graphics %tmp.32 35 38 46 ];
+        %tmp.32 = getm $.Toybox.Graphics;
+        symbol [ FONT_MEDIUM %tmp.33 35 47 58 ];
+        %tmp.33 = getv %tmp.32 :FONT_MEDIUM;
+        %tmp.34 = "DONE!";
+        symbol [ Graphics %tmp.35 35 69 77 ];
+        %tmp.35 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.36 35 78 97 ];
+        %tmp.36 = getv %tmp.35 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.26 %tmp.27(%tmp.28, %tmp.31, %tmp.33, %tmp.34, %tmp.36);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 36 12 ]
+        %tmp.37 = lgetv %dc;
+        symbol [ dc %tmp.37 36 12 14 ];
+        symbol [ setColor %tmp.38 36 15 23 ];
+        %tmp.38 = getv function %tmp.37 :setColor;
+        symbol [ Graphics %tmp.39 36 24 32 ];
+        %tmp.39 = getm $.Toybox.Graphics;
+        symbol [ COLOR_WHITE %tmp.40 36 33 44 ];
+        %tmp.40 = getv %tmp.39 :COLOR_WHITE;
+        symbol [ Graphics %tmp.41 36 46 54 ];
+        %tmp.41 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.42 36 55 72 ];
+        %tmp.42 = getv %tmp.41 :COLOR_TRANSPARENT;
+        invoke %tmp.37 %tmp.38(%tmp.40, %tmp.42);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 37 12 ]
+        %tmp.43 = lgetv %dc;
+        symbol [ dc %tmp.43 37 12 14 ];
+        symbol [ drawText %tmp.44 37 15 23 ];
+        %tmp.44 = getv function %tmp.43 :drawText;
+        %tmp.45 = lgetv %cx.3;
+        symbol [ cx %tmp.45 37 24 26 ];
+        %tmp.46 = lgetv %h.2;
+        symbol [ h %tmp.46 37 28 29 ];
+        %tmp.47 = 0.55;
+        %tmp.48 = mul %tmp.46 %tmp.47;
+        symbol [ Graphics %tmp.49 37 38 46 ];
+        %tmp.49 = getm $.Toybox.Graphics;
+        symbol [ FONT_SMALL %tmp.50 37 47 57 ];
+        %tmp.50 = getv %tmp.49 :FONT_SMALL;
+        %tmp.51 = "All heats complete";
+        symbol [ Graphics %tmp.52 37 81 89 ];
+        %tmp.52 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.53 37 90 109 ];
+        %tmp.53 = getv %tmp.52 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.43 %tmp.44(%tmp.45, %tmp.48, %tmp.50, %tmp.51, %tmp.53);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 38 12 ]
+        %tmp.54 = lgetv %dc;
+        symbol [ dc %tmp.54 38 12 14 ];
+        symbol [ setColor %tmp.55 38 15 23 ];
+        %tmp.55 = getv function %tmp.54 :setColor;
+        symbol [ Graphics %tmp.56 38 24 32 ];
+        %tmp.56 = getm $.Toybox.Graphics;
+        symbol [ COLOR_LT_GRAY %tmp.57 38 33 46 ];
+        %tmp.57 = getv %tmp.56 :COLOR_LT_GRAY;
+        symbol [ Graphics %tmp.58 38 48 56 ];
+        %tmp.58 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.59 38 57 74 ];
+        %tmp.59 = getv %tmp.58 :COLOR_TRANSPARENT;
+        invoke %tmp.54 %tmp.55(%tmp.57, %tmp.59);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 39 12 ]
+        %tmp.60 = lgetv %dc;
+        symbol [ dc %tmp.60 39 12 14 ];
+        symbol [ drawText %tmp.61 39 15 23 ];
+        %tmp.61 = getv function %tmp.60 :drawText;
+        %tmp.62 = lgetv %cx.3;
+        symbol [ cx %tmp.62 39 24 26 ];
+        %tmp.63 = lgetv %h.2;
+        symbol [ h %tmp.63 39 28 29 ];
+        %tmp.64 = 0.70;
+        %tmp.65 = mul %tmp.63 %tmp.64;
+        symbol [ Graphics %tmp.66 39 38 46 ];
+        %tmp.66 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.67 39 47 57 ];
+        %tmp.67 = getv %tmp.66 :FONT_XTINY;
+        %tmp.68 = "BACK to exit";
+        symbol [ Graphics %tmp.69 39 75 83 ];
+        %tmp.69 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.70 39 84 103 ];
+        %tmp.70 = getv %tmp.69 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.60 %tmp.61(%tmp.62, %tmp.65, %tmp.67, %tmp.68, %tmp.70);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 40 12 ]
+        ret ?;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_33_21_41_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_33_8_41_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_33_8_41_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 43 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_43_8_47_8_if_stmt:
+        symbol [ isSending %tmp.72 43 12 21 ];
+        %tmp.72 = getv ? :isSending;
+        bf %tmp.72 @_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_43_8_47_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_43_8_47_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_43_23_47_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 44 12 ]
+        %tmp.73 = lgetv %dc;
+        symbol [ dc %tmp.73 44 12 14 ];
+        symbol [ setColor %tmp.74 44 15 23 ];
+        %tmp.74 = getv function %tmp.73 :setColor;
+        symbol [ Graphics %tmp.75 44 24 32 ];
+        %tmp.75 = getm $.Toybox.Graphics;
+        symbol [ COLOR_ORANGE %tmp.76 44 33 45 ];
+        %tmp.76 = getv %tmp.75 :COLOR_ORANGE;
+        symbol [ Graphics %tmp.77 44 47 55 ];
+        %tmp.77 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.78 44 56 73 ];
+        %tmp.78 = getv %tmp.77 :COLOR_TRANSPARENT;
+        invoke %tmp.73 %tmp.74(%tmp.76, %tmp.78);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 45 12 ]
+        %tmp.79 = lgetv %dc;
+        symbol [ dc %tmp.79 45 12 14 ];
+        symbol [ drawText %tmp.80 45 15 23 ];
+        %tmp.80 = getv function %tmp.79 :drawText;
+        %tmp.81 = lgetv %cx.3;
+        symbol [ cx %tmp.81 45 24 26 ];
+        %tmp.82 = lgetv %h.2;
+        symbol [ h %tmp.82 45 28 29 ];
+        %tmp.83 = 0.45;
+        %tmp.84 = mul %tmp.82 %tmp.83;
+        symbol [ Graphics %tmp.85 45 38 46 ];
+        %tmp.85 = getm $.Toybox.Graphics;
+        symbol [ FONT_SMALL %tmp.86 45 47 57 ];
+        %tmp.86 = getv %tmp.85 :FONT_SMALL;
+        %tmp.87 = "Sending...";
+        symbol [ Graphics %tmp.88 45 73 81 ];
+        %tmp.88 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.89 45 82 101 ];
+        %tmp.89 = getv %tmp.88 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.79 %tmp.80(%tmp.81, %tmp.84, %tmp.86, %tmp.87, %tmp.89);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 46 12 ]
+        ret ?;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_43_23_47_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_43_8_47_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_43_8_47_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 49 8 ]
+        %tmp.90 = lgetv %dc;
+        symbol [ dc %tmp.90 49 8 10 ];
+        symbol [ setColor %tmp.91 49 11 19 ];
+        %tmp.91 = getv function %tmp.90 :setColor;
+        symbol [ Graphics %tmp.92 49 20 28 ];
+        %tmp.92 = getm $.Toybox.Graphics;
+        symbol [ COLOR_LT_GRAY %tmp.93 49 29 42 ];
+        %tmp.93 = getv %tmp.92 :COLOR_LT_GRAY;
+        symbol [ Graphics %tmp.94 49 44 52 ];
+        %tmp.94 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.95 49 53 70 ];
+        %tmp.95 = getv %tmp.94 :COLOR_TRANSPARENT;
+        invoke %tmp.90 %tmp.91(%tmp.93, %tmp.95);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 50 8 ]
+        %tmp.96 = lgetv %dc;
+        symbol [ dc %tmp.96 50 8 10 ];
+        symbol [ drawText %tmp.97 50 11 19 ];
+        %tmp.97 = getv function %tmp.96 :drawText;
+        %tmp.98 = lgetv %cx.3;
+        symbol [ cx %tmp.98 50 20 22 ];
+        %tmp.99 = lgetv %h.2;
+        symbol [ h %tmp.99 50 24 25 ];
+        %tmp.100 = 0.08;
+        %tmp.101 = mul %tmp.99 %tmp.100;
+        symbol [ Graphics %tmp.102 50 34 42 ];
+        %tmp.102 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.103 50 43 53 ];
+        %tmp.103 = getv %tmp.102 :FONT_XTINY;
+        symbol [ roundName %tmp.105 50 55 64 ];
+        %tmp.105 = getv ? :roundName;
+        symbol [ Graphics %tmp.106 50 66 74 ];
+        %tmp.106 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.107 50 75 94 ];
+        %tmp.107 = getv %tmp.106 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.96 %tmp.97(%tmp.98, %tmp.101, %tmp.103, %tmp.105, %tmp.107);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 52 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_52_8_87_8_if_stmt:
+        symbol [ phase %tmp.109 52 12 17 ];
+        %tmp.109 = getv ? :phase;
+        %tmp.110 = 0;
+        %tmp.111 = eq %tmp.109 %tmp.110;
+        bf %tmp.111 @_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_52_8_87_8_if_false;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_52_8_87_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_52_24_69_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 53 12 ]
+        %tmp.112 = lgetv %dc;
+        symbol [ dc %tmp.112 53 12 14 ];
+        symbol [ setColor %tmp.113 53 15 23 ];
+        %tmp.113 = getv function %tmp.112 :setColor;
+        symbol [ Graphics %tmp.114 53 24 32 ];
+        %tmp.114 = getm $.Toybox.Graphics;
+        symbol [ COLOR_WHITE %tmp.115 53 33 44 ];
+        %tmp.115 = getv %tmp.114 :COLOR_WHITE;
+        symbol [ Graphics %tmp.116 53 46 54 ];
+        %tmp.116 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.117 53 55 72 ];
+        %tmp.117 = getv %tmp.116 :COLOR_TRANSPARENT;
+        invoke %tmp.112 %tmp.113(%tmp.115, %tmp.117);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 54 12 ]
+        %tmp.118 = lgetv %dc;
+        symbol [ dc %tmp.118 54 12 14 ];
+        symbol [ drawText %tmp.119 54 15 23 ];
+        %tmp.119 = getv function %tmp.118 :drawText;
+        %tmp.120 = lgetv %cx.3;
+        symbol [ cx %tmp.120 54 24 26 ];
+        %tmp.121 = lgetv %h.2;
+        symbol [ h %tmp.121 54 28 29 ];
+        %tmp.122 = 0.20;
+        %tmp.123 = mul %tmp.121 %tmp.122;
+        symbol [ Graphics %tmp.124 54 38 46 ];
+        %tmp.124 = getm $.Toybox.Graphics;
+        symbol [ FONT_SMALL %tmp.125 54 47 57 ];
+        %tmp.125 = getv %tmp.124 :FONT_SMALL;
+        %tmp.126 = "Select winner";
+        symbol [ Graphics %tmp.127 54 76 84 ];
+        %tmp.127 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.128 54 85 104 ];
+        %tmp.128 = getv %tmp.127 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.118 %tmp.119(%tmp.120, %tmp.123, %tmp.125, %tmp.126, %tmp.128);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 56 12 ]
+        %tmp.129 = lgetv %dc;
+        symbol [ dc %tmp.129 56 12 14 ];
+        symbol [ setColor %tmp.130 56 15 23 ];
+        %tmp.130 = getv function %tmp.129 :setColor;
+        symbol [ Graphics %tmp.131 56 24 32 ];
+        %tmp.131 = getm $.Toybox.Graphics;
+        symbol [ COLOR_ORANGE %tmp.132 56 33 45 ];
+        %tmp.132 = getv %tmp.131 :COLOR_ORANGE;
+        symbol [ Graphics %tmp.133 56 47 55 ];
+        %tmp.133 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.134 56 56 73 ];
+        %tmp.134 = getv %tmp.133 :COLOR_TRANSPARENT;
+        invoke %tmp.129 %tmp.130(%tmp.132, %tmp.134);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 57 12 ]
+        %tmp.135 = lgetv %dc;
+        symbol [ dc %tmp.135 57 12 14 ];
+        symbol [ drawText %tmp.136 57 15 23 ];
+        %tmp.136 = getv function %tmp.135 :drawText;
+        %tmp.137 = lgetv %cx.3;
+        symbol [ cx %tmp.137 57 24 26 ];
+        %tmp.138 = lgetv %h.2;
+        symbol [ h %tmp.138 57 28 29 ];
+        %tmp.139 = 0.38;
+        %tmp.140 = mul %tmp.138 %tmp.139;
+        symbol [ Graphics %tmp.141 57 38 46 ];
+        %tmp.141 = getm $.Toybox.Graphics;
+        symbol [ FONT_MEDIUM %tmp.142 57 47 58 ];
+        %tmp.142 = getv %tmp.141 :FONT_MEDIUM;
+        %tmp.143 = "Par ";
+        symbol [ pairA %tmp.145 57 69 74 ];
+        %tmp.145 = getv ? :pairA;
+        symbol [ toString %tmp.146 57 75 83 ];
+        %tmp.146 = getv function %tmp.145 :toString;
+        %tmp.147 = invoke %tmp.145 %tmp.146();
+        %tmp.148 = add %tmp.143 %tmp.147;
+        symbol [ Graphics %tmp.149 57 87 95 ];
+        %tmp.149 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.150 57 96 115 ];
+        %tmp.150 = getv %tmp.149 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.135 %tmp.136(%tmp.137, %tmp.140, %tmp.142, %tmp.148, %tmp.150);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 59 12 ]
+        %tmp.151 = lgetv %dc;
+        symbol [ dc %tmp.151 59 12 14 ];
+        symbol [ setColor %tmp.152 59 15 23 ];
+        %tmp.152 = getv function %tmp.151 :setColor;
+        symbol [ Graphics %tmp.153 59 24 32 ];
+        %tmp.153 = getm $.Toybox.Graphics;
+        symbol [ COLOR_LT_GRAY %tmp.154 59 33 46 ];
+        %tmp.154 = getv %tmp.153 :COLOR_LT_GRAY;
+        symbol [ Graphics %tmp.155 59 48 56 ];
+        %tmp.155 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.156 59 57 74 ];
+        %tmp.156 = getv %tmp.155 :COLOR_TRANSPARENT;
+        invoke %tmp.151 %tmp.152(%tmp.154, %tmp.156);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 60 12 ]
+        %tmp.157 = lgetv %dc;
+        symbol [ dc %tmp.157 60 12 14 ];
+        symbol [ drawText %tmp.158 60 15 23 ];
+        %tmp.158 = getv function %tmp.157 :drawText;
+        %tmp.159 = lgetv %cx.3;
+        symbol [ cx %tmp.159 60 24 26 ];
+        %tmp.160 = lgetv %h.2;
+        symbol [ h %tmp.160 60 28 29 ];
+        %tmp.161 = 0.53;
+        %tmp.162 = mul %tmp.160 %tmp.161;
+        symbol [ Graphics %tmp.163 60 38 46 ];
+        %tmp.163 = getm $.Toybox.Graphics;
+        symbol [ FONT_SMALL %tmp.164 60 47 57 ];
+        %tmp.164 = getv %tmp.163 :FONT_SMALL;
+        %tmp.165 = "vs";
+        symbol [ Graphics %tmp.166 60 65 73 ];
+        %tmp.166 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.167 60 74 93 ];
+        %tmp.167 = getv %tmp.166 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.157 %tmp.158(%tmp.159, %tmp.162, %tmp.164, %tmp.165, %tmp.167);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 62 12 ]
+        %tmp.168 = lgetv %dc;
+        symbol [ dc %tmp.168 62 12 14 ];
+        symbol [ setColor %tmp.169 62 15 23 ];
+        %tmp.169 = getv function %tmp.168 :setColor;
+        symbol [ Graphics %tmp.170 62 24 32 ];
+        %tmp.170 = getm $.Toybox.Graphics;
+        symbol [ COLOR_ORANGE %tmp.171 62 33 45 ];
+        %tmp.171 = getv %tmp.170 :COLOR_ORANGE;
+        symbol [ Graphics %tmp.172 62 47 55 ];
+        %tmp.172 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.173 62 56 73 ];
+        %tmp.173 = getv %tmp.172 :COLOR_TRANSPARENT;
+        invoke %tmp.168 %tmp.169(%tmp.171, %tmp.173);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 63 12 ]
+        %tmp.174 = lgetv %dc;
+        symbol [ dc %tmp.174 63 12 14 ];
+        symbol [ drawText %tmp.175 63 15 23 ];
+        %tmp.175 = getv function %tmp.174 :drawText;
+        %tmp.176 = lgetv %cx.3;
+        symbol [ cx %tmp.176 63 24 26 ];
+        %tmp.177 = lgetv %h.2;
+        symbol [ h %tmp.177 63 28 29 ];
+        %tmp.178 = 0.65;
+        %tmp.179 = mul %tmp.177 %tmp.178;
+        symbol [ Graphics %tmp.180 63 38 46 ];
+        %tmp.180 = getm $.Toybox.Graphics;
+        symbol [ FONT_MEDIUM %tmp.181 63 47 58 ];
+        %tmp.181 = getv %tmp.180 :FONT_MEDIUM;
+        %tmp.182 = "Par ";
+        symbol [ pairB %tmp.184 63 69 74 ];
+        %tmp.184 = getv ? :pairB;
+        symbol [ toString %tmp.185 63 75 83 ];
+        %tmp.185 = getv function %tmp.184 :toString;
+        %tmp.186 = invoke %tmp.184 %tmp.185();
+        %tmp.187 = add %tmp.182 %tmp.186;
+        symbol [ Graphics %tmp.188 63 87 95 ];
+        %tmp.188 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.189 63 96 115 ];
+        %tmp.189 = getv %tmp.188 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.174 %tmp.175(%tmp.176, %tmp.179, %tmp.181, %tmp.187, %tmp.189);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 65 12 ]
+        %tmp.190 = lgetv %dc;
+        symbol [ dc %tmp.190 65 12 14 ];
+        symbol [ setColor %tmp.191 65 15 23 ];
+        %tmp.191 = getv function %tmp.190 :setColor;
+        symbol [ Graphics %tmp.192 65 24 32 ];
+        %tmp.192 = getm $.Toybox.Graphics;
+        symbol [ COLOR_DK_GRAY %tmp.193 65 33 46 ];
+        %tmp.193 = getv %tmp.192 :COLOR_DK_GRAY;
+        symbol [ Graphics %tmp.194 65 48 56 ];
+        %tmp.194 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.195 65 57 74 ];
+        %tmp.195 = getv %tmp.194 :COLOR_TRANSPARENT;
+        invoke %tmp.190 %tmp.191(%tmp.193, %tmp.195);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 66 12 ]
+        %tmp.196 = lgetv %dc;
+        symbol [ dc %tmp.196 66 12 14 ];
+        symbol [ drawText %tmp.197 66 15 23 ];
+        %tmp.197 = getv function %tmp.196 :drawText;
+        %tmp.198 = lgetv %cx.3;
+        symbol [ cx %tmp.198 66 24 26 ];
+        %tmp.199 = lgetv %h.2;
+        symbol [ h %tmp.199 66 28 29 ];
+        %tmp.200 = 0.82;
+        %tmp.201 = mul %tmp.199 %tmp.200;
+        symbol [ Graphics %tmp.202 66 38 46 ];
+        %tmp.202 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.203 66 47 57 ];
+        %tmp.203 = getv %tmp.202 :FONT_XTINY;
+        %tmp.204 = "UP = Par ";
+        symbol [ pairA %tmp.206 66 73 78 ];
+        %tmp.206 = getv ? :pairA;
+        symbol [ toString %tmp.207 66 79 87 ];
+        %tmp.207 = getv function %tmp.206 :toString;
+        %tmp.208 = invoke %tmp.206 %tmp.207();
+        %tmp.209 = add %tmp.204 %tmp.208;
+        symbol [ Graphics %tmp.210 66 91 99 ];
+        %tmp.210 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.211 66 100 119 ];
+        %tmp.211 = getv %tmp.210 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.196 %tmp.197(%tmp.198, %tmp.201, %tmp.203, %tmp.209, %tmp.211);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 67 12 ]
+        %tmp.212 = lgetv %dc;
+        symbol [ dc %tmp.212 67 12 14 ];
+        symbol [ drawText %tmp.213 67 15 23 ];
+        %tmp.213 = getv function %tmp.212 :drawText;
+        %tmp.214 = lgetv %cx.3;
+        symbol [ cx %tmp.214 67 24 26 ];
+        %tmp.215 = lgetv %h.2;
+        symbol [ h %tmp.215 67 28 29 ];
+        %tmp.216 = 0.90;
+        %tmp.217 = mul %tmp.215 %tmp.216;
+        symbol [ Graphics %tmp.218 67 38 46 ];
+        %tmp.218 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.219 67 47 57 ];
+        %tmp.219 = getv %tmp.218 :FONT_XTINY;
+        %tmp.220 = "DOWN = Par ";
+        symbol [ pairB %tmp.222 67 75 80 ];
+        %tmp.222 = getv ? :pairB;
+        symbol [ toString %tmp.223 67 81 89 ];
+        %tmp.223 = getv function %tmp.222 :toString;
+        %tmp.224 = invoke %tmp.222 %tmp.223();
+        %tmp.225 = add %tmp.220 %tmp.224;
+        symbol [ Graphics %tmp.226 67 93 101 ];
+        %tmp.226 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.227 67 102 121 ];
+        %tmp.227 = getv %tmp.226 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.212 %tmp.213(%tmp.214, %tmp.217, %tmp.219, %tmp.225, %tmp.227);
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_52_24_69_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_52_8_87_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_52_8_87_8_if_false:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 69 15 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_69_15_87_8_if_stmt:
+        symbol [ phase %tmp.229 69 19 24 ];
+        %tmp.229 = getv ? :phase;
+        %tmp.230 = 1;
+        %tmp.231 = eq %tmp.229 %tmp.230;
+        bf %tmp.231 @_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_69_15_87_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_69_15_87_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_69_31_87_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 70 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_69_31_87_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_69_31_87_8_stop" ]
+        %loserPair.4 = local;
+        symbol [ loserPair %loserPair.4 70 16 25 ];
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_70_28_70_64_begin:
+        symbol [ selectedWinner %tmp.233 70 29 43 ];
+        %tmp.233 = getv ? :selectedWinner;
+        symbol [ pairA %tmp.235 70 47 52 ];
+        %tmp.235 = getv ? :pairA;
+        %tmp.236 = eq %tmp.233 %tmp.235;
+        bf %tmp.236 @_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_70_28_70_64_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_70_28_70_64_true:
+        symbol [ pairB %tmp.238 70 56 61 ];
+        %tmp.238 = getv ? :pairB;
+        push %tmp.238;
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_70_28_70_64_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_70_28_70_64_else_false:
+        symbol [ pairA %tmp.240 70 64 69 ];
+        %tmp.240 = getv ? :pairA;
+        push %tmp.240;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_70_28_70_64_end:
+        %tmp.241 = phi [%tmp.236 @_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_70_28_70_64_begin] [%tmp.238 @_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_70_28_70_64_true] [%tmp.240 @_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_70_28_70_64_else_false] [%tmp.241 @_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_70_28_70_64_end];
+        lputv %loserPair.4 %tmp.241;
+        symbol [ loserPair %loserPair.4 70 16 25 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 72 12 ]
+        %tmp.242 = lgetv %dc;
+        symbol [ dc %tmp.242 72 12 14 ];
+        symbol [ setColor %tmp.243 72 15 23 ];
+        %tmp.243 = getv function %tmp.242 :setColor;
+        symbol [ Graphics %tmp.244 72 24 32 ];
+        %tmp.244 = getm $.Toybox.Graphics;
+        symbol [ COLOR_GREEN %tmp.245 72 33 44 ];
+        %tmp.245 = getv %tmp.244 :COLOR_GREEN;
+        symbol [ Graphics %tmp.246 72 46 54 ];
+        %tmp.246 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.247 72 55 72 ];
+        %tmp.247 = getv %tmp.246 :COLOR_TRANSPARENT;
+        invoke %tmp.242 %tmp.243(%tmp.245, %tmp.247);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 73 12 ]
+        %tmp.248 = lgetv %dc;
+        symbol [ dc %tmp.248 73 12 14 ];
+        symbol [ drawText %tmp.249 73 15 23 ];
+        %tmp.249 = getv function %tmp.248 :drawText;
+        %tmp.250 = lgetv %cx.3;
+        symbol [ cx %tmp.250 73 24 26 ];
+        %tmp.251 = lgetv %h.2;
+        symbol [ h %tmp.251 73 28 29 ];
+        %tmp.252 = 0.18;
+        %tmp.253 = mul %tmp.251 %tmp.252;
+        symbol [ Graphics %tmp.254 73 38 46 ];
+        %tmp.254 = getm $.Toybox.Graphics;
+        symbol [ FONT_SMALL %tmp.255 73 47 57 ];
+        %tmp.255 = getv %tmp.254 :FONT_SMALL;
+        %tmp.256 = "Par ";
+        symbol [ selectedWinner %tmp.258 73 68 82 ];
+        %tmp.258 = getv ? :selectedWinner;
+        symbol [ toString %tmp.259 73 83 91 ];
+        %tmp.259 = getv function %tmp.258 :toString;
+        %tmp.260 = invoke %tmp.258 %tmp.259();
+        %tmp.261 = add %tmp.256 %tmp.260;
+        %tmp.262 = " wins";
+        %tmp.263 = add %tmp.261 %tmp.262;
+        symbol [ Graphics %tmp.264 73 105 113 ];
+        %tmp.264 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.265 73 114 133 ];
+        %tmp.265 = getv %tmp.264 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.248 %tmp.249(%tmp.250, %tmp.253, %tmp.255, %tmp.263, %tmp.265);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 75 12 ]
+        %tmp.266 = lgetv %dc;
+        symbol [ dc %tmp.266 75 12 14 ];
+        symbol [ setColor %tmp.267 75 15 23 ];
+        %tmp.267 = getv function %tmp.266 :setColor;
+        symbol [ Graphics %tmp.268 75 24 32 ];
+        %tmp.268 = getm $.Toybox.Graphics;
+        symbol [ COLOR_WHITE %tmp.269 75 33 44 ];
+        %tmp.269 = getv %tmp.268 :COLOR_WHITE;
+        symbol [ Graphics %tmp.270 75 46 54 ];
+        %tmp.270 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.271 75 55 72 ];
+        %tmp.271 = getv %tmp.270 :COLOR_TRANSPARENT;
+        invoke %tmp.266 %tmp.267(%tmp.269, %tmp.271);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 76 12 ]
+        %tmp.272 = lgetv %dc;
+        symbol [ dc %tmp.272 76 12 14 ];
+        symbol [ drawText %tmp.273 76 15 23 ];
+        %tmp.273 = getv function %tmp.272 :drawText;
+        %tmp.274 = lgetv %cx.3;
+        symbol [ cx %tmp.274 76 24 26 ];
+        %tmp.275 = lgetv %h.2;
+        symbol [ h %tmp.275 76 28 29 ];
+        %tmp.276 = 0.33;
+        %tmp.277 = mul %tmp.275 %tmp.276;
+        symbol [ Graphics %tmp.278 76 38 46 ];
+        %tmp.278 = getm $.Toybox.Graphics;
+        symbol [ FONT_SMALL %tmp.279 76 47 57 ];
+        %tmp.279 = getv %tmp.278 :FONT_SMALL;
+        %tmp.280 = "Par ";
+        %tmp.281 = lgetv %loserPair.4;
+        symbol [ loserPair %tmp.281 76 68 77 ];
+        symbol [ toString %tmp.282 76 78 86 ];
+        %tmp.282 = getv function %tmp.281 :toString;
+        %tmp.283 = invoke %tmp.281 %tmp.282();
+        %tmp.284 = add %tmp.280 %tmp.283;
+        %tmp.285 = " behind:";
+        %tmp.286 = add %tmp.284 %tmp.285;
+        symbol [ Graphics %tmp.287 76 103 111 ];
+        %tmp.287 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.288 76 112 131 ];
+        %tmp.288 = getv %tmp.287 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.272 %tmp.273(%tmp.274, %tmp.277, %tmp.279, %tmp.286, %tmp.288);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 78 12 ]
+        %tmp.289 = lgetv %dc;
+        symbol [ dc %tmp.289 78 12 14 ];
+        symbol [ setColor %tmp.290 78 15 23 ];
+        %tmp.290 = getv function %tmp.289 :setColor;
+        symbol [ Graphics %tmp.291 78 24 32 ];
+        %tmp.291 = getm $.Toybox.Graphics;
+        symbol [ COLOR_ORANGE %tmp.292 78 33 45 ];
+        %tmp.292 = getv %tmp.291 :COLOR_ORANGE;
+        symbol [ Graphics %tmp.293 78 47 55 ];
+        %tmp.293 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.294 78 56 73 ];
+        %tmp.294 = getv %tmp.293 :COLOR_TRANSPARENT;
+        invoke %tmp.289 %tmp.290(%tmp.292, %tmp.294);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 79 12 ]
+        %tmp.295 = lgetv %dc;
+        symbol [ dc %tmp.295 79 12 14 ];
+        symbol [ drawText %tmp.296 79 15 23 ];
+        %tmp.296 = getv function %tmp.295 :drawText;
+        %tmp.297 = lgetv %cx.3;
+        symbol [ cx %tmp.297 79 24 26 ];
+        %tmp.298 = lgetv %h.2;
+        symbol [ h %tmp.298 79 28 29 ];
+        %tmp.299 = 0.50;
+        %tmp.300 = mul %tmp.298 %tmp.299;
+        symbol [ Graphics %tmp.301 79 38 46 ];
+        %tmp.301 = getm $.Toybox.Graphics;
+        symbol [ FONT_NUMBER_HOT %tmp.302 79 47 62 ];
+        %tmp.302 = getv %tmp.301 :FONT_NUMBER_HOT;
+        symbol [ distance %tmp.304 79 64 72 ];
+        %tmp.304 = getv ? :distance;
+        symbol [ toString %tmp.305 79 73 81 ];
+        %tmp.305 = getv function %tmp.304 :toString;
+        %tmp.306 = invoke %tmp.304 %tmp.305();
+        symbol [ Graphics %tmp.307 79 85 93 ];
+        %tmp.307 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.308 79 94 113 ];
+        %tmp.308 = getv %tmp.307 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.295 %tmp.296(%tmp.297, %tmp.300, %tmp.302, %tmp.306, %tmp.308);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 81 12 ]
+        %tmp.309 = lgetv %dc;
+        symbol [ dc %tmp.309 81 12 14 ];
+        symbol [ setColor %tmp.310 81 15 23 ];
+        %tmp.310 = getv function %tmp.309 :setColor;
+        symbol [ Graphics %tmp.311 81 24 32 ];
+        %tmp.311 = getm $.Toybox.Graphics;
+        symbol [ COLOR_LT_GRAY %tmp.312 81 33 46 ];
+        %tmp.312 = getv %tmp.311 :COLOR_LT_GRAY;
+        symbol [ Graphics %tmp.313 81 48 56 ];
+        %tmp.313 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.314 81 57 74 ];
+        %tmp.314 = getv %tmp.313 :COLOR_TRANSPARENT;
+        invoke %tmp.309 %tmp.310(%tmp.312, %tmp.314);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 82 12 ]
+        %tmp.315 = lgetv %dc;
+        symbol [ dc %tmp.315 82 12 14 ];
+        symbol [ drawText %tmp.316 82 15 23 ];
+        %tmp.316 = getv function %tmp.315 :drawText;
+        %tmp.317 = lgetv %cx.3;
+        symbol [ cx %tmp.317 82 24 26 ];
+        %tmp.318 = lgetv %h.2;
+        symbol [ h %tmp.318 82 28 29 ];
+        %tmp.319 = 0.72;
+        %tmp.320 = mul %tmp.318 %tmp.319;
+        symbol [ Graphics %tmp.321 82 38 46 ];
+        %tmp.321 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.322 82 47 57 ];
+        %tmp.322 = getv %tmp.321 :FONT_XTINY;
+        %tmp.323 = "cm";
+        symbol [ Graphics %tmp.324 82 65 73 ];
+        %tmp.324 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.325 82 74 93 ];
+        %tmp.325 = getv %tmp.324 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.315 %tmp.316(%tmp.317, %tmp.320, %tmp.322, %tmp.323, %tmp.325);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 84 12 ]
+        %tmp.326 = lgetv %dc;
+        symbol [ dc %tmp.326 84 12 14 ];
+        symbol [ setColor %tmp.327 84 15 23 ];
+        %tmp.327 = getv function %tmp.326 :setColor;
+        symbol [ Graphics %tmp.328 84 24 32 ];
+        %tmp.328 = getm $.Toybox.Graphics;
+        symbol [ COLOR_DK_GRAY %tmp.329 84 33 46 ];
+        %tmp.329 = getv %tmp.328 :COLOR_DK_GRAY;
+        symbol [ Graphics %tmp.330 84 48 56 ];
+        %tmp.330 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.331 84 57 74 ];
+        %tmp.331 = getv %tmp.330 :COLOR_TRANSPARENT;
+        invoke %tmp.326 %tmp.327(%tmp.329, %tmp.331);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 85 12 ]
+        %tmp.332 = lgetv %dc;
+        symbol [ dc %tmp.332 85 12 14 ];
+        symbol [ drawText %tmp.333 85 15 23 ];
+        %tmp.333 = getv function %tmp.332 :drawText;
+        %tmp.334 = lgetv %cx.3;
+        symbol [ cx %tmp.334 85 24 26 ];
+        %tmp.335 = lgetv %h.2;
+        symbol [ h %tmp.335 85 28 29 ];
+        %tmp.336 = 0.82;
+        %tmp.337 = mul %tmp.335 %tmp.336;
+        symbol [ Graphics %tmp.338 85 38 46 ];
+        %tmp.338 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.339 85 47 57 ];
+        %tmp.339 = getv %tmp.338 :FONT_XTINY;
+        %tmp.340 = "UP/DN: +/- 10 cm";
+        symbol [ Graphics %tmp.341 85 79 87 ];
+        %tmp.341 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.342 85 88 107 ];
+        %tmp.342 = getv %tmp.341 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.332 %tmp.333(%tmp.334, %tmp.337, %tmp.339, %tmp.340, %tmp.342);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc" 86 12 ]
+        %tmp.343 = lgetv %dc;
+        symbol [ dc %tmp.343 86 12 14 ];
+        symbol [ drawText %tmp.344 86 15 23 ];
+        %tmp.344 = getv function %tmp.343 :drawText;
+        %tmp.345 = lgetv %cx.3;
+        symbol [ cx %tmp.345 86 24 26 ];
+        %tmp.346 = lgetv %h.2;
+        symbol [ h %tmp.346 86 28 29 ];
+        %tmp.347 = 0.90;
+        %tmp.348 = mul %tmp.346 %tmp.347;
+        symbol [ Graphics %tmp.349 86 38 46 ];
+        %tmp.349 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.350 86 47 57 ];
+        %tmp.350 = getv %tmp.349 :FONT_XTINY;
+        %tmp.351 = "SELECT: confirm";
+        symbol [ Graphics %tmp.352 86 78 86 ];
+        %tmp.352 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.353 86 87 106 ];
+        %tmp.353 = getv %tmp.352 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.343 %tmp.344(%tmp.345, %tmp.348, %tmp.350, %tmp.351, %tmp.353);
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_69_31_87_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_69_15_87_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_69_15_87_8_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_52_8_87_8_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatView_mc_25_26_88_4_stop:
+    }
+}
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatView.mc"; @line = 1; ]
+<init> {
+}

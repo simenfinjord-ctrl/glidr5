@@ -3032,25 +3032,11 @@ export async function registerRoutes(
         const entriesRows = await db.select().from(testEntries).where(eq(testEntries.testId, Number(testId)));
         if (entriesRows.length >= 2) {
           const skiPairs = entriesRows.map((e) => e.skiNumber);
-          // Build ski labels: skiNumber → product name shown in the app
-          const skiLabels: Record<number, string> = {};
-          for (const e of entriesRows) {
-            if (e.productId) {
-              const prods = await db.select().from(products).where(eq(products.id, e.productId));
-              if (prods[0]) {
-                skiLabels[e.skiNumber] = `${prods[0].brand} ${prods[0].name}`;
-              } else if (e.freeTextProduct) {
-                skiLabels[e.skiNumber] = e.freeTextProduct;
-              }
-            } else if (e.freeTextProduct) {
-              skiLabels[e.skiNumber] = e.freeTextProduct;
-            }
-          }
           sessionCode = await generateSessionCode();
           const session: WatchSession = {
             code: sessionCode,
             skiPairs,
-            skiLabels,
+            skiLabels: {}, // ski numbers displayed as-is on the watch
             bracket: watchInitBracket(skiPairs),
             createdAt: Date.now(),
             userId: u.id,
@@ -3173,24 +3159,11 @@ export async function registerRoutes(
         const entriesRows = await db.select().from(testEntries).where(eq(testEntries.testId, Number(item.test_id)));
         if (entriesRows.length >= 2) {
           const skiPairs = entriesRows.map((e) => e.skiNumber);
-          const skiLabels: Record<number, string> = {};
-          for (const e of entriesRows) {
-            if (e.productId) {
-              const prods = await db.select().from(products).where(eq(products.id, e.productId));
-              if (prods[0]) {
-                skiLabels[e.skiNumber] = `${prods[0].brand} ${prods[0].name}`;
-              } else if (e.freeTextProduct) {
-                skiLabels[e.skiNumber] = e.freeTextProduct;
-              }
-            } else if (e.freeTextProduct) {
-              skiLabels[e.skiNumber] = e.freeTextProduct;
-            }
-          }
           const newCode = await generateSessionCode();
           const session: WatchSession = {
             code: newCode,
             skiPairs,
-            skiLabels,
+            skiLabels: {}, // ski numbers displayed as-is on the watch
             bracket: watchInitBracket(skiPairs),
             createdAt: Date.now(),
             userId: 0,

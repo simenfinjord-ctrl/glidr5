@@ -4,6 +4,9 @@ using Toybox.Application.Storage;
 
 class CodeEntryDelegate extends WatchUi.BehaviorDelegate {
     var view;
+    // Set by QueueListDelegate when navigating from list (so HeatView can auto-complete)
+    var pendingQueueItemId = null;
+    var teamPin = null;
 
     function initialize(v) {
         BehaviorDelegate.initialize();
@@ -38,8 +41,8 @@ class CodeEntryDelegate extends WatchUi.BehaviorDelegate {
             WatchUi.requestUpdate();
             return true;
         }
-        // If we have a team PIN, go back to main menu instead of exiting
-        var pin = Storage.getValue("teamPin");
+        // Go back to main menu if PIN is set
+        var pin = teamPin != null ? teamPin : Storage.getValue("teamPin");
         if (pin != null && pin instanceof String && pin.length() == 4) {
             var menuView = new MainMenuView(pin);
             var menuDelegate = new MainMenuDelegate(menuView);
@@ -74,6 +77,10 @@ class CodeEntryDelegate extends WatchUi.BehaviorDelegate {
         if (responseCode == 200 && data != null && data instanceof Dictionary) {
             var code = view.getCode();
             var heatView = new HeatView(code);
+
+            // Pass queue context if navigated from list
+            heatView.queueItemId = pendingQueueItemId;
+            heatView.teamPin = teamPin != null ? teamPin : Storage.getValue("teamPin");
 
             if (data["currentHeat"] != null && data["currentHeat"] instanceof Dictionary) {
                 var ch = data["currentHeat"];

@@ -721,7 +721,7 @@ export default function TestDetail() {
                 <Download className="mr-2 h-4 w-4" />
                 Excel
               </Button>
-              <AddToWatchButton testId={test.id} testName={`${test.location} · ${test.date}`} seriesId={test.seriesId} />
+              <AddToWatchButton testId={test.id} testName={test.testName || `${test.location} · ${test.date}`} seriesId={test.seriesId} />
               </>}
               {!isBlindTester && (
                 <Button

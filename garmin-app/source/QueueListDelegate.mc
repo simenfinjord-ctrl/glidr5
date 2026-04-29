@@ -6,6 +6,7 @@ using Toybox.Communications;
 class QueueListDelegate extends WatchUi.BehaviorDelegate {
     var view;
     var isStarting = false;
+    var selectedItem = null;
 
     function initialize(v) {
         BehaviorDelegate.initialize();
@@ -32,18 +33,19 @@ class QueueListDelegate extends WatchUi.BehaviorDelegate {
 
     function onSelect() {
         if (view.isLoading || isStarting) { return true; }
+
+        // Empty list — refresh
         if (view.items.size() == 0) {
-            // Refresh
             view.fetchList();
             return true;
         }
 
-        var item = view.items[view.selectedIndex];
+        selectedItem = view.items[view.selectedIndex];
         isStarting = true;
-        view.statusText = "Starting...";
+        view.isLoading = true;  // reuse loading state to show spinner
         WatchUi.requestUpdate();
 
-        var itemId = item["id"].toString();
+        var itemId = selectedItem["id"].toString();
         var url = ServerConfig.BASE_URL + "/api/watch/list/" + view.teamPin + "/start/" + itemId;
 
         Communications.makeWebRequest(
@@ -61,6 +63,8 @@ class QueueListDelegate extends WatchUi.BehaviorDelegate {
 
     function onStartResponse(responseCode, data) {
         isStarting = false;
+        view.isLoading = false;
+
         if (responseCode == 200 && data != null && data instanceof Dictionary) {
             var code = data["code"];
             var queueItemId = data["queueItemId"];
@@ -71,16 +75,24 @@ class QueueListDelegate extends WatchUi.BehaviorDelegate {
                 heatView.queueItemId = queueItemId;
                 heatView.teamPin = view.teamPin;
                 heatView.statusText = "Select winner";
-                // Fetch the current heat info
                 fetchCurrentHeat(code, heatView);
             } else {
-                // No active session — show message, user needs to start from web app first
-                view.statusText = "No active session.\nStart from web app.";
-                WatchUi.requestUpdate();
+                // No active session for this test yet.
+                // Navigate to code entry so user can enter session code from web app.
+                var codeView = new CodeEntryView();
+                codeView.statusText = "Enter session code";
+                var codeDelegate = new CodeEntryDelegate(codeView);
+                // Pass the queueItemId so HeatDelegate can mark it complete later
+                codeDelegate.pendingQueueItemId = queueItemId;
+                codeDelegate.teamPin = view.teamPin;
+                WatchUi.switchToView(codeView, codeDelegate, WatchUi.SLIDE_LEFT);
             }
         } else {
-            view.statusText = "Error starting";
-            WatchUi.requestUpdate();
+            // Server error — go to code entry as fallback
+            var codeView = new CodeEntryView();
+            codeView.statusText = "Enter session code";
+            var codeDelegate = new CodeEntryDelegate(codeView);
+            WatchUi.switchToView(codeView, codeDelegate, WatchUi.SLIDE_LEFT);
         }
     }
 

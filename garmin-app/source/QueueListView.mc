@@ -83,7 +83,8 @@ class QueueListView extends WatchUi.View {
 
         if (isLoading) {
             dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.45, Graphics.FONT_SMALL, "Loading...", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.38, Graphics.FONT_SMALL, statusText, Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.52, Graphics.FONT_XTINY, "Please wait...", Graphics.TEXT_JUSTIFY_CENTER);
             return;
         }
 

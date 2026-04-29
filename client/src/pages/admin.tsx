@@ -1128,6 +1128,7 @@ const ALL_TABS: { id: TabId; label: string; superAdminOnly?: boolean }[] = [
   { id: "data", label: "Data Management" },
   { id: "danger", label: "Danger Zone" },
   { id: "security", label: "Security", superAdminOnly: true },
+
 ];
 
 function StatCard({ label, value, icon: Icon, color, testId }: { label: string; value: number; icon: React.ComponentType<{ className?: string }>; color: string; testId: string }) {

@@ -1,5 +1,6 @@
 using Toybox.WatchUi;
 using Toybox.Communications;
+using Toybox.Application.Storage;
 
 class HeatDelegate extends WatchUi.BehaviorDelegate {
     var view;
@@ -83,10 +84,28 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
         view.isApplying = false;
         if (responseCode == 200) {
             view.applied = true;
+            // If launched from queue, mark item as completed so it moves to archive
+            if (view.queueItemId != null && view.teamPin != null) {
+                var completeUrl = ServerConfig.BASE_URL + "/api/watch/list/" + view.teamPin + "/complete/" + view.queueItemId.toString();
+                Communications.makeWebRequest(
+                    completeUrl,
+                    {},
+                    {
+                        :method => Communications.HTTP_REQUEST_METHOD_POST,
+                        :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,
+                        :headers => { "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON }
+                    },
+                    method(:onCompleteResponse)
+                );
+            }
         } else {
             view.statusText = "Apply failed!";
         }
         WatchUi.requestUpdate();
+    }
+
+    function onCompleteResponse(responseCode, data) {
+        // Silently complete — queue item is now in archive
     }
 
     function onBack() {
@@ -95,6 +114,16 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
             view.distance = 0;
             WatchUi.requestUpdate();
             return true;
+        }
+        // When applied (done), back goes to main menu
+        if (view.applied) {
+            var pin = Storage.getValue("teamPin");
+            if (pin != null && pin instanceof String && pin.length() == 4) {
+                var menuView = new MainMenuView(pin);
+                var menuDelegate = new MainMenuDelegate(menuView);
+                WatchUi.switchToView(menuView, menuDelegate, WatchUi.SLIDE_RIGHT);
+                return true;
+            }
         }
         return false;
     }

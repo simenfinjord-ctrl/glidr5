@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2 } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch } from "lucide-react";
 import { generateTestPDF } from "@/lib/pdf-report";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
@@ -164,6 +164,43 @@ function RankBadge({ rank, size = "sm" }: { rank: number | null; size?: "sm" | "
     >
       {rank ?? "—"}
     </span>
+  );
+}
+
+function AddToWatchButton({ testId, testName, seriesId }: { testId: number; testName: string; seriesId: number }) {
+  const { toast } = useToast();
+  const { data: queue = [] } = useQuery<any[]>({
+    queryKey: ["/api/watch/queue"],
+  });
+  const inQueue = queue.some((q: any) => q.test_id === testId && q.status === "active");
+
+  const addMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/watch/queue", { testId, seriesId, testName }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/watch/queue"] });
+      toast({ title: "Added to watch queue", description: "Open the Garmin app and select «From list»." });
+    },
+    onError: (err: any) => {
+      const msg = err?.message || "";
+      if (msg.includes("409") || msg.includes("Already")) {
+        toast({ title: "Already in queue", description: "This test is already in the watch queue.", variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: "Could not add to watch queue.", variant: "destructive" });
+      }
+    },
+  });
+
+  return (
+    <Button
+      variant={inQueue ? "secondary" : "outline"}
+      size="sm"
+      disabled={inQueue || addMutation.isPending}
+      onClick={() => addMutation.mutate()}
+      data-testid="button-add-to-watch"
+    >
+      <Watch className="mr-2 h-4 w-4" />
+      {inQueue ? "On Watch" : "Add to Watch"}
+    </Button>
   );
 }
 
@@ -684,6 +721,7 @@ export default function TestDetail() {
                 <Download className="mr-2 h-4 w-4" />
                 Excel
               </Button>
+              <AddToWatchButton testId={test.id} testName={`${test.location} · ${test.date}`} seriesId={test.seriesId} />
               </>}
               {!isBlindTester && (
                 <Button

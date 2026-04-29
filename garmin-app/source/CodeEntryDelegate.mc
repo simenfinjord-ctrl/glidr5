@@ -1,5 +1,6 @@
 using Toybox.WatchUi;
 using Toybox.Communications;
+using Toybox.Application.Storage;
 
 class CodeEntryDelegate extends WatchUi.BehaviorDelegate {
     var view;
@@ -35,6 +36,14 @@ class CodeEntryDelegate extends WatchUi.BehaviorDelegate {
         if (view.cursorPos > 0) {
             view.cursorPos--;
             WatchUi.requestUpdate();
+            return true;
+        }
+        // If we have a team PIN, go back to main menu instead of exiting
+        var pin = Storage.getValue("teamPin");
+        if (pin != null && pin instanceof String && pin.length() == 4) {
+            var menuView = new MainMenuView(pin);
+            var menuDelegate = new MainMenuDelegate(menuView);
+            WatchUi.switchToView(menuView, menuDelegate, WatchUi.SLIDE_RIGHT);
             return true;
         }
         return false;

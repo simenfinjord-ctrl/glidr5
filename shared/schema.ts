@@ -181,6 +181,7 @@ export const teams = pgTable("teams", {
   superAdminAccess: integer("super_admin_access").notNull().default(1),
   backupSheetUrl: text("backup_sheet_url"),
   lastBackupAt: text("last_backup_at"),
+  watchPin: text("watch_pin"), // 4-digit PIN for Garmin watch app authentication
 });
 
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });
@@ -538,6 +539,20 @@ export const runsheetProgress = pgTable("runsheet_progress", {
   userId: integer("user_id").notNull(),
   bracket: text("bracket").notNull(),
   updatedAt: text("updated_at").notNull(),
+  completedAt: text("completed_at"),
+});
+
+// --- Watch Queue: tests queued for the Garmin watch app ---
+export const watchQueue = pgTable("watch_queue", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull(),
+  testId: integer("test_id"),
+  seriesId: integer("series_id"),
+  testName: text("test_name"),      // e.g. "Oslo · 2025-03-01"
+  seriesName: text("series_name"),  // fallback display name
+  addedByName: text("added_by_name").notNull(),
+  addedAt: text("added_at").notNull(),
+  status: text("status").notNull().default("active"), // 'active' | 'completed'
   completedAt: text("completed_at"),
 });
 

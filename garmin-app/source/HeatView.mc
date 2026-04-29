@@ -23,6 +23,10 @@ class HeatView extends WatchUi.View {
     var isApplying = false;
     var applied = false;
 
+    // Set when launched from queue list (for auto-complete marking)
+    var queueItemId = null;
+    var teamPin = null;
+
     function initialize(code) {
         View.initialize();
         sessionCode = code;

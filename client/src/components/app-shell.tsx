@@ -20,6 +20,7 @@ import {
   Sparkles,
   Trophy,
   Radio,
+  Watch,
 
   ChevronDown,
   EyeOff,
@@ -147,6 +148,15 @@ const nav: NavItem[] = [
     activeColor: "text-green-600",
     activeBg: "bg-green-50",
     permArea: "liverunsheets",
+  },
+  {
+    href: "/watch-queue",
+    label: "Watch Queue",
+    icon: Watch,
+    testId: "link-watch-queue",
+    color: "text-muted-foreground",
+    activeColor: "text-sky-600",
+    activeBg: "bg-sky-50",
   },
   {
     href: "/admin",

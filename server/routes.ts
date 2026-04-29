@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
 import { parsePermissions, hashPassword } from "./auth";
-import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, watchSessions, tests, testEntries, users, testSkiSeries, products, dailyWeather } from "@shared/schema";
+import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, watchSessions, watchQueue, teams, tests, testEntries, users, testSkiSeries, products, dailyWeather } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql, inArray } from "drizzle-orm";
 async function enforceTeamAreas(perms: Record<string, string>, teamId: number | undefined): Promise<Record<string, string>> {
@@ -197,6 +197,26 @@ export async function registerRoutes(
 ): Promise<Server> {
 
   app.use("/api", enforceStealthReadOnly);
+
+  // --- Ensure watch_queue table exists (migration-safe) ---
+  {
+    const { pool } = await import("./db");
+    await (pool as any).query(`
+      CREATE TABLE IF NOT EXISTS watch_queue (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER NOT NULL,
+        test_id INTEGER,
+        series_id INTEGER,
+        test_name TEXT,
+        series_name TEXT,
+        added_by_name TEXT NOT NULL DEFAULT '',
+        added_at TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active',
+        completed_at TEXT
+      );
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS watch_pin TEXT;
+    `);
+  }
 
   // --- Maintenance mode gate (runs before all other /api routes) ---
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
@@ -2932,6 +2952,202 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to generate suggestions", error: err.message });
     }
   });
+
+  // ─── Watch Queue (Garmin watch app integration) ───────────────────────────
+
+  // Get or generate team's watch PIN (authenticated users)
+  app.get("/api/watch/pin", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(`SELECT watch_pin FROM teams WHERE id = $1`, [teamId]);
+    let pin = result.rows[0]?.watch_pin;
+    if (!pin) {
+      // Generate a random 4-digit PIN
+      pin = String(Math.floor(1000 + Math.random() * 9000));
+      await (pool as any).query(`UPDATE teams SET watch_pin = $1 WHERE id = $2`, [pin, teamId]);
+    }
+    res.json({ pin, teamName: u.groupScope || "Team" });
+  });
+
+  // Regenerate team's watch PIN
+  app.post("/api/watch/pin/regenerate", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Team admin only" });
+    const pin = String(Math.floor(1000 + Math.random() * 9000));
+    const { pool } = await import("./db");
+    await (pool as any).query(`UPDATE teams SET watch_pin = $1 WHERE id = $2`, [pin, teamId]);
+    res.json({ pin });
+  });
+
+  // Get active watch queue for current team (authenticated)
+  app.get("/api/watch/queue", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT * FROM watch_queue WHERE team_id = $1 AND status = 'active' ORDER BY added_at DESC`,
+      [teamId]
+    );
+    res.json(result.rows);
+  });
+
+  // Get watch queue archive for current team (authenticated)
+  app.get("/api/watch/queue/archive", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT * FROM watch_queue WHERE team_id = $1 AND status = 'completed' ORDER BY completed_at DESC LIMIT 10`,
+      [teamId]
+    );
+    res.json(result.rows);
+  });
+
+  // Add test to watch queue (authenticated)
+  app.post("/api/watch/queue", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const { testId, seriesId, testName, seriesName } = req.body;
+    const { pool } = await import("./db");
+    // Check if already in queue
+    const existing = await (pool as any).query(
+      `SELECT id FROM watch_queue WHERE team_id = $1 AND test_id = $2 AND status = 'active'`,
+      [teamId, testId]
+    );
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ message: "Already in watch queue" });
+    }
+    const result = await (pool as any).query(
+      `INSERT INTO watch_queue (team_id, test_id, series_id, test_name, series_name, added_by_name, added_at, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'active') RETURNING *`,
+      [teamId, testId || null, seriesId || null, testName || null, seriesName || null, u.name, new Date().toISOString()]
+    );
+    res.json(result.rows[0]);
+  });
+
+  // Remove from watch queue (authenticated)
+  app.delete("/api/watch/queue/:id", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    await (pool as any).query(`DELETE FROM watch_queue WHERE id = $1 AND team_id = $2`, [id, teamId]);
+    res.json({ ok: true });
+  });
+
+  // Restore archived item back to active queue
+  app.post("/api/watch/queue/:id/restore", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    await (pool as any).query(
+      `UPDATE watch_queue SET status = 'active', completed_at = NULL WHERE id = $1 AND team_id = $2`,
+      [id, teamId]
+    );
+    res.json({ ok: true });
+  });
+
+  // ── Public watch API (authenticated by team watch PIN) ────────────────────
+
+  // Resolve PIN → team (used by Garmin app)
+  app.get("/api/watch/resolve/:pin", async (req, res) => {
+    const { pin } = req.params;
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT id, name FROM teams WHERE watch_pin = $1`,
+      [pin]
+    );
+    if (!result.rows[0]) return res.status(404).json({ message: "Invalid PIN" });
+    res.json({ teamId: result.rows[0].id, teamName: result.rows[0].name });
+  });
+
+  // Get active queue by PIN (Garmin app)
+  app.get("/api/watch/list/:pin", async (req, res) => {
+    const { pin } = req.params;
+    const { pool } = await import("./db");
+    const teamResult = await (pool as any).query(
+      `SELECT id FROM teams WHERE watch_pin = $1`, [pin]
+    );
+    if (!teamResult.rows[0]) return res.status(404).json({ message: "Invalid PIN" });
+    const teamId = teamResult.rows[0].id;
+    const result = await (pool as any).query(
+      `SELECT id, test_id, series_id, test_name, series_name, added_by_name, added_at FROM watch_queue
+       WHERE team_id = $1 AND status = 'active' ORDER BY added_at DESC`,
+      [teamId]
+    );
+    res.json({ items: result.rows });
+  });
+
+  // Get archive by PIN (Garmin app — last 10 completed)
+  app.get("/api/watch/archive/:pin", async (req, res) => {
+    const { pin } = req.params;
+    const { pool } = await import("./db");
+    const teamResult = await (pool as any).query(
+      `SELECT id FROM teams WHERE watch_pin = $1`, [pin]
+    );
+    if (!teamResult.rows[0]) return res.status(404).json({ message: "Invalid PIN" });
+    const teamId = teamResult.rows[0].id;
+    const result = await (pool as any).query(
+      `SELECT id, test_id, series_id, test_name, series_name, completed_at FROM watch_queue
+       WHERE team_id = $1 AND status = 'completed' ORDER BY completed_at DESC LIMIT 10`,
+      [teamId]
+    );
+    res.json({ items: result.rows });
+  });
+
+  // Start a session from queue item (Garmin app) — creates a watch session and returns its code
+  app.post("/api/watch/list/:pin/start/:itemId", async (req, res) => {
+    const { pin, itemId } = req.params;
+    const { pool } = await import("./db");
+    const teamResult = await (pool as any).query(
+      `SELECT id FROM teams WHERE watch_pin = $1`, [pin]
+    );
+    if (!teamResult.rows[0]) return res.status(404).json({ message: "Invalid PIN" });
+    const teamId = teamResult.rows[0].id;
+    const itemResult = await (pool as any).query(
+      `SELECT * FROM watch_queue WHERE id = $1 AND team_id = $2`, [parseInt(itemId), teamId]
+    );
+    const item = itemResult.rows[0];
+    if (!item) return res.status(404).json({ message: "Queue item not found" });
+
+    // Check if there's an existing active watch session for this test
+    if (item.test_id) {
+      const sessionResult = await (pool as any).query(
+        `SELECT code FROM watch_sessions WHERE test_id = $1 AND team_id = $2 AND expires_at > NOW()::text`,
+        [item.test_id, teamId]
+      );
+      if (sessionResult.rows[0]) {
+        return res.json({ code: sessionResult.rows[0].code, testName: item.test_name, seriesName: item.series_name, queueItemId: item.id });
+      }
+    }
+
+    // No active session — return the test name info so watch can show it
+    // The user will need to use "From code" to join if a session exists, or inform them
+    // For now, return the item info (watch app shows it and lets user start from code if needed)
+    res.json({
+      code: null,
+      testName: item.test_name,
+      seriesName: item.series_name,
+      queueItemId: item.id,
+      testId: item.test_id,
+    });
+  });
+
+  // Mark queue item as completed (called by watch app after finishing)
+  app.post("/api/watch/list/:pin/complete/:itemId", async (req, res) => {
+    const { pin, itemId } = req.params;
+    const { pool } = await import("./db");
+    const teamResult = await (pool as any).query(
+      `SELECT id FROM teams WHERE watch_pin = $1`, [pin]
+    );
+    if (!teamResult.rows[0]) return res.status(404).json({ message: "Invalid PIN" });
+    const teamId = teamResult.rows[0].id;
+    await (pool as any).query(
+      `UPDATE watch_queue SET status = 'completed', completed_at = $1 WHERE id = $2 AND team_id = $3`,
+      [new Date().toISOString(), parseInt(itemId), teamId]
+    );
+    res.json({ ok: true });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
 
   return httpServer;
 }

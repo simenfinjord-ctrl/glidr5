@@ -15,6 +15,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
 
         if (view.phase == 0) {
             view.selectedWinner = view.pairB;
+            view.selectedLabel = view.labelB;
             view.phase = 1;
             view.distance = 10;
             WatchUi.requestUpdate();
@@ -32,6 +33,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
 
         if (view.phase == 0) {
             view.selectedWinner = view.pairA;
+            view.selectedLabel = view.labelA;
             view.phase = 1;
             view.distance = 10;
             WatchUi.requestUpdate();
@@ -98,6 +100,8 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
                 view.roundName = nh["roundName"];
                 view.pairA = nh["pairA"];
                 view.pairB = nh["pairB"];
+                view.labelA = nh["labelA"] != null ? nh["labelA"] : nh["pairA"].toString();
+                view.labelB = nh["labelB"] != null ? nh["labelB"] : nh["pairB"].toString();
                 view.roundIndex = nh["roundIndex"];
                 view.heatIndex = nh["heatIndex"];
                 view.statusText = "Select winner";

@@ -2411,6 +2411,7 @@ export async function registerRoutes(
   type WatchSession = {
     code: string;
     skiPairs: number[];
+    skiLabels: Record<number, string>;
     bracket: WatchHeat[][];
     createdAt: number;
     userId: number;
@@ -2460,6 +2461,7 @@ export async function registerRoutes(
     watchSessionsMemory.set(session.code, session);
     // Also try DB
     try {
+      const labelsJson = JSON.stringify(session.skiLabels ?? {});
       await db.insert(watchSessions).values({
         code: session.code,
         skiPairs: JSON.stringify(session.skiPairs),
@@ -2588,7 +2590,7 @@ export async function registerRoutes(
 
   app.post("/api/runsheet/sessions", requireAuth, async (req, res) => {
     const u = userInfo(req);
-    const { skiPairs, testId } = req.body;
+    const { skiPairs, testId, skiLabels } = req.body;
     if (!Array.isArray(skiPairs) || skiPairs.length < 2) {
       return res.status(400).json({ message: "Need at least 2 ski pairs" });
     }
@@ -2597,6 +2599,7 @@ export async function registerRoutes(
     const session: WatchSession = {
       code,
       skiPairs: skiPairs.map(Number),
+      skiLabels: skiLabels && typeof skiLabels === "object" ? skiLabels : {},
       bracket: watchInitBracket(skiPairs.map(Number)),
       createdAt: Date.now(),
       userId: u.id,
@@ -2628,6 +2631,7 @@ export async function registerRoutes(
     const code = req.params.code as string;
     const session = await getWatchSession(code);
     if (!session) return res.status(404).json({ message: "Invalid code" });
+    const labels = session.skiLabels ?? {};
     const currentHeat = watchFindCurrentHeat(session.bracket);
     const diffs = watchCalcDiffs(session.bracket);
     const complete = !currentHeat && diffs.size === session.skiPairs.length;
@@ -2636,7 +2640,12 @@ export async function registerRoutes(
       const sorted = [...diffs.entries()].sort((a, b) => a[1] - b[1]);
       if (sorted.length > 0) champion = sorted[0][0];
     }
-    res.json({ currentHeat, complete, champion, totalPairs: session.skiPairs.length });
+    const labeledHeat = currentHeat ? {
+      ...currentHeat,
+      labelA: currentHeat.pairA !== null ? (labels[currentHeat.pairA] ?? String(currentHeat.pairA)) : null,
+      labelB: currentHeat.pairB !== null ? (labels[currentHeat.pairB] ?? String(currentHeat.pairB)) : null,
+    } : null;
+    res.json({ currentHeat: labeledHeat, complete, champion, totalPairs: session.skiPairs.length });
   });
 
   app.post("/api/runsheet/watch/:code/result", async (req, res) => {
@@ -2669,7 +2678,13 @@ export async function registerRoutes(
     watchRebuildDownstream(session.bracket, roundIndex + 1);
     await updateWatchBracket(code, session.bracket);
     const nextHeat = watchFindCurrentHeat(session.bracket);
-    res.json({ ok: true, nextHeat });
+    const sessionLabels = session.skiLabels ?? {};
+    const labeledNext = nextHeat ? {
+      ...nextHeat,
+      labelA: nextHeat.pairA !== null ? (sessionLabels[nextHeat.pairA] ?? String(nextHeat.pairA)) : null,
+      labelB: nextHeat.pairB !== null ? (sessionLabels[nextHeat.pairB] ?? String(nextHeat.pairB)) : null,
+    } : null;
+    res.json({ ok: true, nextHeat: labeledNext });
   });
 
   app.delete("/api/runsheet/sessions/:code", requireAuth, async (req, res) => {

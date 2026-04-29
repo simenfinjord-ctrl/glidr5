@@ -352,7 +352,7 @@ export function RunsheetDialog({
   const startWatchSession = useCallback(async () => {
     setWatchLoading(true);
     try {
-      const res = await apiRequest("POST", "/api/runsheet/sessions", { skiPairs, testId });
+      const res = await apiRequest("POST", "/api/runsheet/sessions", { skiPairs, testId, skiLabels: skiLabels ?? {} });
       const data = await res.json();
       setWatchCode(data.code);
     } catch {

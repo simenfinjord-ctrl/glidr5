@@ -71,6 +71,8 @@ class CodeEntryDelegate extends WatchUi.BehaviorDelegate {
                 heatView.roundName = ch["roundName"];
                 heatView.pairA = ch["pairA"];
                 heatView.pairB = ch["pairB"];
+                heatView.labelA = ch["labelA"] != null ? ch["labelA"] : ch["pairA"].toString();
+                heatView.labelB = ch["labelB"] != null ? ch["labelB"] : ch["pairB"].toString();
                 heatView.roundIndex = ch["roundIndex"];
                 heatView.heatIndex = ch["heatIndex"];
                 heatView.statusText = "Select winner";

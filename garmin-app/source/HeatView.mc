@@ -6,12 +6,15 @@ class HeatView extends WatchUi.View {
     var roundName = "";
     var pairA = 0;
     var pairB = 0;
+    var labelA = "";
+    var labelB = "";
     var roundIndex = 0;
     var heatIndex = 0;
     var statusText = "Loading...";
     var allDone = false;
 
     var selectedWinner = 0;
+    var selectedLabel = "";
     var phase = 0;
 
     var distance = 0;
@@ -54,21 +57,21 @@ class HeatView extends WatchUi.View {
             dc.drawText(cx, h * 0.20, Graphics.FONT_SMALL, "Select winner", Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.38, Graphics.FONT_MEDIUM, "Par " + pairA.toString(), Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.38, Graphics.FONT_MEDIUM, labelA, Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
             dc.drawText(cx, h * 0.53, Graphics.FONT_SMALL, "vs", Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.65, Graphics.FONT_MEDIUM, "Par " + pairB.toString(), Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.65, Graphics.FONT_MEDIUM, labelB, Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.82, Graphics.FONT_XTINY, "UP = Par " + pairA.toString(), Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(cx, h * 0.90, Graphics.FONT_XTINY, "DOWN = Par " + pairB.toString(), Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.82, Graphics.FONT_XTINY, "UP = " + labelA, Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.90, Graphics.FONT_XTINY, "DOWN = " + labelB, Graphics.TEXT_JUSTIFY_CENTER);
 
         } else if (phase == 1) {
             dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.12, Graphics.FONT_SMALL, "Par " + selectedWinner.toString() + " WINS", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.12, Graphics.FONT_SMALL, selectedLabel + " WINS", Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
             dc.drawText(cx, h * 0.30, Graphics.FONT_SMALL, "Winning margin:", Graphics.TEXT_JUSTIFY_CENTER);

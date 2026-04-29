@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,9 +7,12 @@ import {
   Plus, Pencil, Trash2, KeyRound, Check, X, Clock, Download, EyeOff,
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle,
-  HardDrive, UserX, Eraser, RefreshCw, Building2,
+  HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch,
 } from "lucide-react";
-import { PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS } from "@shared/schema";
+import {
+  PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS,
+  TEAM_FEATURES, FEATURE_LABELS, FEATURE_CATEGORIES, PLAN_FEATURE_PRESETS,
+} from "@shared/schema";
 import type { UserPermissions, PermissionLevel } from "@shared/schema";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -694,6 +697,206 @@ function ResetPasswordForm({ user, onDone }: { user: ApiUser; onDone: () => void
   );
 }
 
+// ─── Team feature dialog ─────────────────────────────────────────────────────
+
+const PLAN_STYLE: Record<string, { active: string; inactive: string; badge: string }> = {
+  gray:   { active: "bg-gray-100 text-gray-700 border-gray-400 ring-gray-300 dark:bg-gray-700/60 dark:text-gray-200 dark:border-gray-500", inactive: "border-border text-muted-foreground hover:bg-muted", badge: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300" },
+  green:  { active: "bg-green-50 text-green-700 border-green-500 ring-green-300 dark:bg-green-900/40 dark:text-green-300 dark:border-green-600", inactive: "border-border text-muted-foreground hover:bg-muted", badge: "bg-green-50 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
+  blue:   { active: "bg-blue-50 text-blue-700 border-blue-500 ring-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-600", inactive: "border-border text-muted-foreground hover:bg-muted", badge: "bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+  purple: { active: "bg-purple-50 text-purple-700 border-purple-500 ring-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-600", inactive: "border-border text-muted-foreground hover:bg-muted", badge: "bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
+};
+
+function detectPlanKey(enabledAreas: string | null): string | null {
+  if (!enabledAreas) return null;
+  try {
+    const features: string[] = JSON.parse(enabledAreas);
+    if (!Array.isArray(features)) return null;
+    for (const [key, preset] of Object.entries(PLAN_FEATURE_PRESETS)) {
+      const pf = [...preset.features].sort();
+      const tf = [...features].sort();
+      if (pf.length === tf.length && pf.every((f, i) => f === tf[i])) return key;
+    }
+    return "custom";
+  } catch { return null; }
+}
+
+function TeamFeaturesDialog({
+  team,
+  open,
+  onOpenChange,
+  onSave,
+  isPending,
+}: {
+  team: ApiTeam;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (id: number, name: string, features: string[]) => void;
+  isPending: boolean;
+}) {
+  const [name, setName] = useState(team.name);
+  const [features, setFeatures] = useState<string[]>(() => {
+    try {
+      const parsed = JSON.parse(team.enabledAreas || "null");
+      return Array.isArray(parsed) ? parsed : [...PLAN_FEATURE_PRESETS.team.features];
+    } catch {
+      return [...PLAN_FEATURE_PRESETS.team.features];
+    }
+  });
+
+  // Re-sync whenever the dialog opens for a (possibly different) team
+  useEffect(() => {
+    if (!open) return;
+    setName(team.name);
+    try {
+      const parsed = JSON.parse(team.enabledAreas || "null");
+      setFeatures(Array.isArray(parsed) ? parsed : [...PLAN_FEATURE_PRESETS.team.features]);
+    } catch {
+      setFeatures([...PLAN_FEATURE_PRESETS.team.features]);
+    }
+  }, [open, team.id]);
+
+  const detectedPlan = (() => {
+    for (const [key, preset] of Object.entries(PLAN_FEATURE_PRESETS)) {
+      const pf = [...preset.features].sort();
+      const tf = [...features].sort();
+      if (pf.length === tf.length && pf.every((f, i) => f === tf[i])) return key;
+    }
+    return null;
+  })();
+
+  const toggleFeature = (feat: string) =>
+    setFeatures((prev) => prev.includes(feat) ? prev.filter((f) => f !== feat) : [...prev, feat]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl max-h-[88vh] flex flex-col gap-0 p-0">
+        {/* Header */}
+        <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
+          <Settings2 className="h-4 w-4 text-muted-foreground" />
+          <span className="font-semibold text-foreground">Feature Access</span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-sm text-muted-foreground">{team.name}</span>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+          {/* Team name */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Team name</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8 text-sm" />
+          </div>
+
+          {/* Plan presets */}
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+              Subscription plan
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {Object.entries(PLAN_FEATURE_PRESETS).map(([key, preset]) => {
+                const isActive = detectedPlan === key;
+                const s = PLAN_STYLE[preset.color];
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setFeatures([...preset.features])}
+                    className={cn(
+                      "rounded-xl border px-2 py-2.5 text-sm font-semibold transition-all text-center",
+                      isActive
+                        ? cn(s.active, "ring-2 ring-offset-1")
+                        : s.inactive
+                    )}
+                  >
+                    <div>{preset.label}</div>
+                    <div className="text-[10px] font-normal opacity-60 mt-0.5">
+                      {preset.features.length} features
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {detectedPlan === null && features.length > 0 && (
+              <p className="text-[10px] text-muted-foreground mt-1.5">Custom configuration</p>
+            )}
+          </div>
+
+          {/* Feature toggles grouped by category */}
+          {FEATURE_CATEGORIES.map((cat) => {
+            const enabledCount = cat.features.filter((f) => features.includes(f)).length;
+            return (
+              <div key={cat.label}>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {cat.label}
+                  </span>
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-[10px] text-muted-foreground tabular-nums">
+                    {enabledCount}/{cat.features.length}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-border overflow-hidden">
+                  {cat.features.map((feat, fi) => {
+                    const on = features.includes(feat);
+                    return (
+                      <button
+                        key={feat}
+                        type="button"
+                        onClick={() => toggleFeature(feat)}
+                        className={cn(
+                          "w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-muted/40 group",
+                          fi > 0 && "border-t border-border/50"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {feat === "garmin_watch" && <Watch className="h-3 w-3 text-muted-foreground flex-shrink-0" />}
+                          <span className={cn("text-sm truncate", on ? "text-foreground" : "text-muted-foreground/60")}>
+                            {FEATURE_LABELS[feat as keyof typeof FEATURE_LABELS]}
+                          </span>
+                        </div>
+                        {/* Toggle switch */}
+                        <span
+                          className={cn(
+                            "relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ml-3",
+                            on ? "bg-green-500" : "bg-muted-foreground/25"
+                          )}
+                        >
+                          <span className={cn(
+                            "pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform",
+                            on ? "translate-x-[18px]" : "translate-x-[2px]"
+                          )} />
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/20">
+          <span className="text-[11px] text-muted-foreground">
+            {features.length} / {TEAM_FEATURES.length} features enabled
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              disabled={!name.trim() || isPending}
+              onClick={() => onSave(team.id, name.trim(), features)}
+            >
+              {isPending ? "Saving…" : "Save changes"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 const ALL_TABS: { id: TabId; label: string; superAdminOnly?: boolean }[] = [
   { id: "overview", label: "Overview" },
   { id: "users", label: "Users" },
@@ -747,8 +950,9 @@ export default function Admin() {
   const [editingTeam, setEditingTeam] = useState<ApiTeam | null>(null);
   const [editingTeamName, setEditingTeamName] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
-  const [newTeamAreas, setNewTeamAreas] = useState<string[]>([...PERMISSION_AREAS]);
+  const [newTeamAreas, setNewTeamAreas] = useState<string[]>([...PLAN_FEATURE_PRESETS.team.features]);
   const [editingTeamAreas, setEditingTeamAreas] = useState<string[]>([]);
+  const [configuringTeam, setConfiguringTeam] = useState<ApiTeam | null>(null);
 
   const [adminTeamScope, setAdminTeamScope] = useState<string>("current");
 
@@ -1297,6 +1501,7 @@ export default function Admin() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       setEditingTeam(null);
+      setConfiguringTeam(null);
       toast({ title: "Team updated" });
     },
     onError: (e: Error) => {
@@ -1758,143 +1963,103 @@ export default function Admin() {
 
         {activeTab === "teams" && isSuperAdmin && (
           <div className="flex flex-col gap-4" data-testid="tab-content-teams">
+            {/* Feature dialog for the selected team */}
+            {configuringTeam && (
+              <TeamFeaturesDialog
+                team={configuringTeam}
+                open={!!configuringTeam}
+                onOpenChange={(o) => { if (!o) setConfiguringTeam(null); }}
+                onSave={(id, name, features) =>
+                  updateTeamMutation.mutate({ id, name, enabledAreas: features })
+                }
+                isPending={updateTeamMutation.isPending}
+              />
+            )}
+
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-admin-teams">
               <div className="text-sm font-semibold text-foreground mb-3">Teams ({teams.length})</div>
               <div className="grid grid-cols-1 gap-2">
-                {teams.map((team) => (
-                  <div
-                    key={team.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5"
-                    data-testid={`row-team-${team.id}`}
-                  >
-                    {editingTeam?.id === team.id ? (
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Input
-                            value={editingTeamName}
-                            onChange={(e) => setEditingTeamName(e.target.value)}
-                            className="h-8 text-sm"
-                            data-testid="input-edit-team-name"
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === "Escape") setEditingTeam(null);
-                            }}
-                          />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            data-testid="button-save-team"
-                            disabled={!editingTeamName.trim() || updateTeamMutation.isPending}
-                            onClick={() => {
-                              updateTeamMutation.mutate({ id: team.id, name: editingTeamName.trim(), enabledAreas: editingTeamAreas });
-                            }}
-                          >
-                            <Check className="h-4 w-4 text-emerald-600" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => setEditingTeam(null)} data-testid="button-cancel-edit-team">
-                            <X className="h-4 w-4" />
-                          </Button>
+                {teams.map((team) => {
+                  const planKey = detectPlanKey(team.enabledAreas);
+                  const planPreset = planKey && planKey !== "custom" ? PLAN_FEATURE_PRESETS[planKey] : null;
+                  const planStyle = planPreset ? PLAN_STYLE[planPreset.color] : null;
+                  const featureCount = (() => {
+                    try { const a = JSON.parse(team.enabledAreas || "null"); return Array.isArray(a) ? a.length : null; }
+                    catch { return null; }
+                  })();
+
+                  return (
+                    <div
+                      key={team.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5"
+                      data-testid={`row-team-${team.id}`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-sm font-medium text-foreground">{team.name}</span>
+                          {team.isDefault === 1 && (
+                            <span className="rounded-full bg-green-50 dark:bg-green-900/30 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-300">Default</span>
+                          )}
+                          {planPreset && planStyle && (
+                            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", planStyle.badge)}>
+                              {planPreset.label}
+                            </span>
+                          )}
+                          {planKey === "custom" && (
+                            <span className="rounded-full bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300 px-2 py-0.5 text-[10px] font-medium">
+                              Custom
+                            </span>
+                          )}
                         </div>
-                        <div>
-                          <div className="text-xs font-medium text-muted-foreground mb-1.5">Enabled areas</div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {PERMISSION_AREAS.map((area) => {
-                              const enabled = editingTeamAreas.includes(area);
-                              return (
-                                <button
-                                  key={area}
-                                  type="button"
-                                  data-testid={`edit-team-area-${area}`}
-                                  className={cn(
-                                    "rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors border",
-                                    enabled
-                                      ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                                      : "bg-muted text-muted-foreground border-border opacity-50"
-                                  )}
-                                  onClick={() => {
-                                    setEditingTeamAreas(prev =>
-                                      enabled ? prev.filter(a => a !== area) : [...prev, area]
-                                    );
-                                  }}
-                                >
-                                  {AREA_LABELS[area] || area}
-                                </button>
-                              );
-                            })}
-                          </div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                          {users.filter((u) => u.teamId === team.id).length} users
+                          {featureCount !== null && <> · {featureCount} features enabled</>}
                         </div>
                       </div>
-                    ) : (
-                      <>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-sm font-medium text-foreground">{team.name}</span>
-                            {team.isDefault === 1 && (
-                              <span className="rounded-full bg-green-50 dark:bg-green-900/30 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-300">Default</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground mt-0.5">
-                            {users.filter((u) => u.teamId === team.id).length} users
-                            {(() => {
-                              try {
-                                const areas: string[] = team.enabledAreas ? JSON.parse(team.enabledAreas) : [];
-                                if (areas.length > 0 && areas.length < PERMISSION_AREAS.length) {
-                                  return <> · {areas.map(a => AREA_LABELS[a] || a).join(", ")}</>;
-                                }
-                              } catch {}
-                              return null;
-                            })()}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {team.isDefault !== 1 && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              data-testid={`button-set-default-team-${team.id}`}
-                              onClick={() => setDefaultTeamMutation.mutate(team.id)}
-                              disabled={setDefaultTeamMutation.isPending}
-                              title="Set as default"
-                            >
-                              <Shield className="h-4 w-4 text-green-500" />
-                            </Button>
-                          )}
+                      <div className="flex items-center gap-1">
+                        {team.isDefault !== 1 && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            data-testid={`button-edit-team-${team.id}`}
+                            data-testid={`button-set-default-team-${team.id}`}
+                            onClick={() => setDefaultTeamMutation.mutate(team.id)}
+                            disabled={setDefaultTeamMutation.isPending}
+                            title="Set as default"
+                          >
+                            <Shield className="h-4 w-4 text-green-500" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          data-testid={`button-configure-team-${team.id}`}
+                          title="Configure features"
+                          onClick={() => setConfiguringTeam(team)}
+                        >
+                          <Settings2 className="h-4 w-4" />
+                        </Button>
+                        {team.isDefault !== 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            data-testid={`button-delete-team-${team.id}`}
                             onClick={() => {
-                              setEditingTeam(team);
-                              setEditingTeamName(team.name);
-                              try {
-                                setEditingTeamAreas(team.enabledAreas ? JSON.parse(team.enabledAreas) : [...PERMISSION_AREAS]);
-                              } catch { setEditingTeamAreas([...PERMISSION_AREAS]); }
+                              if (confirm(`Delete team "${team.name}"? All data belonging to this team will be orphaned.`)) {
+                                deleteTeamMutation.mutate(team.id);
+                              }
                             }}
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
-                          {team.isDefault !== 1 && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              data-testid={`button-delete-team-${team.id}`}
-                              onClick={() => {
-                                if (confirm(`Delete team "${team.name}"? All data belonging to this team will be orphaned.`)) {
-                                  deleteTeamMutation.mutate(team.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              <div className="mt-4 rounded-xl border border-border bg-muted/20 p-3 space-y-3">
+              {/* New team form */}
+              <div className="mt-4 rounded-xl border border-border bg-muted/20 p-4 space-y-3">
                 <div className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">New team</div>
                 <Input
                   value={newTeamName}
@@ -1903,29 +2068,28 @@ export default function Admin() {
                   className="h-8 text-sm"
                   data-testid="input-new-team"
                 />
+                {/* Plan preset buttons for new team */}
                 <div>
-                  <div className="text-xs font-medium text-muted-foreground mb-1.5">Enabled areas</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {PERMISSION_AREAS.map((area) => {
-                      const enabled = newTeamAreas.includes(area);
+                  <div className="text-xs font-medium text-muted-foreground mb-1.5">Subscription plan</div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {Object.entries(PLAN_FEATURE_PRESETS).map(([key, preset]) => {
+                      const isActive = (() => {
+                        const pf = [...preset.features].sort();
+                        const tf = [...newTeamAreas].sort();
+                        return pf.length === tf.length && pf.every((f, i) => f === tf[i]);
+                      })();
+                      const s = PLAN_STYLE[preset.color];
                       return (
                         <button
-                          key={area}
+                          key={key}
                           type="button"
-                          data-testid={`new-team-area-${area}`}
+                          onClick={() => setNewTeamAreas([...preset.features])}
                           className={cn(
-                            "rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors border",
-                            enabled
-                              ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                              : "bg-muted text-muted-foreground border-border opacity-50"
+                            "rounded-lg border px-2 py-2 text-xs font-semibold transition-all text-center",
+                            isActive ? cn(s.active, "ring-2 ring-offset-1") : s.inactive
                           )}
-                          onClick={() => {
-                            setNewTeamAreas(prev =>
-                              enabled ? prev.filter(a => a !== area) : [...prev, area]
-                            );
-                          }}
                         >
-                          {AREA_LABELS[area] || area}
+                          {preset.label}
                         </button>
                       );
                     })}

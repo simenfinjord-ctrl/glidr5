@@ -35,6 +35,125 @@ export const ADMIN_PERMISSIONS: UserPermissions = {
   liverunsheets: "edit",
 };
 
+// ─── Team feature flags ────────────────────────────────────────────────────────
+// These are stored in teams.enabledAreas (JSON array) and cover every
+// toggleable capability a team can have, across all plans.
+
+export const TEAM_FEATURES = [
+  // Navigation areas (backend-enforced)
+  "dashboard", "tests", "testskis", "products", "weather",
+  "analytics", "grinding", "raceskis", "suggestions", "liverunsheets",
+  // Field & runsheet tools
+  "runsheet_brackets", "garmin_watch", "mobile_runsheet",
+  // Export & backup
+  "pdf_export", "excel_export", "google_sheets_backup", "offline_mode",
+  // Team features
+  "blind_tester", "activity_logging", "column_visibility",
+  "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management",
+  // Enterprise
+  "multi_team", "bulk_export", "custom_groups",
+] as const;
+
+export type TeamFeature = typeof TEAM_FEATURES[number];
+
+export const FEATURE_LABELS: Record<TeamFeature, string> = {
+  dashboard: "Dashboard",
+  tests: "Tests",
+  testskis: "Test Ski Series",
+  products: "Products & Storage",
+  weather: "Weather Logging",
+  analytics: "Analytics & Charts",
+  grinding: "Grinding Records",
+  raceskis: "Race Skis",
+  suggestions: "Suggestions Engine",
+  liverunsheets: "Live Runsheet Monitor",
+  runsheet_brackets: "Runsheet Brackets",
+  garmin_watch: "Garmin Watch Integration",
+  mobile_runsheet: "Mobile Runsheet Mode",
+  pdf_export: "PDF Export",
+  excel_export: "Excel Export",
+  google_sheets_backup: "Google Sheets Backup",
+  offline_mode: "Offline Mode",
+  blind_tester: "Blind Tester Mode",
+  activity_logging: "Activity Logging & Audit Trail",
+  column_visibility: "Column Visibility Control",
+  test_ski_regrind: "Test Ski Regrind History",
+  race_ski_regrind: "Race Ski Regrind History",
+  product_stock: "Product Stock Tracking",
+  athlete_management: "Athlete Profiles & Access Control",
+  multi_team: "Multi-team Support",
+  bulk_export: "Bulk Data Export",
+  custom_groups: "Custom Group Structures",
+};
+
+export const FEATURE_CATEGORIES: { label: string; features: readonly TeamFeature[] }[] = [
+  {
+    label: "Navigation Areas",
+    features: ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "suggestions", "liverunsheets"],
+  },
+  {
+    label: "Field & Runsheet Tools",
+    features: ["runsheet_brackets", "garmin_watch", "mobile_runsheet"],
+  },
+  {
+    label: "Export & Backup",
+    features: ["pdf_export", "excel_export", "google_sheets_backup", "offline_mode"],
+  },
+  {
+    label: "Team Features",
+    features: ["blind_tester", "activity_logging", "column_visibility", "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management"],
+  },
+  {
+    label: "Enterprise",
+    features: ["multi_team", "bulk_export", "custom_groups"],
+  },
+];
+
+export const PLAN_FEATURE_PRESETS: Record<string, { label: string; color: string; features: readonly TeamFeature[] }> = {
+  starter: {
+    label: "Starter",
+    color: "gray",
+    features: ["dashboard", "tests", "testskis", "products", "weather", "pdf_export", "product_stock"],
+  },
+  team: {
+    label: "Team",
+    color: "green",
+    features: [
+      "dashboard", "tests", "testskis", "products", "weather",
+      "analytics", "grinding", "suggestions",
+      "runsheet_brackets", "garmin_watch", "mobile_runsheet",
+      "pdf_export", "excel_export", "google_sheets_backup", "offline_mode",
+      "blind_tester", "test_ski_regrind", "product_stock",
+    ],
+  },
+  pro: {
+    label: "Pro",
+    color: "blue",
+    features: [
+      "dashboard", "tests", "testskis", "products", "weather",
+      "analytics", "grinding", "raceskis", "suggestions", "liverunsheets",
+      "runsheet_brackets", "garmin_watch", "mobile_runsheet",
+      "pdf_export", "excel_export", "google_sheets_backup", "offline_mode",
+      "blind_tester", "activity_logging", "column_visibility",
+      "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management",
+    ],
+  },
+  enterprise: {
+    label: "Enterprise",
+    color: "purple",
+    features: [
+      "dashboard", "tests", "testskis", "products", "weather",
+      "analytics", "grinding", "raceskis", "suggestions", "liverunsheets",
+      "runsheet_brackets", "garmin_watch", "mobile_runsheet",
+      "pdf_export", "excel_export", "google_sheets_backup", "offline_mode",
+      "blind_tester", "activity_logging", "column_visibility",
+      "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management",
+      "multi_team", "bulk_export", "custom_groups",
+    ],
+  },
+};
+// ──────────────────────────────────────────────────────────────────────────────
+
 export const ROLE_PRESETS: Record<string, { label: string; permissions: UserPermissions; blindTester?: boolean }> = {
   skitester: {
     label: "Skitester",

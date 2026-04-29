@@ -402,7 +402,7 @@ export type UserTeam = typeof userTeams.$inferSelect;
 
 // --- Watch sessions (persisted so Render restarts don't lose them) ---
 export const watchSessions = pgTable("watch_sessions", {
-  code: varchar("code", { length: 6 }).primaryKey(),
+  code: varchar("code", { length: 4 }).primaryKey(),
   skiPairs: text("ski_pairs").notNull(), // JSON array
   bracket: text("bracket").notNull(),    // JSON array
   testId: integer("test_id"),

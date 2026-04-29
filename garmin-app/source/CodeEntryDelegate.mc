@@ -22,7 +22,7 @@ class CodeEntryDelegate extends WatchUi.BehaviorDelegate {
     }
 
     function onSelect() {
-        if (view.cursorPos < 5) {
+        if (view.cursorPos < 3) {
             view.cursorPos++;
             WatchUi.requestUpdate();
         } else {

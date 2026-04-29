@@ -2,7 +2,7 @@ using Toybox.WatchUi;
 using Toybox.Graphics;
 
 class CodeEntryView extends WatchUi.View {
-    var digits = [0, 0, 0, 0, 0, 0];
+    var digits = [0, 0, 0, 0];
     var cursorPos = 0;
     var statusText = "Enter session code";
     var isConnecting = false;
@@ -25,13 +25,13 @@ class CodeEntryView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, h * 0.28, Graphics.FONT_XTINY, statusText, Graphics.TEXT_JUSTIFY_CENTER);
 
-        var digitWidth = 28;
-        var totalWidth = digitWidth * 6 + 10;
+        var digitWidth = 36;
+        var totalWidth = digitWidth * 4 + 10;
         var startX = cx - totalWidth / 2;
         var digitY = h * 0.45;
 
-        for (var i = 0; i < 6; i++) {
-            var dx = startX + i * digitWidth + (i >= 3 ? 10 : 0);
+        for (var i = 0; i < 4; i++) {
+            var dx = startX + i * digitWidth + (i >= 2 ? 10 : 0);
 
             var textX = dx + digitWidth / 2;
             var rectW = 24;
@@ -55,7 +55,7 @@ class CodeEntryView extends WatchUi.View {
 
     function getCode() {
         var code = "";
-        for (var i = 0; i < 6; i++) {
+        for (var i = 0; i < 4; i++) {
             code += digits[i].toString();
         }
         return code;

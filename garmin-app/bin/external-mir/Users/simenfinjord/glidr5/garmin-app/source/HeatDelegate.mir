@@ -31,644 +31,897 @@ _Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_7_27_10_4_stop:
     }
     [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc"; @line = 12; @symbol_functiondef = [onNextPage,12,13,23]; ]
     function onNextPage() {
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_12_26_26_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 13 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_13_8_13_59_if_stmt:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_13_12_13_33_begin:
-        symbol [ view %tmp.2 13 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_12_26_29_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 14 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_14_8_14_59_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_14_12_14_33_begin:
+        symbol [ view %tmp.2 14 12 16 ];
         %tmp.2 = getv ? :view;
-        symbol [ allDone %tmp.3 13 17 24 ];
+        symbol [ allDone %tmp.3 14 17 24 ];
         %tmp.3 = getv %tmp.2 :allDone;
-        bt %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_13_8_13_59_if_true;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_13_28_13_33_false:
-        symbol [ view %tmp.5 13 28 32 ];
+        bt %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_14_8_14_59_if_true;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_14_28_14_33_false:
+        symbol [ view %tmp.5 14 28 32 ];
         %tmp.5 = getv ? :view;
-        symbol [ isSending %tmp.6 13 33 42 ];
+        symbol [ isSending %tmp.6 14 33 42 ];
         %tmp.6 = getv %tmp.5 :isSending;
         push %tmp.6;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_13_28_13_33_end:
-        %tmp.7 = phi [%tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_13_12_13_33_begin] [%tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_13_28_13_33_false] [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_13_28_13_33_end];
-        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_13_8_13_59_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_13_8_13_59_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_13_44_13_59_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 13 46 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_14_28_14_33_end:
+        %tmp.7 = phi [%tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_14_12_14_33_begin] [%tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_14_28_14_33_false] [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_14_28_14_33_end];
+        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_14_8_14_59_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_14_8_14_59_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_14_44_14_59_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 14 46 ]
         %tmp.8 = true;
         ret %tmp.8;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_13_44_13_59_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_13_8_13_59_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_13_8_13_59_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 15 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_15_8_24_8_if_stmt:
-        symbol [ view %tmp.10 15 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_14_44_14_59_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_14_8_14_59_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_14_8_14_59_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 16 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_16_8_27_8_if_stmt:
+        symbol [ view %tmp.10 16 12 16 ];
         %tmp.10 = getv ? :view;
-        symbol [ phase %tmp.11 15 17 22 ];
+        symbol [ phase %tmp.11 16 17 22 ];
         %tmp.11 = getv %tmp.10 :phase;
         %tmp.12 = 0;
         %tmp.13 = eq %tmp.11 %tmp.12;
-        bf %tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_15_8_24_8_if_false;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_15_8_24_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_15_29_20_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 16 12 ]
-        symbol [ view %tmp.14 16 12 16 ];
-        %tmp.14 = getv self :view;
-        symbol [ view %tmp.16 16 34 38 ];
-        %tmp.16 = getv ? :view;
-        symbol [ pairA %tmp.17 16 39 44 ];
-        %tmp.17 = getv %tmp.16 :pairA;
-        symbol [ selectedWinner ? 16 17 31 ];
-        putv %tmp.14 :selectedWinner %tmp.17;
+        bf %tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_16_8_27_8_if_false;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_16_8_27_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_16_29_23_8_start:
 [ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 17 12 ]
-        symbol [ view %tmp.18 17 12 16 ];
-        %tmp.18 = getv self :view;
-        %tmp.19 = 1;
-        symbol [ phase ? 17 17 22 ];
-        putv %tmp.18 :phase %tmp.19;
+        symbol [ view %tmp.14 17 12 16 ];
+        %tmp.14 = getv self :view;
+        symbol [ view %tmp.16 17 34 38 ];
+        %tmp.16 = getv ? :view;
+        symbol [ pairB %tmp.17 17 39 44 ];
+        %tmp.17 = getv %tmp.16 :pairB;
+        symbol [ selectedWinner ? 17 17 31 ];
+        putv %tmp.14 :selectedWinner %tmp.17;
 [ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 18 12 ]
-        symbol [ view %tmp.20 18 12 16 ];
-        %tmp.20 = getv self :view;
-        %tmp.21 = 10;
-        symbol [ distance ? 18 17 25 ];
-        putv %tmp.20 :distance %tmp.21;
+        symbol [ view %tmp.18 18 12 16 ];
+        %tmp.18 = getv self :view;
+        symbol [ view %tmp.20 18 33 37 ];
+        %tmp.20 = getv ? :view;
+        symbol [ labelB %tmp.21 18 38 44 ];
+        %tmp.21 = getv %tmp.20 :labelB;
+        symbol [ selectedLabel ? 18 17 30 ];
+        putv %tmp.18 :selectedLabel %tmp.21;
 [ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 19 12 ]
-        symbol [ WatchUi %tmp.22 19 12 19 ];
-        %tmp.22 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.23 19 20 33 ];
-        %tmp.23 = getv function %tmp.22 :requestUpdate;
-        invoke %tmp.22 %tmp.23();
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_15_29_20_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_15_8_24_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_15_8_24_8_if_false:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 20 15 ]
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_20_15_24_8_if_stmt:
-        symbol [ view %tmp.25 20 19 23 ];
-        %tmp.25 = getv ? :view;
-        symbol [ phase %tmp.26 20 24 29 ];
-        %tmp.26 = getv %tmp.25 :phase;
+        symbol [ view %tmp.22 19 12 16 ];
+        %tmp.22 = getv self :view;
+        symbol [ view %tmp.24 19 30 34 ];
+        %tmp.24 = getv ? :view;
+        symbol [ labelA %tmp.25 19 35 41 ];
+        %tmp.25 = getv %tmp.24 :labelA;
+        symbol [ loserLabel ? 19 17 27 ];
+        putv %tmp.22 :loserLabel %tmp.25;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 20 12 ]
+        symbol [ view %tmp.26 20 12 16 ];
+        %tmp.26 = getv self :view;
         %tmp.27 = 1;
-        %tmp.28 = eq %tmp.26 %tmp.27;
-        bf %tmp.28 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_20_15_24_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_20_15_24_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_20_36_24_8_start:
+        symbol [ phase ? 20 17 22 ];
+        putv %tmp.26 :phase %tmp.27;
 [ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 21 12 ]
-        symbol [ view %tmp.29 21 12 16 ];
-        %tmp.29 = getv self :view;
-        symbol [ view %tmp.30 21 12 16 ];
-        %tmp.30 = getv self :view;
-        symbol [ distance %tmp.31 21 17 25 ];
-        %tmp.31 = getv %tmp.30 :distance;
-        %tmp.32 = 10;
-        %tmp.33 = add %tmp.31 %tmp.32;
+        symbol [ view %tmp.28 21 12 16 ];
+        %tmp.28 = getv self :view;
+        %tmp.29 = 10;
         symbol [ distance ? 21 17 25 ];
-        putv %tmp.29 :distance dup %tmp.33;
+        putv %tmp.28 :distance %tmp.29;
 [ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 22 12 ]
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_22_12_22_60_if_stmt:
-        symbol [ view %tmp.35 22 16 20 ];
-        %tmp.35 = getv ? :view;
-        symbol [ distance %tmp.36 22 21 29 ];
-        %tmp.36 = getv %tmp.35 :distance;
-        %tmp.37 = 990;
-        %tmp.38 = gt %tmp.36 %tmp.37;
-        bf %tmp.38 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_22_12_22_60_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_22_12_22_60_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_22_37_22_60_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 22 39 ]
-        symbol [ view %tmp.39 22 39 43 ];
-        %tmp.39 = getv self :view;
-        %tmp.40 = 990;
-        symbol [ distance ? 22 44 52 ];
-        putv %tmp.39 :distance %tmp.40;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_22_37_22_60_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_22_12_22_60_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_22_12_22_60_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 23 12 ]
-        symbol [ WatchUi %tmp.41 23 12 19 ];
-        %tmp.41 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.42 23 20 33 ];
-        %tmp.42 = getv function %tmp.41 :requestUpdate;
-        invoke %tmp.41 %tmp.42();
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_20_36_24_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_20_15_24_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_20_15_24_8_if_end:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_15_8_24_8_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 25 8 ]
-        %tmp.43 = true;
-        ret %tmp.43;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_12_26_26_4_stop:
+        symbol [ WatchUi %tmp.30 22 12 19 ];
+        %tmp.30 = getm $.Toybox.WatchUi;
+        symbol [ requestUpdate %tmp.31 22 20 33 ];
+        %tmp.31 = getv function %tmp.30 :requestUpdate;
+        invoke %tmp.30 %tmp.31();
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_16_29_23_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_16_8_27_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_16_8_27_8_if_false:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 23 15 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_23_15_27_8_if_stmt:
+        symbol [ view %tmp.33 23 19 23 ];
+        %tmp.33 = getv ? :view;
+        symbol [ phase %tmp.34 23 24 29 ];
+        %tmp.34 = getv %tmp.33 :phase;
+        %tmp.35 = 1;
+        %tmp.36 = eq %tmp.34 %tmp.35;
+        bf %tmp.36 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_23_15_27_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_23_15_27_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_23_36_27_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 24 12 ]
+        symbol [ view %tmp.37 24 12 16 ];
+        %tmp.37 = getv self :view;
+        symbol [ view %tmp.38 24 12 16 ];
+        %tmp.38 = getv self :view;
+        symbol [ distance %tmp.39 24 17 25 ];
+        %tmp.39 = getv %tmp.38 :distance;
+        %tmp.40 = 10;
+        %tmp.41 = sub %tmp.39 %tmp.40;
+        symbol [ distance ? 24 17 25 ];
+        putv %tmp.37 :distance dup %tmp.41;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 25 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_25_12_25_58_if_stmt:
+        symbol [ view %tmp.43 25 16 20 ];
+        %tmp.43 = getv ? :view;
+        symbol [ distance %tmp.44 25 21 29 ];
+        %tmp.44 = getv %tmp.43 :distance;
+        %tmp.45 = 10;
+        %tmp.46 = lt %tmp.44 %tmp.45;
+        bf %tmp.46 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_25_12_25_58_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_25_12_25_58_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_25_36_25_58_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 25 38 ]
+        symbol [ view %tmp.47 25 38 42 ];
+        %tmp.47 = getv self :view;
+        %tmp.48 = 10;
+        symbol [ distance ? 25 43 51 ];
+        putv %tmp.47 :distance %tmp.48;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_25_36_25_58_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_25_12_25_58_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_25_12_25_58_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 26 12 ]
+        symbol [ WatchUi %tmp.49 26 12 19 ];
+        %tmp.49 = getm $.Toybox.WatchUi;
+        symbol [ requestUpdate %tmp.50 26 20 33 ];
+        %tmp.50 = getv function %tmp.49 :requestUpdate;
+        invoke %tmp.49 %tmp.50();
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_23_36_27_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_23_15_27_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_23_15_27_8_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_16_8_27_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 28 8 ]
+        %tmp.51 = true;
+        ret %tmp.51;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_12_26_29_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc"; @line = 28; @symbol_functiondef = [onPreviousPage,28,13,27]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc"; @line = 31; @symbol_functiondef = [onPreviousPage,31,13,27]; ]
     function onPreviousPage() {
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_28_30_42_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 29 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_29_8_29_59_if_stmt:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_29_12_29_33_begin:
-        symbol [ view %tmp.2 29 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_31_30_48_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 33 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_33_8_33_59_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_33_12_33_33_begin:
+        symbol [ view %tmp.2 33 12 16 ];
         %tmp.2 = getv ? :view;
-        symbol [ allDone %tmp.3 29 17 24 ];
+        symbol [ allDone %tmp.3 33 17 24 ];
         %tmp.3 = getv %tmp.2 :allDone;
-        bt %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_29_8_29_59_if_true;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_29_28_29_33_false:
-        symbol [ view %tmp.5 29 28 32 ];
+        bt %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_33_8_33_59_if_true;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_33_28_33_33_false:
+        symbol [ view %tmp.5 33 28 32 ];
         %tmp.5 = getv ? :view;
-        symbol [ isSending %tmp.6 29 33 42 ];
+        symbol [ isSending %tmp.6 33 33 42 ];
         %tmp.6 = getv %tmp.5 :isSending;
         push %tmp.6;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_29_28_29_33_end:
-        %tmp.7 = phi [%tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_29_12_29_33_begin] [%tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_29_28_29_33_false] [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_29_28_29_33_end];
-        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_29_8_29_59_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_29_8_29_59_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_29_44_29_59_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 29 46 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_33_28_33_33_end:
+        %tmp.7 = phi [%tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_33_12_33_33_begin] [%tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_33_28_33_33_false] [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_33_28_33_33_end];
+        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_33_8_33_59_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_33_8_33_59_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_33_44_33_59_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 33 46 ]
         %tmp.8 = true;
         ret %tmp.8;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_29_44_29_59_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_29_8_29_59_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_29_8_29_59_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 31 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_31_8_40_8_if_stmt:
-        symbol [ view %tmp.10 31 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_33_44_33_59_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_33_8_33_59_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_33_8_33_59_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 35 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_35_8_46_8_if_stmt:
+        symbol [ view %tmp.10 35 12 16 ];
         %tmp.10 = getv ? :view;
-        symbol [ phase %tmp.11 31 17 22 ];
+        symbol [ phase %tmp.11 35 17 22 ];
         %tmp.11 = getv %tmp.10 :phase;
         %tmp.12 = 0;
         %tmp.13 = eq %tmp.11 %tmp.12;
-        bf %tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_31_8_40_8_if_false;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_31_8_40_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_31_29_36_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 32 12 ]
-        symbol [ view %tmp.14 32 12 16 ];
+        bf %tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_35_8_46_8_if_false;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_35_8_46_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_35_29_42_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 36 12 ]
+        symbol [ view %tmp.14 36 12 16 ];
         %tmp.14 = getv self :view;
-        symbol [ view %tmp.16 32 34 38 ];
+        symbol [ view %tmp.16 36 34 38 ];
         %tmp.16 = getv ? :view;
-        symbol [ pairB %tmp.17 32 39 44 ];
-        %tmp.17 = getv %tmp.16 :pairB;
-        symbol [ selectedWinner ? 32 17 31 ];
+        symbol [ pairA %tmp.17 36 39 44 ];
+        %tmp.17 = getv %tmp.16 :pairA;
+        symbol [ selectedWinner ? 36 17 31 ];
         putv %tmp.14 :selectedWinner %tmp.17;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 33 12 ]
-        symbol [ view %tmp.18 33 12 16 ];
-        %tmp.18 = getv self :view;
-        %tmp.19 = 1;
-        symbol [ phase ? 33 17 22 ];
-        putv %tmp.18 :phase %tmp.19;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 34 12 ]
-        symbol [ view %tmp.20 34 12 16 ];
-        %tmp.20 = getv self :view;
-        %tmp.21 = 10;
-        symbol [ distance ? 34 17 25 ];
-        putv %tmp.20 :distance %tmp.21;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 35 12 ]
-        symbol [ WatchUi %tmp.22 35 12 19 ];
-        %tmp.22 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.23 35 20 33 ];
-        %tmp.23 = getv function %tmp.22 :requestUpdate;
-        invoke %tmp.22 %tmp.23();
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_31_29_36_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_31_8_40_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_31_8_40_8_if_false:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 36 15 ]
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_36_15_40_8_if_stmt:
-        symbol [ view %tmp.25 36 19 23 ];
-        %tmp.25 = getv ? :view;
-        symbol [ phase %tmp.26 36 24 29 ];
-        %tmp.26 = getv %tmp.25 :phase;
-        %tmp.27 = 1;
-        %tmp.28 = eq %tmp.26 %tmp.27;
-        bf %tmp.28 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_36_15_40_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_36_15_40_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_36_36_40_8_start:
 [ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 37 12 ]
-        symbol [ view %tmp.29 37 12 16 ];
-        %tmp.29 = getv self :view;
-        symbol [ view %tmp.30 37 12 16 ];
-        %tmp.30 = getv self :view;
-        symbol [ distance %tmp.31 37 17 25 ];
-        %tmp.31 = getv %tmp.30 :distance;
-        %tmp.32 = 10;
-        %tmp.33 = sub %tmp.31 %tmp.32;
-        symbol [ distance ? 37 17 25 ];
-        putv %tmp.29 :distance dup %tmp.33;
+        symbol [ view %tmp.18 37 12 16 ];
+        %tmp.18 = getv self :view;
+        symbol [ view %tmp.20 37 33 37 ];
+        %tmp.20 = getv ? :view;
+        symbol [ labelA %tmp.21 37 38 44 ];
+        %tmp.21 = getv %tmp.20 :labelA;
+        symbol [ selectedLabel ? 37 17 30 ];
+        putv %tmp.18 :selectedLabel %tmp.21;
 [ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 38 12 ]
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_38_12_38_58_if_stmt:
-        symbol [ view %tmp.35 38 16 20 ];
-        %tmp.35 = getv ? :view;
-        symbol [ distance %tmp.36 38 21 29 ];
-        %tmp.36 = getv %tmp.35 :distance;
-        %tmp.37 = 10;
-        %tmp.38 = lt %tmp.36 %tmp.37;
-        bf %tmp.38 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_38_12_38_58_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_38_12_38_58_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_38_36_38_58_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 38 38 ]
-        symbol [ view %tmp.39 38 38 42 ];
-        %tmp.39 = getv self :view;
-        %tmp.40 = 10;
-        symbol [ distance ? 38 43 51 ];
-        putv %tmp.39 :distance %tmp.40;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_38_36_38_58_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_38_12_38_58_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_38_12_38_58_if_end:
+        symbol [ view %tmp.22 38 12 16 ];
+        %tmp.22 = getv self :view;
+        symbol [ view %tmp.24 38 30 34 ];
+        %tmp.24 = getv ? :view;
+        symbol [ labelB %tmp.25 38 35 41 ];
+        %tmp.25 = getv %tmp.24 :labelB;
+        symbol [ loserLabel ? 38 17 27 ];
+        putv %tmp.22 :loserLabel %tmp.25;
 [ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 39 12 ]
-        symbol [ WatchUi %tmp.41 39 12 19 ];
-        %tmp.41 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.42 39 20 33 ];
-        %tmp.42 = getv function %tmp.41 :requestUpdate;
-        invoke %tmp.41 %tmp.42();
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_36_36_40_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_36_15_40_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_36_15_40_8_if_end:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_31_8_40_8_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 41 8 ]
-        %tmp.43 = true;
-        ret %tmp.43;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_28_30_42_4_stop:
+        symbol [ view %tmp.26 39 12 16 ];
+        %tmp.26 = getv self :view;
+        %tmp.27 = 1;
+        symbol [ phase ? 39 17 22 ];
+        putv %tmp.26 :phase %tmp.27;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 40 12 ]
+        symbol [ view %tmp.28 40 12 16 ];
+        %tmp.28 = getv self :view;
+        %tmp.29 = 10;
+        symbol [ distance ? 40 17 25 ];
+        putv %tmp.28 :distance %tmp.29;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 41 12 ]
+        symbol [ WatchUi %tmp.30 41 12 19 ];
+        %tmp.30 = getm $.Toybox.WatchUi;
+        symbol [ requestUpdate %tmp.31 41 20 33 ];
+        %tmp.31 = getv function %tmp.30 :requestUpdate;
+        invoke %tmp.30 %tmp.31();
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_35_29_42_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_35_8_46_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_35_8_46_8_if_false:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 42 15 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_42_15_46_8_if_stmt:
+        symbol [ view %tmp.33 42 19 23 ];
+        %tmp.33 = getv ? :view;
+        symbol [ phase %tmp.34 42 24 29 ];
+        %tmp.34 = getv %tmp.33 :phase;
+        %tmp.35 = 1;
+        %tmp.36 = eq %tmp.34 %tmp.35;
+        bf %tmp.36 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_42_15_46_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_42_15_46_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_42_36_46_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 43 12 ]
+        symbol [ view %tmp.37 43 12 16 ];
+        %tmp.37 = getv self :view;
+        symbol [ view %tmp.38 43 12 16 ];
+        %tmp.38 = getv self :view;
+        symbol [ distance %tmp.39 43 17 25 ];
+        %tmp.39 = getv %tmp.38 :distance;
+        %tmp.40 = 10;
+        %tmp.41 = add %tmp.39 %tmp.40;
+        symbol [ distance ? 43 17 25 ];
+        putv %tmp.37 :distance dup %tmp.41;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 44 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_44_12_44_60_if_stmt:
+        symbol [ view %tmp.43 44 16 20 ];
+        %tmp.43 = getv ? :view;
+        symbol [ distance %tmp.44 44 21 29 ];
+        %tmp.44 = getv %tmp.43 :distance;
+        %tmp.45 = 990;
+        %tmp.46 = gt %tmp.44 %tmp.45;
+        bf %tmp.46 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_44_12_44_60_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_44_12_44_60_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_44_37_44_60_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 44 39 ]
+        symbol [ view %tmp.47 44 39 43 ];
+        %tmp.47 = getv self :view;
+        %tmp.48 = 990;
+        symbol [ distance ? 44 44 52 ];
+        putv %tmp.47 :distance %tmp.48;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_44_37_44_60_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_44_12_44_60_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_44_12_44_60_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 45 12 ]
+        symbol [ WatchUi %tmp.49 45 12 19 ];
+        %tmp.49 = getm $.Toybox.WatchUi;
+        symbol [ requestUpdate %tmp.50 45 20 33 ];
+        %tmp.50 = getv function %tmp.49 :requestUpdate;
+        invoke %tmp.49 %tmp.50();
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_42_36_46_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_42_15_46_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_42_15_46_8_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_35_8_46_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 47 8 ]
+        %tmp.51 = true;
+        ret %tmp.51;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_31_30_48_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc"; @line = 44; @symbol_functiondef = [onSelect,44,13,21]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc"; @line = 50; @symbol_functiondef = [onSelect,50,13,21]; ]
     function onSelect() {
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_44_24_51_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 45 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_45_8_45_59_if_stmt:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_45_12_45_33_begin:
-        symbol [ view %tmp.2 45 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_50_24_62_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 51 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_51_8_51_62_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_51_12_51_35_begin:
+        symbol [ view %tmp.2 51 12 16 ];
         %tmp.2 = getv ? :view;
-        symbol [ allDone %tmp.3 45 17 24 ];
-        %tmp.3 = getv %tmp.2 :allDone;
-        bt %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_45_8_45_59_if_true;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_45_28_45_33_false:
-        symbol [ view %tmp.5 45 28 32 ];
+        symbol [ isSending %tmp.3 51 17 26 ];
+        %tmp.3 = getv %tmp.2 :isSending;
+        bt %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_51_8_51_62_if_true;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_51_30_51_35_false:
+        symbol [ view %tmp.5 51 30 34 ];
         %tmp.5 = getv ? :view;
-        symbol [ isSending %tmp.6 45 33 42 ];
-        %tmp.6 = getv %tmp.5 :isSending;
+        symbol [ isApplying %tmp.6 51 35 45 ];
+        %tmp.6 = getv %tmp.5 :isApplying;
         push %tmp.6;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_45_28_45_33_end:
-        %tmp.7 = phi [%tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_45_12_45_33_begin] [%tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_45_28_45_33_false] [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_45_28_45_33_end];
-        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_45_8_45_59_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_45_8_45_59_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_45_44_45_59_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 45 46 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_51_30_51_35_end:
+        %tmp.7 = phi [%tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_51_12_51_35_begin] [%tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_51_30_51_35_false] [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_51_30_51_35_end];
+        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_51_8_51_62_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_51_8_51_62_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_51_47_51_62_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 51 49 ]
         %tmp.8 = true;
         ret %tmp.8;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_45_44_45_59_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_45_8_45_59_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_45_8_45_59_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 47 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_47_8_49_8_if_stmt:
-        symbol [ view %tmp.10 47 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_51_47_51_62_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_51_8_51_62_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_51_8_51_62_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 53 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_8_56_8_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_12_53_34_begin:
+        symbol [ view %tmp.10 53 12 16 ];
         %tmp.10 = getv ? :view;
-        symbol [ phase %tmp.11 47 17 22 ];
-        %tmp.11 = getv %tmp.10 :phase;
-        %tmp.12 = 1;
-        %tmp.13 = eq %tmp.11 %tmp.12;
-        bf %tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_47_8_49_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_47_8_49_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_47_29_49_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 48 12 ]
-        %tmp.14 = self;
-        symbol [ submitResult %tmp.15 48 12 24 ];
-        %tmp.15 = getv function %tmp.14 :submitResult;
-        invoke %tmp.14 %tmp.15();
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_47_29_49_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_47_8_49_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_47_8_49_8_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 50 8 ]
-        %tmp.16 = true;
-        ret %tmp.16;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_44_24_51_4_stop:
+        symbol [ allDone %tmp.11 53 17 24 ];
+        %tmp.11 = getv %tmp.10 :allDone;
+        bf %tmp.11 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_8_56_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_28_53_34_true:
+        symbol [ view %tmp.13 53 29 33 ];
+        %tmp.13 = getv ? :view;
+        symbol [ applied %tmp.14 53 34 41 ];
+        %tmp.14 = getv %tmp.13 :applied;
+        %tmp.15 = not %tmp.14;
+        push %tmp.15;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_28_53_34_end:
+        %tmp.16 = phi [%tmp.11 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_12_53_34_begin] [%tmp.15 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_28_53_34_true] [%tmp.16 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_28_53_34_end];
+        bf %tmp.16 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_8_56_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_8_56_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_43_56_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 54 12 ]
+        %tmp.17 = self;
+        symbol [ applyResults %tmp.18 54 12 24 ];
+        %tmp.18 = getv function %tmp.17 :applyResults;
+        invoke %tmp.17 %tmp.18();
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 55 12 ]
+        %tmp.19 = true;
+        ret %tmp.19;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_43_56_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_8_56_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_8_56_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 58 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_58_8_60_8_if_stmt:
+        symbol [ view %tmp.21 58 12 16 ];
+        %tmp.21 = getv ? :view;
+        symbol [ phase %tmp.22 58 17 22 ];
+        %tmp.22 = getv %tmp.21 :phase;
+        %tmp.23 = 1;
+        %tmp.24 = eq %tmp.22 %tmp.23;
+        bf %tmp.24 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_58_8_60_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_58_8_60_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_58_29_60_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 59 12 ]
+        %tmp.25 = self;
+        symbol [ submitResult %tmp.26 59 12 24 ];
+        %tmp.26 = getv function %tmp.25 :submitResult;
+        invoke %tmp.25 %tmp.26();
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_58_29_60_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_58_8_60_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_58_8_60_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 61 8 ]
+        %tmp.27 = true;
+        ret %tmp.27;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_50_24_62_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc"; @line = 53; @symbol_functiondef = [onBack,53,13,19]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc"; @line = 64; @symbol_functiondef = [applyResults,64,13,25]; ]
+    function applyResults() {
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_64_28_80_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 65 8 ]
+        symbol [ view %tmp.1 65 8 12 ];
+        %tmp.1 = getv self :view;
+        %tmp.2 = true;
+        symbol [ isApplying ? 65 13 23 ];
+        putv %tmp.1 :isApplying %tmp.2;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 66 8 ]
+        symbol [ WatchUi %tmp.3 66 8 15 ];
+        %tmp.3 = getm $.Toybox.WatchUi;
+        symbol [ requestUpdate %tmp.4 66 16 29 ];
+        %tmp.4 = getv function %tmp.3 :requestUpdate;
+        invoke %tmp.3 %tmp.4();
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 68 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_64_28_80_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_64_28_80_4_stop" ]
+        %url.1 = local;
+        symbol [ url %url.1 68 12 15 ];
+        symbol [ ServerConfig %tmp.6 68 18 30 ];
+        %tmp.6 = getv ? :ServerConfig;
+        symbol [ BASE_URL %tmp.7 68 31 39 ];
+        %tmp.7 = getv %tmp.6 :BASE_URL;
+        %tmp.8 = "/api/runsheet/sessions/";
+        %tmp.9 = add %tmp.7 %tmp.8;
+        symbol [ view %tmp.11 68 70 74 ];
+        %tmp.11 = getv ? :view;
+        symbol [ sessionCode %tmp.12 68 75 86 ];
+        %tmp.12 = getv %tmp.11 :sessionCode;
+        %tmp.13 = add %tmp.9 %tmp.12;
+        %tmp.14 = "/apply";
+        %tmp.15 = add %tmp.13 %tmp.14;
+        lputv %url.1 %tmp.15;
+        symbol [ url %url.1 68 12 15 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 70 8 ]
+        symbol [ Communications %tmp.16 70 8 22 ];
+        %tmp.16 = getm $.Toybox.Communications;
+        symbol [ makeWebRequest %tmp.17 70 23 37 ];
+        %tmp.17 = getv function %tmp.16 :makeWebRequest;
+        %tmp.18 = lgetv %url.1;
+        symbol [ url %tmp.18 71 12 15 ];
+        %tmp.19 = newd 0;
+        %tmp.20 = newd 3;
+        %tmp.22 = const :method;
+        symbol [ method %tmp.22 74 17 23 const ];
+        symbol [ Communications %tmp.23 74 27 41 ];
+        %tmp.23 = getm $.Toybox.Communications;
+        symbol [ HTTP_REQUEST_METHOD_POST %tmp.24 74 42 66 ];
+        %tmp.24 = getv %tmp.23 :HTTP_REQUEST_METHOD_POST;
+        %tmp.25 = dup %tmp.20;
+        %tmp.26 = aputv %tmp.25 %tmp.22 %tmp.24;
+        %tmp.28 = const :responseType;
+        symbol [ responseType %tmp.28 75 17 29 const ];
+        symbol [ Communications %tmp.29 75 33 47 ];
+        %tmp.29 = getm $.Toybox.Communications;
+        symbol [ HTTP_RESPONSE_CONTENT_TYPE_JSON %tmp.30 75 48 79 ];
+        %tmp.30 = getv %tmp.29 :HTTP_RESPONSE_CONTENT_TYPE_JSON;
+        %tmp.31 = dup %tmp.26;
+        %tmp.32 = aputv %tmp.31 %tmp.28 %tmp.30;
+        %tmp.34 = const :headers;
+        symbol [ headers %tmp.34 76 17 24 const ];
+        %tmp.35 = newd 1;
+        %tmp.36 = "Content-Type";
+        symbol [ Communications %tmp.37 76 48 62 ];
+        %tmp.37 = getm $.Toybox.Communications;
+        symbol [ REQUEST_CONTENT_TYPE_JSON %tmp.38 76 63 88 ];
+        %tmp.38 = getv %tmp.37 :REQUEST_CONTENT_TYPE_JSON;
+        %tmp.39 = dup %tmp.35;
+        %tmp.40 = aputv %tmp.39 %tmp.36 %tmp.38;
+        %tmp.41 = dup %tmp.32;
+        %tmp.42 = aputv %tmp.41 %tmp.34 %tmp.40;
+        %tmp.43 = self;
+        symbol [ method %tmp.44 78 12 18 ];
+        %tmp.44 = getv function %tmp.43 :method;
+        %tmp.46 = const :onApplyResponse;
+        symbol [ onApplyResponse %tmp.46 78 20 35 const ];
+        %tmp.47 = invoke %tmp.43 %tmp.44(%tmp.46);
+        invoke %tmp.16 %tmp.17(%tmp.18, %tmp.19, %tmp.42, %tmp.47);
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_64_28_80_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc"; @line = 82; @symbol_functiondef = [onApplyResponse,82,13,28]; @symbol_param<0> = [responseCode,82,29,41]; @symbol_param<1> = [data,82,43,47]; ]
+    function onApplyResponse(responseCode, data) {
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_82_49_90_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 83 8 ]
+        symbol [ view %tmp.1 83 8 12 ];
+        %tmp.1 = getv self :view;
+        %tmp.2 = false;
+        symbol [ isApplying ? 83 13 23 ];
+        putv %tmp.1 :isApplying %tmp.2;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 84 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_84_8_88_8_if_stmt:
+        %tmp.3 = lgetv %responseCode;
+        symbol [ responseCode %tmp.3 84 12 24 ];
+        %tmp.4 = 200;
+        %tmp.5 = eq %tmp.3 %tmp.4;
+        bf %tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_84_8_88_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_84_8_88_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_84_33_86_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 85 12 ]
+        symbol [ view %tmp.6 85 12 16 ];
+        %tmp.6 = getv self :view;
+        %tmp.7 = true;
+        symbol [ applied ? 85 17 24 ];
+        putv %tmp.6 :applied %tmp.7;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_84_33_86_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_84_8_88_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_84_8_88_8_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_86_15_88_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 87 12 ]
+        symbol [ view %tmp.8 87 12 16 ];
+        %tmp.8 = getv self :view;
+        %tmp.9 = "Apply failed!";
+        symbol [ statusText ? 87 17 27 ];
+        putv %tmp.8 :statusText %tmp.9;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_86_15_88_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_84_8_88_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 89 8 ]
+        symbol [ WatchUi %tmp.10 89 8 15 ];
+        %tmp.10 = getm $.Toybox.WatchUi;
+        symbol [ requestUpdate %tmp.11 89 16 29 ];
+        %tmp.11 = getv function %tmp.10 :requestUpdate;
+        invoke %tmp.10 %tmp.11();
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_82_49_90_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc"; @line = 92; @symbol_functiondef = [onBack,92,13,19]; ]
     function onBack() {
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_22_61_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 54 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_54_8_59_8_if_stmt:
-        symbol [ view %tmp.2 54 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_92_22_100_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 93 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_8_98_8_if_stmt:
+        symbol [ view %tmp.2 93 12 16 ];
         %tmp.2 = getv ? :view;
-        symbol [ phase %tmp.3 54 17 22 ];
+        symbol [ phase %tmp.3 93 17 22 ];
         %tmp.3 = getv %tmp.2 :phase;
         %tmp.4 = 1;
         %tmp.5 = eq %tmp.3 %tmp.4;
-        bf %tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_54_8_59_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_54_8_59_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_54_29_59_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 55 12 ]
-        symbol [ view %tmp.6 55 12 16 ];
+        bf %tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_8_98_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_8_98_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_29_98_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 94 12 ]
+        symbol [ view %tmp.6 94 12 16 ];
         %tmp.6 = getv self :view;
         %tmp.7 = 0;
-        symbol [ phase ? 55 17 22 ];
+        symbol [ phase ? 94 17 22 ];
         putv %tmp.6 :phase %tmp.7;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 56 12 ]
-        symbol [ view %tmp.8 56 12 16 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 95 12 ]
+        symbol [ view %tmp.8 95 12 16 ];
         %tmp.8 = getv self :view;
         %tmp.9 = 0;
-        symbol [ distance ? 56 17 25 ];
+        symbol [ distance ? 95 17 25 ];
         putv %tmp.8 :distance %tmp.9;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 57 12 ]
-        symbol [ WatchUi %tmp.10 57 12 19 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 96 12 ]
+        symbol [ WatchUi %tmp.10 96 12 19 ];
         %tmp.10 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.11 57 20 33 ];
+        symbol [ requestUpdate %tmp.11 96 20 33 ];
         %tmp.11 = getv function %tmp.10 :requestUpdate;
         invoke %tmp.10 %tmp.11();
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 58 12 ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 97 12 ]
         %tmp.12 = true;
         ret %tmp.12;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_54_29_59_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_54_8_59_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_54_8_59_8_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 60 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_29_98_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_8_98_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_8_98_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 99 8 ]
         %tmp.13 = false;
         ret %tmp.13;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_53_22_61_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_92_22_100_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc"; @line = 63; @symbol_functiondef = [submitResult,63,13,25]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc"; @line = 102; @symbol_functiondef = [submitResult,102,13,25]; ]
     function submitResult() {
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_63_28_88_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 64 8 ]
-        symbol [ view %tmp.1 64 8 12 ];
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_102_28_127_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 103 8 ]
+        symbol [ view %tmp.1 103 8 12 ];
         %tmp.1 = getv self :view;
         %tmp.2 = true;
-        symbol [ isSending ? 64 13 22 ];
+        symbol [ isSending ? 103 13 22 ];
         putv %tmp.1 :isSending %tmp.2;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 65 8 ]
-        symbol [ WatchUi %tmp.3 65 8 15 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 104 8 ]
+        symbol [ WatchUi %tmp.3 104 8 15 ];
         %tmp.3 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.4 65 16 29 ];
+        symbol [ requestUpdate %tmp.4 104 16 29 ];
         %tmp.4 = getv function %tmp.3 :requestUpdate;
         invoke %tmp.3 %tmp.4();
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 67 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_63_28_88_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_63_28_88_4_stop" ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 106 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_102_28_127_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_102_28_127_4_stop" ]
         %url.1 = local;
-        symbol [ url %url.1 67 12 15 ];
-        symbol [ ServerConfig %tmp.6 67 18 30 ];
+        symbol [ url %url.1 106 12 15 ];
+        symbol [ ServerConfig %tmp.6 106 18 30 ];
         %tmp.6 = getv ? :ServerConfig;
-        symbol [ BASE_URL %tmp.7 67 31 39 ];
+        symbol [ BASE_URL %tmp.7 106 31 39 ];
         %tmp.7 = getv %tmp.6 :BASE_URL;
         %tmp.8 = "/api/runsheet/watch/";
         %tmp.9 = add %tmp.7 %tmp.8;
-        symbol [ view %tmp.11 67 67 71 ];
+        symbol [ view %tmp.11 106 67 71 ];
         %tmp.11 = getv ? :view;
-        symbol [ sessionCode %tmp.12 67 72 83 ];
+        symbol [ sessionCode %tmp.12 106 72 83 ];
         %tmp.12 = getv %tmp.11 :sessionCode;
         %tmp.13 = add %tmp.9 %tmp.12;
         %tmp.14 = "/result";
         %tmp.15 = add %tmp.13 %tmp.14;
         lputv %url.1 %tmp.15;
-        symbol [ url %url.1 67 12 15 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 69 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_63_28_88_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_63_28_88_4_stop" ]
+        symbol [ url %url.1 106 12 15 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 108 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_102_28_127_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_102_28_127_4_stop" ]
         %body.2 = local;
-        symbol [ body %body.2 69 12 16 ];
+        symbol [ body %body.2 108 12 16 ];
         %tmp.16 = newd 4;
         %tmp.17 = "roundIndex";
-        symbol [ view %tmp.19 70 28 32 ];
+        symbol [ view %tmp.19 109 28 32 ];
         %tmp.19 = getv ? :view;
-        symbol [ roundIndex %tmp.20 70 33 43 ];
+        symbol [ roundIndex %tmp.20 109 33 43 ];
         %tmp.20 = getv %tmp.19 :roundIndex;
         %tmp.21 = dup %tmp.16;
         %tmp.22 = aputv %tmp.21 %tmp.17 %tmp.20;
         %tmp.23 = "heatIndex";
-        symbol [ view %tmp.25 71 27 31 ];
+        symbol [ view %tmp.25 110 27 31 ];
         %tmp.25 = getv ? :view;
-        symbol [ heatIndex %tmp.26 71 32 41 ];
+        symbol [ heatIndex %tmp.26 110 32 41 ];
         %tmp.26 = getv %tmp.25 :heatIndex;
         %tmp.27 = dup %tmp.22;
         %tmp.28 = aputv %tmp.27 %tmp.23 %tmp.26;
         %tmp.29 = "winnerPair";
-        symbol [ view %tmp.31 72 28 32 ];
+        symbol [ view %tmp.31 111 28 32 ];
         %tmp.31 = getv ? :view;
-        symbol [ selectedWinner %tmp.32 72 33 47 ];
+        symbol [ selectedWinner %tmp.32 111 33 47 ];
         %tmp.32 = getv %tmp.31 :selectedWinner;
         %tmp.33 = dup %tmp.28;
         %tmp.34 = aputv %tmp.33 %tmp.29 %tmp.32;
         %tmp.35 = "loserDistance";
-        symbol [ view %tmp.37 73 31 35 ];
+        symbol [ view %tmp.37 112 31 35 ];
         %tmp.37 = getv ? :view;
-        symbol [ distance %tmp.38 73 36 44 ];
+        symbol [ distance %tmp.38 112 36 44 ];
         %tmp.38 = getv %tmp.37 :distance;
         %tmp.39 = dup %tmp.34;
         %tmp.40 = aputv %tmp.39 %tmp.35 %tmp.38;
         lputv %body.2 %tmp.40;
-        symbol [ body %body.2 69 12 16 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 76 8 ]
-        symbol [ Communications %tmp.41 76 8 22 ];
+        symbol [ body %body.2 108 12 16 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 115 8 ]
+        symbol [ Communications %tmp.41 115 8 22 ];
         %tmp.41 = getm $.Toybox.Communications;
-        symbol [ makeWebRequest %tmp.42 76 23 37 ];
+        symbol [ makeWebRequest %tmp.42 115 23 37 ];
         %tmp.42 = getv function %tmp.41 :makeWebRequest;
         %tmp.43 = lgetv %url.1;
-        symbol [ url %tmp.43 77 12 15 ];
+        symbol [ url %tmp.43 116 12 15 ];
         %tmp.44 = lgetv %body.2;
-        symbol [ body %tmp.44 78 12 16 ];
+        symbol [ body %tmp.44 117 12 16 ];
         %tmp.45 = newd 3;
         %tmp.47 = const :method;
-        symbol [ method %tmp.47 80 17 23 const ];
-        symbol [ Communications %tmp.48 80 27 41 ];
+        symbol [ method %tmp.47 119 17 23 const ];
+        symbol [ Communications %tmp.48 119 27 41 ];
         %tmp.48 = getm $.Toybox.Communications;
-        symbol [ HTTP_REQUEST_METHOD_POST %tmp.49 80 42 66 ];
+        symbol [ HTTP_REQUEST_METHOD_POST %tmp.49 119 42 66 ];
         %tmp.49 = getv %tmp.48 :HTTP_REQUEST_METHOD_POST;
         %tmp.50 = dup %tmp.45;
         %tmp.51 = aputv %tmp.50 %tmp.47 %tmp.49;
         %tmp.53 = const :responseType;
-        symbol [ responseType %tmp.53 81 17 29 const ];
-        symbol [ Communications %tmp.54 81 33 47 ];
+        symbol [ responseType %tmp.53 120 17 29 const ];
+        symbol [ Communications %tmp.54 120 33 47 ];
         %tmp.54 = getm $.Toybox.Communications;
-        symbol [ HTTP_RESPONSE_CONTENT_TYPE_JSON %tmp.55 81 48 79 ];
+        symbol [ HTTP_RESPONSE_CONTENT_TYPE_JSON %tmp.55 120 48 79 ];
         %tmp.55 = getv %tmp.54 :HTTP_RESPONSE_CONTENT_TYPE_JSON;
         %tmp.56 = dup %tmp.51;
         %tmp.57 = aputv %tmp.56 %tmp.53 %tmp.55;
         %tmp.59 = const :headers;
-        symbol [ headers %tmp.59 82 17 24 const ];
+        symbol [ headers %tmp.59 121 17 24 const ];
         %tmp.60 = newd 1;
         %tmp.61 = "Content-Type";
-        symbol [ Communications %tmp.62 83 38 52 ];
+        symbol [ Communications %tmp.62 122 38 52 ];
         %tmp.62 = getm $.Toybox.Communications;
-        symbol [ REQUEST_CONTENT_TYPE_JSON %tmp.63 83 53 78 ];
+        symbol [ REQUEST_CONTENT_TYPE_JSON %tmp.63 122 53 78 ];
         %tmp.63 = getv %tmp.62 :REQUEST_CONTENT_TYPE_JSON;
         %tmp.64 = dup %tmp.60;
         %tmp.65 = aputv %tmp.64 %tmp.61 %tmp.63;
         %tmp.66 = dup %tmp.57;
         %tmp.67 = aputv %tmp.66 %tmp.59 %tmp.65;
         %tmp.68 = self;
-        symbol [ method %tmp.69 86 12 18 ];
+        symbol [ method %tmp.69 125 12 18 ];
         %tmp.69 = getv function %tmp.68 :method;
         %tmp.71 = const :onSubmitResponse;
-        symbol [ onSubmitResponse %tmp.71 86 20 36 const ];
+        symbol [ onSubmitResponse %tmp.71 125 20 36 const ];
         %tmp.72 = invoke %tmp.68 %tmp.69(%tmp.71);
         invoke %tmp.41 %tmp.42(%tmp.43, %tmp.44, %tmp.67, %tmp.72);
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_63_28_88_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_102_28_127_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc"; @line = 90; @symbol_functiondef = [onSubmitResponse,90,13,29]; @symbol_param<0> = [responseCode,90,30,42]; @symbol_param<1> = [data,90,44,48]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc"; @line = 129; @symbol_functiondef = [onSubmitResponse,129,13,29]; @symbol_param<0> = [responseCode,129,30,42]; @symbol_param<1> = [data,129,44,48]; ]
     function onSubmitResponse(responseCode, data) {
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_90_50_113_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 91 8 ]
-        symbol [ view %tmp.1 91 8 12 ];
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_129_50_154_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 130 8 ]
+        symbol [ view %tmp.1 130 8 12 ];
         %tmp.1 = getv self :view;
         %tmp.2 = false;
-        symbol [ isSending ? 91 13 22 ];
+        symbol [ isSending ? 130 13 22 ];
         putv %tmp.1 :isSending %tmp.2;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 93 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_8_110_8_if_stmt:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_12_93_67_begin:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_12_93_43_begin:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 132 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_8_151_8_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_12_132_67_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_12_132_43_begin:
         %tmp.3 = lgetv %responseCode;
-        symbol [ responseCode %tmp.3 93 12 24 ];
+        symbol [ responseCode %tmp.3 132 12 24 ];
         %tmp.4 = 200;
         %tmp.5 = eq %tmp.3 %tmp.4;
-        bf %tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_8_110_8_if_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_35_93_43_true:
+        bf %tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_8_151_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_35_132_43_true:
         %tmp.6 = lgetv %data;
-        symbol [ data %tmp.6 93 35 39 ];
+        symbol [ data %tmp.6 132 35 39 ];
         %tmp.7 = null;
         %tmp.8 = ne %tmp.6 %tmp.7;
         push %tmp.8;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_35_93_43_end:
-        %tmp.9 = phi [%tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_12_93_43_begin] [%tmp.8 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_35_93_43_true] [%tmp.9 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_35_93_43_end];
-        bf %tmp.9 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_8_110_8_if_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_51_93_67_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_35_132_43_end:
+        %tmp.9 = phi [%tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_12_132_43_begin] [%tmp.8 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_35_132_43_true] [%tmp.9 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_35_132_43_end];
+        bf %tmp.9 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_8_151_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_51_132_67_true:
         %tmp.10 = lgetv %data;
-        symbol [ data %tmp.10 93 51 55 ];
+        symbol [ data %tmp.10 132 51 55 ];
         %tmp.11 = as %tmp.10 { (!Null) };
-        symbol [ Dictionary %tmp.13 93 67 77 ];
+        symbol [ Dictionary %tmp.13 132 67 77 ];
         %tmp.13 = getv ? :Dictionary;
         %tmp.14 = isa %tmp.11 %tmp.13;
         push %tmp.14;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_51_93_67_end:
-        %tmp.15 = phi [%tmp.9 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_12_93_67_begin] [%tmp.14 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_51_93_67_true] [%tmp.15 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_51_93_67_end];
-        bf %tmp.15 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_8_110_8_if_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_8_110_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_79_107_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 94 12 ]
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_12_106_12_if_stmt:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_16_94_72_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_51_132_67_end:
+        %tmp.15 = phi [%tmp.9 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_12_132_67_begin] [%tmp.14 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_51_132_67_true] [%tmp.15 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_51_132_67_end];
+        bf %tmp.15 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_8_151_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_8_151_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_79_148_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 133 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_12_147_12_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_16_133_72_begin:
         %tmp.16 = lgetv %data;
-        symbol [ data %tmp.16 94 16 20 ];
+        symbol [ data %tmp.16 133 16 20 ];
         %tmp.17 = as %tmp.16 { (Dictionary) && (!Null) };
         %tmp.18 = "nextHeat";
         %tmp.19 = agetv %tmp.17 %tmp.18;
         %tmp.20 = null;
         %tmp.21 = ne %tmp.19 %tmp.20;
-        bf %tmp.21 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_12_106_12_if_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_44_94_72_true:
+        bf %tmp.21 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_12_147_12_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_44_133_72_true:
         %tmp.22 = lgetv %data;
-        symbol [ data %tmp.22 94 44 48 ];
+        symbol [ data %tmp.22 133 44 48 ];
         %tmp.23 = as %tmp.22 { (Dictionary) && (!Null) };
         %tmp.24 = "nextHeat";
         %tmp.25 = agetv %tmp.23 %tmp.24;
-        symbol [ Dictionary %tmp.27 94 72 82 ];
+        symbol [ Dictionary %tmp.27 133 72 82 ];
         %tmp.27 = getv ? :Dictionary;
         %tmp.28 = isa %tmp.25 %tmp.27;
         push %tmp.28;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_44_94_72_end:
-        %tmp.29 = phi [%tmp.21 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_16_94_72_begin] [%tmp.28 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_44_94_72_true] [%tmp.29 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_44_94_72_end];
-        bf %tmp.29 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_12_106_12_if_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_12_106_12_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_84_104_12_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 95 16 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_84_104_12_start" "_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_84_104_12_stop" ]
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_44_133_72_end:
+        %tmp.29 = phi [%tmp.21 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_16_133_72_begin] [%tmp.28 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_44_133_72_true] [%tmp.29 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_44_133_72_end];
+        bf %tmp.29 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_12_147_12_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_12_147_12_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_84_145_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 134 16 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_84_145_12_start" "_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_84_145_12_stop" ]
         %nh.1 = local;
-        symbol [ nh %nh.1 95 20 22 ];
+        symbol [ nh %nh.1 134 20 22 ];
         %tmp.30 = lgetv %data;
-        symbol [ data %tmp.30 95 25 29 ];
+        symbol [ data %tmp.30 134 25 29 ];
         %tmp.31 = as %tmp.30 { (Dictionary) && (!Null) };
         %tmp.32 = "nextHeat";
         %tmp.33 = agetv %tmp.31 %tmp.32;
         lputv %nh.1 %tmp.33;
-        symbol [ nh %nh.1 95 20 22 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 96 16 ]
-        symbol [ view %tmp.34 96 16 20 ];
+        symbol [ nh %nh.1 134 20 22 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 135 16 ]
+        symbol [ view %tmp.34 135 16 20 ];
         %tmp.34 = getv self :view;
         %tmp.35 = lgetv %nh.1;
-        symbol [ nh %tmp.35 96 33 35 ];
+        symbol [ nh %tmp.35 135 33 35 ];
         %tmp.36 = "roundName";
         %tmp.37 = agetv %tmp.35 %tmp.36;
-        symbol [ roundName ? 96 21 30 ];
+        symbol [ roundName ? 135 21 30 ];
         putv %tmp.34 :roundName %tmp.37;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 97 16 ]
-        symbol [ view %tmp.38 97 16 20 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 136 16 ]
+        symbol [ view %tmp.38 136 16 20 ];
         %tmp.38 = getv self :view;
         %tmp.39 = lgetv %nh.1;
-        symbol [ nh %tmp.39 97 29 31 ];
+        symbol [ nh %tmp.39 136 29 31 ];
         %tmp.40 = "pairA";
         %tmp.41 = agetv %tmp.39 %tmp.40;
-        symbol [ pairA ? 97 21 26 ];
+        symbol [ pairA ? 136 21 26 ];
         putv %tmp.38 :pairA %tmp.41;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 98 16 ]
-        symbol [ view %tmp.42 98 16 20 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 137 16 ]
+        symbol [ view %tmp.42 137 16 20 ];
         %tmp.42 = getv self :view;
         %tmp.43 = lgetv %nh.1;
-        symbol [ nh %tmp.43 98 29 31 ];
+        symbol [ nh %tmp.43 137 29 31 ];
         %tmp.44 = "pairB";
         %tmp.45 = agetv %tmp.43 %tmp.44;
-        symbol [ pairB ? 98 21 26 ];
+        symbol [ pairB ? 137 21 26 ];
         putv %tmp.42 :pairB %tmp.45;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 99 16 ]
-        symbol [ view %tmp.46 99 16 20 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 138 16 ]
+        symbol [ view %tmp.46 138 16 20 ];
         %tmp.46 = getv self :view;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_138_30_138_89_begin:
         %tmp.47 = lgetv %nh.1;
-        symbol [ nh %tmp.47 99 34 36 ];
-        %tmp.48 = "roundIndex";
+        symbol [ nh %tmp.47 138 30 32 ];
+        %tmp.48 = "labelA";
         %tmp.49 = agetv %tmp.47 %tmp.48;
-        symbol [ roundIndex ? 99 21 31 ];
-        putv %tmp.46 :roundIndex %tmp.49;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 100 16 ]
-        symbol [ view %tmp.50 100 16 20 ];
-        %tmp.50 = getv self :view;
-        %tmp.51 = lgetv %nh.1;
-        symbol [ nh %tmp.51 100 33 35 ];
-        %tmp.52 = "heatIndex";
-        %tmp.53 = agetv %tmp.51 %tmp.52;
-        symbol [ heatIndex ? 100 21 30 ];
-        putv %tmp.50 :heatIndex %tmp.53;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 101 16 ]
-        symbol [ view %tmp.54 101 16 20 ];
-        %tmp.54 = getv self :view;
-        %tmp.55 = "Select winner";
-        symbol [ statusText ? 101 21 31 ];
-        putv %tmp.54 :statusText %tmp.55;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 102 16 ]
-        symbol [ view %tmp.56 102 16 20 ];
-        %tmp.56 = getv self :view;
-        %tmp.57 = 0;
-        symbol [ phase ? 102 21 26 ];
-        putv %tmp.56 :phase %tmp.57;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 103 16 ]
-        symbol [ view %tmp.58 103 16 20 ];
-        %tmp.58 = getv self :view;
-        %tmp.59 = 0;
-        symbol [ distance ? 103 21 29 ];
-        putv %tmp.58 :distance %tmp.59;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_84_104_12_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_12_106_12_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_12_106_12_if_else_false:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_104_19_106_12_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 105 16 ]
-        symbol [ view %tmp.60 105 16 20 ];
-        %tmp.60 = getv self :view;
-        %tmp.61 = true;
-        symbol [ allDone ? 105 21 28 ];
-        putv %tmp.60 :allDone %tmp.61;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_104_19_106_12_stop:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_94_12_106_12_if_end:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_79_107_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_8_110_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_8_110_8_if_else_false:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_107_15_110_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 108 12 ]
-        symbol [ view %tmp.62 108 12 16 ];
-        %tmp.62 = getv self :view;
-        %tmp.63 = "Error! Try again";
-        symbol [ statusText ? 108 17 27 ];
-        putv %tmp.62 :statusText %tmp.63;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 109 12 ]
-        symbol [ view %tmp.64 109 12 16 ];
-        %tmp.64 = getv self :view;
-        %tmp.65 = 0;
-        symbol [ phase ? 109 17 22 ];
-        putv %tmp.64 :phase %tmp.65;
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_107_15_110_8_stop:
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_93_8_110_8_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 112 8 ]
-        symbol [ WatchUi %tmp.66 112 8 15 ];
-        %tmp.66 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.67 112 16 29 ];
-        %tmp.67 = getv function %tmp.66 :requestUpdate;
-        invoke %tmp.66 %tmp.67();
-_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_90_50_113_4_stop:
+        %tmp.50 = null;
+        %tmp.51 = ne %tmp.49 %tmp.50;
+        bf %tmp.51 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_138_30_138_89_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_138_30_138_89_true:
+        %tmp.52 = lgetv %nh.1;
+        symbol [ nh %tmp.52 138 53 55 ];
+        %tmp.53 = "labelA";
+        %tmp.54 = agetv %tmp.52 %tmp.53;
+        push %tmp.54;
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_138_30_138_89_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_138_30_138_89_else_false:
+        %tmp.55 = lgetv %nh.1;
+        symbol [ nh %tmp.55 138 68 70 ];
+        %tmp.56 = "pairA";
+        %tmp.57 = agetv %tmp.55 %tmp.56;
+        symbol [ toString %tmp.58 138 80 88 ];
+        %tmp.58 = getv function %tmp.57 :toString;
+        %tmp.59 = invoke %tmp.57 %tmp.58();
+        push %tmp.59;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_138_30_138_89_end:
+        %tmp.60 = phi [%tmp.51 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_138_30_138_89_begin] [%tmp.54 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_138_30_138_89_true] [%tmp.59 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_138_30_138_89_else_false] [%tmp.60 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_138_30_138_89_end];
+        symbol [ labelA ? 138 21 27 ];
+        putv %tmp.46 :labelA %tmp.60;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 139 16 ]
+        symbol [ view %tmp.61 139 16 20 ];
+        %tmp.61 = getv self :view;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_139_30_139_89_begin:
+        %tmp.62 = lgetv %nh.1;
+        symbol [ nh %tmp.62 139 30 32 ];
+        %tmp.63 = "labelB";
+        %tmp.64 = agetv %tmp.62 %tmp.63;
+        %tmp.65 = null;
+        %tmp.66 = ne %tmp.64 %tmp.65;
+        bf %tmp.66 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_139_30_139_89_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_139_30_139_89_true:
+        %tmp.67 = lgetv %nh.1;
+        symbol [ nh %tmp.67 139 53 55 ];
+        %tmp.68 = "labelB";
+        %tmp.69 = agetv %tmp.67 %tmp.68;
+        push %tmp.69;
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_139_30_139_89_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_139_30_139_89_else_false:
+        %tmp.70 = lgetv %nh.1;
+        symbol [ nh %tmp.70 139 68 70 ];
+        %tmp.71 = "pairB";
+        %tmp.72 = agetv %tmp.70 %tmp.71;
+        symbol [ toString %tmp.73 139 80 88 ];
+        %tmp.73 = getv function %tmp.72 :toString;
+        %tmp.74 = invoke %tmp.72 %tmp.73();
+        push %tmp.74;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_139_30_139_89_end:
+        %tmp.75 = phi [%tmp.66 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_139_30_139_89_begin] [%tmp.69 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_139_30_139_89_true] [%tmp.74 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_139_30_139_89_else_false] [%tmp.75 @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_139_30_139_89_end];
+        symbol [ labelB ? 139 21 27 ];
+        putv %tmp.61 :labelB %tmp.75;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 140 16 ]
+        symbol [ view %tmp.76 140 16 20 ];
+        %tmp.76 = getv self :view;
+        %tmp.77 = lgetv %nh.1;
+        symbol [ nh %tmp.77 140 34 36 ];
+        %tmp.78 = "roundIndex";
+        %tmp.79 = agetv %tmp.77 %tmp.78;
+        symbol [ roundIndex ? 140 21 31 ];
+        putv %tmp.76 :roundIndex %tmp.79;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 141 16 ]
+        symbol [ view %tmp.80 141 16 20 ];
+        %tmp.80 = getv self :view;
+        %tmp.81 = lgetv %nh.1;
+        symbol [ nh %tmp.81 141 33 35 ];
+        %tmp.82 = "heatIndex";
+        %tmp.83 = agetv %tmp.81 %tmp.82;
+        symbol [ heatIndex ? 141 21 30 ];
+        putv %tmp.80 :heatIndex %tmp.83;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 142 16 ]
+        symbol [ view %tmp.84 142 16 20 ];
+        %tmp.84 = getv self :view;
+        %tmp.85 = "Select winner";
+        symbol [ statusText ? 142 21 31 ];
+        putv %tmp.84 :statusText %tmp.85;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 143 16 ]
+        symbol [ view %tmp.86 143 16 20 ];
+        %tmp.86 = getv self :view;
+        %tmp.87 = 0;
+        symbol [ phase ? 143 21 26 ];
+        putv %tmp.86 :phase %tmp.87;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 144 16 ]
+        symbol [ view %tmp.88 144 16 20 ];
+        %tmp.88 = getv self :view;
+        %tmp.89 = 0;
+        symbol [ distance ? 144 21 29 ];
+        putv %tmp.88 :distance %tmp.89;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_84_145_12_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_12_147_12_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_12_147_12_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_145_19_147_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 146 16 ]
+        symbol [ view %tmp.90 146 16 20 ];
+        %tmp.90 = getv self :view;
+        %tmp.91 = true;
+        symbol [ allDone ? 146 21 28 ];
+        putv %tmp.90 :allDone %tmp.91;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_145_19_147_12_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_133_12_147_12_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_79_148_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_8_151_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_8_151_8_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_148_15_151_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 149 12 ]
+        symbol [ view %tmp.92 149 12 16 ];
+        %tmp.92 = getv self :view;
+        %tmp.93 = "Error! Try again";
+        symbol [ statusText ? 149 17 27 ];
+        putv %tmp.92 :statusText %tmp.93;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 150 12 ]
+        symbol [ view %tmp.94 150 12 16 ];
+        %tmp.94 = getv self :view;
+        %tmp.95 = 0;
+        symbol [ phase ? 150 17 22 ];
+        putv %tmp.94 :phase %tmp.95;
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_148_15_151_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_132_8_151_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc" 153 8 ]
+        symbol [ WatchUi %tmp.96 153 8 15 ];
+        %tmp.96 = getm $.Toybox.WatchUi;
+        symbol [ requestUpdate %tmp.97 153 16 29 ];
+        %tmp.97 = getv function %tmp.96 :requestUpdate;
+        invoke %tmp.96 %tmp.97();
+_Users_simenfinjord_glidr5_garmin_app_source_HeatDelegate_mc_129_50_154_4_stop:
     }
 }
 [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/HeatDelegate.mc"; @line = 1; ]

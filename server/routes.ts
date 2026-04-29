@@ -2425,7 +2425,7 @@ export async function registerRoutes(
   const watchSessionsMemory = new Map<string, WatchSession>();
 
   async function generateSessionCode(): Promise<string> {
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const code = String(Math.floor(1000 + Math.random() * 9000));
     return code;
   }
 

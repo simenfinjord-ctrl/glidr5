@@ -20,6 +20,8 @@ class HeatView extends WatchUi.View {
 
     var distance = 0;
     var isSending = false;
+    var isApplying = false;
+    var applied = false;
 
     function initialize(code) {
         View.initialize();
@@ -35,12 +37,26 @@ class HeatView extends WatchUi.View {
         var cx = w / 2;
 
         if (allDone) {
-            dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.35, Graphics.FONT_MEDIUM, "DONE!", Graphics.TEXT_JUSTIFY_CENTER);
-            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.55, Graphics.FONT_SMALL, "All heats complete", Graphics.TEXT_JUSTIFY_CENTER);
-            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.70, Graphics.FONT_XTINY, "BACK to exit", Graphics.TEXT_JUSTIFY_CENTER);
+            if (applied) {
+                dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
+                dc.drawText(cx, h * 0.35, Graphics.FONT_MEDIUM, "APPLIED!", Graphics.TEXT_JUSTIFY_CENTER);
+                dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+                dc.drawText(cx, h * 0.55, Graphics.FONT_SMALL, "Results saved", Graphics.TEXT_JUSTIFY_CENTER);
+                dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+                dc.drawText(cx, h * 0.70, Graphics.FONT_XTINY, "BACK to exit", Graphics.TEXT_JUSTIFY_CENTER);
+            } else if (isApplying) {
+                dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
+                dc.drawText(cx, h * 0.45, Graphics.FONT_SMALL, "Saving...", Graphics.TEXT_JUSTIFY_CENTER);
+            } else {
+                dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
+                dc.drawText(cx, h * 0.25, Graphics.FONT_MEDIUM, "DONE!", Graphics.TEXT_JUSTIFY_CENTER);
+                dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+                dc.drawText(cx, h * 0.45, Graphics.FONT_SMALL, "All heats complete", Graphics.TEXT_JUSTIFY_CENTER);
+                dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
+                dc.drawText(cx, h * 0.62, Graphics.FONT_XTINY, "SELECT: apply results", Graphics.TEXT_JUSTIFY_CENTER);
+                dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+                dc.drawText(cx, h * 0.75, Graphics.FONT_XTINY, "BACK to exit", Graphics.TEXT_JUSTIFY_CENTER);
+            }
             return;
         }
 

@@ -2687,6 +2687,40 @@ export async function registerRoutes(
     res.json({ ok: true, nextHeat: labeledNext });
   });
 
+  app.post("/api/runsheet/sessions/:code/apply", async (req, res) => {
+    const session = await getWatchSession(req.params.code as string);
+    if (!session) return res.status(404).json({ message: "Invalid code" });
+    if (!session.testId) return res.status(400).json({ message: "No test linked to this session" });
+
+    const diffs = watchCalcDiffs(session.bracket);
+    if (diffs.size === 0) return res.status(400).json({ message: "No results yet" });
+
+    const sorted = [...diffs.entries()].sort((a, b) => a[1] - b[1]);
+    const results: { skiNumber: number; diff: number; rank: number }[] = [];
+    let prevDiff: number | null = null;
+    let currentRank = 1;
+    for (let i = 0; i < sorted.length; i++) {
+      const [skiNumber, diff] = sorted[i];
+      if (prevDiff !== null && diff !== prevDiff) currentRank = i + 1;
+      results.push({ skiNumber, diff, rank: currentRank });
+      prevDiff = diff;
+    }
+
+    const entries = await storage.listEntries(session.testId);
+    const entryBySkiNumber = new Map(entries.map((e: any) => [e.skiNumber, e]));
+    for (const r of results) {
+      const entry = entryBySkiNumber.get(r.skiNumber);
+      if (!entry) continue;
+      await storage.updateEntryResults((entry as any).id, r.diff, r.rank);
+    }
+
+    await db.update(tests)
+      .set({ runsheetBracket: JSON.stringify(session.bracket) })
+      .where(eq(tests.id, session.testId));
+
+    res.json({ ok: true, applied: results.length });
+  });
+
   app.delete("/api/runsheet/sessions/:code", requireAuth, async (req, res) => {
     const session = await getWatchSession(req.params.code as string);
     if (session) {

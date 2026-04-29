@@ -48,12 +48,45 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
     }
 
     function onSelect() {
-        if (view.allDone || view.isSending) { return true; }
+        if (view.isSending || view.isApplying) { return true; }
+
+        if (view.allDone && !view.applied) {
+            applyResults();
+            return true;
+        }
 
         if (view.phase == 1) {
             submitResult();
         }
         return true;
+    }
+
+    function applyResults() {
+        view.isApplying = true;
+        WatchUi.requestUpdate();
+
+        var url = ServerConfig.BASE_URL + "/api/runsheet/sessions/" + view.sessionCode + "/apply";
+
+        Communications.makeWebRequest(
+            url,
+            {},
+            {
+                :method => Communications.HTTP_REQUEST_METHOD_POST,
+                :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,
+                :headers => { "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON }
+            },
+            method(:onApplyResponse)
+        );
+    }
+
+    function onApplyResponse(responseCode, data) {
+        view.isApplying = false;
+        if (responseCode == 200) {
+            view.applied = true;
+        } else {
+            view.statusText = "Apply failed!";
+        }
+        WatchUi.requestUpdate();
     }
 
     function onBack() {

@@ -196,6 +196,9 @@ export async function registerRoutes(
 
   app.use("/api", enforceStealthReadOnly);
 
+  // --- Health check (used by keep-alive ping) ---
+  app.get("/api/health", (_req, res) => res.json({ ok: true, ts: Date.now() }));
+
   // --- Teams CRUD ---
   app.get("/api/teams", requireAuth, async (req, res) => {
     const u = req.user!;

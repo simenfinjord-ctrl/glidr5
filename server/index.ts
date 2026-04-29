@@ -113,6 +113,18 @@ app.use((req, res, next) => {
       } catch (err) {
         console.error("Failed to init auto-backups:", err);
       }
+
+      // Keep Render free tier awake by self-pinging every 10 minutes
+      if (process.env.NODE_ENV === "production") {
+        const selfUrl = process.env.RENDER_EXTERNAL_URL || `https://glidr.onrender.com`;
+        setInterval(async () => {
+          try {
+            await fetch(`${selfUrl}/api/health`);
+            log("Keep-alive ping sent", "keepalive");
+          } catch (_) {}
+        }, 10 * 60 * 1000);
+        log(`Keep-alive enabled – pinging ${selfUrl}/api/health every 10 min`, "keepalive");
+      }
     },
   );
 })();

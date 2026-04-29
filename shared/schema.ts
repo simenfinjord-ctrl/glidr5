@@ -524,6 +524,7 @@ export type UserTeam = typeof userTeams.$inferSelect;
 export const watchSessions = pgTable("watch_sessions", {
   code: varchar("code", { length: 4 }).primaryKey(),
   skiPairs: text("ski_pairs").notNull(), // JSON array
+  skiLabels: text("ski_labels"),         // JSON object: { skiNumber: "product name" }
   bracket: text("bracket").notNull(),    // JSON array
   testId: integer("test_id"),
   userId: integer("user_id").notNull(),

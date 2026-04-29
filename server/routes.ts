@@ -217,6 +217,7 @@ export async function registerRoutes(
       );
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS watch_pin TEXT;
       ALTER TABLE watch_queue ADD COLUMN IF NOT EXISTS session_code TEXT;
+      ALTER TABLE watch_sessions ADD COLUMN IF NOT EXISTS ski_labels TEXT;
     `);
   }
 
@@ -2552,6 +2553,7 @@ export async function registerRoutes(
         return {
           code: row.code,
           skiPairs: JSON.parse(row.skiPairs),
+          skiLabels: row.skiLabels ? JSON.parse(row.skiLabels) : {},
           bracket: JSON.parse(row.bracket),
           createdAt: new Date(row.createdAt).getTime(),
           userId: row.userId,
@@ -2575,6 +2577,7 @@ export async function registerRoutes(
       await db.insert(watchSessions).values({
         code: session.code,
         skiPairs: JSON.stringify(session.skiPairs),
+        skiLabels: labelsJson,
         bracket: JSON.stringify(session.bracket),
         testId: session.testId ?? null,
         userId: session.userId,
@@ -2582,7 +2585,10 @@ export async function registerRoutes(
         teamId: session.teamId ?? null,
         createdAt: new Date(session.createdAt).toISOString(),
         expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-      }).onConflictDoUpdate({ target: watchSessions.code, set: { bracket: JSON.stringify(session.bracket) } });
+      }).onConflictDoUpdate({
+        target: watchSessions.code,
+        set: { bracket: JSON.stringify(session.bracket), skiLabels: labelsJson },
+      });
     } catch (_) {}
   }
 
@@ -3026,12 +3032,18 @@ export async function registerRoutes(
         const entriesRows = await db.select().from(testEntries).where(eq(testEntries.testId, Number(testId)));
         if (entriesRows.length >= 2) {
           const skiPairs = entriesRows.map((e) => e.skiNumber);
-          // Build ski labels: skiNumber → product name (best effort)
+          // Build ski labels: skiNumber → product name shown in the app
           const skiLabels: Record<number, string> = {};
           for (const e of entriesRows) {
             if (e.productId) {
               const prods = await db.select().from(products).where(eq(products.id, e.productId));
-              if (prods[0]) skiLabels[e.skiNumber] = `${prods[0].brand} ${prods[0].name}`;
+              if (prods[0]) {
+                skiLabels[e.skiNumber] = `${prods[0].brand} ${prods[0].name}`;
+              } else if (e.freeTextProduct) {
+                skiLabels[e.skiNumber] = e.freeTextProduct;
+              }
+            } else if (e.freeTextProduct) {
+              skiLabels[e.skiNumber] = e.freeTextProduct;
             }
           }
           sessionCode = await generateSessionCode();
@@ -3165,7 +3177,13 @@ export async function registerRoutes(
           for (const e of entriesRows) {
             if (e.productId) {
               const prods = await db.select().from(products).where(eq(products.id, e.productId));
-              if (prods[0]) skiLabels[e.skiNumber] = `${prods[0].brand} ${prods[0].name}`;
+              if (prods[0]) {
+                skiLabels[e.skiNumber] = `${prods[0].brand} ${prods[0].name}`;
+              } else if (e.freeTextProduct) {
+                skiLabels[e.skiNumber] = e.freeTextProduct;
+              }
+            } else if (e.freeTextProduct) {
+              skiLabels[e.skiNumber] = e.freeTextProduct;
             }
           }
           const newCode = await generateSessionCode();

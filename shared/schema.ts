@@ -554,5 +554,6 @@ export const watchQueue = pgTable("watch_queue", {
   addedAt: text("added_at").notNull(),
   status: text("status").notNull().default("active"), // 'active' | 'completed'
   completedAt: text("completed_at"),
+  sessionCode: text("session_code"), // auto-created watch session code
 });
 

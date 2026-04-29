@@ -212,9 +212,11 @@ export async function registerRoutes(
         added_by_name TEXT NOT NULL DEFAULT '',
         added_at TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'active',
-        completed_at TEXT
+        completed_at TEXT,
+        session_code TEXT
       );
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS watch_pin TEXT;
+      ALTER TABLE watch_queue ADD COLUMN IF NOT EXISTS session_code TEXT;
     `);
   }
 
@@ -3016,10 +3018,47 @@ export async function registerRoutes(
     if (existing.rows.length > 0) {
       return res.status(409).json({ message: "Already in watch queue" });
     }
+
+    // Auto-create a watch session from the test's entries so Garmin can join directly
+    let sessionCode: string | null = null;
+    if (testId) {
+      try {
+        const entriesRows = await db.select().from(testEntries).where(eq(testEntries.testId, Number(testId)));
+        if (entriesRows.length >= 2) {
+          const skiPairs = entriesRows.map((e) => e.skiNumber);
+          // Build ski labels: skiNumber → product name (best effort)
+          const skiLabels: Record<number, string> = {};
+          for (const e of entriesRows) {
+            if (e.productId) {
+              const prods = await db.select().from(products).where(eq(products.id, e.productId));
+              if (prods[0]) skiLabels[e.skiNumber] = `${prods[0].brand} ${prods[0].name}`;
+            }
+          }
+          sessionCode = await generateSessionCode();
+          const session: WatchSession = {
+            code: sessionCode,
+            skiPairs,
+            skiLabels,
+            bracket: watchInitBracket(skiPairs),
+            createdAt: Date.now(),
+            userId: u.id,
+            userName: u.name,
+            testId: Number(testId),
+            testInfo: null,
+            teamId,
+          };
+          await saveWatchSession(session);
+        }
+      } catch (err) {
+        // Session creation failed — queue item still added, just without a code
+        sessionCode = null;
+      }
+    }
+
     const result = await (pool as any).query(
-      `INSERT INTO watch_queue (team_id, test_id, series_id, test_name, series_name, added_by_name, added_at, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'active') RETURNING *`,
-      [teamId, testId || null, seriesId || null, testName || null, seriesName || null, u.name, new Date().toISOString()]
+      `INSERT INTO watch_queue (team_id, test_id, series_id, test_name, series_name, added_by_name, added_at, status, session_code)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', $8) RETURNING *`,
+      [teamId, testId || null, seriesId || null, testName || null, seriesName || null, u.name, new Date().toISOString(), sessionCode]
     );
     res.json(result.rows[0]);
   });
@@ -3093,7 +3132,7 @@ export async function registerRoutes(
     res.json({ items: result.rows });
   });
 
-  // Start a session from queue item (Garmin app) — creates a watch session and returns its code
+  // Start a session from queue item (Garmin app) — returns stored session code
   app.post("/api/watch/list/:pin/start/:itemId", async (req, res) => {
     const { pin, itemId } = req.params;
     const { pool } = await import("./db");
@@ -3108,27 +3147,53 @@ export async function registerRoutes(
     const item = itemResult.rows[0];
     if (!item) return res.status(404).json({ message: "Queue item not found" });
 
-    // Check if there's an existing active watch session for this test
-    if (item.test_id) {
-      const sessionResult = await (pool as any).query(
-        `SELECT code FROM watch_sessions WHERE test_id = $1 AND team_id = $2 AND expires_at > NOW()::text`,
-        [item.test_id, teamId]
-      );
-      if (sessionResult.rows[0]) {
-        return res.json({ code: sessionResult.rows[0].code, testName: item.test_name, seriesName: item.series_name, queueItemId: item.id });
+    // 1. Use the stored session code if it's still valid
+    if (item.session_code) {
+      const existingSession = await getWatchSession(item.session_code);
+      if (existingSession) {
+        return res.json({ code: item.session_code, testName: item.test_name, seriesName: item.series_name, queueItemId: item.id });
       }
     }
 
-    // No active session — return the test name info so watch can show it
-    // The user will need to use "From code" to join if a session exists, or inform them
-    // For now, return the item info (watch app shows it and lets user start from code if needed)
-    res.json({
-      code: null,
-      testName: item.test_name,
-      seriesName: item.series_name,
-      queueItemId: item.id,
-      testId: item.test_id,
-    });
+    // 2. Session expired or missing — recreate it from the test's entries
+    if (item.test_id) {
+      try {
+        const entriesRows = await db.select().from(testEntries).where(eq(testEntries.testId, Number(item.test_id)));
+        if (entriesRows.length >= 2) {
+          const skiPairs = entriesRows.map((e) => e.skiNumber);
+          const skiLabels: Record<number, string> = {};
+          for (const e of entriesRows) {
+            if (e.productId) {
+              const prods = await db.select().from(products).where(eq(products.id, e.productId));
+              if (prods[0]) skiLabels[e.skiNumber] = `${prods[0].brand} ${prods[0].name}`;
+            }
+          }
+          const newCode = await generateSessionCode();
+          const session: WatchSession = {
+            code: newCode,
+            skiPairs,
+            skiLabels,
+            bracket: watchInitBracket(skiPairs),
+            createdAt: Date.now(),
+            userId: 0,
+            userName: item.added_by_name,
+            testId: Number(item.test_id),
+            testInfo: null,
+            teamId,
+          };
+          await saveWatchSession(session);
+          // Update queue item with new code
+          await (pool as any).query(
+            `UPDATE watch_queue SET session_code = $1 WHERE id = $2`,
+            [newCode, item.id]
+          );
+          return res.json({ code: newCode, testName: item.test_name, seriesName: item.series_name, queueItemId: item.id });
+        }
+      } catch (_) {}
+    }
+
+    // 3. Cannot create session (no entries)
+    res.json({ code: null, testName: item.test_name, seriesName: item.series_name, queueItemId: item.id });
   });
 
   // Mark queue item as completed (called by watch app after finishing)

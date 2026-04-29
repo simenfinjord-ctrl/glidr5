@@ -20,6 +20,7 @@ type QueueItem = {
   added_at: string;
   status: "active" | "completed";
   completed_at: string | null;
+  session_code: string | null;
 };
 
 function displayName(item: QueueItem): string {
@@ -186,6 +187,14 @@ export default function WatchQueue() {
                         <span className="text-xs text-muted-foreground">
                           {new Date(item.added_at).toLocaleDateString()}
                         </span>
+                        {item.session_code && tab === "active" && (
+                          <>
+                            <span className="text-xs text-muted-foreground">·</span>
+                            <span className="text-xs font-mono font-bold text-sky-600 tracking-widest">
+                              {item.session_code}
+                            </span>
+                          </>
+                        )}
                         {item.completed_at && (
                           <>
                             <span className="text-xs text-muted-foreground">·</span>

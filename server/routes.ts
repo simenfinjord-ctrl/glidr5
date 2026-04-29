@@ -3149,6 +3149,15 @@ export async function registerRoutes(
     if (item.session_code) {
       const existingSession = await getWatchSession(item.session_code);
       if (existingSession) {
+        // Clear any old product-name labels — watch always shows ski numbers
+        if (existingSession.skiLabels && Object.keys(existingSession.skiLabels).length > 0) {
+          existingSession.skiLabels = {};
+          watchSessionsMemory.set(existingSession.code, existingSession);
+          await db.update(watchSessions)
+            .set({ skiLabels: "{}" })
+            .where(eq(watchSessions.code, existingSession.code))
+            .catch(() => {});
+        }
         return res.json({ code: item.session_code, testName: item.test_name, seriesName: item.series_name, queueItemId: item.id });
       }
     }

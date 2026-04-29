@@ -34,9 +34,10 @@ class CodeEntryView extends WatchUi.View {
             var dx = startX + i * digitWidth + (i >= 3 ? 10 : 0);
 
             var textX = dx + digitWidth / 2;
+            var rectW = 22;
             if (i == cursorPos) {
                 dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
-                dc.fillRoundedRectangle(dx + 1, digitY - 4, digitWidth - 2, 30, 4);
+                dc.fillRoundedRectangle(textX - rectW / 2, digitY - 5, rectW, 32, 4);
                 dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
             } else {
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);

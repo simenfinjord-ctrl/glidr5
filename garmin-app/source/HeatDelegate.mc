@@ -16,6 +16,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
         if (view.phase == 0) {
             view.selectedWinner = view.pairB;
             view.selectedLabel = view.labelB;
+            view.loserLabel = view.labelA;
             view.phase = 1;
             view.distance = 10;
             WatchUi.requestUpdate();
@@ -34,6 +35,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
         if (view.phase == 0) {
             view.selectedWinner = view.pairA;
             view.selectedLabel = view.labelA;
+            view.loserLabel = view.labelB;
             view.phase = 1;
             view.distance = 10;
             WatchUi.requestUpdate();

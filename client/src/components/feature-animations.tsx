@@ -494,6 +494,94 @@ export function AdminAnim() {
   );
 }
 
+export function GarminAnim() {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setPhase((p) => (p + 1) % 4), 2800);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      {/* Watch */}
+      <div className="relative" style={{ width: 140, height: 140 }}>
+        {/* Band top */}
+        <div className="absolute left-1/2 -translate-x-1/2 -top-4 w-10 h-5 bg-gray-700 rounded-t-md" />
+        {/* Watch body */}
+        <div className="rounded-full bg-gray-900 border-[5px] border-gray-600 shadow-2xl w-full h-full flex items-center justify-center overflow-hidden relative">
+          {/* Side buttons */}
+          <div className="absolute -right-3 top-7 w-2 h-4 bg-gray-500 rounded-r-sm shadow" />
+          <div className="absolute -right-3 top-14 w-2 h-4 bg-gray-500 rounded-r-sm shadow" />
+          {/* Screen */}
+          <div className="w-[108px] h-[108px] rounded-full flex items-center justify-center">
+            <div className="w-full h-full flex flex-col items-center justify-center px-3 transition-all duration-500">
+              {phase === 0 && (
+                <>
+                  <div className="text-[9px] font-bold text-white tracking-[0.2em] mb-1">GLIDR</div>
+                  <div className="text-[7px] text-gray-400 mb-2">Enter code</div>
+                  <div className="flex gap-1">
+                    {[7, 4, 2, 1].map((d, i) => (
+                      <div key={i} className={`w-5 h-6 rounded text-[10px] font-bold flex items-center justify-center ${i === 0 ? "bg-white text-black" : "text-gray-300 bg-white/10"}`}>{d}</div>
+                    ))}
+                  </div>
+                  <div className="text-[6px] text-gray-500 mt-1.5">UP/DN · SELECT</div>
+                </>
+              )}
+              {phase === 1 && (
+                <>
+                  <div className="text-[7px] text-green-400 font-semibold mb-0.5">QF · Heat 2</div>
+                  <div className="text-[6px] text-gray-400 mb-2">Select winner</div>
+                  <div className="flex flex-col gap-1 w-full">
+                    <div className="flex items-center gap-1 bg-white/10 rounded px-1.5 py-0.5">
+                      <span className="text-[7px] text-gray-400">↑</span>
+                      <span className="text-[8px] font-bold text-white flex-1">Pair 3</span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-white/10 rounded px-1.5 py-0.5">
+                      <span className="text-[7px] text-gray-400">↓</span>
+                      <span className="text-[8px] font-bold text-white flex-1">Pair 7</span>
+                    </div>
+                  </div>
+                </>
+              )}
+              {phase === 2 && (
+                <>
+                  <div className="text-[7px] text-green-400 font-semibold mb-0.5">Pair 3 wins!</div>
+                  <div className="text-[6px] text-gray-400 mb-1">Pair 7 behind:</div>
+                  <div className="text-[18px] font-bold text-white leading-none">40</div>
+                  <div className="text-[7px] text-gray-300">cm</div>
+                  <div className="text-[6px] text-gray-500 mt-1">UP/DN: adjust</div>
+                </>
+              )}
+              {phase === 3 && (
+                <>
+                  <div className="text-[16px] text-green-400 mb-0.5">✓</div>
+                  <div className="text-[8px] font-bold text-green-400 mb-1">Synced!</div>
+                  <div className="text-[7px] text-gray-300">SF · Heat 1</div>
+                  <div className="text-[6px] text-gray-400 mt-0.5">Pair 1 vs Pair 3</div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+        {/* Band bottom */}
+        <div className="absolute left-1/2 -translate-x-1/2 -bottom-4 w-10 h-5 bg-gray-700 rounded-b-md" />
+      </div>
+      {/* Phase indicator dots */}
+      <div className="flex gap-1.5 mt-2">
+        {[0, 1, 2, 3].map((p) => (
+          <div key={p} className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${p === phase ? "bg-green-500 scale-125" : "bg-muted-foreground/30"}`} />
+        ))}
+      </div>
+      {/* Labels below */}
+      <div className="flex gap-3 text-[9px] text-muted-foreground">
+        {["Enter code", "Pick winner", "Set gap", "Synced"].map((l, i) => (
+          <span key={i} className={`transition-all duration-500 ${i === phase ? "text-green-600 dark:text-green-400 font-semibold" : ""}`}>{l}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function MobileAnim() {
   const [online, setOnline] = useState(true);
   const [pending, setPending] = useState(0);

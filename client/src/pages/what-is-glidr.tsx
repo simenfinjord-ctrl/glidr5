@@ -10,6 +10,7 @@ import {
   RaceSkisAnim,
   AdminAnim,
   MobileAnim,
+  GarminAnim,
 } from "@/components/feature-animations";
 
 const sections = [
@@ -30,6 +31,12 @@ const sections = [
     description:
       "Single-elimination tournament bracket for head-to-head ski pair testing. Enter distances, winners auto-advance, and cascading diff calculations show exactly how much each pair lost by. Mobile mode with large touch targets for glove use on snow.",
     anim: RunsheetAnim,
+  },
+  {
+    title: "Garmin Watch Control",
+    description:
+      "The only ski testing platform with native Garmin watch support. Generate a 4-digit session code from your runsheet, enter it on your Forerunner or Fenix, and run your entire bracket hands-free — no phone, no tablet, no fumbling in the cold. Select the winner with UP or DOWN, dial in the gap in centimeters, and confirm. Results sync instantly to the live bracket. When all heats are done, apply the final standings directly from your wrist with a single button press.",
+    anim: GarminAnim,
   },
   {
     title: "Analytics & Product Comparison",
@@ -124,6 +131,8 @@ export default function WhatIsGlidr() {
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-w-3xl mx-auto text-sm text-muted-foreground">
             {[
+              "⌚ Garmin Watch Control",
+              "Apply Results from Watch",
               "Blind Tester Mode",
               "Google Sheets Backup",
               "PDF & Excel Export",
@@ -143,7 +152,11 @@ export default function WhatIsGlidr() {
             ].map((f) => (
               <div
                 key={f}
-                className="rounded-lg bg-muted/50 border border-border px-3 py-2.5 text-center font-medium"
+                className={`rounded-lg border px-3 py-2.5 text-center font-medium transition-colors ${
+                  f.startsWith("⌚") || f === "Apply Results from Watch"
+                    ? "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400"
+                    : "bg-muted/50 border-border"
+                }`}
               >
                 {f}
               </div>

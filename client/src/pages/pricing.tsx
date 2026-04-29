@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, Watch } from "lucide-react";
 
 const tiers = [
   {
@@ -40,6 +40,7 @@ const tiers = [
       "All 6 test types",
       "Unlimited tests",
       "Complete Runsheet brackets",
+      "Garmin watch integration",
       "Mobile runsheet mode",
       "Full analytics & product comparison",
       "Weather auto-linking & suggestions",
@@ -108,6 +109,10 @@ const tiers = [
 
 const faqs = [
   {
+    q: "Does the Garmin watch app work on all plans?",
+    a: "Garmin watch integration is available on Team, Pro, and Enterprise plans. It connects to the Runsheet feature — generate a session code in any active runsheet, enter it on your watch, and control the bracket live from your wrist. Supported devices include Forerunner 945, 970, Fenix 7, Fenix 8, and Epix 2 Pro.",
+  },
+  {
     q: "What counts as a 'team'?",
     a: "A team is one organization with its own isolated data space. Each team has its own users, tests, products, weather logs, and settings. Data is never shared between teams.",
   },
@@ -155,6 +160,29 @@ export default function Pricing() {
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             From a single club team to a multi-brand organization. Pick the plan that fits your operation.
           </p>
+        </div>
+
+        {/* Garmin callout */}
+        <div className="mb-12 rounded-2xl border border-green-500/30 bg-green-500/5 dark:bg-green-500/10 p-6 ring-1 ring-green-500/10">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex-shrink-0 w-14 h-14 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+              <Watch className="w-7 h-7 text-green-600 dark:text-green-400" />
+            </div>
+            <div className="text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
+                <h2 className="text-lg font-bold text-foreground">Garmin Watch Integration — Included on Team & above</h2>
+                <span className="rounded-full bg-green-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide">Exclusive</span>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
+                The only ski testing platform with native Garmin watch support. Generate a 4-digit session code, open the Glidr app on your Forerunner 945/970 or Fenix 7/8, and run your entire bracket hands-free on the hill. Select winners, enter distances in centimeters, and apply final standings — all from your wrist. Works with Garmin Connect on iOS and Android.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {["Forerunner 945", "Forerunner 970", "Fenix 7 Pro", "Fenix 8", "Epix 2 Pro"].map((d) => (
+                  <span key={d} className="rounded-full border border-green-500/25 bg-green-500/10 px-2.5 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">{d}</span>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
@@ -229,6 +257,7 @@ export default function Pricing() {
                   ["Products", "20", "Unlimited", "Unlimited", "Unlimited"],
                   ["Test types", "Glide, Structure", "All 6", "All 6", "All 6"],
                   ["Runsheet brackets", "—", "✓", "✓", "✓"],
+                  ["Garmin watch integration", "—", "✓", "✓", "✓"],
                   ["Mobile runsheet mode", "—", "✓", "✓", "✓"],
                   ["Analytics", "—", "✓", "✓", "✓"],
                   ["Offline mode", "—", "✓", "✓", "✓"],

@@ -95,30 +95,26 @@ function getEntryRounds(entry: TestEntry, numRounds: number): RoundResult[] {
   return results;
 }
 
-function applyWatermark(doc: jsPDF, exportedBy: string, teamName?: string) {
+function applyExportFooter(doc: jsPDF, exportedBy: string, teamName?: string) {
   const pageCount = (doc.internal as any).getNumberOfPages ? (doc.internal as any).getNumberOfPages() : 1;
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
+  const dateStr = new Date().toLocaleString();
   for (let pg = 1; pg <= pageCount; pg++) {
     doc.setPage(pg);
-    // Diagonal CONFIDENTIAL stamp
-    doc.setFontSize(54);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(215, 215, 215);
-    doc.text("CONFIDENTIAL", pw / 2, ph / 2, { align: "center", angle: 45 });
-    // Per-page footer stamp
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(160, 160, 160);
-    const stamp = [
-      "CONFIDENTIAL",
-      `Exported by: ${exportedBy}`,
-      teamName ? `Team: ${teamName}` : null,
-      new Date().toLocaleString(),
-    ].filter(Boolean).join("  ·  ");
-    doc.text(stamp, pw / 2, ph - 5, { align: "center" });
-    // Reset colours
+    doc.setTextColor(130, 130, 130);
+    // Line above footer
+    doc.setDrawColor(200, 200, 200);
+    doc.line(14, ph - 9, pw - 14, ph - 9);
+    // Left: who exported + date
+    doc.text(`Exported by: ${exportedBy}${teamName ? `  ·  ${teamName}` : ""}  ·  ${dateStr}`, 14, ph - 5);
+    // Right: confidentiality notice
+    doc.text("This document is intended for team members only.", pw - 14, ph - 5, { align: "right" });
+    // Reset
     doc.setTextColor(0, 0, 0);
+    doc.setDrawColor(0, 0, 0);
   }
 }
 
@@ -314,7 +310,7 @@ export function generateTestPDF(
     },
   });
 
-  applyWatermark(doc, exportedBy, teamName);
+  applyExportFooter(doc, exportedBy, teamName);
 
   doc.save(`glidr-test-${test.location}-${test.date}.pdf`);
 }

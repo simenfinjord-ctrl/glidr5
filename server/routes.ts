@@ -168,11 +168,9 @@ function resolveCreateGroupScope(req: Request): string {
 
 function getActiveTeamId(req: Request): number {
   const u = req.user!;
-  const isSuperAdmin = u.isAdmin === 1;
-  if (isSuperAdmin) {
-    return (u as any).activeTeamId || u.teamId;
-  }
-  return u.teamId;
+  // Respect activeTeamId for ALL users — the team-switch route already validates
+  // that a user belongs to the target team before setting activeTeamId.
+  return (u as any).activeTeamId || u.teamId;
 }
 
 function canManageTeam(req: Request): boolean {
@@ -2104,7 +2102,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/maintenance-mode", requireAuth, (req, res) => {
     const u = userInfo(req);
-    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
     maintenanceMode = !!req.body.enabled;
     res.json({ enabled: maintenanceMode });
   });
@@ -2112,7 +2110,7 @@ export async function registerRoutes(
   // List all active sessions with user info
   app.get("/api/admin/active-sessions", requireAuth, async (req, res) => {
     const u = userInfo(req);
-    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
     const { pool } = await import("./db");
     try {
       const result = await (pool as any).query(`
@@ -2152,7 +2150,7 @@ export async function registerRoutes(
   // Emergency lockdown: terminate all sessions for users in a specific team
   app.post("/api/admin/emergency-lockdown/:teamId", requireAuth, async (req, res) => {
     const u = userInfo(req);
-    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
     const teamId = parseInt(req.params.teamId);
     const { pool } = await import("./db");
     // Find all users in the team

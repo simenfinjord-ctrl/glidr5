@@ -1122,12 +1122,12 @@ const ALL_TABS: { id: TabId; label: string; superAdminOnly?: boolean }[] = [
   { id: "users", label: "Users" },
   { id: "groups", label: "Groups" },
   { id: "teams", label: "Teams", superAdminOnly: true },
-  { id: "security", label: "🔒 Security", superAdminOnly: true },
   { id: "backup", label: "Backup" },
   { id: "activity", label: "Activity Log" },
   { id: "logins", label: "Login History" },
   { id: "data", label: "Data Management" },
   { id: "danger", label: "Danger Zone" },
+  { id: "security", label: "Security", superAdminOnly: true },
 ];
 
 function StatCard({ label, value, icon: Icon, color, testId }: { label: string; value: number; icon: React.ComponentType<{ className?: string }>; color: string; testId: string }) {
@@ -1591,19 +1591,20 @@ export default function Admin() {
         styles: { fontSize: 8 }, headStyles: hStyle, margin: { left: 14, right: 14 },
       });
 
-      // Watermark all pages
+      // Footer on all pages
       {
         const pageCount = (doc.internal as any).getNumberOfPages ? (doc.internal as any).getNumberOfPages() : 1;
         const pw = doc.internal.pageSize.getWidth();
         const ph = doc.internal.pageSize.getHeight();
-        const stamp = `CONFIDENTIAL  ·  Exported by: ${user?.name ?? "Unknown"}  ·  ${new Date().toLocaleString()}`;
+        const dateStr = new Date().toLocaleString();
         for (let pg = 1; pg <= pageCount; pg++) {
           doc.setPage(pg);
-          doc.setFontSize(52); doc.setFont("helvetica", "bold"); doc.setTextColor(215, 215, 215);
-          doc.text("CONFIDENTIAL", pw / 2, ph / 2, { align: "center", angle: 45 });
-          doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(160, 160, 160);
-          doc.text(stamp, pw / 2, ph - 5, { align: "center" });
-          doc.setTextColor(0, 0, 0);
+          doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(130, 130, 130);
+          doc.setDrawColor(200, 200, 200);
+          doc.line(14, ph - 9, pw - 14, ph - 9);
+          doc.text(`Exported by: ${user?.name ?? "Unknown"}  ·  ${dateStr}`, 14, ph - 5);
+          doc.text("This document is intended for team members only.", pw - 14, ph - 5, { align: "right" });
+          doc.setTextColor(0, 0, 0); doc.setDrawColor(0, 0, 0);
         }
       }
       doc.save("glidr-full-export.pdf");

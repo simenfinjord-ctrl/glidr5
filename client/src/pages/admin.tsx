@@ -204,7 +204,7 @@ type ActivityEntry = {
   groupScope: string;
 };
 
-type TabId = "overview" | "users" | "groups" | "teams" | "backup" | "activity" | "logins" | "data" | "danger";
+type TabId = "overview" | "users" | "groups" | "teams" | "security" | "backup" | "activity" | "logins" | "data" | "danger";
 
 function parseGroups(groupScope: string): string[] {
   return groupScope.split(",").map((s) => s.trim()).filter(Boolean);
@@ -697,6 +697,226 @@ function ResetPasswordForm({ user, onDone }: { user: ApiUser; onDone: () => void
   );
 }
 
+// ─── Security Tab ─────────────────────────────────────────────────────────────
+
+type ActiveSession = {
+  sid: string;
+  userId: number;
+  userName: string;
+  email: string;
+  teamId: number | null;
+  isAdmin: number;
+  expiresAt: string;
+};
+
+function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId: number }) {
+  const { toast } = useToast();
+
+  // Maintenance mode
+  const { data: maintenanceData, refetch: refetchMaintenance } = useQuery<{ enabled: boolean }>({
+    queryKey: ["/api/admin/maintenance-mode"],
+  });
+  const maintenanceEnabled = maintenanceData?.enabled ?? false;
+
+  const toggleMaintenanceMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const res = await apiRequest("POST", "/api/admin/maintenance-mode", { enabled });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      refetchMaintenance();
+      toast({ title: data.enabled ? "Maintenance mode ON" : "Maintenance mode OFF", description: data.enabled ? "All non-SA users are now blocked." : "Normal access restored." });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  // Active sessions
+  const { data: sessions = [], refetch: refetchSessions } = useQuery<ActiveSession[]>({
+    queryKey: ["/api/admin/active-sessions"],
+    refetchInterval: 15000,
+  });
+
+  const forceLogoutMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await apiRequest("POST", `/api/admin/force-logout/${userId}`);
+      return res.json();
+    },
+    onSuccess: () => { refetchSessions(); toast({ title: "User logged out" }); },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  // Emergency lockdown
+  const lockdownMutation = useMutation({
+    mutationFn: async (teamId: number) => {
+      const res = await apiRequest("POST", `/api/admin/emergency-lockdown/${teamId}`);
+      return res.json();
+    },
+    onSuccess: (data) => { refetchSessions(); toast({ title: `Lockdown complete`, description: `${data.loggedOut} session(s) terminated.` }); },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="flex flex-col gap-4" data-testid="tab-content-security">
+
+      {/* Maintenance mode */}
+      <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <Shield className="h-4 w-4 text-amber-500" />
+              <span className="font-semibold text-foreground">Maintenance Mode</span>
+              {maintenanceEnabled && (
+                <span className="rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide animate-pulse">
+                  ACTIVE
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              When enabled, all non-Super Admin users see a maintenance screen and are blocked from the API. You retain full access. Use this before applying critical updates or during an incident.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => toggleMaintenanceMutation.mutate(!maintenanceEnabled)}
+            disabled={toggleMaintenanceMutation.isPending}
+            className={cn(
+              "relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none mt-1",
+              maintenanceEnabled ? "bg-amber-500" : "bg-muted-foreground/25"
+            )}
+            aria-label="Toggle maintenance mode"
+          >
+            <span className={cn(
+              "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform",
+              maintenanceEnabled ? "translate-x-[22px]" : "translate-x-[2px]"
+            )} />
+          </button>
+        </div>
+        {maintenanceEnabled && (
+          <div className="mt-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+            ⚠️ Maintenance mode is currently <strong>ON</strong>. All other users are locked out. Remember to turn it off when done.
+          </div>
+        )}
+      </Card>
+
+      {/* Emergency lockdown */}
+      <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-1">
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+          <span className="font-semibold text-foreground">Emergency Session Lockdown</span>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Immediately terminate <strong>all active sessions</strong> for every user in a team. They will be logged out instantly. Use this if credentials are compromised or suspicious activity is detected.
+        </p>
+        <div className="space-y-2">
+          {teams.map((team) => (
+            <div key={team.id} className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2.5">
+              <div>
+                <span className="text-sm font-medium text-foreground">{team.name}</span>
+                {team.isDefault === 1 && (
+                  <span className="ml-1.5 text-[10px] text-muted-foreground">(default)</span>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-destructive/40 text-destructive hover:bg-destructive hover:text-white"
+                disabled={lockdownMutation.isPending}
+                data-testid={`button-lockdown-team-${team.id}`}
+                onClick={() => {
+                  if (confirm(`Lock down all sessions for "${team.name}"? All users will be logged out immediately.`)) {
+                    lockdownMutation.mutate(team.id);
+                  }
+                }}
+              >
+                <AlertTriangle className="mr-1.5 h-3.5 w-3.5" />
+                Lockdown
+              </Button>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Active sessions */}
+      <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-green-500" />
+            <span className="font-semibold text-foreground">Active Sessions</span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {sessions.length}
+            </span>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => refetchSessions()}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+            Refresh
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">Auto-refreshes every 15 s. Your own session is shown but cannot be terminated.</p>
+        {sessions.length === 0 ? (
+          <div className="text-sm text-muted-foreground text-center py-6">No active sessions found.</div>
+        ) : (
+          <div className="rounded-xl border border-border overflow-hidden">
+            <table className="w-full text-sm" data-testid="table-active-sessions">
+              <thead>
+                <tr className="bg-muted/40 border-b border-border">
+                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">User</th>
+                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">Email</th>
+                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">Expires</th>
+                  <th className="text-center px-3 py-2 font-medium text-foreground/80 text-xs">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {sessions.map((s) => {
+                  const isMe = s.userId === currentUserId;
+                  const expires = new Date(s.expiresAt);
+                  const hoursLeft = Math.round((expires.getTime() - Date.now()) / 3600000);
+                  return (
+                    <tr key={s.sid} className={cn("transition-colors", isMe && "bg-green-50/30 dark:bg-green-900/10")}>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-foreground">{s.userName}</span>
+                          {isMe && <span className="rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 px-1.5 py-0.5 text-[9px] font-bold">YOU</span>}
+                          {s.isAdmin === 1 && <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 text-[9px] font-bold">SA</span>}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground text-xs">{s.email}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        {expires.toLocaleString()} ({hoursLeft}h)
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={isMe || forceLogoutMutation.isPending}
+                          className={cn("h-7 text-xs", !isMe && "text-destructive hover:text-destructive hover:bg-destructive/10")}
+                          data-testid={`button-force-logout-${s.userId}`}
+                          onClick={() => {
+                            if (confirm(`Force logout ${s.userName}?`)) {
+                              forceLogoutMutation.mutate(s.userId);
+                            }
+                          }}
+                        >
+                          {isMe ? "—" : (
+                            <>
+                              <LogOut className="h-3 w-3 mr-1" />
+                              Logout
+                            </>
+                          )}
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ─── Team feature dialog ─────────────────────────────────────────────────────
 
 const PLAN_STYLE: Record<string, { active: string; inactive: string; badge: string }> = {
@@ -902,6 +1122,7 @@ const ALL_TABS: { id: TabId; label: string; superAdminOnly?: boolean }[] = [
   { id: "users", label: "Users" },
   { id: "groups", label: "Groups" },
   { id: "teams", label: "Teams", superAdminOnly: true },
+  { id: "security", label: "🔒 Security", superAdminOnly: true },
   { id: "backup", label: "Backup" },
   { id: "activity", label: "Activity Log" },
   { id: "logins", label: "Login History" },
@@ -1370,6 +1591,21 @@ export default function Admin() {
         styles: { fontSize: 8 }, headStyles: hStyle, margin: { left: 14, right: 14 },
       });
 
+      // Watermark all pages
+      {
+        const pageCount = (doc.internal as any).getNumberOfPages ? (doc.internal as any).getNumberOfPages() : 1;
+        const pw = doc.internal.pageSize.getWidth();
+        const ph = doc.internal.pageSize.getHeight();
+        const stamp = `CONFIDENTIAL  ·  Exported by: ${user?.name ?? "Unknown"}  ·  ${new Date().toLocaleString()}`;
+        for (let pg = 1; pg <= pageCount; pg++) {
+          doc.setPage(pg);
+          doc.setFontSize(52); doc.setFont("helvetica", "bold"); doc.setTextColor(215, 215, 215);
+          doc.text("CONFIDENTIAL", pw / 2, ph / 2, { align: "center", angle: 45 });
+          doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(160, 160, 160);
+          doc.text(stamp, pw / 2, ph - 5, { align: "center" });
+          doc.setTextColor(0, 0, 0);
+        }
+      }
       doc.save("glidr-full-export.pdf");
       const sections = [
         `${data.tests.length} tests`,
@@ -2107,6 +2343,10 @@ export default function Admin() {
               </div>
             </Card>
           </div>
+        )}
+
+        {activeTab === "security" && isSuperAdmin && (
+          <SecurityTab teams={teams} currentUserId={user?.id ?? 0} />
         )}
 
         {activeTab === "backup" && (

@@ -189,12 +189,27 @@ function getAdminTeamScope(req: Request): number | undefined {
   return getActiveTeamId(req);
 }
 
+// ─── Maintenance mode (Super Admin only to toggle) ───────────────────────────
+let maintenanceMode = false;
+// ─────────────────────────────────────────────────────────────────────────────
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
 ): Promise<Server> {
 
   app.use("/api", enforceStealthReadOnly);
+
+  // --- Maintenance mode gate (runs before all other /api routes) ---
+  app.use("/api", (req: Request, res: Response, next: NextFunction) => {
+    if (!maintenanceMode) return next();
+    // Always allow health check, auth, and the maintenance-mode status endpoint
+    const exemptPaths = ["/api/health", "/api/admin/maintenance-mode"];
+    if (exemptPaths.includes(req.path) || req.path.startsWith("/api/auth/")) return next();
+    // Super Admins always pass through
+    if (req.isAuthenticated() && (req.user as any)?.isAdmin === 1) return next();
+    return res.status(503).json({ message: "Maintenance mode is active. The system will be back shortly.", maintenance: true });
+  });
 
   // --- Health check (used by keep-alive ping) ---
   app.get("/api/health", (_req, res) => res.json({ ok: true, ts: Date.now() }));
@@ -2079,6 +2094,81 @@ export async function registerRoutes(
     await (pool as any).query(`DELETE FROM user_sessions WHERE sess::jsonb -> 'passport' ->> 'user' = $1`, [String(targetId)]);
     res.json({ ok: true });
   });
+
+  // ── Security routes (Super Admin only) ─────────────────────────────────────
+
+  // Get / set maintenance mode
+  app.get("/api/admin/maintenance-mode", (_req, res) => {
+    res.json({ enabled: maintenanceMode });
+  });
+
+  app.post("/api/admin/maintenance-mode", requireAuth, (req, res) => {
+    const u = userInfo(req);
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    maintenanceMode = !!req.body.enabled;
+    res.json({ enabled: maintenanceMode });
+  });
+
+  // List all active sessions with user info
+  app.get("/api/admin/active-sessions", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    const { pool } = await import("./db");
+    try {
+      const result = await (pool as any).query(`
+        SELECT sid,
+               (sess::json -> 'passport' ->> 'user')::int AS user_id,
+               expire
+        FROM user_sessions
+        WHERE expire > NOW()
+          AND sess::json -> 'passport' IS NOT NULL
+          AND sess::json -> 'passport' ->> 'user' IS NOT NULL
+        ORDER BY expire DESC
+      `);
+      const userIds: number[] = [...new Set(result.rows.map((r: any) => r.user_id as number))];
+      const userDetails: Record<number, any> = {};
+      for (const uid of userIds) {
+        const found = await storage.getUser(uid);
+        if (found) userDetails[uid] = found;
+      }
+      const sessions = result.rows.map((row: any) => {
+        const usr = userDetails[row.user_id];
+        return {
+          sid: row.sid,
+          userId: row.user_id,
+          userName: usr?.name || "Unknown",
+          email: usr?.email || "—",
+          teamId: usr?.teamId ?? null,
+          isAdmin: usr?.isAdmin ?? 0,
+          expiresAt: row.expire,
+        };
+      });
+      res.json(sessions);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Emergency lockdown: terminate all sessions for users in a specific team
+  app.post("/api/admin/emergency-lockdown/:teamId", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    const teamId = parseInt(req.params.teamId);
+    const { pool } = await import("./db");
+    // Find all users in the team
+    const userRes = await (pool as any).query(`SELECT id FROM users WHERE team_id = $1`, [teamId]);
+    const teamUserIds: string[] = userRes.rows.map((r: any) => String(r.id));
+    if (teamUserIds.length === 0) return res.json({ loggedOut: 0 });
+    // Delete their sessions, but NOT the current SA's session
+    const result = await (pool as any).query(
+      `DELETE FROM user_sessions
+       WHERE sess::jsonb -> 'passport' ->> 'user' = ANY($1::text[])
+         AND sess::jsonb -> 'passport' ->> 'user' != $2`,
+      [teamUserIds, String(u.id)]
+    );
+    res.json({ loggedOut: result.rowCount || 0 });
+  });
+  // ───────────────────────────────────────────────────────────────────────────
 
   // --- Athletes CRUD ---
   app.get("/api/athletes", requirePermission("raceskis", "view"), async (req, res) => {

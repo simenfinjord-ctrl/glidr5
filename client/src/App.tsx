@@ -1,8 +1,8 @@
 import { Switch, Route, Redirect, useLocation } from "wouter";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, getQueryFn } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import { Spinner } from "@/components/ui/spinner";
 import { OfflineProvider } from "@/lib/offline-context";
@@ -69,10 +69,30 @@ function AuthGuard() {
   const { user, isLoading, isSuperAdmin, isStealthActive } = useAuth();
   const [location] = useLocation();
 
+  const { data: maintenanceData } = useQuery<{ enabled: boolean }>({
+    queryKey: ["/api/admin/maintenance-mode"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    refetchInterval: 30000,
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Spinner className="h-8 w-8" />
+      </div>
+    );
+  }
+
+  // Maintenance mode: block non-SA authenticated users
+  if (maintenanceData?.enabled && user && !isSuperAdmin) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
+        <div className="text-5xl mb-2">🔧</div>
+        <h1 className="text-2xl font-bold text-foreground">Under Maintenance</h1>
+        <p className="text-muted-foreground max-w-sm leading-relaxed">
+          Glidr is temporarily offline for maintenance. We'll be back shortly. Please try again later.
+        </p>
+        <p className="text-xs text-muted-foreground/60 mt-4">If you need immediate access, contact your administrator.</p>
       </div>
     );
   }

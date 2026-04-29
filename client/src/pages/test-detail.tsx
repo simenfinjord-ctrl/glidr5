@@ -621,7 +621,7 @@ export default function TestDetail() {
                 data-testid="button-export-pdf"
                 onClick={async () => {
                   const seriesMap = new Map(series.map((s) => [s.id, s]));
-                  generateTestPDF(test, entries, productsById, seriesMap, weather ?? null);
+                  generateTestPDF(test, entries, productsById, seriesMap, weather ?? null, user?.name ?? "Unknown");
                   try {
                     const s = seriesMap.get(test.seriesId);
                     await apiRequest("POST", "/api/action-log", {
@@ -669,6 +669,15 @@ export default function TestDetail() {
                     return row;
                   });
                   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Results");
+                  // Confidential metadata sheet
+                  const metaWs = XLSX.utils.aoa_to_sheet([
+                    ["CONFIDENTIAL — Glidr Ski Testing Platform"],
+                    [`Exported by: ${user?.name ?? "Unknown"}`],
+                    [`Test: ${test.location} · ${test.date}`],
+                    [`Exported at: ${new Date().toLocaleString()}`],
+                    ["This file contains confidential ski testing data. Do not distribute."],
+                  ]);
+                  XLSX.utils.book_append_sheet(wb, metaWs, "Export Info");
                   XLSX.writeFile(wb, `test-${test.location}-${test.date}.xlsx`);
                 }}
               >

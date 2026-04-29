@@ -33,15 +33,16 @@ class CodeEntryView extends WatchUi.View {
         for (var i = 0; i < 6; i++) {
             var dx = startX + i * digitWidth + (i >= 3 ? 10 : 0);
 
+            var textX = dx + digitWidth / 2;
             if (i == cursorPos) {
                 dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
-                dc.fillRoundedRectangle(dx - 2, digitY - 4, digitWidth - 4, 30, 4);
+                dc.fillRoundedRectangle(dx + 1, digitY - 4, digitWidth - 2, 30, 4);
                 dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
             } else {
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
             }
 
-            dc.drawText(dx + digitWidth / 2 - 2, digitY, Graphics.FONT_NUMBER_MILD,
+            dc.drawText(textX, digitY, Graphics.FONT_NUMBER_MILD,
                 digits[i].toString(), Graphics.TEXT_JUSTIFY_CENTER);
         }
 

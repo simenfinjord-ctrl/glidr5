@@ -67,23 +67,21 @@ class HeatView extends WatchUi.View {
             dc.drawText(cx, h * 0.90, Graphics.FONT_XTINY, "DOWN = Par " + pairB.toString(), Graphics.TEXT_JUSTIFY_CENTER);
 
         } else if (phase == 1) {
-            var loserPair = (selectedWinner == pairA) ? pairB : pairA;
-
             dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.18, Graphics.FONT_SMALL, "Par " + selectedWinner.toString() + " wins", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.12, Graphics.FONT_SMALL, "Par " + selectedWinner.toString() + " WINS", Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.33, Graphics.FONT_SMALL, "Par " + loserPair.toString() + " behind:", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.30, Graphics.FONT_SMALL, "Winning margin:", Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.50, Graphics.FONT_NUMBER_HOT, distance.toString(), Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.48, Graphics.FONT_NUMBER_HOT, distance.toString(), Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.72, Graphics.FONT_XTINY, "cm", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.70, Graphics.FONT_XTINY, "cm ahead", Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.82, Graphics.FONT_XTINY, "UP/DN: +/- 10 cm", Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(cx, h * 0.90, Graphics.FONT_XTINY, "SELECT: confirm", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.80, Graphics.FONT_XTINY, "UP: +10  DOWN: -10", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.88, Graphics.FONT_XTINY, "SELECT: confirm", Graphics.TEXT_JUSTIFY_CENTER);
         }
     }
 }

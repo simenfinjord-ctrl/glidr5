@@ -10,22 +10,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
     }
 
     function onNextPage() {
-        if (view.allDone || view.isSending) { return true; }
-
-        if (view.phase == 0) {
-            view.selectedWinner = view.pairA;
-            view.phase = 1;
-            view.distance = 10;
-            WatchUi.requestUpdate();
-        } else if (view.phase == 1) {
-            view.distance += 10;
-            if (view.distance > 990) { view.distance = 990; }
-            WatchUi.requestUpdate();
-        }
-        return true;
-    }
-
-    function onPreviousPage() {
+        // DOWN button
         if (view.allDone || view.isSending) { return true; }
 
         if (view.phase == 0) {
@@ -36,6 +21,23 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
         } else if (view.phase == 1) {
             view.distance -= 10;
             if (view.distance < 10) { view.distance = 10; }
+            WatchUi.requestUpdate();
+        }
+        return true;
+    }
+
+    function onPreviousPage() {
+        // UP button
+        if (view.allDone || view.isSending) { return true; }
+
+        if (view.phase == 0) {
+            view.selectedWinner = view.pairA;
+            view.phase = 1;
+            view.distance = 10;
+            WatchUi.requestUpdate();
+        } else if (view.phase == 1) {
+            view.distance += 10;
+            if (view.distance > 990) { view.distance = 990; }
             WatchUi.requestUpdate();
         }
         return true;

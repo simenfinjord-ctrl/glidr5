@@ -2,6 +2,7 @@
 
 using Toybox.WatchUi;
 using Toybox.Communications;
+using Toybox.Application.Storage;
 
 class QueueListDelegate extends WatchUi.BehaviorDelegate {
     var view;

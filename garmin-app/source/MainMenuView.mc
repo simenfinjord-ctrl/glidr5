@@ -8,12 +8,11 @@ class MainMenuView extends WatchUi.View {
     var teamPin;
     var selectedIndex = 0;
 
-    // Menu items: label + subtitle
     var menuItems = [
-        ["From List", "Tests queued from app"],
-        ["From Code", "Enter 4-digit session code"],
-        ["Archive", "Last 10 completed"],
-        ["Settings", "Vibration, sounds, PIN"],
+        ["From List",  "Tests queued from app"],
+        ["From Code",  "Enter 4-digit session code"],
+        ["Archive",    "Last 10 completed"],
+        ["Settings",   "Vibration, sounds, PIN"],
     ];
 
     function initialize(pin) {
@@ -29,32 +28,35 @@ class MainMenuView extends WatchUi.View {
         var h = dc.getHeight();
         var cx = w / 2;
 
-        // Header
+        // ── Header ──────────────────────────────────────────────
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.05, Graphics.FONT_SMALL, "GLIDR", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.03, Graphics.FONT_SMALL, "GLIDR", Graphics.TEXT_JUSTIFY_CENTER);
 
         var teamName = Storage.getValue("teamName");
-        if (teamName != null) {
-            dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.15, Graphics.FONT_XTINY, teamName, Graphics.TEXT_JUSTIFY_CENTER);
-        }
-
-        // Show logged-in user name if personal code is set
         var userName = Storage.getValue("userName");
-        if (userName != null) {
+
+        if (teamName != null && userName != null) {
+            // Both team and user name: show both on one header line each
+            dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, h * 0.14, Graphics.FONT_XTINY, teamName, Graphics.TEXT_JUSTIFY_CENTER);
             dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.22, Graphics.FONT_XTINY, userName, Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.21, Graphics.FONT_XTINY, userName, Graphics.TEXT_JUSTIFY_CENTER);
+        } else if (teamName != null) {
+            dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, h * 0.17, Graphics.FONT_XTINY, teamName, Graphics.TEXT_JUSTIFY_CENTER);
+        } else if (userName != null) {
+            dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, h * 0.17, Graphics.FONT_XTINY, userName, Graphics.TEXT_JUSTIFY_CENTER);
         }
 
-        // Draw menu items
-        var itemH = h / 5;
+        // ── Menu items ───────────────────────────────────────────
+        // 4 items starting at 29%, spaced 17% apart → last at 80%
         for (var i = 0; i < menuItems.size(); i++) {
-            var itemY = h * 0.28 + i * (h * 0.17);
+            var itemY = h * 0.29 + i * (h * 0.165);
 
             if (i == selectedIndex) {
-                // Highlight selected item
                 dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
-                dc.fillRoundedRectangle(cx - w * 0.42, itemY - 4, w * 0.84, 34, 6);
+                dc.fillRoundedRectangle(cx - w * 0.42, itemY - 3, w * 0.84, 32, 6);
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
             } else {
                 dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
@@ -63,8 +65,8 @@ class MainMenuView extends WatchUi.View {
             dc.drawText(cx, itemY, Graphics.FONT_SMALL, menuItems[i][0], Graphics.TEXT_JUSTIFY_CENTER);
         }
 
-        // Hint
+        // ── Hint ────────────────────────────────────────────────
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.90, Graphics.FONT_XTINY, "UP/DN: navigate  SELECT: open", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.92, Graphics.FONT_XTINY, "UP/DN: navigate  SELECT: open", Graphics.TEXT_JUSTIFY_CENTER);
     }
 }

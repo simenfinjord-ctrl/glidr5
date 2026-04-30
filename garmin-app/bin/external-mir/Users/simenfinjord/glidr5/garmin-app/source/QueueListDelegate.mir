@@ -2,975 +2,977 @@
 using Toybox.WatchUi;
 [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 4; @symbol_usingdef<0> = [Toybox,4,6,12]; @symbol_usingdef<1> = [Communications,4,13,27]; ]
 using Toybox.Communications;
-[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 6; @symbol_classdef = [QueueListDelegate,6,6,23]; @symbol_extends<0> = [WatchUi,6,32,39]; @symbol_extends<1> = [BehaviorDelegate,6,40,56]; ]
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 5; @symbol_usingdef<0> = [Toybox,5,6,12]; @symbol_usingdef<1> = [Application,5,13,24]; @symbol_usingdef<2> = [Storage,5,25,32]; ]
+using Toybox.Application.Storage;
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 7; @symbol_classdef = [QueueListDelegate,7,6,23]; @symbol_extends<0> = [WatchUi,7,32,39]; @symbol_extends<1> = [BehaviorDelegate,7,40,56]; ]
 class QueueListDelegate extends WatchUi.BehaviorDelegate {
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 6; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 7; ]
     <init> {
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 6; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 7; ]
     static
     <init> {
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 7; @position = 8; @symbol_vardef = [view,7,8,12]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 8; @position = 8; @symbol_vardef = [view,8,8,12]; ]
     var view;
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 8; @position = 8; @symbol_vardef = [isStarting,8,8,18]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 9; @position = 8; @symbol_vardef = [isStarting,9,8,18]; ]
     var isStarting = false;
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 9; @position = 8; @symbol_vardef = [selectedItem,9,8,20]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 10; @position = 8; @symbol_vardef = [selectedItem,10,8,20]; ]
     var selectedItem = null;
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 11; @symbol_functiondef = [initialize,11,13,23]; @symbol_param<0> = [v,11,24,25]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 12; @symbol_functiondef = [initialize,12,13,23]; @symbol_param<0> = [v,12,24,25]; ]
     function initialize(v) as Void {
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_11_27_14_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 12 8 ]
-        symbol [ BehaviorDelegate %tmp.2 12 8 24 ];
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_12_27_15_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 13 8 ]
+        symbol [ BehaviorDelegate %tmp.2 13 8 24 ];
         %tmp.2 = getv ? :BehaviorDelegate;
-        symbol [ initialize %tmp.3 12 25 35 ];
+        symbol [ initialize %tmp.3 13 25 35 ];
         %tmp.3 = getv function %tmp.2 :initialize;
         invoke %tmp.2 %tmp.3();
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 13 8 ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 14 8 ]
         %tmp.4 = lgetv %v;
-        symbol [ v %tmp.4 13 15 16 ];
-        symbol [ view ? 13 8 12 ];
+        symbol [ v %tmp.4 14 15 16 ];
+        symbol [ view ? 14 8 12 ];
         putv self :view %tmp.4;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_11_27_14_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_12_27_15_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 16; @symbol_functiondef = [onNextPage,16,13,23]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 17; @symbol_functiondef = [onNextPage,17,13,23]; ]
     function onNextPage() {
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_16_26_23_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 17 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_17_8_17_51_if_stmt:
-        symbol [ view %tmp.2 17 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_17_26_24_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 18 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_18_8_18_51_if_stmt:
+        symbol [ view %tmp.2 18 12 16 ];
         %tmp.2 = getv ? :view;
-        symbol [ items %tmp.3 17 17 22 ];
+        symbol [ items %tmp.3 18 17 22 ];
         %tmp.3 = getv %tmp.2 :items;
-        symbol [ size %tmp.4 17 23 27 ];
+        symbol [ size %tmp.4 18 23 27 ];
         %tmp.4 = getv function %tmp.3 :size;
         %tmp.5 = invoke %tmp.3 %tmp.4();
         %tmp.6 = 0;
         %tmp.7 = eq %tmp.5 %tmp.6;
-        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_17_8_17_51_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_17_8_17_51_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_17_36_17_51_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 17 38 ]
+        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_18_8_18_51_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_18_8_18_51_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_18_36_18_51_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 18 38 ]
         %tmp.8 = true;
         ret %tmp.8;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_17_36_17_51_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_17_8_17_51_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_17_8_17_51_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 18 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_18_8_21_8_if_stmt:
-        symbol [ view %tmp.10 18 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_18_36_18_51_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_18_8_18_51_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_18_8_18_51_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 19 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_19_8_22_8_if_stmt:
+        symbol [ view %tmp.10 19 12 16 ];
         %tmp.10 = getv ? :view;
-        symbol [ selectedIndex %tmp.11 18 17 30 ];
+        symbol [ selectedIndex %tmp.11 19 17 30 ];
         %tmp.11 = getv %tmp.10 :selectedIndex;
-        symbol [ view %tmp.13 18 33 37 ];
+        symbol [ view %tmp.13 19 33 37 ];
         %tmp.13 = getv ? :view;
-        symbol [ items %tmp.14 18 38 43 ];
+        symbol [ items %tmp.14 19 38 43 ];
         %tmp.14 = getv %tmp.13 :items;
-        symbol [ size %tmp.15 18 44 48 ];
+        symbol [ size %tmp.15 19 44 48 ];
         %tmp.15 = getv function %tmp.14 :size;
         %tmp.16 = invoke %tmp.14 %tmp.15();
         %tmp.17 = 1;
         %tmp.18 = sub %tmp.16 %tmp.17;
         %tmp.19 = lt %tmp.11 %tmp.18;
-        bf %tmp.19 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_18_8_21_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_18_8_21_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_18_56_21_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 19 12 ]
-        symbol [ view %tmp.20 19 12 16 ];
+        bf %tmp.19 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_19_8_22_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_19_8_22_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_19_56_22_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 20 12 ]
+        symbol [ view %tmp.20 20 12 16 ];
         %tmp.20 = getv self :view;
-        symbol [ view %tmp.23 19 12 16 ];
+        symbol [ view %tmp.23 20 12 16 ];
         %tmp.23 = getv ? :view;
-        symbol [ selectedIndex %tmp.24 19 17 30 ];
+        symbol [ selectedIndex %tmp.24 20 17 30 ];
         %tmp.24 = getv %tmp.23 :selectedIndex;
         %tmp.25 = add %tmp.24 1;
-        symbol [ selectedIndex ? 19 17 30 ];
+        symbol [ selectedIndex ? 20 17 30 ];
         putv %tmp.20 :selectedIndex dup %tmp.25;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 20 12 ]
-        symbol [ WatchUi %tmp.26 20 12 19 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 21 12 ]
+        symbol [ WatchUi %tmp.26 21 12 19 ];
         %tmp.26 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.27 20 20 33 ];
+        symbol [ requestUpdate %tmp.27 21 20 33 ];
         %tmp.27 = getv function %tmp.26 :requestUpdate;
         invoke %tmp.26 %tmp.27();
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_18_56_21_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_18_8_21_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_18_8_21_8_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 22 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_19_56_22_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_19_8_22_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_19_8_22_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 23 8 ]
         %tmp.28 = true;
         ret %tmp.28;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_16_26_23_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_17_26_24_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 25; @symbol_functiondef = [onPreviousPage,25,13,27]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 26; @symbol_functiondef = [onPreviousPage,26,13,27]; ]
     function onPreviousPage() {
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_25_30_32_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 26 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_26_8_26_51_if_stmt:
-        symbol [ view %tmp.2 26 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_26_30_33_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 27 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_27_8_27_51_if_stmt:
+        symbol [ view %tmp.2 27 12 16 ];
         %tmp.2 = getv ? :view;
-        symbol [ items %tmp.3 26 17 22 ];
+        symbol [ items %tmp.3 27 17 22 ];
         %tmp.3 = getv %tmp.2 :items;
-        symbol [ size %tmp.4 26 23 27 ];
+        symbol [ size %tmp.4 27 23 27 ];
         %tmp.4 = getv function %tmp.3 :size;
         %tmp.5 = invoke %tmp.3 %tmp.4();
         %tmp.6 = 0;
         %tmp.7 = eq %tmp.5 %tmp.6;
-        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_26_8_26_51_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_26_8_26_51_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_26_36_26_51_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 26 38 ]
+        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_27_8_27_51_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_27_8_27_51_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_27_36_27_51_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 27 38 ]
         %tmp.8 = true;
         ret %tmp.8;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_26_36_26_51_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_26_8_26_51_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_26_8_26_51_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 27 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_27_8_30_8_if_stmt:
-        symbol [ view %tmp.10 27 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_27_36_27_51_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_27_8_27_51_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_27_8_27_51_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 28 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_28_8_31_8_if_stmt:
+        symbol [ view %tmp.10 28 12 16 ];
         %tmp.10 = getv ? :view;
-        symbol [ selectedIndex %tmp.11 27 17 30 ];
+        symbol [ selectedIndex %tmp.11 28 17 30 ];
         %tmp.11 = getv %tmp.10 :selectedIndex;
         %tmp.12 = 0;
         %tmp.13 = gt %tmp.11 %tmp.12;
-        bf %tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_27_8_30_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_27_8_30_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_27_36_30_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 28 12 ]
-        symbol [ view %tmp.14 28 12 16 ];
+        bf %tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_28_8_31_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_28_8_31_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_28_36_31_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 29 12 ]
+        symbol [ view %tmp.14 29 12 16 ];
         %tmp.14 = getv self :view;
-        symbol [ view %tmp.17 28 12 16 ];
+        symbol [ view %tmp.17 29 12 16 ];
         %tmp.17 = getv ? :view;
-        symbol [ selectedIndex %tmp.18 28 17 30 ];
+        symbol [ selectedIndex %tmp.18 29 17 30 ];
         %tmp.18 = getv %tmp.17 :selectedIndex;
         %tmp.19 = sub %tmp.18 1;
-        symbol [ selectedIndex ? 28 17 30 ];
+        symbol [ selectedIndex ? 29 17 30 ];
         putv %tmp.14 :selectedIndex dup %tmp.19;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 29 12 ]
-        symbol [ WatchUi %tmp.20 29 12 19 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 30 12 ]
+        symbol [ WatchUi %tmp.20 30 12 19 ];
         %tmp.20 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.21 29 20 33 ];
+        symbol [ requestUpdate %tmp.21 30 20 33 ];
         %tmp.21 = getv function %tmp.20 :requestUpdate;
         invoke %tmp.20 %tmp.21();
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_27_36_30_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_27_8_30_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_27_8_30_8_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 31 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_28_36_31_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_28_8_31_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_28_8_31_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 32 8 ]
         %tmp.22 = true;
         ret %tmp.22;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_25_30_32_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_26_30_33_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 34; @symbol_functiondef = [onSelect,34,13,21]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 35; @symbol_functiondef = [onSelect,35,13,21]; ]
     function onSelect() {
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_34_24_69_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 35 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_8_35_57_if_stmt:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_12_35_30_begin:
-        symbol [ view %tmp.2 35 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_24_70_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 36 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_36_8_36_57_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_36_12_36_30_begin:
+        symbol [ view %tmp.2 36 12 16 ];
         %tmp.2 = getv ? :view;
-        symbol [ isLoading %tmp.3 35 17 26 ];
+        symbol [ isLoading %tmp.3 36 17 26 ];
         %tmp.3 = getv %tmp.2 :isLoading;
-        bt %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_8_35_57_if_true;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_30_35_30_false:
-        symbol [ isStarting %tmp.5 35 30 40 ];
+        bt %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_36_8_36_57_if_true;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_36_30_36_30_false:
+        symbol [ isStarting %tmp.5 36 30 40 ];
         %tmp.5 = getv ? :isStarting;
         push %tmp.5;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_30_35_30_end:
-        %tmp.6 = phi [%tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_12_35_30_begin] [%tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_30_35_30_false] [%tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_30_35_30_end];
-        bf %tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_8_35_57_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_8_35_57_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_42_35_57_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 35 44 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_36_30_36_30_end:
+        %tmp.6 = phi [%tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_36_12_36_30_begin] [%tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_36_30_36_30_false] [%tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_36_30_36_30_end];
+        bf %tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_36_8_36_57_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_36_8_36_57_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_36_42_36_57_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 36 44 ]
         %tmp.7 = true;
         ret %tmp.7;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_42_35_57_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_8_35_57_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_8_35_57_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 38 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_38_8_41_8_if_stmt:
-        symbol [ view %tmp.9 38 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_36_42_36_57_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_36_8_36_57_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_36_8_36_57_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 39 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_39_8_42_8_if_stmt:
+        symbol [ view %tmp.9 39 12 16 ];
         %tmp.9 = getv ? :view;
-        symbol [ items %tmp.10 38 17 22 ];
+        symbol [ items %tmp.10 39 17 22 ];
         %tmp.10 = getv %tmp.9 :items;
-        symbol [ size %tmp.11 38 23 27 ];
+        symbol [ size %tmp.11 39 23 27 ];
         %tmp.11 = getv function %tmp.10 :size;
         %tmp.12 = invoke %tmp.10 %tmp.11();
         %tmp.13 = 0;
         %tmp.14 = eq %tmp.12 %tmp.13;
-        bf %tmp.14 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_38_8_41_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_38_8_41_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_38_36_41_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 39 12 ]
-        symbol [ view %tmp.16 39 12 16 ];
+        bf %tmp.14 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_39_8_42_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_39_8_42_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_39_36_42_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 40 12 ]
+        symbol [ view %tmp.16 40 12 16 ];
         %tmp.16 = getv ? :view;
-        symbol [ fetchList %tmp.17 39 17 26 ];
+        symbol [ fetchList %tmp.17 40 17 26 ];
         %tmp.17 = getv function %tmp.16 :fetchList;
         invoke %tmp.16 %tmp.17();
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 40 12 ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 41 12 ]
         %tmp.18 = true;
         ret %tmp.18;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_38_36_41_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_38_8_41_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_38_8_41_8_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 43 8 ]
-        symbol [ view %tmp.20 43 23 27 ];
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_39_36_42_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_39_8_42_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_39_8_42_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 44 8 ]
+        symbol [ view %tmp.20 44 23 27 ];
         %tmp.20 = getv ? :view;
-        symbol [ items %tmp.21 43 28 33 ];
+        symbol [ items %tmp.21 44 28 33 ];
         %tmp.21 = getv %tmp.20 :items;
-        symbol [ view %tmp.23 43 34 38 ];
+        symbol [ view %tmp.23 44 34 38 ];
         %tmp.23 = getv ? :view;
-        symbol [ selectedIndex %tmp.24 43 39 52 ];
+        symbol [ selectedIndex %tmp.24 44 39 52 ];
         %tmp.24 = getv %tmp.23 :selectedIndex;
         %tmp.25 = agetv %tmp.21 %tmp.24;
-        symbol [ selectedItem ? 43 8 20 ];
+        symbol [ selectedItem ? 44 8 20 ];
         putv self :selectedItem %tmp.25;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 44 8 ]
-        %tmp.26 = true;
-        symbol [ isStarting ? 44 8 18 ];
-        putv self :isStarting %tmp.26;
 [ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 45 8 ]
-        symbol [ view %tmp.27 45 8 12 ];
+        %tmp.26 = true;
+        symbol [ isStarting ? 45 8 18 ];
+        putv self :isStarting %tmp.26;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 46 8 ]
+        symbol [ view %tmp.27 46 8 12 ];
         %tmp.27 = getv self :view;
         %tmp.28 = true;
-        symbol [ isLoading ? 45 13 22 ];
+        symbol [ isLoading ? 46 13 22 ];
         putv %tmp.27 :isLoading %tmp.28;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 46 8 ]
-        symbol [ WatchUi %tmp.29 46 8 15 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 47 8 ]
+        symbol [ WatchUi %tmp.29 47 8 15 ];
         %tmp.29 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.30 46 16 29 ];
+        symbol [ requestUpdate %tmp.30 47 16 29 ];
         %tmp.30 = getv function %tmp.29 :requestUpdate;
         invoke %tmp.29 %tmp.30();
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 48 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_34_24_69_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_34_24_69_4_stop" ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 49 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_24_70_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_24_70_4_stop" ]
         %itemId.1 = local;
-        symbol [ itemId %itemId.1 48 12 18 ];
-        symbol [ selectedItem %tmp.32 48 21 33 ];
+        symbol [ itemId %itemId.1 49 12 18 ];
+        symbol [ selectedItem %tmp.32 49 21 33 ];
         %tmp.32 = getv ? :selectedItem;
         %tmp.33 = "id";
         %tmp.34 = agetv %tmp.32 %tmp.33;
-        symbol [ toString %tmp.35 48 40 48 ];
+        symbol [ toString %tmp.35 49 40 48 ];
         %tmp.35 = getv function %tmp.34 :toString;
         %tmp.36 = invoke %tmp.34 %tmp.35();
         lputv %itemId.1 %tmp.36;
-        symbol [ itemId %itemId.1 48 12 18 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 49 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_34_24_69_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_34_24_69_4_stop" ]
+        symbol [ itemId %itemId.1 49 12 18 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 50 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_24_70_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_24_70_4_stop" ]
         %url.2 = local;
-        symbol [ url %url.2 49 12 15 ];
-        symbol [ ServerConfig %tmp.38 49 18 30 ];
+        symbol [ url %url.2 50 12 15 ];
+        symbol [ ServerConfig %tmp.38 50 18 30 ];
         %tmp.38 = getv ? :ServerConfig;
-        symbol [ BASE_URL %tmp.39 49 31 39 ];
+        symbol [ BASE_URL %tmp.39 50 31 39 ];
         %tmp.39 = getv %tmp.38 :BASE_URL;
         %tmp.40 = "/api/watch/list/";
         %tmp.41 = add %tmp.39 %tmp.40;
-        symbol [ view %tmp.43 49 63 67 ];
+        symbol [ view %tmp.43 50 63 67 ];
         %tmp.43 = getv ? :view;
-        symbol [ teamPin %tmp.44 49 68 75 ];
+        symbol [ teamPin %tmp.44 50 68 75 ];
         %tmp.44 = getv %tmp.43 :teamPin;
         %tmp.45 = add %tmp.41 %tmp.44;
         %tmp.46 = "/start/";
         %tmp.47 = add %tmp.45 %tmp.46;
         %tmp.48 = lgetv %itemId.1;
-        symbol [ itemId %tmp.48 49 90 96 ];
+        symbol [ itemId %tmp.48 50 90 96 ];
         %tmp.49 = add %tmp.47 %tmp.48;
         lputv %url.2 %tmp.49;
-        symbol [ url %url.2 49 12 15 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 52 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_34_24_69_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_34_24_69_4_stop" ]
+        symbol [ url %url.2 50 12 15 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 53 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_24_70_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_24_70_4_stop" ]
         %body.3 = local;
-        symbol [ body %body.3 52 12 16 ];
+        symbol [ body %body.3 53 12 16 ];
         %tmp.50 = newd 0;
         lputv %body.3 %tmp.50;
-        symbol [ body %body.3 52 12 16 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 53 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_34_24_69_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_34_24_69_4_stop" ]
-        %userCode.4 = local;
-        symbol [ userCode %userCode.4 53 12 20 ];
-        symbol [ Storage %tmp.52 53 23 30 ];
-        %tmp.52 = getv ? :Storage;
-        symbol [ getValue %tmp.53 53 31 39 ];
-        %tmp.53 = getv function %tmp.52 :getValue;
-        %tmp.54 = "userCode";
-        %tmp.55 = invoke %tmp.52 %tmp.53(%tmp.54);
-        lputv %userCode.4 %tmp.55;
-        symbol [ userCode %userCode.4 53 12 20 ];
+        symbol [ body %body.3 53 12 16 ];
 [ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 54 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_54_8_56_8_if_stmt:
-        %tmp.56 = lgetv %userCode.4;
-        symbol [ userCode %tmp.56 54 12 20 ];
-        %tmp.57 = null;
-        %tmp.58 = ne %tmp.56 %tmp.57;
-        bf %tmp.58 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_54_8_56_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_54_8_56_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_54_30_56_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 55 12 ]
-        %tmp.59 = newd 1;
-        %tmp.60 = "userCode";
-        %tmp.61 = lgetv %userCode.4;
-        symbol [ userCode %tmp.61 55 35 43 ];
-        %tmp.62 = as %tmp.61 { (!Null) };
-        %tmp.63 = dup %tmp.59;
-        %tmp.64 = aputv %tmp.63 %tmp.60 %tmp.62;
-        lputv %body.3 %tmp.64;
-        symbol [ body %body.3 55 12 16 ];
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_54_30_56_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_54_8_56_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_54_8_56_8_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 58 8 ]
-        symbol [ Communications %tmp.65 58 8 22 ];
-        %tmp.65 = getm $.Toybox.Communications;
-        symbol [ makeWebRequest %tmp.66 58 23 37 ];
-        %tmp.66 = getv function %tmp.65 :makeWebRequest;
-        %tmp.67 = lgetv %url.2;
-        symbol [ url %tmp.67 59 12 15 ];
-        %tmp.68 = lgetv %body.3;
-        symbol [ body %tmp.68 60 12 16 ];
-        %tmp.69 = newd 3;
-        %tmp.71 = const :method;
-        symbol [ method %tmp.71 62 17 23 const ];
-        symbol [ Communications %tmp.72 62 27 41 ];
-        %tmp.72 = getm $.Toybox.Communications;
-        symbol [ HTTP_REQUEST_METHOD_POST %tmp.73 62 42 66 ];
-        %tmp.73 = getv %tmp.72 :HTTP_REQUEST_METHOD_POST;
-        %tmp.74 = dup %tmp.69;
-        %tmp.75 = aputv %tmp.74 %tmp.71 %tmp.73;
-        %tmp.77 = const :responseType;
-        symbol [ responseType %tmp.77 63 17 29 const ];
-        symbol [ Communications %tmp.78 63 33 47 ];
-        %tmp.78 = getm $.Toybox.Communications;
-        symbol [ HTTP_RESPONSE_CONTENT_TYPE_JSON %tmp.79 63 48 79 ];
-        %tmp.79 = getv %tmp.78 :HTTP_RESPONSE_CONTENT_TYPE_JSON;
-        %tmp.80 = dup %tmp.75;
-        %tmp.81 = aputv %tmp.80 %tmp.77 %tmp.79;
-        %tmp.83 = const :headers;
-        symbol [ headers %tmp.83 64 17 24 const ];
-        %tmp.84 = newd 1;
-        %tmp.85 = "Content-Type";
-        symbol [ Communications %tmp.86 64 48 62 ];
-        %tmp.86 = getm $.Toybox.Communications;
-        symbol [ REQUEST_CONTENT_TYPE_JSON %tmp.87 64 63 88 ];
-        %tmp.87 = getv %tmp.86 :REQUEST_CONTENT_TYPE_JSON;
-        %tmp.88 = dup %tmp.84;
-        %tmp.89 = aputv %tmp.88 %tmp.85 %tmp.87;
-        %tmp.90 = dup %tmp.81;
-        %tmp.91 = aputv %tmp.90 %tmp.83 %tmp.89;
-        %tmp.92 = self;
-        symbol [ method %tmp.93 66 12 18 ];
-        %tmp.93 = getv function %tmp.92 :method;
-        %tmp.95 = const :onStartResponse;
-        symbol [ onStartResponse %tmp.95 66 20 35 const ];
-        %tmp.96 = invoke %tmp.92 %tmp.93(%tmp.95);
-        invoke %tmp.65 %tmp.66(%tmp.67, %tmp.68, %tmp.91, %tmp.96);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 68 8 ]
-        %tmp.97 = true;
-        ret %tmp.97;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_34_24_69_4_stop:
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_24_70_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_24_70_4_stop" ]
+        %userCode.4 = local;
+        symbol [ userCode %userCode.4 54 12 20 ];
+        symbol [ Storage %tmp.51 54 23 30 ];
+        %tmp.51 = getm $.Toybox.Application.Storage;
+        symbol [ getValue %tmp.52 54 31 39 ];
+        %tmp.52 = getv function %tmp.51 :getValue;
+        %tmp.53 = "userCode";
+        %tmp.54 = invoke %tmp.51 %tmp.52(%tmp.53);
+        lputv %userCode.4 %tmp.54;
+        symbol [ userCode %userCode.4 54 12 20 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 55 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_55_8_57_8_if_stmt:
+        %tmp.55 = lgetv %userCode.4;
+        symbol [ userCode %tmp.55 55 12 20 ];
+        %tmp.56 = null;
+        %tmp.57 = ne %tmp.55 %tmp.56;
+        bf %tmp.57 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_55_8_57_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_55_8_57_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_55_30_57_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 56 12 ]
+        %tmp.58 = newd 1;
+        %tmp.59 = "userCode";
+        %tmp.60 = lgetv %userCode.4;
+        symbol [ userCode %tmp.60 56 35 43 ];
+        %tmp.61 = as %tmp.60 { (!Null) };
+        %tmp.62 = dup %tmp.58;
+        %tmp.63 = aputv %tmp.62 %tmp.59 %tmp.61;
+        lputv %body.3 %tmp.63;
+        symbol [ body %body.3 56 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_55_30_57_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_55_8_57_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_55_8_57_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 59 8 ]
+        symbol [ Communications %tmp.64 59 8 22 ];
+        %tmp.64 = getm $.Toybox.Communications;
+        symbol [ makeWebRequest %tmp.65 59 23 37 ];
+        %tmp.65 = getv function %tmp.64 :makeWebRequest;
+        %tmp.66 = lgetv %url.2;
+        symbol [ url %tmp.66 60 12 15 ];
+        %tmp.67 = lgetv %body.3;
+        symbol [ body %tmp.67 61 12 16 ];
+        %tmp.68 = newd 3;
+        %tmp.70 = const :method;
+        symbol [ method %tmp.70 63 17 23 const ];
+        symbol [ Communications %tmp.71 63 27 41 ];
+        %tmp.71 = getm $.Toybox.Communications;
+        symbol [ HTTP_REQUEST_METHOD_POST %tmp.72 63 42 66 ];
+        %tmp.72 = getv %tmp.71 :HTTP_REQUEST_METHOD_POST;
+        %tmp.73 = dup %tmp.68;
+        %tmp.74 = aputv %tmp.73 %tmp.70 %tmp.72;
+        %tmp.76 = const :responseType;
+        symbol [ responseType %tmp.76 64 17 29 const ];
+        symbol [ Communications %tmp.77 64 33 47 ];
+        %tmp.77 = getm $.Toybox.Communications;
+        symbol [ HTTP_RESPONSE_CONTENT_TYPE_JSON %tmp.78 64 48 79 ];
+        %tmp.78 = getv %tmp.77 :HTTP_RESPONSE_CONTENT_TYPE_JSON;
+        %tmp.79 = dup %tmp.74;
+        %tmp.80 = aputv %tmp.79 %tmp.76 %tmp.78;
+        %tmp.82 = const :headers;
+        symbol [ headers %tmp.82 65 17 24 const ];
+        %tmp.83 = newd 1;
+        %tmp.84 = "Content-Type";
+        symbol [ Communications %tmp.85 65 48 62 ];
+        %tmp.85 = getm $.Toybox.Communications;
+        symbol [ REQUEST_CONTENT_TYPE_JSON %tmp.86 65 63 88 ];
+        %tmp.86 = getv %tmp.85 :REQUEST_CONTENT_TYPE_JSON;
+        %tmp.87 = dup %tmp.83;
+        %tmp.88 = aputv %tmp.87 %tmp.84 %tmp.86;
+        %tmp.89 = dup %tmp.80;
+        %tmp.90 = aputv %tmp.89 %tmp.82 %tmp.88;
+        %tmp.91 = self;
+        symbol [ method %tmp.92 67 12 18 ];
+        %tmp.92 = getv function %tmp.91 :method;
+        %tmp.94 = const :onStartResponse;
+        symbol [ onStartResponse %tmp.94 67 20 35 const ];
+        %tmp.95 = invoke %tmp.91 %tmp.92(%tmp.94);
+        invoke %tmp.64 %tmp.65(%tmp.66, %tmp.67, %tmp.90, %tmp.95);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 69 8 ]
+        %tmp.96 = true;
+        ret %tmp.96;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_35_24_70_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 71; @symbol_functiondef = [onStartResponse,71,13,28]; @symbol_param<0> = [responseCode,71,29,41]; @symbol_param<1> = [data,71,43,47]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 72; @symbol_functiondef = [onStartResponse,72,13,28]; @symbol_param<0> = [responseCode,72,29,41]; @symbol_param<1> = [data,72,43,47]; ]
     function onStartResponse(responseCode, data) {
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_71_49_104_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 72 8 ]
-        %tmp.1 = false;
-        symbol [ isStarting ? 72 8 18 ];
-        putv self :isStarting %tmp.1;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_72_49_105_4_start:
 [ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 73 8 ]
-        symbol [ view %tmp.2 73 8 12 ];
+        %tmp.1 = false;
+        symbol [ isStarting ? 73 8 18 ];
+        putv self :isStarting %tmp.1;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 74 8 ]
+        symbol [ view %tmp.2 74 8 12 ];
         %tmp.2 = getv self :view;
         %tmp.3 = false;
-        symbol [ isLoading ? 73 13 22 ];
+        symbol [ isLoading ? 74 13 22 ];
         putv %tmp.2 :isLoading %tmp.3;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 75 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_8_103_8_if_stmt:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_12_75_67_begin:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_12_75_43_begin:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 76 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_8_104_8_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_12_76_67_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_12_76_43_begin:
         %tmp.4 = lgetv %responseCode;
-        symbol [ responseCode %tmp.4 75 12 24 ];
+        symbol [ responseCode %tmp.4 76 12 24 ];
         %tmp.5 = 200;
         %tmp.6 = eq %tmp.4 %tmp.5;
-        bf %tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_8_103_8_if_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_35_75_43_true:
+        bf %tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_8_104_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_35_76_43_true:
         %tmp.7 = lgetv %data;
-        symbol [ data %tmp.7 75 35 39 ];
+        symbol [ data %tmp.7 76 35 39 ];
         %tmp.8 = null;
         %tmp.9 = ne %tmp.7 %tmp.8;
         push %tmp.9;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_35_75_43_end:
-        %tmp.10 = phi [%tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_12_75_43_begin] [%tmp.9 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_35_75_43_true] [%tmp.10 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_35_75_43_end];
-        bf %tmp.10 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_8_103_8_if_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_51_75_67_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_35_76_43_end:
+        %tmp.10 = phi [%tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_12_76_43_begin] [%tmp.9 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_35_76_43_true] [%tmp.10 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_35_76_43_end];
+        bf %tmp.10 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_8_104_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_51_76_67_true:
         %tmp.11 = lgetv %data;
-        symbol [ data %tmp.11 75 51 55 ];
+        symbol [ data %tmp.11 76 51 55 ];
         %tmp.12 = as %tmp.11 { (!Null) };
-        symbol [ Dictionary %tmp.14 75 67 77 ];
+        symbol [ Dictionary %tmp.14 76 67 77 ];
         %tmp.14 = getv ? :Dictionary;
         %tmp.15 = isa %tmp.12 %tmp.14;
         push %tmp.15;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_51_75_67_end:
-        %tmp.16 = phi [%tmp.10 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_12_75_67_begin] [%tmp.15 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_51_75_67_true] [%tmp.16 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_51_75_67_end];
-        bf %tmp.16 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_8_103_8_if_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_8_103_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_79_97_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 76 12 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_79_97_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_79_97_8_stop" ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_51_76_67_end:
+        %tmp.16 = phi [%tmp.10 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_12_76_67_begin] [%tmp.15 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_51_76_67_true] [%tmp.16 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_51_76_67_end];
+        bf %tmp.16 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_8_104_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_8_104_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_79_98_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 77 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_79_98_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_79_98_8_stop" ]
         %code.1 = local;
-        symbol [ code %code.1 76 16 20 ];
+        symbol [ code %code.1 77 16 20 ];
         %tmp.17 = lgetv %data;
-        symbol [ data %tmp.17 76 23 27 ];
+        symbol [ data %tmp.17 77 23 27 ];
         %tmp.18 = as %tmp.17 { (Dictionary) && (!Null) };
         %tmp.19 = "code";
         %tmp.20 = agetv %tmp.18 %tmp.19;
         lputv %code.1 %tmp.20;
-        symbol [ code %code.1 76 16 20 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 77 12 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_79_97_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_79_97_8_stop" ]
+        symbol [ code %code.1 77 16 20 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 78 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_79_98_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_79_98_8_stop" ]
         %queueItemId.2 = local;
-        symbol [ queueItemId %queueItemId.2 77 16 27 ];
+        symbol [ queueItemId %queueItemId.2 78 16 27 ];
         %tmp.21 = lgetv %data;
-        symbol [ data %tmp.21 77 30 34 ];
+        symbol [ data %tmp.21 78 30 34 ];
         %tmp.22 = as %tmp.21 { (Dictionary) && (!Null) };
         %tmp.23 = "queueItemId";
         %tmp.24 = agetv %tmp.22 %tmp.23;
         lputv %queueItemId.2 %tmp.24;
-        symbol [ queueItemId %queueItemId.2 77 16 27 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 79 12 ]
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_79_12_96_12_if_stmt:
+        symbol [ queueItemId %queueItemId.2 78 16 27 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 80 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_80_12_97_12_if_stmt:
         %tmp.25 = lgetv %code.1;
-        symbol [ code %tmp.25 79 16 20 ];
+        symbol [ code %tmp.25 80 16 20 ];
         %tmp.26 = null;
         %tmp.27 = ne %tmp.25 %tmp.26;
-        bf %tmp.27 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_79_12_96_12_if_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_79_12_96_12_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_79_30_86_12_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 81 16 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_79_30_86_12_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_79_30_86_12_stop" ]
+        bf %tmp.27 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_80_12_97_12_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_80_12_97_12_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_80_30_87_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 82 16 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_80_30_87_12_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_80_30_87_12_stop" ]
         %heatView.3 = local;
-        symbol [ heatView %heatView.3 81 20 28 ];
-        symbol [ HeatView %tmp.31 81 35 43 ];
+        symbol [ heatView %heatView.3 82 20 28 ];
+        symbol [ HeatView %tmp.31 82 35 43 ];
         %tmp.31 = getv ? :HeatView;
         %tmp.32 = lgetv %code.1;
-        symbol [ code %tmp.32 81 44 48 ];
+        symbol [ code %tmp.32 82 44 48 ];
         %tmp.33 = as %tmp.32 { (!Null) };
         %tmp.28 = newc %tmp.31 (%tmp.33);
         lputv %heatView.3 %tmp.28;
-        symbol [ heatView %heatView.3 81 20 28 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 82 16 ]
-        %tmp.34 = lgetv %heatView.3;
-        symbol [ heatView %tmp.34 82 16 24 ];
-        %tmp.35 = lgetv %queueItemId.2;
-        symbol [ queueItemId %tmp.35 82 39 50 ];
-        symbol [ queueItemId ? 82 25 36 ];
-        putv %tmp.34 :queueItemId %tmp.35;
+        symbol [ heatView %heatView.3 82 20 28 ];
 [ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 83 16 ]
-        %tmp.36 = lgetv %heatView.3;
-        symbol [ heatView %tmp.36 83 16 24 ];
-        symbol [ view %tmp.38 83 35 39 ];
-        %tmp.38 = getv ? :view;
-        symbol [ teamPin %tmp.39 83 40 47 ];
-        %tmp.39 = getv %tmp.38 :teamPin;
-        symbol [ teamPin ? 83 25 32 ];
-        putv %tmp.36 :teamPin %tmp.39;
+        %tmp.34 = lgetv %heatView.3;
+        symbol [ heatView %tmp.34 83 16 24 ];
+        %tmp.35 = lgetv %queueItemId.2;
+        symbol [ queueItemId %tmp.35 83 39 50 ];
+        symbol [ queueItemId ? 83 25 36 ];
+        putv %tmp.34 :queueItemId %tmp.35;
 [ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 84 16 ]
-        %tmp.40 = lgetv %heatView.3;
-        symbol [ heatView %tmp.40 84 16 24 ];
-        %tmp.41 = "Select winner";
-        symbol [ statusText ? 84 25 35 ];
-        putv %tmp.40 :statusText %tmp.41;
+        %tmp.36 = lgetv %heatView.3;
+        symbol [ heatView %tmp.36 84 16 24 ];
+        symbol [ view %tmp.38 84 35 39 ];
+        %tmp.38 = getv ? :view;
+        symbol [ teamPin %tmp.39 84 40 47 ];
+        %tmp.39 = getv %tmp.38 :teamPin;
+        symbol [ teamPin ? 84 25 32 ];
+        putv %tmp.36 :teamPin %tmp.39;
 [ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 85 16 ]
+        %tmp.40 = lgetv %heatView.3;
+        symbol [ heatView %tmp.40 85 16 24 ];
+        %tmp.41 = "Select winner";
+        symbol [ statusText ? 85 25 35 ];
+        putv %tmp.40 :statusText %tmp.41;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 86 16 ]
         %tmp.42 = self;
-        symbol [ fetchCurrentHeat %tmp.43 85 16 32 ];
+        symbol [ fetchCurrentHeat %tmp.43 86 16 32 ];
         %tmp.43 = getv function %tmp.42 :fetchCurrentHeat;
         %tmp.44 = lgetv %code.1;
-        symbol [ code %tmp.44 85 33 37 ];
+        symbol [ code %tmp.44 86 33 37 ];
         %tmp.45 = as %tmp.44 { (!Null) };
         %tmp.46 = lgetv %heatView.3;
-        symbol [ heatView %tmp.46 85 39 47 ];
+        symbol [ heatView %tmp.46 86 39 47 ];
         invoke %tmp.42 %tmp.43(%tmp.45, %tmp.46);
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_79_30_86_12_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_79_12_96_12_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_79_12_96_12_if_else_false:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_86_19_96_12_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 89 16 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_86_19_96_12_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_86_19_96_12_stop" ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_80_30_87_12_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_80_12_97_12_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_80_12_97_12_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_87_19_97_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 90 16 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_87_19_97_12_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_87_19_97_12_stop" ]
         %codeView.4 = local;
-        symbol [ codeView %codeView.4 89 20 28 ];
-        symbol [ CodeEntryView %tmp.50 89 35 48 ];
+        symbol [ codeView %codeView.4 90 20 28 ];
+        symbol [ CodeEntryView %tmp.50 90 35 48 ];
         %tmp.50 = getv ? :CodeEntryView;
         %tmp.47 = newc %tmp.50 ();
         lputv %codeView.4 %tmp.47;
-        symbol [ codeView %codeView.4 89 20 28 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 90 16 ]
-        %tmp.51 = lgetv %codeView.4;
-        symbol [ codeView %tmp.51 90 16 24 ];
-        %tmp.52 = "Enter session code";
-        symbol [ statusText ? 90 25 35 ];
-        putv %tmp.51 :statusText %tmp.52;
+        symbol [ codeView %codeView.4 90 20 28 ];
 [ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 91 16 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_86_19_96_12_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_86_19_96_12_stop" ]
+        %tmp.51 = lgetv %codeView.4;
+        symbol [ codeView %tmp.51 91 16 24 ];
+        %tmp.52 = "Enter session code";
+        symbol [ statusText ? 91 25 35 ];
+        putv %tmp.51 :statusText %tmp.52;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 92 16 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_87_19_97_12_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_87_19_97_12_stop" ]
         %codeDelegate.5 = local;
-        symbol [ codeDelegate %codeDelegate.5 91 20 32 ];
-        symbol [ CodeEntryDelegate %tmp.56 91 39 56 ];
+        symbol [ codeDelegate %codeDelegate.5 92 20 32 ];
+        symbol [ CodeEntryDelegate %tmp.56 92 39 56 ];
         %tmp.56 = getv ? :CodeEntryDelegate;
         %tmp.57 = lgetv %codeView.4;
-        symbol [ codeView %tmp.57 91 57 65 ];
+        symbol [ codeView %tmp.57 92 57 65 ];
         %tmp.53 = newc %tmp.56 (%tmp.57);
         lputv %codeDelegate.5 %tmp.53;
-        symbol [ codeDelegate %codeDelegate.5 91 20 32 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 93 16 ]
-        %tmp.58 = lgetv %codeDelegate.5;
-        symbol [ codeDelegate %tmp.58 93 16 28 ];
-        %tmp.59 = lgetv %queueItemId.2;
-        symbol [ queueItemId %tmp.59 93 50 61 ];
-        symbol [ pendingQueueItemId ? 93 29 47 ];
-        putv %tmp.58 :pendingQueueItemId %tmp.59;
+        symbol [ codeDelegate %codeDelegate.5 92 20 32 ];
 [ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 94 16 ]
-        %tmp.60 = lgetv %codeDelegate.5;
-        symbol [ codeDelegate %tmp.60 94 16 28 ];
-        symbol [ view %tmp.62 94 39 43 ];
-        %tmp.62 = getv ? :view;
-        symbol [ teamPin %tmp.63 94 44 51 ];
-        %tmp.63 = getv %tmp.62 :teamPin;
-        symbol [ teamPin ? 94 29 36 ];
-        putv %tmp.60 :teamPin %tmp.63;
+        %tmp.58 = lgetv %codeDelegate.5;
+        symbol [ codeDelegate %tmp.58 94 16 28 ];
+        %tmp.59 = lgetv %queueItemId.2;
+        symbol [ queueItemId %tmp.59 94 50 61 ];
+        symbol [ pendingQueueItemId ? 94 29 47 ];
+        putv %tmp.58 :pendingQueueItemId %tmp.59;
 [ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 95 16 ]
-        symbol [ WatchUi %tmp.64 95 16 23 ];
+        %tmp.60 = lgetv %codeDelegate.5;
+        symbol [ codeDelegate %tmp.60 95 16 28 ];
+        symbol [ view %tmp.62 95 39 43 ];
+        %tmp.62 = getv ? :view;
+        symbol [ teamPin %tmp.63 95 44 51 ];
+        %tmp.63 = getv %tmp.62 :teamPin;
+        symbol [ teamPin ? 95 29 36 ];
+        putv %tmp.60 :teamPin %tmp.63;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 96 16 ]
+        symbol [ WatchUi %tmp.64 96 16 23 ];
         %tmp.64 = getm $.Toybox.WatchUi;
-        symbol [ switchToView %tmp.65 95 24 36 ];
+        symbol [ switchToView %tmp.65 96 24 36 ];
         %tmp.65 = getv function %tmp.64 :switchToView;
         %tmp.66 = lgetv %codeView.4;
-        symbol [ codeView %tmp.66 95 37 45 ];
+        symbol [ codeView %tmp.66 96 37 45 ];
         %tmp.67 = lgetv %codeDelegate.5;
-        symbol [ codeDelegate %tmp.67 95 47 59 ];
-        symbol [ WatchUi %tmp.68 95 61 68 ];
+        symbol [ codeDelegate %tmp.67 96 47 59 ];
+        symbol [ WatchUi %tmp.68 96 61 68 ];
         %tmp.68 = getm $.Toybox.WatchUi;
-        symbol [ SLIDE_LEFT %tmp.69 95 69 79 ];
+        symbol [ SLIDE_LEFT %tmp.69 96 69 79 ];
         %tmp.69 = getv %tmp.68 :SLIDE_LEFT;
         invoke %tmp.64 %tmp.65(%tmp.66, %tmp.67, %tmp.69);
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_86_19_96_12_stop:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_79_12_96_12_if_end:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_79_97_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_8_103_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_8_103_8_if_else_false:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_97_15_103_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 99 12 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_97_15_103_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_97_15_103_8_stop" ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_87_19_97_12_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_80_12_97_12_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_79_98_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_8_104_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_8_104_8_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_98_15_104_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 100 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_98_15_104_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_98_15_104_8_stop" ]
         %codeView.6 = local;
-        symbol [ codeView %codeView.6 99 16 24 ];
-        symbol [ CodeEntryView %tmp.73 99 31 44 ];
+        symbol [ codeView %codeView.6 100 16 24 ];
+        symbol [ CodeEntryView %tmp.73 100 31 44 ];
         %tmp.73 = getv ? :CodeEntryView;
         %tmp.70 = newc %tmp.73 ();
         lputv %codeView.6 %tmp.70;
-        symbol [ codeView %codeView.6 99 16 24 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 100 12 ]
-        %tmp.74 = lgetv %codeView.6;
-        symbol [ codeView %tmp.74 100 12 20 ];
-        %tmp.75 = "Enter session code";
-        symbol [ statusText ? 100 21 31 ];
-        putv %tmp.74 :statusText %tmp.75;
+        symbol [ codeView %codeView.6 100 16 24 ];
 [ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 101 12 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_97_15_103_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_97_15_103_8_stop" ]
+        %tmp.74 = lgetv %codeView.6;
+        symbol [ codeView %tmp.74 101 12 20 ];
+        %tmp.75 = "Enter session code";
+        symbol [ statusText ? 101 21 31 ];
+        putv %tmp.74 :statusText %tmp.75;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 102 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_98_15_104_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_98_15_104_8_stop" ]
         %codeDelegate.7 = local;
-        symbol [ codeDelegate %codeDelegate.7 101 16 28 ];
-        symbol [ CodeEntryDelegate %tmp.79 101 35 52 ];
+        symbol [ codeDelegate %codeDelegate.7 102 16 28 ];
+        symbol [ CodeEntryDelegate %tmp.79 102 35 52 ];
         %tmp.79 = getv ? :CodeEntryDelegate;
         %tmp.80 = lgetv %codeView.6;
-        symbol [ codeView %tmp.80 101 53 61 ];
+        symbol [ codeView %tmp.80 102 53 61 ];
         %tmp.76 = newc %tmp.79 (%tmp.80);
         lputv %codeDelegate.7 %tmp.76;
-        symbol [ codeDelegate %codeDelegate.7 101 16 28 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 102 12 ]
-        symbol [ WatchUi %tmp.81 102 12 19 ];
+        symbol [ codeDelegate %codeDelegate.7 102 16 28 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 103 12 ]
+        symbol [ WatchUi %tmp.81 103 12 19 ];
         %tmp.81 = getm $.Toybox.WatchUi;
-        symbol [ switchToView %tmp.82 102 20 32 ];
+        symbol [ switchToView %tmp.82 103 20 32 ];
         %tmp.82 = getv function %tmp.81 :switchToView;
         %tmp.83 = lgetv %codeView.6;
-        symbol [ codeView %tmp.83 102 33 41 ];
+        symbol [ codeView %tmp.83 103 33 41 ];
         %tmp.84 = lgetv %codeDelegate.7;
-        symbol [ codeDelegate %tmp.84 102 43 55 ];
-        symbol [ WatchUi %tmp.85 102 57 64 ];
+        symbol [ codeDelegate %tmp.84 103 43 55 ];
+        symbol [ WatchUi %tmp.85 103 57 64 ];
         %tmp.85 = getm $.Toybox.WatchUi;
-        symbol [ SLIDE_LEFT %tmp.86 102 65 75 ];
+        symbol [ SLIDE_LEFT %tmp.86 103 65 75 ];
         %tmp.86 = getv %tmp.85 :SLIDE_LEFT;
         invoke %tmp.81 %tmp.82(%tmp.83, %tmp.84, %tmp.86);
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_97_15_103_8_stop:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_75_8_103_8_if_end:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_71_49_104_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_98_15_104_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_76_8_104_8_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_72_49_105_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 106; @symbol_functiondef = [fetchCurrentHeat,106,13,29]; @symbol_param<0> = [code,106,30,34]; @symbol_param<1> = [heatView,106,36,44]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 107; @symbol_functiondef = [fetchCurrentHeat,107,13,29]; @symbol_param<0> = [code,107,30,34]; @symbol_param<1> = [heatView,107,36,44]; ]
     function fetchCurrentHeat(code, heatView) {
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_106_46_117_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 107 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_106_46_117_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_106_46_117_4_stop" ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_107_46_118_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 108 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_107_46_118_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_107_46_118_4_stop" ]
         %url.1 = local;
-        symbol [ url %url.1 107 12 15 ];
-        symbol [ ServerConfig %tmp.2 107 18 30 ];
+        symbol [ url %url.1 108 12 15 ];
+        symbol [ ServerConfig %tmp.2 108 18 30 ];
         %tmp.2 = getv ? :ServerConfig;
-        symbol [ BASE_URL %tmp.3 107 31 39 ];
+        symbol [ BASE_URL %tmp.3 108 31 39 ];
         %tmp.3 = getv %tmp.2 :BASE_URL;
         %tmp.4 = "/api/runsheet/watch/";
         %tmp.5 = add %tmp.3 %tmp.4;
         %tmp.6 = lgetv %code;
-        symbol [ code %tmp.6 107 67 71 ];
+        symbol [ code %tmp.6 108 67 71 ];
         %tmp.7 = add %tmp.5 %tmp.6;
         lputv %url.1 %tmp.7;
-        symbol [ url %url.1 107 12 15 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 108 8 ]
-        symbol [ Communications %tmp.8 108 8 22 ];
+        symbol [ url %url.1 108 12 15 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 109 8 ]
+        symbol [ Communications %tmp.8 109 8 22 ];
         %tmp.8 = getm $.Toybox.Communications;
-        symbol [ makeWebRequest %tmp.9 108 23 37 ];
+        symbol [ makeWebRequest %tmp.9 109 23 37 ];
         %tmp.9 = getv function %tmp.8 :makeWebRequest;
         %tmp.10 = lgetv %url.1;
-        symbol [ url %tmp.10 109 12 15 ];
+        symbol [ url %tmp.10 110 12 15 ];
         %tmp.11 = null;
         %tmp.12 = newd 2;
         %tmp.14 = const :method;
-        symbol [ method %tmp.14 112 17 23 const ];
-        symbol [ Communications %tmp.15 112 27 41 ];
+        symbol [ method %tmp.14 113 17 23 const ];
+        symbol [ Communications %tmp.15 113 27 41 ];
         %tmp.15 = getm $.Toybox.Communications;
-        symbol [ HTTP_REQUEST_METHOD_GET %tmp.16 112 42 65 ];
+        symbol [ HTTP_REQUEST_METHOD_GET %tmp.16 113 42 65 ];
         %tmp.16 = getv %tmp.15 :HTTP_REQUEST_METHOD_GET;
         %tmp.17 = dup %tmp.12;
         %tmp.18 = aputv %tmp.17 %tmp.14 %tmp.16;
         %tmp.20 = const :responseType;
-        symbol [ responseType %tmp.20 113 17 29 const ];
-        symbol [ Communications %tmp.21 113 33 47 ];
+        symbol [ responseType %tmp.20 114 17 29 const ];
+        symbol [ Communications %tmp.21 114 33 47 ];
         %tmp.21 = getm $.Toybox.Communications;
-        symbol [ HTTP_RESPONSE_CONTENT_TYPE_JSON %tmp.22 113 48 79 ];
+        symbol [ HTTP_RESPONSE_CONTENT_TYPE_JSON %tmp.22 114 48 79 ];
         %tmp.22 = getv %tmp.21 :HTTP_RESPONSE_CONTENT_TYPE_JSON;
         %tmp.23 = dup %tmp.18;
         %tmp.24 = aputv %tmp.23 %tmp.20 %tmp.22;
-        symbol [ HeatLoadCallback %tmp.28 115 16 32 ];
+        symbol [ HeatLoadCallback %tmp.28 116 16 32 ];
         %tmp.28 = getv ? :HeatLoadCallback;
         %tmp.29 = lgetv %heatView;
-        symbol [ heatView %tmp.29 115 33 41 ];
-        symbol [ view %tmp.31 115 43 47 ];
+        symbol [ heatView %tmp.29 116 33 41 ];
+        symbol [ view %tmp.31 116 43 47 ];
         %tmp.31 = getv ? :view;
-        symbol [ teamPin %tmp.32 115 48 55 ];
+        symbol [ teamPin %tmp.32 116 48 55 ];
         %tmp.32 = getv %tmp.31 :teamPin;
         %tmp.25 = newc %tmp.28 (%tmp.29, %tmp.32);
-        symbol [ method %tmp.33 115 57 63 ];
+        symbol [ method %tmp.33 116 57 63 ];
         %tmp.33 = getv function %tmp.25 :method;
         %tmp.35 = const :onResponse;
-        symbol [ onResponse %tmp.35 115 65 75 const ];
+        symbol [ onResponse %tmp.35 116 65 75 const ];
         %tmp.36 = invoke %tmp.25 %tmp.33(%tmp.35);
         invoke %tmp.8 %tmp.9(%tmp.10, %tmp.11, %tmp.24, %tmp.36);
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_106_46_117_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_107_46_118_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 119; @symbol_functiondef = [onBack,119,13,19]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 120; @symbol_functiondef = [onBack,120,13,19]; ]
     function onBack() {
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_119_22_124_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 120 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_119_22_124_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_119_22_124_4_stop" ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_120_22_125_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 121 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_120_22_125_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_120_22_125_4_stop" ]
         %menuView.1 = local;
-        symbol [ menuView %menuView.1 120 12 20 ];
-        symbol [ MainMenuView %tmp.4 120 27 39 ];
+        symbol [ menuView %menuView.1 121 12 20 ];
+        symbol [ MainMenuView %tmp.4 121 27 39 ];
         %tmp.4 = getv ? :MainMenuView;
-        symbol [ view %tmp.6 120 40 44 ];
+        symbol [ view %tmp.6 121 40 44 ];
         %tmp.6 = getv ? :view;
-        symbol [ teamPin %tmp.7 120 45 52 ];
+        symbol [ teamPin %tmp.7 121 45 52 ];
         %tmp.7 = getv %tmp.6 :teamPin;
         %tmp.1 = newc %tmp.4 (%tmp.7);
         lputv %menuView.1 %tmp.1;
-        symbol [ menuView %menuView.1 120 12 20 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 121 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_119_22_124_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_119_22_124_4_stop" ]
+        symbol [ menuView %menuView.1 121 12 20 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 122 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_120_22_125_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_120_22_125_4_stop" ]
         %menuDelegate.2 = local;
-        symbol [ menuDelegate %menuDelegate.2 121 12 24 ];
-        symbol [ MainMenuDelegate %tmp.11 121 31 47 ];
+        symbol [ menuDelegate %menuDelegate.2 122 12 24 ];
+        symbol [ MainMenuDelegate %tmp.11 122 31 47 ];
         %tmp.11 = getv ? :MainMenuDelegate;
         %tmp.12 = lgetv %menuView.1;
-        symbol [ menuView %tmp.12 121 48 56 ];
+        symbol [ menuView %tmp.12 122 48 56 ];
         %tmp.8 = newc %tmp.11 (%tmp.12);
         lputv %menuDelegate.2 %tmp.8;
-        symbol [ menuDelegate %menuDelegate.2 121 12 24 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 122 8 ]
-        symbol [ WatchUi %tmp.13 122 8 15 ];
+        symbol [ menuDelegate %menuDelegate.2 122 12 24 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 123 8 ]
+        symbol [ WatchUi %tmp.13 123 8 15 ];
         %tmp.13 = getm $.Toybox.WatchUi;
-        symbol [ switchToView %tmp.14 122 16 28 ];
+        symbol [ switchToView %tmp.14 123 16 28 ];
         %tmp.14 = getv function %tmp.13 :switchToView;
         %tmp.15 = lgetv %menuView.1;
-        symbol [ menuView %tmp.15 122 29 37 ];
+        symbol [ menuView %tmp.15 123 29 37 ];
         %tmp.16 = lgetv %menuDelegate.2;
-        symbol [ menuDelegate %tmp.16 122 39 51 ];
-        symbol [ WatchUi %tmp.17 122 53 60 ];
+        symbol [ menuDelegate %tmp.16 123 39 51 ];
+        symbol [ WatchUi %tmp.17 123 53 60 ];
         %tmp.17 = getm $.Toybox.WatchUi;
-        symbol [ SLIDE_RIGHT %tmp.18 122 61 72 ];
+        symbol [ SLIDE_RIGHT %tmp.18 123 61 72 ];
         %tmp.18 = getv %tmp.17 :SLIDE_RIGHT;
         invoke %tmp.13 %tmp.14(%tmp.15, %tmp.16, %tmp.18);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 123 8 ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 124 8 ]
         %tmp.19 = true;
         ret %tmp.19;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_119_22_124_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_120_22_125_4_stop:
     }
 }
-[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 128; @symbol_classdef = [HeatLoadCallback,128,6,22]; ]
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 129; @symbol_classdef = [HeatLoadCallback,129,6,22]; ]
 class HeatLoadCallback {
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 128; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 129; ]
     <init> {
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 128; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 129; ]
     static
     <init> {
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 129; @position = 8; @symbol_vardef = [heatView,129,8,16]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 130; @position = 8; @symbol_vardef = [heatView,130,8,16]; ]
     var heatView;
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 130; @position = 8; @symbol_vardef = [teamPin,130,8,15]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 131; @position = 8; @symbol_vardef = [teamPin,131,8,15]; ]
     var teamPin;
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 132; @symbol_functiondef = [initialize,132,13,23]; @symbol_param<0> = [view,132,24,28]; @symbol_param<1> = [pin,132,30,33]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 133; @symbol_functiondef = [initialize,133,13,23]; @symbol_param<0> = [view,133,24,28]; @symbol_param<1> = [pin,133,30,33]; ]
     function initialize(view, pin) as Void {
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_132_35_135_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 133 8 ]
-        %tmp.1 = lgetv %view;
-        symbol [ view %tmp.1 133 19 23 ];
-        symbol [ heatView ? 133 8 16 ];
-        putv self :heatView %tmp.1;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_133_35_136_4_start:
 [ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 134 8 ]
+        %tmp.1 = lgetv %view;
+        symbol [ view %tmp.1 134 19 23 ];
+        symbol [ heatView ? 134 8 16 ];
+        putv self :heatView %tmp.1;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 135 8 ]
         %tmp.2 = lgetv %pin;
-        symbol [ pin %tmp.2 134 18 21 ];
-        symbol [ teamPin ? 134 8 15 ];
+        symbol [ pin %tmp.2 135 18 21 ];
+        symbol [ teamPin ? 135 8 15 ];
         putv self :teamPin %tmp.2;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_132_35_135_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_133_35_136_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 137; @symbol_functiondef = [onResponse,137,13,23]; @symbol_param<0> = [responseCode,137,24,36]; @symbol_param<1> = [data,137,38,42]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 138; @symbol_functiondef = [onResponse,138,13,23]; @symbol_param<0> = [responseCode,138,24,36]; @symbol_param<1> = [data,138,38,42]; ]
     function onResponse(responseCode, data) {
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_137_44_156_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 138 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_8_153_8_if_stmt:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_12_138_67_begin:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_12_138_43_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_44_157_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 139 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_8_154_8_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_12_139_67_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_12_139_43_begin:
         %tmp.1 = lgetv %responseCode;
-        symbol [ responseCode %tmp.1 138 12 24 ];
+        symbol [ responseCode %tmp.1 139 12 24 ];
         %tmp.2 = 200;
         %tmp.3 = eq %tmp.1 %tmp.2;
-        bf %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_8_153_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_35_138_43_true:
+        bf %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_8_154_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_35_139_43_true:
         %tmp.4 = lgetv %data;
-        symbol [ data %tmp.4 138 35 39 ];
+        symbol [ data %tmp.4 139 35 39 ];
         %tmp.5 = null;
         %tmp.6 = ne %tmp.4 %tmp.5;
         push %tmp.6;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_35_138_43_end:
-        %tmp.7 = phi [%tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_12_138_43_begin] [%tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_35_138_43_true] [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_35_138_43_end];
-        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_8_153_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_51_138_67_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_35_139_43_end:
+        %tmp.7 = phi [%tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_12_139_43_begin] [%tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_35_139_43_true] [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_35_139_43_end];
+        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_8_154_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_51_139_67_true:
         %tmp.8 = lgetv %data;
-        symbol [ data %tmp.8 138 51 55 ];
+        symbol [ data %tmp.8 139 51 55 ];
         %tmp.9 = as %tmp.8 { (!Null) };
-        symbol [ Dictionary %tmp.11 138 67 77 ];
+        symbol [ Dictionary %tmp.11 139 67 77 ];
         %tmp.11 = getv ? :Dictionary;
         %tmp.12 = isa %tmp.9 %tmp.11;
         push %tmp.12;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_51_138_67_end:
-        %tmp.13 = phi [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_12_138_67_begin] [%tmp.12 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_51_138_67_true] [%tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_51_138_67_end];
-        bf %tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_8_153_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_8_153_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_79_153_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 139 12 ]
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_12_152_12_if_stmt:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_16_139_78_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_51_139_67_end:
+        %tmp.13 = phi [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_12_139_67_begin] [%tmp.12 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_51_139_67_true] [%tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_51_139_67_end];
+        bf %tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_8_154_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_8_154_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_79_154_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 140 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_12_153_12_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_16_140_78_begin:
         %tmp.14 = lgetv %data;
-        symbol [ data %tmp.14 139 16 20 ];
+        symbol [ data %tmp.14 140 16 20 ];
         %tmp.15 = as %tmp.14 { (Dictionary) && (!Null) };
         %tmp.16 = "currentHeat";
         %tmp.17 = agetv %tmp.15 %tmp.16;
         %tmp.18 = null;
         %tmp.19 = ne %tmp.17 %tmp.18;
-        bf %tmp.19 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_12_152_12_if_false;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_47_139_78_true:
+        bf %tmp.19 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_12_153_12_if_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_47_140_78_true:
         %tmp.20 = lgetv %data;
-        symbol [ data %tmp.20 139 47 51 ];
+        symbol [ data %tmp.20 140 47 51 ];
         %tmp.21 = as %tmp.20 { (Dictionary) && (!Null) };
         %tmp.22 = "currentHeat";
         %tmp.23 = agetv %tmp.21 %tmp.22;
-        symbol [ Dictionary %tmp.25 139 78 88 ];
+        symbol [ Dictionary %tmp.25 140 78 88 ];
         %tmp.25 = getv ? :Dictionary;
         %tmp.26 = isa %tmp.23 %tmp.25;
         push %tmp.26;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_47_139_78_end:
-        %tmp.27 = phi [%tmp.19 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_16_139_78_begin] [%tmp.26 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_47_139_78_true] [%tmp.27 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_47_139_78_end];
-        bf %tmp.27 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_12_152_12_if_false;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_12_152_12_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_90_149_12_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 140 16 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_90_149_12_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_90_149_12_stop" ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_47_140_78_end:
+        %tmp.27 = phi [%tmp.19 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_16_140_78_begin] [%tmp.26 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_47_140_78_true] [%tmp.27 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_47_140_78_end];
+        bf %tmp.27 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_12_153_12_if_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_12_153_12_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_90_150_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 141 16 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_90_150_12_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_90_150_12_stop" ]
         %ch.1 = local;
-        symbol [ ch %ch.1 140 20 22 ];
+        symbol [ ch %ch.1 141 20 22 ];
         %tmp.28 = lgetv %data;
-        symbol [ data %tmp.28 140 25 29 ];
+        symbol [ data %tmp.28 141 25 29 ];
         %tmp.29 = as %tmp.28 { (Dictionary) && (!Null) };
         %tmp.30 = "currentHeat";
         %tmp.31 = agetv %tmp.29 %tmp.30;
         lputv %ch.1 %tmp.31;
-        symbol [ ch %ch.1 140 20 22 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 141 16 ]
-        symbol [ heatView %tmp.32 141 16 24 ];
+        symbol [ ch %ch.1 141 20 22 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 142 16 ]
+        symbol [ heatView %tmp.32 142 16 24 ];
         %tmp.32 = getv self :heatView;
         %tmp.33 = lgetv %ch.1;
-        symbol [ ch %tmp.33 141 37 39 ];
+        symbol [ ch %tmp.33 142 37 39 ];
         %tmp.34 = "roundName";
         %tmp.35 = agetv %tmp.33 %tmp.34;
-        symbol [ roundName ? 141 25 34 ];
+        symbol [ roundName ? 142 25 34 ];
         putv %tmp.32 :roundName %tmp.35;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 142 16 ]
-        symbol [ heatView %tmp.36 142 16 24 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 143 16 ]
+        symbol [ heatView %tmp.36 143 16 24 ];
         %tmp.36 = getv self :heatView;
         %tmp.37 = lgetv %ch.1;
-        symbol [ ch %tmp.37 142 33 35 ];
+        symbol [ ch %tmp.37 143 33 35 ];
         %tmp.38 = "pairA";
         %tmp.39 = agetv %tmp.37 %tmp.38;
-        symbol [ pairA ? 142 25 30 ];
+        symbol [ pairA ? 143 25 30 ];
         putv %tmp.36 :pairA %tmp.39;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 143 16 ]
-        symbol [ heatView %tmp.40 143 16 24 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 144 16 ]
+        symbol [ heatView %tmp.40 144 16 24 ];
         %tmp.40 = getv self :heatView;
         %tmp.41 = lgetv %ch.1;
-        symbol [ ch %tmp.41 143 33 35 ];
+        symbol [ ch %tmp.41 144 33 35 ];
         %tmp.42 = "pairB";
         %tmp.43 = agetv %tmp.41 %tmp.42;
-        symbol [ pairB ? 143 25 30 ];
+        symbol [ pairB ? 144 25 30 ];
         putv %tmp.40 :pairB %tmp.43;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 144 16 ]
-        symbol [ heatView %tmp.44 144 16 24 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 145 16 ]
+        symbol [ heatView %tmp.44 145 16 24 ];
         %tmp.44 = getv self :heatView;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_144_34_144_93_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_begin:
         %tmp.45 = lgetv %ch.1;
-        symbol [ ch %tmp.45 144 34 36 ];
+        symbol [ ch %tmp.45 145 34 36 ];
         %tmp.46 = "labelA";
         %tmp.47 = agetv %tmp.45 %tmp.46;
         %tmp.48 = null;
         %tmp.49 = ne %tmp.47 %tmp.48;
-        bf %tmp.49 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_144_34_144_93_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_144_34_144_93_true:
+        bf %tmp.49 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_true:
         %tmp.50 = lgetv %ch.1;
-        symbol [ ch %tmp.50 144 57 59 ];
+        symbol [ ch %tmp.50 145 57 59 ];
         %tmp.51 = "labelA";
         %tmp.52 = agetv %tmp.50 %tmp.51;
         push %tmp.52;
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_144_34_144_93_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_144_34_144_93_else_false:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_else_false:
         %tmp.53 = lgetv %ch.1;
-        symbol [ ch %tmp.53 144 72 74 ];
+        symbol [ ch %tmp.53 145 72 74 ];
         %tmp.54 = "pairA";
         %tmp.55 = agetv %tmp.53 %tmp.54;
-        symbol [ toString %tmp.56 144 84 92 ];
+        symbol [ toString %tmp.56 145 84 92 ];
         %tmp.56 = getv function %tmp.55 :toString;
         %tmp.57 = invoke %tmp.55 %tmp.56();
         push %tmp.57;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_144_34_144_93_end:
-        %tmp.58 = phi [%tmp.49 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_144_34_144_93_begin] [%tmp.52 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_144_34_144_93_true] [%tmp.57 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_144_34_144_93_else_false] [%tmp.58 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_144_34_144_93_end];
-        symbol [ labelA ? 144 25 31 ];
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_end:
+        %tmp.58 = phi [%tmp.49 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_begin] [%tmp.52 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_true] [%tmp.57 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_else_false] [%tmp.58 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_end];
+        symbol [ labelA ? 145 25 31 ];
         putv %tmp.44 :labelA %tmp.58;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 145 16 ]
-        symbol [ heatView %tmp.59 145 16 24 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 146 16 ]
+        symbol [ heatView %tmp.59 146 16 24 ];
         %tmp.59 = getv self :heatView;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_146_34_146_93_begin:
         %tmp.60 = lgetv %ch.1;
-        symbol [ ch %tmp.60 145 34 36 ];
+        symbol [ ch %tmp.60 146 34 36 ];
         %tmp.61 = "labelB";
         %tmp.62 = agetv %tmp.60 %tmp.61;
         %tmp.63 = null;
         %tmp.64 = ne %tmp.62 %tmp.63;
-        bf %tmp.64 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_true:
+        bf %tmp.64 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_146_34_146_93_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_146_34_146_93_true:
         %tmp.65 = lgetv %ch.1;
-        symbol [ ch %tmp.65 145 57 59 ];
+        symbol [ ch %tmp.65 146 57 59 ];
         %tmp.66 = "labelB";
         %tmp.67 = agetv %tmp.65 %tmp.66;
         push %tmp.67;
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_else_false:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_146_34_146_93_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_146_34_146_93_else_false:
         %tmp.68 = lgetv %ch.1;
-        symbol [ ch %tmp.68 145 72 74 ];
+        symbol [ ch %tmp.68 146 72 74 ];
         %tmp.69 = "pairB";
         %tmp.70 = agetv %tmp.68 %tmp.69;
-        symbol [ toString %tmp.71 145 84 92 ];
+        symbol [ toString %tmp.71 146 84 92 ];
         %tmp.71 = getv function %tmp.70 :toString;
         %tmp.72 = invoke %tmp.70 %tmp.71();
         push %tmp.72;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_end:
-        %tmp.73 = phi [%tmp.64 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_begin] [%tmp.67 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_true] [%tmp.72 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_else_false] [%tmp.73 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_145_34_145_93_end];
-        symbol [ labelB ? 145 25 31 ];
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_146_34_146_93_end:
+        %tmp.73 = phi [%tmp.64 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_146_34_146_93_begin] [%tmp.67 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_146_34_146_93_true] [%tmp.72 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_146_34_146_93_else_false] [%tmp.73 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_146_34_146_93_end];
+        symbol [ labelB ? 146 25 31 ];
         putv %tmp.59 :labelB %tmp.73;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 146 16 ]
-        symbol [ heatView %tmp.74 146 16 24 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 147 16 ]
+        symbol [ heatView %tmp.74 147 16 24 ];
         %tmp.74 = getv self :heatView;
         %tmp.75 = lgetv %ch.1;
-        symbol [ ch %tmp.75 146 38 40 ];
+        symbol [ ch %tmp.75 147 38 40 ];
         %tmp.76 = "roundIndex";
         %tmp.77 = agetv %tmp.75 %tmp.76;
-        symbol [ roundIndex ? 146 25 35 ];
+        symbol [ roundIndex ? 147 25 35 ];
         putv %tmp.74 :roundIndex %tmp.77;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 147 16 ]
-        symbol [ heatView %tmp.78 147 16 24 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 148 16 ]
+        symbol [ heatView %tmp.78 148 16 24 ];
         %tmp.78 = getv self :heatView;
         %tmp.79 = lgetv %ch.1;
-        symbol [ ch %tmp.79 147 37 39 ];
+        symbol [ ch %tmp.79 148 37 39 ];
         %tmp.80 = "heatIndex";
         %tmp.81 = agetv %tmp.79 %tmp.80;
-        symbol [ heatIndex ? 147 25 34 ];
+        symbol [ heatIndex ? 148 25 34 ];
         putv %tmp.78 :heatIndex %tmp.81;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 148 16 ]
-        symbol [ heatView %tmp.82 148 16 24 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 149 16 ]
+        symbol [ heatView %tmp.82 149 16 24 ];
         %tmp.82 = getv self :heatView;
         %tmp.83 = "Select winner";
-        symbol [ statusText ? 148 25 35 ];
+        symbol [ statusText ? 149 25 35 ];
         putv %tmp.82 :statusText %tmp.83;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_90_149_12_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_12_152_12_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_12_152_12_if_false:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 149 19 ]
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_149_19_152_12_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_90_150_12_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_12_153_12_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_12_153_12_if_false:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 150 19 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_150_19_153_12_if_stmt:
         %tmp.84 = lgetv %data;
-        symbol [ data %tmp.84 149 23 27 ];
+        symbol [ data %tmp.84 150 23 27 ];
         %tmp.85 = as %tmp.84 { (Dictionary) && (!Null) };
         %tmp.86 = "complete";
         %tmp.87 = agetv %tmp.85 %tmp.86;
         %tmp.88 = true;
         %tmp.89 = eq %tmp.87 %tmp.88;
-        bf %tmp.89 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_149_19_152_12_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_149_19_152_12_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_149_49_152_12_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 150 16 ]
-        symbol [ heatView %tmp.90 150 16 24 ];
+        bf %tmp.89 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_150_19_153_12_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_150_19_153_12_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_150_49_153_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 151 16 ]
+        symbol [ heatView %tmp.90 151 16 24 ];
         %tmp.90 = getv self :heatView;
         %tmp.91 = "All heats complete!";
-        symbol [ statusText ? 150 25 35 ];
+        symbol [ statusText ? 151 25 35 ];
         putv %tmp.90 :statusText %tmp.91;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 151 16 ]
-        symbol [ heatView %tmp.92 151 16 24 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 152 16 ]
+        symbol [ heatView %tmp.92 152 16 24 ];
         %tmp.92 = getv self :heatView;
         %tmp.93 = true;
-        symbol [ allDone ? 151 25 32 ];
+        symbol [ allDone ? 152 25 32 ];
         putv %tmp.92 :allDone %tmp.93;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_149_49_152_12_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_149_19_152_12_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_149_19_152_12_if_end:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_12_152_12_if_end:
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_79_153_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_8_153_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_8_153_8_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 154 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_137_44_156_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_137_44_156_4_stop" ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_150_49_153_12_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_150_19_153_12_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_150_19_153_12_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_140_12_153_12_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_79_154_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_8_154_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_139_8_154_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 155 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_44_157_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_44_157_4_stop" ]
         %heatDelegate.2 = local;
-        symbol [ heatDelegate %heatDelegate.2 154 12 24 ];
-        symbol [ HeatDelegate %tmp.97 154 31 43 ];
+        symbol [ heatDelegate %heatDelegate.2 155 12 24 ];
+        symbol [ HeatDelegate %tmp.97 155 31 43 ];
         %tmp.97 = getv ? :HeatDelegate;
-        symbol [ heatView %tmp.99 154 44 52 ];
+        symbol [ heatView %tmp.99 155 44 52 ];
         %tmp.99 = getv ? :heatView;
         %tmp.94 = newc %tmp.97 (%tmp.99);
         lputv %heatDelegate.2 %tmp.94;
-        symbol [ heatDelegate %heatDelegate.2 154 12 24 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 155 8 ]
-        symbol [ WatchUi %tmp.100 155 8 15 ];
+        symbol [ heatDelegate %heatDelegate.2 155 12 24 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 156 8 ]
+        symbol [ WatchUi %tmp.100 156 8 15 ];
         %tmp.100 = getm $.Toybox.WatchUi;
-        symbol [ switchToView %tmp.101 155 16 28 ];
+        symbol [ switchToView %tmp.101 156 16 28 ];
         %tmp.101 = getv function %tmp.100 :switchToView;
-        symbol [ heatView %tmp.103 155 29 37 ];
+        symbol [ heatView %tmp.103 156 29 37 ];
         %tmp.103 = getv ? :heatView;
         %tmp.104 = lgetv %heatDelegate.2;
-        symbol [ heatDelegate %tmp.104 155 39 51 ];
-        symbol [ WatchUi %tmp.105 155 53 60 ];
+        symbol [ heatDelegate %tmp.104 156 39 51 ];
+        symbol [ WatchUi %tmp.105 156 53 60 ];
         %tmp.105 = getm $.Toybox.WatchUi;
-        symbol [ SLIDE_LEFT %tmp.106 155 61 71 ];
+        symbol [ SLIDE_LEFT %tmp.106 156 61 71 ];
         %tmp.106 = getv %tmp.105 :SLIDE_LEFT;
         invoke %tmp.100 %tmp.101(%tmp.103, %tmp.104, %tmp.106);
-_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_137_44_156_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_138_44_157_4_stop:
     }
 }
 [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc"; @line = 3; ]

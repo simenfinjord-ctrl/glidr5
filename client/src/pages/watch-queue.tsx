@@ -3,11 +3,10 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Watch, Trash2, RotateCcw, RefreshCw, Eye, Archive, List } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 type QueueItem = {
@@ -29,7 +28,6 @@ function displayName(item: QueueItem): string {
 
 export default function WatchQueue() {
   const { toast } = useToast();
-  const { user } = useAuth();
   const [tab, setTab] = useState<"active" | "archive">("active");
 
   const { data: queue = [], isLoading: queueLoading } = useQuery<QueueItem[]>({

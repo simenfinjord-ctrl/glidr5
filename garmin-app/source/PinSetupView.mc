@@ -42,18 +42,24 @@ class PinSetupView extends WatchUi.View {
         for (var i = 0; i < 4; i++) {
             var dx = startX + i * digitWidth + (i >= 2 ? 10 : 0);
             var textX = dx + digitWidth / 2;
-            var rectW = 24;
 
             if (i == cursorPos) {
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-                dc.fillRoundedRectangle(textX - rectW / 2, digitY - 5, rectW, 34, 5);
-                dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
             } else {
-                dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+                dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
             }
 
             dc.drawText(textX, digitY, Graphics.FONT_NUMBER_MILD,
                 digits[i].toString(), Graphics.TEXT_JUSTIFY_CENTER);
+
+            // Underline for active digit only
+            if (i == cursorPos) {
+                var underlineY = digitY + 30;
+                dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+                dc.setPenWidth(2);
+                dc.drawLine(textX - 10, underlineY, textX + 10, underlineY);
+                dc.setPenWidth(1);
+            }
         }
 
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);

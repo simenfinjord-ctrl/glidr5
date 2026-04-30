@@ -38,6 +38,7 @@ type Test = {
   id: number;
   date: string;
   location: string;
+  testName: string | null;
   weatherId: number | null;
   testType: string;
   seriesId: number;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package } from "lucide-react";
+import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package, Watch } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { AppShell } from "@/components/app-shell";
@@ -62,12 +62,20 @@ function QuickCard({
   );
 }
 
+type WatchQueueItem = { id: number; test_name: string | null; series_name: string | null; added_by_name: string; session_code: string | null; status: string };
+
 export default function Dashboard() {
-  const { user, isBlindTester } = useAuth();
+  const { user, isBlindTester, can } = useAuth();
+  const hasGarminWatch = can("garmin_watch");
   const [resultLimit, setResultLimit] = useState("10");
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
+  const { data: watchQueue = [] } = useQuery<WatchQueueItem[]>({
+    queryKey: ["/api/watch/queue"],
+    enabled: hasGarminWatch,
+  });
+  const activeQueue = watchQueue.filter((q) => q.status === "active");
   const { data: recentResults = [] } = useQuery<RecentResult[]>({
     queryKey: ["/api/tests/recent-results", resultLimit],
     queryFn: async () => {
@@ -159,6 +167,36 @@ export default function Dashboard() {
                   </div>
                 </AppLink>
               ))}
+            </div>
+          </Card>
+        )}
+
+        {hasGarminWatch && activeQueue.length > 0 && (
+          <Card className="fs-card rounded-2xl border-sky-200 p-4">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
+                  <Watch className="h-3.5 w-3.5 text-sky-600" />
+                </div>
+                Watch Queue
+                <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-700 ring-1 ring-sky-200">{activeQueue.length}</span>
+              </div>
+              <AppLink href="/watch-queue">
+                <span className="text-xs font-medium text-sky-600 hover:text-sky-700">Manage</span>
+              </AppLink>
+            </div>
+            <div className="space-y-1.5">
+              {activeQueue.slice(0, 4).map((item) => (
+                <div key={item.id} className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs">
+                  <span className="font-medium text-foreground truncate">{item.test_name || item.series_name || `Test #${item.id}`}</span>
+                  {item.session_code && (
+                    <span className="ml-2 font-mono font-bold text-sky-600 tracking-widest shrink-0">{item.session_code}</span>
+                  )}
+                </div>
+              ))}
+              {activeQueue.length > 4 && (
+                <p className="text-center text-xs text-muted-foreground pt-1">+{activeQueue.length - 4} more</p>
+              )}
             </div>
           </Card>
         )}

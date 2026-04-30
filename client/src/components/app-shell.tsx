@@ -45,6 +45,7 @@ type NavItem = {
   activeColor: string;
   activeBg: string;
   permArea?: keyof UserPermissions;
+  featureArea?: string;
   adminOnly?: boolean;
 };
 
@@ -157,6 +158,7 @@ const nav: NavItem[] = [
     color: "text-muted-foreground",
     activeColor: "text-sky-600",
     activeBg: "bg-sky-50",
+    featureArea: "garmin_watch",
   },
   {
     href: "/admin",
@@ -188,6 +190,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const isViewingOwnTeam = !isSuperAdmin || activeTeamId === user?.teamId;
 
+  const hasGarminWatch = can("garmin_watch");
+
+  const { data: watchQueue = [] } = useQuery<{ id: number; status: string }[]>({
+    queryKey: ["/api/watch/queue"],
+    enabled: !!user && hasGarminWatch,
+    refetchInterval: 30000,
+    staleTime: 15000,
+  });
+  const watchQueueCount = watchQueue.filter((q) => q.status === "active").length;
+
   const filteredNav = nav.filter((item) => {
     if (item.adminOnly) return canManage;
     if (isSuperAdmin && !isViewingOwnTeam && isStealthActive) {
@@ -196,6 +208,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (isSuperAdmin && !isViewingOwnTeam) {
       return false;
     }
+    if (item.featureArea && !can(item.featureArea)) return false;
     if (item.permArea) return can(item.permArea);
     return true;
   });
@@ -373,6 +386,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                     )}
                   />
                   <span>{item.label}</span>
+                  {item.href === "/watch-queue" && watchQueueCount > 0 && (
+                    <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-white">
+                      {watchQueueCount}
+                    </span>
+                  )}
                 </AppLink>
               );
             })}

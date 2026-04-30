@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
 import { parsePermissions, hashPassword } from "./auth";
-import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, watchSessions, watchQueue, teams, tests, testEntries, users, testSkiSeries, products, dailyWeather } from "@shared/schema";
+import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, watchSessions, watchQueue, teams, tests, testEntries, users, testSkiSeries, products, dailyWeather, raceSkis } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql, inArray } from "drizzle-orm";
 async function enforceTeamAreas(perms: Record<string, string>, teamId: number | undefined): Promise<Record<string, string>> {
@@ -2621,13 +2621,40 @@ export async function registerRoutes(
     } catch (_) {}
   }
 
-  // Helper: fetch pairLabels from test ski series → skiLabels record for watch session
-  async function getPairLabelsForSeries(seriesId: number | null | undefined): Promise<Record<number, string>> {
-    if (!seriesId) return {};
+  // Helper: build skiLabels for a watch session — handles both race skis and test ski series
+  async function getSkiLabelsForTest(testId: number | null | undefined): Promise<Record<number, string>> {
+    if (!testId) return {};
     try {
-      const rows = await db.select({ pairLabels: testSkiSeries.pairLabels })
-        .from(testSkiSeries).where(eq(testSkiSeries.id, seriesId));
-      const raw = rows[0]?.pairLabels;
+      // Fetch the test to know the ski source and seriesId
+      const testRows = await db.select({ testSkiSource: tests.testSkiSource, seriesId: tests.seriesId })
+        .from(tests).where(eq(tests.id, testId));
+      const test = testRows[0];
+      if (!test) return {};
+
+      if (test.testSkiSource === "raceskis") {
+        // Race ski test: label = serialNumber (3-digit) or skiId per entry
+        const entries = await db.select({ skiNumber: testEntries.skiNumber, raceSkiId: testEntries.raceSkiId })
+          .from(testEntries).where(eq(testEntries.testId, testId));
+        const raceSkiIds = entries.map(e => e.raceSkiId).filter((id): id is number => id != null);
+        if (raceSkiIds.length === 0) return {};
+        const skis = await db.select({ id: raceSkis.id, serialNumber: raceSkis.serialNumber, skiId: raceSkis.skiId })
+          .from(raceSkis).where(inArray(raceSkis.id, raceSkiIds));
+        const skiById = new Map(skis.map(s => [s.id, s]));
+        const labels: Record<number, string> = {};
+        for (const entry of entries) {
+          if (entry.raceSkiId) {
+            const ski = skiById.get(entry.raceSkiId);
+            if (ski) labels[entry.skiNumber] = ski.serialNumber || ski.skiId;
+          }
+        }
+        return labels;
+      }
+
+      // Regular test ski series: use pairLabels
+      if (!test.seriesId) return {};
+      const seriesRows = await db.select({ pairLabels: testSkiSeries.pairLabels })
+        .from(testSkiSeries).where(eq(testSkiSeries.id, test.seriesId));
+      const raw = seriesRows[0]?.pairLabels;
       if (!raw) return {};
       const parsed = JSON.parse(raw);
       if (typeof parsed !== "object" || parsed === null) return {};
@@ -2637,15 +2664,6 @@ export async function registerRoutes(
       }
       return labels;
     } catch { return {}; }
-  }
-
-  // Helper: get seriesId for a given testId
-  async function getTestSeriesId(testId: number | null | undefined): Promise<number | null> {
-    if (!testId) return null;
-    try {
-      const rows = await db.select({ seriesId: tests.seriesId }).from(tests).where(eq(tests.id, testId));
-      return rows[0]?.seriesId ?? null;
-    } catch { return null; }
   }
 
   function watchInitBracket(pairs: number[]): WatchHeat[][] {
@@ -3071,9 +3089,8 @@ export async function registerRoutes(
         const entriesRows = await db.select().from(testEntries).where(eq(testEntries.testId, Number(testId)));
         if (entriesRows.length >= 2) {
           const skiPairs = entriesRows.map((e) => e.skiNumber).sort((a, b) => a - b);
-          // Use pair labels from the test ski series (same as Code path)
-          const resolvedSeriesId = seriesId || await getTestSeriesId(Number(testId));
-          const skiLabels = await getPairLabelsForSeries(resolvedSeriesId);
+          // Use correct labels — handles both race skis (serialNumber) and series pairLabels
+          const skiLabels = await getSkiLabelsForTest(Number(testId));
           sessionCode = await generateSessionCode();
           const session: WatchSession = {
             code: sessionCode,
@@ -3123,8 +3140,7 @@ export async function registerRoutes(
     if (entriesRows.length < 2) return res.status(400).json({ message: "Not enough entries" });
 
     const skiPairs = entriesRows.map((e) => e.skiNumber).sort((a, b) => a - b);
-    const resolvedSeriesId = item.series_id || await getTestSeriesId(item.test_id);
-    const skiLabels = await getPairLabelsForSeries(resolvedSeriesId);
+    const skiLabels = await getSkiLabelsForTest(item.test_id);
     const newCode = await generateSessionCode();
     const session: WatchSession = {
       code: newCode, skiPairs, skiLabels,
@@ -3221,9 +3237,8 @@ export async function registerRoutes(
     const item = itemResult.rows[0];
     if (!item) return res.status(404).json({ message: "Queue item not found" });
 
-    // Fetch pair labels from the series (same source as Code path)
-    const resolvedSeriesId = item.series_id || await getTestSeriesId(item.test_id);
-    const skiLabels = await getPairLabelsForSeries(resolvedSeriesId);
+    // Fetch labels — handles race skis (serialNumber) and series pairLabels
+    const skiLabels = await getSkiLabelsForTest(item.test_id);
     const labelsJson = JSON.stringify(skiLabels);
 
     // 1. Use the stored session code if it's still valid

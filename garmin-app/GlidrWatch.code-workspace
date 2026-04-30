@@ -1,0 +1,47 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "monkeyC.jungleFiles": "monkey.jungle",
+    "monkeyC.developerKeyPath": "~/Desktop/developer_key.der",
+    "monkeyC.typeCheckLevel": "Strict",
+    "monkeyC.outputPath": "bin",
+    "files.associations": {
+      "*.mc": "monkeyc",
+      "*.jungle": "jungle"
+    }
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Run on fr945 (simulator)",
+        "type": "monkeyc",
+        "request": "launch",
+        "device": "fr945",
+        "jungleFiles": "monkey.jungle",
+        "developerKeyPath": "~/Desktop/developer_key.der"
+      },
+      {
+        "name": "Run on fenix7 (simulator)",
+        "type": "monkeyc",
+        "request": "launch",
+        "device": "fenix7",
+        "jungleFiles": "monkey.jungle",
+        "developerKeyPath": "~/Desktop/developer_key.der"
+      },
+      {
+        "name": "Export .prg (fr945)",
+        "type": "monkeyc",
+        "request": "launch",
+        "device": "fr945",
+        "jungleFiles": "monkey.jungle",
+        "developerKeyPath": "~/Desktop/developer_key.der",
+        "outputPath": "bin/GlidrRunsheet.prg"
+      }
+    ]
+  }
+}

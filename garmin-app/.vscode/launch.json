@@ -1,0 +1,34 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Build & Run on fr945",
+      "type": "monkeyc",
+      "request": "launch",
+      "device": "fr945",
+      "jungleFiles": "monkey.jungle",
+      "developerKeyPath": "~/Desktop/developer_key.der",
+      "simulatorArgs": [],
+      "targetDevice": "fr945"
+    },
+    {
+      "name": "Build & Run on fenix7",
+      "type": "monkeyc",
+      "request": "launch",
+      "device": "fenix7",
+      "jungleFiles": "monkey.jungle",
+      "developerKeyPath": "~/Desktop/developer_key.der",
+      "simulatorArgs": [],
+      "targetDevice": "fenix7"
+    },
+    {
+      "name": "Build & Export (fr945)",
+      "type": "monkeyc",
+      "request": "launch",
+      "device": "fr945",
+      "jungleFiles": "monkey.jungle",
+      "developerKeyPath": "~/Desktop/developer_key.der",
+      "outputPath": "bin/GlidrRunsheet.prg"
+    }
+  ]
+}

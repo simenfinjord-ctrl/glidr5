@@ -1,0 +1,10 @@
+{
+  "monkeyC.jungleFiles": "monkey.jungle",
+  "monkeyC.developerKeyPath": "~/Desktop/developer_key.der",
+  "monkeyC.typeCheckLevel": "Strict",
+  "monkeyC.outputPath": "bin",
+  "files.associations": {
+    "*.mc": "monkeyc",
+    "*.jungle": "jungle"
+  }
+}

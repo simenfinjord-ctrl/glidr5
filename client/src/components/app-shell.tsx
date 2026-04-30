@@ -366,7 +366,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Button>
           </div>
         </div>
-        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 pb-3">
+        <div className={cn("mx-auto w-full max-w-[1600px] px-4 sm:px-6 pb-3", mobileNavEnabled && "hidden sm:block")}>
           <nav className="flex flex-wrap items-center gap-1" data-testid="nav-primary">
             {visibleNav.map((item) => {
               const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));

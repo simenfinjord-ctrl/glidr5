@@ -2621,6 +2621,33 @@ export async function registerRoutes(
     } catch (_) {}
   }
 
+  // Helper: fetch pairLabels from test ski series → skiLabels record for watch session
+  async function getPairLabelsForSeries(seriesId: number | null | undefined): Promise<Record<number, string>> {
+    if (!seriesId) return {};
+    try {
+      const rows = await db.select({ pairLabels: testSkiSeries.pairLabels })
+        .from(testSkiSeries).where(eq(testSkiSeries.id, seriesId));
+      const raw = rows[0]?.pairLabels;
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      if (typeof parsed !== "object" || parsed === null) return {};
+      const labels: Record<number, string> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        if (typeof v === "string" && v.trim()) labels[Number(k)] = v.trim();
+      }
+      return labels;
+    } catch { return {}; }
+  }
+
+  // Helper: get seriesId for a given testId
+  async function getTestSeriesId(testId: number | null | undefined): Promise<number | null> {
+    if (!testId) return null;
+    try {
+      const rows = await db.select({ seriesId: tests.seriesId }).from(tests).where(eq(tests.id, testId));
+      return rows[0]?.seriesId ?? null;
+    } catch { return null; }
+  }
+
   function watchInitBracket(pairs: number[]): WatchHeat[][] {
     if (pairs.length < 2) return [];
     const totalRounds = Math.ceil(Math.log2(pairs.length));
@@ -3044,11 +3071,14 @@ export async function registerRoutes(
         const entriesRows = await db.select().from(testEntries).where(eq(testEntries.testId, Number(testId)));
         if (entriesRows.length >= 2) {
           const skiPairs = entriesRows.map((e) => e.skiNumber);
+          // Use pair labels from the test ski series (same as Code path)
+          const resolvedSeriesId = seriesId || await getTestSeriesId(Number(testId));
+          const skiLabels = await getPairLabelsForSeries(resolvedSeriesId);
           sessionCode = await generateSessionCode();
           const session: WatchSession = {
             code: sessionCode,
             skiPairs,
-            skiLabels: {}, // ski numbers displayed as-is on the watch
+            skiLabels,
             bracket: watchInitBracket(skiPairs),
             createdAt: Date.now(),
             userId: u.id,
@@ -3157,19 +3187,22 @@ export async function registerRoutes(
     const item = itemResult.rows[0];
     if (!item) return res.status(404).json({ message: "Queue item not found" });
 
+    // Fetch pair labels from the series (same source as Code path)
+    const resolvedSeriesId = item.series_id || await getTestSeriesId(item.test_id);
+    const skiLabels = await getPairLabelsForSeries(resolvedSeriesId);
+    const labelsJson = JSON.stringify(skiLabels);
+
     // 1. Use the stored session code if it's still valid
     if (item.session_code) {
       const existingSession = await getWatchSession(item.session_code);
       if (existingSession) {
-        // Clear any old product-name labels — watch always shows ski numbers
-        if (existingSession.skiLabels && Object.keys(existingSession.skiLabels).length > 0) {
-          existingSession.skiLabels = {};
-          watchSessionsMemory.set(existingSession.code, existingSession);
-          await db.update(watchSessions)
-            .set({ skiLabels: "{}" })
-            .where(eq(watchSessions.code, existingSession.code))
-            .catch(() => {});
-        }
+        // Always sync skiLabels from series pair labels (ensures fresh/correct labels)
+        existingSession.skiLabels = skiLabels;
+        watchSessionsMemory.set(existingSession.code, existingSession);
+        await db.update(watchSessions)
+          .set({ skiLabels: labelsJson })
+          .where(eq(watchSessions.code, existingSession.code))
+          .catch(() => {});
         return res.json({ code: item.session_code, testName: item.test_name, seriesName: item.series_name, queueItemId: item.id });
       }
     }
@@ -3184,7 +3217,7 @@ export async function registerRoutes(
           const session: WatchSession = {
             code: newCode,
             skiPairs,
-            skiLabels: {}, // ski numbers displayed as-is on the watch
+            skiLabels,
             bracket: watchInitBracket(skiPairs),
             createdAt: Date.now(),
             userId: 0,

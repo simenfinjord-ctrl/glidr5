@@ -1,0 +1,1041 @@
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 3; @symbol_usingdef<0> = [Toybox,3,6,12]; @symbol_usingdef<1> = [WatchUi,3,13,20]; ]
+using Toybox.WatchUi;
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 4; @symbol_usingdef<0> = [Toybox,4,6,12]; @symbol_usingdef<1> = [Graphics,4,13,21]; ]
+using Toybox.Graphics;
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 5; @symbol_usingdef<0> = [Toybox,5,6,12]; @symbol_usingdef<1> = [Communications,5,13,27]; ]
+using Toybox.Communications;
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 7; @symbol_classdef = [QueueListView,7,6,19]; @symbol_extends<0> = [WatchUi,7,28,35]; @symbol_extends<1> = [View,7,36,40]; ]
+class QueueListView extends WatchUi.View {
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 7; ]
+    <init> {
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 10 8 ]
+        %tmp.1 = newa 0;
+        putv self :items %tmp.1;
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 7; ]
+    static
+    <init> {
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 8; @position = 8; @symbol_vardef = [teamPin,8,8,15]; ]
+    var teamPin;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 9; @position = 8; @symbol_vardef = [isLoading,9,8,17]; ]
+    var isLoading = true;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 10; @position = 8; @symbol_vardef = [items,10,8,13]; ]
+    var items;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 11; @position = 8; @symbol_vardef = [selectedIndex,11,8,21]; ]
+    var selectedIndex = 0;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 12; @position = 8; @symbol_vardef = [statusText,12,8,18]; ]
+    var statusText = "Loading...";
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 13; @position = 8; @symbol_vardef = [errorText,13,8,17]; ]
+    var errorText = null;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 15; @symbol_functiondef = [initialize,15,13,23]; @symbol_param<0> = [pin,15,24,27]; ]
+    function initialize(pin) as Void {
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_15_29_18_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 16 8 ]
+        symbol [ View %tmp.2 16 8 12 ];
+        %tmp.2 = getv ? :View;
+        symbol [ initialize %tmp.3 16 13 23 ];
+        %tmp.3 = getv function %tmp.2 :initialize;
+        invoke %tmp.2 %tmp.3();
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 17 8 ]
+        %tmp.4 = lgetv %pin;
+        symbol [ pin %tmp.4 17 18 21 ];
+        symbol [ teamPin ? 17 8 15 ];
+        putv self :teamPin %tmp.4;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_15_29_18_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 20; @symbol_functiondef = [onShow,20,13,19]; ]
+    function onShow() {
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_20_22_22_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 21 8 ]
+        %tmp.1 = self;
+        symbol [ fetchList %tmp.2 21 8 17 ];
+        %tmp.2 = getv function %tmp.1 :fetchList;
+        invoke %tmp.1 %tmp.2();
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_20_22_22_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 24; @symbol_functiondef = [fetchList,24,13,22]; ]
+    function fetchList() {
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_24_25_40_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 25 8 ]
+        %tmp.1 = true;
+        symbol [ isLoading ? 25 8 17 ];
+        putv self :isLoading %tmp.1;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 26 8 ]
+        %tmp.2 = "Loading...";
+        symbol [ statusText ? 26 8 18 ];
+        putv self :statusText %tmp.2;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 27 8 ]
+        %tmp.3 = null;
+        symbol [ errorText ? 27 8 17 ];
+        putv self :errorText %tmp.3;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 28 8 ]
+        symbol [ WatchUi %tmp.4 28 8 15 ];
+        %tmp.4 = getm $.Toybox.WatchUi;
+        symbol [ requestUpdate %tmp.5 28 16 29 ];
+        %tmp.5 = getv function %tmp.4 :requestUpdate;
+        invoke %tmp.4 %tmp.5();
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 30 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_24_25_40_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_24_25_40_4_stop" ]
+        %url.1 = local;
+        symbol [ url %url.1 30 12 15 ];
+        symbol [ ServerConfig %tmp.7 30 18 30 ];
+        %tmp.7 = getv ? :ServerConfig;
+        symbol [ BASE_URL %tmp.8 30 31 39 ];
+        %tmp.8 = getv %tmp.7 :BASE_URL;
+        %tmp.9 = "/api/watch/list/";
+        %tmp.10 = add %tmp.8 %tmp.9;
+        symbol [ teamPin %tmp.12 30 63 70 ];
+        %tmp.12 = getv ? :teamPin;
+        %tmp.13 = add %tmp.10 %tmp.12;
+        lputv %url.1 %tmp.13;
+        symbol [ url %url.1 30 12 15 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 31 8 ]
+        symbol [ Communications %tmp.14 31 8 22 ];
+        %tmp.14 = getm $.Toybox.Communications;
+        symbol [ makeWebRequest %tmp.15 31 23 37 ];
+        %tmp.15 = getv function %tmp.14 :makeWebRequest;
+        %tmp.16 = lgetv %url.1;
+        symbol [ url %tmp.16 32 12 15 ];
+        %tmp.17 = null;
+        %tmp.18 = newd 2;
+        %tmp.20 = const :method;
+        symbol [ method %tmp.20 35 17 23 const ];
+        symbol [ Communications %tmp.21 35 27 41 ];
+        %tmp.21 = getm $.Toybox.Communications;
+        symbol [ HTTP_REQUEST_METHOD_GET %tmp.22 35 42 65 ];
+        %tmp.22 = getv %tmp.21 :HTTP_REQUEST_METHOD_GET;
+        %tmp.23 = dup %tmp.18;
+        %tmp.24 = aputv %tmp.23 %tmp.20 %tmp.22;
+        %tmp.26 = const :responseType;
+        symbol [ responseType %tmp.26 36 17 29 const ];
+        symbol [ Communications %tmp.27 36 33 47 ];
+        %tmp.27 = getm $.Toybox.Communications;
+        symbol [ HTTP_RESPONSE_CONTENT_TYPE_JSON %tmp.28 36 48 79 ];
+        %tmp.28 = getv %tmp.27 :HTTP_RESPONSE_CONTENT_TYPE_JSON;
+        %tmp.29 = dup %tmp.24;
+        %tmp.30 = aputv %tmp.29 %tmp.26 %tmp.28;
+        %tmp.31 = self;
+        symbol [ method %tmp.32 38 12 18 ];
+        %tmp.32 = getv function %tmp.31 :method;
+        %tmp.34 = const :onFetchResponse;
+        symbol [ onFetchResponse %tmp.34 38 20 35 const ];
+        %tmp.35 = invoke %tmp.31 %tmp.32(%tmp.34);
+        invoke %tmp.14 %tmp.15(%tmp.16, %tmp.17, %tmp.30, %tmp.35);
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_24_25_40_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 42; @symbol_functiondef = [onFetchResponse,42,13,28]; @symbol_param<0> = [responseCode,42,29,41]; @symbol_param<1> = [data,42,43,47]; ]
+    function onFetchResponse(responseCode, data) {
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_42_49_60_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 43 8 ]
+        %tmp.1 = false;
+        symbol [ isLoading ? 43 8 17 ];
+        putv self :isLoading %tmp.1;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 44 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_8_58_8_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_12_44_98_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_12_44_67_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_12_44_43_begin:
+        %tmp.2 = lgetv %responseCode;
+        symbol [ responseCode %tmp.2 44 12 24 ];
+        %tmp.3 = 200;
+        %tmp.4 = eq %tmp.2 %tmp.3;
+        bf %tmp.4 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_8_58_8_if_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_35_44_43_true:
+        %tmp.5 = lgetv %data;
+        symbol [ data %tmp.5 44 35 39 ];
+        %tmp.6 = null;
+        %tmp.7 = ne %tmp.5 %tmp.6;
+        push %tmp.7;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_35_44_43_end:
+        %tmp.8 = phi [%tmp.4 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_12_44_43_begin] [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_35_44_43_true] [%tmp.8 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_35_44_43_end];
+        bf %tmp.8 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_8_58_8_if_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_51_44_67_true:
+        %tmp.9 = lgetv %data;
+        symbol [ data %tmp.9 44 51 55 ];
+        %tmp.10 = as %tmp.9 { (!Null) };
+        symbol [ Dictionary %tmp.12 44 67 77 ];
+        %tmp.12 = getv ? :Dictionary;
+        %tmp.13 = isa %tmp.10 %tmp.12;
+        push %tmp.13;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_51_44_67_end:
+        %tmp.14 = phi [%tmp.8 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_12_44_67_begin] [%tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_51_44_67_true] [%tmp.14 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_51_44_67_end];
+        bf %tmp.14 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_8_58_8_if_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_81_44_98_true:
+        %tmp.15 = lgetv %data;
+        symbol [ data %tmp.15 44 81 85 ];
+        %tmp.16 = as %tmp.15 { (Dictionary) && (!Null) };
+        %tmp.17 = "items";
+        %tmp.18 = agetv %tmp.16 %tmp.17;
+        %tmp.19 = null;
+        %tmp.20 = ne %tmp.18 %tmp.19;
+        push %tmp.20;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_81_44_98_end:
+        %tmp.21 = phi [%tmp.14 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_12_44_98_begin] [%tmp.20 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_81_44_98_true] [%tmp.21 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_81_44_98_end];
+        bf %tmp.21 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_8_58_8_if_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_8_58_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_104_52_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 45 12 ]
+        %tmp.22 = lgetv %data;
+        symbol [ data %tmp.22 45 20 24 ];
+        %tmp.23 = as %tmp.22 { (Dictionary) && (!Null) };
+        %tmp.24 = "items";
+        %tmp.25 = agetv %tmp.23 %tmp.24;
+        symbol [ items ? 45 12 17 ];
+        putv self :items %tmp.25;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 46 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_46_12_51_12_if_stmt:
+        symbol [ items %tmp.27 46 16 21 ];
+        %tmp.27 = getv ? :items;
+        symbol [ size %tmp.28 46 22 26 ];
+        %tmp.28 = getv function %tmp.27 :size;
+        %tmp.29 = invoke %tmp.27 %tmp.28();
+        %tmp.30 = 0;
+        %tmp.31 = eq %tmp.29 %tmp.30;
+        bf %tmp.31 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_46_12_51_12_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_46_12_51_12_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_46_35_48_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 47 16 ]
+        %tmp.32 = "Queue is empty";
+        symbol [ statusText ? 47 16 26 ];
+        putv self :statusText %tmp.32;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_46_35_48_12_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_46_12_51_12_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_46_12_51_12_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_48_19_51_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 49 16 ]
+        %tmp.33 = "";
+        symbol [ statusText ? 49 16 26 ];
+        putv self :statusText %tmp.33;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 50 16 ]
+        %tmp.34 = 0;
+        symbol [ selectedIndex ? 50 16 29 ];
+        putv self :selectedIndex %tmp.34;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_48_19_51_12_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_46_12_51_12_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_104_52_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_8_58_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_8_58_8_if_false:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 52 15 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_52_15_58_8_if_stmt:
+        %tmp.35 = lgetv %responseCode;
+        symbol [ responseCode %tmp.35 52 19 31 ];
+        %tmp.36 = 404;
+        %tmp.37 = eq %tmp.35 %tmp.36;
+        bf %tmp.37 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_52_15_58_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_52_15_58_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_52_40_55_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 53 12 ]
+        %tmp.38 = "Invalid PIN";
+        symbol [ errorText ? 53 12 21 ];
+        putv self :errorText %tmp.38;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 54 12 ]
+        %tmp.39 = "Check team PIN";
+        symbol [ statusText ? 54 12 22 ];
+        putv self :statusText %tmp.39;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_52_40_55_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_52_15_58_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_52_15_58_8_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_55_15_58_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 56 12 ]
+        %tmp.40 = "Error ";
+        %tmp.41 = lgetv %responseCode;
+        symbol [ responseCode %tmp.41 56 35 47 ];
+        symbol [ toString %tmp.42 56 48 56 ];
+        %tmp.42 = getv function %tmp.41 :toString;
+        %tmp.43 = invoke %tmp.41 %tmp.42();
+        %tmp.44 = add %tmp.40 %tmp.43;
+        symbol [ errorText ? 56 12 21 ];
+        putv self :errorText %tmp.44;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 57 12 ]
+        %tmp.45 = "Try again";
+        symbol [ statusText ? 57 12 22 ];
+        putv self :statusText %tmp.45;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_55_15_58_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_52_15_58_8_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_44_8_58_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 59 8 ]
+        symbol [ WatchUi %tmp.46 59 8 15 ];
+        %tmp.46 = getm $.Toybox.WatchUi;
+        symbol [ requestUpdate %tmp.47 59 16 29 ];
+        %tmp.47 = getv function %tmp.46 :requestUpdate;
+        invoke %tmp.46 %tmp.47();
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_42_49_60_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 62; @symbol_functiondef = [getItemLabel,62,13,25]; @symbol_param<0> = [item,62,26,30]; ]
+    function getItemLabel(item) {
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_62_32_70_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 63 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_63_8_65_8_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_63_12_63_69_begin:
+        %tmp.1 = lgetv %item;
+        symbol [ item %tmp.1 63 12 16 ];
+        %tmp.2 = "test_name";
+        %tmp.3 = agetv %tmp.1 %tmp.2;
+        %tmp.4 = null;
+        %tmp.5 = ne %tmp.3 %tmp.4;
+        bf %tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_63_8_65_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_63_41_63_69_true:
+        %tmp.6 = lgetv %item;
+        symbol [ item %tmp.6 63 42 46 ];
+        %tmp.7 = "test_name";
+        %tmp.8 = agetv %tmp.6 %tmp.7;
+        symbol [ equals %tmp.9 63 60 66 ];
+        %tmp.9 = getv function %tmp.8 :equals;
+        %tmp.10 = "";
+        %tmp.11 = invoke %tmp.8 %tmp.9(%tmp.10);
+        %tmp.12 = not %tmp.11;
+        push %tmp.12;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_63_41_63_69_end:
+        %tmp.13 = phi [%tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_63_12_63_69_begin] [%tmp.12 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_63_41_63_69_true] [%tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_63_41_63_69_end];
+        bf %tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_63_8_65_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_63_8_65_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_63_72_65_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 64 12 ]
+        %tmp.14 = lgetv %item;
+        symbol [ item %tmp.14 64 19 23 ];
+        %tmp.15 = "test_name";
+        %tmp.16 = agetv %tmp.14 %tmp.15;
+        ret %tmp.16;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_63_72_65_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_63_8_65_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_63_8_65_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 66 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_66_8_68_8_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_66_12_66_73_begin:
+        %tmp.17 = lgetv %item;
+        symbol [ item %tmp.17 66 12 16 ];
+        %tmp.18 = "series_name";
+        %tmp.19 = agetv %tmp.17 %tmp.18;
+        %tmp.20 = null;
+        %tmp.21 = ne %tmp.19 %tmp.20;
+        bf %tmp.21 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_66_8_68_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_66_43_66_73_true:
+        %tmp.22 = lgetv %item;
+        symbol [ item %tmp.22 66 44 48 ];
+        %tmp.23 = "series_name";
+        %tmp.24 = agetv %tmp.22 %tmp.23;
+        symbol [ equals %tmp.25 66 64 70 ];
+        %tmp.25 = getv function %tmp.24 :equals;
+        %tmp.26 = "";
+        %tmp.27 = invoke %tmp.24 %tmp.25(%tmp.26);
+        %tmp.28 = not %tmp.27;
+        push %tmp.28;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_66_43_66_73_end:
+        %tmp.29 = phi [%tmp.21 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_66_12_66_73_begin] [%tmp.28 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_66_43_66_73_true] [%tmp.29 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_66_43_66_73_end];
+        bf %tmp.29 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_66_8_68_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_66_8_68_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_66_76_68_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 67 12 ]
+        %tmp.30 = lgetv %item;
+        symbol [ item %tmp.30 67 19 23 ];
+        %tmp.31 = "series_name";
+        %tmp.32 = agetv %tmp.30 %tmp.31;
+        ret %tmp.32;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_66_76_68_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_66_8_68_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_66_8_68_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 69 8 ]
+        %tmp.33 = "Test #";
+        %tmp.34 = lgetv %item;
+        symbol [ item %tmp.34 69 26 30 ];
+        %tmp.35 = "id";
+        %tmp.36 = agetv %tmp.34 %tmp.35;
+        symbol [ toString %tmp.37 69 37 45 ];
+        %tmp.37 = getv function %tmp.36 :toString;
+        %tmp.38 = invoke %tmp.36 %tmp.37();
+        %tmp.39 = add %tmp.33 %tmp.38;
+        ret %tmp.39;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_62_32_70_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 72; @symbol_functiondef = [onUpdate,72,13,21]; @symbol_param<0> = [dc,72,22,24]; ]
+    function onUpdate(dc) {
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 73 8 ]
+        %tmp.1 = lgetv %dc;
+        symbol [ dc %tmp.1 73 8 10 ];
+        symbol [ setColor %tmp.2 73 11 19 ];
+        %tmp.2 = getv function %tmp.1 :setColor;
+        symbol [ Graphics %tmp.3 73 20 28 ];
+        %tmp.3 = getm $.Toybox.Graphics;
+        symbol [ COLOR_BLACK %tmp.4 73 29 40 ];
+        %tmp.4 = getv %tmp.3 :COLOR_BLACK;
+        symbol [ Graphics %tmp.5 73 42 50 ];
+        %tmp.5 = getm $.Toybox.Graphics;
+        symbol [ COLOR_BLACK %tmp.6 73 51 62 ];
+        %tmp.6 = getv %tmp.5 :COLOR_BLACK;
+        invoke %tmp.1 %tmp.2(%tmp.4, %tmp.6);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 74 8 ]
+        %tmp.7 = lgetv %dc;
+        symbol [ dc %tmp.7 74 8 10 ];
+        symbol [ clear %tmp.8 74 11 16 ];
+        %tmp.8 = getv function %tmp.7 :clear;
+        invoke %tmp.7 %tmp.8();
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 76 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_stop" ]
+        %w.1 = local;
+        symbol [ w %w.1 76 12 13 ];
+        %tmp.9 = lgetv %dc;
+        symbol [ dc %tmp.9 76 16 18 ];
+        symbol [ getWidth %tmp.10 76 19 27 ];
+        %tmp.10 = getv function %tmp.9 :getWidth;
+        %tmp.11 = invoke %tmp.9 %tmp.10();
+        lputv %w.1 %tmp.11;
+        symbol [ w %w.1 76 12 13 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 77 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_stop" ]
+        %h.2 = local;
+        symbol [ h %h.2 77 12 13 ];
+        %tmp.12 = lgetv %dc;
+        symbol [ dc %tmp.12 77 16 18 ];
+        symbol [ getHeight %tmp.13 77 19 28 ];
+        %tmp.13 = getv function %tmp.12 :getHeight;
+        %tmp.14 = invoke %tmp.12 %tmp.13();
+        lputv %h.2 %tmp.14;
+        symbol [ h %h.2 77 12 13 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 78 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_stop" ]
+        %cx.3 = local;
+        symbol [ cx %cx.3 78 12 14 ];
+        %tmp.15 = lgetv %w.1;
+        symbol [ w %tmp.15 78 17 18 ];
+        %tmp.16 = 2;
+        %tmp.17 = div %tmp.15 %tmp.16;
+        lputv %cx.3 %tmp.17;
+        symbol [ cx %cx.3 78 12 14 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 81 8 ]
+        %tmp.18 = lgetv %dc;
+        symbol [ dc %tmp.18 81 8 10 ];
+        symbol [ setColor %tmp.19 81 11 19 ];
+        %tmp.19 = getv function %tmp.18 :setColor;
+        symbol [ Graphics %tmp.20 81 20 28 ];
+        %tmp.20 = getm $.Toybox.Graphics;
+        symbol [ COLOR_WHITE %tmp.21 81 29 40 ];
+        %tmp.21 = getv %tmp.20 :COLOR_WHITE;
+        symbol [ Graphics %tmp.22 81 42 50 ];
+        %tmp.22 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.23 81 51 68 ];
+        %tmp.23 = getv %tmp.22 :COLOR_TRANSPARENT;
+        invoke %tmp.18 %tmp.19(%tmp.21, %tmp.23);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 82 8 ]
+        %tmp.24 = lgetv %dc;
+        symbol [ dc %tmp.24 82 8 10 ];
+        symbol [ drawText %tmp.25 82 11 19 ];
+        %tmp.25 = getv function %tmp.24 :drawText;
+        %tmp.26 = lgetv %cx.3;
+        symbol [ cx %tmp.26 82 20 22 ];
+        %tmp.27 = lgetv %h.2;
+        symbol [ h %tmp.27 82 24 25 ];
+        %tmp.28 = 0.05;
+        %tmp.29 = mul %tmp.27 %tmp.28;
+        symbol [ Graphics %tmp.30 82 34 42 ];
+        %tmp.30 = getm $.Toybox.Graphics;
+        symbol [ FONT_SMALL %tmp.31 82 43 53 ];
+        %tmp.31 = getv %tmp.30 :FONT_SMALL;
+        %tmp.32 = "From List";
+        symbol [ Graphics %tmp.33 82 68 76 ];
+        %tmp.33 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.34 82 77 96 ];
+        %tmp.34 = getv %tmp.33 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.24 %tmp.25(%tmp.26, %tmp.29, %tmp.31, %tmp.32, %tmp.34);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 84 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_84_8_89_8_if_stmt:
+        symbol [ isLoading %tmp.36 84 12 21 ];
+        %tmp.36 = getv ? :isLoading;
+        bf %tmp.36 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_84_8_89_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_84_8_89_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_84_23_89_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 85 12 ]
+        %tmp.37 = lgetv %dc;
+        symbol [ dc %tmp.37 85 12 14 ];
+        symbol [ setColor %tmp.38 85 15 23 ];
+        %tmp.38 = getv function %tmp.37 :setColor;
+        symbol [ Graphics %tmp.39 85 24 32 ];
+        %tmp.39 = getm $.Toybox.Graphics;
+        symbol [ COLOR_LT_GRAY %tmp.40 85 33 46 ];
+        %tmp.40 = getv %tmp.39 :COLOR_LT_GRAY;
+        symbol [ Graphics %tmp.41 85 48 56 ];
+        %tmp.41 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.42 85 57 74 ];
+        %tmp.42 = getv %tmp.41 :COLOR_TRANSPARENT;
+        invoke %tmp.37 %tmp.38(%tmp.40, %tmp.42);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 86 12 ]
+        %tmp.43 = lgetv %dc;
+        symbol [ dc %tmp.43 86 12 14 ];
+        symbol [ drawText %tmp.44 86 15 23 ];
+        %tmp.44 = getv function %tmp.43 :drawText;
+        %tmp.45 = lgetv %cx.3;
+        symbol [ cx %tmp.45 86 24 26 ];
+        %tmp.46 = lgetv %h.2;
+        symbol [ h %tmp.46 86 28 29 ];
+        %tmp.47 = 0.38;
+        %tmp.48 = mul %tmp.46 %tmp.47;
+        symbol [ Graphics %tmp.49 86 38 46 ];
+        %tmp.49 = getm $.Toybox.Graphics;
+        symbol [ FONT_SMALL %tmp.50 86 47 57 ];
+        %tmp.50 = getv %tmp.49 :FONT_SMALL;
+        symbol [ statusText %tmp.52 86 59 69 ];
+        %tmp.52 = getv ? :statusText;
+        symbol [ Graphics %tmp.53 86 71 79 ];
+        %tmp.53 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.54 86 80 99 ];
+        %tmp.54 = getv %tmp.53 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.43 %tmp.44(%tmp.45, %tmp.48, %tmp.50, %tmp.52, %tmp.54);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 87 12 ]
+        %tmp.55 = lgetv %dc;
+        symbol [ dc %tmp.55 87 12 14 ];
+        symbol [ drawText %tmp.56 87 15 23 ];
+        %tmp.56 = getv function %tmp.55 :drawText;
+        %tmp.57 = lgetv %cx.3;
+        symbol [ cx %tmp.57 87 24 26 ];
+        %tmp.58 = lgetv %h.2;
+        symbol [ h %tmp.58 87 28 29 ];
+        %tmp.59 = 0.52;
+        %tmp.60 = mul %tmp.58 %tmp.59;
+        symbol [ Graphics %tmp.61 87 38 46 ];
+        %tmp.61 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.62 87 47 57 ];
+        %tmp.62 = getv %tmp.61 :FONT_XTINY;
+        %tmp.63 = "Please wait...";
+        symbol [ Graphics %tmp.64 87 77 85 ];
+        %tmp.64 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.65 87 86 105 ];
+        %tmp.65 = getv %tmp.64 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.55 %tmp.56(%tmp.57, %tmp.60, %tmp.62, %tmp.63, %tmp.65);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 88 12 ]
+        ret ?;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_84_23_89_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_84_8_89_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_84_8_89_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 91 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_91_8_98_8_if_stmt:
+        symbol [ items %tmp.67 91 12 17 ];
+        %tmp.67 = getv ? :items;
+        symbol [ size %tmp.68 91 18 22 ];
+        %tmp.68 = getv function %tmp.67 :size;
+        %tmp.69 = invoke %tmp.67 %tmp.68();
+        %tmp.70 = 0;
+        %tmp.71 = eq %tmp.69 %tmp.70;
+        bf %tmp.71 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_91_8_98_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_91_8_98_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_91_31_98_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 92 12 ]
+        %tmp.72 = lgetv %dc;
+        symbol [ dc %tmp.72 92 12 14 ];
+        symbol [ setColor %tmp.73 92 15 23 ];
+        %tmp.73 = getv function %tmp.72 :setColor;
+        symbol [ Graphics %tmp.74 92 24 32 ];
+        %tmp.74 = getm $.Toybox.Graphics;
+        symbol [ COLOR_LT_GRAY %tmp.75 92 33 46 ];
+        %tmp.75 = getv %tmp.74 :COLOR_LT_GRAY;
+        symbol [ Graphics %tmp.76 92 48 56 ];
+        %tmp.76 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.77 92 57 74 ];
+        %tmp.77 = getv %tmp.76 :COLOR_TRANSPARENT;
+        invoke %tmp.72 %tmp.73(%tmp.75, %tmp.77);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 93 12 ]
+        %tmp.78 = lgetv %dc;
+        symbol [ dc %tmp.78 93 12 14 ];
+        symbol [ drawText %tmp.79 93 15 23 ];
+        %tmp.79 = getv function %tmp.78 :drawText;
+        %tmp.80 = lgetv %cx.3;
+        symbol [ cx %tmp.80 93 24 26 ];
+        %tmp.81 = lgetv %h.2;
+        symbol [ h %tmp.81 93 28 29 ];
+        %tmp.82 = 0.38;
+        %tmp.83 = mul %tmp.81 %tmp.82;
+        symbol [ Graphics %tmp.84 93 38 46 ];
+        %tmp.84 = getm $.Toybox.Graphics;
+        symbol [ FONT_SMALL %tmp.85 93 47 57 ];
+        %tmp.85 = getv %tmp.84 :FONT_SMALL;
+        symbol [ statusText %tmp.87 93 59 69 ];
+        %tmp.87 = getv ? :statusText;
+        symbol [ Graphics %tmp.88 93 71 79 ];
+        %tmp.88 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.89 93 80 99 ];
+        %tmp.89 = getv %tmp.88 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.78 %tmp.79(%tmp.80, %tmp.83, %tmp.85, %tmp.87, %tmp.89);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 94 12 ]
+        %tmp.90 = lgetv %dc;
+        symbol [ dc %tmp.90 94 12 14 ];
+        symbol [ setColor %tmp.91 94 15 23 ];
+        %tmp.91 = getv function %tmp.90 :setColor;
+        symbol [ Graphics %tmp.92 94 24 32 ];
+        %tmp.92 = getm $.Toybox.Graphics;
+        symbol [ COLOR_DK_GRAY %tmp.93 94 33 46 ];
+        %tmp.93 = getv %tmp.92 :COLOR_DK_GRAY;
+        symbol [ Graphics %tmp.94 94 48 56 ];
+        %tmp.94 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.95 94 57 74 ];
+        %tmp.95 = getv %tmp.94 :COLOR_TRANSPARENT;
+        invoke %tmp.90 %tmp.91(%tmp.93, %tmp.95);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 95 12 ]
+        %tmp.96 = lgetv %dc;
+        symbol [ dc %tmp.96 95 12 14 ];
+        symbol [ drawText %tmp.97 95 15 23 ];
+        %tmp.97 = getv function %tmp.96 :drawText;
+        %tmp.98 = lgetv %cx.3;
+        symbol [ cx %tmp.98 95 24 26 ];
+        %tmp.99 = lgetv %h.2;
+        symbol [ h %tmp.99 95 28 29 ];
+        %tmp.100 = 0.52;
+        %tmp.101 = mul %tmp.99 %tmp.100;
+        symbol [ Graphics %tmp.102 95 38 46 ];
+        %tmp.102 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.103 95 47 57 ];
+        %tmp.103 = getv %tmp.102 :FONT_XTINY;
+        %tmp.104 = "Add tests via the";
+        symbol [ Graphics %tmp.105 95 80 88 ];
+        %tmp.105 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.106 95 89 108 ];
+        %tmp.106 = getv %tmp.105 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.96 %tmp.97(%tmp.98, %tmp.101, %tmp.103, %tmp.104, %tmp.106);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 96 12 ]
+        %tmp.107 = lgetv %dc;
+        symbol [ dc %tmp.107 96 12 14 ];
+        symbol [ drawText %tmp.108 96 15 23 ];
+        %tmp.108 = getv function %tmp.107 :drawText;
+        %tmp.109 = lgetv %cx.3;
+        symbol [ cx %tmp.109 96 24 26 ];
+        %tmp.110 = lgetv %h.2;
+        symbol [ h %tmp.110 96 28 29 ];
+        %tmp.111 = 0.60;
+        %tmp.112 = mul %tmp.110 %tmp.111;
+        symbol [ Graphics %tmp.113 96 38 46 ];
+        %tmp.113 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.114 96 47 57 ];
+        %tmp.114 = getv %tmp.113 :FONT_XTINY;
+        %tmp.115 = "Glidr web app";
+        symbol [ Graphics %tmp.116 96 76 84 ];
+        %tmp.116 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.117 96 85 104 ];
+        %tmp.117 = getv %tmp.116 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.107 %tmp.108(%tmp.109, %tmp.112, %tmp.114, %tmp.115, %tmp.117);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 97 12 ]
+        ret ?;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_91_31_98_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_91_8_98_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_91_8_98_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 101 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_stop" ]
+        %visibleStart.4 = local;
+        symbol [ visibleStart %visibleStart.4 101 12 24 ];
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_101_27_101_67_begin:
+        symbol [ selectedIndex %tmp.119 101 27 40 ];
+        %tmp.119 = getv ? :selectedIndex;
+        %tmp.120 = 0;
+        %tmp.121 = gt %tmp.119 %tmp.120;
+        bf %tmp.121 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_101_27_101_67_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_101_27_101_67_true:
+        symbol [ selectedIndex %tmp.123 101 47 60 ];
+        %tmp.123 = getv ? :selectedIndex;
+        %tmp.124 = 1;
+        %tmp.125 = sub %tmp.123 %tmp.124;
+        push %tmp.125;
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_101_27_101_67_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_101_27_101_67_else_false:
+        %tmp.126 = 0;
+        push %tmp.126;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_101_27_101_67_end:
+        %tmp.127 = phi [%tmp.121 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_101_27_101_67_begin] [%tmp.125 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_101_27_101_67_true] [%tmp.126 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_101_27_101_67_else_false] [%tmp.127 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_101_27_101_67_end];
+        lputv %visibleStart.4 %tmp.127;
+        symbol [ visibleStart %visibleStart.4 101 12 24 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 102 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_stop" ]
+        %visibleEnd.5 = local;
+        symbol [ visibleEnd %visibleEnd.5 102 12 22 ];
+        %tmp.128 = lgetv %visibleStart.4;
+        symbol [ visibleStart %tmp.128 102 25 37 ];
+        %tmp.129 = 2;
+        %tmp.130 = add %tmp.128 %tmp.129;
+        lputv %visibleEnd.5 %tmp.130;
+        symbol [ visibleEnd %visibleEnd.5 102 12 22 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 103 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_103_8_106_8_if_stmt:
+        %tmp.131 = lgetv %visibleEnd.5;
+        symbol [ visibleEnd %tmp.131 103 12 22 ];
+        symbol [ items %tmp.133 103 26 31 ];
+        %tmp.133 = getv ? :items;
+        symbol [ size %tmp.134 103 32 36 ];
+        %tmp.134 = getv function %tmp.133 :size;
+        %tmp.135 = invoke %tmp.133 %tmp.134();
+        %tmp.136 = gte %tmp.131 %tmp.135;
+        bf %tmp.136 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_103_8_106_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_103_8_106_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_103_40_106_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 104 12 ]
+        symbol [ items %tmp.138 104 25 30 ];
+        %tmp.138 = getv ? :items;
+        symbol [ size %tmp.139 104 31 35 ];
+        %tmp.139 = getv function %tmp.138 :size;
+        %tmp.140 = invoke %tmp.138 %tmp.139();
+        %tmp.141 = 1;
+        %tmp.142 = sub %tmp.140 %tmp.141;
+        lputv %visibleEnd.5 %tmp.142;
+        symbol [ visibleEnd %visibleEnd.5 104 12 22 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 105 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_105_27_105_61_begin:
+        %tmp.143 = lgetv %visibleEnd.5;
+        symbol [ visibleEnd %tmp.143 105 27 37 ];
+        %tmp.144 = 1;
+        %tmp.145 = gt %tmp.143 %tmp.144;
+        bf %tmp.145 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_105_27_105_61_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_105_27_105_61_true:
+        %tmp.146 = lgetv %visibleEnd.5;
+        symbol [ visibleEnd %tmp.146 105 44 54 ];
+        %tmp.147 = 2;
+        %tmp.148 = sub %tmp.146 %tmp.147;
+        push %tmp.148;
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_105_27_105_61_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_105_27_105_61_else_false:
+        %tmp.149 = 0;
+        push %tmp.149;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_105_27_105_61_end:
+        %tmp.150 = phi [%tmp.145 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_105_27_105_61_begin] [%tmp.148 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_105_27_105_61_true] [%tmp.149 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_105_27_105_61_else_false] [%tmp.150 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_105_27_105_61_end];
+        lputv %visibleStart.4 %tmp.150;
+        symbol [ visibleStart %visibleStart.4 105 12 24 ];
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_103_40_106_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_103_8_106_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_103_8_106_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 108 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_stop" ]
+        %yStart.6 = local;
+        symbol [ yStart %yStart.6 108 12 18 ];
+        %tmp.151 = lgetv %h.2;
+        symbol [ h %tmp.151 108 21 22 ];
+        %tmp.152 = 0.22;
+        %tmp.153 = mul %tmp.151 %tmp.152;
+        lputv %yStart.6 %tmp.153;
+        symbol [ yStart %yStart.6 108 12 18 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 109 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_stop" ]
+        %itemSpacing.7 = local;
+        symbol [ itemSpacing %itemSpacing.7 109 12 23 ];
+        %tmp.154 = lgetv %h.2;
+        symbol [ h %tmp.154 109 26 27 ];
+        %tmp.155 = 0.24;
+        %tmp.156 = mul %tmp.154 %tmp.155;
+        lputv %itemSpacing.7 %tmp.156;
+        symbol [ itemSpacing %itemSpacing.7 109 12 23 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 111 8 ]
+        for @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_8_124_8_for_test @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_8_124_8_for_incr @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_8_124_8_for_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_8_124_8_for_init:
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_8_124_8_for_begin" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_8_124_8_for_end" ]
+        %i.8 = local;
+        symbol [ i %i.8 111 17 18 ];
+        %tmp.157 = lgetv %visibleStart.4;
+        symbol [ visibleStart %tmp.157 111 21 33 ];
+        lputv %i.8 %tmp.157;
+        symbol [ i %i.8 111 17 18 ];
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_8_124_8_for_test:
+        %tmp.158 = lgetv %i.8;
+        symbol [ i %tmp.158 111 35 36 ];
+        %tmp.159 = lgetv %visibleEnd.5;
+        symbol [ visibleEnd %tmp.159 111 40 50 ];
+        %tmp.160 = lte %tmp.158 %tmp.159;
+        bf %tmp.160 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_8_124_8_for_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_8_124_8_for_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_57_124_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 112 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_57_124_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_57_124_8_stop" ]
+        %item.9 = local;
+        symbol [ item %item.9 112 16 20 ];
+        symbol [ items %tmp.162 112 23 28 ];
+        %tmp.162 = getv ? :items;
+        %tmp.163 = lgetv %i.8;
+        symbol [ i %tmp.163 112 29 30 ];
+        %tmp.164 = agetv %tmp.162 %tmp.163;
+        lputv %item.9 %tmp.164;
+        symbol [ item %item.9 112 16 20 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 113 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_57_124_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_57_124_8_stop" ]
+        %label.10 = local;
+        symbol [ label %label.10 113 16 21 ];
+        %tmp.165 = self;
+        symbol [ getItemLabel %tmp.166 113 24 36 ];
+        %tmp.166 = getv function %tmp.165 :getItemLabel;
+        %tmp.167 = lgetv %item.9;
+        symbol [ item %tmp.167 113 37 41 ];
+        %tmp.168 = invoke %tmp.165 %tmp.166(%tmp.167);
+        lputv %label.10 %tmp.168;
+        symbol [ label %label.10 113 16 21 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 114 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_57_124_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_57_124_8_stop" ]
+        %yPos.11 = local;
+        symbol [ yPos %yPos.11 114 16 20 ];
+        %tmp.169 = lgetv %yStart.6;
+        symbol [ yStart %tmp.169 114 23 29 ];
+        %tmp.170 = lgetv %i.8;
+        symbol [ i %tmp.170 114 33 34 ];
+        %tmp.171 = lgetv %visibleStart.4;
+        symbol [ visibleStart %tmp.171 114 37 49 ];
+        %tmp.172 = sub %tmp.170 %tmp.171;
+        %tmp.173 = lgetv %itemSpacing.7;
+        symbol [ itemSpacing %tmp.173 114 53 64 ];
+        %tmp.174 = mul %tmp.172 %tmp.173;
+        %tmp.175 = add %tmp.169 %tmp.174;
+        lputv %yPos.11 %tmp.175;
+        symbol [ yPos %yPos.11 114 16 20 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 116 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_116_12_122_12_if_stmt:
+        %tmp.176 = lgetv %i.8;
+        symbol [ i %tmp.176 116 16 17 ];
+        symbol [ selectedIndex %tmp.178 116 21 34 ];
+        %tmp.178 = getv ? :selectedIndex;
+        %tmp.179 = eq %tmp.176 %tmp.178;
+        bf %tmp.179 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_116_12_122_12_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_116_12_122_12_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_116_36_120_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 117 16 ]
+        %tmp.180 = lgetv %dc;
+        symbol [ dc %tmp.180 117 16 18 ];
+        symbol [ setColor %tmp.181 117 19 27 ];
+        %tmp.181 = getv function %tmp.180 :setColor;
+        symbol [ Graphics %tmp.182 117 28 36 ];
+        %tmp.182 = getm $.Toybox.Graphics;
+        symbol [ COLOR_BLUE %tmp.183 117 37 47 ];
+        %tmp.183 = getv %tmp.182 :COLOR_BLUE;
+        symbol [ Graphics %tmp.184 117 49 57 ];
+        %tmp.184 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.185 117 58 75 ];
+        %tmp.185 = getv %tmp.184 :COLOR_TRANSPARENT;
+        invoke %tmp.180 %tmp.181(%tmp.183, %tmp.185);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 118 16 ]
+        %tmp.186 = lgetv %dc;
+        symbol [ dc %tmp.186 118 16 18 ];
+        symbol [ fillRoundedRectangle %tmp.187 118 19 39 ];
+        %tmp.187 = getv function %tmp.186 :fillRoundedRectangle;
+        %tmp.188 = lgetv %cx.3;
+        symbol [ cx %tmp.188 118 40 42 ];
+        %tmp.189 = lgetv %w.1;
+        symbol [ w %tmp.189 118 45 46 ];
+        %tmp.190 = 0.44;
+        %tmp.191 = mul %tmp.189 %tmp.190;
+        %tmp.192 = sub %tmp.188 %tmp.191;
+        %tmp.193 = lgetv %yPos.11;
+        symbol [ yPos %tmp.193 118 55 59 ];
+        %tmp.194 = 4;
+        %tmp.195 = sub %tmp.193 %tmp.194;
+        %tmp.196 = lgetv %w.1;
+        symbol [ w %tmp.196 118 65 66 ];
+        %tmp.197 = 0.88;
+        %tmp.198 = mul %tmp.196 %tmp.197;
+        %tmp.199 = 30;
+        %tmp.200 = 6;
+        invoke %tmp.186 %tmp.187(%tmp.192, %tmp.195, %tmp.198, %tmp.199, %tmp.200);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 119 16 ]
+        %tmp.201 = lgetv %dc;
+        symbol [ dc %tmp.201 119 16 18 ];
+        symbol [ setColor %tmp.202 119 19 27 ];
+        %tmp.202 = getv function %tmp.201 :setColor;
+        symbol [ Graphics %tmp.203 119 28 36 ];
+        %tmp.203 = getm $.Toybox.Graphics;
+        symbol [ COLOR_WHITE %tmp.204 119 37 48 ];
+        %tmp.204 = getv %tmp.203 :COLOR_WHITE;
+        symbol [ Graphics %tmp.205 119 50 58 ];
+        %tmp.205 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.206 119 59 76 ];
+        %tmp.206 = getv %tmp.205 :COLOR_TRANSPARENT;
+        invoke %tmp.201 %tmp.202(%tmp.204, %tmp.206);
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_116_36_120_12_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_116_12_122_12_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_116_12_122_12_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_120_19_122_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 121 16 ]
+        %tmp.207 = lgetv %dc;
+        symbol [ dc %tmp.207 121 16 18 ];
+        symbol [ setColor %tmp.208 121 19 27 ];
+        %tmp.208 = getv function %tmp.207 :setColor;
+        symbol [ Graphics %tmp.209 121 28 36 ];
+        %tmp.209 = getm $.Toybox.Graphics;
+        symbol [ COLOR_LT_GRAY %tmp.210 121 37 50 ];
+        %tmp.210 = getv %tmp.209 :COLOR_LT_GRAY;
+        symbol [ Graphics %tmp.211 121 52 60 ];
+        %tmp.211 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.212 121 61 78 ];
+        %tmp.212 = getv %tmp.211 :COLOR_TRANSPARENT;
+        invoke %tmp.207 %tmp.208(%tmp.210, %tmp.212);
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_120_19_122_12_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_116_12_122_12_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 123 12 ]
+        %tmp.213 = lgetv %dc;
+        symbol [ dc %tmp.213 123 12 14 ];
+        symbol [ drawText %tmp.214 123 15 23 ];
+        %tmp.214 = getv function %tmp.213 :drawText;
+        %tmp.215 = lgetv %cx.3;
+        symbol [ cx %tmp.215 123 24 26 ];
+        %tmp.216 = lgetv %yPos.11;
+        symbol [ yPos %tmp.216 123 28 32 ];
+        symbol [ Graphics %tmp.217 123 34 42 ];
+        %tmp.217 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.218 123 43 53 ];
+        %tmp.218 = getv %tmp.217 :FONT_XTINY;
+        %tmp.219 = lgetv %label.10;
+        symbol [ label %tmp.219 123 55 60 ];
+        symbol [ Graphics %tmp.220 123 62 70 ];
+        %tmp.220 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.221 123 71 90 ];
+        %tmp.221 = getv %tmp.220 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.213 %tmp.214(%tmp.215, %tmp.216, %tmp.218, %tmp.219, %tmp.221);
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_57_124_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_8_124_8_for_incr:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 111 ]
+        %tmp.224 = lgetv %i.8;
+        symbol [ i %tmp.224 111 52 53 ];
+        %tmp.225 = add %tmp.224 1;
+        lputv %i.8 %tmp.225;
+        symbol [ i %i.8 111 52 53 ];
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_8_124_8_for_test;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_111_8_124_8_for_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 127 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_127_8_130_8_if_stmt:
+        symbol [ selectedIndex %tmp.227 127 12 25 ];
+        %tmp.227 = getv ? :selectedIndex;
+        %tmp.228 = 0;
+        %tmp.229 = gt %tmp.227 %tmp.228;
+        bf %tmp.229 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_127_8_130_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_127_8_130_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_127_31_130_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 128 12 ]
+        %tmp.230 = lgetv %dc;
+        symbol [ dc %tmp.230 128 12 14 ];
+        symbol [ setColor %tmp.231 128 15 23 ];
+        %tmp.231 = getv function %tmp.230 :setColor;
+        symbol [ Graphics %tmp.232 128 24 32 ];
+        %tmp.232 = getm $.Toybox.Graphics;
+        symbol [ COLOR_DK_GRAY %tmp.233 128 33 46 ];
+        %tmp.233 = getv %tmp.232 :COLOR_DK_GRAY;
+        symbol [ Graphics %tmp.234 128 48 56 ];
+        %tmp.234 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.235 128 57 74 ];
+        %tmp.235 = getv %tmp.234 :COLOR_TRANSPARENT;
+        invoke %tmp.230 %tmp.231(%tmp.233, %tmp.235);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 129 12 ]
+        %tmp.236 = lgetv %dc;
+        symbol [ dc %tmp.236 129 12 14 ];
+        symbol [ drawText %tmp.237 129 15 23 ];
+        %tmp.237 = getv function %tmp.236 :drawText;
+        %tmp.238 = lgetv %cx.3;
+        symbol [ cx %tmp.238 129 24 26 ];
+        %tmp.239 = lgetv %h.2;
+        symbol [ h %tmp.239 129 28 29 ];
+        %tmp.240 = 0.14;
+        %tmp.241 = mul %tmp.239 %tmp.240;
+        symbol [ Graphics %tmp.242 129 38 46 ];
+        %tmp.242 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.243 129 47 57 ];
+        %tmp.243 = getv %tmp.242 :FONT_XTINY;
+        %tmp.244 = "▲";
+        symbol [ Graphics %tmp.245 129 64 72 ];
+        %tmp.245 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.246 129 73 92 ];
+        %tmp.246 = getv %tmp.245 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.236 %tmp.237(%tmp.238, %tmp.241, %tmp.243, %tmp.244, %tmp.246);
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_127_31_130_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_127_8_130_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_127_8_130_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 131 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_131_8_134_8_if_stmt:
+        symbol [ selectedIndex %tmp.248 131 12 25 ];
+        %tmp.248 = getv ? :selectedIndex;
+        symbol [ items %tmp.250 131 28 33 ];
+        %tmp.250 = getv ? :items;
+        symbol [ size %tmp.251 131 34 38 ];
+        %tmp.251 = getv function %tmp.250 :size;
+        %tmp.252 = invoke %tmp.250 %tmp.251();
+        %tmp.253 = 1;
+        %tmp.254 = sub %tmp.252 %tmp.253;
+        %tmp.255 = lt %tmp.248 %tmp.254;
+        bf %tmp.255 @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_131_8_134_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_131_8_134_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_131_46_134_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 132 12 ]
+        %tmp.256 = lgetv %dc;
+        symbol [ dc %tmp.256 132 12 14 ];
+        symbol [ setColor %tmp.257 132 15 23 ];
+        %tmp.257 = getv function %tmp.256 :setColor;
+        symbol [ Graphics %tmp.258 132 24 32 ];
+        %tmp.258 = getm $.Toybox.Graphics;
+        symbol [ COLOR_DK_GRAY %tmp.259 132 33 46 ];
+        %tmp.259 = getv %tmp.258 :COLOR_DK_GRAY;
+        symbol [ Graphics %tmp.260 132 48 56 ];
+        %tmp.260 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.261 132 57 74 ];
+        %tmp.261 = getv %tmp.260 :COLOR_TRANSPARENT;
+        invoke %tmp.256 %tmp.257(%tmp.259, %tmp.261);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 133 12 ]
+        %tmp.262 = lgetv %dc;
+        symbol [ dc %tmp.262 133 12 14 ];
+        symbol [ drawText %tmp.263 133 15 23 ];
+        %tmp.263 = getv function %tmp.262 :drawText;
+        %tmp.264 = lgetv %cx.3;
+        symbol [ cx %tmp.264 133 24 26 ];
+        %tmp.265 = lgetv %h.2;
+        symbol [ h %tmp.265 133 28 29 ];
+        %tmp.266 = 0.88;
+        %tmp.267 = mul %tmp.265 %tmp.266;
+        symbol [ Graphics %tmp.268 133 38 46 ];
+        %tmp.268 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.269 133 47 57 ];
+        %tmp.269 = getv %tmp.268 :FONT_XTINY;
+        %tmp.270 = "▼";
+        symbol [ Graphics %tmp.271 133 64 72 ];
+        %tmp.271 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.272 133 73 92 ];
+        %tmp.272 = getv %tmp.271 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.262 %tmp.263(%tmp.264, %tmp.267, %tmp.269, %tmp.270, %tmp.272);
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_131_46_134_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_131_8_134_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_131_8_134_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 136 8 ]
+        %tmp.273 = lgetv %dc;
+        symbol [ dc %tmp.273 136 8 10 ];
+        symbol [ setColor %tmp.274 136 11 19 ];
+        %tmp.274 = getv function %tmp.273 :setColor;
+        symbol [ Graphics %tmp.275 136 20 28 ];
+        %tmp.275 = getm $.Toybox.Graphics;
+        symbol [ COLOR_DK_GRAY %tmp.276 136 29 42 ];
+        %tmp.276 = getv %tmp.275 :COLOR_DK_GRAY;
+        symbol [ Graphics %tmp.277 136 44 52 ];
+        %tmp.277 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.278 136 53 70 ];
+        %tmp.278 = getv %tmp.277 :COLOR_TRANSPARENT;
+        invoke %tmp.273 %tmp.274(%tmp.276, %tmp.278);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc" 137 8 ]
+        %tmp.279 = lgetv %dc;
+        symbol [ dc %tmp.279 137 8 10 ];
+        symbol [ drawText %tmp.280 137 11 19 ];
+        %tmp.280 = getv function %tmp.279 :drawText;
+        %tmp.281 = lgetv %cx.3;
+        symbol [ cx %tmp.281 137 20 22 ];
+        %tmp.282 = lgetv %h.2;
+        symbol [ h %tmp.282 137 24 25 ];
+        %tmp.283 = 0.95;
+        %tmp.284 = mul %tmp.282 %tmp.283;
+        symbol [ Graphics %tmp.285 137 34 42 ];
+        %tmp.285 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.286 137 43 53 ];
+        %tmp.286 = getv %tmp.285 :FONT_XTINY;
+        symbol [ selectedIndex %tmp.288 137 55 68 ];
+        %tmp.288 = getv ? :selectedIndex;
+        %tmp.289 = 1;
+        %tmp.290 = add %tmp.288 %tmp.289;
+        %tmp.291 = "/";
+        %tmp.292 = add %tmp.290 %tmp.291;
+        symbol [ items %tmp.294 137 81 86 ];
+        %tmp.294 = getv ? :items;
+        symbol [ size %tmp.295 137 87 91 ];
+        %tmp.295 = getv function %tmp.294 :size;
+        %tmp.296 = invoke %tmp.294 %tmp.295();
+        %tmp.297 = add %tmp.292 %tmp.296;
+        symbol [ Graphics %tmp.298 137 95 103 ];
+        %tmp.298 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.299 137 104 123 ];
+        %tmp.299 = getv %tmp.298 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.279 %tmp.280(%tmp.281, %tmp.284, %tmp.286, %tmp.297, %tmp.299);
+_Users_simenfinjord_glidr5_garmin_app_source_QueueListView_mc_72_26_138_4_stop:
+    }
+}
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/QueueListView.mc"; @line = 3; ]
+<init> {
+}

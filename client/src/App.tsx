@@ -26,6 +26,7 @@ import AthleteDetail from "@/pages/athlete-detail";
 import Suggestions from "@/pages/suggestions";
 import LiveRunsheets from "@/pages/live-runsheets";
 import WatchQueue from "@/pages/watch-queue";
+import MyAccount from "@/pages/my-account";
 import WhatIsGlidr from "@/pages/what-is-glidr";
 import Legal from "@/pages/legal";
 import Pricing from "@/pages/pricing";
@@ -56,6 +57,7 @@ function Router() {
 
 
       <Route path="/watch-queue" component={WatchQueue} />
+      <Route path="/my-account" component={MyAccount} />
       <Route path="/suggestions" component={Suggestions} />
       <Route path="/admin" component={Admin} />
       <Route path="/what-is-glidr" component={WhatIsGlidr} />

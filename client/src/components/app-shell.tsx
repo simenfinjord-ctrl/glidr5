@@ -417,6 +417,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <span className="font-medium">Glidr</span>
           <div className="flex items-center gap-3">
+            <AppLink href="/my-account" testId="link-my-account" className="underline hover:text-foreground transition-colors">
+              My Account
+            </AppLink>
+            <span className="text-border">|</span>
             <AppLink href="/what-is-glidr" testId="link-what-is-glidr" className="underline hover:text-foreground transition-colors">
               What is Glidr?
             </AppLink>

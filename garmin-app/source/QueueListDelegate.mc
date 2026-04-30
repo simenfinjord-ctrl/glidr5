@@ -48,9 +48,16 @@ class QueueListDelegate extends WatchUi.BehaviorDelegate {
         var itemId = selectedItem["id"].toString();
         var url = ServerConfig.BASE_URL + "/api/watch/list/" + view.teamPin + "/start/" + itemId;
 
+        // Include personal watch code so operator name is recorded
+        var body = {};
+        var userCode = Storage.getValue("userCode");
+        if (userCode != null) {
+            body = { "userCode" => userCode };
+        }
+
         Communications.makeWebRequest(
             url,
-            {},
+            body,
             {
                 :method => Communications.HTTP_REQUEST_METHOD_POST,
                 :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,

@@ -202,6 +202,7 @@ export const users = pgTable("users", {
   isActive: integer("is_active").notNull().default(1),
   isBlindTester: integer("is_blind_tester").notNull().default(0),
   garminWatch: integer("garmin_watch").notNull().default(0),
+  watchCode: text("watch_code"), // 4-digit personal watch code
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });

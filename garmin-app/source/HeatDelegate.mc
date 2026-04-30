@@ -15,7 +15,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
         var keySounds = Storage.getValue("keySounds");
         if (keySounds == null || keySounds == true) {
             if (Attention has :playTone) {
-                Attention.playTone(Attention.TONE_KEY_PRESS);
+                Attention.playTone(Attention.TONE_KEY);
             }
         }
     }

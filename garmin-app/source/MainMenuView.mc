@@ -36,7 +36,14 @@ class MainMenuView extends WatchUi.View {
         var teamName = Storage.getValue("teamName");
         if (teamName != null) {
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.18, Graphics.FONT_XTINY, teamName, Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.15, Graphics.FONT_XTINY, teamName, Graphics.TEXT_JUSTIFY_CENTER);
+        }
+
+        // Show logged-in user name if personal code is set
+        var userName = Storage.getValue("userName");
+        if (userName != null) {
+            dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, h * 0.22, Graphics.FONT_XTINY, userName, Graphics.TEXT_JUSTIFY_CENTER);
         }
 
         // Draw menu items

@@ -14,13 +14,13 @@ class SettingsDelegate extends WatchUi.BehaviorDelegate {
     }
 
     function onNextPage() {
-        view.selectedIndex = (view.selectedIndex + 1) % 3;
+        view.selectedIndex = (view.selectedIndex + 1) % 4;
         WatchUi.requestUpdate();
         return true;
     }
 
     function onPreviousPage() {
-        view.selectedIndex = (view.selectedIndex + 2) % 3;
+        view.selectedIndex = (view.selectedIndex + 3) % 4;
         WatchUi.requestUpdate();
         return true;
     }
@@ -37,9 +37,16 @@ class SettingsDelegate extends WatchUi.BehaviorDelegate {
             Storage.setValue("keySounds", view.keySoundsOn);
             WatchUi.requestUpdate();
         } else if (view.selectedIndex == 2) {
+            // Enter personal watch code
+            var codeView = new PersonalCodeView();
+            var codeDelegate = new PersonalCodeDelegate(codeView, view, teamPin);
+            WatchUi.switchToView(codeView, codeDelegate, WatchUi.SLIDE_LEFT);
+        } else if (view.selectedIndex == 3) {
             // Change PIN: clear stored PIN and go to setup
             Storage.deleteValue("teamPin");
             Storage.deleteValue("teamName");
+            Storage.deleteValue("userCode");
+            Storage.deleteValue("userName");
             var setupView = new PinSetupView();
             var setupDelegate = new PinSetupDelegate(setupView);
             WatchUi.switchToView(setupView, setupDelegate, WatchUi.SLIDE_LEFT);

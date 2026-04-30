@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Radio, Trophy, User, Calendar, MapPin, Snowflake, LayoutGrid, LayoutList, Filter } from "lucide-react";
+import { Radio, Trophy, User, Calendar, MapPin, Snowflake, LayoutGrid, LayoutList, Filter, Watch } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -29,6 +29,7 @@ type LiveRunsheet = {
   bracket: Heat[][] | null;
   updatedAt: string;
   completedAt: string | null;
+  isWatchSession?: boolean;
 };
 
 function getRoundName(roundIndex: number, totalRounds: number): string {
@@ -140,6 +141,12 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 animate-pulse">
                 <Radio className="h-3 w-3" />
                 Live
+              </span>
+            )}
+            {session.isWatchSession && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400">
+                <Watch className="h-3 w-3" />
+                Watch
               </span>
             )}
           </div>

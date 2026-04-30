@@ -2139,7 +2139,7 @@ export default function Admin() {
                     New user
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-xl">
+                <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader><DialogTitle>Create user</DialogTitle></DialogHeader>
                   <CreateUserForm onDone={() => setCreateOpen(false)} allGroups={apiGroups} defaultTeamId={effectiveTeamId} teams={teams} />
                 </DialogContent>
@@ -2254,7 +2254,7 @@ export default function Admin() {
             </Card>
 
             <Dialog open={!!editUser} onOpenChange={(v) => { if (!v) setEditUser(undefined); }}>
-              <DialogContent className="sm:max-w-xl">
+              <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>Edit user</DialogTitle></DialogHeader>
                 {editUser && <EditUserForm user={editUser} onDone={() => setEditUser(undefined)} allGroups={apiGroups} teams={teams} />}
               </DialogContent>

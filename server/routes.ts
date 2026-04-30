@@ -237,6 +237,7 @@ export async function registerRoutes(
       ALTER TABLE watch_sessions ADD COLUMN IF NOT EXISTS ski_labels TEXT;
       ALTER TABLE watch_queue ADD COLUMN IF NOT EXISTS session_code TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS garmin_watch INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS watch_code TEXT;
       CREATE TABLE IF NOT EXISTS user_team_permissions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
@@ -1563,6 +1564,122 @@ export async function registerRoutes(
         };
       });
 
+      // Also include active watch sessions that were started from the Watch Queue today
+      try {
+        const todayIsoStr = todayIso;
+        const watchRows = await db
+          .select({
+            code: watchSessions.code,
+            testId: watchSessions.testId,
+            userId: watchSessions.userId,
+            userName: watchSessions.userName,
+            teamId: watchSessions.teamId,
+            bracket: watchSessions.bracket,
+            createdAt: watchSessions.createdAt,
+            expiresAt: watchSessions.expiresAt,
+            testDate: tests.date,
+            testLocation: tests.location,
+            testName: tests.testName,
+            testType: tests.testType,
+            seriesId: tests.seriesId,
+            testSkiSource: tests.testSkiSource,
+          })
+          .from(watchSessions)
+          .innerJoin(tests, eq(tests.id, watchSessions.testId!))
+          .where(
+            sql`${watchSessions.teamId} = ${getActiveTeamId(req)}
+              AND ${watchSessions.createdAt} >= ${todayIsoStr}
+              AND ${watchSessions.expiresAt} > ${new Date().toISOString()}
+              AND ${watchSessions.testId} IS NOT NULL`
+          );
+
+        const watchSeriesIds = [...new Set(watchRows.filter(r => r.seriesId).map(r => r.seriesId!))];
+        const watchSeriesMap: Record<number, { name: string; pairLabels: string | null }> = {};
+        if (watchSeriesIds.length > 0) {
+          const wSeriesList = await db
+            .select({ id: testSkiSeries.id, name: testSkiSeries.name, pairLabels: testSkiSeries.pairLabels })
+            .from(testSkiSeries)
+            .where(inArray(testSkiSeries.id, watchSeriesIds));
+          for (const s of wSeriesList) watchSeriesMap[s.id] = { name: s.name, pairLabels: s.pairLabels };
+        }
+
+        // Also pull in-memory sessions not in DB yet (same team, today, has testId)
+        const todayMs = new Date(todayIsoStr).getTime();
+        const nowMs = Date.now();
+        const teamIdNum = getActiveTeamId(req);
+        const seenCodes = new Set(watchRows.map(r => r.code));
+        for (const [code, ws] of watchSessionsMemory.entries()) {
+          if (ws.teamId !== teamIdNum) continue;
+          if (ws.createdAt < todayMs) continue;
+          if (!ws.testId) continue;
+          // Check not expired
+          if (seenCodes.has(code)) continue;
+          seenCodes.add(code);
+          // Fetch test info for this session
+          try {
+            const tRows = await db.select({ date: tests.date, location: tests.location, testName: tests.testName, testType: tests.testType, seriesId: tests.seriesId, testSkiSource: tests.testSkiSource })
+              .from(tests).where(eq(tests.id, ws.testId));
+            if (tRows[0]) {
+              const t = tRows[0];
+              let wPairLabels: Record<string, string> | null = null;
+              if (ws.skiLabels) {
+                wPairLabels = Object.fromEntries(Object.entries(ws.skiLabels).map(([k, v]) => [k, String(v)]));
+              }
+              result.push({
+                id: -(code as any), // negative numeric id to distinguish
+                testId: ws.testId,
+                userId: ws.userId,
+                userName: ws.userName,
+                testDate: t.date,
+                testLocation: t.location ?? "",
+                testName: t.testName,
+                testType: t.testType,
+                seriesName: t.seriesId ? (watchSeriesMap[t.seriesId]?.name ?? null) : null,
+                testSkiSource: t.testSkiSource ?? "series",
+                pairLabels: wPairLabels,
+                bracket: ws.bracket,
+                updatedAt: new Date(ws.createdAt).toISOString(),
+                completedAt: null,
+                isWatchSession: true,
+              });
+            }
+          } catch (_) {}
+        }
+
+        for (const wr of watchRows) {
+          let wBracket: any = null;
+          try { wBracket = JSON.parse(wr.bracket); } catch {}
+          const wSeriesInfo = wr.seriesId ? watchSeriesMap[wr.seriesId] : null;
+          let wPairLabels: Record<string, string> | null = null;
+          try {
+            if (wSeriesInfo?.pairLabels) wPairLabels = JSON.parse(wSeriesInfo.pairLabels);
+          } catch {}
+          // Avoid duplicates if already added from memory
+          const existingIdx = result.findIndex(r => r.testId === wr.testId && r.userName === wr.userName && (r as any).isWatchSession);
+          if (existingIdx >= 0) continue;
+          result.push({
+            id: -(parseInt(wr.code) || 0),
+            testId: wr.testId!,
+            userId: wr.userId,
+            userName: wr.userName,
+            testDate: wr.testDate,
+            testLocation: wr.testLocation ?? "",
+            testName: wr.testName,
+            testType: wr.testType,
+            seriesName: wSeriesInfo?.name ?? null,
+            testSkiSource: wr.testSkiSource ?? "series",
+            pairLabels: wPairLabels,
+            bracket: wBracket,
+            updatedAt: wr.createdAt,
+            completedAt: null,
+            isWatchSession: true,
+          });
+        }
+      } catch (watchErr: any) {
+        // Non-fatal — watch session merge is best-effort
+        console.warn("live-runsheets watch merge error:", watchErr?.message);
+      }
+
       res.json(result);
     } catch (e: any) {
       console.error("live-runsheets error:", e.stack || e.message || e);
@@ -1839,6 +1956,64 @@ export async function registerRoutes(
     if (newPassword.length < 1) return res.status(400).json({ message: "New password too short" });
     await storage.updateUser(u.id, { password: newPassword });
     res.json({ ok: true });
+  });
+
+  // Alias used by My Account page
+  app.post("/api/auth/change-password", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ message: "Both current and new password required" });
+    if (u.password !== currentPassword) return res.status(403).json({ message: "Current password is incorrect" });
+    if (newPassword.length < 4) return res.status(400).json({ message: "New password too short" });
+    await storage.updateUser(u.id, { password: newPassword });
+    res.json({ ok: true });
+  });
+
+  // Personal watch code — GET returns existing code (generates if missing), POST regenerates
+  app.get("/api/auth/my-watch-code", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const { pool } = await import("./db");
+    const row = await (pool as any).query("SELECT watch_code FROM users WHERE id = $1", [u.id]);
+    let code: string = row.rows[0]?.watch_code;
+    if (!code) {
+      // Generate a unique 4-digit code
+      let attempts = 0;
+      do {
+        code = String(Math.floor(1000 + Math.random() * 9000));
+        const conflict = await (pool as any).query("SELECT id FROM users WHERE watch_code = $1 AND id != $2", [code, u.id]);
+        if (conflict.rows.length === 0) break;
+        attempts++;
+      } while (attempts < 20);
+      await (pool as any).query("UPDATE users SET watch_code = $1 WHERE id = $2", [code, u.id]);
+    }
+    res.json({ watchCode: code });
+  });
+
+  app.post("/api/auth/my-watch-code/regenerate", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const { pool } = await import("./db");
+    let code: string;
+    let attempts = 0;
+    do {
+      code = String(Math.floor(1000 + Math.random() * 9000));
+      const conflict = await (pool as any).query("SELECT id FROM users WHERE watch_code = $1 AND id != $2", [code!, u.id]);
+      if (conflict.rows.length === 0) break;
+      attempts++;
+    } while (attempts < 20);
+    await (pool as any).query("UPDATE users SET watch_code = $1 WHERE id = $2", [code!, u.id]);
+    res.json({ watchCode: code! });
+  });
+
+  // Resolve personal watch code → user name (used by Garmin app, no auth required)
+  app.get("/api/watch/resolve-user/:code", async (req, res) => {
+    const { code } = req.params;
+    if (!/^\d{4}$/.test(code)) return res.status(400).json({ message: "Invalid code" });
+    const { pool } = await import("./db");
+    const row = await (pool as any).query(
+      "SELECT id, name FROM users WHERE watch_code = $1 AND is_active = 1", [code]
+    );
+    if (!row.rows[0]) return res.status(404).json({ message: "Code not found" });
+    res.json({ userId: row.rows[0].id, userName: row.rows[0].name });
   });
 
   // Grinding records
@@ -3437,6 +3612,17 @@ export async function registerRoutes(
         if (entriesRows.length >= 2) {
           const skiPairs = entriesRows.map((e) => e.skiNumber).sort((a, b) => a - b);
           const newCode = await generateSessionCode();
+          // Resolve operator name from personal watch code if provided
+          let operatorName: string = item.added_by_name;
+          const userCode = req.body?.userCode ?? req.query.userCode;
+          if (userCode && /^\d{4}$/.test(String(userCode))) {
+            try {
+              const opRow = await (pool as any).query(
+                "SELECT name FROM users WHERE watch_code = $1 AND is_active = 1", [String(userCode)]
+              );
+              if (opRow.rows[0]) operatorName = opRow.rows[0].name;
+            } catch (_) {}
+          }
           const session: WatchSession = {
             code: newCode,
             skiPairs,
@@ -3444,7 +3630,7 @@ export async function registerRoutes(
             bracket: watchInitBracket(skiPairs),
             createdAt: Date.now(),
             userId: 0,
-            userName: item.added_by_name,
+            userName: operatorName,
             testId: Number(item.test_id),
             testInfo: null,
             teamId,

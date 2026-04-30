@@ -551,7 +551,7 @@ export const watchQueue = pgTable("watch_queue", {
   seriesId: integer("series_id"),
   testName: text("test_name"),      // e.g. "Oslo · 2025-03-01"
   seriesName: text("series_name"),  // fallback display name
-  addedByName: text("added_by_name").notNull(),
+  addedByName: text("added_by_name").notNull().default(""),
   addedAt: text("added_at").notNull(),
   status: text("status").notNull().default("active"), // 'active' | 'completed'
   completedAt: text("completed_at"),

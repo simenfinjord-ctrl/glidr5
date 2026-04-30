@@ -198,10 +198,22 @@ export async function registerRoutes(
 
   app.use("/api", enforceStealthReadOnly);
 
-  // --- Ensure watch_queue table exists (migration-safe) ---
+  // --- Ensure watch tables exist (migration-safe, runs before any route uses them) ---
   {
     const { pool } = await import("./db");
     await (pool as any).query(`
+      CREATE TABLE IF NOT EXISTS watch_sessions (
+        code VARCHAR(4) PRIMARY KEY,
+        ski_pairs TEXT NOT NULL DEFAULT '[]',
+        ski_labels TEXT,
+        bracket TEXT NOT NULL DEFAULT '[]',
+        test_id INTEGER,
+        user_id INTEGER NOT NULL DEFAULT 0,
+        user_name TEXT NOT NULL DEFAULT '',
+        team_id INTEGER,
+        created_at TEXT NOT NULL DEFAULT '',
+        expires_at TEXT NOT NULL DEFAULT ''
+      );
       CREATE TABLE IF NOT EXISTS watch_queue (
         id SERIAL PRIMARY KEY,
         team_id INTEGER NOT NULL,
@@ -210,14 +222,14 @@ export async function registerRoutes(
         test_name TEXT,
         series_name TEXT,
         added_by_name TEXT NOT NULL DEFAULT '',
-        added_at TEXT NOT NULL,
+        added_at TEXT NOT NULL DEFAULT '',
         status TEXT NOT NULL DEFAULT 'active',
         completed_at TEXT,
         session_code TEXT
       );
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS watch_pin TEXT;
-      ALTER TABLE watch_queue ADD COLUMN IF NOT EXISTS session_code TEXT;
       ALTER TABLE watch_sessions ADD COLUMN IF NOT EXISTS ski_labels TEXT;
+      ALTER TABLE watch_queue ADD COLUMN IF NOT EXISTS session_code TEXT;
     `);
   }
 

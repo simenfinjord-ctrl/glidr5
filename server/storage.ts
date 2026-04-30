@@ -143,6 +143,7 @@ export interface IStorage {
 
   countTable(tableName: string, teamId?: number): Promise<number>;
   listAllTestsForTeam(teamId: number): Promise<Test[]>;
+  listTestsByCreator(userId: number, teamId: number): Promise<Test[]>;
   listAllEntriesForTests(testIds: number[]): Promise<TestEntry[]>;
   listAllWeatherForTeam(teamId: number): Promise<any[]>;
   listAthleteIdsForUser(userId: number): Promise<number[]>;
@@ -636,10 +637,9 @@ export class DatabaseStorage implements IStorage {
   async hasAthleteAccess(athleteId: number, userId: number, isAdmin: boolean, teamId?: number): Promise<boolean> {
     const athlete = await this.getAthlete(athleteId);
     if (!athlete) return false;
-    if (isAdmin) {
-      if (teamId && athlete.teamId && athlete.teamId !== teamId) return false;
-      return true;
-    }
+    // Always enforce team boundary — users cannot access athletes from other teams
+    if (teamId && athlete.teamId && athlete.teamId !== teamId) return false;
+    if (isAdmin) return true;
     if (athlete.createdById === userId) return true;
     const [access] = await db.select().from(athleteAccess).where(
       and(eq(athleteAccess.athleteId, athleteId), eq(athleteAccess.userId, userId))
@@ -777,6 +777,10 @@ export class DatabaseStorage implements IStorage {
 
   async listAllTestsForTeam(teamId: number): Promise<Test[]> {
     return db.select().from(tests).where(eq(tests.teamId, teamId));
+  }
+
+  async listTestsByCreator(userId: number, teamId: number): Promise<Test[]> {
+    return db.select().from(tests).where(and(eq(tests.createdById, userId), eq(tests.teamId, teamId)));
   }
 
   async listAllEntriesForTests(testIds: number[]): Promise<TestEntry[]> {

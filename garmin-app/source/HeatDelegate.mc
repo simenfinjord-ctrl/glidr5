@@ -1,6 +1,7 @@
 using Toybox.WatchUi;
 using Toybox.Communications;
 using Toybox.Application.Storage;
+using Toybox.Attention;
 
 class HeatDelegate extends WatchUi.BehaviorDelegate {
     var view;
@@ -8,6 +9,25 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
     function initialize(v) {
         BehaviorDelegate.initialize();
         view = v;
+    }
+
+    function playKeySound() {
+        var keySounds = Storage.getValue("keySounds");
+        if (keySounds == null || keySounds == true) {
+            if (Attention has :playTone) {
+                Attention.playTone(Attention.TONE_KEY_PRESS);
+            }
+        }
+    }
+
+    function doVibrate(durationMs) {
+        var vibrate = Storage.getValue("vibrate");
+        if (vibrate == null || vibrate == true) {
+            if (Attention has :vibrate) {
+                var vibeData = [new Attention.VibeProfile(50, durationMs)];
+                Attention.vibrate(vibeData);
+            }
+        }
     }
 
     function onNextPage() {
@@ -20,6 +40,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
             view.loserLabel = view.labelA;
             view.phase = 1;
             view.distance = 10;
+            playKeySound();
             WatchUi.requestUpdate();
         } else if (view.phase == 1) {
             view.distance -= 10;
@@ -39,6 +60,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
             view.loserLabel = view.labelB;
             view.phase = 1;
             view.distance = 10;
+            playKeySound();
             WatchUi.requestUpdate();
         } else if (view.phase == 1) {
             view.distance += 10;
@@ -159,6 +181,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
         view.isSending = false;
 
         if (responseCode == 200 && data != null && data instanceof Dictionary) {
+            doVibrate(150);
             if (data["nextHeat"] != null && data["nextHeat"] instanceof Dictionary) {
                 var nh = data["nextHeat"];
                 view.roundName = nh["roundName"];
@@ -173,6 +196,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
                 view.distance = 0;
             } else {
                 view.allDone = true;
+                doVibrate(400);
             }
         } else {
             view.statusText = "Error! Try again";

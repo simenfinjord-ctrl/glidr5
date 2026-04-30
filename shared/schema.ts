@@ -201,6 +201,7 @@ export const users = pgTable("users", {
   permissions: text("permissions").notNull().default(JSON.stringify(DEFAULT_PERMISSIONS)),
   isActive: integer("is_active").notNull().default(1),
   isBlindTester: integer("is_blind_tester").notNull().default(0),
+  garminWatch: integer("garmin_watch").notNull().default(0),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
@@ -519,6 +520,18 @@ export const userTeams = pgTable("user_teams", {
 export const insertUserTeamSchema = createInsertSchema(userTeams).omit({ id: true });
 export type InsertUserTeam = z.infer<typeof insertUserTeamSchema>;
 export type UserTeam = typeof userTeams.$inferSelect;
+
+// --- Per-team permissions for multi-team users ---
+export const userTeamPermissions = pgTable("user_team_permissions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  teamId: integer("team_id").notNull(),
+  permissions: text("permissions").notNull(),
+});
+
+export const insertUserTeamPermissionSchema = createInsertSchema(userTeamPermissions).omit({ id: true });
+export type InsertUserTeamPermission = z.infer<typeof insertUserTeamPermissionSchema>;
+export type UserTeamPermission = typeof userTeamPermissions.$inferSelect;
 
 // --- Watch sessions (persisted so Render restarts don't lose them) ---
 export const watchSessions = pgTable("watch_sessions", {

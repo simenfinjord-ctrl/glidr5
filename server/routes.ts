@@ -87,9 +87,15 @@ function enforceStealthReadOnly(req: Request, res: Response, next: NextFunction)
   next();
 }
 
+function getEffectivePermissionsStr(req: Request): string {
+  // Per-team permissions override global permissions when viewing a non-primary team
+  const sessionPerms = (req.session as any)?.effectivePermissions;
+  return sessionPerms ?? req.user!.permissions;
+}
+
 function userInfo(req: Request) {
   const u = req.user!;
-  const perms = parsePermissions(u.permissions, u.isAdmin === 1, u.isTeamAdmin === 1);
+  const perms = parsePermissions(getEffectivePermissionsStr(req), u.isAdmin === 1, u.isTeamAdmin === 1);
   return {
     id: u.id,
     email: u.email,
@@ -124,7 +130,7 @@ function requirePermission(area: PermissionArea, level: PermissionLevel) {
         } catch {}
       }
     }
-    const perms = parsePermissions(u.permissions, u.isAdmin === 1, u.isTeamAdmin === 1);
+    const perms = parsePermissions(getEffectivePermissionsStr(req), u.isAdmin === 1, u.isTeamAdmin === 1);
     const userLevel = perms[area];
     if (userLevel === "none") {
       return res.status(403).json({ message: "No access" });
@@ -230,6 +236,14 @@ export async function registerRoutes(
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS watch_pin TEXT;
       ALTER TABLE watch_sessions ADD COLUMN IF NOT EXISTS ski_labels TEXT;
       ALTER TABLE watch_queue ADD COLUMN IF NOT EXISTS session_code TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS garmin_watch INTEGER NOT NULL DEFAULT 0;
+      CREATE TABLE IF NOT EXISTS user_team_permissions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        team_id INTEGER NOT NULL,
+        permissions TEXT NOT NULL,
+        UNIQUE(user_id, team_id)
+      );
     `);
   }
 
@@ -372,6 +386,23 @@ export async function registerRoutes(
       (req.session as any).incognito = !!prev;
       delete (req.session as any).incognitoBeforeStealth;
     }
+
+    // Resolve per-team permissions for regular users switching to a non-primary team
+    if (u.isAdmin !== 1 && u.isTeamAdmin !== 1 && teamId !== u.teamId) {
+      try {
+        const { pool: p } = await import("./db");
+        const tpRes = await (p as any).query(
+          "SELECT permissions FROM user_team_permissions WHERE user_id = $1 AND team_id = $2",
+          [u.id, teamId]
+        );
+        (req.session as any).effectivePermissions = tpRes.rows.length > 0 ? tpRes.rows[0].permissions : u.permissions;
+      } catch (_) {
+        (req.session as any).effectivePermissions = null;
+      }
+    } else {
+      (req.session as any).effectivePermissions = null;
+    }
+
     req.session.save(() => {
       res.json({ ok: true });
     });
@@ -833,28 +864,48 @@ export async function registerRoutes(
 
   app.get("/api/tests", requireAuth, async (req, res) => {
     const u = userInfo(req);
-    const hasTestsPerm = u.isAdmin || u.isTeamAdmin || u.permissions.tests !== "none";
-    const hasRaceskisPerm = u.isAdmin || u.isTeamAdmin || u.permissions.raceskis !== "none";
     const teamId = getActiveTeamId(req);
     let result: any[] = [];
-    if (hasTestsPerm) {
-      const list = await storage.listTests(u.groupScope, u.isScopeAdmin, teamId);
-      result = u.permissions.grinding !== "none" ? list : list.filter((t: any) => t.testType !== "Grind");
-    }
-    if (!u.isScopeAdmin) {
-      const athleteIds = await storage.listAthleteIdsForUser(u.id);
-      if (athleteIds.length > 0) {
-        const existingIds = new Set(result.map((t: any) => t.id));
-        const allTeamTests = await storage.listAllTestsForTeam(teamId);
-        const athleteTests = allTeamTests.filter((t: any) =>
-          t.testSkiSource === "raceskis" && t.athleteId && athleteIds.includes(t.athleteId) && !existingIds.has(t.id)
-        );
-        result = [...result, ...athleteTests];
+    const seenIds = new Set<number>();
+
+    if (u.isScopeAdmin) {
+      // Team Admin / Super Admin: see all tests in their active team
+      const all = await storage.listAllTestsForTeam(teamId);
+      for (const t of all) { result.push(t); seenIds.add(t.id); }
+    } else {
+      // Non-raceski tests: only visible when 'tests' permission is granted
+      // Retroactive: losing permission removes access to all previous tests too
+      if (u.permissions.tests !== "none") {
+        const scopedTests = await storage.listTests(u.groupScope, false, teamId);
+        for (const t of scopedTests) {
+          if (!seenIds.has(t.id) && (t as any).testSkiSource !== "raceskis") {
+            result.push(t);
+            seenIds.add(t.id);
+          }
+        }
+      }
+
+      // Raceski tests: only visible when 'raceskis' permission is granted AND user has athlete access
+      if (u.permissions.raceskis !== "none") {
+        const athleteIds = await storage.listAthleteIdsForUser(u.id);
+        if (athleteIds.length > 0) {
+          const allTeamTests = await storage.listAllTestsForTeam(teamId);
+          for (const t of allTeamTests) {
+            if (!seenIds.has(t.id) && (t as any).testSkiSource === "raceskis" &&
+                (t as any).athleteId && athleteIds.includes((t as any).athleteId)) {
+              result.push(t);
+              seenIds.add(t.id);
+            }
+          }
+        }
+      }
+
+      // Filter out grinding tests if no grinding permission
+      if (u.permissions.grinding === "none") {
+        result = result.filter((t: any) => t.testType !== "Grind");
       }
     }
-    if (result.length === 0 && !hasTestsPerm && !hasRaceskisPerm) {
-      return res.status(403).json({ message: "No access" });
-    }
+
     const seriesIds = [...new Set(result.filter((t: any) => t.seriesId).map((t: any) => t.seriesId))];
     let seriesNameMap: Record<number, string> = {};
     if (seriesIds.length > 0) {
@@ -966,11 +1017,33 @@ export async function registerRoutes(
     const u = userInfo(req);
     const isBlind = req.user!.isBlindTester === 1;
     const teamId = getActiveTeamId(req);
-    if (u.permissions.tests === "none" && !u.isAdmin && !u.isTeamAdmin) {
-      return res.json([]);
-    }
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 10, 1), 50);
-    let allTests = await storage.listTests(u.groupScope, u.isScopeAdmin, teamId);
+
+    // Reuse the same access-control logic as GET /api/tests
+    let allTests: any[] = [];
+    const seenIds = new Set<number>();
+    if (u.isScopeAdmin) {
+      const all = await storage.listAllTestsForTeam(teamId);
+      for (const t of all) { allTests.push(t); seenIds.add(t.id); }
+    } else {
+      if (u.permissions.tests !== "none") {
+        const scopedTests = await storage.listTests(u.groupScope, false, teamId);
+        for (const t of scopedTests) {
+          if (!seenIds.has(t.id) && (t as any).testSkiSource !== "raceskis") { allTests.push(t); seenIds.add(t.id); }
+        }
+      }
+      if (u.permissions.raceskis !== "none") {
+        const athleteIds = await storage.listAthleteIdsForUser(u.id);
+        if (athleteIds.length > 0) {
+          const allTeamTests = await storage.listAllTestsForTeam(teamId);
+          for (const t of allTeamTests) {
+            if (!seenIds.has(t.id) && (t as any).testSkiSource === "raceskis" && (t as any).athleteId && athleteIds.includes((t as any).athleteId)) {
+              allTests.push(t); seenIds.add(t.id);
+            }
+          }
+        }
+      }
+    }
     if (u.permissions.grinding === "none") {
       allTests = allTests.filter((t: any) => t.testType !== "Grind");
     }
@@ -1032,13 +1105,23 @@ export async function registerRoutes(
     const test = await storage.getTest(id);
     if (!test) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
-    let hasAccess = userHasGroupAccess(u.groupScope, u.isScopeAdmin, test.groupScope) && u.permissions.tests !== "none";
-    if (!hasAccess && (test as any).testSkiSource === "raceskis" && (test as any).athleteId) {
-      hasAccess = await storage.hasAthleteAccess((test as any).athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    if (!verifyTeamOwnership(test, req)) return res.status(403).json({ message: "Forbidden" });
+    // Permissions are enforced retroactively — losing access removes all prior tests
+    let hasAccess = false;
+    if (u.isScopeAdmin) {
+      hasAccess = true;
+    } else if ((test as any).testSkiSource === "raceskis") {
+      // Raceski test: must have raceskis permission AND athlete access
+      if (u.permissions.raceskis !== "none" && (test as any).athleteId) {
+        hasAccess = await storage.hasAthleteAccess((test as any).athleteId, u.id, false, getActiveTeamId(req));
+      }
+    } else {
+      // Regular test: must have tests permission AND be in the same group
+      if (u.permissions.tests !== "none") {
+        hasAccess = userHasGroupAccess(u.groupScope, u.isScopeAdmin, test.groupScope);
+      }
     }
-    if (!hasAccess) {
-      return res.status(403).json({ message: "Forbidden" });
-    }
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     if ((test as any).testType === "Grind" && u.permissions.grinding === "none") {
       return res.status(403).json({ message: "Grinding access required" });
     }
@@ -1217,7 +1300,9 @@ export async function registerRoutes(
     if (!existing) return res.status(404).json({ message: "Not found" });
     if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
     const u = userInfo(req);
-    let hasAccess = userHasGroupAccess(u.groupScope, u.isScopeAdmin, existing.groupScope) && u.permissions.tests === "edit";
+    // Creator can always edit their own test
+    let hasAccess = (existing as any).createdById === u.id;
+    if (!hasAccess) hasAccess = userHasGroupAccess(u.groupScope, u.isScopeAdmin, existing.groupScope) && u.permissions.tests === "edit";
     if (!hasAccess && (existing as any).testSkiSource === "raceskis" && (existing as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((existing as any).athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
     }
@@ -1491,7 +1576,9 @@ export async function registerRoutes(
     if (!existing) return res.status(404).json({ message: "Not found" });
     if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
     const u = userInfo(req);
-    let hasAccess = userHasGroupAccess(u.groupScope, u.isScopeAdmin, existing.groupScope) && u.permissions.tests === "edit";
+    // Creator can always delete their own test
+    let hasAccess = (existing as any).createdById === u.id;
+    if (!hasAccess) hasAccess = userHasGroupAccess(u.groupScope, u.isScopeAdmin, existing.groupScope) && u.permissions.tests === "edit";
     if (!hasAccess && (existing as any).testSkiSource === "raceskis" && (existing as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((existing as any).athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
     }
@@ -1515,16 +1602,17 @@ export async function registerRoutes(
     const u = userInfo(req);
     const test = await storage.getTest(testId);
     if (!test) return res.status(404).json({ message: "Not found" });
-    const hasTestAccess = userHasGroupAccess(u.groupScope, u.isScopeAdmin, test.groupScope) && u.permissions.tests !== "none";
-    let hasAccess = hasTestAccess;
+    if (!verifyTeamOwnership(test, req)) return res.status(403).json({ message: "Forbidden" });
+    // Own tests always accessible
+    let hasAccess = (test as any).createdById === u.id;
+    if (!hasAccess) hasAccess = userHasGroupAccess(u.groupScope, u.isScopeAdmin, test.groupScope) && u.permissions.tests !== "none";
     if (!hasAccess && (test as any).testSkiSource === "raceskis" && (test as any).athleteId) {
       hasAccess = await storage.hasAthleteAccess((test as any).athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
     }
     if (!hasAccess) {
-      console.log(`[entries] DENIED user=${u.name} testId=${testId} testAccess=${hasTestAccess}`);
       return res.status(403).json({ message: "Forbidden" });
     }
-    if ((test as any).testType === "Grind" && u.permissions.grinding === "none") {
+    if ((test as any).testType === "Grind" && u.permissions.grinding === "none" && (test as any).createdById !== u.id) {
       return res.status(403).json({ message: "Grinding access required" });
     }
     const entries = await storage.listEntries(testId);
@@ -1638,6 +1726,63 @@ export async function registerRoutes(
     }
     const deleted = await storage.deleteUser(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
+  // --- Garmin Watch access per-user ---
+  app.put("/api/users/:id/garmin-watch", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const id = parseInt(req.params.id);
+    const { pool: p } = await import("./db");
+    const enabled = !!req.body.enabled;
+    await (p as any).query("UPDATE users SET garmin_watch = $1 WHERE id = $2", [enabled ? 1 : 0, id]);
+    res.json({ ok: true, garminWatch: enabled });
+  });
+
+  // --- Per-team permissions for multi-team users ---
+  app.get("/api/users/:id/team-permissions", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const userId = parseInt(req.params.id);
+    const { pool: p } = await import("./db");
+    const result = await (p as any).query(
+      "SELECT team_id, permissions FROM user_team_permissions WHERE user_id = $1",
+      [userId]
+    );
+    res.json(result.rows);
+  });
+
+  app.put("/api/users/:id/team-permissions/:teamId", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const userId = parseInt(req.params.id);
+    const teamId = parseInt(req.params.teamId);
+    const u = req.user!;
+    // Team admins can only manage users within their own team
+    if (u.isAdmin !== 1) {
+      if (teamId !== u.teamId) return res.status(403).json({ message: "Cannot manage permissions for other teams" });
+    }
+    let perms = sanitizePermissions(req.body.permissions);
+    if (u.isAdmin !== 1) {
+      perms = await enforceTeamAreas(perms, teamId);
+    }
+    const { pool: p } = await import("./db");
+    await (p as any).query(
+      `INSERT INTO user_team_permissions (user_id, team_id, permissions)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, team_id) DO UPDATE SET permissions = $3`,
+      [userId, teamId, JSON.stringify(perms)]
+    );
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/users/:id/team-permissions/:teamId", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const userId = parseInt(req.params.id);
+    const teamId = parseInt(req.params.teamId);
+    const { pool: p } = await import("./db");
+    await (p as any).query(
+      "DELETE FROM user_team_permissions WHERE user_id = $1 AND team_id = $2",
+      [userId, teamId]
+    );
     res.json({ ok: true });
   });
 
@@ -3045,8 +3190,28 @@ export async function registerRoutes(
     res.json({ pin });
   });
 
-  // Get active watch queue for current team (authenticated)
+  // Check if user has garmin_watch access (team feature enabled + per-user flag, or admin)
+  async function hasGarminWatchAccess(req: Request): Promise<boolean> {
+    const u = req.user!;
+    if (u.isAdmin === 1) return true;
+    // Check team feature gate
+    const teamId = getActiveTeamId(req);
+    try {
+      const team = await storage.getTeam(teamId);
+      if (team?.enabledAreas) {
+        const enabled: string[] = JSON.parse(team.enabledAreas as string);
+        if (!enabled.includes("garmin_watch")) return false;
+      }
+    } catch (_) {}
+    if (u.isTeamAdmin === 1) return true;
+    return !!u.garminWatch;
+  }
+
+  // Get active watch queue for current team (authenticated + garminWatch access)
   app.get("/api/watch/queue", requireAuth, async (req, res) => {
+    if (!(await hasGarminWatchAccess(req))) {
+      return res.status(403).json({ message: "Watch Queue access not granted" });
+    }
     const teamId = getActiveTeamId(req);
     const { pool } = await import("./db");
     const result = await (pool as any).query(
@@ -3056,8 +3221,11 @@ export async function registerRoutes(
     res.json(result.rows);
   });
 
-  // Get watch queue archive for current team (authenticated)
+  // Get watch queue archive for current team (authenticated + garminWatch access)
   app.get("/api/watch/queue/archive", requireAuth, async (req, res) => {
+    if (!(await hasGarminWatchAccess(req))) {
+      return res.status(403).json({ message: "Watch Queue access not granted" });
+    }
     const teamId = getActiveTeamId(req);
     const { pool } = await import("./db");
     const result = await (pool as any).query(
@@ -3067,8 +3235,11 @@ export async function registerRoutes(
     res.json(result.rows);
   });
 
-  // Add test to watch queue (authenticated)
+  // Add test to watch queue (authenticated + garminWatch access)
   app.post("/api/watch/queue", requireAuth, async (req, res) => {
+    if (!(await hasGarminWatchAccess(req))) {
+      return res.status(403).json({ message: "Watch Queue access not granted" });
+    }
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
     const { testId, seriesId, testName, seriesName } = req.body;
@@ -3122,6 +3293,7 @@ export async function registerRoutes(
 
   // Refresh (regenerate) session code for a queue item
   app.post("/api/watch/queue/:id/refresh-code", requireAuth, async (req, res) => {
+    if (!(await hasGarminWatchAccess(req))) return res.status(403).json({ message: "Watch Queue access not granted" });
     const teamId = getActiveTeamId(req);
     const u = userInfo(req);
     const id = parseInt(req.params.id);
@@ -3155,6 +3327,7 @@ export async function registerRoutes(
 
   // Remove from watch queue (authenticated)
   app.delete("/api/watch/queue/:id", requireAuth, async (req, res) => {
+    if (!(await hasGarminWatchAccess(req))) return res.status(403).json({ message: "Watch Queue access not granted" });
     const teamId = getActiveTeamId(req);
     const id = parseInt(req.params.id);
     const { pool } = await import("./db");
@@ -3164,6 +3337,7 @@ export async function registerRoutes(
 
   // Restore archived item back to active queue
   app.post("/api/watch/queue/:id/restore", requireAuth, async (req, res) => {
+    if (!(await hasGarminWatchAccess(req))) return res.status(403).json({ message: "Watch Queue access not granted" });
     const teamId = getActiveTeamId(req);
     const id = parseInt(req.params.id);
     const { pool } = await import("./db");

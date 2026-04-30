@@ -28,6 +28,7 @@ type User = {
   incognito?: boolean;
   stealth?: boolean;
   isBlindTester?: boolean;
+  garminWatch?: boolean;
   teamEnabledAreas?: string[] | null;
 };
 
@@ -65,6 +66,12 @@ export function useAuth() {
   const can = (area: keyof UserPermissions | string, level: PermissionLevel = "view"): boolean => {
     if (!user) return false;
     if (user.isAdmin) return true;
+    // garmin_watch: team feature + per-user flag required
+    if (area === "garmin_watch") {
+      if (user.teamEnabledAreas && !user.teamEnabledAreas.includes("garmin_watch")) return false;
+      if (user.isTeamAdmin) return true;
+      return !!user.garminWatch;
+    }
     if (user.teamEnabledAreas && !user.teamEnabledAreas.includes(area)) return false;
     if (user.isTeamAdmin) return true;
     if (!perms) return false;

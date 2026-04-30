@@ -43,6 +43,14 @@ class PinSetupDelegate extends WatchUi.BehaviorDelegate {
         return false;
     }
 
+    // MENU button: open Settings (vibration, key sounds) without needing a PIN
+    function onMenu() {
+        var settingsView = new SettingsView();
+        var settingsDelegate = new SettingsDelegate(settingsView, null);
+        WatchUi.switchToView(settingsView, settingsDelegate, WatchUi.SLIDE_LEFT);
+        return true;
+    }
+
     function verifyPin() {
         view.isVerifying = true;
         view.statusText = "Verifying...";

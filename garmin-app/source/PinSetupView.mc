@@ -63,9 +63,11 @@ class PinSetupView extends WatchUi.View {
         }
 
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.72, Graphics.FONT_XTINY, "UP/DN: change digit", Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(cx, h * 0.80, Graphics.FONT_XTINY, "SELECT: next / confirm", Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(cx, h * 0.88, Graphics.FONT_XTINY, "BACK: prev digit", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.68, Graphics.FONT_XTINY, "UP/DN: change digit", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.76, Graphics.FONT_XTINY, "SELECT: next / confirm", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.84, Graphics.FONT_XTINY, "BACK: prev digit", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, h * 0.92, Graphics.FONT_XTINY, "MENU: settings", Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     function getPin() {

@@ -49,12 +49,10 @@ class MainMenuDelegate extends WatchUi.BehaviorDelegate {
                 WatchUi.switchToView(archView, archDelegate, WatchUi.SLIDE_LEFT);
                 break;
             case 3:
-                // Settings — clear PIN and go to setup
-                Storage.deleteValue("teamPin");
-                Storage.deleteValue("teamName");
-                var setupView = new PinSetupView();
-                var setupDelegate = new PinSetupDelegate(setupView);
-                WatchUi.switchToView(setupView, setupDelegate, WatchUi.SLIDE_LEFT);
+                // Settings screen (vibration, sounds, change PIN)
+                var settingsView = new SettingsView();
+                var settingsDelegate = new SettingsDelegate(settingsView, pin);
+                WatchUi.switchToView(settingsView, settingsDelegate, WatchUi.SLIDE_LEFT);
                 break;
         }
         return true;

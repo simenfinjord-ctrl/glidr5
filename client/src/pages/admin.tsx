@@ -7,7 +7,7 @@ import {
   Plus, Pencil, Trash2, KeyRound, Check, X, Clock, Download, EyeOff,
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle,
-  HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch,
+  HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown,
 } from "lucide-react";
 import {
   PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS,
@@ -40,6 +40,7 @@ type ApiUser = {
   teamId: number;
   permissions: string;
   isActive: number;
+  garminWatch: number;
 };
 
 type ApiTeam = {
@@ -454,15 +455,130 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
   );
 }
 
+function TeamPermRow({
+  userId, team, existingPerms, allTeams, isExpanded, onToggle, onSaved, onReset,
+}: {
+  userId: number;
+  team: ApiTeam;
+  existingPerms: string | null;
+  allTeams: ApiTeam[];
+  isExpanded: boolean;
+  onToggle: () => void;
+  onSaved: () => void;
+  onReset: () => void;
+}) {
+  const { toast } = useToast();
+  const { isSuperAdmin } = useAuth();
+  const [localPerms, setLocalPerms] = useState<UserPermissions>(
+    existingPerms ? parsePermissions(existingPerms) : { ...DEFAULT_PERMISSIONS }
+  );
+
+  const saveTeamPermsMutation = useMutation({
+    mutationFn: async (perms: UserPermissions) => {
+      const res = await apiRequest("PUT", `/api/users/${userId}/team-permissions/${team.id}`, { permissions: JSON.stringify(perms) });
+      return res.json();
+    },
+    onSuccess: () => { onSaved(); toast({ title: `Permissions saved for ${team.name}` }); },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const resetTeamPermsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", `/api/users/${userId}/team-permissions/${team.id}`);
+      return res.json();
+    },
+    onSuccess: () => { onReset(); toast({ title: `Reset to global permissions for ${team.name}` }); },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="rounded-lg border border-border overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-3 py-2 bg-muted/30 hover:bg-muted/60 transition-colors text-left"
+      >
+        <span className="text-xs font-medium">{team.name}</span>
+        <div className="flex items-center gap-2">
+          {existingPerms && (
+            <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full">Custom</span>
+          )}
+          <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-180")} />
+        </div>
+      </button>
+      {isExpanded && (
+        <div className="p-3 space-y-3 border-t border-border">
+          <p className="text-[11px] text-muted-foreground">
+            {existingPerms ? "Custom permissions active for this team." : "Using global permissions. Save to create team-specific override."}
+          </p>
+          <PermissionsMatrix
+            value={localPerms}
+            onChange={setLocalPerms}
+            testIdPrefix={`team-perm-${team.id}`}
+            disabledAreas={getTeamDisabledAreas(allTeams, team.id, isSuperAdmin)}
+          />
+          <div className="flex items-center justify-between pt-1">
+            {existingPerms && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => resetTeamPermsMutation.mutate()}
+                disabled={resetTeamPermsMutation.isPending}
+              >
+                Reset to global
+              </Button>
+            )}
+            <div className="ml-auto">
+              <Button
+                type="button"
+                size="sm"
+                className="text-xs"
+                onClick={() => saveTeamPermsMutation.mutate(localPerms)}
+                disabled={saveTeamPermsMutation.isPending}
+              >
+                Save for {team.name}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDone: () => void; allGroups: ApiGroup[]; teams: ApiTeam[] }) {
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
   const [selectedTeamId, setSelectedTeamId] = useState(user.teamId);
+  const [garminWatchOn, setGarminWatchOn] = useState(!!user.garminWatch);
+  const [expandedTeamPerms, setExpandedTeamPerms] = useState<number | null>(null);
+
   const { data: userTeamMemberships = [] } = useQuery<{ id: number; userId: number; teamId: number }[]>({
     queryKey: [`/api/users/${user.id}/teams`],
     enabled: isSuperAdmin && teams.length > 1,
   });
   const memberTeamIds = userTeamMemberships.map((m) => m.teamId);
+
+  // Per-team permissions for multi-team users
+  const { data: teamPermsData = [], refetch: refetchTeamPerms } = useQuery<{ team_id: number; permissions: string }[]>({
+    queryKey: [`/api/users/${user.id}/team-permissions`],
+    enabled: isSuperAdmin && memberTeamIds.length > 0,
+  });
+
+  const garminWatchMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const res = await apiRequest("PUT", `/api/users/${user.id}/garmin-watch`, { enabled });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setGarminWatchOn(data.garminWatch);
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: data.garminWatch ? "Watch Queue access granted" : "Watch Queue access removed" });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
 
   const addTeamMutation = useMutation({
     mutationFn: async (teamId: number) => {
@@ -641,6 +757,72 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
             </div>
           </FormItem>
         )} />
+        {/* Garmin Watch Queue access toggle */}
+        {(() => {
+          const teamHasWatch = (() => {
+            const t = teams.find((t) => t.id === selectedTeamId);
+            if (!t || !t.enabledAreas) return false;
+            try { return JSON.parse(t.enabledAreas).includes("garmin_watch"); } catch { return false; }
+          })();
+          if (!teamHasWatch && !isSuperAdmin) return null;
+          return (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Watch Queue Access</label>
+              <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+                <div>
+                  <div className="text-sm font-medium flex items-center gap-1.5">
+                    <Watch className="h-4 w-4 text-sky-500" />
+                    Garmin Watch Queue
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    {garminWatchOn ? "User can access Watch Queue" : "User cannot access Watch Queue"}
+                    {!teamHasWatch && <span className="ml-1 text-amber-600">(team feature not enabled)</span>}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => garminWatchMutation.mutate(!garminWatchOn)}
+                  disabled={garminWatchMutation.isPending}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none ${garminWatchOn ? "bg-sky-500" : "bg-muted-foreground/30"}`}
+                  role="switch"
+                  aria-checked={garminWatchOn}
+                  data-testid={`toggle-garmin-watch-${user.id}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${garminWatchOn ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Per-team permissions for multi-team users */}
+        {isSuperAdmin && memberTeamIds.length > 0 && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Per-team Permissions</label>
+            <p className="text-[11px] text-muted-foreground">Override permissions for specific teams this user belongs to.</p>
+            <div className="space-y-2">
+              {teams
+                .filter((t) => memberTeamIds.includes(t.id))
+                .map((t) => {
+                  const existingPerms = teamPermsData.find((p) => p.team_id === t.id);
+                  return (
+                    <TeamPermRow
+                      key={t.id}
+                      userId={user.id}
+                      team={t}
+                      existingPerms={existingPerms?.permissions ?? null}
+                      allTeams={teams}
+                      isExpanded={expandedTeamPerms === t.id}
+                      onToggle={() => setExpandedTeamPerms(expandedTeamPerms === t.id ? null : t.id)}
+                      onSaved={refetchTeamPerms}
+                      onReset={() => { refetchTeamPerms(); setExpandedTeamPerms(null); }}
+                    />
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
         <FormField control={form.control} name="isActive" render={({ field }) => (
           <FormItem>
             <FormLabel>Status</FormLabel>

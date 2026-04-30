@@ -33,6 +33,7 @@ declare global {
       permissions: string;
       isActive: number;
       isBlindTester: number;
+      garminWatch: number;
       password: string;
     }
   }
@@ -155,7 +156,8 @@ export async function setupAuth(app: Express) {
           } catch (_) {}
         }
         const { password, ...safe } = user;
-        const perms = parsePermissions(safe.permissions, !!safe.isAdmin, (safe as any).isTeamAdmin === 1);
+        const effectivePermsStr = (req.session as any)?.effectivePermissions ?? safe.permissions;
+        const perms = parsePermissions(effectivePermsStr, !!safe.isAdmin, (safe as any).isTeamAdmin === 1);
         let teamEnabledAreas: string[] | null = null;
         const effectiveTeamId = safe.activeTeamId ?? safe.teamId;
         if (effectiveTeamId && safe.isAdmin !== 1) {
@@ -167,7 +169,7 @@ export async function setupAuth(app: Express) {
           } catch {}
         }
         const isStealth = !!(req.session as any)?.stealth;
-        return res.json({ ...safe, parsedPermissions: perms, incognito: isIncognito, stealth: isStealth, isBlindTester: !!safe.isBlindTester, teamEnabledAreas });
+        return res.json({ ...safe, parsedPermissions: perms, incognito: isIncognito, stealth: isStealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas });
       });
     })(req, res, next);
   });
@@ -187,7 +189,8 @@ export async function setupAuth(app: Express) {
       return res.status(401).json({ message: "Not authenticated" });
     }
     const { password, ...safe } = req.user;
-    const perms = parsePermissions(safe.permissions, !!safe.isAdmin, safe.isTeamAdmin === 1);
+    const effectivePermsStr = (req.session as any)?.effectivePermissions ?? safe.permissions;
+    const perms = parsePermissions(effectivePermsStr, !!safe.isAdmin, safe.isTeamAdmin === 1);
     const incognito = !!(req.session as any)?.incognito;
     const stealth = !!(req.session as any)?.stealth;
     let teamEnabledAreas: string[] | null = null;
@@ -200,7 +203,7 @@ export async function setupAuth(app: Express) {
         }
       } catch {}
     }
-    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, teamEnabledAreas });
+    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas });
   });
 
   app.post("/api/auth/incognito", (req, res) => {

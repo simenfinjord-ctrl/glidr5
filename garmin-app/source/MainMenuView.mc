@@ -13,7 +13,7 @@ class MainMenuView extends WatchUi.View {
         ["From List", "Tests queued from app"],
         ["From Code", "Enter 4-digit session code"],
         ["Archive", "Last 10 completed"],
-        ["Settings", "Change team PIN"],
+        ["Settings", "Vibration, sounds, PIN"],
     ];
 
     function initialize(pin) {

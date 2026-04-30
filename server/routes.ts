@@ -3070,7 +3070,7 @@ export async function registerRoutes(
       try {
         const entriesRows = await db.select().from(testEntries).where(eq(testEntries.testId, Number(testId)));
         if (entriesRows.length >= 2) {
-          const skiPairs = entriesRows.map((e) => e.skiNumber);
+          const skiPairs = entriesRows.map((e) => e.skiNumber).sort((a, b) => a - b);
           // Use pair labels from the test ski series (same as Code path)
           const resolvedSeriesId = seriesId || await getTestSeriesId(Number(testId));
           const skiLabels = await getPairLabelsForSeries(resolvedSeriesId);
@@ -3212,7 +3212,7 @@ export async function registerRoutes(
       try {
         const entriesRows = await db.select().from(testEntries).where(eq(testEntries.testId, Number(item.test_id)));
         if (entriesRows.length >= 2) {
-          const skiPairs = entriesRows.map((e) => e.skiNumber);
+          const skiPairs = entriesRows.map((e) => e.skiNumber).sort((a, b) => a - b);
           const newCode = await generateSessionCode();
           const session: WatchSession = {
             code: newCode,

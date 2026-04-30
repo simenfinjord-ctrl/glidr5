@@ -189,9 +189,7 @@ export default function Dashboard() {
               {activeQueue.slice(0, 4).map((item) => (
                 <div key={item.id} className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs">
                   <span className="font-medium text-foreground truncate">{item.test_name || item.series_name || `Test #${item.id}`}</span>
-                  {item.session_code && (
-                    <span className="ml-2 font-mono font-bold text-sky-600 tracking-widest shrink-0">{item.session_code}</span>
-                  )}
+                  <span className="ml-2 text-muted-foreground shrink-0">{item.added_by_name}</span>
                 </div>
               ))}
               {activeQueue.length > 4 && (

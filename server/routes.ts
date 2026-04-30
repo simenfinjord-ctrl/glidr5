@@ -3103,6 +3103,40 @@ export async function registerRoutes(
     res.json(result.rows[0]);
   });
 
+  // Refresh (regenerate) session code for a queue item
+  app.post("/api/watch/queue/:id/refresh-code", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const itemResult = await (pool as any).query(
+      `SELECT * FROM watch_queue WHERE id = $1 AND team_id = $2 AND status = 'active'`, [id, teamId]
+    );
+    const item = itemResult.rows[0];
+    if (!item) return res.status(404).json({ message: "Queue item not found" });
+    if (!item.test_id) return res.status(400).json({ message: "No test associated" });
+
+    // Delete old session if exists
+    if (item.session_code) await deleteWatchSession(item.session_code);
+
+    const entriesRows = await db.select().from(testEntries).where(eq(testEntries.testId, Number(item.test_id)));
+    if (entriesRows.length < 2) return res.status(400).json({ message: "Not enough entries" });
+
+    const skiPairs = entriesRows.map((e) => e.skiNumber).sort((a, b) => a - b);
+    const resolvedSeriesId = item.series_id || await getTestSeriesId(item.test_id);
+    const skiLabels = await getPairLabelsForSeries(resolvedSeriesId);
+    const newCode = await generateSessionCode();
+    const session: WatchSession = {
+      code: newCode, skiPairs, skiLabels,
+      bracket: watchInitBracket(skiPairs),
+      createdAt: Date.now(), userId: u.id, userName: u.name,
+      testId: Number(item.test_id), testInfo: null, teamId,
+    };
+    await saveWatchSession(session);
+    await (pool as any).query(`UPDATE watch_queue SET session_code = $1 WHERE id = $2`, [newCode, id]);
+    res.json({ code: newCode });
+  });
+
   // Remove from watch queue (authenticated)
   app.delete("/api/watch/queue/:id", requireAuth, async (req, res) => {
     const teamId = getActiveTeamId(req);

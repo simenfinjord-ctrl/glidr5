@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Watch, Trash2, RotateCcw, RefreshCw, Eye, Archive, List } from "lucide-react";
+import { Watch, Trash2, RotateCcw, RefreshCw, Eye, Archive, List, Copy, Check } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +24,52 @@ type QueueItem = {
 
 function displayName(item: QueueItem): string {
   return item.test_name || item.series_name || `Test #${item.test_id ?? item.id}`;
+}
+
+function SessionCode({ item }: { item: QueueItem }) {
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
+
+  const refreshMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/watch/queue/${item.id}/refresh-code`).then(r => r.json()),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/watch/queue"] });
+      toast({ title: "New code generated", description: `New code: ${data.code}` });
+    },
+    onError: () => toast({ title: "Error", description: "Could not refresh code.", variant: "destructive" }),
+  });
+
+  const copy = async (code: string) => {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (!item.session_code) {
+    return (
+      <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5"
+        onClick={() => refreshMutation.mutate()} disabled={refreshMutation.isPending}>
+        <RefreshCw className={cn("h-3 w-3", refreshMutation.isPending && "animate-spin")} />
+        Get code
+      </Button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <span className="font-mono font-bold text-base tracking-[0.25em] text-sky-600 select-all">
+        {item.session_code}
+      </span>
+      <Button variant="ghost" size="icon" className="h-6 w-6" title="Copy code"
+        onClick={() => copy(item.session_code!)}>
+        {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+      </Button>
+      <Button variant="ghost" size="icon" className="h-6 w-6" title="Refresh code"
+        onClick={() => refreshMutation.mutate()} disabled={refreshMutation.isPending}>
+        <RefreshCw className={cn("h-3 w-3", refreshMutation.isPending && "animate-spin")} />
+      </Button>
+    </div>
+  );
 }
 
 export default function WatchQueue() {
@@ -177,31 +223,24 @@ export default function WatchQueue() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold truncate">{displayName(item)}</p>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-xs text-muted-foreground">
-                          Added by {item.added_by_name}
-                        </span>
-                        <span className="text-xs text-muted-foreground">·</span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(item.added_at).toLocaleDateString()}
-                        </span>
-                        {item.session_code && tab === "active" && (
-                          <>
-                            <span className="text-xs text-muted-foreground">·</span>
-                            <span className="text-xs font-mono font-bold text-sky-600 tracking-widest">
-                              {item.session_code}
-                            </span>
-                          </>
-                        )}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-muted-foreground">
+                        <span>Added by {item.added_by_name}</span>
+                        <span>·</span>
+                        <span>{new Date(item.added_at).toLocaleDateString()}</span>
                         {item.completed_at && (
                           <>
-                            <span className="text-xs text-muted-foreground">·</span>
-                            <span className="text-xs text-emerald-600 font-medium">
+                            <span>·</span>
+                            <span className="text-emerald-600 font-medium">
                               Done {new Date(item.completed_at).toLocaleDateString()}
                             </span>
                           </>
                         )}
                       </div>
+                      {tab === "active" && (
+                        <div className="mt-2">
+                          <SessionCode item={item} />
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       {item.test_id && (

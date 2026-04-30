@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { User, KeyRound, Mail, Users, Shield } from "lucide-react";
+import { User, KeyRound, Mail, Users, Shield, Smartphone } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
+import { useMobileNav } from "@/components/mobile-nav";
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -26,6 +27,14 @@ export default function Profile() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  const mobileNavStore = useMobileNav();
+  const [mobileNavOn, setMobileNavOn] = useState(false);
+  useEffect(() => { setMobileNavOn(mobileNavStore.get()); }, []);
+  const toggleMobileNav = () => {
+    const next = !mobileNavOn;
+    setMobileNavOn(next);
+    mobileNavStore.set(next);
+  };
 
   const form = useForm<z.infer<typeof passwordSchema>>({
     resolver: zodResolver(passwordSchema),
@@ -98,6 +107,32 @@ export default function Profile() {
                 <div className="text-sm font-medium">{user.isAdmin ? "Admin" : "Member"}</div>
               </div>
             </div>
+          </div>
+        </Card>
+
+        <Card className="fs-card rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 rounded-xl bg-sky-50 flex items-center justify-center">
+              <Smartphone className="h-5 w-5 text-sky-600" />
+            </div>
+            <div>
+              <div className="text-base font-semibold text-foreground">Display preferences</div>
+              <div className="text-xs text-muted-foreground">Appearance settings for this device</div>
+            </div>
+          </div>
+          <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-3">
+            <div>
+              <div className="text-sm font-medium">Mobile navigation</div>
+              <div className="text-xs text-muted-foreground">Show a bottom tab bar on small screens</div>
+            </div>
+            <button
+              onClick={toggleMobileNav}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none ${mobileNavOn ? "bg-primary" : "bg-muted-foreground/30"}`}
+              role="switch"
+              aria-checked={mobileNavOn}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${mobileNavOn ? "translate-x-6" : "translate-x-1"}`} />
+            </button>
           </div>
         </Card>
 

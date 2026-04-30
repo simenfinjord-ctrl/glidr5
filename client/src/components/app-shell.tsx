@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -35,6 +35,7 @@ import { useAuth, type UserPermissions } from "@/lib/auth";
 import { useOffline } from "@/lib/offline-context";
 import { useTheme } from "@/lib/theme";
 import { AppLink } from "@/components/app-link";
+import { MobileNav, useMobileNav } from "@/components/mobile-nav";
 
 type NavItem = {
   href: string;
@@ -191,6 +192,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isViewingOwnTeam = !isSuperAdmin || activeTeamId === user?.teamId;
 
   const hasGarminWatch = can("garmin_watch");
+  const mobileNavStore = useMobileNav();
+  const [mobileNavEnabled, setMobileNavEnabled] = useState(false);
+  useEffect(() => { setMobileNavEnabled(mobileNavStore.get()); }, []);
 
   const { data: watchQueue = [] } = useQuery<{ id: number; status: string }[]>({
     queryKey: ["/api/watch/queue"],
@@ -401,6 +405,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 py-6">
         <div className="fs-card rounded-2xl p-4 sm:p-6">{children}</div>
       </main>
+
+      {mobileNavEnabled && (
+        <div className="sm:hidden">
+          <MobileNav watchQueueCount={watchQueueCount} />
+        </div>
+      )}
 
       <footer className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 pb-8">
         <div className="mb-3 h-px bg-border" />

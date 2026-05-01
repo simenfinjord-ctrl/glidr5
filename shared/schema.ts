@@ -543,6 +543,7 @@ export const watchSessions = pgTable("watch_sessions", {
   testId: integer("test_id"),
   userId: integer("user_id").notNull(),
   userName: text("user_name").notNull(),
+  operatorName: text("operator_name"),   // Person logged in on the watch device
   teamId: integer("team_id"),
   createdAt: text("created_at").notNull(),
   expiresAt: text("expires_at").notNull(),

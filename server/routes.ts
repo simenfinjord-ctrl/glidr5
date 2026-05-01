@@ -261,6 +261,7 @@ export async function registerRoutes(
         END IF;
       END $$;
       ALTER TABLE user_team_permissions ADD COLUMN IF NOT EXISTS group_scope TEXT NOT NULL DEFAULT '';
+      ALTER TABLE watch_sessions ADD COLUMN IF NOT EXISTS operator_name TEXT;
     `);
   }
 
@@ -1608,6 +1609,7 @@ export async function registerRoutes(
             testId: watchSessions.testId,
             userId: watchSessions.userId,
             userName: watchSessions.userName,
+            operatorName: watchSessions.operatorName,
             teamId: watchSessions.teamId,
             bracket: watchSessions.bracket,
             createdAt: watchSessions.createdAt,
@@ -1665,6 +1667,7 @@ export async function registerRoutes(
                 testId: ws.testId,
                 userId: ws.userId,
                 userName: ws.userName,
+                operatorName: ws.operatorName ?? null,
                 testDate: t.date,
                 testLocation: t.location ?? "",
                 testName: t.testName,
@@ -1697,6 +1700,7 @@ export async function registerRoutes(
             testId: wr.testId!,
             userId: wr.userId,
             userName: wr.userName,
+            operatorName: (wr as any).operatorName ?? null,
             testDate: wr.testDate,
             testLocation: wr.testLocation ?? "",
             testName: wr.testName,
@@ -2894,7 +2898,8 @@ export async function registerRoutes(
     bracket: WatchHeat[][];
     createdAt: number;
     userId: number;
-    userName: string;
+    userName: string;         // test creator / person who added to queue
+    operatorName?: string;    // person logged in on the watch device
     testId: number | null;
     testInfo: { date: string; location: string; testType: string } | null;
     teamId: number;
@@ -2926,6 +2931,7 @@ export async function registerRoutes(
           createdAt: new Date(row.createdAt).getTime(),
           userId: row.userId,
           userName: row.userName,
+          operatorName: (row as any).operatorName ?? undefined,
           testId: row.testId ?? null,
           testInfo: null,
           teamId: row.teamId ?? 0,
@@ -2950,12 +2956,13 @@ export async function registerRoutes(
         testId: session.testId ?? null,
         userId: session.userId,
         userName: session.userName,
+        operatorName: session.operatorName ?? null,
         teamId: session.teamId ?? null,
         createdAt: new Date(session.createdAt).toISOString(),
         expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
       }).onConflictDoUpdate({
         target: watchSessions.code,
-        set: { bracket: JSON.stringify(session.bracket), skiLabels: labelsJson },
+        set: { bracket: JSON.stringify(session.bracket), skiLabels: labelsJson, operatorName: session.operatorName ?? null },
       });
     } catch (_) {}
   }
@@ -3559,6 +3566,77 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  // ── Watch device authentication: personal code + team PIN ────────────────
+  // Called by the Garmin/watch app during login. No session auth required.
+  app.post("/api/watch/auth", async (req, res) => {
+    const { userCode, teamPin } = req.body ?? {};
+    if (!userCode || !teamPin) {
+      return res.status(400).json({ message: "userCode and teamPin are required" });
+    }
+    if (!/^\d{4}$/.test(String(userCode))) {
+      return res.status(400).json({ message: "Personal ID must be a 4-digit code" });
+    }
+    const { pool } = await import("./db");
+
+    // Resolve user by personal watch code
+    const userRow = await (pool as any).query(
+      "SELECT id, name, is_admin, is_team_admin, garmin_watch, team_id FROM users WHERE watch_code = $1 AND is_active = 1",
+      [String(userCode)]
+    );
+    if (!userRow.rows[0]) {
+      return res.status(404).json({ message: "Personal ID not found" });
+    }
+    const watchUser = userRow.rows[0];
+
+    // Resolve team by PIN
+    const teamRow = await (pool as any).query(
+      "SELECT id, name, enabled_areas FROM teams WHERE watch_pin = $1",
+      [String(teamPin)]
+    );
+    if (!teamRow.rows[0]) {
+      return res.status(404).json({ message: "Team ID not found" });
+    }
+    const team = teamRow.rows[0];
+
+    // Check team-level garmin_watch feature gate
+    if (watchUser.is_admin !== 1) {
+      let enabledAreas: string[] = [];
+      try { enabledAreas = JSON.parse(team.enabled_areas ?? "[]"); } catch (_) {}
+      if (!enabledAreas.includes("garmin_watch")) {
+        return res.status(403).json({ message: "Watch access is not enabled for this team" });
+      }
+    }
+
+    // Check user has access to this team (primary team OR member of team via user_teams)
+    if (watchUser.is_admin !== 1) {
+      const teamId: number = team.id;
+      const isOwnTeam = watchUser.team_id === teamId;
+      let isMember = isOwnTeam;
+      if (!isMember) {
+        const memberRow = await (pool as any).query(
+          "SELECT id FROM user_teams WHERE user_id = $1 AND team_id = $2",
+          [watchUser.id, teamId]
+        );
+        isMember = memberRow.rows.length > 0;
+      }
+      if (!isMember) {
+        return res.status(403).json({ message: "You don't have access to this team" });
+      }
+
+      // Check per-user garmin_watch flag (team admins always get access)
+      if (watchUser.is_team_admin !== 1 && !watchUser.garmin_watch) {
+        return res.status(403).json({ message: "Watch Queue access not granted for your account" });
+      }
+    }
+
+    res.json({
+      userId: watchUser.id,
+      userName: watchUser.name,
+      teamId: team.id,
+      teamName: team.name,
+    });
+  });
+
   // ── Public watch API (authenticated by team watch PIN) ────────────────────
 
   // Resolve PIN → team (used by Garmin app)
@@ -3626,15 +3704,28 @@ export async function registerRoutes(
     const skiLabels = await getSkiLabelsForTest(item.test_id);
     const labelsJson = JSON.stringify(skiLabels);
 
+    // Resolve operator name from personal watch code if provided
+    const userCode = req.body?.userCode ?? req.query.userCode;
+    let resolvedOperatorName: string | undefined;
+    if (userCode && /^\d{4}$/.test(String(userCode))) {
+      try {
+        const opRow = await (pool as any).query(
+          "SELECT name FROM users WHERE watch_code = $1 AND is_active = 1", [String(userCode)]
+        );
+        if (opRow.rows[0]) resolvedOperatorName = opRow.rows[0].name;
+      } catch (_) {}
+    }
+
     // 1. Use the stored session code if it's still valid
     if (item.session_code) {
       const existingSession = await getWatchSession(item.session_code);
       if (existingSession) {
-        // Always sync skiLabels from series pair labels (ensures fresh/correct labels)
+        // Always sync skiLabels; also update operatorName if watch user logged in
         existingSession.skiLabels = skiLabels;
+        if (resolvedOperatorName) existingSession.operatorName = resolvedOperatorName;
         watchSessionsMemory.set(existingSession.code, existingSession);
         await db.update(watchSessions)
-          .set({ skiLabels: labelsJson })
+          .set({ skiLabels: labelsJson, ...(resolvedOperatorName ? { operatorName: resolvedOperatorName } : {}) })
           .where(eq(watchSessions.code, existingSession.code))
           .catch(() => {});
         return res.json({ code: item.session_code, testName: item.test_name, seriesName: item.series_name, queueItemId: item.id });
@@ -3648,17 +3739,6 @@ export async function registerRoutes(
         if (entriesRows.length >= 2) {
           const skiPairs = entriesRows.map((e) => e.skiNumber).sort((a, b) => a - b);
           const newCode = await generateSessionCode();
-          // Resolve operator name from personal watch code if provided
-          let operatorName: string = item.added_by_name;
-          const userCode = req.body?.userCode ?? req.query.userCode;
-          if (userCode && /^\d{4}$/.test(String(userCode))) {
-            try {
-              const opRow = await (pool as any).query(
-                "SELECT name FROM users WHERE watch_code = $1 AND is_active = 1", [String(userCode)]
-              );
-              if (opRow.rows[0]) operatorName = opRow.rows[0].name;
-            } catch (_) {}
-          }
           const session: WatchSession = {
             code: newCode,
             skiPairs,
@@ -3666,7 +3746,8 @@ export async function registerRoutes(
             bracket: watchInitBracket(skiPairs),
             createdAt: Date.now(),
             userId: 0,
-            userName: operatorName,
+            userName: item.added_by_name,  // always the person who added to queue
+            operatorName: resolvedOperatorName, // person logged in on the watch device
             testId: Number(item.test_id),
             testInfo: null,
             teamId,

@@ -19,6 +19,7 @@ type LiveRunsheet = {
   testId: number;
   userId: number;
   userName: string;
+  operatorName?: string | null;
   testDate: string;
   testLocation: string;
   testName: string | null;
@@ -146,7 +147,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
             {session.isWatchSession && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400">
                 <Watch className="h-3 w-3" />
-                Watch
+                {session.operatorName ? `Watch-${session.operatorName}` : "Watch"}
               </span>
             )}
           </div>

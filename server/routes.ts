@@ -242,9 +242,17 @@ export async function registerRoutes(
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
         team_id INTEGER NOT NULL,
-        permissions TEXT NOT NULL,
-        UNIQUE(user_id, team_id)
+        permissions TEXT NOT NULL
       );
+      ALTER TABLE user_team_permissions ADD COLUMN IF NOT EXISTS permissions TEXT;
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'utp_user_team_unique'
+        ) THEN
+          ALTER TABLE user_team_permissions ADD CONSTRAINT utp_user_team_unique UNIQUE (user_id, team_id);
+        END IF;
+      END $$;
     `);
   }
 
@@ -437,6 +445,13 @@ export async function registerRoutes(
     const userId = parseInt(req.params.id);
     const teamId = parseInt(req.params.teamId);
     await storage.removeUserFromTeam(userId, teamId);
+    // Reset activeTeamId if the user was currently viewing the removed team
+    // This prevents them from being stuck on a team they no longer have access to
+    const { pool: p2 } = await import("./db");
+    await (p2 as any).query(
+      `UPDATE users SET active_team_id = NULL WHERE id = $1 AND active_team_id = $2`,
+      [userId, teamId]
+    );
     res.json({ ok: true });
   });
 
@@ -3468,7 +3483,7 @@ export async function registerRoutes(
 
   // Refresh (regenerate) session code for a queue item
   app.post("/api/watch/queue/:id/refresh-code", requireAuth, async (req, res) => {
-    if (!(await hasGarminWatchAccess(req))) return res.status(403).json({ message: "Watch Queue access not granted" });
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Team admin only" });
     const teamId = getActiveTeamId(req);
     const u = userInfo(req);
     const id = parseInt(req.params.id);

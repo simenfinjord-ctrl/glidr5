@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 type QueueItem = {
@@ -26,7 +27,7 @@ function displayName(item: QueueItem): string {
   return item.test_name || item.series_name || `Test #${item.test_id ?? item.id}`;
 }
 
-function SessionCode({ item }: { item: QueueItem }) {
+function SessionCode({ item, isAdmin }: { item: QueueItem; isAdmin: boolean }) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
@@ -46,6 +47,7 @@ function SessionCode({ item }: { item: QueueItem }) {
   };
 
   if (!item.session_code) {
+    if (!isAdmin) return null;
     return (
       <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5"
         onClick={() => refreshMutation.mutate()} disabled={refreshMutation.isPending}>
@@ -64,16 +66,20 @@ function SessionCode({ item }: { item: QueueItem }) {
         onClick={() => copy(item.session_code!)}>
         {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
       </Button>
-      <Button variant="ghost" size="icon" className="h-6 w-6" title="Refresh code"
-        onClick={() => refreshMutation.mutate()} disabled={refreshMutation.isPending}>
-        <RefreshCw className={cn("h-3 w-3", refreshMutation.isPending && "animate-spin")} />
-      </Button>
+      {isAdmin && (
+        <Button variant="ghost" size="icon" className="h-6 w-6" title="Refresh code"
+          onClick={() => refreshMutation.mutate()} disabled={refreshMutation.isPending}>
+          <RefreshCw className={cn("h-3 w-3", refreshMutation.isPending && "animate-spin")} />
+        </Button>
+      )}
     </div>
   );
 }
 
 export default function WatchQueue() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isAdmin = !!(user?.isAdmin || user?.isTeamAdmin);
   const [tab, setTab] = useState<"active" | "archive">("active");
 
   const { data: queue = [], isLoading: queueLoading } = useQuery<QueueItem[]>({
@@ -146,16 +152,18 @@ export default function WatchQueue() {
                     Enter this code when setting up the Glidr watch app
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => regenPinMutation.mutate()}
-                  disabled={regenPinMutation.isPending}
-                  className="shrink-0"
-                >
-                  <RefreshCw className={cn("h-4 w-4 mr-1", regenPinMutation.isPending && "animate-spin")} />
-                  New PIN
-                </Button>
+                {isAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => regenPinMutation.mutate()}
+                    disabled={regenPinMutation.isPending}
+                    className="shrink-0"
+                  >
+                    <RefreshCw className={cn("h-4 w-4 mr-1", regenPinMutation.isPending && "animate-spin")} />
+                    New PIN
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -238,7 +246,7 @@ export default function WatchQueue() {
                       </div>
                       {tab === "active" && (
                         <div className="mt-2">
-                          <SessionCode item={item} />
+                          <SessionCode item={item} isAdmin={isAdmin} />
                         </div>
                       )}
                     </div>

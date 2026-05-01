@@ -20,6 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { LocationAutocomplete } from "@/components/location-autocomplete";
 import {
   Select,
   SelectContent,
@@ -599,8 +600,9 @@ export default function NewTest() {
                       <FormItem>
                         <FormLabel>Location</FormLabel>
                         <FormControl>
-                          <Input
-                            {...field}
+                          <LocationAutocomplete
+                            value={field.value}
+                            onChange={field.onChange}
                             data-testid="input-test-location"
                             placeholder="e.g., Park City"
                           />

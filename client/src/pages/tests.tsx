@@ -7,6 +7,7 @@ import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { LocationAutocomplete } from "@/components/location-autocomplete";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
@@ -367,9 +368,9 @@ export default function Tests() {
                 />
               </div>
               <div className="min-w-[160px]">
-                <Input
+                <LocationAutocomplete
                   value={filterLocation}
-                  onChange={(e) => setFilterLocation(e.target.value)}
+                  onChange={setFilterLocation}
                   placeholder="Location…"
                   data-testid="input-filter-location"
                 />

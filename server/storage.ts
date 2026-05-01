@@ -2,7 +2,7 @@ import { eq, and, sql, inArray, isNull, isNotNull } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, groups, testSkiSeries, products, dailyWeather, tests, testEntries, loginLogs,
-  activityLogs, grindingRecords, grindingSheets,
+  activityLogs, grindingRecords, grindingSheets, grindProfiles,
   athletes, athleteAccess, raceSkis, raceSkiRegrinds, testSkiRegrinds,
   teams, runsheets, userTeams,
   type User, type InsertUser,
@@ -16,6 +16,7 @@ import {
   type ActivityLog, type InsertActivityLog,
   type GrindingRecord, type InsertGrindingRecord,
   type GrindingSheet, type InsertGrindingSheet,
+  type GrindProfile, type InsertGrindProfile,
   type Athlete, type InsertAthlete,
   type AthleteAccess, type InsertAthleteAccess,
   type RaceSki, type InsertRaceSki,
@@ -99,6 +100,12 @@ export interface IStorage {
   createGrindingSheet(s: InsertGrindingSheet): Promise<GrindingSheet>;
   updateGrindingSheet(id: number, data: Partial<InsertGrindingSheet>): Promise<GrindingSheet | undefined>;
   deleteGrindingSheet(id: number): Promise<boolean>;
+
+  listGrindProfiles(teamId: number): Promise<GrindProfile[]>;
+  getGrindProfile(id: number): Promise<GrindProfile | undefined>;
+  createGrindProfile(p: InsertGrindProfile): Promise<GrindProfile>;
+  updateGrindProfile(id: number, data: Partial<InsertGrindProfile>): Promise<GrindProfile | undefined>;
+  deleteGrindProfile(id: number): Promise<boolean>;
 
   listAthletes(userId: number, isAdmin: boolean, teamId?: number): Promise<Athlete[]>;
   getAthlete(id: number): Promise<Athlete | undefined>;
@@ -567,6 +574,32 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGrindingSheet(id: number): Promise<boolean> {
     const result = await db.delete(grindingSheets).where(eq(grindingSheets.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // --- Grind Profiles ---
+
+  async listGrindProfiles(teamId: number): Promise<GrindProfile[]> {
+    return db.select().from(grindProfiles).where(eq(grindProfiles.teamId, teamId)).orderBy(sql`${grindProfiles.id} desc`);
+  }
+
+  async getGrindProfile(id: number): Promise<GrindProfile | undefined> {
+    const [profile] = await db.select().from(grindProfiles).where(eq(grindProfiles.id, id));
+    return profile;
+  }
+
+  async createGrindProfile(p: InsertGrindProfile): Promise<GrindProfile> {
+    const [created] = await db.insert(grindProfiles).values(p).returning();
+    return created!;
+  }
+
+  async updateGrindProfile(id: number, data: Partial<InsertGrindProfile>): Promise<GrindProfile | undefined> {
+    const [updated] = await db.update(grindProfiles).set(data).where(eq(grindProfiles.id, id)).returning();
+    return updated;
+  }
+
+  async deleteGrindProfile(id: number): Promise<boolean> {
+    const result = await db.delete(grindProfiles).where(eq(grindProfiles.id, id)).returning();
     return result.length > 0;
   }
 

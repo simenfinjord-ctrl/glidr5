@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Radio, Trophy, User, Calendar, MapPin, Snowflake, LayoutGrid, LayoutList, Filter, Watch } from "lucide-react";
+import { useLocation } from "wouter";
+import { Radio, Trophy, User, Calendar, MapPin, Snowflake, LayoutGrid, LayoutList, Filter, Watch, ExternalLink } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -110,6 +111,7 @@ function timeAgo(iso: string): string {
 }
 
 function LiveBracket({ session }: { session: LiveRunsheet }) {
+  const [, navigate] = useLocation();
   const bracket = session.bracket;
   if (!bracket || bracket.length === 0) return null;
 
@@ -135,7 +137,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
             {isCompleted && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
                 <Trophy className="h-3 w-3" />
-                Done
+                Finished
               </span>
             )}
             {!isCompleted && (
@@ -316,6 +318,20 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
           );
         })}
       </div>
+      {session.testId && (
+        <div className="mt-3 pt-3 border-t border-border flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-muted-foreground hover:text-foreground"
+            onClick={() => navigate(`/tests/${session.testId}`)}
+            data-testid={`button-open-test-${session.id}`}
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Open test
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }

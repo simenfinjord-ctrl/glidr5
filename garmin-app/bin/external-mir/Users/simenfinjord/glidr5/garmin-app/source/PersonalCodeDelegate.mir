@@ -1,90 +1,62 @@
-[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 3; @symbol_usingdef<0> = [Toybox,3,6,12]; @symbol_usingdef<1> = [WatchUi,3,13,20]; ]
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 6; @symbol_usingdef<0> = [Toybox,6,6,12]; @symbol_usingdef<1> = [WatchUi,6,13,20]; ]
 using Toybox.WatchUi;
-[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 4; @symbol_usingdef<0> = [Toybox,4,6,12]; @symbol_usingdef<1> = [Communications,4,13,27]; ]
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 7; @symbol_usingdef<0> = [Toybox,7,6,12]; @symbol_usingdef<1> = [Communications,7,13,27]; ]
 using Toybox.Communications;
-[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 5; @symbol_usingdef<0> = [Toybox,5,6,12]; @symbol_usingdef<1> = [Application,5,13,24]; @symbol_usingdef<2> = [Storage,5,25,32]; ]
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 8; @symbol_usingdef<0> = [Toybox,8,6,12]; @symbol_usingdef<1> = [Application,8,13,24]; @symbol_usingdef<2> = [Storage,8,25,32]; ]
 using Toybox.Application.Storage;
-[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 7; @symbol_classdef = [PersonalCodeDelegate,7,6,26]; @symbol_extends<0> = [WatchUi,7,35,42]; @symbol_extends<1> = [BehaviorDelegate,7,43,59]; ]
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 10; @symbol_classdef = [PersonalCodeDelegate,10,6,26]; @symbol_extends<0> = [WatchUi,10,35,42]; @symbol_extends<1> = [BehaviorDelegate,10,43,59]; ]
 class PersonalCodeDelegate extends WatchUi.BehaviorDelegate {
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 7; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 10; ]
     <init> {
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 7; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 10; ]
     static
     <init> {
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 8; @position = 8; @symbol_vardef = [view,8,8,12]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 11; @position = 8; @symbol_vardef = [view,11,8,12]; ]
     var view;
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 9; @position = 8; @symbol_vardef = [settingsView,9,8,20]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 12; @position = 8; @symbol_vardef = [settingsView,12,8,20]; ]
     var settingsView;
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 10; @position = 8; @symbol_vardef = [teamPin,10,8,15]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 13; @position = 8; @symbol_vardef = [teamPin,13,8,15]; ]
     var teamPin;
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 12; @symbol_functiondef = [initialize,12,13,23]; @symbol_param<0> = [v,12,24,25]; @symbol_param<1> = [sv,12,27,29]; @symbol_param<2> = [pin,12,31,34]; ]
-    function initialize(v, sv, pin) as Void {
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_12_36_17_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 13 8 ]
-        symbol [ BehaviorDelegate %tmp.2 13 8 24 ];
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 14; @position = 8; @symbol_vardef = [isLoginMode,14,8,19]; ]
+    var isLoginMode;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 17; @symbol_functiondef = [initialize,17,13,23]; @symbol_param<0> = [v,17,24,25]; @symbol_param<1> = [sv,17,27,29]; @symbol_param<2> = [pin,17,31,34]; @symbol_param<3> = [loginMode,17,36,45]; ]
+    function initialize(v, sv, pin, loginMode) as Void {
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_17_47_23_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 18 8 ]
+        symbol [ BehaviorDelegate %tmp.2 18 8 24 ];
         %tmp.2 = getv ? :BehaviorDelegate;
-        symbol [ initialize %tmp.3 13 25 35 ];
+        symbol [ initialize %tmp.3 18 25 35 ];
         %tmp.3 = getv function %tmp.2 :initialize;
         invoke %tmp.2 %tmp.3();
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 14 8 ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 19 8 ]
         %tmp.4 = lgetv %v;
-        symbol [ v %tmp.4 14 15 16 ];
-        symbol [ view ? 14 8 12 ];
+        symbol [ v %tmp.4 19 15 16 ];
+        symbol [ view ? 19 8 12 ];
         putv self :view %tmp.4;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 15 8 ]
-        %tmp.5 = lgetv %sv;
-        symbol [ sv %tmp.5 15 23 25 ];
-        symbol [ settingsView ? 15 8 20 ];
-        putv self :settingsView %tmp.5;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 16 8 ]
-        %tmp.6 = lgetv %pin;
-        symbol [ pin %tmp.6 16 18 21 ];
-        symbol [ teamPin ? 16 8 15 ];
-        putv self :teamPin %tmp.6;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_12_36_17_4_stop:
-    }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 19; @symbol_functiondef = [onNextPage,19,13,23]; ]
-    function onNextPage() {
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_19_26_23_4_start:
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 20 8 ]
-        symbol [ view %tmp.1 20 8 12 ];
-        %tmp.1 = getv self :view;
-        symbol [ digits %tmp.2 20 13 19 ];
-        %tmp.2 = getv %tmp.1 :digits;
-        symbol [ view %tmp.4 20 39 43 ];
-        %tmp.4 = getv ? :view;
-        symbol [ digits %tmp.5 20 44 50 ];
-        %tmp.5 = getv %tmp.4 :digits;
-        symbol [ view %tmp.7 20 51 55 ];
-        %tmp.7 = getv ? :view;
-        symbol [ cursorPos %tmp.8 20 56 65 ];
-        %tmp.8 = getv %tmp.7 :cursorPos;
-        %tmp.9 = agetv %tmp.5 %tmp.8;
-        %tmp.10 = 1;
-        %tmp.11 = add %tmp.9 %tmp.10;
-        %tmp.12 = 10;
-        %tmp.13 = mod %tmp.11 %tmp.12;
-        symbol [ view %tmp.15 20 20 24 ];
-        %tmp.15 = getv ? :view;
-        symbol [ cursorPos %tmp.16 20 25 34 ];
-        %tmp.16 = getv %tmp.15 :cursorPos;
-        aputv %tmp.2 %tmp.16 %tmp.13;
+        %tmp.5 = lgetv %sv;
+        symbol [ sv %tmp.5 20 23 25 ];
+        symbol [ settingsView ? 20 8 20 ];
+        putv self :settingsView %tmp.5;
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 21 8 ]
-        symbol [ WatchUi %tmp.17 21 8 15 ];
-        %tmp.17 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.18 21 16 29 ];
-        %tmp.18 = getv function %tmp.17 :requestUpdate;
-        invoke %tmp.17 %tmp.18();
+        %tmp.6 = lgetv %pin;
+        symbol [ pin %tmp.6 21 18 21 ];
+        symbol [ teamPin ? 21 8 15 ];
+        putv self :teamPin %tmp.6;
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 22 8 ]
-        %tmp.19 = true;
-        ret %tmp.19;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_19_26_23_4_stop:
+        %tmp.7 = lgetv %loginMode;
+        symbol [ loginMode %tmp.7 22 23 32 ];
+        %tmp.8 = true;
+        %tmp.9 = eq %tmp.7 %tmp.8;
+        symbol [ isLoginMode ? 22 8 19 ];
+        putv self :isLoginMode %tmp.9;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_17_47_23_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 25; @symbol_functiondef = [onPreviousPage,25,13,27]; ]
-    function onPreviousPage() {
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_25_30_29_4_start:
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 25; @symbol_functiondef = [onNextPage,25,13,23]; ]
+    function onNextPage() {
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_25_26_29_4_start:
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 26 8 ]
         symbol [ view %tmp.1 26 8 12 ];
         %tmp.1 = getv self :view;
@@ -99,7 +71,7 @@ _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_25_30_29_4_
         symbol [ cursorPos %tmp.8 26 56 65 ];
         %tmp.8 = getv %tmp.7 :cursorPos;
         %tmp.9 = agetv %tmp.5 %tmp.8;
-        %tmp.10 = 9;
+        %tmp.10 = 1;
         %tmp.11 = add %tmp.9 %tmp.10;
         %tmp.12 = 10;
         %tmp.13 = mod %tmp.11 %tmp.12;
@@ -117,361 +89,498 @@ _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_25_30_29_4_
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 28 8 ]
         %tmp.19 = true;
         ret %tmp.19;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_25_30_29_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_25_26_29_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 31; @symbol_functiondef = [onSelect,31,13,21]; ]
-    function onSelect() {
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_31_24_39_4_start:
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 31; @symbol_functiondef = [onPreviousPage,31,13,27]; ]
+    function onPreviousPage() {
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_31_30_35_4_start:
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 32 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_32_8_37_8_if_stmt:
-        symbol [ view %tmp.2 32 12 16 ];
+        symbol [ view %tmp.1 32 8 12 ];
+        %tmp.1 = getv self :view;
+        symbol [ digits %tmp.2 32 13 19 ];
+        %tmp.2 = getv %tmp.1 :digits;
+        symbol [ view %tmp.4 32 39 43 ];
+        %tmp.4 = getv ? :view;
+        symbol [ digits %tmp.5 32 44 50 ];
+        %tmp.5 = getv %tmp.4 :digits;
+        symbol [ view %tmp.7 32 51 55 ];
+        %tmp.7 = getv ? :view;
+        symbol [ cursorPos %tmp.8 32 56 65 ];
+        %tmp.8 = getv %tmp.7 :cursorPos;
+        %tmp.9 = agetv %tmp.5 %tmp.8;
+        %tmp.10 = 9;
+        %tmp.11 = add %tmp.9 %tmp.10;
+        %tmp.12 = 10;
+        %tmp.13 = mod %tmp.11 %tmp.12;
+        symbol [ view %tmp.15 32 20 24 ];
+        %tmp.15 = getv ? :view;
+        symbol [ cursorPos %tmp.16 32 25 34 ];
+        %tmp.16 = getv %tmp.15 :cursorPos;
+        aputv %tmp.2 %tmp.16 %tmp.13;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 33 8 ]
+        symbol [ WatchUi %tmp.17 33 8 15 ];
+        %tmp.17 = getm $.Toybox.WatchUi;
+        symbol [ requestUpdate %tmp.18 33 16 29 ];
+        %tmp.18 = getv function %tmp.17 :requestUpdate;
+        invoke %tmp.17 %tmp.18();
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 34 8 ]
+        %tmp.19 = true;
+        ret %tmp.19;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_31_30_35_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 37; @symbol_functiondef = [onSelect,37,13,21]; ]
+    function onSelect() {
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_37_24_51_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 38 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_38_8_49_8_if_stmt:
+        symbol [ view %tmp.2 38 12 16 ];
         %tmp.2 = getv ? :view;
-        symbol [ cursorPos %tmp.3 32 17 26 ];
+        symbol [ cursorPos %tmp.3 38 17 26 ];
         %tmp.3 = getv %tmp.2 :cursorPos;
         %tmp.4 = 3;
         %tmp.5 = lt %tmp.3 %tmp.4;
-        bf %tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_32_8_37_8_if_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_32_8_37_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_32_32_35_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 33 12 ]
-        symbol [ view %tmp.6 33 12 16 ];
+        bf %tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_38_8_49_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_38_8_49_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_38_32_41_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 39 12 ]
+        symbol [ view %tmp.6 39 12 16 ];
         %tmp.6 = getv self :view;
-        symbol [ view %tmp.9 33 12 16 ];
+        symbol [ view %tmp.9 39 12 16 ];
         %tmp.9 = getv ? :view;
-        symbol [ cursorPos %tmp.10 33 17 26 ];
+        symbol [ cursorPos %tmp.10 39 17 26 ];
         %tmp.10 = getv %tmp.9 :cursorPos;
         %tmp.11 = add %tmp.10 1;
-        symbol [ cursorPos ? 33 17 26 ];
+        symbol [ cursorPos ? 39 17 26 ];
         putv %tmp.6 :cursorPos dup %tmp.11;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 34 12 ]
-        symbol [ WatchUi %tmp.12 34 12 19 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 40 12 ]
+        symbol [ WatchUi %tmp.12 40 12 19 ];
         %tmp.12 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.13 34 20 33 ];
+        symbol [ requestUpdate %tmp.13 40 20 33 ];
         %tmp.13 = getv function %tmp.12 :requestUpdate;
         invoke %tmp.12 %tmp.13();
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_32_32_35_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_32_8_37_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_32_8_37_8_if_else_false:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_35_15_37_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 36 12 ]
-        %tmp.14 = self;
-        symbol [ verifyCode %tmp.15 36 12 22 ];
-        %tmp.15 = getv function %tmp.14 :verifyCode;
-        invoke %tmp.14 %tmp.15();
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_35_15_37_8_stop:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_32_8_37_8_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 38 8 ]
-        %tmp.16 = true;
-        ret %tmp.16;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_31_24_39_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_38_32_41_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_38_8_49_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_38_8_49_8_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_41_15_49_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 42 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_12_48_12_if_stmt:
+        symbol [ isLoginMode %tmp.15 42 16 27 ];
+        %tmp.15 = getv ? :isLoginMode;
+        bf %tmp.15 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_12_48_12_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_12_48_12_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_29_45_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 44 16 ]
+        %tmp.16 = self;
+        symbol [ proceedToPinSetup %tmp.17 44 16 33 ];
+        %tmp.17 = getv function %tmp.16 :proceedToPinSetup;
+        invoke %tmp.16 %tmp.17();
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_29_45_12_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_12_48_12_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_12_48_12_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_45_19_48_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 47 16 ]
+        %tmp.18 = self;
+        symbol [ verifyCode %tmp.19 47 16 26 ];
+        %tmp.19 = getv function %tmp.18 :verifyCode;
+        invoke %tmp.18 %tmp.19();
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_45_19_48_12_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_12_48_12_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_41_15_49_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_38_8_49_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 50 8 ]
+        %tmp.20 = true;
+        ret %tmp.20;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_37_24_51_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 41; @symbol_functiondef = [onBack,41,13,19]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 53; @symbol_functiondef = [onBack,53,13,19]; ]
     function onBack() {
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_41_22_50_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 42 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_8_46_8_if_stmt:
-        symbol [ view %tmp.2 42 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_53_22_67_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 54 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_54_8_58_8_if_stmt:
+        symbol [ view %tmp.2 54 12 16 ];
         %tmp.2 = getv ? :view;
-        symbol [ cursorPos %tmp.3 42 17 26 ];
+        symbol [ cursorPos %tmp.3 54 17 26 ];
         %tmp.3 = getv %tmp.2 :cursorPos;
         %tmp.4 = 0;
         %tmp.5 = gt %tmp.3 %tmp.4;
-        bf %tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_8_46_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_8_46_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_32_46_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 43 12 ]
-        symbol [ view %tmp.6 43 12 16 ];
+        bf %tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_54_8_58_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_54_8_58_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_54_32_58_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 55 12 ]
+        symbol [ view %tmp.6 55 12 16 ];
         %tmp.6 = getv self :view;
-        symbol [ view %tmp.9 43 12 16 ];
+        symbol [ view %tmp.9 55 12 16 ];
         %tmp.9 = getv ? :view;
-        symbol [ cursorPos %tmp.10 43 17 26 ];
+        symbol [ cursorPos %tmp.10 55 17 26 ];
         %tmp.10 = getv %tmp.9 :cursorPos;
         %tmp.11 = sub %tmp.10 1;
-        symbol [ cursorPos ? 43 17 26 ];
+        symbol [ cursorPos ? 55 17 26 ];
         putv %tmp.6 :cursorPos dup %tmp.11;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 44 12 ]
-        symbol [ WatchUi %tmp.12 44 12 19 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 56 12 ]
+        symbol [ WatchUi %tmp.12 56 12 19 ];
         %tmp.12 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.13 44 20 33 ];
+        symbol [ requestUpdate %tmp.13 56 20 33 ];
         %tmp.13 = getv function %tmp.12 :requestUpdate;
         invoke %tmp.12 %tmp.13();
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 45 12 ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 57 12 ]
         %tmp.14 = true;
         ret %tmp.14;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_32_46_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_8_46_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_42_8_46_8_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 48 8 ]
-        symbol [ WatchUi %tmp.15 48 8 15 ];
-        %tmp.15 = getm $.Toybox.WatchUi;
-        symbol [ switchToView %tmp.16 48 16 28 ];
-        %tmp.16 = getv function %tmp.15 :switchToView;
-        symbol [ settingsView %tmp.18 48 29 41 ];
-        %tmp.18 = getv ? :settingsView;
-        symbol [ SettingsDelegate %tmp.22 48 47 63 ];
-        %tmp.22 = getv ? :SettingsDelegate;
-        symbol [ settingsView %tmp.24 48 64 76 ];
-        %tmp.24 = getv ? :settingsView;
-        symbol [ teamPin %tmp.26 48 78 85 ];
-        %tmp.26 = getv ? :teamPin;
-        %tmp.19 = newc %tmp.22 (%tmp.24, %tmp.26);
-        symbol [ WatchUi %tmp.27 48 88 95 ];
-        %tmp.27 = getm $.Toybox.WatchUi;
-        symbol [ SLIDE_RIGHT %tmp.28 48 96 107 ];
-        %tmp.28 = getv %tmp.27 :SLIDE_RIGHT;
-        invoke %tmp.15 %tmp.16(%tmp.18, %tmp.19, %tmp.28);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 49 8 ]
-        %tmp.29 = true;
-        ret %tmp.29;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_41_22_50_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_54_32_58_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_54_8_58_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_54_8_58_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 59 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_59_8_66_8_if_stmt:
+        symbol [ isLoginMode %tmp.16 59 12 23 ];
+        %tmp.16 = getv ? :isLoginMode;
+        bf %tmp.16 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_59_8_66_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_59_8_66_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_59_25_62_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 61 12 ]
+        %tmp.17 = false;
+        ret %tmp.17;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_59_25_62_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_59_8_66_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_59_8_66_8_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_62_15_66_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 64 12 ]
+        symbol [ WatchUi %tmp.18 64 12 19 ];
+        %tmp.18 = getm $.Toybox.WatchUi;
+        symbol [ switchToView %tmp.19 64 20 32 ];
+        %tmp.19 = getv function %tmp.18 :switchToView;
+        symbol [ settingsView %tmp.21 64 33 45 ];
+        %tmp.21 = getv ? :settingsView;
+        symbol [ SettingsDelegate %tmp.25 64 51 67 ];
+        %tmp.25 = getv ? :SettingsDelegate;
+        symbol [ settingsView %tmp.27 64 68 80 ];
+        %tmp.27 = getv ? :settingsView;
+        symbol [ teamPin %tmp.29 64 82 89 ];
+        %tmp.29 = getv ? :teamPin;
+        %tmp.22 = newc %tmp.25 (%tmp.27, %tmp.29);
+        symbol [ WatchUi %tmp.30 64 92 99 ];
+        %tmp.30 = getm $.Toybox.WatchUi;
+        symbol [ SLIDE_RIGHT %tmp.31 64 100 111 ];
+        %tmp.31 = getv %tmp.30 :SLIDE_RIGHT;
+        invoke %tmp.18 %tmp.19(%tmp.21, %tmp.22, %tmp.31);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 65 12 ]
+        %tmp.32 = true;
+        ret %tmp.32;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_62_15_66_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_59_8_66_8_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_53_22_67_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 52; @symbol_functiondef = [verifyCode,52,13,23]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 70; @symbol_functiondef = [proceedToPinSetup,70,13,30]; ]
+    function proceedToPinSetup() {
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_70_33_77_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 71 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_70_33_77_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_70_33_77_4_stop" ]
+        %personalCode.1 = local;
+        symbol [ personalCode %personalCode.1 71 12 24 ];
+        symbol [ view %tmp.2 71 27 31 ];
+        %tmp.2 = getv ? :view;
+        symbol [ getCode %tmp.3 71 32 39 ];
+        %tmp.3 = getv function %tmp.2 :getCode;
+        %tmp.4 = invoke %tmp.2 %tmp.3();
+        lputv %personalCode.1 %tmp.4;
+        symbol [ personalCode %personalCode.1 71 12 24 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 72 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_70_33_77_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_70_33_77_4_stop" ]
+        %pinView.2 = local;
+        symbol [ pinView %pinView.2 72 12 19 ];
+        symbol [ PinSetupView %tmp.8 72 26 38 ];
+        %tmp.8 = getv ? :PinSetupView;
+        %tmp.5 = newc %tmp.8 ();
+        lputv %pinView.2 %tmp.5;
+        symbol [ pinView %pinView.2 72 12 19 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 73 8 ]
+        %tmp.9 = lgetv %pinView.2;
+        symbol [ pinView %tmp.9 73 8 15 ];
+        %tmp.10 = lgetv %personalCode.1;
+        symbol [ personalCode %tmp.10 73 32 44 ];
+        symbol [ loginUserCode ? 73 16 29 ];
+        putv %tmp.9 :loginUserCode %tmp.10;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 74 8 ]
+        %tmp.11 = lgetv %pinView.2;
+        symbol [ pinView %tmp.11 74 8 15 ];
+        %tmp.12 = "Enter team PIN";
+        symbol [ statusText ? 74 16 26 ];
+        putv %tmp.11 :statusText %tmp.12;
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 75 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_70_33_77_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_70_33_77_4_stop" ]
+        %pinDelegate.3 = local;
+        symbol [ pinDelegate %pinDelegate.3 75 12 23 ];
+        symbol [ PinSetupDelegate %tmp.16 75 30 46 ];
+        %tmp.16 = getv ? :PinSetupDelegate;
+        %tmp.17 = lgetv %pinView.2;
+        symbol [ pinView %tmp.17 75 47 54 ];
+        %tmp.18 = lgetv %personalCode.1;
+        symbol [ personalCode %tmp.18 75 56 68 ];
+        %tmp.19 = false;
+        %tmp.13 = newc %tmp.16 (%tmp.17, %tmp.18, %tmp.19);
+        lputv %pinDelegate.3 %tmp.13;
+        symbol [ pinDelegate %pinDelegate.3 75 12 23 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 76 8 ]
+        symbol [ WatchUi %tmp.20 76 8 15 ];
+        %tmp.20 = getm $.Toybox.WatchUi;
+        symbol [ switchToView %tmp.21 76 16 28 ];
+        %tmp.21 = getv function %tmp.20 :switchToView;
+        %tmp.22 = lgetv %pinView.2;
+        symbol [ pinView %tmp.22 76 29 36 ];
+        %tmp.23 = lgetv %pinDelegate.3;
+        symbol [ pinDelegate %tmp.23 76 38 49 ];
+        symbol [ WatchUi %tmp.24 76 51 58 ];
+        %tmp.24 = getm $.Toybox.WatchUi;
+        symbol [ SLIDE_LEFT %tmp.25 76 59 69 ];
+        %tmp.25 = getv %tmp.24 :SLIDE_LEFT;
+        invoke %tmp.20 %tmp.21(%tmp.22, %tmp.23, %tmp.25);
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_70_33_77_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 80; @symbol_functiondef = [verifyCode,80,13,23]; ]
     function verifyCode() {
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_52_26_68_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 53 8 ]
-        symbol [ view %tmp.1 53 8 12 ];
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_80_26_96_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 81 8 ]
+        symbol [ view %tmp.1 81 8 12 ];
         %tmp.1 = getv self :view;
         %tmp.2 = "Verifying...";
-        symbol [ statusText ? 53 13 23 ];
+        symbol [ statusText ? 81 13 23 ];
         putv %tmp.1 :statusText %tmp.2;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 54 8 ]
-        symbol [ WatchUi %tmp.3 54 8 15 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 82 8 ]
+        symbol [ WatchUi %tmp.3 82 8 15 ];
         %tmp.3 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.4 54 16 29 ];
+        symbol [ requestUpdate %tmp.4 82 16 29 ];
         %tmp.4 = getv function %tmp.3 :requestUpdate;
         invoke %tmp.3 %tmp.4();
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 56 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_52_26_68_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_52_26_68_4_stop" ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 84 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_80_26_96_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_80_26_96_4_stop" ]
         %code.1 = local;
-        symbol [ code %code.1 56 12 16 ];
-        symbol [ view %tmp.6 56 19 23 ];
+        symbol [ code %code.1 84 12 16 ];
+        symbol [ view %tmp.6 84 19 23 ];
         %tmp.6 = getv ? :view;
-        symbol [ getCode %tmp.7 56 24 31 ];
+        symbol [ getCode %tmp.7 84 24 31 ];
         %tmp.7 = getv function %tmp.6 :getCode;
         %tmp.8 = invoke %tmp.6 %tmp.7();
         lputv %code.1 %tmp.8;
-        symbol [ code %code.1 56 12 16 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 57 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_52_26_68_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_52_26_68_4_stop" ]
+        symbol [ code %code.1 84 12 16 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 85 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_80_26_96_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_80_26_96_4_stop" ]
         %url.2 = local;
-        symbol [ url %url.2 57 12 15 ];
-        symbol [ ServerConfig %tmp.10 57 18 30 ];
+        symbol [ url %url.2 85 12 15 ];
+        symbol [ ServerConfig %tmp.10 85 18 30 ];
         %tmp.10 = getv ? :ServerConfig;
-        symbol [ BASE_URL %tmp.11 57 31 39 ];
+        symbol [ BASE_URL %tmp.11 85 31 39 ];
         %tmp.11 = getv %tmp.10 :BASE_URL;
         %tmp.12 = "/api/watch/resolve-user/";
         %tmp.13 = add %tmp.11 %tmp.12;
         %tmp.14 = lgetv %code.1;
-        symbol [ code %tmp.14 57 71 75 ];
+        symbol [ code %tmp.14 85 71 75 ];
         %tmp.15 = add %tmp.13 %tmp.14;
         lputv %url.2 %tmp.15;
-        symbol [ url %url.2 57 12 15 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 59 8 ]
-        symbol [ Communications %tmp.16 59 8 22 ];
+        symbol [ url %url.2 85 12 15 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 87 8 ]
+        symbol [ Communications %tmp.16 87 8 22 ];
         %tmp.16 = getm $.Toybox.Communications;
-        symbol [ makeWebRequest %tmp.17 59 23 37 ];
+        symbol [ makeWebRequest %tmp.17 87 23 37 ];
         %tmp.17 = getv function %tmp.16 :makeWebRequest;
         %tmp.18 = lgetv %url.2;
-        symbol [ url %tmp.18 60 12 15 ];
+        symbol [ url %tmp.18 88 12 15 ];
         %tmp.19 = null;
         %tmp.20 = newd 2;
         %tmp.22 = const :method;
-        symbol [ method %tmp.22 63 17 23 const ];
-        symbol [ Communications %tmp.23 63 27 41 ];
+        symbol [ method %tmp.22 91 17 23 const ];
+        symbol [ Communications %tmp.23 91 27 41 ];
         %tmp.23 = getm $.Toybox.Communications;
-        symbol [ HTTP_REQUEST_METHOD_GET %tmp.24 63 42 65 ];
+        symbol [ HTTP_REQUEST_METHOD_GET %tmp.24 91 42 65 ];
         %tmp.24 = getv %tmp.23 :HTTP_REQUEST_METHOD_GET;
         %tmp.25 = dup %tmp.20;
         %tmp.26 = aputv %tmp.25 %tmp.22 %tmp.24;
         %tmp.28 = const :responseType;
-        symbol [ responseType %tmp.28 64 17 29 const ];
-        symbol [ Communications %tmp.29 64 33 47 ];
+        symbol [ responseType %tmp.28 92 17 29 const ];
+        symbol [ Communications %tmp.29 92 33 47 ];
         %tmp.29 = getm $.Toybox.Communications;
-        symbol [ HTTP_RESPONSE_CONTENT_TYPE_JSON %tmp.30 64 48 79 ];
+        symbol [ HTTP_RESPONSE_CONTENT_TYPE_JSON %tmp.30 92 48 79 ];
         %tmp.30 = getv %tmp.29 :HTTP_RESPONSE_CONTENT_TYPE_JSON;
         %tmp.31 = dup %tmp.26;
         %tmp.32 = aputv %tmp.31 %tmp.28 %tmp.30;
         %tmp.33 = self;
-        symbol [ method %tmp.34 66 12 18 ];
+        symbol [ method %tmp.34 94 12 18 ];
         %tmp.34 = getv function %tmp.33 :method;
         %tmp.36 = const :onVerifyResponse;
-        symbol [ onVerifyResponse %tmp.36 66 20 36 const ];
+        symbol [ onVerifyResponse %tmp.36 94 20 36 const ];
         %tmp.37 = invoke %tmp.33 %tmp.34(%tmp.36);
         invoke %tmp.16 %tmp.17(%tmp.18, %tmp.19, %tmp.32, %tmp.37);
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_52_26_68_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_80_26_96_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 70; @symbol_functiondef = [onVerifyResponse,70,13,29]; @symbol_param<0> = [responseCode,70,30,42]; @symbol_param<1> = [data,70,44,48]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 98; @symbol_functiondef = [onVerifyResponse,98,13,29]; @symbol_param<0> = [responseCode,98,30,42]; @symbol_param<1> = [data,98,44,48]; ]
     function onVerifyResponse(responseCode, data) {
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_70_50_90_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 71 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_8_89_8_if_stmt:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_12_71_67_begin:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_12_71_43_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_98_50_118_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 99 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_8_117_8_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_12_99_67_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_12_99_43_begin:
         %tmp.1 = lgetv %responseCode;
-        symbol [ responseCode %tmp.1 71 12 24 ];
+        symbol [ responseCode %tmp.1 99 12 24 ];
         %tmp.2 = 200;
         %tmp.3 = eq %tmp.1 %tmp.2;
-        bf %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_8_89_8_if_false;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_35_71_43_true:
+        bf %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_8_117_8_if_false;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_35_99_43_true:
         %tmp.4 = lgetv %data;
-        symbol [ data %tmp.4 71 35 39 ];
+        symbol [ data %tmp.4 99 35 39 ];
         %tmp.5 = null;
         %tmp.6 = ne %tmp.4 %tmp.5;
         push %tmp.6;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_35_71_43_end:
-        %tmp.7 = phi [%tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_12_71_43_begin] [%tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_35_71_43_true] [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_35_71_43_end];
-        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_8_89_8_if_false;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_51_71_67_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_35_99_43_end:
+        %tmp.7 = phi [%tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_12_99_43_begin] [%tmp.6 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_35_99_43_true] [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_35_99_43_end];
+        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_8_117_8_if_false;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_51_99_67_true:
         %tmp.8 = lgetv %data;
-        symbol [ data %tmp.8 71 51 55 ];
+        symbol [ data %tmp.8 99 51 55 ];
         %tmp.9 = as %tmp.8 { (!Null) };
-        symbol [ Dictionary %tmp.11 71 67 77 ];
+        symbol [ Dictionary %tmp.11 99 67 77 ];
         %tmp.11 = getv ? :Dictionary;
         %tmp.12 = isa %tmp.9 %tmp.11;
         push %tmp.12;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_51_71_67_end:
-        %tmp.13 = phi [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_12_71_67_begin] [%tmp.12 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_51_71_67_true] [%tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_51_71_67_end];
-        bf %tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_8_89_8_if_false;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_8_89_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_79_81_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 72 12 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_79_81_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_79_81_8_stop" ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_51_99_67_end:
+        %tmp.13 = phi [%tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_12_99_67_begin] [%tmp.12 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_51_99_67_true] [%tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_51_99_67_end];
+        bf %tmp.13 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_8_117_8_if_false;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_8_117_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_79_109_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 100 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_79_109_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_79_109_8_stop" ]
         %userName.1 = local;
-        symbol [ userName %userName.1 72 16 24 ];
+        symbol [ userName %userName.1 100 16 24 ];
         %tmp.14 = lgetv %data;
-        symbol [ data %tmp.14 72 27 31 ];
+        symbol [ data %tmp.14 100 27 31 ];
         %tmp.15 = as %tmp.14 { (Dictionary) && (!Null) };
         %tmp.16 = "userName";
         %tmp.17 = agetv %tmp.15 %tmp.16;
         lputv %userName.1 %tmp.17;
-        symbol [ userName %userName.1 72 16 24 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 73 12 ]
-        symbol [ Storage %tmp.18 73 12 19 ];
+        symbol [ userName %userName.1 100 16 24 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 101 12 ]
+        symbol [ Storage %tmp.18 101 12 19 ];
         %tmp.18 = getm $.Toybox.Application.Storage;
-        symbol [ setValue %tmp.19 73 20 28 ];
+        symbol [ setValue %tmp.19 101 20 28 ];
         %tmp.19 = getv function %tmp.18 :setValue;
         %tmp.20 = "userCode";
-        symbol [ view %tmp.22 73 41 45 ];
+        symbol [ view %tmp.22 101 41 45 ];
         %tmp.22 = getv ? :view;
-        symbol [ getCode %tmp.23 73 46 53 ];
+        symbol [ getCode %tmp.23 101 46 53 ];
         %tmp.23 = getv function %tmp.22 :getCode;
         %tmp.24 = invoke %tmp.22 %tmp.23();
         invoke %tmp.18 %tmp.19(%tmp.20, %tmp.24);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 74 12 ]
-        symbol [ Storage %tmp.25 74 12 19 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 102 12 ]
+        symbol [ Storage %tmp.25 102 12 19 ];
         %tmp.25 = getm $.Toybox.Application.Storage;
-        symbol [ setValue %tmp.26 74 20 28 ];
+        symbol [ setValue %tmp.26 102 20 28 ];
         %tmp.26 = getv function %tmp.25 :setValue;
         %tmp.27 = "userName";
         %tmp.28 = lgetv %userName.1;
-        symbol [ userName %tmp.28 74 41 49 ];
+        symbol [ userName %tmp.28 102 41 49 ];
         invoke %tmp.25 %tmp.26(%tmp.27, %tmp.28);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 75 12 ]
-        symbol [ view %tmp.29 75 12 16 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 103 12 ]
+        symbol [ view %tmp.29 103 12 16 ];
         %tmp.29 = getv self :view;
         %tmp.30 = "Saved!";
-        symbol [ statusText ? 75 17 27 ];
+        symbol [ statusText ? 103 17 27 ];
         putv %tmp.29 :statusText %tmp.30;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 76 12 ]
-        symbol [ WatchUi %tmp.31 76 12 19 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 104 12 ]
+        symbol [ WatchUi %tmp.31 104 12 19 ];
         %tmp.31 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.32 76 20 33 ];
+        symbol [ requestUpdate %tmp.32 104 20 33 ];
         %tmp.32 = getv function %tmp.31 :requestUpdate;
         invoke %tmp.31 %tmp.32();
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 78 12 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_79_81_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_79_81_8_stop" ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 106 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_79_109_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_79_109_8_stop" ]
         %backView.2 = local;
-        symbol [ backView %backView.2 78 16 24 ];
-        symbol [ SettingsView %tmp.36 78 31 43 ];
+        symbol [ backView %backView.2 106 16 24 ];
+        symbol [ SettingsView %tmp.36 106 31 43 ];
         %tmp.36 = getv ? :SettingsView;
         %tmp.33 = newc %tmp.36 ();
         lputv %backView.2 %tmp.33;
-        symbol [ backView %backView.2 78 16 24 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 79 12 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_79_81_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_79_81_8_stop" ]
+        symbol [ backView %backView.2 106 16 24 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 107 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_79_109_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_79_109_8_stop" ]
         %backDelegate.3 = local;
-        symbol [ backDelegate %backDelegate.3 79 16 28 ];
-        symbol [ SettingsDelegate %tmp.40 79 35 51 ];
+        symbol [ backDelegate %backDelegate.3 107 16 28 ];
+        symbol [ SettingsDelegate %tmp.40 107 35 51 ];
         %tmp.40 = getv ? :SettingsDelegate;
         %tmp.41 = lgetv %backView.2;
-        symbol [ backView %tmp.41 79 52 60 ];
-        symbol [ teamPin %tmp.43 79 62 69 ];
+        symbol [ backView %tmp.41 107 52 60 ];
+        symbol [ teamPin %tmp.43 107 62 69 ];
         %tmp.43 = getv ? :teamPin;
         %tmp.37 = newc %tmp.40 (%tmp.41, %tmp.43);
         lputv %backDelegate.3 %tmp.37;
-        symbol [ backDelegate %backDelegate.3 79 16 28 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 80 12 ]
-        symbol [ WatchUi %tmp.44 80 12 19 ];
+        symbol [ backDelegate %backDelegate.3 107 16 28 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 108 12 ]
+        symbol [ WatchUi %tmp.44 108 12 19 ];
         %tmp.44 = getm $.Toybox.WatchUi;
-        symbol [ switchToView %tmp.45 80 20 32 ];
+        symbol [ switchToView %tmp.45 108 20 32 ];
         %tmp.45 = getv function %tmp.44 :switchToView;
         %tmp.46 = lgetv %backView.2;
-        symbol [ backView %tmp.46 80 33 41 ];
+        symbol [ backView %tmp.46 108 33 41 ];
         %tmp.47 = lgetv %backDelegate.3;
-        symbol [ backDelegate %tmp.47 80 43 55 ];
-        symbol [ WatchUi %tmp.48 80 57 64 ];
+        symbol [ backDelegate %tmp.47 108 43 55 ];
+        symbol [ WatchUi %tmp.48 108 57 64 ];
         %tmp.48 = getm $.Toybox.WatchUi;
-        symbol [ SLIDE_RIGHT %tmp.49 80 65 76 ];
+        symbol [ SLIDE_RIGHT %tmp.49 108 65 76 ];
         %tmp.49 = getv %tmp.48 :SLIDE_RIGHT;
         invoke %tmp.44 %tmp.45(%tmp.46, %tmp.47, %tmp.49);
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_79_81_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_8_89_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_8_89_8_if_false:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 81 15 ]
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_81_15_89_8_if_stmt:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_79_109_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_8_117_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_8_117_8_if_false:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 109 15 ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_109_15_117_8_if_stmt:
         %tmp.50 = lgetv %responseCode;
-        symbol [ responseCode %tmp.50 81 19 31 ];
+        symbol [ responseCode %tmp.50 109 19 31 ];
         %tmp.51 = 404;
         %tmp.52 = eq %tmp.50 %tmp.51;
-        bf %tmp.52 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_81_15_89_8_if_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_81_15_89_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_81_40_85_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 82 12 ]
-        symbol [ view %tmp.53 82 12 16 ];
+        bf %tmp.52 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_109_15_117_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_109_15_117_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_109_40_113_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 110 12 ]
+        symbol [ view %tmp.53 110 12 16 ];
         %tmp.53 = getv self :view;
         %tmp.54 = "Code not found!";
-        symbol [ statusText ? 82 17 27 ];
+        symbol [ statusText ? 110 17 27 ];
         putv %tmp.53 :statusText %tmp.54;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 83 12 ]
-        symbol [ view %tmp.55 83 12 16 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 111 12 ]
+        symbol [ view %tmp.55 111 12 16 ];
         %tmp.55 = getv self :view;
         %tmp.56 = 0;
-        symbol [ cursorPos ? 83 17 26 ];
+        symbol [ cursorPos ? 111 17 26 ];
         putv %tmp.55 :cursorPos %tmp.56;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 84 12 ]
-        symbol [ WatchUi %tmp.57 84 12 19 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 112 12 ]
+        symbol [ WatchUi %tmp.57 112 12 19 ];
         %tmp.57 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.58 84 20 33 ];
+        symbol [ requestUpdate %tmp.58 112 20 33 ];
         %tmp.58 = getv function %tmp.57 :requestUpdate;
         invoke %tmp.57 %tmp.58();
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_81_40_85_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_81_15_89_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_81_15_89_8_if_else_false:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_85_15_89_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 86 12 ]
-        symbol [ view %tmp.59 86 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_109_40_113_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_109_15_117_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_109_15_117_8_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_113_15_117_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 114 12 ]
+        symbol [ view %tmp.59 114 12 16 ];
         %tmp.59 = getv self :view;
         %tmp.60 = "Error. Try again.";
-        symbol [ statusText ? 86 17 27 ];
+        symbol [ statusText ? 114 17 27 ];
         putv %tmp.59 :statusText %tmp.60;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 87 12 ]
-        symbol [ view %tmp.61 87 12 16 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 115 12 ]
+        symbol [ view %tmp.61 115 12 16 ];
         %tmp.61 = getv self :view;
         %tmp.62 = 0;
-        symbol [ cursorPos ? 87 17 26 ];
+        symbol [ cursorPos ? 115 17 26 ];
         putv %tmp.61 :cursorPos %tmp.62;
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 88 12 ]
-        symbol [ WatchUi %tmp.63 88 12 19 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc" 116 12 ]
+        symbol [ WatchUi %tmp.63 116 12 19 ];
         %tmp.63 = getm $.Toybox.WatchUi;
-        symbol [ requestUpdate %tmp.64 88 20 33 ];
+        symbol [ requestUpdate %tmp.64 116 20 33 ];
         %tmp.64 = getv function %tmp.63 :requestUpdate;
         invoke %tmp.63 %tmp.64();
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_85_15_89_8_stop:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_81_15_89_8_if_end:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_71_8_89_8_if_end:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_70_50_90_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_113_15_117_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_109_15_117_8_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_99_8_117_8_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeDelegate_mc_98_50_118_4_stop:
     }
 }
-[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 3; ]
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeDelegate.mc"; @line = 6; ]
 <init> {
 }

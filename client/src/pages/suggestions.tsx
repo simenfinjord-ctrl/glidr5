@@ -53,10 +53,10 @@ export default function Suggestions() {
   const { toast } = useToast();
 
   const [testType, setTestType] = useState("Glide");
-  const [snowTemperatureC, setSnowTemperatureC] = useState(-3);
-  const [airTemperatureC, setAirTemperatureC] = useState(-5);
-  const [snowHumidityPct, setSnowHumidityPct] = useState(50);
-  const [airHumidityPct, setAirHumidityPct] = useState(70);
+  const [snowTemperatureC, setSnowTemperatureC] = useState("-3");
+  const [airTemperatureC, setAirTemperatureC] = useState("-5");
+  const [snowHumidityPct, setSnowHumidityPct] = useState("50");
+  const [airHumidityPct, setAirHumidityPct] = useState("70");
   const [snowType, setSnowType] = useState("Artificial");
   const [grainSize, setGrainSize] = useState("Medium");
   const [snowHumidityType, setSnowHumidityType] = useState("Dry");
@@ -77,10 +77,10 @@ export default function Suggestions() {
 
       const res = await apiRequest("POST", "/api/suggestions", {
         testType,
-        snowTemperatureC,
-        airTemperatureC,
-        snowHumidityPct,
-        airHumidityPct,
+        snowTemperatureC: parseFloat(snowTemperatureC) || 0,
+        airTemperatureC: parseFloat(airTemperatureC) || 0,
+        snowHumidityPct: parseFloat(snowHumidityPct) || 0,
+        airHumidityPct: parseFloat(airHumidityPct) || 0,
         artificialSnow,
         naturalSnow,
         grainSize,
@@ -138,9 +138,10 @@ export default function Suggestions() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted-foreground">Snow Temperature (°C)</label>
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={snowTemperatureC}
-                onChange={(e) => setSnowTemperatureC(Number(e.target.value))}
+                onChange={(e) => setSnowTemperatureC(e.target.value)}
                 data-testid="input-snow-temp"
               />
             </div>
@@ -148,9 +149,10 @@ export default function Suggestions() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted-foreground">Air Temperature (°C)</label>
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={airTemperatureC}
-                onChange={(e) => setAirTemperatureC(Number(e.target.value))}
+                onChange={(e) => setAirTemperatureC(e.target.value)}
                 data-testid="input-air-temp"
               />
             </div>
@@ -158,9 +160,10 @@ export default function Suggestions() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted-foreground">Snow Humidity (Doser)</label>
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={snowHumidityPct}
-                onChange={(e) => setSnowHumidityPct(Number(e.target.value))}
+                onChange={(e) => setSnowHumidityPct(e.target.value)}
                 data-testid="input-snow-humidity"
               />
             </div>
@@ -168,9 +171,10 @@ export default function Suggestions() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted-foreground">Air Humidity (%rH)</label>
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={airHumidityPct}
-                onChange={(e) => setAirHumidityPct(Number(e.target.value))}
+                onChange={(e) => setAirHumidityPct(e.target.value)}
                 data-testid="input-air-humidity"
               />
             </div>

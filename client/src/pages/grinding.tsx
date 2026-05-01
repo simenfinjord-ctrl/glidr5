@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, Disc3, FileSpreadsheet, ExternalLink, Trophy, Filter, MapPin, Thermometer, CalendarDays } from "lucide-react";
+import { Plus, Pencil, Trash2, Disc3, FileSpreadsheet, ExternalLink, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +62,18 @@ type GrindingSheet = {
   createdById: number;
   createdByName: string;
   groupScope: string;
+};
+
+type GrindProfile = {
+  id: number;
+  name: string;
+  grindType: string;
+  stone: string;
+  pattern: string;
+  extraParams: string | null;
+  createdByName: string;
+  teamId: number;
+  createdAt: string;
 };
 
 type RoundResult = { result: number | null; rank: number | null };
@@ -116,6 +127,21 @@ function parseGrindParams(json: string | null): { grindType?: string; stone?: st
   if (!json) return {};
   try { return JSON.parse(json); } catch { return {}; }
 }
+
+function parseExtraParams(json: string | null): Record<string, string> {
+  if (!json) return {};
+  try { return JSON.parse(json); } catch { return {}; }
+}
+
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  } catch {
+    return iso.slice(0, 10);
+  }
+}
+
+// ─── Sheet form ────────────────────────────────────────────────────────────────
 
 const sheetSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -185,10 +211,316 @@ function SheetForm({ onDone, editSheet }: { onDone: () => void; editSheet?: Grin
   );
 }
 
-export default function Grinding() {
-  const { user } = useAuth();
+// ─── Grind Profile form ────────────────────────────────────────────────────────
+
+type ExtraParam = { key: string; value: string };
+
+const GRIND_TYPE_OPTIONS = ["B-skate", "Classic", "Double", "Universal", "Wet", "Dry", "Custom"];
+
+type GrindProfileFormValues = {
+  name: string;
+  grindType: string;
+  stone: string;
+  pattern: string;
+};
+
+function GrindProfileForm({
+  onDone,
+  editProfile,
+}: {
+  onDone: () => void;
+  editProfile?: GrindProfile;
+}) {
   const { toast } = useToast();
-  const [tab, setTab] = useState<"tests" | "sheets">("tests");
+
+  const initExtra = (): ExtraParam[] => {
+    const parsed = parseExtraParams(editProfile?.extraParams ?? null);
+    return Object.entries(parsed).map(([key, value]) => ({ key, value }));
+  };
+
+  const [extraParams, setExtraParams] = useState<ExtraParam[]>(initExtra);
+  const [customGrindType, setCustomGrindType] = useState(
+    editProfile && !GRIND_TYPE_OPTIONS.includes(editProfile.grindType) ? editProfile.grindType : ""
+  );
+
+  const grindProfileSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    grindType: z.string().min(1, "Grind type is required"),
+    stone: z.string().min(1, "Stone is required"),
+    pattern: z.string().min(1, "Pattern is required"),
+  });
+
+  const form = useForm<GrindProfileFormValues>({
+    resolver: zodResolver(grindProfileSchema),
+    defaultValues: {
+      name: editProfile?.name ?? "",
+      grindType: editProfile?.grindType ?? "",
+      stone: editProfile?.stone ?? "",
+      pattern: editProfile?.pattern ?? "",
+    },
+  });
+
+  const selectedGrindType = form.watch("grindType");
+  const isCustom = selectedGrindType === "Custom";
+
+  // Extra params are valid when all rows have non-empty key and value
+  const extraParamsValid = extraParams.every((p) => p.key.trim() !== "" && p.value.trim() !== "");
+
+  const addExtraParam = () => setExtraParams((prev) => [...prev, { key: "", value: "" }]);
+  const removeExtraParam = (idx: number) => setExtraParams((prev) => prev.filter((_, i) => i !== idx));
+  const updateExtraParam = (idx: number, field: "key" | "value", val: string) => {
+    setExtraParams((prev) => prev.map((p, i) => i === idx ? { ...p, [field]: val } : p));
+  };
+
+  const mutation = useMutation({
+    mutationFn: async (data: GrindProfileFormValues) => {
+      const grindType = isCustom ? customGrindType.trim() : data.grindType;
+      const extraObj: Record<string, string> = {};
+      for (const p of extraParams) {
+        if (p.key.trim()) extraObj[p.key.trim()] = p.value.trim();
+      }
+      const payload = {
+        name: data.name,
+        grindType,
+        stone: data.stone,
+        pattern: data.pattern,
+        extraParams: Object.keys(extraObj).length > 0 ? extraObj : null,
+      };
+      if (editProfile) {
+        const res = await apiRequest("PUT", `/api/grind-profiles/${editProfile.id}`, payload);
+        return res.json();
+      }
+      const res = await apiRequest("POST", "/api/grind-profiles", payload);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/grind-profiles"] });
+      toast({ title: editProfile ? "Grind profile updated" : "Grind profile added" });
+      onDone();
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const canSave =
+    form.formState.isValid &&
+    (!isCustom || customGrindType.trim() !== "") &&
+    extraParamsValid &&
+    !mutation.isPending;
+
+  return (
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
+        className="space-y-4"
+      >
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Profile Name</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="e.g. B-skate heavy, Classic warm" data-testid="input-grind-profile-name" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="grindType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Grind Type</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-grind-profile-type">
+                    <SelectValue placeholder="Select grind type…" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {GRIND_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+              {isCustom && (
+                <Input
+                  className="mt-2"
+                  value={customGrindType}
+                  onChange={(e) => setCustomGrindType(e.target.value)}
+                  placeholder="Enter custom grind type…"
+                  data-testid="input-grind-profile-custom-type"
+                />
+              )}
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="stone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Stone</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="e.g. #80 diamond, Ceramic fine" data-testid="input-grind-profile-stone" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="pattern"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Pattern</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="e.g. Cross 45°, Rilling 0.5mm" data-testid="input-grind-profile-pattern" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Extra parameters */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-foreground">Extra Parameters</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addExtraParam}
+              data-testid="button-add-extra-param"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add parameter
+            </Button>
+          </div>
+          {extraParams.length === 0 && (
+            <p className="text-xs text-muted-foreground">No extra parameters. Click "Add parameter" to add custom fields.</p>
+          )}
+          {extraParams.map((param, idx) => (
+            <div key={idx} className="flex items-center gap-2" data-testid={`extra-param-row-${idx}`}>
+              <Input
+                value={param.key}
+                onChange={(e) => updateExtraParam(idx, "key", e.target.value)}
+                placeholder="Key"
+                className="flex-1"
+                data-testid={`input-extra-param-key-${idx}`}
+              />
+              <Input
+                value={param.value}
+                onChange={(e) => updateExtraParam(idx, "value", e.target.value)}
+                placeholder="Value"
+                className="flex-1"
+                data-testid={`input-extra-param-value-${idx}`}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => removeExtraParam(idx)}
+                data-testid={`button-remove-extra-param-${idx}`}
+              >
+                <X className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          ))}
+          {extraParams.length > 0 && !extraParamsValid && (
+            <p className="text-xs text-destructive">All extra parameter keys and values must be filled in.</p>
+          )}
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <Button type="submit" disabled={!canSave} data-testid="button-save-grind-profile">
+            {editProfile ? "Save" : "Add Grind"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
+// ─── Grind Profile Card ────────────────────────────────────────────────────────
+
+function GrindProfileCard({
+  profile,
+  onEdit,
+  onDuplicate,
+  onDelete,
+}: {
+  profile: GrindProfile;
+  onEdit: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}) {
+  const extra = parseExtraParams(profile.extraParams);
+  const extraEntries = Object.entries(extra);
+
+  return (
+    <Card className="fs-card rounded-2xl p-4 sm:p-5" data-testid={`card-grind-profile-${profile.id}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+          <span className="text-base font-semibold text-foreground truncate" data-testid={`text-grind-profile-name-${profile.id}`}>
+            {profile.name}
+          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-200">
+              {profile.grindType}
+            </span>
+            <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {profile.stone}
+            </span>
+            <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {profile.pattern}
+            </span>
+            {extraEntries.map(([k, v]) => (
+              <span key={k} className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
+                {k}: {v}
+              </span>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+            <span>Added by {profile.createdByName}</span>
+            <span>·</span>
+            <span>{formatDate(profile.createdAt)}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button variant="ghost" size="sm" onClick={onDuplicate} data-testid={`button-duplicate-grind-profile-${profile.id}`} title="Duplicate profile">
+            <Copy className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onEdit} data-testid={`button-edit-grind-profile-${profile.id}`} title="Edit profile">
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDelete}
+            data-testid={`button-delete-grind-profile-${profile.id}`}
+            title="Delete profile"
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ─── Main page ─────────────────────────────────────────────────────────────────
+
+export default function Grinding() {
+  const { toast } = useToast();
+  const [tab, setTab] = useState<"tests" | "sheets" | "grinds">("tests");
   const [sheetDialogOpen, setSheetDialogOpen] = useState(false);
   const [editSheet, setEditSheet] = useState<GrindingSheet | undefined>();
   const [activeSheetId, setActiveSheetId] = useState<string>("");
@@ -197,10 +529,16 @@ export default function Grinding() {
   const [filterLocation, setFilterLocation] = useState("");
   const [filterDate, setFilterDate] = useState("");
 
+  // Grind profiles state
+  const [grindSearch, setGrindSearch] = useState("");
+  const [grindDialogOpen, setGrindDialogOpen] = useState(false);
+  const [editProfile, setEditProfile] = useState<GrindProfile | undefined>();
+
   const { data: allTests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
   const { data: sheets = [] } = useQuery<GrindingSheet[]>({ queryKey: ["/api/grinding-sheets"] });
+  const { data: grindProfiles = [] } = useQuery<GrindProfile[]>({ queryKey: ["/api/grind-profiles"] });
 
   const grindTests = useMemo(() => allTests.filter((t) => t.testType === "Grind"), [allTests]);
 
@@ -242,6 +580,34 @@ export default function Grinding() {
     },
   });
 
+  const deleteProfileMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/grind-profiles/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/grind-profiles"] });
+      toast({ title: "Grind profile deleted" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const duplicateProfileMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/grind-profiles/${id}/duplicate`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/grind-profiles"] });
+      toast({ title: "Grind profile duplicated" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
   const seriesById = new Map(series.map((s) => [s.id, s.name] as const));
   const weatherById = new Map(weather.map((w) => [w.id, w] as const));
   const activeSheet = sheets.find((s) => String(s.id) === activeSheetId) || (sheets.length > 0 ? sheets[0] : null);
@@ -272,8 +638,26 @@ export default function Grinding() {
     });
   }, [grindTests, filterSeason, filterLocation, filterDate]);
 
+  const filteredProfiles = useMemo(() => {
+    if (!grindSearch.trim()) return grindProfiles;
+    const q = grindSearch.toLowerCase();
+    return grindProfiles.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.grindType.toLowerCase().includes(q) ||
+        p.stone.toLowerCase().includes(q) ||
+        p.pattern.toLowerCase().includes(q)
+    );
+  }, [grindProfiles, grindSearch]);
+
   const hasFilters = filterSeason !== "All" || filterLocation || filterDate;
   const isDayView = !!filterDate;
+
+  function getTabSubtitle() {
+    if (tab === "tests") return `${filtered.length} grind test${filtered.length !== 1 ? "s" : ""}${hasFilters ? " matching filters" : " total"}`;
+    if (tab === "sheets") return "Embedded grinding spreadsheets";
+    return `${filteredProfiles.length} grind profile${filteredProfiles.length !== 1 ? "s" : ""}${grindSearch ? " matching search" : " total"}`;
+  }
 
   return (
     <AppShell>
@@ -284,11 +668,7 @@ export default function Grinding() {
               <Disc3 className="inline-block mr-2 h-7 w-7 text-indigo-600" />
               Grinding
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {tab === "tests"
-                ? `${filtered.length} grind test${filtered.length !== 1 ? "s" : ""}${hasFilters ? " matching filters" : " total"}`
-                : "Embedded grinding spreadsheets"}
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{getTabSubtitle()}</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -314,9 +694,34 @@ export default function Grinding() {
                 </DialogContent>
               </Dialog>
             )}
+            {tab === "grinds" && (
+              <Dialog open={grindDialogOpen} onOpenChange={(v) => { setGrindDialogOpen(v); if (!v) setEditProfile(undefined); }}>
+                <DialogTrigger asChild>
+                  <Button
+                    data-testid="button-add-grind-profile"
+                    className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
+                    onClick={() => { setEditProfile(undefined); setGrindDialogOpen(true); }}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Grind
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>{editProfile ? "Edit Grind Profile" : "Add Grind Profile"}</DialogTitle>
+                  </DialogHeader>
+                  <GrindProfileForm
+                    key={editProfile ? `edit-${editProfile.id}` : "create"}
+                    editProfile={editProfile}
+                    onDone={() => { setGrindDialogOpen(false); setEditProfile(undefined); }}
+                  />
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         </div>
 
+        {/* Tabs */}
         <div className="flex gap-1 border-b border-border">
           <button
             onClick={() => setTab("tests")}
@@ -340,8 +745,20 @@ export default function Grinding() {
               <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-700">{sheets.length}</span>
             )}
           </button>
+          <button
+            onClick={() => setTab("grinds")}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === "grinds" ? "border-violet-600 text-violet-600" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}
+            data-testid="tab-grinding-grinds"
+          >
+            <Trophy className="inline-block mr-1.5 h-4 w-4" />
+            Grinds
+            {grindProfiles.length > 0 && (
+              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-violet-100 px-1.5 py-0.5 text-xs font-medium text-violet-700">{grindProfiles.length}</span>
+            )}
+          </button>
         </div>
 
+        {/* Tests tab */}
         {tab === "tests" && (
           <>
             <Card className="fs-card rounded-2xl p-4">
@@ -499,6 +916,7 @@ export default function Grinding() {
           </>
         )}
 
+        {/* Sheets tab */}
         {tab === "sheets" && (
           <div className="flex flex-col gap-4">
             {sheets.length === 0 ? (
@@ -603,6 +1021,69 @@ export default function Grinding() {
           </div>
         )}
 
+        {/* Grinds tab */}
+        {tab === "grinds" && (
+          <div className="flex flex-col gap-4">
+            {/* Search bar */}
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                value={grindSearch}
+                onChange={(e) => setGrindSearch(e.target.value)}
+                placeholder="Search grinds…"
+                className="pl-9"
+                data-testid="input-grind-profile-search"
+              />
+              {grindSearch && (
+                <button
+                  type="button"
+                  onClick={() => setGrindSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid="button-clear-grind-search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Profile list */}
+            {grindProfiles.length === 0 ? (
+              <Card className="fs-card rounded-2xl p-8 text-center">
+                <Trophy className="mx-auto h-10 w-10 text-muted-foreground/50 mb-3" />
+                <div className="text-sm text-muted-foreground">No grind profiles yet. Click "Add Grind" to create your first profile.</div>
+              </Card>
+            ) : filteredProfiles.length === 0 ? (
+              <Card className="fs-card rounded-2xl p-6 text-center">
+                <div className="text-sm text-muted-foreground">No grind profiles match your search.</div>
+              </Card>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {filteredProfiles.map((profile) => (
+                  <GrindProfileCard
+                    key={profile.id}
+                    profile={profile}
+                    onEdit={() => {
+                      setEditProfile(profile);
+                      setGrindDialogOpen(true);
+                    }}
+                    onDuplicate={() => {
+                      if (confirm(`Duplicate "${profile.name}"?`)) {
+                        duplicateProfileMutation.mutate(profile.id);
+                      }
+                    }}
+                    onDelete={() => {
+                      if (confirm(`Delete "${profile.name}"? This cannot be undone.`)) {
+                        deleteProfileMutation.mutate(profile.id);
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Sheet edit dialog */}
         <Dialog open={!!editSheet} onOpenChange={(v) => { if (!v) setEditSheet(undefined); }}>
           <DialogContent className="sm:max-w-xl">
             <DialogHeader><DialogTitle>{editSheet ? "Edit Spreadsheet" : "Add Google Spreadsheet"}</DialogTitle></DialogHeader>

@@ -202,6 +202,8 @@ export const users = pgTable("users", {
   isActive: integer("is_active").notNull().default(1),
   isBlindTester: integer("is_blind_tester").notNull().default(0),
   garminWatch: integer("garmin_watch").notNull().default(0),
+  failedAttempts: integer("failed_attempts").notNull().default(0),
+  loginLocked: integer("login_locked").notNull().default(0),
   watchCode: text("watch_code"), // 4-digit personal watch code
 });
 
@@ -409,6 +411,22 @@ export const grindingSheets = pgTable("grinding_sheets", {
 export const insertGrindingSheetSchema = createInsertSchema(grindingSheets).omit({ id: true });
 export type InsertGrindingSheet = z.infer<typeof insertGrindingSheetSchema>;
 export type GrindingSheet = typeof grindingSheets.$inferSelect;
+
+export const grindProfiles = pgTable("grind_profiles", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  grindType: text("grind_type").notNull(),
+  stone: text("stone").notNull(),
+  pattern: text("pattern").notNull(),
+  extraParams: text("extra_params"), // JSON: Record<string, string>
+  createdByName: text("created_by_name").notNull(),
+  teamId: integer("team_id").notNull().default(1),
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertGrindProfileSchema = createInsertSchema(grindProfiles).omit({ id: true });
+export type InsertGrindProfile = z.infer<typeof insertGrindProfileSchema>;
+export type GrindProfile = typeof grindProfiles.$inferSelect;
 
 export const loginLogs = pgTable("login_logs", {
   id: serial("id").primaryKey(),

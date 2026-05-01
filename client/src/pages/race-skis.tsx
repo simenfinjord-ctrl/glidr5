@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Users, Snowflake } from "lucide-react";
+import { Plus, Users, LayoutGrid, List } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 
 type Athlete = {
   id: number;
@@ -26,6 +27,13 @@ export default function RaceSkis() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [team, setTeam] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    try {
+      const stored = localStorage.getItem("glidr-raceskis-view-mode");
+      if (stored === "list" || stored === "grid") return stored;
+    } catch {}
+    return "grid";
+  });
 
   const { data: athletes = [] } = useQuery<Athlete[]>({
     queryKey: ["/api/athletes"],
@@ -61,6 +69,11 @@ export default function RaceSkis() {
     createMutation.mutate({ name: name.trim(), team: team.trim() });
   };
 
+  function toggleView(mode: "grid" | "list") {
+    setViewMode(mode);
+    try { localStorage.setItem("glidr-raceskis-view-mode", mode); } catch {}
+  }
+
   return (
     <AppShell>
       <div className="flex flex-col gap-5">
@@ -73,6 +86,37 @@ export default function RaceSkis() {
               Manage athlete profiles and race ski inventory
             </p>
           </div>
+
+          <div className="flex items-center gap-2">
+            {/* View mode toggle */}
+            <div className="flex items-center rounded-lg border border-border bg-background/60 p-0.5" data-testid="view-mode-toggle">
+              <button
+                onClick={() => toggleView("grid")}
+                className={cn(
+                  "flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs transition-colors",
+                  viewMode === "grid"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                data-testid="button-view-grid"
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                Grid
+              </button>
+              <button
+                onClick={() => toggleView("list")}
+                className={cn(
+                  "flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs transition-colors",
+                  viewMode === "list"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                data-testid="button-view-list"
+              >
+                <List className="h-3.5 w-3.5" />
+                List
+              </button>
+            </div>
 
           <Dialog open={open} onOpenChange={(v) => {
             setOpen(v);
@@ -123,18 +167,20 @@ export default function RaceSkis() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {athletes.length === 0 ? (
-            <Card
-              className="fs-card rounded-2xl p-6 text-sm text-muted-foreground sm:col-span-2"
-              data-testid="empty-athletes"
-            >
-              No athletes yet. Add your first athlete to get started.
-            </Card>
-          ) : (
-            athletes.map((athlete) => (
+        {/* Athletes list */}
+        {athletes.length === 0 ? (
+          <Card
+            className="fs-card rounded-2xl p-6 text-sm text-muted-foreground"
+            data-testid="empty-athletes"
+          >
+            No athletes yet. Add your first athlete to get started.
+          </Card>
+        ) : viewMode === "grid" ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {athletes.map((athlete) => (
               <AppLink
                 key={athlete.id}
                 href={`/raceskis/${athlete.id}`}
@@ -167,9 +213,42 @@ export default function RaceSkis() {
                   </div>
                 </Card>
               </AppLink>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          /* List view */
+          <Card className="fs-card rounded-2xl overflow-hidden" data-testid="list-athletes">
+            <div className="divide-y divide-border/40">
+              {athletes.map((athlete) => (
+                <AppLink
+                  key={athlete.id}
+                  href={`/raceskis/${athlete.id}`}
+                  testId={`link-athlete-${athlete.id}`}
+                >
+                  <div
+                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40 cursor-pointer"
+                    data-testid={`row-athlete-${athlete.id}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="font-medium text-sm" data-testid={`text-athlete-name-${athlete.id}`}>
+                        {athlete.name}
+                      </span>
+                    </div>
+                    {athlete.team && (
+                      <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800 shrink-0">
+                        <Users className="mr-1 h-3 w-3" />
+                        {athlete.team}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground shrink-0" data-testid={`text-athlete-created-by-${athlete.id}`}>
+                      {athlete.createdByName}
+                    </span>
+                  </div>
+                </AppLink>
+              ))}
+            </div>
+          </Card>
+        )}
       </div>
     </AppShell>
   );

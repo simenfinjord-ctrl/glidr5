@@ -75,8 +75,16 @@ export default function MyAccount() {
   });
 
   const handleSavePassword = () => {
-    if (newPass.length < 4) {
-      setPassError("New password must be at least 4 characters");
+    if (newPass.length < 7) {
+      setPassError("New password must be at least 7 characters");
+      return;
+    }
+    if (!/[0-9]/.test(newPass)) {
+      setPassError("Password must contain at least one number");
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(newPass)) {
+      setPassError("Password must contain at least one special character");
       return;
     }
     if (newPass !== confirmPass) {

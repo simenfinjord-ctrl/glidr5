@@ -21,6 +21,11 @@ import {
   ArchiveRestore,
   Warehouse,
   Search,
+  LayoutGrid,
+  List,
+  Filter,
+  BarChart2,
+  ChevronUp,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -116,6 +121,9 @@ type TestEntry = {
   results: string | null;
   feelingRank: number | null;
   kickRank: number | null;
+  grindType: string | null;
+  grindStone: string | null;
+  grindPattern: string | null;
   raceSkiId: number | null;
   createdAt: string;
 };
@@ -178,6 +186,51 @@ export default function AthleteDetail() {
   const [expandedSkiId, setExpandedSkiId] = useState<number | null>(null);
   const [showArchivedSkis, setShowArchivedSkis] = useState(false);
   const [skiGarageOpen, setSkiGarageOpen] = useState(true);
+
+  // Ski Garage view & filters
+  const [garageViewMode, setGarageViewMode] = useState<"grid" | "list">(() => {
+    try {
+      const v = localStorage.getItem("glidr-garage-view-mode");
+      if (v === "list" || v === "grid") return v;
+    } catch {}
+    return "grid";
+  });
+  const [garageDisciplineFilter, setGarageDisciplineFilter] = useState<string>("all");
+  const [garageBrandFilter, setGarageBrandFilter] = useState<string>("all");
+  const [garageYearFilter, setGarageYearFilter] = useState<string>("all");
+  const [showGarageFilters, setShowGarageFilters] = useState(false);
+
+  // Analytics section
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [compareSkiIds, setCompareSkiIds] = useState<Set<number>>(new Set());
+
+  // Test result column chooser
+  const defaultTestColumns = ["result", "rank", "feeling", "kick"];
+  const allTestColumns: { key: string; label: string }[] = [
+    { key: "result", label: "Result (cm)" },
+    { key: "rank", label: "Rank" },
+    { key: "feeling", label: "Feeling" },
+    { key: "kick", label: "Kick" },
+    { key: "grindType", label: "Grind Type" },
+    { key: "grindStone", label: "Grind Stone" },
+    { key: "grindPattern", label: "Grind Pattern" },
+    { key: "methodology", label: "Methodology" },
+  ];
+  const [activeTestColumns, setActiveTestColumns] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem("glidr-raceski-test-columns");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return defaultTestColumns;
+  });
+  const [testColumnsDialogOpen, setTestColumnsDialogOpen] = useState(false);
+
+  useEffect(() => {
+    try { localStorage.setItem("glidr-raceski-test-columns", JSON.stringify(activeTestColumns)); } catch {}
+  }, [activeTestColumns]);
 
   const [testsExpanded, setTestsExpanded] = useState(true);
   const [showTestForm, setShowTestForm] = useState(false);
@@ -390,6 +443,33 @@ export default function AthleteDetail() {
   const raceSkiTests = useMemo(() => {
     return allTests.filter((t) => t.testSkiSource === "raceskis" && t.athleteId === Number(athleteId));
   }, [allTests, athleteId]);
+
+  // Derived filter options for Ski Garage
+  const garageDisciplineOptions = useMemo(() => {
+    const vals = [...new Set(skis.map((s) => s.discipline).filter(Boolean))].sort();
+    return vals;
+  }, [skis]);
+  const garageBrandOptions = useMemo(() => {
+    const vals = [...new Set(skis.map((s) => s.brand).filter(Boolean) as string[])].sort();
+    return vals;
+  }, [skis]);
+  const garageYearOptions = useMemo(() => {
+    const vals = [...new Set(skis.map((s) => s.year).filter(Boolean) as string[])].sort((a, b) => b.localeCompare(a));
+    return vals;
+  }, [skis]);
+
+  const filteredGarageSkis = useMemo(() => {
+    let list = skis;
+    if (garageDisciplineFilter !== "all") list = list.filter((s) => s.discipline === garageDisciplineFilter);
+    if (garageBrandFilter !== "all") list = list.filter((s) => s.brand === garageBrandFilter);
+    if (garageYearFilter !== "all") list = list.filter((s) => s.year === garageYearFilter);
+    return list;
+  }, [skis, garageDisciplineFilter, garageBrandFilter, garageYearFilter]);
+
+  function setGarageView(mode: "grid" | "list") {
+    setGarageViewMode(mode);
+    try { localStorage.setItem("glidr-garage-view-mode", mode); } catch {}
+  }
 
   const isOwnerOrAdmin =
     user?.isAdmin || (athlete && user?.id === athlete.createdById);
@@ -939,25 +1019,111 @@ export default function AthleteDetail() {
                 )}
               </button>
             </CollapsibleTrigger>
-            <Button
-              data-testid="button-add-ski"
-              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
-              size="sm"
-              onClick={openAddSki}
-            >
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Add Ski
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Garage view toggle */}
+              <div className="flex items-center rounded-lg border border-border bg-background/60 p-0.5" data-testid="garage-view-toggle">
+                <button
+                  onClick={() => setGarageView("grid")}
+                  className={cn(
+                    "flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors",
+                    garageViewMode === "grid" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                  )}
+                  data-testid="button-garage-grid"
+                >
+                  <LayoutGrid className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={() => setGarageView("list")}
+                  className={cn(
+                    "flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors",
+                    garageViewMode === "list" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                  )}
+                  data-testid="button-garage-list"
+                >
+                  <List className="h-3 w-3" />
+                </button>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn("h-7 px-2 text-xs", showGarageFilters && "bg-muted")}
+                onClick={() => setShowGarageFilters(!showGarageFilters)}
+                data-testid="button-garage-filters"
+              >
+                <Filter className="h-3 w-3 mr-1" />
+                Filter
+              </Button>
+              <Button
+                data-testid="button-add-ski"
+                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+                size="sm"
+                onClick={openAddSki}
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Add Ski
+              </Button>
+            </div>
           </div>
 
           <CollapsibleContent>
+            {/* Filter bar */}
+            {showGarageFilters && (
+              <div className="flex flex-wrap items-center gap-2 mt-3" data-testid="garage-filter-bar">
+                <Select value={garageDisciplineFilter} onValueChange={setGarageDisciplineFilter}>
+                  <SelectTrigger className="h-7 w-[130px] text-xs" data-testid="select-garage-discipline">
+                    <SelectValue placeholder="All disciplines" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All disciplines</SelectItem>
+                    {garageDisciplineOptions.map((d) => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={garageBrandFilter} onValueChange={setGarageBrandFilter}>
+                  <SelectTrigger className="h-7 w-[120px] text-xs" data-testid="select-garage-brand">
+                    <SelectValue placeholder="All brands" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All brands</SelectItem>
+                    {garageBrandOptions.map((b) => (
+                      <SelectItem key={b} value={b}>{b}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={garageYearFilter} onValueChange={setGarageYearFilter}>
+                  <SelectTrigger className="h-7 w-[100px] text-xs" data-testid="select-garage-year">
+                    <SelectValue placeholder="All years" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All years</SelectItem>
+                    {garageYearOptions.map((y) => (
+                      <SelectItem key={y} value={y}>{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {(garageDisciplineFilter !== "all" || garageBrandFilter !== "all" || garageYearFilter !== "all") && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-muted-foreground"
+                    onClick={() => { setGarageDisciplineFilter("all"); setGarageBrandFilter("all"); setGarageYearFilter("all"); }}
+                    data-testid="button-garage-clear-filters"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+            )}
+
             {skis.length === 0 ? (
               <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground mt-3" data-testid="empty-skis">
                 No skis yet. Add the first ski for this athlete.
               </Card>
-            ) : (
+            ) : garageViewMode === "grid" ? (
               <div className="space-y-3 mt-3">
-                {skis.map((ski) => (
+                {filteredGarageSkis.map((ski) => (
                   <SkiCard
                     key={ski.id}
                     ski={ski}
@@ -973,6 +1139,85 @@ export default function AthleteDetail() {
                     }}
                   />
                 ))}
+                {filteredGarageSkis.length === 0 && skis.length > 0 && (
+                  <p className="text-sm text-muted-foreground">No skis match the current filters.</p>
+                )}
+              </div>
+            ) : (
+              /* List view for Ski Garage */
+              <div className="mt-3">
+                <Card className="fs-card rounded-2xl overflow-hidden" data-testid="ski-list-view">
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-separate border-spacing-0 text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-muted-foreground border-b">
+                          <th className="px-4 py-2.5 font-medium">Ski ID</th>
+                          <th className="px-3 py-2.5 font-medium">Serial</th>
+                          <th className="px-3 py-2.5 font-medium">Brand</th>
+                          <th className="px-3 py-2.5 font-medium">Discipline</th>
+                          <th className="px-3 py-2.5 font-medium">Construction</th>
+                          <th className="px-3 py-2.5 font-medium">Base</th>
+                          <th className="px-3 py-2.5 font-medium">Grind</th>
+                          <th className="px-3 py-2.5 font-medium">Year</th>
+                          <th className="px-3 py-2.5 font-medium"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredGarageSkis.map((ski, idx) => (
+                          <React.Fragment key={ski.id}>
+                            <tr
+                              className={cn(
+                                "border-t border-border/30 cursor-pointer transition-colors",
+                                idx % 2 === 0 ? "bg-background/30" : "bg-background/10",
+                                expandedSkiId === ski.id && "bg-indigo-50/30 dark:bg-indigo-950/10",
+                              )}
+                              onClick={() => setExpandedSkiId(expandedSkiId === ski.id ? null : ski.id)}
+                              data-testid={`row-ski-${ski.id}`}
+                            >
+                              <td className="px-4 py-2.5 font-semibold">{ski.skiId}</td>
+                              <td className="px-3 py-2.5 text-muted-foreground">{ski.serialNumber || "—"}</td>
+                              <td className="px-3 py-2.5">{ski.brand || "—"}</td>
+                              <td className="px-3 py-2.5">
+                                <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800">
+                                  {ski.discipline}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2.5 text-muted-foreground">{ski.construction || "—"}</td>
+                              <td className="px-3 py-2.5 text-muted-foreground">{ski.base || "—"}</td>
+                              <td className="px-3 py-2.5 text-muted-foreground">{ski.grind || "—"}</td>
+                              <td className="px-3 py-2.5 text-muted-foreground">{ski.year || "—"}</td>
+                              <td className="px-3 py-2.5">
+                                {expandedSkiId === ski.id
+                                  ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                                  : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                              </td>
+                            </tr>
+                            {expandedSkiId === ski.id && (
+                              <tr className="border-t border-indigo-200/30 dark:border-indigo-800/30">
+                                <td colSpan={9} className="px-4 py-3 bg-indigo-50/20 dark:bg-indigo-950/10">
+                                  <SkiDetailPanel
+                                    ski={ski}
+                                    onEdit={() => openEditSki(ski)}
+                                    onArchive={() => { if (confirm("Archive this ski? It can be restored later.")) archiveSkiMutation.mutate(ski.id); }}
+                                    onRegrind={() => openRegrind(ski.id)}
+                                    onDeleteRegrind={(id) => { if (confirm("Delete this regrind record?")) deleteRegrindMutation.mutate(id); }}
+                                  />
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        ))}
+                        {filteredGarageSkis.length === 0 && (
+                          <tr>
+                            <td colSpan={9} className="px-4 py-6 text-sm text-muted-foreground text-center">
+                              No skis match the current filters.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
               </div>
             )}
 
@@ -1011,6 +1256,32 @@ export default function AthleteDetail() {
           </CollapsibleContent>
         </Collapsible>
 
+        {/* Analytics Section */}
+        <div className="border-t border-border/40 pt-4" data-testid="section-analytics">
+          <div
+            className="flex items-center gap-2 cursor-pointer select-none"
+            onClick={() => setAnalyticsOpen(!analyticsOpen)}
+            data-testid="toggle-analytics"
+          >
+            {analyticsOpen ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+            <BarChart2 className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">Analytics</h2>
+          </div>
+
+          {analyticsOpen && (
+            <SkiAnalyticsSection
+              skis={skis}
+              raceSkiTests={raceSkiTests}
+              compareSkiIds={compareSkiIds}
+              setCompareSkiIds={setCompareSkiIds}
+            />
+          )}
+        </div>
+
         {/* Race Ski Tests Section */}
         <div className="border-t border-border/40 pt-4" data-testid="section-race-ski-tests">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1028,17 +1299,29 @@ export default function AthleteDetail() {
                 Tests
               </h2>
             </div>
-            {(can("tests", "edit") || hasAthleteAccess) && (
+            <div className="flex items-center gap-2">
               <Button
-                data-testid="button-new-test"
-                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+                variant="outline"
                 size="sm"
-                onClick={openNewTest}
+                className="h-7 px-2 text-xs"
+                onClick={() => setTestColumnsDialogOpen(true)}
+                data-testid="button-test-columns"
               >
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                New Test
+                <Settings2 className="h-3 w-3 mr-1" />
+                Columns
               </Button>
-            )}
+              {(can("tests", "edit") || hasAthleteAccess) && (
+                <Button
+                  data-testid="button-new-test"
+                  className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+                  size="sm"
+                  onClick={openNewTest}
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  New Test
+                </Button>
+              )}
+            </div>
           </div>
 
           {testsExpanded && (
@@ -1536,7 +1819,7 @@ export default function AthleteDetail() {
                 </Card>
               ) : (
                 filteredTests.map((test) => (
-                  <RaceSkiTestCard key={test.id} test={test} skiIds={skiIds} allSkis={skis} />
+                  <RaceSkiTestCard key={test.id} test={test} skiIds={skiIds} allSkis={skis} activeTestColumns={activeTestColumns} />
                 ))
               )}
             </div>
@@ -1889,7 +2172,352 @@ export default function AthleteDetail() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Test Columns Chooser Dialog */}
+      <Dialog open={testColumnsDialogOpen} onOpenChange={setTestColumnsDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Test Result Columns</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-xs text-muted-foreground">Choose which columns to show in test results.</div>
+            <div className="space-y-2">
+              {allTestColumns.map((col) => {
+                const isActive = activeTestColumns.includes(col.key);
+                return (
+                  <label
+                    key={col.key}
+                    className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/50 cursor-pointer"
+                    data-testid={`checkbox-test-col-${col.key}`}
+                  >
+                    <Checkbox
+                      checked={isActive}
+                      onCheckedChange={(checked) => {
+                        setActiveTestColumns((prev) =>
+                          checked ? [...prev, col.key] : prev.filter((k) => k !== col.key)
+                        );
+                      }}
+                    />
+                    <span className="text-sm">{col.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppShell>
+  );
+}
+
+function SkiDetailPanel({
+  ski,
+  onEdit,
+  onArchive,
+  onRegrind,
+  onDeleteRegrind,
+}: {
+  ski: RaceSki;
+  onEdit?: () => void;
+  onArchive?: () => void;
+  onRegrind?: () => void;
+  onDeleteRegrind?: (id: number) => void;
+}) {
+  const { data: regrinds = [] } = useQuery<RaceSkiRegrind[]>({
+    queryKey: [`/api/race-skis/${ski.id}/regrinds`],
+  });
+
+  let customParams: Record<string, string> = {};
+  try { customParams = ski.customParams ? JSON.parse(ski.customParams) : {}; } catch {}
+
+  const paramRows: { label: string; value: string | null }[] = [
+    { label: "Serial Number", value: ski.serialNumber },
+    { label: "Brand", value: ski.brand },
+    { label: "Discipline", value: ski.discipline },
+    { label: "Construction", value: ski.construction },
+    { label: "Mold", value: ski.mold },
+    { label: "Base", value: ski.base },
+    { label: "Grind", value: ski.grind },
+    ...(ski.discipline === "Classic" ? [{ label: "Heights", value: ski.heights }] : []),
+    { label: "Year", value: ski.year },
+    ...Object.entries(customParams).map(([k, v]) => ({
+      label: k.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      value: v || null,
+    })),
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Action buttons */}
+      <div className="flex items-center gap-2">
+        {onRegrind && (
+          <Button variant="outline" size="sm" onClick={onRegrind} className="h-7 text-xs">
+            <RefreshCw className="mr-1 h-3 w-3" />
+            Regrind
+          </Button>
+        )}
+        {onEdit && (
+          <Button variant="outline" size="sm" onClick={onEdit} className="h-7 text-xs">
+            <Edit2 className="mr-1 h-3 w-3" />
+            Edit
+          </Button>
+        )}
+        {onArchive && (
+          <Button variant="outline" size="sm" onClick={onArchive} className="h-7 text-xs text-amber-600 hover:text-amber-700">
+            <Archive className="mr-1 h-3 w-3" />
+            Archive
+          </Button>
+        )}
+      </div>
+
+      {/* All parameters */}
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Parameters</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
+          {paramRows.map((row) => (
+            <div key={row.label} className="text-xs">
+              <span className="text-muted-foreground">{row.label}: </span>
+              <span className="font-medium">{row.value || "—"}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Regrind history */}
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Regrind History</div>
+        {regrinds.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No regrind history</p>
+        ) : (
+          <div className="space-y-1.5">
+            {regrinds.map((rg) => (
+              <div
+                key={rg.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/30 px-3 py-1.5"
+                data-testid={`row-regrind-panel-${rg.id}`}
+              >
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+                  <span className="font-medium">{rg.date}</span>
+                  <span className="font-semibold text-foreground">{rg.grindType}</span>
+                  {rg.stone && <span className="text-muted-foreground">Stone: {rg.stone}</span>}
+                  {rg.pattern && <span className="text-muted-foreground">Pattern: {rg.pattern}</span>}
+                  {rg.notes && <span className="text-muted-foreground italic">{rg.notes}</span>}
+                </div>
+                {onDeleteRegrind && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onDeleteRegrind(rg.id)}
+                    className="h-6 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SkiAnalyticsSection({
+  skis,
+  raceSkiTests,
+  compareSkiIds,
+  setCompareSkiIds,
+}: {
+  skis: RaceSki[];
+  raceSkiTests: RaceSkiTest[];
+  compareSkiIds: Set<number>;
+  setCompareSkiIds: React.Dispatch<React.SetStateAction<Set<number>>>;
+}) {
+  const testIds = useMemo(() => raceSkiTests.map((t) => t.id), [raceSkiTests]);
+
+  // Fetch entries for all race ski tests
+  const { data: allEntries = [] } = useQuery<(TestEntry & { testId: number })[]>({
+    queryKey: [`/api/athletes/analytics/entries`, testIds.join(",")],
+    enabled: testIds.length > 0,
+    queryFn: async () => {
+      // Fetch entries for each test in parallel
+      const results = await Promise.all(
+        testIds.map(async (tid) => {
+          const res = await fetch(`/api/tests/${tid}/entries`, { credentials: "include" });
+          if (!res.ok) return [];
+          const data = await res.json();
+          return (data as TestEntry[]).map((e) => ({ ...e, testId: tid }));
+        })
+      );
+      return results.flat();
+    },
+  });
+
+  const skiStats = useMemo(() => {
+    return skis.map((ski) => {
+      const entries = allEntries.filter((e) => e.raceSkiId === ski.id);
+      const testCount = new Set(entries.map((e) => e.testId)).size;
+      const ranks = entries.map((e) => e.rank0km).filter((r): r is number => r !== null);
+      const feelings = entries.map((e) => e.feelingRank).filter((r): r is number => r !== null);
+      const avgRank = ranks.length > 0 ? ranks.reduce((a, b) => a + b, 0) / ranks.length : null;
+      const bestRank = ranks.length > 0 ? Math.min(...ranks) : null;
+      const wins = ranks.filter((r) => r === 1).length;
+      const winRate = ranks.length > 0 ? (wins / ranks.length) * 100 : null;
+      const avgFeeling = feelings.length > 0 ? feelings.reduce((a, b) => a + b, 0) / feelings.length : null;
+      return { ski, testCount, avgRank, bestRank, winRate, avgFeeling, entryCount: entries.length };
+    }).filter((s) => s.entryCount > 0);
+  }, [skis, allEntries]);
+
+  const compareList = useMemo(() => skiStats.filter((s) => compareSkiIds.has(s.ski.id)), [skiStats, compareSkiIds]);
+
+  function toggleCompare(skiId: number) {
+    setCompareSkiIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(skiId)) next.delete(skiId);
+      else next.add(skiId);
+      return next;
+    });
+  }
+
+  if (skiStats.length === 0) {
+    return (
+      <div className="mt-3">
+        <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-analytics">
+          No test data yet for this athlete's skis.
+        </Card>
+      </div>
+    );
+  }
+
+  const rankBadge = (rank: number | null) =>
+    rank === null ? "—" : (
+      <span className={cn(
+        "inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+        rank === 1 ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" :
+        rank === 2 ? "bg-slate-300/15 text-slate-500 dark:text-slate-300" :
+        rank === 3 ? "bg-amber-700/15 text-amber-700 dark:text-amber-600" :
+        "bg-muted/70 text-foreground"
+      )}>
+        #{rank}
+      </span>
+    );
+
+  return (
+    <div className="mt-3 space-y-4" data-testid="analytics-section">
+      {/* Summary table */}
+      <Card className="fs-card rounded-2xl overflow-hidden" data-testid="analytics-summary-table">
+        <div className="overflow-x-auto">
+          <table className="w-full border-separate border-spacing-0 text-sm">
+            <thead>
+              <tr className="text-left text-xs text-muted-foreground border-b">
+                <th className="px-4 py-2.5 font-medium">Ski</th>
+                <th className="px-3 py-2.5 font-medium">Tests</th>
+                <th className="px-3 py-2.5 font-medium">Entries</th>
+                <th className="px-3 py-2.5 font-medium">Avg Rank</th>
+                <th className="px-3 py-2.5 font-medium">Best Rank</th>
+                <th className="px-3 py-2.5 font-medium">Win Rate</th>
+                <th className="px-3 py-2.5 font-medium">Avg Feeling</th>
+                <th className="px-3 py-2.5 font-medium">Compare</th>
+              </tr>
+            </thead>
+            <tbody>
+              {skiStats.map(({ ski, testCount, avgRank, bestRank, winRate, avgFeeling, entryCount }, idx) => (
+                <tr
+                  key={ski.id}
+                  className={cn("border-t border-border/30", idx % 2 === 0 ? "bg-background/30" : "bg-background/10")}
+                  data-testid={`analytics-row-${ski.id}`}
+                >
+                  <td className="px-4 py-2.5">
+                    <div className="font-semibold text-sm">{ski.skiId}</div>
+                    {ski.brand && <div className="text-xs text-muted-foreground">{ski.brand}</div>}
+                  </td>
+                  <td className="px-3 py-2.5 text-muted-foreground">{testCount}</td>
+                  <td className="px-3 py-2.5 text-muted-foreground">{entryCount}</td>
+                  <td className="px-3 py-2.5">{avgRank !== null ? avgRank.toFixed(1) : "—"}</td>
+                  <td className="px-3 py-2.5">{rankBadge(bestRank)}</td>
+                  <td className="px-3 py-2.5">{winRate !== null ? `${winRate.toFixed(0)}%` : "—"}</td>
+                  <td className="px-3 py-2.5">{avgFeeling !== null ? avgFeeling.toFixed(1) : "—"}</td>
+                  <td className="px-3 py-2.5">
+                    <Checkbox
+                      checked={compareSkiIds.has(ski.id)}
+                      onCheckedChange={() => toggleCompare(ski.id)}
+                      data-testid={`checkbox-compare-${ski.id}`}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Comparison panel */}
+      {compareList.length >= 2 && (
+        <Card className="fs-card rounded-2xl p-4" data-testid="analytics-comparison">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold">Ski Pair Comparison</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-muted-foreground"
+              onClick={() => setCompareSkiIds(new Set())}
+            >
+              <X className="h-3 w-3 mr-1" />
+              Clear
+            </Button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-separate border-spacing-0 text-sm">
+              <thead>
+                <tr className="text-left text-xs text-muted-foreground">
+                  <th className="px-2 py-2 font-medium">Metric</th>
+                  {compareList.map(({ ski }) => (
+                    <th key={ski.id} className="px-3 py-2 font-medium">{ski.skiId}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="text-xs">
+                {[
+                  { label: "Tests", key: "testCount" as const, fmt: (v: number | null) => v ?? "—" },
+                  { label: "Entries", key: "entryCount" as const, fmt: (v: number | null) => v ?? "—" },
+                  { label: "Avg Rank", key: "avgRank" as const, fmt: (v: number | null) => v !== null ? v.toFixed(1) : "—" },
+                  { label: "Best Rank", key: "bestRank" as const, fmt: (v: number | null) => v !== null ? `#${v}` : "—" },
+                  { label: "Win Rate", key: "winRate" as const, fmt: (v: number | null) => v !== null ? `${v.toFixed(0)}%` : "—" },
+                  { label: "Avg Feeling", key: "avgFeeling" as const, fmt: (v: number | null) => v !== null ? v.toFixed(1) : "—" },
+                ].map((metric, mIdx) => {
+                  const values = compareList.map((s) => (s as any)[metric.key] as number | null);
+                  // Highlight best (lowest for rank, highest for win rate)
+                  const isRankMetric = ["avgRank", "bestRank"].includes(metric.key);
+                  const validVals = values.filter((v): v is number => v !== null);
+                  const bestVal = validVals.length > 0
+                    ? isRankMetric ? Math.min(...validVals) : Math.max(...validVals)
+                    : null;
+                  return (
+                    <tr key={metric.key} className={cn("border-t border-border/20", mIdx % 2 === 0 ? "bg-background/20" : "")}>
+                      <td className="px-2 py-2 text-muted-foreground font-medium">{metric.label}</td>
+                      {values.map((val, ci) => (
+                        <td
+                          key={ci}
+                          className={cn(
+                            "px-3 py-2",
+                            val !== null && val === bestVal && validVals.length > 1 && "text-emerald-600 dark:text-emerald-400 font-semibold",
+                          )}
+                        >
+                          {metric.fmt(val)}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+      {compareList.length === 1 && (
+        <p className="text-xs text-muted-foreground mt-1">Select at least 2 ski pairs to compare.</p>
+      )}
+    </div>
   );
 }
 
@@ -2030,51 +2658,86 @@ function SkiCard({
       </div>
 
       {expanded && (
-        <div className="mt-3 border-t border-border/40 pt-3" data-testid={`section-regrinds-${ski.id}`}>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Regrind History
-          </h3>
-          {regrinds.length === 0 ? (
-            <p className="text-xs text-muted-foreground" data-testid={`text-no-regrinds-${ski.id}`}>
-              No regrind history
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {regrinds.map((rg) => (
-                <div
-                  key={rg.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/30 px-3 py-2"
-                  data-testid={`row-regrind-${rg.id}`}
-                >
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
-                    <span className="font-medium">{rg.date}</span>
-                    <span className="font-semibold text-foreground">{rg.grindType}</span>
-                    {rg.stone && <span className="text-muted-foreground">Stone: {rg.stone}</span>}
-                    {rg.pattern && <span className="text-muted-foreground">Pattern: {rg.pattern}</span>}
-                    {rg.notes && <span className="text-muted-foreground italic">{rg.notes}</span>}
-                  </div>
-                  {onDeleteRegrind && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      data-testid={`button-delete-regrind-${rg.id}`}
-                      onClick={() => onDeleteRegrind(rg.id)}
-                      className="h-7 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  )}
+        <div className="mt-3 border-t border-border/40 pt-3 space-y-4" data-testid={`section-regrinds-${ski.id}`}>
+          {/* All parameters */}
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Parameters</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
+              {[
+                { label: "Serial Number", value: ski.serialNumber },
+                { label: "Brand", value: ski.brand },
+                { label: "Discipline", value: ski.discipline },
+                { label: "Construction", value: ski.construction },
+                { label: "Mold", value: ski.mold },
+                { label: "Base", value: ski.base },
+                { label: "Grind", value: ski.grind },
+                ...(ski.discipline === "Classic" ? [{ label: "Heights", value: ski.heights }] : []),
+                { label: "Year", value: ski.year },
+                ...(() => {
+                  try {
+                    const cp = ski.customParams ? JSON.parse(ski.customParams) : {};
+                    return Object.entries(cp).map(([k, v]) => ({
+                      label: k.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+                      value: v ? String(v) : null,
+                    }));
+                  } catch { return []; }
+                })(),
+              ].map((row) => (
+                <div key={row.label} className="text-xs">
+                  <span className="text-muted-foreground">{row.label}: </span>
+                  <span className="font-medium">{row.value || "—"}</span>
                 </div>
               ))}
             </div>
-          )}
+          </div>
+
+          {/* Regrind history */}
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Regrind History
+            </h3>
+            {regrinds.length === 0 ? (
+              <p className="text-xs text-muted-foreground" data-testid={`text-no-regrinds-${ski.id}`}>
+                No regrind history
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {regrinds.map((rg) => (
+                  <div
+                    key={rg.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/30 px-3 py-2"
+                    data-testid={`row-regrind-${rg.id}`}
+                  >
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+                      <span className="font-medium">{rg.date}</span>
+                      <span className="font-semibold text-foreground">{rg.grindType}</span>
+                      {rg.stone && <span className="text-muted-foreground">Stone: {rg.stone}</span>}
+                      {rg.pattern && <span className="text-muted-foreground">Pattern: {rg.pattern}</span>}
+                      {rg.notes && <span className="text-muted-foreground italic">{rg.notes}</span>}
+                    </div>
+                    {onDeleteRegrind && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        data-testid={`button-delete-regrind-${rg.id}`}
+                        onClick={() => onDeleteRegrind(rg.id)}
+                        className="h-7 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </Card>
   );
 }
 
-function RaceSkiTestCard({ test, skiIds, allSkis }: { test: RaceSkiTest; skiIds: Set<number>; allSkis: RaceSki[] }) {
+function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns }: { test: RaceSkiTest; skiIds: Set<number>; allSkis: RaceSki[]; activeTestColumns: string[] }) {
   const [expanded, setExpanded] = useState(false);
   const [, navigate] = useLocation();
 
@@ -2146,31 +2809,55 @@ function RaceSkiTestCard({ test, skiIds, allSkis }: { test: RaceSkiTest; skiIds:
             <table className="w-full border-separate border-spacing-0 text-xs">
               <thead>
                 <tr className="text-left text-muted-foreground">
-                  <th className="px-3 py-2">Ski #</th>
-                  <th className="px-3 py-2">Result</th>
-                  <th className="px-3 py-2">Rank</th>
-                  <th className="px-3 py-2">Feeling</th>
-                  {test.testType === "Classic" && <th className="px-3 py-2">Kick</th>}
+                  <th className="px-3 py-2">Ski</th>
+                  {activeTestColumns.includes("result") && <th className="px-3 py-2">Result</th>}
+                  {activeTestColumns.includes("rank") && <th className="px-3 py-2">Rank</th>}
+                  {activeTestColumns.includes("feeling") && <th className="px-3 py-2">Feeling</th>}
+                  {activeTestColumns.includes("kick") && test.testType === "Classic" && <th className="px-3 py-2">Kick</th>}
+                  {activeTestColumns.includes("grindType") && <th className="px-3 py-2">Grind Type</th>}
+                  {activeTestColumns.includes("grindStone") && <th className="px-3 py-2">Stone</th>}
+                  {activeTestColumns.includes("grindPattern") && <th className="px-3 py-2">Pattern</th>}
+                  {activeTestColumns.includes("methodology") && <th className="px-3 py-2">Methodology</th>}
                 </tr>
               </thead>
               <tbody>
                 {relevantEntries.map((entry) => (
                   <tr key={entry.id} className="border-t" data-testid={`row-test-result-${entry.id}`}>
                     <td className="px-3 py-1.5 font-medium">{getSkiLabel(entry)}</td>
-                    <td className="px-3 py-1.5">{entry.result0kmCmBehind ?? "—"}</td>
-                    <td className="px-3 py-1.5">
-                      <span className={cn(
-                        "inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                        entry.rank0km === 1 ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" :
-                        entry.rank0km === 2 ? "bg-slate-300/15 text-slate-500 dark:text-slate-300" :
-                        entry.rank0km === 3 ? "bg-amber-700/15 text-amber-700 dark:text-amber-600" :
-                        "bg-muted/70 text-foreground"
-                      )}>
-                        {entry.rank0km ?? "—"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-1.5">{entry.feelingRank ?? "—"}</td>
-                    {test.testType === "Classic" && <td className="px-3 py-1.5">{entry.kickRank ?? "—"}</td>}
+                    {activeTestColumns.includes("result") && (
+                      <td className="px-3 py-1.5">{entry.result0kmCmBehind ?? "—"}</td>
+                    )}
+                    {activeTestColumns.includes("rank") && (
+                      <td className="px-3 py-1.5">
+                        <span className={cn(
+                          "inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                          entry.rank0km === 1 ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" :
+                          entry.rank0km === 2 ? "bg-slate-300/15 text-slate-500 dark:text-slate-300" :
+                          entry.rank0km === 3 ? "bg-amber-700/15 text-amber-700 dark:text-amber-600" :
+                          "bg-muted/70 text-foreground"
+                        )}>
+                          {entry.rank0km ?? "—"}
+                        </span>
+                      </td>
+                    )}
+                    {activeTestColumns.includes("feeling") && (
+                      <td className="px-3 py-1.5">{entry.feelingRank ?? "—"}</td>
+                    )}
+                    {activeTestColumns.includes("kick") && test.testType === "Classic" && (
+                      <td className="px-3 py-1.5">{entry.kickRank ?? "—"}</td>
+                    )}
+                    {activeTestColumns.includes("grindType") && (
+                      <td className="px-3 py-1.5 text-muted-foreground">{entry.grindType ?? "—"}</td>
+                    )}
+                    {activeTestColumns.includes("grindStone") && (
+                      <td className="px-3 py-1.5 text-muted-foreground">{entry.grindStone ?? "—"}</td>
+                    )}
+                    {activeTestColumns.includes("grindPattern") && (
+                      <td className="px-3 py-1.5 text-muted-foreground">{entry.grindPattern ?? "—"}</td>
+                    )}
+                    {activeTestColumns.includes("methodology") && (
+                      <td className="px-3 py-1.5 text-muted-foreground">{entry.methodology || "—"}</td>
+                    )}
                   </tr>
                 ))}
               </tbody>

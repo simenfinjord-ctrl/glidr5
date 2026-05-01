@@ -96,7 +96,7 @@ _Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_13_26_19_4_stop:
     }
     [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc"; @line = 21; @symbol_functiondef = [onUpdate,21,13,21]; @symbol_param<0> = [dc,21,22,24]; ]
     function onUpdate(dc) {
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_start:
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_47_4_start:
 [ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 22 8 ]
         %tmp.1 = lgetv %dc;
         symbol [ dc %tmp.1 22 8 10 ];
@@ -118,7 +118,7 @@ _Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_start:
         %tmp.8 = getv function %tmp.7 :clear;
         invoke %tmp.7 %tmp.8();
 [ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 25 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_stop" ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_47_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_47_4_stop" ]
         %w.1 = local;
         symbol [ w %w.1 25 12 13 ];
         %tmp.9 = lgetv %dc;
@@ -129,7 +129,7 @@ _Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_start:
         lputv %w.1 %tmp.11;
         symbol [ w %w.1 25 12 13 ];
 [ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 26 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_stop" ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_47_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_47_4_stop" ]
         %h.2 = local;
         symbol [ h %h.2 26 12 13 ];
         %tmp.12 = lgetv %dc;
@@ -140,7 +140,7 @@ _Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_start:
         lputv %h.2 %tmp.14;
         symbol [ h %h.2 26 12 13 ];
 [ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 27 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_stop" ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_47_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_47_4_stop" ]
         %cx.3 = local;
         symbol [ cx %cx.3 27 12 14 ];
         %tmp.15 = lgetv %w.1;
@@ -172,7 +172,7 @@ _Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_start:
         symbol [ cx %tmp.26 30 20 22 ];
         %tmp.27 = lgetv %h.2;
         symbol [ h %tmp.27 30 24 25 ];
-        %tmp.28 = 0.04;
+        %tmp.28 = 0.03;
         %tmp.29 = mul %tmp.27 %tmp.28;
         symbol [ Graphics %tmp.30 30 34 42 ];
         %tmp.30 = getm $.Toybox.Graphics;
@@ -219,7 +219,7 @@ _Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_start:
         %tmp.54 = getv ? :keySoundsOn;
         invoke %tmp.45 %tmp.46(%tmp.47, %tmp.48, %tmp.49, %tmp.50, %tmp.51, %tmp.52, %tmp.54);
 [ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 37 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_stop" ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_47_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_47_4_stop" ]
         %storedCode.4 = local;
         symbol [ storedCode %storedCode.4 37 12 22 ];
         symbol [ Storage %tmp.55 37 25 32 ];
@@ -231,7 +231,7 @@ _Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_start:
         lputv %storedCode.4 %tmp.58;
         symbol [ storedCode %storedCode.4 37 12 22 ];
 [ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 38 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_stop" ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_47_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_47_4_stop" ]
         %myCodeLabel.5 = local;
         symbol [ myCodeLabel %myCodeLabel.5 38 12 23 ];
 _Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_38_26_38_78_begin:
@@ -270,439 +270,464 @@ _Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_38_26_38_78_end:
         %tmp.74 = 2;
         %tmp.75 = lgetv %myCodeLabel.5;
         symbol [ myCodeLabel %tmp.75 39 40 51 ];
-        invoke %tmp.68 %tmp.69(%tmp.70, %tmp.71, %tmp.72, %tmp.73, %tmp.74, %tmp.75);
+        symbol [ Graphics %tmp.76 39 53 61 ];
+        %tmp.76 = getm $.Toybox.Graphics;
+        symbol [ COLOR_LT_GRAY %tmp.77 39 62 75 ];
+        %tmp.77 = getv %tmp.76 :COLOR_LT_GRAY;
+        invoke %tmp.68 %tmp.69(%tmp.70, %tmp.71, %tmp.72, %tmp.73, %tmp.74, %tmp.75, %tmp.77);
 [ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 41 8 ]
-        %tmp.76 = self;
-        symbol [ drawActionItem %tmp.77 41 8 22 ];
-        %tmp.77 = getv function %tmp.76 :drawActionItem;
-        %tmp.78 = lgetv %dc;
-        symbol [ dc %tmp.78 41 23 25 ];
-        %tmp.79 = lgetv %w.1;
-        symbol [ w %tmp.79 41 27 28 ];
-        %tmp.80 = lgetv %h.2;
-        symbol [ h %tmp.80 41 30 31 ];
-        %tmp.81 = lgetv %cx.3;
-        symbol [ cx %tmp.81 41 33 35 ];
-        %tmp.82 = 3;
-        %tmp.83 = "Change PIN";
-        invoke %tmp.76 %tmp.77(%tmp.78, %tmp.79, %tmp.80, %tmp.81, %tmp.82, %tmp.83);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 43 8 ]
-        %tmp.84 = lgetv %dc;
-        symbol [ dc %tmp.84 43 8 10 ];
-        symbol [ setColor %tmp.85 43 11 19 ];
-        %tmp.85 = getv function %tmp.84 :setColor;
-        symbol [ Graphics %tmp.86 43 20 28 ];
+        %tmp.78 = self;
+        symbol [ drawActionItem %tmp.79 41 8 22 ];
+        %tmp.79 = getv function %tmp.78 :drawActionItem;
+        %tmp.80 = lgetv %dc;
+        symbol [ dc %tmp.80 41 23 25 ];
+        %tmp.81 = lgetv %w.1;
+        symbol [ w %tmp.81 41 27 28 ];
+        %tmp.82 = lgetv %h.2;
+        symbol [ h %tmp.82 41 30 31 ];
+        %tmp.83 = lgetv %cx.3;
+        symbol [ cx %tmp.83 41 33 35 ];
+        %tmp.84 = 3;
+        %tmp.85 = "Change Team PIN";
+        symbol [ Graphics %tmp.86 41 59 67 ];
         %tmp.86 = getm $.Toybox.Graphics;
-        symbol [ COLOR_DK_GRAY %tmp.87 43 29 42 ];
-        %tmp.87 = getv %tmp.86 :COLOR_DK_GRAY;
-        symbol [ Graphics %tmp.88 43 44 52 ];
-        %tmp.88 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.89 43 53 70 ];
-        %tmp.89 = getv %tmp.88 :COLOR_TRANSPARENT;
-        invoke %tmp.84 %tmp.85(%tmp.87, %tmp.89);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 44 8 ]
+        symbol [ COLOR_LT_GRAY %tmp.87 41 68 81 ];
+        %tmp.87 = getv %tmp.86 :COLOR_LT_GRAY;
+        invoke %tmp.78 %tmp.79(%tmp.80, %tmp.81, %tmp.82, %tmp.83, %tmp.84, %tmp.85, %tmp.87);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 43 8 ]
+        %tmp.88 = self;
+        symbol [ drawActionItem %tmp.89 43 8 22 ];
+        %tmp.89 = getv function %tmp.88 :drawActionItem;
         %tmp.90 = lgetv %dc;
-        symbol [ dc %tmp.90 44 8 10 ];
-        symbol [ drawText %tmp.91 44 11 19 ];
-        %tmp.91 = getv function %tmp.90 :drawText;
-        %tmp.92 = lgetv %cx.3;
-        symbol [ cx %tmp.92 44 20 22 ];
-        %tmp.93 = lgetv %h.2;
-        symbol [ h %tmp.93 44 24 25 ];
-        %tmp.94 = 0.92;
-        %tmp.95 = mul %tmp.93 %tmp.94;
-        symbol [ Graphics %tmp.96 44 34 42 ];
+        symbol [ dc %tmp.90 43 23 25 ];
+        %tmp.91 = lgetv %w.1;
+        symbol [ w %tmp.91 43 27 28 ];
+        %tmp.92 = lgetv %h.2;
+        symbol [ h %tmp.92 43 30 31 ];
+        %tmp.93 = lgetv %cx.3;
+        symbol [ cx %tmp.93 43 33 35 ];
+        %tmp.94 = 4;
+        %tmp.95 = "Log Out";
+        symbol [ Graphics %tmp.96 43 51 59 ];
         %tmp.96 = getm $.Toybox.Graphics;
-        symbol [ FONT_XTINY %tmp.97 44 43 53 ];
-        %tmp.97 = getv %tmp.96 :FONT_XTINY;
-        %tmp.98 = "UP/DN: navigate  SELECT: open";
-        symbol [ Graphics %tmp.99 44 88 96 ];
-        %tmp.99 = getm $.Toybox.Graphics;
-        symbol [ TEXT_JUSTIFY_CENTER %tmp.100 44 97 116 ];
-        %tmp.100 = getv %tmp.99 :TEXT_JUSTIFY_CENTER;
-        invoke %tmp.90 %tmp.91(%tmp.92, %tmp.95, %tmp.97, %tmp.98, %tmp.100);
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_45_4_stop:
+        symbol [ COLOR_RED %tmp.97 43 60 69 ];
+        %tmp.97 = getv %tmp.96 :COLOR_RED;
+        invoke %tmp.88 %tmp.89(%tmp.90, %tmp.91, %tmp.92, %tmp.93, %tmp.94, %tmp.95, %tmp.97);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 45 8 ]
+        %tmp.98 = lgetv %dc;
+        symbol [ dc %tmp.98 45 8 10 ];
+        symbol [ setColor %tmp.99 45 11 19 ];
+        %tmp.99 = getv function %tmp.98 :setColor;
+        symbol [ Graphics %tmp.100 45 20 28 ];
+        %tmp.100 = getm $.Toybox.Graphics;
+        symbol [ COLOR_DK_GRAY %tmp.101 45 29 42 ];
+        %tmp.101 = getv %tmp.100 :COLOR_DK_GRAY;
+        symbol [ Graphics %tmp.102 45 44 52 ];
+        %tmp.102 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.103 45 53 70 ];
+        %tmp.103 = getv %tmp.102 :COLOR_TRANSPARENT;
+        invoke %tmp.98 %tmp.99(%tmp.101, %tmp.103);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 46 8 ]
+        %tmp.104 = lgetv %dc;
+        symbol [ dc %tmp.104 46 8 10 ];
+        symbol [ drawText %tmp.105 46 11 19 ];
+        %tmp.105 = getv function %tmp.104 :drawText;
+        %tmp.106 = lgetv %cx.3;
+        symbol [ cx %tmp.106 46 20 22 ];
+        %tmp.107 = lgetv %h.2;
+        symbol [ h %tmp.107 46 24 25 ];
+        %tmp.108 = 0.95;
+        %tmp.109 = mul %tmp.107 %tmp.108;
+        symbol [ Graphics %tmp.110 46 34 42 ];
+        %tmp.110 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.111 46 43 53 ];
+        %tmp.111 = getv %tmp.110 :FONT_XTINY;
+        %tmp.112 = "UP/DN: navigate  SELECT: open";
+        symbol [ Graphics %tmp.113 46 88 96 ];
+        %tmp.113 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.114 46 97 116 ];
+        %tmp.114 = getv %tmp.113 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.104 %tmp.105(%tmp.106, %tmp.109, %tmp.111, %tmp.112, %tmp.114);
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_21_26_47_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc"; @line = 47; @symbol_functiondef = [drawToggleItem,47,13,27]; @symbol_param<0> = [dc,47,28,30]; @symbol_param<1> = [w,47,32,33]; @symbol_param<2> = [h,47,35,36]; @symbol_param<3> = [cx,47,38,40]; @symbol_param<4> = [index,47,42,47]; @symbol_param<5> = [label,47,49,54]; @symbol_param<6> = [isOn,47,56,60]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc"; @line = 49; @symbol_functiondef = [drawToggleItem,49,13,27]; @symbol_param<0> = [dc,49,28,30]; @symbol_param<1> = [w,49,32,33]; @symbol_param<2> = [h,49,35,36]; @symbol_param<3> = [cx,49,38,40]; @symbol_param<4> = [index,49,42,47]; @symbol_param<5> = [label,49,49,54]; @symbol_param<6> = [isOn,49,56,60]; ]
     function drawToggleItem(dc, w, h, cx, index, label, isOn) {
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_47_62_65_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 48 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_47_62_65_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_47_62_65_4_stop" ]
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_49_62_67_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 50 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_49_62_67_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_49_62_67_4_stop" ]
         %itemY.1 = local;
-        symbol [ itemY %itemY.1 48 12 17 ];
+        symbol [ itemY %itemY.1 50 12 17 ];
         %tmp.1 = lgetv %h;
-        symbol [ h %tmp.1 48 20 21 ];
-        %tmp.2 = 0.20;
+        symbol [ h %tmp.1 50 20 21 ];
+        %tmp.2 = 0.15;
         %tmp.3 = mul %tmp.1 %tmp.2;
         %tmp.4 = lgetv %index;
-        symbol [ index %tmp.4 48 31 36 ];
+        symbol [ index %tmp.4 50 31 36 ];
         %tmp.5 = lgetv %h;
-        symbol [ h %tmp.5 48 40 41 ];
-        %tmp.6 = 0.17;
+        symbol [ h %tmp.5 50 40 41 ];
+        %tmp.6 = 0.155;
         %tmp.7 = mul %tmp.5 %tmp.6;
         %tmp.8 = mul %tmp.4 %tmp.7;
         %tmp.9 = add %tmp.3 %tmp.8;
         lputv %itemY.1 %tmp.9;
-        symbol [ itemY %itemY.1 48 12 17 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 49 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_47_62_65_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_47_62_65_4_stop" ]
+        symbol [ itemY %itemY.1 50 12 17 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 51 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_49_62_67_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_49_62_67_4_stop" ]
         %isSelected.2 = local;
-        symbol [ isSelected %isSelected.2 49 12 22 ];
+        symbol [ isSelected %isSelected.2 51 12 22 ];
         %tmp.10 = lgetv %index;
-        symbol [ index %tmp.10 49 26 31 ];
-        symbol [ selectedIndex %tmp.12 49 35 48 ];
+        symbol [ index %tmp.10 51 26 31 ];
+        symbol [ selectedIndex %tmp.12 51 35 48 ];
         %tmp.12 = getv ? :selectedIndex;
         %tmp.13 = eq %tmp.10 %tmp.12;
         lputv %isSelected.2 %tmp.13;
-        symbol [ isSelected %isSelected.2 49 12 22 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 51 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_51_8_57_8_if_stmt:
+        symbol [ isSelected %isSelected.2 51 12 22 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 53 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_53_8_59_8_if_stmt:
         %tmp.14 = lgetv %isSelected.2;
-        symbol [ isSelected %tmp.14 51 12 22 ];
-        bf %tmp.14 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_51_8_57_8_if_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_51_8_57_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_51_24_55_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 52 12 ]
+        symbol [ isSelected %tmp.14 53 12 22 ];
+        bf %tmp.14 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_53_8_59_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_53_8_59_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_53_24_57_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 54 12 ]
         %tmp.15 = lgetv %dc;
-        symbol [ dc %tmp.15 52 12 14 ];
-        symbol [ setColor %tmp.16 52 15 23 ];
+        symbol [ dc %tmp.15 54 12 14 ];
+        symbol [ setColor %tmp.16 54 15 23 ];
         %tmp.16 = getv function %tmp.15 :setColor;
-        symbol [ Graphics %tmp.17 52 24 32 ];
+        symbol [ Graphics %tmp.17 54 24 32 ];
         %tmp.17 = getm $.Toybox.Graphics;
-        symbol [ COLOR_BLUE %tmp.18 52 33 43 ];
+        symbol [ COLOR_BLUE %tmp.18 54 33 43 ];
         %tmp.18 = getv %tmp.17 :COLOR_BLUE;
-        symbol [ Graphics %tmp.19 52 45 53 ];
+        symbol [ Graphics %tmp.19 54 45 53 ];
         %tmp.19 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.20 52 54 71 ];
+        symbol [ COLOR_TRANSPARENT %tmp.20 54 54 71 ];
         %tmp.20 = getv %tmp.19 :COLOR_TRANSPARENT;
         invoke %tmp.15 %tmp.16(%tmp.18, %tmp.20);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 53 12 ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 55 12 ]
         %tmp.21 = lgetv %dc;
-        symbol [ dc %tmp.21 53 12 14 ];
-        symbol [ fillRoundedRectangle %tmp.22 53 15 35 ];
+        symbol [ dc %tmp.21 55 12 14 ];
+        symbol [ fillRoundedRectangle %tmp.22 55 15 35 ];
         %tmp.22 = getv function %tmp.21 :fillRoundedRectangle;
         %tmp.23 = lgetv %cx;
-        symbol [ cx %tmp.23 53 36 38 ];
+        symbol [ cx %tmp.23 55 36 38 ];
         %tmp.24 = lgetv %w;
-        symbol [ w %tmp.24 53 41 42 ];
+        symbol [ w %tmp.24 55 41 42 ];
         %tmp.25 = 0.42;
         %tmp.26 = mul %tmp.24 %tmp.25;
         %tmp.27 = sub %tmp.23 %tmp.26;
         %tmp.28 = lgetv %itemY.1;
-        symbol [ itemY %tmp.28 53 51 56 ];
+        symbol [ itemY %tmp.28 55 51 56 ];
         %tmp.29 = 4;
         %tmp.30 = sub %tmp.28 %tmp.29;
         %tmp.31 = lgetv %w;
-        symbol [ w %tmp.31 53 62 63 ];
+        symbol [ w %tmp.31 55 62 63 ];
         %tmp.32 = 0.84;
         %tmp.33 = mul %tmp.31 %tmp.32;
-        %tmp.34 = 30;
+        %tmp.34 = 28;
         %tmp.35 = 6;
         invoke %tmp.21 %tmp.22(%tmp.27, %tmp.30, %tmp.33, %tmp.34, %tmp.35);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 54 12 ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 56 12 ]
         %tmp.36 = lgetv %dc;
-        symbol [ dc %tmp.36 54 12 14 ];
-        symbol [ setColor %tmp.37 54 15 23 ];
+        symbol [ dc %tmp.36 56 12 14 ];
+        symbol [ setColor %tmp.37 56 15 23 ];
         %tmp.37 = getv function %tmp.36 :setColor;
-        symbol [ Graphics %tmp.38 54 24 32 ];
+        symbol [ Graphics %tmp.38 56 24 32 ];
         %tmp.38 = getm $.Toybox.Graphics;
-        symbol [ COLOR_WHITE %tmp.39 54 33 44 ];
+        symbol [ COLOR_WHITE %tmp.39 56 33 44 ];
         %tmp.39 = getv %tmp.38 :COLOR_WHITE;
-        symbol [ Graphics %tmp.40 54 46 54 ];
+        symbol [ Graphics %tmp.40 56 46 54 ];
         %tmp.40 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.41 54 55 72 ];
+        symbol [ COLOR_TRANSPARENT %tmp.41 56 55 72 ];
         %tmp.41 = getv %tmp.40 :COLOR_TRANSPARENT;
         invoke %tmp.36 %tmp.37(%tmp.39, %tmp.41);
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_51_24_55_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_51_8_57_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_51_8_57_8_if_else_false:
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_55_15_57_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 56 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_53_24_57_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_53_8_59_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_53_8_59_8_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_57_15_59_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 58 12 ]
         %tmp.42 = lgetv %dc;
-        symbol [ dc %tmp.42 56 12 14 ];
-        symbol [ setColor %tmp.43 56 15 23 ];
+        symbol [ dc %tmp.42 58 12 14 ];
+        symbol [ setColor %tmp.43 58 15 23 ];
         %tmp.43 = getv function %tmp.42 :setColor;
-        symbol [ Graphics %tmp.44 56 24 32 ];
+        symbol [ Graphics %tmp.44 58 24 32 ];
         %tmp.44 = getm $.Toybox.Graphics;
-        symbol [ COLOR_LT_GRAY %tmp.45 56 33 46 ];
+        symbol [ COLOR_LT_GRAY %tmp.45 58 33 46 ];
         %tmp.45 = getv %tmp.44 :COLOR_LT_GRAY;
-        symbol [ Graphics %tmp.46 56 48 56 ];
+        symbol [ Graphics %tmp.46 58 48 56 ];
         %tmp.46 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.47 56 57 74 ];
+        symbol [ COLOR_TRANSPARENT %tmp.47 58 57 74 ];
         %tmp.47 = getv %tmp.46 :COLOR_TRANSPARENT;
         invoke %tmp.42 %tmp.43(%tmp.45, %tmp.47);
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_55_15_57_8_stop:
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_51_8_57_8_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 59 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_57_15_59_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_53_8_59_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 61 8 ]
         %tmp.48 = lgetv %dc;
-        symbol [ dc %tmp.48 59 8 10 ];
-        symbol [ drawText %tmp.49 59 11 19 ];
+        symbol [ dc %tmp.48 61 8 10 ];
+        symbol [ drawText %tmp.49 61 11 19 ];
         %tmp.49 = getv function %tmp.48 :drawText;
         %tmp.50 = lgetv %cx;
-        symbol [ cx %tmp.50 59 20 22 ];
+        symbol [ cx %tmp.50 61 20 22 ];
         %tmp.51 = lgetv %w;
-        symbol [ w %tmp.51 59 25 26 ];
+        symbol [ w %tmp.51 61 25 26 ];
         %tmp.52 = 0.18;
         %tmp.53 = mul %tmp.51 %tmp.52;
         %tmp.54 = sub %tmp.50 %tmp.53;
         %tmp.55 = lgetv %itemY.1;
-        symbol [ itemY %tmp.55 59 35 40 ];
+        symbol [ itemY %tmp.55 61 35 40 ];
         %tmp.56 = 1;
         %tmp.57 = add %tmp.55 %tmp.56;
-        symbol [ Graphics %tmp.58 59 46 54 ];
+        symbol [ Graphics %tmp.58 61 46 54 ];
         %tmp.58 = getm $.Toybox.Graphics;
-        symbol [ FONT_XTINY %tmp.59 59 55 65 ];
+        symbol [ FONT_XTINY %tmp.59 61 55 65 ];
         %tmp.59 = getv %tmp.58 :FONT_XTINY;
         %tmp.60 = lgetv %label;
-        symbol [ label %tmp.60 59 67 72 ];
-        symbol [ Graphics %tmp.61 59 74 82 ];
+        symbol [ label %tmp.60 61 67 72 ];
+        symbol [ Graphics %tmp.61 61 74 82 ];
         %tmp.61 = getm $.Toybox.Graphics;
-        symbol [ TEXT_JUSTIFY_CENTER %tmp.62 59 83 102 ];
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.62 61 83 102 ];
         %tmp.62 = getv %tmp.61 :TEXT_JUSTIFY_CENTER;
         invoke %tmp.48 %tmp.49(%tmp.54, %tmp.57, %tmp.59, %tmp.60, %tmp.62);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 61 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_47_62_65_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_47_62_65_4_stop" ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 63 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_49_62_67_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_49_62_67_4_stop" ]
         %statusColor.3 = local;
-        symbol [ statusColor %statusColor.3 61 12 23 ];
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_61_26_61_65_begin:
+        symbol [ statusColor %statusColor.3 63 12 23 ];
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_63_26_63_65_begin:
         %tmp.63 = lgetv %isOn;
-        symbol [ isOn %tmp.63 61 26 30 ];
-        bf %tmp.63 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_61_26_61_65_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_61_26_61_65_true:
-        symbol [ Graphics %tmp.64 61 33 41 ];
+        symbol [ isOn %tmp.63 63 26 30 ];
+        bf %tmp.63 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_63_26_63_65_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_63_26_63_65_true:
+        symbol [ Graphics %tmp.64 63 33 41 ];
         %tmp.64 = getm $.Toybox.Graphics;
-        symbol [ COLOR_GREEN %tmp.65 61 42 53 ];
+        symbol [ COLOR_GREEN %tmp.65 63 42 53 ];
         %tmp.65 = getv %tmp.64 :COLOR_GREEN;
         push %tmp.65;
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_61_26_61_65_end;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_61_26_61_65_else_false:
-        symbol [ Graphics %tmp.66 61 56 64 ];
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_63_26_63_65_end;
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_63_26_63_65_else_false:
+        symbol [ Graphics %tmp.66 63 56 64 ];
         %tmp.66 = getm $.Toybox.Graphics;
-        symbol [ COLOR_RED %tmp.67 61 65 74 ];
+        symbol [ COLOR_RED %tmp.67 63 65 74 ];
         %tmp.67 = getv %tmp.66 :COLOR_RED;
         push %tmp.67;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_61_26_61_65_end:
-        %tmp.68 = phi [%tmp.63 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_61_26_61_65_begin] [%tmp.65 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_61_26_61_65_true] [%tmp.67 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_61_26_61_65_else_false] [%tmp.68 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_61_26_61_65_end];
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_63_26_63_65_end:
+        %tmp.68 = phi [%tmp.63 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_63_26_63_65_begin] [%tmp.65 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_63_26_63_65_true] [%tmp.67 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_63_26_63_65_else_false] [%tmp.68 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_63_26_63_65_end];
         lputv %statusColor.3 %tmp.68;
-        symbol [ statusColor %statusColor.3 61 12 23 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 62 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_8_62_94_if_stmt:
+        symbol [ statusColor %statusColor.3 63 12 23 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 64 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_8_64_94_if_stmt:
         %tmp.69 = lgetv %isSelected.2;
-        symbol [ isSelected %tmp.69 62 13 23 ];
+        symbol [ isSelected %tmp.69 64 13 23 ];
         %tmp.70 = not %tmp.69;
-        bf %tmp.70 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_8_62_94_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_8_62_94_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_25_62_94_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 62 27 ]
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_41_62_80_begin:
+        bf %tmp.70 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_8_64_94_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_8_64_94_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_25_64_94_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 64 27 ]
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_41_64_80_begin:
         %tmp.71 = lgetv %isOn;
-        symbol [ isOn %tmp.71 62 41 45 ];
-        bf %tmp.71 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_41_62_80_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_41_62_80_true:
-        symbol [ Graphics %tmp.72 62 48 56 ];
+        symbol [ isOn %tmp.71 64 41 45 ];
+        bf %tmp.71 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_41_64_80_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_41_64_80_true:
+        symbol [ Graphics %tmp.72 64 48 56 ];
         %tmp.72 = getm $.Toybox.Graphics;
-        symbol [ COLOR_GREEN %tmp.73 62 57 68 ];
+        symbol [ COLOR_GREEN %tmp.73 64 57 68 ];
         %tmp.73 = getv %tmp.72 :COLOR_GREEN;
         push %tmp.73;
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_41_62_80_end;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_41_62_80_else_false:
-        symbol [ Graphics %tmp.74 62 71 79 ];
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_41_64_80_end;
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_41_64_80_else_false:
+        symbol [ Graphics %tmp.74 64 71 79 ];
         %tmp.74 = getm $.Toybox.Graphics;
-        symbol [ COLOR_DK_RED %tmp.75 62 80 92 ];
+        symbol [ COLOR_DK_RED %tmp.75 64 80 92 ];
         %tmp.75 = getv %tmp.74 :COLOR_DK_RED;
         push %tmp.75;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_41_62_80_end:
-        %tmp.76 = phi [%tmp.71 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_41_62_80_begin] [%tmp.73 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_41_62_80_true] [%tmp.75 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_41_62_80_else_false] [%tmp.76 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_41_62_80_end];
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_41_64_80_end:
+        %tmp.76 = phi [%tmp.71 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_41_64_80_begin] [%tmp.73 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_41_64_80_true] [%tmp.75 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_41_64_80_else_false] [%tmp.76 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_41_64_80_end];
         lputv %statusColor.3 %tmp.76;
-        symbol [ statusColor %statusColor.3 62 27 38 ];
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_25_62_94_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_8_62_94_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_62_8_62_94_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 63 8 ]
+        symbol [ statusColor %statusColor.3 64 27 38 ];
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_25_64_94_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_8_64_94_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_8_64_94_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 65 8 ]
         %tmp.77 = lgetv %dc;
-        symbol [ dc %tmp.77 63 8 10 ];
-        symbol [ setColor %tmp.78 63 11 19 ];
+        symbol [ dc %tmp.77 65 8 10 ];
+        symbol [ setColor %tmp.78 65 11 19 ];
         %tmp.78 = getv function %tmp.77 :setColor;
         %tmp.79 = lgetv %statusColor.3;
-        symbol [ statusColor %tmp.79 63 20 31 ];
-        symbol [ Graphics %tmp.80 63 33 41 ];
+        symbol [ statusColor %tmp.79 65 20 31 ];
+        symbol [ Graphics %tmp.80 65 33 41 ];
         %tmp.80 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.81 63 42 59 ];
+        symbol [ COLOR_TRANSPARENT %tmp.81 65 42 59 ];
         %tmp.81 = getv %tmp.80 :COLOR_TRANSPARENT;
         invoke %tmp.77 %tmp.78(%tmp.79, %tmp.81);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 64 8 ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 66 8 ]
         %tmp.82 = lgetv %dc;
-        symbol [ dc %tmp.82 64 8 10 ];
-        symbol [ drawText %tmp.83 64 11 19 ];
+        symbol [ dc %tmp.82 66 8 10 ];
+        symbol [ drawText %tmp.83 66 11 19 ];
         %tmp.83 = getv function %tmp.82 :drawText;
         %tmp.84 = lgetv %cx;
-        symbol [ cx %tmp.84 64 20 22 ];
+        symbol [ cx %tmp.84 66 20 22 ];
         %tmp.85 = lgetv %w;
-        symbol [ w %tmp.85 64 25 26 ];
+        symbol [ w %tmp.85 66 25 26 ];
         %tmp.86 = 0.22;
         %tmp.87 = mul %tmp.85 %tmp.86;
         %tmp.88 = add %tmp.84 %tmp.87;
         %tmp.89 = lgetv %itemY.1;
-        symbol [ itemY %tmp.89 64 35 40 ];
+        symbol [ itemY %tmp.89 66 35 40 ];
         %tmp.90 = 1;
         %tmp.91 = add %tmp.89 %tmp.90;
-        symbol [ Graphics %tmp.92 64 46 54 ];
+        symbol [ Graphics %tmp.92 66 46 54 ];
         %tmp.92 = getm $.Toybox.Graphics;
-        symbol [ FONT_XTINY %tmp.93 64 55 65 ];
+        symbol [ FONT_XTINY %tmp.93 66 55 65 ];
         %tmp.93 = getv %tmp.92 :FONT_XTINY;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_67_64_81_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_66_67_66_81_begin:
         %tmp.94 = lgetv %isOn;
-        symbol [ isOn %tmp.94 64 67 71 ];
-        bf %tmp.94 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_67_64_81_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_67_64_81_true:
+        symbol [ isOn %tmp.94 66 67 71 ];
+        bf %tmp.94 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_66_67_66_81_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_66_67_66_81_true:
         %tmp.95 = "ON";
         push %tmp.95;
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_67_64_81_end;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_67_64_81_else_false:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_66_67_66_81_end;
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_66_67_66_81_else_false:
         %tmp.96 = "OFF";
         push %tmp.96;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_67_64_81_end:
-        %tmp.97 = phi [%tmp.94 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_67_64_81_begin] [%tmp.95 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_67_64_81_true] [%tmp.96 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_67_64_81_else_false] [%tmp.97 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_64_67_64_81_end];
-        symbol [ Graphics %tmp.98 64 88 96 ];
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_66_67_66_81_end:
+        %tmp.97 = phi [%tmp.94 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_66_67_66_81_begin] [%tmp.95 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_66_67_66_81_true] [%tmp.96 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_66_67_66_81_else_false] [%tmp.97 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_66_67_66_81_end];
+        symbol [ Graphics %tmp.98 66 88 96 ];
         %tmp.98 = getm $.Toybox.Graphics;
-        symbol [ TEXT_JUSTIFY_CENTER %tmp.99 64 97 116 ];
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.99 66 97 116 ];
         %tmp.99 = getv %tmp.98 :TEXT_JUSTIFY_CENTER;
         invoke %tmp.82 %tmp.83(%tmp.88, %tmp.91, %tmp.93, %tmp.97, %tmp.99);
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_47_62_65_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_49_62_67_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc"; @line = 67; @symbol_functiondef = [drawActionItem,67,13,27]; @symbol_param<0> = [dc,67,28,30]; @symbol_param<1> = [w,67,32,33]; @symbol_param<2> = [h,67,35,36]; @symbol_param<3> = [cx,67,38,40]; @symbol_param<4> = [index,67,42,47]; @symbol_param<5> = [label,67,49,54]; ]
-    function drawActionItem(dc, w, h, cx, index, label) {
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_67_56_80_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 68 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_67_56_80_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_67_56_80_4_stop" ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc"; @line = 69; @symbol_functiondef = [drawActionItem,69,13,27]; @symbol_param<0> = [dc,69,28,30]; @symbol_param<1> = [w,69,32,33]; @symbol_param<2> = [h,69,35,36]; @symbol_param<3> = [cx,69,38,40]; @symbol_param<4> = [index,69,42,47]; @symbol_param<5> = [label,69,49,54]; @symbol_param<6> = [color,69,56,61]; ]
+    function drawActionItem(dc, w, h, cx, index, label, color) {
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_69_63_82_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 70 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_69_63_82_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_69_63_82_4_stop" ]
         %itemY.1 = local;
-        symbol [ itemY %itemY.1 68 12 17 ];
+        symbol [ itemY %itemY.1 70 12 17 ];
         %tmp.1 = lgetv %h;
-        symbol [ h %tmp.1 68 20 21 ];
-        %tmp.2 = 0.20;
+        symbol [ h %tmp.1 70 20 21 ];
+        %tmp.2 = 0.15;
         %tmp.3 = mul %tmp.1 %tmp.2;
         %tmp.4 = lgetv %index;
-        symbol [ index %tmp.4 68 31 36 ];
+        symbol [ index %tmp.4 70 31 36 ];
         %tmp.5 = lgetv %h;
-        symbol [ h %tmp.5 68 40 41 ];
-        %tmp.6 = 0.17;
+        symbol [ h %tmp.5 70 40 41 ];
+        %tmp.6 = 0.155;
         %tmp.7 = mul %tmp.5 %tmp.6;
         %tmp.8 = mul %tmp.4 %tmp.7;
         %tmp.9 = add %tmp.3 %tmp.8;
         lputv %itemY.1 %tmp.9;
-        symbol [ itemY %itemY.1 68 12 17 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 69 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_67_56_80_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_67_56_80_4_stop" ]
+        symbol [ itemY %itemY.1 70 12 17 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 71 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_69_63_82_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_69_63_82_4_stop" ]
         %isSelected.2 = local;
-        symbol [ isSelected %isSelected.2 69 12 22 ];
+        symbol [ isSelected %isSelected.2 71 12 22 ];
         %tmp.10 = lgetv %index;
-        symbol [ index %tmp.10 69 26 31 ];
-        symbol [ selectedIndex %tmp.12 69 35 48 ];
+        symbol [ index %tmp.10 71 26 31 ];
+        symbol [ selectedIndex %tmp.12 71 35 48 ];
         %tmp.12 = getv ? :selectedIndex;
         %tmp.13 = eq %tmp.10 %tmp.12;
         lputv %isSelected.2 %tmp.13;
-        symbol [ isSelected %isSelected.2 69 12 22 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 71 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_71_8_77_8_if_stmt:
+        symbol [ isSelected %isSelected.2 71 12 22 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 73 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_73_8_79_8_if_stmt:
         %tmp.14 = lgetv %isSelected.2;
-        symbol [ isSelected %tmp.14 71 12 22 ];
-        bf %tmp.14 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_71_8_77_8_if_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_71_8_77_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_71_24_75_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 72 12 ]
+        symbol [ isSelected %tmp.14 73 12 22 ];
+        bf %tmp.14 @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_73_8_79_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_73_8_79_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_73_24_77_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 74 12 ]
         %tmp.15 = lgetv %dc;
-        symbol [ dc %tmp.15 72 12 14 ];
-        symbol [ setColor %tmp.16 72 15 23 ];
+        symbol [ dc %tmp.15 74 12 14 ];
+        symbol [ setColor %tmp.16 74 15 23 ];
         %tmp.16 = getv function %tmp.15 :setColor;
-        symbol [ Graphics %tmp.17 72 24 32 ];
+        symbol [ Graphics %tmp.17 74 24 32 ];
         %tmp.17 = getm $.Toybox.Graphics;
-        symbol [ COLOR_BLUE %tmp.18 72 33 43 ];
+        symbol [ COLOR_BLUE %tmp.18 74 33 43 ];
         %tmp.18 = getv %tmp.17 :COLOR_BLUE;
-        symbol [ Graphics %tmp.19 72 45 53 ];
+        symbol [ Graphics %tmp.19 74 45 53 ];
         %tmp.19 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.20 72 54 71 ];
+        symbol [ COLOR_TRANSPARENT %tmp.20 74 54 71 ];
         %tmp.20 = getv %tmp.19 :COLOR_TRANSPARENT;
         invoke %tmp.15 %tmp.16(%tmp.18, %tmp.20);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 73 12 ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 75 12 ]
         %tmp.21 = lgetv %dc;
-        symbol [ dc %tmp.21 73 12 14 ];
-        symbol [ fillRoundedRectangle %tmp.22 73 15 35 ];
+        symbol [ dc %tmp.21 75 12 14 ];
+        symbol [ fillRoundedRectangle %tmp.22 75 15 35 ];
         %tmp.22 = getv function %tmp.21 :fillRoundedRectangle;
         %tmp.23 = lgetv %cx;
-        symbol [ cx %tmp.23 73 36 38 ];
+        symbol [ cx %tmp.23 75 36 38 ];
         %tmp.24 = lgetv %w;
-        symbol [ w %tmp.24 73 41 42 ];
+        symbol [ w %tmp.24 75 41 42 ];
         %tmp.25 = 0.42;
         %tmp.26 = mul %tmp.24 %tmp.25;
         %tmp.27 = sub %tmp.23 %tmp.26;
         %tmp.28 = lgetv %itemY.1;
-        symbol [ itemY %tmp.28 73 51 56 ];
+        symbol [ itemY %tmp.28 75 51 56 ];
         %tmp.29 = 4;
         %tmp.30 = sub %tmp.28 %tmp.29;
         %tmp.31 = lgetv %w;
-        symbol [ w %tmp.31 73 62 63 ];
+        symbol [ w %tmp.31 75 62 63 ];
         %tmp.32 = 0.84;
         %tmp.33 = mul %tmp.31 %tmp.32;
-        %tmp.34 = 30;
+        %tmp.34 = 28;
         %tmp.35 = 6;
         invoke %tmp.21 %tmp.22(%tmp.27, %tmp.30, %tmp.33, %tmp.34, %tmp.35);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 74 12 ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 76 12 ]
         %tmp.36 = lgetv %dc;
-        symbol [ dc %tmp.36 74 12 14 ];
-        symbol [ setColor %tmp.37 74 15 23 ];
+        symbol [ dc %tmp.36 76 12 14 ];
+        symbol [ setColor %tmp.37 76 15 23 ];
         %tmp.37 = getv function %tmp.36 :setColor;
-        symbol [ Graphics %tmp.38 74 24 32 ];
+        symbol [ Graphics %tmp.38 76 24 32 ];
         %tmp.38 = getm $.Toybox.Graphics;
-        symbol [ COLOR_WHITE %tmp.39 74 33 44 ];
+        symbol [ COLOR_WHITE %tmp.39 76 33 44 ];
         %tmp.39 = getv %tmp.38 :COLOR_WHITE;
-        symbol [ Graphics %tmp.40 74 46 54 ];
+        symbol [ Graphics %tmp.40 76 46 54 ];
         %tmp.40 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.41 74 55 72 ];
+        symbol [ COLOR_TRANSPARENT %tmp.41 76 55 72 ];
         %tmp.41 = getv %tmp.40 :COLOR_TRANSPARENT;
         invoke %tmp.36 %tmp.37(%tmp.39, %tmp.41);
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_71_24_75_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_71_8_77_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_71_8_77_8_if_else_false:
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_75_15_77_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 76 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_73_24_77_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_73_8_79_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_73_8_79_8_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_77_15_79_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 78 12 ]
         %tmp.42 = lgetv %dc;
-        symbol [ dc %tmp.42 76 12 14 ];
-        symbol [ setColor %tmp.43 76 15 23 ];
+        symbol [ dc %tmp.42 78 12 14 ];
+        symbol [ setColor %tmp.43 78 15 23 ];
         %tmp.43 = getv function %tmp.42 :setColor;
-        symbol [ Graphics %tmp.44 76 24 32 ];
-        %tmp.44 = getm $.Toybox.Graphics;
-        symbol [ COLOR_LT_GRAY %tmp.45 76 33 46 ];
-        %tmp.45 = getv %tmp.44 :COLOR_LT_GRAY;
-        symbol [ Graphics %tmp.46 76 48 56 ];
-        %tmp.46 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.47 76 57 74 ];
-        %tmp.47 = getv %tmp.46 :COLOR_TRANSPARENT;
-        invoke %tmp.42 %tmp.43(%tmp.45, %tmp.47);
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_75_15_77_8_stop:
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_71_8_77_8_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 79 8 ]
-        %tmp.48 = lgetv %dc;
-        symbol [ dc %tmp.48 79 8 10 ];
-        symbol [ drawText %tmp.49 79 11 19 ];
-        %tmp.49 = getv function %tmp.48 :drawText;
-        %tmp.50 = lgetv %cx;
-        symbol [ cx %tmp.50 79 20 22 ];
-        %tmp.51 = lgetv %itemY.1;
-        symbol [ itemY %tmp.51 79 24 29 ];
-        %tmp.52 = 1;
-        %tmp.53 = add %tmp.51 %tmp.52;
-        symbol [ Graphics %tmp.54 79 35 43 ];
-        %tmp.54 = getm $.Toybox.Graphics;
-        symbol [ FONT_XTINY %tmp.55 79 44 54 ];
-        %tmp.55 = getv %tmp.54 :FONT_XTINY;
-        %tmp.56 = lgetv %label;
-        symbol [ label %tmp.56 79 56 61 ];
-        symbol [ Graphics %tmp.57 79 63 71 ];
-        %tmp.57 = getm $.Toybox.Graphics;
-        symbol [ TEXT_JUSTIFY_CENTER %tmp.58 79 72 91 ];
-        %tmp.58 = getv %tmp.57 :TEXT_JUSTIFY_CENTER;
-        invoke %tmp.48 %tmp.49(%tmp.50, %tmp.53, %tmp.55, %tmp.56, %tmp.58);
-_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_67_56_80_4_stop:
+        %tmp.44 = lgetv %color;
+        symbol [ color %tmp.44 78 24 29 ];
+        symbol [ Graphics %tmp.45 78 31 39 ];
+        %tmp.45 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.46 78 40 57 ];
+        %tmp.46 = getv %tmp.45 :COLOR_TRANSPARENT;
+        invoke %tmp.42 %tmp.43(%tmp.44, %tmp.46);
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_77_15_79_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_73_8_79_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc" 81 8 ]
+        %tmp.47 = lgetv %dc;
+        symbol [ dc %tmp.47 81 8 10 ];
+        symbol [ drawText %tmp.48 81 11 19 ];
+        %tmp.48 = getv function %tmp.47 :drawText;
+        %tmp.49 = lgetv %cx;
+        symbol [ cx %tmp.49 81 20 22 ];
+        %tmp.50 = lgetv %itemY.1;
+        symbol [ itemY %tmp.50 81 24 29 ];
+        %tmp.51 = 1;
+        %tmp.52 = add %tmp.50 %tmp.51;
+        symbol [ Graphics %tmp.53 81 35 43 ];
+        %tmp.53 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.54 81 44 54 ];
+        %tmp.54 = getv %tmp.53 :FONT_XTINY;
+        %tmp.55 = lgetv %label;
+        symbol [ label %tmp.55 81 56 61 ];
+        symbol [ Graphics %tmp.56 81 63 71 ];
+        %tmp.56 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.57 81 72 91 ];
+        %tmp.57 = getv %tmp.56 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.47 %tmp.48(%tmp.49, %tmp.52, %tmp.54, %tmp.55, %tmp.57);
+_Users_simenfinjord_glidr5_garmin_app_source_SettingsView_mc_69_63_82_4_stop:
     }
 }
 [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/SettingsView.mc"; @line = 3; ]

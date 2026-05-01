@@ -101,13 +101,33 @@ export async function setupAuth(app: Express) {
           if (!user) {
             return done(null, false, { message: "No user found for that email." });
           }
-          const valid = await verifyPassword(password, user.password);
-          if (!valid) {
-            return done(null, false, { message: "Invalid password." });
-          }
           if (user.isActive === 0) {
             return done(null, false, { message: "Account is deactivated. Contact your administrator." });
           }
+          // Check if account is locked
+          if ((user as any).loginLocked === 1) {
+            return done(null, false, { message: "Account is locked due to too many failed login attempts. Contact your Team Admin or Super Admin to reset." });
+          }
+          const valid = await verifyPassword(password, user.password);
+          if (!valid) {
+            // Increment failed attempts
+            const newAttempts = ((user as any).failedAttempts ?? 0) + 1;
+            const shouldLock = newAttempts >= 5;
+            await pool.query(
+              "UPDATE users SET failed_attempts = $1, login_locked = $2 WHERE id = $3",
+              [newAttempts, shouldLock ? 1 : 0, user.id]
+            );
+            if (shouldLock) {
+              return done(null, false, { message: "Account locked after 5 failed attempts. Contact your Team Admin or Super Admin to reset." });
+            }
+            const remaining = 5 - newAttempts;
+            return done(null, false, { message: `Invalid password. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining before lockout.` });
+          }
+          // Successful login — reset failed attempts
+          await pool.query(
+            "UPDATE users SET failed_attempts = 0, login_locked = 0 WHERE id = $1",
+            [user.id]
+          );
           return done(null, user);
         } catch (err) {
           return done(err);

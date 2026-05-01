@@ -1,14 +1,14 @@
-[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 5; @symbol_usingdef<0> = [Toybox,5,6,12]; @symbol_usingdef<1> = [WatchUi,5,13,20]; ]
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 4; @symbol_usingdef<0> = [Toybox,4,6,12]; @symbol_usingdef<1> = [WatchUi,4,13,20]; ]
 using Toybox.WatchUi;
-[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 6; @symbol_usingdef<0> = [Toybox,6,6,12]; @symbol_usingdef<1> = [Graphics,6,13,21]; ]
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 5; @symbol_usingdef<0> = [Toybox,5,6,12]; @symbol_usingdef<1> = [Graphics,5,13,21]; ]
 using Toybox.Graphics;
-[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 7; @symbol_usingdef<0> = [Toybox,7,6,12]; @symbol_usingdef<1> = [Application,7,13,24]; @symbol_usingdef<2> = [Storage,7,25,32]; ]
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 6; @symbol_usingdef<0> = [Toybox,6,6,12]; @symbol_usingdef<1> = [Application,6,13,24]; @symbol_usingdef<2> = [Storage,6,25,32]; ]
 using Toybox.Application.Storage;
-[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 9; @symbol_classdef = [PersonalCodeView,9,6,22]; @symbol_extends<0> = [WatchUi,9,31,38]; @symbol_extends<1> = [View,9,39,43]; ]
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 8; @symbol_classdef = [PersonalCodeView,8,6,22]; @symbol_extends<0> = [WatchUi,8,31,38]; @symbol_extends<1> = [View,8,39,43]; ]
 class PersonalCodeView extends WatchUi.View {
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 9; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 8; ]
     <init> {
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 10 8 ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 9 8 ]
         %tmp.1 = newa 4;
         %tmp.2 = 0;
         %tmp.3 = dup %tmp.1;
@@ -24,18 +24,20 @@ class PersonalCodeView extends WatchUi.View {
         %tmp.13 = aputv %tmp.12 3 %tmp.11;
         putv self :digits %tmp.13;
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 9; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 8; ]
     static
     <init> {
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 10; @position = 8; @symbol_vardef = [digits,10,8,14]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 9; @position = 8; @symbol_vardef = [digits,9,8,14]; ]
     var digits;
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 11; @position = 8; @symbol_vardef = [cursorPos,11,8,17]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 10; @position = 8; @symbol_vardef = [cursorPos,10,8,17]; ]
     var cursorPos = 0;
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 12; @position = 8; @symbol_vardef = [statusText,12,8,18]; ]
-    var statusText = "Enter your code";
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 13; @position = 8; @symbol_vardef = [isVerifying,13,8,19]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 11; @position = 8; @symbol_vardef = [statusText,11,8,18]; ]
+    var statusText = null;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 12; @position = 8; @symbol_vardef = [isVerifying,12,8,19]; ]
     var isVerifying = false;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 13; @position = 8; @symbol_vardef = [isLoginMode,13,8,19]; ]
+    var isLoginMode = false;
     [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 15; @symbol_functiondef = [initialize,15,13,23]; ]
     function initialize() as Void {
 _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_15_26_24_4_start:
@@ -59,83 +61,95 @@ _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_15_26_24_4_star
         symbol [ existing %existing.1 18 12 20 ];
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 19 8 ]
 _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_8_23_8_if_stmt:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_12_19_53_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_12_19_83_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_12_19_52_begin:
         %tmp.8 = lgetv %existing.1;
         symbol [ existing %tmp.8 19 12 20 ];
         %tmp.9 = null;
         %tmp.10 = ne %tmp.8 %tmp.9;
         bf %tmp.10 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_8_23_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_32_19_53_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_32_19_52_true:
         %tmp.11 = lgetv %existing.1;
         symbol [ existing %tmp.11 19 32 40 ];
         %tmp.12 = as %tmp.11 { (!Null) };
-        symbol [ length %tmp.13 19 41 47 ];
-        %tmp.13 = getv function %tmp.12 :length;
-        %tmp.14 = invoke %tmp.12 %tmp.13();
-        %tmp.15 = 4;
-        %tmp.16 = eq %tmp.14 %tmp.15;
-        push %tmp.16;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_32_19_53_end:
-        %tmp.17 = phi [%tmp.10 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_12_19_53_begin] [%tmp.16 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_32_19_53_true] [%tmp.17 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_32_19_53_end];
-        bf %tmp.17 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_8_23_8_if_end;
+        symbol [ String %tmp.14 19 52 58 ];
+        %tmp.14 = getv ? :String;
+        %tmp.15 = isa %tmp.12 %tmp.14;
+        push %tmp.15;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_32_19_52_end:
+        %tmp.16 = phi [%tmp.10 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_12_19_52_begin] [%tmp.15 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_32_19_52_true] [%tmp.16 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_32_19_52_end];
+        bf %tmp.16 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_8_23_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_62_19_83_true:
+        %tmp.17 = lgetv %existing.1;
+        symbol [ existing %tmp.17 19 62 70 ];
+        %tmp.18 = as %tmp.17 { (String) && (!Null) };
+        symbol [ length %tmp.19 19 71 77 ];
+        %tmp.19 = getv function %tmp.18 :length;
+        %tmp.20 = invoke %tmp.18 %tmp.19();
+        %tmp.21 = 4;
+        %tmp.22 = eq %tmp.20 %tmp.21;
+        push %tmp.22;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_62_19_83_end:
+        %tmp.23 = phi [%tmp.16 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_12_19_83_begin] [%tmp.22 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_62_19_83_true] [%tmp.23 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_62_19_83_end];
+        bf %tmp.23 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_8_23_8_if_end;
 _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_8_23_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_56_23_8_start:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_86_23_8_start:
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 20 12 ]
         for @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_12_22_12_for_test @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_12_22_12_for_incr @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_12_22_12_for_end;
 _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_12_22_12_for_init:
         [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_12_22_12_for_begin" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_12_22_12_for_end" ]
         %i.2 = local;
         symbol [ i %i.2 20 21 22 ];
-        %tmp.18 = 0;
-        lputv %i.2 %tmp.18;
+        %tmp.24 = 0;
+        lputv %i.2 %tmp.24;
         symbol [ i %i.2 20 21 22 ];
 _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_12_22_12_for_test:
-        %tmp.19 = lgetv %i.2;
-        symbol [ i %tmp.19 20 28 29 ];
-        %tmp.20 = 4;
-        %tmp.21 = lt %tmp.19 %tmp.20;
-        bf %tmp.21 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_12_22_12_for_end;
+        %tmp.25 = lgetv %i.2;
+        symbol [ i %tmp.25 20 28 29 ];
+        %tmp.26 = 4;
+        %tmp.27 = lt %tmp.25 %tmp.26;
+        bf %tmp.27 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_12_22_12_for_end;
 _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_12_22_12_for_begin:
 _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_40_22_12_start:
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 21 16 ]
-        symbol [ digits %tmp.22 21 16 22 ];
-        %tmp.22 = getv self :digits;
-        %tmp.23 = lgetv %existing.1;
-        symbol [ existing %tmp.23 21 28 36 ];
-        %tmp.24 = as %tmp.23 { (!Null) };
-        symbol [ substring %tmp.25 21 37 46 ];
-        %tmp.25 = getv function %tmp.24 :substring;
-        %tmp.26 = lgetv %i.2;
-        symbol [ i %tmp.26 21 47 48 ];
-        %tmp.27 = lgetv %i.2;
-        symbol [ i %tmp.27 21 50 51 ];
-        %tmp.28 = 1;
-        %tmp.29 = add %tmp.27 %tmp.28;
-        %tmp.30 = invoke %tmp.24 %tmp.25(%tmp.26, %tmp.29);
-        symbol [ toNumber %tmp.31 21 57 65 ];
-        %tmp.31 = getv function %tmp.30 :toNumber;
-        %tmp.32 = invoke %tmp.30 %tmp.31();
+        symbol [ digits %tmp.28 21 16 22 ];
+        %tmp.28 = getv self :digits;
+        %tmp.29 = lgetv %existing.1;
+        symbol [ existing %tmp.29 21 28 36 ];
+        %tmp.30 = as %tmp.29 { (String) && (!Null) };
+        symbol [ substring %tmp.31 21 37 46 ];
+        %tmp.31 = getv function %tmp.30 :substring;
+        %tmp.32 = lgetv %i.2;
+        symbol [ i %tmp.32 21 47 48 ];
         %tmp.33 = lgetv %i.2;
-        symbol [ i %tmp.33 21 23 24 ];
-        aputv %tmp.22 %tmp.33 %tmp.32;
+        symbol [ i %tmp.33 21 50 51 ];
+        %tmp.34 = 1;
+        %tmp.35 = add %tmp.33 %tmp.34;
+        %tmp.36 = invoke %tmp.30 %tmp.31(%tmp.32, %tmp.35);
+        symbol [ toNumber %tmp.37 21 57 65 ];
+        %tmp.37 = getv function %tmp.36 :toNumber;
+        %tmp.38 = invoke %tmp.36 %tmp.37();
+        %tmp.39 = lgetv %i.2;
+        symbol [ i %tmp.39 21 23 24 ];
+        aputv %tmp.28 %tmp.39 %tmp.38;
 _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_40_22_12_stop:
 _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_12_22_12_for_incr:
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 20 ]
-        %tmp.36 = lgetv %i.2;
-        symbol [ i %tmp.36 20 35 36 ];
-        %tmp.37 = add %tmp.36 1;
-        lputv %i.2 %tmp.37;
+        %tmp.42 = lgetv %i.2;
+        symbol [ i %tmp.42 20 35 36 ];
+        %tmp.43 = add %tmp.42 1;
+        lputv %i.2 %tmp.43;
         symbol [ i %i.2 20 35 36 ];
         goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_12_22_12_for_test;
 _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_20_12_22_12_for_end:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_56_23_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_86_23_8_stop:
         goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_8_23_8_if_end;
 _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_19_8_23_8_if_end:
 _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_15_26_24_4_stop:
     }
     [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 26; @symbol_functiondef = [onUpdate,26,13,21]; @symbol_param<0> = [dc,26,22,24]; ]
     function onUpdate(dc) {
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_start:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_start:
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 27 8 ]
         %tmp.1 = lgetv %dc;
         symbol [ dc %tmp.1 27 8 10 ];
@@ -157,7 +171,7 @@ _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_star
         %tmp.8 = getv function %tmp.7 :clear;
         invoke %tmp.7 %tmp.8();
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 30 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_stop" ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_stop" ]
         %w.1 = local;
         symbol [ w %w.1 30 12 13 ];
         %tmp.9 = lgetv %dc;
@@ -168,7 +182,7 @@ _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_star
         lputv %w.1 %tmp.11;
         symbol [ w %w.1 30 12 13 ];
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 31 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_stop" ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_stop" ]
         %h.2 = local;
         symbol [ h %h.2 31 12 13 ];
         %tmp.12 = lgetv %dc;
@@ -179,7 +193,7 @@ _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_star
         lputv %h.2 %tmp.14;
         symbol [ h %h.2 31 12 13 ];
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 32 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_stop" ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_stop" ]
         %cx.3 = local;
         symbol [ cx %cx.3 32 12 14 ];
         %tmp.15 = lgetv %w.1;
@@ -188,561 +202,752 @@ _Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_star
         %tmp.17 = div %tmp.15 %tmp.16;
         lputv %cx.3 %tmp.17;
         symbol [ cx %cx.3 32 12 14 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 34 8 ]
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 35 8 ]
         %tmp.18 = lgetv %dc;
-        symbol [ dc %tmp.18 34 8 10 ];
-        symbol [ setColor %tmp.19 34 11 19 ];
+        symbol [ dc %tmp.18 35 8 10 ];
+        symbol [ setColor %tmp.19 35 11 19 ];
         %tmp.19 = getv function %tmp.18 :setColor;
-        symbol [ Graphics %tmp.20 34 20 28 ];
+        symbol [ Graphics %tmp.20 35 20 28 ];
         %tmp.20 = getm $.Toybox.Graphics;
-        symbol [ COLOR_WHITE %tmp.21 34 29 40 ];
+        symbol [ COLOR_WHITE %tmp.21 35 29 40 ];
         %tmp.21 = getv %tmp.20 :COLOR_WHITE;
-        symbol [ Graphics %tmp.22 34 42 50 ];
+        symbol [ Graphics %tmp.22 35 42 50 ];
         %tmp.22 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.23 34 51 68 ];
+        symbol [ COLOR_TRANSPARENT %tmp.23 35 51 68 ];
         %tmp.23 = getv %tmp.22 :COLOR_TRANSPARENT;
         invoke %tmp.18 %tmp.19(%tmp.21, %tmp.23);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 35 8 ]
-        %tmp.24 = lgetv %dc;
-        symbol [ dc %tmp.24 35 8 10 ];
-        symbol [ drawText %tmp.25 35 11 19 ];
-        %tmp.25 = getv function %tmp.24 :drawText;
-        %tmp.26 = lgetv %cx.3;
-        symbol [ cx %tmp.26 35 20 22 ];
-        %tmp.27 = lgetv %h.2;
-        symbol [ h %tmp.27 35 24 25 ];
-        %tmp.28 = 0.06;
-        %tmp.29 = mul %tmp.27 %tmp.28;
-        symbol [ Graphics %tmp.30 35 34 42 ];
-        %tmp.30 = getm $.Toybox.Graphics;
-        symbol [ FONT_SMALL %tmp.31 35 43 53 ];
-        %tmp.31 = getv %tmp.30 :FONT_SMALL;
-        %tmp.32 = "MY CODE";
-        symbol [ Graphics %tmp.33 35 66 74 ];
-        %tmp.33 = getm $.Toybox.Graphics;
-        symbol [ TEXT_JUSTIFY_CENTER %tmp.34 35 75 94 ];
-        %tmp.34 = getv %tmp.33 :TEXT_JUSTIFY_CENTER;
-        invoke %tmp.24 %tmp.25(%tmp.26, %tmp.29, %tmp.31, %tmp.32, %tmp.34);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 37 8 ]
-        %tmp.35 = lgetv %dc;
-        symbol [ dc %tmp.35 37 8 10 ];
-        symbol [ setColor %tmp.36 37 11 19 ];
-        %tmp.36 = getv function %tmp.35 :setColor;
-        symbol [ Graphics %tmp.37 37 20 28 ];
-        %tmp.37 = getm $.Toybox.Graphics;
-        symbol [ COLOR_LT_GRAY %tmp.38 37 29 42 ];
-        %tmp.38 = getv %tmp.37 :COLOR_LT_GRAY;
-        symbol [ Graphics %tmp.39 37 44 52 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 36 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_36_8_42_8_if_stmt:
+        symbol [ isLoginMode %tmp.25 36 12 23 ];
+        %tmp.25 = getv ? :isLoginMode;
+        bf %tmp.25 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_36_8_42_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_36_8_42_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_36_25_40_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 37 12 ]
+        %tmp.26 = lgetv %dc;
+        symbol [ dc %tmp.26 37 12 14 ];
+        symbol [ drawText %tmp.27 37 15 23 ];
+        %tmp.27 = getv function %tmp.26 :drawText;
+        %tmp.28 = lgetv %cx.3;
+        symbol [ cx %tmp.28 37 24 26 ];
+        %tmp.29 = lgetv %h.2;
+        symbol [ h %tmp.29 37 28 29 ];
+        %tmp.30 = 0.04;
+        %tmp.31 = mul %tmp.29 %tmp.30;
+        symbol [ Graphics %tmp.32 37 38 46 ];
+        %tmp.32 = getm $.Toybox.Graphics;
+        symbol [ FONT_SMALL %tmp.33 37 47 57 ];
+        %tmp.33 = getv %tmp.32 :FONT_SMALL;
+        %tmp.34 = "GLIDR LOGIN";
+        symbol [ Graphics %tmp.35 37 74 82 ];
+        %tmp.35 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.36 37 83 102 ];
+        %tmp.36 = getv %tmp.35 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.26 %tmp.27(%tmp.28, %tmp.31, %tmp.33, %tmp.34, %tmp.36);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 38 12 ]
+        %tmp.37 = lgetv %dc;
+        symbol [ dc %tmp.37 38 12 14 ];
+        symbol [ setColor %tmp.38 38 15 23 ];
+        %tmp.38 = getv function %tmp.37 :setColor;
+        symbol [ Graphics %tmp.39 38 24 32 ];
         %tmp.39 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.40 37 53 70 ];
-        %tmp.40 = getv %tmp.39 :COLOR_TRANSPARENT;
-        invoke %tmp.35 %tmp.36(%tmp.38, %tmp.40);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 38 8 ]
-        %tmp.41 = lgetv %dc;
-        symbol [ dc %tmp.41 38 8 10 ];
-        symbol [ drawText %tmp.42 38 11 19 ];
-        %tmp.42 = getv function %tmp.41 :drawText;
-        %tmp.43 = lgetv %cx.3;
-        symbol [ cx %tmp.43 38 20 22 ];
-        %tmp.44 = lgetv %h.2;
-        symbol [ h %tmp.44 38 24 25 ];
-        %tmp.45 = 0.20;
-        %tmp.46 = mul %tmp.44 %tmp.45;
-        symbol [ Graphics %tmp.47 38 34 42 ];
-        %tmp.47 = getm $.Toybox.Graphics;
-        symbol [ FONT_XTINY %tmp.48 38 43 53 ];
-        %tmp.48 = getv %tmp.47 :FONT_XTINY;
-        symbol [ statusText %tmp.50 38 55 65 ];
-        %tmp.50 = getv ? :statusText;
-        symbol [ Graphics %tmp.51 38 67 75 ];
-        %tmp.51 = getm $.Toybox.Graphics;
-        symbol [ TEXT_JUSTIFY_CENTER %tmp.52 38 76 95 ];
-        %tmp.52 = getv %tmp.51 :TEXT_JUSTIFY_CENTER;
-        invoke %tmp.41 %tmp.42(%tmp.43, %tmp.46, %tmp.48, %tmp.50, %tmp.52);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 40 8 ]
-        %tmp.53 = lgetv %dc;
-        symbol [ dc %tmp.53 40 8 10 ];
-        symbol [ setColor %tmp.54 40 11 19 ];
-        %tmp.54 = getv function %tmp.53 :setColor;
-        symbol [ Graphics %tmp.55 40 20 28 ];
-        %tmp.55 = getm $.Toybox.Graphics;
-        symbol [ COLOR_DK_GRAY %tmp.56 40 29 42 ];
-        %tmp.56 = getv %tmp.55 :COLOR_DK_GRAY;
-        symbol [ Graphics %tmp.57 40 44 52 ];
-        %tmp.57 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.58 40 53 70 ];
-        %tmp.58 = getv %tmp.57 :COLOR_TRANSPARENT;
-        invoke %tmp.53 %tmp.54(%tmp.56, %tmp.58);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 41 8 ]
-        %tmp.59 = lgetv %dc;
-        symbol [ dc %tmp.59 41 8 10 ];
-        symbol [ drawText %tmp.60 41 11 19 ];
-        %tmp.60 = getv function %tmp.59 :drawText;
-        %tmp.61 = lgetv %cx.3;
-        symbol [ cx %tmp.61 41 20 22 ];
-        %tmp.62 = lgetv %h.2;
-        symbol [ h %tmp.62 41 24 25 ];
-        %tmp.63 = 0.30;
-        %tmp.64 = mul %tmp.62 %tmp.63;
-        symbol [ Graphics %tmp.65 41 34 42 ];
-        %tmp.65 = getm $.Toybox.Graphics;
-        symbol [ FONT_XTINY %tmp.66 41 43 53 ];
-        %tmp.66 = getv %tmp.65 :FONT_XTINY;
-        %tmp.67 = "Personal code";
-        symbol [ Graphics %tmp.68 41 72 80 ];
-        %tmp.68 = getm $.Toybox.Graphics;
-        symbol [ TEXT_JUSTIFY_CENTER %tmp.69 41 81 100 ];
-        %tmp.69 = getv %tmp.68 :TEXT_JUSTIFY_CENTER;
-        invoke %tmp.59 %tmp.60(%tmp.61, %tmp.64, %tmp.66, %tmp.67, %tmp.69);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 44 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_stop" ]
-        %digitWidth.4 = local;
-        symbol [ digitWidth %digitWidth.4 44 12 22 ];
-        %tmp.70 = 36;
-        lputv %digitWidth.4 %tmp.70;
-        symbol [ digitWidth %digitWidth.4 44 12 22 ];
+        symbol [ COLOR_DK_GRAY %tmp.40 38 33 46 ];
+        %tmp.40 = getv %tmp.39 :COLOR_DK_GRAY;
+        symbol [ Graphics %tmp.41 38 48 56 ];
+        %tmp.41 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.42 38 57 74 ];
+        %tmp.42 = getv %tmp.41 :COLOR_TRANSPARENT;
+        invoke %tmp.37 %tmp.38(%tmp.40, %tmp.42);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 39 12 ]
+        %tmp.43 = lgetv %dc;
+        symbol [ dc %tmp.43 39 12 14 ];
+        symbol [ drawText %tmp.44 39 15 23 ];
+        %tmp.44 = getv function %tmp.43 :drawText;
+        %tmp.45 = lgetv %cx.3;
+        symbol [ cx %tmp.45 39 24 26 ];
+        %tmp.46 = lgetv %h.2;
+        symbol [ h %tmp.46 39 28 29 ];
+        %tmp.47 = 0.16;
+        %tmp.48 = mul %tmp.46 %tmp.47;
+        symbol [ Graphics %tmp.49 39 38 46 ];
+        %tmp.49 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.50 39 47 57 ];
+        %tmp.50 = getv %tmp.49 :FONT_XTINY;
+        %tmp.51 = "Step 1 of 2";
+        symbol [ Graphics %tmp.52 39 74 82 ];
+        %tmp.52 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.53 39 83 102 ];
+        %tmp.53 = getv %tmp.52 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.43 %tmp.44(%tmp.45, %tmp.48, %tmp.50, %tmp.51, %tmp.53);
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_36_25_40_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_36_8_42_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_36_8_42_8_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_40_15_42_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 41 12 ]
+        %tmp.54 = lgetv %dc;
+        symbol [ dc %tmp.54 41 12 14 ];
+        symbol [ drawText %tmp.55 41 15 23 ];
+        %tmp.55 = getv function %tmp.54 :drawText;
+        %tmp.56 = lgetv %cx.3;
+        symbol [ cx %tmp.56 41 24 26 ];
+        %tmp.57 = lgetv %h.2;
+        symbol [ h %tmp.57 41 28 29 ];
+        %tmp.58 = 0.06;
+        %tmp.59 = mul %tmp.57 %tmp.58;
+        symbol [ Graphics %tmp.60 41 38 46 ];
+        %tmp.60 = getm $.Toybox.Graphics;
+        symbol [ FONT_SMALL %tmp.61 41 47 57 ];
+        %tmp.61 = getv %tmp.60 :FONT_SMALL;
+        %tmp.62 = "MY CODE";
+        symbol [ Graphics %tmp.63 41 70 78 ];
+        %tmp.63 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.64 41 79 98 ];
+        %tmp.64 = getv %tmp.63 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.54 %tmp.55(%tmp.56, %tmp.59, %tmp.61, %tmp.62, %tmp.64);
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_40_15_42_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_36_8_42_8_if_end:
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 45 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_stop" ]
-        %totalWidth.5 = local;
-        symbol [ totalWidth %totalWidth.5 45 12 22 ];
-        %tmp.71 = lgetv %digitWidth.4;
-        symbol [ digitWidth %tmp.71 45 25 35 ];
-        %tmp.72 = 4;
-        %tmp.73 = mul %tmp.71 %tmp.72;
-        %tmp.74 = 10;
-        %tmp.75 = add %tmp.73 %tmp.74;
-        lputv %totalWidth.5 %tmp.75;
-        symbol [ totalWidth %totalWidth.5 45 12 22 ];
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_stop" ]
+        %displayStatus.4 = local;
+        symbol [ displayStatus %displayStatus.4 45 12 25 ];
+        symbol [ statusText %tmp.66 45 28 38 ];
+        %tmp.66 = getv ? :statusText;
+        lputv %displayStatus.4 %tmp.66;
+        symbol [ displayStatus %displayStatus.4 45 12 25 ];
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 46 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_stop" ]
-        %startX.6 = local;
-        symbol [ startX %startX.6 46 12 18 ];
-        %tmp.76 = lgetv %cx.3;
-        symbol [ cx %tmp.76 46 21 23 ];
-        %tmp.77 = lgetv %totalWidth.5;
-        symbol [ totalWidth %tmp.77 46 26 36 ];
-        %tmp.78 = 2;
-        %tmp.79 = div %tmp.77 %tmp.78;
-        %tmp.80 = sub %tmp.76 %tmp.79;
-        lputv %startX.6 %tmp.80;
-        symbol [ startX %startX.6 46 12 18 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 47 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_stop" ]
-        %digitY.7 = local;
-        symbol [ digitY %digitY.7 47 12 18 ];
-        %tmp.81 = lgetv %h.2;
-        symbol [ h %tmp.81 47 21 22 ];
-        %tmp.82 = 0.40;
-        %tmp.83 = mul %tmp.81 %tmp.82;
-        lputv %digitY.7 %tmp.83;
-        symbol [ digitY %digitY.7 47 12 18 ];
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_46_8_48_8_if_stmt:
+        %tmp.67 = lgetv %displayStatus.4;
+        symbol [ displayStatus %tmp.67 46 12 25 ];
+        %tmp.68 = null;
+        %tmp.69 = eq %tmp.67 %tmp.68;
+        bf %tmp.69 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_46_8_48_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_46_8_48_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_46_35_48_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 47 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_47_28_47_64_begin:
+        symbol [ isLoginMode %tmp.71 47 28 39 ];
+        %tmp.71 = getv ? :isLoginMode;
+        bf %tmp.71 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_47_28_47_64_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_47_28_47_64_true:
+        %tmp.72 = "Enter personal ID";
+        push %tmp.72;
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_47_28_47_64_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_47_28_47_64_else_false:
+        %tmp.73 = "Enter your code";
+        push %tmp.73;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_47_28_47_64_end:
+        %tmp.74 = phi [%tmp.71 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_47_28_47_64_begin] [%tmp.72 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_47_28_47_64_true] [%tmp.73 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_47_28_47_64_else_false] [%tmp.74 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_47_28_47_64_end];
+        lputv %displayStatus.4 %tmp.74;
+        symbol [ displayStatus %displayStatus.4 47 12 25 ];
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_46_35_48_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_46_8_48_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_46_8_48_8_if_end:
 [ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 49 8 ]
-        for @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_8_69_8_for_test @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_8_69_8_for_incr @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_8_69_8_for_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_8_69_8_for_init:
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_8_69_8_for_begin" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_8_69_8_for_end" ]
-        %i.8 = local;
-        symbol [ i %i.8 49 17 18 ];
-        %tmp.84 = 0;
-        lputv %i.8 %tmp.84;
-        symbol [ i %i.8 49 17 18 ];
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_8_69_8_for_test:
-        %tmp.85 = lgetv %i.8;
-        symbol [ i %tmp.85 49 24 25 ];
-        %tmp.86 = 4;
-        %tmp.87 = lt %tmp.85 %tmp.86;
-        bf %tmp.87 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_8_69_8_for_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_8_69_8_for_begin:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_36_69_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 50 12 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_36_69_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_36_69_8_stop" ]
-        %dx.9 = local;
-        symbol [ dx %dx.9 50 16 18 ];
-        %tmp.88 = lgetv %startX.6;
-        symbol [ startX %tmp.88 50 21 27 ];
-        %tmp.89 = lgetv %i.8;
-        symbol [ i %tmp.89 50 30 31 ];
-        %tmp.90 = lgetv %digitWidth.4;
-        symbol [ digitWidth %tmp.90 50 34 44 ];
-        %tmp.91 = mul %tmp.89 %tmp.90;
-        %tmp.92 = add %tmp.88 %tmp.91;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_50_48_50_62_begin:
-        %tmp.93 = lgetv %i.8;
-        symbol [ i %tmp.93 50 48 49 ];
-        %tmp.94 = 2;
-        %tmp.95 = gte %tmp.93 %tmp.94;
-        bf %tmp.95 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_50_48_50_62_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_50_48_50_62_true:
-        %tmp.96 = 10;
-        push %tmp.96;
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_50_48_50_62_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_50_48_50_62_else_false:
-        %tmp.97 = 0;
-        push %tmp.97;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_50_48_50_62_end:
-        %tmp.98 = phi [%tmp.95 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_50_48_50_62_begin] [%tmp.96 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_50_48_50_62_true] [%tmp.97 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_50_48_50_62_else_false] [%tmp.98 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_50_48_50_62_end];
-        %tmp.99 = add %tmp.92 %tmp.98;
-        lputv %dx.9 %tmp.99;
-        symbol [ dx %dx.9 50 16 18 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 51 12 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_36_69_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_36_69_8_stop" ]
-        %textX.10 = local;
-        symbol [ textX %textX.10 51 16 21 ];
-        %tmp.100 = lgetv %dx.9;
-        symbol [ dx %tmp.100 51 24 26 ];
-        %tmp.101 = lgetv %digitWidth.4;
-        symbol [ digitWidth %tmp.101 51 29 39 ];
-        %tmp.102 = 2;
-        %tmp.103 = div %tmp.101 %tmp.102;
-        %tmp.104 = add %tmp.100 %tmp.103;
-        lputv %textX.10 %tmp.104;
-        symbol [ textX %textX.10 51 16 21 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 53 12 ]
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_53_12_57_12_if_stmt:
-        %tmp.105 = lgetv %i.8;
-        symbol [ i %tmp.105 53 16 17 ];
-        symbol [ cursorPos %tmp.107 53 21 30 ];
-        %tmp.107 = getv ? :cursorPos;
-        %tmp.108 = eq %tmp.105 %tmp.107;
-        bf %tmp.108 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_53_12_57_12_if_else_false;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_53_12_57_12_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_53_32_55_12_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 54 16 ]
-        %tmp.109 = lgetv %dc;
-        symbol [ dc %tmp.109 54 16 18 ];
-        symbol [ setColor %tmp.110 54 19 27 ];
-        %tmp.110 = getv function %tmp.109 :setColor;
-        symbol [ Graphics %tmp.111 54 28 36 ];
-        %tmp.111 = getm $.Toybox.Graphics;
-        symbol [ COLOR_WHITE %tmp.112 54 37 48 ];
-        %tmp.112 = getv %tmp.111 :COLOR_WHITE;
-        symbol [ Graphics %tmp.113 54 50 58 ];
-        %tmp.113 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.114 54 59 76 ];
-        %tmp.114 = getv %tmp.113 :COLOR_TRANSPARENT;
-        invoke %tmp.109 %tmp.110(%tmp.112, %tmp.114);
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_53_32_55_12_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_53_12_57_12_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_53_12_57_12_if_else_false:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_55_19_57_12_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 56 16 ]
-        %tmp.115 = lgetv %dc;
-        symbol [ dc %tmp.115 56 16 18 ];
-        symbol [ setColor %tmp.116 56 19 27 ];
-        %tmp.116 = getv function %tmp.115 :setColor;
-        symbol [ Graphics %tmp.117 56 28 36 ];
-        %tmp.117 = getm $.Toybox.Graphics;
-        symbol [ COLOR_DK_GRAY %tmp.118 56 37 50 ];
-        %tmp.118 = getv %tmp.117 :COLOR_DK_GRAY;
-        symbol [ Graphics %tmp.119 56 52 60 ];
-        %tmp.119 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.120 56 61 78 ];
-        %tmp.120 = getv %tmp.119 :COLOR_TRANSPARENT;
-        invoke %tmp.115 %tmp.116(%tmp.118, %tmp.120);
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_55_19_57_12_stop:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_53_12_57_12_if_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 59 12 ]
-        %tmp.121 = lgetv %dc;
-        symbol [ dc %tmp.121 59 12 14 ];
-        symbol [ drawText %tmp.122 59 15 23 ];
-        %tmp.122 = getv function %tmp.121 :drawText;
-        %tmp.123 = lgetv %textX.10;
-        symbol [ textX %tmp.123 59 24 29 ];
-        %tmp.124 = lgetv %digitY.7;
-        symbol [ digitY %tmp.124 59 31 37 ];
-        symbol [ Graphics %tmp.125 59 39 47 ];
-        %tmp.125 = getm $.Toybox.Graphics;
-        symbol [ FONT_NUMBER_MILD %tmp.126 59 48 64 ];
-        %tmp.126 = getv %tmp.125 :FONT_NUMBER_MILD;
-        symbol [ digits %tmp.128 60 16 22 ];
-        %tmp.128 = getv ? :digits;
-        %tmp.129 = lgetv %i.8;
-        symbol [ i %tmp.129 60 23 24 ];
-        %tmp.130 = agetv %tmp.128 %tmp.129;
-        symbol [ toString %tmp.131 60 26 34 ];
-        %tmp.131 = getv function %tmp.130 :toString;
-        %tmp.132 = invoke %tmp.130 %tmp.131();
-        symbol [ Graphics %tmp.133 60 38 46 ];
-        %tmp.133 = getm $.Toybox.Graphics;
-        symbol [ TEXT_JUSTIFY_CENTER %tmp.134 60 47 66 ];
-        %tmp.134 = getv %tmp.133 :TEXT_JUSTIFY_CENTER;
-        invoke %tmp.121 %tmp.122(%tmp.123, %tmp.124, %tmp.126, %tmp.132, %tmp.134);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 62 12 ]
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_62_12_68_12_if_stmt:
-        %tmp.135 = lgetv %i.8;
-        symbol [ i %tmp.135 62 16 17 ];
-        symbol [ cursorPos %tmp.137 62 21 30 ];
-        %tmp.137 = getv ? :cursorPos;
-        %tmp.138 = eq %tmp.135 %tmp.137;
-        bf %tmp.138 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_62_12_68_12_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_62_12_68_12_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_62_32_68_12_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 63 16 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_62_32_68_12_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_62_32_68_12_stop" ]
-        %underlineY.11 = local;
-        symbol [ underlineY %underlineY.11 63 20 30 ];
-        %tmp.139 = lgetv %digitY.7;
-        symbol [ digitY %tmp.139 63 33 39 ];
-        %tmp.140 = 30;
-        %tmp.141 = add %tmp.139 %tmp.140;
-        lputv %underlineY.11 %tmp.141;
-        symbol [ underlineY %underlineY.11 63 20 30 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 64 16 ]
-        %tmp.142 = lgetv %dc;
-        symbol [ dc %tmp.142 64 16 18 ];
-        symbol [ setColor %tmp.143 64 19 27 ];
-        %tmp.143 = getv function %tmp.142 :setColor;
-        symbol [ Graphics %tmp.144 64 28 36 ];
-        %tmp.144 = getm $.Toybox.Graphics;
-        symbol [ COLOR_WHITE %tmp.145 64 37 48 ];
-        %tmp.145 = getv %tmp.144 :COLOR_WHITE;
-        symbol [ Graphics %tmp.146 64 50 58 ];
-        %tmp.146 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.147 64 59 76 ];
-        %tmp.147 = getv %tmp.146 :COLOR_TRANSPARENT;
-        invoke %tmp.142 %tmp.143(%tmp.145, %tmp.147);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 65 16 ]
-        %tmp.148 = lgetv %dc;
-        symbol [ dc %tmp.148 65 16 18 ];
-        symbol [ setPenWidth %tmp.149 65 19 30 ];
-        %tmp.149 = getv function %tmp.148 :setPenWidth;
-        %tmp.150 = 2;
-        invoke %tmp.148 %tmp.149(%tmp.150);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 66 16 ]
-        %tmp.151 = lgetv %dc;
-        symbol [ dc %tmp.151 66 16 18 ];
-        symbol [ drawLine %tmp.152 66 19 27 ];
-        %tmp.152 = getv function %tmp.151 :drawLine;
-        %tmp.153 = lgetv %textX.10;
-        symbol [ textX %tmp.153 66 28 33 ];
-        %tmp.154 = 10;
-        %tmp.155 = sub %tmp.153 %tmp.154;
-        %tmp.156 = lgetv %underlineY.11;
-        symbol [ underlineY %tmp.156 66 40 50 ];
-        %tmp.157 = lgetv %textX.10;
-        symbol [ textX %tmp.157 66 52 57 ];
-        %tmp.158 = 10;
-        %tmp.159 = add %tmp.157 %tmp.158;
-        %tmp.160 = lgetv %underlineY.11;
-        symbol [ underlineY %tmp.160 66 64 74 ];
-        invoke %tmp.151 %tmp.152(%tmp.155, %tmp.156, %tmp.159, %tmp.160);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 67 16 ]
-        %tmp.161 = lgetv %dc;
-        symbol [ dc %tmp.161 67 16 18 ];
-        symbol [ setPenWidth %tmp.162 67 19 30 ];
-        %tmp.162 = getv function %tmp.161 :setPenWidth;
-        %tmp.163 = 1;
-        invoke %tmp.161 %tmp.162(%tmp.163);
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_62_32_68_12_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_62_12_68_12_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_62_12_68_12_if_end:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_36_69_8_stop:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_8_69_8_for_incr:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 49 ]
-        %tmp.166 = lgetv %i.8;
-        symbol [ i %tmp.166 49 31 32 ];
-        %tmp.167 = add %tmp.166 1;
-        lputv %i.8 %tmp.167;
-        symbol [ i %i.8 49 31 32 ];
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_8_69_8_for_test;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_49_8_69_8_for_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 71 8 ]
-        %tmp.168 = lgetv %dc;
-        symbol [ dc %tmp.168 71 8 10 ];
-        symbol [ setColor %tmp.169 71 11 19 ];
-        %tmp.169 = getv function %tmp.168 :setColor;
-        symbol [ Graphics %tmp.170 71 20 28 ];
-        %tmp.170 = getm $.Toybox.Graphics;
-        symbol [ COLOR_DK_GRAY %tmp.171 71 29 42 ];
-        %tmp.171 = getv %tmp.170 :COLOR_DK_GRAY;
-        symbol [ Graphics %tmp.172 71 44 52 ];
-        %tmp.172 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.173 71 53 70 ];
-        %tmp.173 = getv %tmp.172 :COLOR_TRANSPARENT;
-        invoke %tmp.168 %tmp.169(%tmp.171, %tmp.173);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 72 8 ]
-        %tmp.174 = lgetv %dc;
-        symbol [ dc %tmp.174 72 8 10 ];
-        symbol [ drawText %tmp.175 72 11 19 ];
-        %tmp.175 = getv function %tmp.174 :drawText;
-        %tmp.176 = lgetv %cx.3;
-        symbol [ cx %tmp.176 72 20 22 ];
-        %tmp.177 = lgetv %h.2;
-        symbol [ h %tmp.177 72 24 25 ];
-        %tmp.178 = 0.65;
-        %tmp.179 = mul %tmp.177 %tmp.178;
-        symbol [ Graphics %tmp.180 72 34 42 ];
-        %tmp.180 = getm $.Toybox.Graphics;
-        symbol [ FONT_XTINY %tmp.181 72 43 53 ];
-        %tmp.181 = getv %tmp.180 :FONT_XTINY;
-        %tmp.182 = "UP/DN: change digit";
-        symbol [ Graphics %tmp.183 72 78 86 ];
-        %tmp.183 = getm $.Toybox.Graphics;
-        symbol [ TEXT_JUSTIFY_CENTER %tmp.184 72 87 106 ];
-        %tmp.184 = getv %tmp.183 :TEXT_JUSTIFY_CENTER;
-        invoke %tmp.174 %tmp.175(%tmp.176, %tmp.179, %tmp.181, %tmp.182, %tmp.184);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 73 8 ]
-        %tmp.185 = lgetv %dc;
-        symbol [ dc %tmp.185 73 8 10 ];
-        symbol [ drawText %tmp.186 73 11 19 ];
-        %tmp.186 = getv function %tmp.185 :drawText;
-        %tmp.187 = lgetv %cx.3;
-        symbol [ cx %tmp.187 73 20 22 ];
-        %tmp.188 = lgetv %h.2;
-        symbol [ h %tmp.188 73 24 25 ];
-        %tmp.189 = 0.73;
-        %tmp.190 = mul %tmp.188 %tmp.189;
-        symbol [ Graphics %tmp.191 73 34 42 ];
-        %tmp.191 = getm $.Toybox.Graphics;
-        symbol [ FONT_XTINY %tmp.192 73 43 53 ];
-        %tmp.192 = getv %tmp.191 :FONT_XTINY;
-        %tmp.193 = "SELECT: next / confirm";
-        symbol [ Graphics %tmp.194 73 81 89 ];
-        %tmp.194 = getm $.Toybox.Graphics;
-        symbol [ TEXT_JUSTIFY_CENTER %tmp.195 73 90 109 ];
-        %tmp.195 = getv %tmp.194 :TEXT_JUSTIFY_CENTER;
-        invoke %tmp.185 %tmp.186(%tmp.187, %tmp.190, %tmp.192, %tmp.193, %tmp.195);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 74 8 ]
-        %tmp.196 = lgetv %dc;
-        symbol [ dc %tmp.196 74 8 10 ];
-        symbol [ drawText %tmp.197 74 11 19 ];
-        %tmp.197 = getv function %tmp.196 :drawText;
-        %tmp.198 = lgetv %cx.3;
-        symbol [ cx %tmp.198 74 20 22 ];
-        %tmp.199 = lgetv %h.2;
-        symbol [ h %tmp.199 74 24 25 ];
-        %tmp.200 = 0.81;
-        %tmp.201 = mul %tmp.199 %tmp.200;
-        symbol [ Graphics %tmp.202 74 34 42 ];
-        %tmp.202 = getm $.Toybox.Graphics;
-        symbol [ FONT_XTINY %tmp.203 74 43 53 ];
-        %tmp.203 = getv %tmp.202 :FONT_XTINY;
-        %tmp.204 = "BACK: prev / cancel";
-        symbol [ Graphics %tmp.205 74 78 86 ];
-        %tmp.205 = getm $.Toybox.Graphics;
-        symbol [ TEXT_JUSTIFY_CENTER %tmp.206 74 87 106 ];
-        %tmp.206 = getv %tmp.205 :TEXT_JUSTIFY_CENTER;
-        invoke %tmp.196 %tmp.197(%tmp.198, %tmp.201, %tmp.203, %tmp.204, %tmp.206);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 77 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_stop" ]
-        %storedName.12 = local;
-        symbol [ storedName %storedName.12 77 12 22 ];
-        symbol [ Storage %tmp.207 77 25 32 ];
-        %tmp.207 = getm $.Toybox.Application.Storage;
-        symbol [ getValue %tmp.208 77 33 41 ];
-        %tmp.208 = getv function %tmp.207 :getValue;
-        %tmp.209 = "userName";
-        %tmp.210 = invoke %tmp.207 %tmp.208(%tmp.209);
-        lputv %storedName.12 %tmp.210;
-        symbol [ storedName %storedName.12 77 12 22 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 78 8 ]
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_78_8_81_8_if_stmt:
-        %tmp.211 = lgetv %storedName.12;
-        symbol [ storedName %tmp.211 78 12 22 ];
-        %tmp.212 = null;
-        %tmp.213 = ne %tmp.211 %tmp.212;
-        bf %tmp.213 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_78_8_81_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_78_8_81_8_if_true:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_78_32_81_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 79 12 ]
-        %tmp.214 = lgetv %dc;
-        symbol [ dc %tmp.214 79 12 14 ];
-        symbol [ setColor %tmp.215 79 15 23 ];
-        %tmp.215 = getv function %tmp.214 :setColor;
-        symbol [ Graphics %tmp.216 79 24 32 ];
+        %tmp.75 = lgetv %dc;
+        symbol [ dc %tmp.75 49 8 10 ];
+        symbol [ setColor %tmp.76 49 11 19 ];
+        %tmp.76 = getv function %tmp.75 :setColor;
+        symbol [ Graphics %tmp.77 49 20 28 ];
+        %tmp.77 = getm $.Toybox.Graphics;
+        symbol [ COLOR_LT_GRAY %tmp.78 49 29 42 ];
+        %tmp.78 = getv %tmp.77 :COLOR_LT_GRAY;
+        symbol [ Graphics %tmp.79 49 44 52 ];
+        %tmp.79 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.80 49 53 70 ];
+        %tmp.80 = getv %tmp.79 :COLOR_TRANSPARENT;
+        invoke %tmp.75 %tmp.76(%tmp.78, %tmp.80);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 50 8 ]
+        %tmp.81 = lgetv %dc;
+        symbol [ dc %tmp.81 50 8 10 ];
+        symbol [ drawText %tmp.82 50 11 19 ];
+        %tmp.82 = getv function %tmp.81 :drawText;
+        %tmp.83 = lgetv %cx.3;
+        symbol [ cx %tmp.83 50 20 22 ];
+        %tmp.84 = lgetv %h.2;
+        symbol [ h %tmp.84 50 24 25 ];
+        %tmp.85 = 0.25;
+        %tmp.86 = mul %tmp.84 %tmp.85;
+        symbol [ Graphics %tmp.87 50 34 42 ];
+        %tmp.87 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.88 50 43 53 ];
+        %tmp.88 = getv %tmp.87 :FONT_XTINY;
+        %tmp.89 = lgetv %displayStatus.4;
+        symbol [ displayStatus %tmp.89 50 55 68 ];
+        symbol [ Graphics %tmp.90 50 70 78 ];
+        %tmp.90 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.91 50 79 98 ];
+        %tmp.91 = getv %tmp.90 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.81 %tmp.82(%tmp.83, %tmp.86, %tmp.88, %tmp.89, %tmp.91);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 53 8 ]
+        %tmp.92 = lgetv %dc;
+        symbol [ dc %tmp.92 53 8 10 ];
+        symbol [ setColor %tmp.93 53 11 19 ];
+        %tmp.93 = getv function %tmp.92 :setColor;
+        symbol [ Graphics %tmp.94 53 20 28 ];
+        %tmp.94 = getm $.Toybox.Graphics;
+        symbol [ COLOR_DK_GRAY %tmp.95 53 29 42 ];
+        %tmp.95 = getv %tmp.94 :COLOR_DK_GRAY;
+        symbol [ Graphics %tmp.96 53 44 52 ];
+        %tmp.96 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.97 53 53 70 ];
+        %tmp.97 = getv %tmp.96 :COLOR_TRANSPARENT;
+        invoke %tmp.92 %tmp.93(%tmp.95, %tmp.97);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 54 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_stop" ]
+        %labelText.5 = local;
+        symbol [ labelText %labelText.5 54 12 21 ];
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_54_24_54_54_begin:
+        symbol [ isLoginMode %tmp.99 54 24 35 ];
+        %tmp.99 = getv ? :isLoginMode;
+        bf %tmp.99 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_54_24_54_54_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_54_24_54_54_true:
+        %tmp.100 = "Personal ID";
+        push %tmp.100;
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_54_24_54_54_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_54_24_54_54_else_false:
+        %tmp.101 = "Personal code";
+        push %tmp.101;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_54_24_54_54_end:
+        %tmp.102 = phi [%tmp.99 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_54_24_54_54_begin] [%tmp.100 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_54_24_54_54_true] [%tmp.101 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_54_24_54_54_else_false] [%tmp.102 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_54_24_54_54_end];
+        lputv %labelText.5 %tmp.102;
+        symbol [ labelText %labelText.5 54 12 21 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 55 8 ]
+        %tmp.103 = lgetv %dc;
+        symbol [ dc %tmp.103 55 8 10 ];
+        symbol [ drawText %tmp.104 55 11 19 ];
+        %tmp.104 = getv function %tmp.103 :drawText;
+        %tmp.105 = lgetv %cx.3;
+        symbol [ cx %tmp.105 55 20 22 ];
+        %tmp.106 = lgetv %h.2;
+        symbol [ h %tmp.106 55 24 25 ];
+        %tmp.107 = 0.35;
+        %tmp.108 = mul %tmp.106 %tmp.107;
+        symbol [ Graphics %tmp.109 55 34 42 ];
+        %tmp.109 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.110 55 43 53 ];
+        %tmp.110 = getv %tmp.109 :FONT_XTINY;
+        %tmp.111 = lgetv %labelText.5;
+        symbol [ labelText %tmp.111 55 55 64 ];
+        symbol [ Graphics %tmp.112 55 66 74 ];
+        %tmp.112 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.113 55 75 94 ];
+        %tmp.113 = getv %tmp.112 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.103 %tmp.104(%tmp.105, %tmp.108, %tmp.110, %tmp.111, %tmp.113);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 58 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_stop" ]
+        %digitWidth.6 = local;
+        symbol [ digitWidth %digitWidth.6 58 12 22 ];
+        %tmp.114 = 36;
+        lputv %digitWidth.6 %tmp.114;
+        symbol [ digitWidth %digitWidth.6 58 12 22 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 59 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_stop" ]
+        %totalWidth.7 = local;
+        symbol [ totalWidth %totalWidth.7 59 12 22 ];
+        %tmp.115 = lgetv %digitWidth.6;
+        symbol [ digitWidth %tmp.115 59 25 35 ];
+        %tmp.116 = 4;
+        %tmp.117 = mul %tmp.115 %tmp.116;
+        %tmp.118 = 10;
+        %tmp.119 = add %tmp.117 %tmp.118;
+        lputv %totalWidth.7 %tmp.119;
+        symbol [ totalWidth %totalWidth.7 59 12 22 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 60 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_stop" ]
+        %startX.8 = local;
+        symbol [ startX %startX.8 60 12 18 ];
+        %tmp.120 = lgetv %cx.3;
+        symbol [ cx %tmp.120 60 21 23 ];
+        %tmp.121 = lgetv %totalWidth.7;
+        symbol [ totalWidth %tmp.121 60 26 36 ];
+        %tmp.122 = 2;
+        %tmp.123 = div %tmp.121 %tmp.122;
+        %tmp.124 = sub %tmp.120 %tmp.123;
+        lputv %startX.8 %tmp.124;
+        symbol [ startX %startX.8 60 12 18 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 61 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_stop" ]
+        %digitY.9 = local;
+        symbol [ digitY %digitY.9 61 12 18 ];
+        %tmp.125 = lgetv %h.2;
+        symbol [ h %tmp.125 61 21 22 ];
+        %tmp.126 = 0.45;
+        %tmp.127 = mul %tmp.125 %tmp.126;
+        lputv %digitY.9 %tmp.127;
+        symbol [ digitY %digitY.9 61 12 18 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 63 8 ]
+        for @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_8_83_8_for_test @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_8_83_8_for_incr @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_8_83_8_for_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_8_83_8_for_init:
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_8_83_8_for_begin" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_8_83_8_for_end" ]
+        %i.10 = local;
+        symbol [ i %i.10 63 17 18 ];
+        %tmp.128 = 0;
+        lputv %i.10 %tmp.128;
+        symbol [ i %i.10 63 17 18 ];
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_8_83_8_for_test:
+        %tmp.129 = lgetv %i.10;
+        symbol [ i %tmp.129 63 24 25 ];
+        %tmp.130 = 4;
+        %tmp.131 = lt %tmp.129 %tmp.130;
+        bf %tmp.131 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_8_83_8_for_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_8_83_8_for_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_36_83_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 64 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_36_83_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_36_83_8_stop" ]
+        %dx.11 = local;
+        symbol [ dx %dx.11 64 16 18 ];
+        %tmp.132 = lgetv %startX.8;
+        symbol [ startX %tmp.132 64 21 27 ];
+        %tmp.133 = lgetv %i.10;
+        symbol [ i %tmp.133 64 30 31 ];
+        %tmp.134 = lgetv %digitWidth.6;
+        symbol [ digitWidth %tmp.134 64 34 44 ];
+        %tmp.135 = mul %tmp.133 %tmp.134;
+        %tmp.136 = add %tmp.132 %tmp.135;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_64_48_64_62_begin:
+        %tmp.137 = lgetv %i.10;
+        symbol [ i %tmp.137 64 48 49 ];
+        %tmp.138 = 2;
+        %tmp.139 = gte %tmp.137 %tmp.138;
+        bf %tmp.139 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_64_48_64_62_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_64_48_64_62_true:
+        %tmp.140 = 10;
+        push %tmp.140;
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_64_48_64_62_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_64_48_64_62_else_false:
+        %tmp.141 = 0;
+        push %tmp.141;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_64_48_64_62_end:
+        %tmp.142 = phi [%tmp.139 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_64_48_64_62_begin] [%tmp.140 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_64_48_64_62_true] [%tmp.141 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_64_48_64_62_else_false] [%tmp.142 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_64_48_64_62_end];
+        %tmp.143 = add %tmp.136 %tmp.142;
+        lputv %dx.11 %tmp.143;
+        symbol [ dx %dx.11 64 16 18 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 65 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_36_83_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_36_83_8_stop" ]
+        %textX.12 = local;
+        symbol [ textX %textX.12 65 16 21 ];
+        %tmp.144 = lgetv %dx.11;
+        symbol [ dx %tmp.144 65 24 26 ];
+        %tmp.145 = lgetv %digitWidth.6;
+        symbol [ digitWidth %tmp.145 65 29 39 ];
+        %tmp.146 = 2;
+        %tmp.147 = div %tmp.145 %tmp.146;
+        %tmp.148 = add %tmp.144 %tmp.147;
+        lputv %textX.12 %tmp.148;
+        symbol [ textX %textX.12 65 16 21 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 67 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_67_12_71_12_if_stmt:
+        %tmp.149 = lgetv %i.10;
+        symbol [ i %tmp.149 67 16 17 ];
+        symbol [ cursorPos %tmp.151 67 21 30 ];
+        %tmp.151 = getv ? :cursorPos;
+        %tmp.152 = eq %tmp.149 %tmp.151;
+        bf %tmp.152 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_67_12_71_12_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_67_12_71_12_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_67_32_69_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 68 16 ]
+        %tmp.153 = lgetv %dc;
+        symbol [ dc %tmp.153 68 16 18 ];
+        symbol [ setColor %tmp.154 68 19 27 ];
+        %tmp.154 = getv function %tmp.153 :setColor;
+        symbol [ Graphics %tmp.155 68 28 36 ];
+        %tmp.155 = getm $.Toybox.Graphics;
+        symbol [ COLOR_WHITE %tmp.156 68 37 48 ];
+        %tmp.156 = getv %tmp.155 :COLOR_WHITE;
+        symbol [ Graphics %tmp.157 68 50 58 ];
+        %tmp.157 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.158 68 59 76 ];
+        %tmp.158 = getv %tmp.157 :COLOR_TRANSPARENT;
+        invoke %tmp.153 %tmp.154(%tmp.156, %tmp.158);
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_67_32_69_12_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_67_12_71_12_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_67_12_71_12_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_69_19_71_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 70 16 ]
+        %tmp.159 = lgetv %dc;
+        symbol [ dc %tmp.159 70 16 18 ];
+        symbol [ setColor %tmp.160 70 19 27 ];
+        %tmp.160 = getv function %tmp.159 :setColor;
+        symbol [ Graphics %tmp.161 70 28 36 ];
+        %tmp.161 = getm $.Toybox.Graphics;
+        symbol [ COLOR_DK_GRAY %tmp.162 70 37 50 ];
+        %tmp.162 = getv %tmp.161 :COLOR_DK_GRAY;
+        symbol [ Graphics %tmp.163 70 52 60 ];
+        %tmp.163 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.164 70 61 78 ];
+        %tmp.164 = getv %tmp.163 :COLOR_TRANSPARENT;
+        invoke %tmp.159 %tmp.160(%tmp.162, %tmp.164);
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_69_19_71_12_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_67_12_71_12_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 73 12 ]
+        %tmp.165 = lgetv %dc;
+        symbol [ dc %tmp.165 73 12 14 ];
+        symbol [ drawText %tmp.166 73 15 23 ];
+        %tmp.166 = getv function %tmp.165 :drawText;
+        %tmp.167 = lgetv %textX.12;
+        symbol [ textX %tmp.167 73 24 29 ];
+        %tmp.168 = lgetv %digitY.9;
+        symbol [ digitY %tmp.168 73 31 37 ];
+        symbol [ Graphics %tmp.169 73 39 47 ];
+        %tmp.169 = getm $.Toybox.Graphics;
+        symbol [ FONT_NUMBER_MILD %tmp.170 73 48 64 ];
+        %tmp.170 = getv %tmp.169 :FONT_NUMBER_MILD;
+        symbol [ digits %tmp.172 74 16 22 ];
+        %tmp.172 = getv ? :digits;
+        %tmp.173 = lgetv %i.10;
+        symbol [ i %tmp.173 74 23 24 ];
+        %tmp.174 = agetv %tmp.172 %tmp.173;
+        symbol [ toString %tmp.175 74 26 34 ];
+        %tmp.175 = getv function %tmp.174 :toString;
+        %tmp.176 = invoke %tmp.174 %tmp.175();
+        symbol [ Graphics %tmp.177 74 38 46 ];
+        %tmp.177 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.178 74 47 66 ];
+        %tmp.178 = getv %tmp.177 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.165 %tmp.166(%tmp.167, %tmp.168, %tmp.170, %tmp.176, %tmp.178);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 76 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_76_12_82_12_if_stmt:
+        %tmp.179 = lgetv %i.10;
+        symbol [ i %tmp.179 76 16 17 ];
+        symbol [ cursorPos %tmp.181 76 21 30 ];
+        %tmp.181 = getv ? :cursorPos;
+        %tmp.182 = eq %tmp.179 %tmp.181;
+        bf %tmp.182 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_76_12_82_12_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_76_12_82_12_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_76_32_82_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 77 16 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_76_32_82_12_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_76_32_82_12_stop" ]
+        %underlineY.13 = local;
+        symbol [ underlineY %underlineY.13 77 20 30 ];
+        %tmp.183 = lgetv %digitY.9;
+        symbol [ digitY %tmp.183 77 33 39 ];
+        %tmp.184 = 30;
+        %tmp.185 = add %tmp.183 %tmp.184;
+        lputv %underlineY.13 %tmp.185;
+        symbol [ underlineY %underlineY.13 77 20 30 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 78 16 ]
+        %tmp.186 = lgetv %dc;
+        symbol [ dc %tmp.186 78 16 18 ];
+        symbol [ setColor %tmp.187 78 19 27 ];
+        %tmp.187 = getv function %tmp.186 :setColor;
+        symbol [ Graphics %tmp.188 78 28 36 ];
+        %tmp.188 = getm $.Toybox.Graphics;
+        symbol [ COLOR_WHITE %tmp.189 78 37 48 ];
+        %tmp.189 = getv %tmp.188 :COLOR_WHITE;
+        symbol [ Graphics %tmp.190 78 50 58 ];
+        %tmp.190 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.191 78 59 76 ];
+        %tmp.191 = getv %tmp.190 :COLOR_TRANSPARENT;
+        invoke %tmp.186 %tmp.187(%tmp.189, %tmp.191);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 79 16 ]
+        %tmp.192 = lgetv %dc;
+        symbol [ dc %tmp.192 79 16 18 ];
+        symbol [ setPenWidth %tmp.193 79 19 30 ];
+        %tmp.193 = getv function %tmp.192 :setPenWidth;
+        %tmp.194 = 2;
+        invoke %tmp.192 %tmp.193(%tmp.194);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 80 16 ]
+        %tmp.195 = lgetv %dc;
+        symbol [ dc %tmp.195 80 16 18 ];
+        symbol [ drawLine %tmp.196 80 19 27 ];
+        %tmp.196 = getv function %tmp.195 :drawLine;
+        %tmp.197 = lgetv %textX.12;
+        symbol [ textX %tmp.197 80 28 33 ];
+        %tmp.198 = 10;
+        %tmp.199 = sub %tmp.197 %tmp.198;
+        %tmp.200 = lgetv %underlineY.13;
+        symbol [ underlineY %tmp.200 80 40 50 ];
+        %tmp.201 = lgetv %textX.12;
+        symbol [ textX %tmp.201 80 52 57 ];
+        %tmp.202 = 10;
+        %tmp.203 = add %tmp.201 %tmp.202;
+        %tmp.204 = lgetv %underlineY.13;
+        symbol [ underlineY %tmp.204 80 64 74 ];
+        invoke %tmp.195 %tmp.196(%tmp.199, %tmp.200, %tmp.203, %tmp.204);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 81 16 ]
+        %tmp.205 = lgetv %dc;
+        symbol [ dc %tmp.205 81 16 18 ];
+        symbol [ setPenWidth %tmp.206 81 19 30 ];
+        %tmp.206 = getv function %tmp.205 :setPenWidth;
+        %tmp.207 = 1;
+        invoke %tmp.205 %tmp.206(%tmp.207);
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_76_32_82_12_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_76_12_82_12_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_76_12_82_12_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_36_83_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_8_83_8_for_incr:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 63 ]
+        %tmp.210 = lgetv %i.10;
+        symbol [ i %tmp.210 63 31 32 ];
+        %tmp.211 = add %tmp.210 1;
+        lputv %i.10 %tmp.211;
+        symbol [ i %i.10 63 31 32 ];
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_8_83_8_for_test;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_63_8_83_8_for_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 86 8 ]
+        %tmp.212 = lgetv %dc;
+        symbol [ dc %tmp.212 86 8 10 ];
+        symbol [ setColor %tmp.213 86 11 19 ];
+        %tmp.213 = getv function %tmp.212 :setColor;
+        symbol [ Graphics %tmp.214 86 20 28 ];
+        %tmp.214 = getm $.Toybox.Graphics;
+        symbol [ COLOR_DK_GRAY %tmp.215 86 29 42 ];
+        %tmp.215 = getv %tmp.214 :COLOR_DK_GRAY;
+        symbol [ Graphics %tmp.216 86 44 52 ];
         %tmp.216 = getm $.Toybox.Graphics;
-        symbol [ COLOR_GREEN %tmp.217 79 33 44 ];
-        %tmp.217 = getv %tmp.216 :COLOR_GREEN;
-        symbol [ Graphics %tmp.218 79 46 54 ];
-        %tmp.218 = getm $.Toybox.Graphics;
-        symbol [ COLOR_TRANSPARENT %tmp.219 79 55 72 ];
-        %tmp.219 = getv %tmp.218 :COLOR_TRANSPARENT;
-        invoke %tmp.214 %tmp.215(%tmp.217, %tmp.219);
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 80 12 ]
-        %tmp.220 = lgetv %dc;
-        symbol [ dc %tmp.220 80 12 14 ];
-        symbol [ drawText %tmp.221 80 15 23 ];
-        %tmp.221 = getv function %tmp.220 :drawText;
-        %tmp.222 = lgetv %cx.3;
-        symbol [ cx %tmp.222 80 24 26 ];
-        %tmp.223 = lgetv %h.2;
-        symbol [ h %tmp.223 80 28 29 ];
-        %tmp.224 = 0.89;
-        %tmp.225 = mul %tmp.223 %tmp.224;
-        symbol [ Graphics %tmp.226 80 38 46 ];
-        %tmp.226 = getm $.Toybox.Graphics;
-        symbol [ FONT_XTINY %tmp.227 80 47 57 ];
-        %tmp.227 = getv %tmp.226 :FONT_XTINY;
-        %tmp.228 = lgetv %storedName.12;
-        symbol [ storedName %tmp.228 80 59 69 ];
-        %tmp.229 = as %tmp.228 { (!Null) };
-        symbol [ Graphics %tmp.230 80 71 79 ];
-        %tmp.230 = getm $.Toybox.Graphics;
-        symbol [ TEXT_JUSTIFY_CENTER %tmp.231 80 80 99 ];
-        %tmp.231 = getv %tmp.230 :TEXT_JUSTIFY_CENTER;
-        invoke %tmp.220 %tmp.221(%tmp.222, %tmp.225, %tmp.227, %tmp.229, %tmp.231);
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_78_32_81_8_stop:
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_78_8_81_8_if_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_78_8_81_8_if_end:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_82_4_stop:
+        symbol [ COLOR_TRANSPARENT %tmp.217 86 53 70 ];
+        %tmp.217 = getv %tmp.216 :COLOR_TRANSPARENT;
+        invoke %tmp.212 %tmp.213(%tmp.215, %tmp.217);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 87 8 ]
+        %tmp.218 = lgetv %dc;
+        symbol [ dc %tmp.218 87 8 10 ];
+        symbol [ drawText %tmp.219 87 11 19 ];
+        %tmp.219 = getv function %tmp.218 :drawText;
+        %tmp.220 = lgetv %cx.3;
+        symbol [ cx %tmp.220 87 20 22 ];
+        %tmp.221 = lgetv %h.2;
+        symbol [ h %tmp.221 87 24 25 ];
+        %tmp.222 = 0.70;
+        %tmp.223 = mul %tmp.221 %tmp.222;
+        symbol [ Graphics %tmp.224 87 34 42 ];
+        %tmp.224 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.225 87 43 53 ];
+        %tmp.225 = getv %tmp.224 :FONT_XTINY;
+        %tmp.226 = "UP/DN: change digit";
+        symbol [ Graphics %tmp.227 87 78 86 ];
+        %tmp.227 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.228 87 87 106 ];
+        %tmp.228 = getv %tmp.227 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.218 %tmp.219(%tmp.220, %tmp.223, %tmp.225, %tmp.226, %tmp.228);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 88 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_88_8_94_8_if_stmt:
+        symbol [ isLoginMode %tmp.230 88 12 23 ];
+        %tmp.230 = getv ? :isLoginMode;
+        bf %tmp.230 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_88_8_94_8_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_88_8_94_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_88_25_91_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 89 12 ]
+        %tmp.231 = lgetv %dc;
+        symbol [ dc %tmp.231 89 12 14 ];
+        symbol [ drawText %tmp.232 89 15 23 ];
+        %tmp.232 = getv function %tmp.231 :drawText;
+        %tmp.233 = lgetv %cx.3;
+        symbol [ cx %tmp.233 89 24 26 ];
+        %tmp.234 = lgetv %h.2;
+        symbol [ h %tmp.234 89 28 29 ];
+        %tmp.235 = 0.78;
+        %tmp.236 = mul %tmp.234 %tmp.235;
+        symbol [ Graphics %tmp.237 89 38 46 ];
+        %tmp.237 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.238 89 47 57 ];
+        %tmp.238 = getv %tmp.237 :FONT_XTINY;
+        %tmp.239 = "SELECT: next digit / continue";
+        symbol [ Graphics %tmp.240 89 92 100 ];
+        %tmp.240 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.241 89 101 120 ];
+        %tmp.241 = getv %tmp.240 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.231 %tmp.232(%tmp.233, %tmp.236, %tmp.238, %tmp.239, %tmp.241);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 90 12 ]
+        %tmp.242 = lgetv %dc;
+        symbol [ dc %tmp.242 90 12 14 ];
+        symbol [ drawText %tmp.243 90 15 23 ];
+        %tmp.243 = getv function %tmp.242 :drawText;
+        %tmp.244 = lgetv %cx.3;
+        symbol [ cx %tmp.244 90 24 26 ];
+        %tmp.245 = lgetv %h.2;
+        symbol [ h %tmp.245 90 28 29 ];
+        %tmp.246 = 0.86;
+        %tmp.247 = mul %tmp.245 %tmp.246;
+        symbol [ Graphics %tmp.248 90 38 46 ];
+        %tmp.248 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.249 90 47 57 ];
+        %tmp.249 = getv %tmp.248 :FONT_XTINY;
+        %tmp.250 = "BACK: prev digit";
+        symbol [ Graphics %tmp.251 90 79 87 ];
+        %tmp.251 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.252 90 88 107 ];
+        %tmp.252 = getv %tmp.251 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.242 %tmp.243(%tmp.244, %tmp.247, %tmp.249, %tmp.250, %tmp.252);
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_88_25_91_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_88_8_94_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_88_8_94_8_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_91_15_94_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 92 12 ]
+        %tmp.253 = lgetv %dc;
+        symbol [ dc %tmp.253 92 12 14 ];
+        symbol [ drawText %tmp.254 92 15 23 ];
+        %tmp.254 = getv function %tmp.253 :drawText;
+        %tmp.255 = lgetv %cx.3;
+        symbol [ cx %tmp.255 92 24 26 ];
+        %tmp.256 = lgetv %h.2;
+        symbol [ h %tmp.256 92 28 29 ];
+        %tmp.257 = 0.78;
+        %tmp.258 = mul %tmp.256 %tmp.257;
+        symbol [ Graphics %tmp.259 92 38 46 ];
+        %tmp.259 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.260 92 47 57 ];
+        %tmp.260 = getv %tmp.259 :FONT_XTINY;
+        %tmp.261 = "SELECT: next / confirm";
+        symbol [ Graphics %tmp.262 92 85 93 ];
+        %tmp.262 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.263 92 94 113 ];
+        %tmp.263 = getv %tmp.262 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.253 %tmp.254(%tmp.255, %tmp.258, %tmp.260, %tmp.261, %tmp.263);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 93 12 ]
+        %tmp.264 = lgetv %dc;
+        symbol [ dc %tmp.264 93 12 14 ];
+        symbol [ drawText %tmp.265 93 15 23 ];
+        %tmp.265 = getv function %tmp.264 :drawText;
+        %tmp.266 = lgetv %cx.3;
+        symbol [ cx %tmp.266 93 24 26 ];
+        %tmp.267 = lgetv %h.2;
+        symbol [ h %tmp.267 93 28 29 ];
+        %tmp.268 = 0.86;
+        %tmp.269 = mul %tmp.267 %tmp.268;
+        symbol [ Graphics %tmp.270 93 38 46 ];
+        %tmp.270 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.271 93 47 57 ];
+        %tmp.271 = getv %tmp.270 :FONT_XTINY;
+        %tmp.272 = "BACK: prev / cancel";
+        symbol [ Graphics %tmp.273 93 82 90 ];
+        %tmp.273 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.274 93 91 110 ];
+        %tmp.274 = getv %tmp.273 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.264 %tmp.265(%tmp.266, %tmp.269, %tmp.271, %tmp.272, %tmp.274);
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_91_15_94_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_88_8_94_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 97 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_97_8_103_8_if_stmt:
+        symbol [ isLoginMode %tmp.276 97 13 24 ];
+        %tmp.276 = getv ? :isLoginMode;
+        %tmp.277 = not %tmp.276;
+        bf %tmp.277 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_97_8_103_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_97_8_103_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_97_26_103_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 98 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_97_26_103_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_97_26_103_8_stop" ]
+        %storedName.14 = local;
+        symbol [ storedName %storedName.14 98 16 26 ];
+        symbol [ Storage %tmp.278 98 29 36 ];
+        %tmp.278 = getm $.Toybox.Application.Storage;
+        symbol [ getValue %tmp.279 98 37 45 ];
+        %tmp.279 = getv function %tmp.278 :getValue;
+        %tmp.280 = "userName";
+        %tmp.281 = invoke %tmp.278 %tmp.279(%tmp.280);
+        lputv %storedName.14 %tmp.281;
+        symbol [ storedName %storedName.14 98 16 26 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 99 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_99_12_102_12_if_stmt:
+        %tmp.282 = lgetv %storedName.14;
+        symbol [ storedName %tmp.282 99 16 26 ];
+        %tmp.283 = null;
+        %tmp.284 = ne %tmp.282 %tmp.283;
+        bf %tmp.284 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_99_12_102_12_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_99_12_102_12_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_99_36_102_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 100 16 ]
+        %tmp.285 = lgetv %dc;
+        symbol [ dc %tmp.285 100 16 18 ];
+        symbol [ setColor %tmp.286 100 19 27 ];
+        %tmp.286 = getv function %tmp.285 :setColor;
+        symbol [ Graphics %tmp.287 100 28 36 ];
+        %tmp.287 = getm $.Toybox.Graphics;
+        symbol [ COLOR_GREEN %tmp.288 100 37 48 ];
+        %tmp.288 = getv %tmp.287 :COLOR_GREEN;
+        symbol [ Graphics %tmp.289 100 50 58 ];
+        %tmp.289 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.290 100 59 76 ];
+        %tmp.290 = getv %tmp.289 :COLOR_TRANSPARENT;
+        invoke %tmp.285 %tmp.286(%tmp.288, %tmp.290);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 101 16 ]
+        %tmp.291 = lgetv %dc;
+        symbol [ dc %tmp.291 101 16 18 ];
+        symbol [ drawText %tmp.292 101 19 27 ];
+        %tmp.292 = getv function %tmp.291 :drawText;
+        %tmp.293 = lgetv %cx.3;
+        symbol [ cx %tmp.293 101 28 30 ];
+        %tmp.294 = lgetv %h.2;
+        symbol [ h %tmp.294 101 32 33 ];
+        %tmp.295 = 0.93;
+        %tmp.296 = mul %tmp.294 %tmp.295;
+        symbol [ Graphics %tmp.297 101 42 50 ];
+        %tmp.297 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.298 101 51 61 ];
+        %tmp.298 = getv %tmp.297 :FONT_XTINY;
+        %tmp.299 = lgetv %storedName.14;
+        symbol [ storedName %tmp.299 101 63 73 ];
+        %tmp.300 = as %tmp.299 { (!Null) };
+        symbol [ Graphics %tmp.301 101 75 83 ];
+        %tmp.301 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.302 101 84 103 ];
+        %tmp.302 = getv %tmp.301 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.291 %tmp.292(%tmp.293, %tmp.296, %tmp.298, %tmp.300, %tmp.302);
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_99_36_102_12_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_99_12_102_12_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_99_12_102_12_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_97_26_103_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_97_8_103_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_97_8_103_8_if_end:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_26_26_104_4_stop:
     }
-    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 84; @symbol_functiondef = [getCode,84,13,20]; ]
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 106; @symbol_functiondef = [getCode,106,13,20]; ]
     function getCode() {
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_84_23_90_4_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 85 8 ]
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_84_23_90_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_84_23_90_4_stop" ]
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_106_23_112_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 107 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_106_23_112_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_106_23_112_4_stop" ]
         %code.1 = local;
-        symbol [ code %code.1 85 12 16 ];
+        symbol [ code %code.1 107 12 16 ];
         %tmp.1 = "";
         lputv %code.1 %tmp.1;
-        symbol [ code %code.1 85 12 16 ];
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 86 8 ]
-        for @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_86_8_88_8_for_test @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_86_8_88_8_for_incr @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_86_8_88_8_for_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_86_8_88_8_for_init:
-        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_86_8_88_8_for_begin" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_86_8_88_8_for_end" ]
+        symbol [ code %code.1 107 12 16 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 108 8 ]
+        for @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_108_8_110_8_for_test @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_108_8_110_8_for_incr @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_108_8_110_8_for_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_108_8_110_8_for_init:
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_108_8_110_8_for_begin" "_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_108_8_110_8_for_end" ]
         %i.2 = local;
-        symbol [ i %i.2 86 17 18 ];
+        symbol [ i %i.2 108 17 18 ];
         %tmp.2 = 0;
         lputv %i.2 %tmp.2;
-        symbol [ i %i.2 86 17 18 ];
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_86_8_88_8_for_test:
+        symbol [ i %i.2 108 17 18 ];
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_108_8_110_8_for_test:
         %tmp.3 = lgetv %i.2;
-        symbol [ i %tmp.3 86 24 25 ];
+        symbol [ i %tmp.3 108 24 25 ];
         %tmp.4 = 4;
         %tmp.5 = lt %tmp.3 %tmp.4;
-        bf %tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_86_8_88_8_for_end;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_86_8_88_8_for_begin:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_86_36_88_8_start:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 87 12 ]
+        bf %tmp.5 @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_108_8_110_8_for_end;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_108_8_110_8_for_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_108_36_110_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 109 12 ]
         %tmp.6 = lgetv %code.1;
-        symbol [ code %tmp.6 87 12 16 ];
-        symbol [ digits %tmp.8 87 20 26 ];
+        symbol [ code %tmp.6 109 12 16 ];
+        symbol [ digits %tmp.8 109 20 26 ];
         %tmp.8 = getv ? :digits;
         %tmp.9 = lgetv %i.2;
-        symbol [ i %tmp.9 87 27 28 ];
+        symbol [ i %tmp.9 109 27 28 ];
         %tmp.10 = agetv %tmp.8 %tmp.9;
-        symbol [ toString %tmp.11 87 30 38 ];
+        symbol [ toString %tmp.11 109 30 38 ];
         %tmp.11 = getv function %tmp.10 :toString;
         %tmp.12 = invoke %tmp.10 %tmp.11();
         %tmp.13 = add %tmp.6 %tmp.12;
         lputv %code.1 %tmp.13;
-        symbol [ code %code.1 87 12 16 ];
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_86_36_88_8_stop:
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_86_8_88_8_for_incr:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 86 ]
+        symbol [ code %code.1 109 12 16 ];
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_108_36_110_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_108_8_110_8_for_incr:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 108 ]
         %tmp.16 = lgetv %i.2;
-        symbol [ i %tmp.16 86 31 32 ];
+        symbol [ i %tmp.16 108 31 32 ];
         %tmp.17 = add %tmp.16 1;
         lputv %i.2 %tmp.17;
-        symbol [ i %i.2 86 31 32 ];
-        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_86_8_88_8_for_test;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_86_8_88_8_for_end:
-[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 89 8 ]
+        symbol [ i %i.2 108 31 32 ];
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_108_8_110_8_for_test;
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_108_8_110_8_for_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc" 111 8 ]
         %tmp.18 = lgetv %code.1;
-        symbol [ code %tmp.18 89 15 19 ];
+        symbol [ code %tmp.18 111 15 19 ];
         ret %tmp.18;
-_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_84_23_90_4_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_PersonalCodeView_mc_106_23_112_4_stop:
     }
 }
-[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 5; ]
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/PersonalCodeView.mc"; @line = 4; ]
 <init> {
 }

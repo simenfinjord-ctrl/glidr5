@@ -2,6 +2,14 @@ import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
 import { parsePermissions, hashPassword } from "./auth";
+
+/** Shared password validation: ≥7 chars, ≥1 digit, ≥1 special character */
+export function validatePassword(pw: string): string | null {
+  if (!pw || pw.length < 7) return "Password must be at least 7 characters.";
+  if (!/[0-9]/.test(pw)) return "Password must contain at least one number.";
+  if (!/[^A-Za-z0-9]/.test(pw)) return "Password must contain at least one special character.";
+  return null;
+}
 import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, watchSessions, watchQueue, teams, tests, testEntries, users, testSkiSeries, products, dailyWeather, raceSkis } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql, inArray } from "drizzle-orm";
@@ -188,7 +196,9 @@ function getActiveTeamId(req: Request): number {
 
 function canManageTeam(req: Request): boolean {
   const u = req.user!;
-  return u.isAdmin === 1 || u.isTeamAdmin === 1;
+  // Super Admin or global team admin OR per-team admin for the currently active team
+  if (u.isAdmin === 1 || u.isTeamAdmin === 1) return true;
+  return !!(req.session as any)?.activeTeamIsAdmin;
 }
 
 function getAdminTeamScope(req: Request): number | undefined {
@@ -202,6 +212,7 @@ function getAdminTeamScope(req: Request): number | undefined {
 
 // ─── Maintenance mode (Super Admin only to toggle) ───────────────────────────
 let maintenanceMode = false;
+let maintenanceReopenAt: string | null = null; // ISO datetime string
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function registerRoutes(
@@ -261,8 +272,22 @@ export async function registerRoutes(
         END IF;
       END $$;
       ALTER TABLE user_team_permissions ADD COLUMN IF NOT EXISTS group_scope TEXT NOT NULL DEFAULT '';
+      ALTER TABLE user_team_permissions ADD COLUMN IF NOT EXISTS is_team_admin INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE watch_sessions ADD COLUMN IF NOT EXISTS operator_name TEXT;
       ALTER TABLE tests ADD COLUMN IF NOT EXISTS watch_operator_name TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_attempts INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS login_locked INTEGER NOT NULL DEFAULT 0;
+      CREATE TABLE IF NOT EXISTS grind_profiles (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        grind_type TEXT NOT NULL,
+        stone TEXT NOT NULL,
+        pattern TEXT NOT NULL,
+        extra_params TEXT,
+        created_by_name TEXT NOT NULL,
+        team_id INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL
+      );
     `);
   }
 
@@ -274,7 +299,14 @@ export async function registerRoutes(
     if (exemptPaths.includes(req.path) || req.path.startsWith("/api/auth/")) return next();
     // Super Admins always pass through
     if (req.isAuthenticated() && (req.user as any)?.isAdmin === 1) return next();
-    return res.status(503).json({ message: "Maintenance mode is active. The system will be back shortly.", maintenance: true });
+    const reopenMsg = maintenanceReopenAt
+      ? ` The system will reopen at ${new Date(maintenanceReopenAt).toLocaleString("no-NO", { dateStyle: "short", timeStyle: "short" })}.`
+      : " The system will be back shortly.";
+    return res.status(503).json({
+      message: `Maintenance in progress.${reopenMsg} If you have urgent needs, contact your Team Admin.`,
+      maintenance: true,
+      reopenAt: maintenanceReopenAt,
+    });
   });
 
   // --- Health check (used by keep-alive ping) ---
@@ -415,23 +447,27 @@ export async function registerRoutes(
       try {
         const { pool: p } = await import("./db");
         const tpRes = await (p as any).query(
-          "SELECT permissions, group_scope FROM user_team_permissions WHERE user_id = $1 AND team_id = $2",
+          "SELECT permissions, group_scope, is_team_admin FROM user_team_permissions WHERE user_id = $1 AND team_id = $2",
           [u.id, teamId]
         );
         if (tpRes.rows.length > 0) {
           (req.session as any).effectivePermissions = tpRes.rows[0].permissions ?? null;
           (req.session as any).effectiveGroupScope = tpRes.rows[0].group_scope ?? u.groupScope;
+          (req.session as any).activeTeamIsAdmin = tpRes.rows[0].is_team_admin === 1;
         } else {
           (req.session as any).effectivePermissions = null;
           (req.session as any).effectiveGroupScope = u.groupScope;
+          (req.session as any).activeTeamIsAdmin = false;
         }
       } catch (_) {
         (req.session as any).effectivePermissions = null;
         (req.session as any).effectiveGroupScope = null;
+        (req.session as any).activeTeamIsAdmin = false;
       }
     } else {
       (req.session as any).effectivePermissions = null;
       (req.session as any).effectiveGroupScope = null;
+      (req.session as any).activeTeamIsAdmin = false;
     }
 
     req.session.save(() => {
@@ -1798,6 +1834,8 @@ export async function registerRoutes(
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const existing = await storage.getUserByEmail(req.body.email);
     if (existing) return res.status(409).json({ message: "Email already in use" });
+    const pwError = validatePassword(req.body.password);
+    if (pwError) return res.status(400).json({ message: pwError });
     let sanitizedPerms = sanitizePermissions(req.body.permissions);
     const teamId = u.isAdmin === 1 ? (req.body.teamId || getActiveTeamId(req)) : u.teamId;
     const isSuperAdmin = u.isAdmin === 1;
@@ -1864,8 +1902,10 @@ export async function registerRoutes(
       }
     }
     const newPassword = req.body.password || "password";
+    const pwError = validatePassword(newPassword);
+    if (pwError) return res.status(400).json({ message: pwError });
     const hashedPw = await hashPassword(newPassword);
-    const updated = await storage.updateUser(id, { password: hashedPw });
+    const updated = await storage.updateUser(id, { password: hashedPw, failedAttempts: 0, loginLocked: 0 });
     if (!updated) return res.status(404).json({ message: "Not found" });
     res.json({ ok: true });
   });
@@ -1886,6 +1926,25 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  // Unlock a locked account (Team Admin or SA)
+  app.post("/api/users/:id/unlock", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const id = parseInt(req.params.id);
+    if (u.isTeamAdmin === 1 && u.isAdmin !== 1) {
+      const targetUser = await storage.getUser(id);
+      if (!targetUser || targetUser.teamId !== u.teamId) {
+        return res.status(403).json({ message: "Can only manage users in your team" });
+      }
+    }
+    const { pool: pg } = await import("./db");
+    await (pg as any).query(
+      "UPDATE users SET failed_attempts = 0, login_locked = 0 WHERE id = $1",
+      [id]
+    );
+    res.json({ ok: true });
+  });
+
   // --- Garmin Watch access per-user ---
   app.put("/api/users/:id/garmin-watch", requireAuth, async (req, res) => {
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
@@ -1902,10 +1961,10 @@ export async function registerRoutes(
     const userId = parseInt(req.params.id);
     const { pool: p } = await import("./db");
     const result = await (p as any).query(
-      "SELECT team_id, permissions, group_scope FROM user_team_permissions WHERE user_id = $1",
+      "SELECT team_id, permissions, group_scope, is_team_admin FROM user_team_permissions WHERE user_id = $1",
       [userId]
     );
-    res.json(result.rows);
+    res.json(result.rows.map((r: any) => ({ ...r, isTeamAdmin: r.is_team_admin === 1 || r.is_team_admin === true })));
   });
 
   app.put("/api/users/:id/team-permissions/:teamId", requireAuth, async (req, res) => {
@@ -1923,11 +1982,12 @@ export async function registerRoutes(
     }
     const { pool: p } = await import("./db");
     const groupScope = req.body.groupScope !== undefined ? String(req.body.groupScope) : "";
+    const isTeamAdmin = req.body.isTeamAdmin ? 1 : 0;
     await (p as any).query(
-      `INSERT INTO user_team_permissions (user_id, team_id, permissions, group_scope)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT ON CONSTRAINT utp_user_team_unique DO UPDATE SET permissions = $3, group_scope = $4`,
-      [userId, teamId, JSON.stringify(perms), groupScope]
+      `INSERT INTO user_team_permissions (user_id, team_id, permissions, group_scope, is_team_admin)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT ON CONSTRAINT utp_user_team_unique DO UPDATE SET permissions = $3, group_scope = $4, is_team_admin = $5`,
+      [userId, teamId, JSON.stringify(perms), groupScope, isTeamAdmin]
     );
     res.json({ ok: true });
   });
@@ -1993,9 +2053,13 @@ export async function registerRoutes(
     const u = req.user!;
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) return res.status(400).json({ message: "Both current and new password required" });
-    if (u.password !== currentPassword) return res.status(403).json({ message: "Current password is incorrect" });
-    if (newPassword.length < 1) return res.status(400).json({ message: "New password too short" });
-    await storage.updateUser(u.id, { password: newPassword });
+    const { verifyPassword, hashPassword: hp } = await import("./auth");
+    const valid = await verifyPassword(currentPassword, u.password);
+    if (!valid) return res.status(403).json({ message: "Current password is incorrect" });
+    const pwError = validatePassword(newPassword);
+    if (pwError) return res.status(400).json({ message: pwError });
+    const hashed = await hp(newPassword);
+    await storage.updateUser(u.id, { password: hashed });
     res.json({ ok: true });
   });
 
@@ -2004,10 +2068,38 @@ export async function registerRoutes(
     const u = req.user!;
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) return res.status(400).json({ message: "Both current and new password required" });
-    if (u.password !== currentPassword) return res.status(403).json({ message: "Current password is incorrect" });
-    if (newPassword.length < 4) return res.status(400).json({ message: "New password too short" });
-    await storage.updateUser(u.id, { password: newPassword });
+    const { verifyPassword, hashPassword: hp } = await import("./auth");
+    const valid = await verifyPassword(currentPassword, u.password);
+    if (!valid) return res.status(403).json({ message: "Current password is incorrect" });
+    const pwError = validatePassword(newPassword);
+    if (pwError) return res.status(400).json({ message: pwError });
+    const hashed = await hp(newPassword);
+    await storage.updateUser(u.id, { password: hashed });
     res.json({ ok: true });
+  });
+
+  // Google Places Autocomplete proxy (keeps API key server-side)
+  app.get("/api/places/autocomplete", requireAuth, async (req, res) => {
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      return res.status(501).json({ error: "Google Maps API key not configured" });
+    }
+    const input = String(req.query.input ?? "").trim();
+    if (!input || input.length < 2) return res.json({ suggestions: [] });
+    try {
+      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=geocode&key=${apiKey}`;
+      const placesRes = await fetch(url);
+      const data = (await placesRes.json()) as any;
+      const suggestions = (data.predictions ?? []).map((p: any) => ({
+        placeId: p.place_id,
+        description: p.description,
+        mainText: p.structured_formatting?.main_text ?? p.description,
+        secondaryText: p.structured_formatting?.secondary_text ?? "",
+      }));
+      return res.json({ suggestions });
+    } catch (err) {
+      return res.status(500).json({ error: "Failed to fetch places" });
+    }
   });
 
   // Personal watch code — GET returns existing code (generates if missing), POST regenerates
@@ -2169,6 +2261,99 @@ export async function registerRoutes(
       if (!scopes.includes(existing.groupScope)) return res.status(403).json({ message: "No access" });
     }
     const deleted = await storage.deleteGrindingSheet(id);
+    if (!deleted) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
+  // Grind Profiles
+  app.get("/api/grind-profiles", requirePermission("grinding", "view"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const profiles = await storage.listGrindProfiles(teamId);
+    res.json(profiles);
+  });
+
+  app.post("/api/grind-profiles", requirePermission("grinding", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const { name, grindType, stone, pattern, extraParams } = req.body;
+    if (!name || !grindType || !stone || !pattern) {
+      return res.status(400).json({ message: "name, grindType, stone, and pattern are required" });
+    }
+    const profile = await storage.createGrindProfile({
+      name,
+      grindType,
+      stone,
+      pattern,
+      extraParams: extraParams ? JSON.stringify(extraParams) : null,
+      createdByName: u.name,
+      teamId,
+      createdAt: new Date().toISOString(),
+    });
+    if (!isIncognito(req)) try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "created",
+        entityType: "grind_profile", entityId: profile.id,
+        details: `Grind profile: ${profile.name}`, createdAt: new Date().toISOString(),
+        groupScope: u.groupScope.split(",")[0].trim(), teamId,
+      });
+    } catch (_) {}
+    res.json(profile);
+  });
+
+  app.put("/api/grind-profiles/:id", requirePermission("grinding", "edit"), async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getGrindProfile(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
+    const { name, grindType, stone, pattern, extraParams } = req.body;
+    if (!name || !grindType || !stone || !pattern) {
+      return res.status(400).json({ message: "name, grindType, stone, and pattern are required" });
+    }
+    const updated = await storage.updateGrindProfile(id, {
+      name,
+      grindType,
+      stone,
+      pattern,
+      extraParams: extraParams ? JSON.stringify(extraParams) : null,
+    });
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
+  });
+
+  app.post("/api/grind-profiles/:id/duplicate", requirePermission("grinding", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const id = parseInt(req.params.id);
+    const existing = await storage.getGrindProfile(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
+    const copy = await storage.createGrindProfile({
+      name: `${existing.name} (copy)`,
+      grindType: existing.grindType,
+      stone: existing.stone,
+      pattern: existing.pattern,
+      extraParams: existing.extraParams,
+      createdByName: u.name,
+      teamId,
+      createdAt: new Date().toISOString(),
+    });
+    if (!isIncognito(req)) try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "duplicated",
+        entityType: "grind_profile", entityId: copy.id,
+        details: `Duplicated grind profile: ${existing.name}`, createdAt: new Date().toISOString(),
+        groupScope: u.groupScope.split(",")[0].trim(), teamId,
+      });
+    } catch (_) {}
+    res.json(copy);
+  });
+
+  app.delete("/api/grind-profiles/:id", requirePermission("grinding", "edit"), async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getGrindProfile(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
+    const deleted = await storage.deleteGrindProfile(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
     res.json({ ok: true });
   });
@@ -2493,14 +2678,19 @@ export async function registerRoutes(
 
   // Get / set maintenance mode
   app.get("/api/admin/maintenance-mode", (_req, res) => {
-    res.json({ enabled: maintenanceMode });
+    res.json({ enabled: maintenanceMode, reopenAt: maintenanceReopenAt });
   });
 
   app.post("/api/admin/maintenance-mode", requireAuth, (req, res) => {
     const u = userInfo(req);
     if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
     maintenanceMode = !!req.body.enabled;
-    res.json({ enabled: maintenanceMode });
+    if (!maintenanceMode) {
+      maintenanceReopenAt = null;
+    } else {
+      maintenanceReopenAt = req.body.reopenAt ?? null;
+    }
+    res.json({ enabled: maintenanceMode, reopenAt: maintenanceReopenAt });
   });
 
   // List all active sessions with user info
@@ -3319,14 +3509,23 @@ export async function registerRoutes(
         const weather = weatherMap.get(test.weatherId!);
         if (!weather) continue;
         const similarity = weatherSimilarity(weather);
-        if (similarity > 5) {
+        // Lower threshold: include anything with any resemblance (> 0)
+        if (similarity >= 0) {
           scoredTests.push({ test, weather, similarity });
         }
+      }
+      // Also include tests without weather (lowest priority, similarity = 0)
+      const testsWithoutWeather = allTests.filter((t) => {
+        if (testType && t.testType !== testType) return false;
+        return !t.weatherId;
+      });
+      for (const test of testsWithoutWeather) {
+        scoredTests.push({ test, weather: null, similarity: 0 });
       }
       scoredTests.sort((a, b) => b.similarity - a.similarity);
 
       const productStats = new Map<number, { totalRank: number; count: number; wins: number; testCount: number; bestSimilarity: number }>();
-      const topTests = scoredTests.slice(0, 50);
+      const topTests = scoredTests.slice(0, 100); // Expand to 100 for more data
 
       for (const { test, similarity } of topTests) {
         const entries = await storage.listEntries(test.id);
@@ -3359,16 +3558,17 @@ export async function registerRoutes(
         const prod = productMap.get(r.productId);
         const productName = prod ? `${prod.brand} ${prod.name}` : "Unknown";
         let confidence: string;
-        if (r.count >= 3 && r.bestSimilarity > 20) confidence = "High";
-        else if (r.count >= 2 && r.bestSimilarity > 10) confidence = "Medium";
+        if (r.count >= 5 && r.bestSimilarity > 25) confidence = "High";
+        else if (r.count >= 2 && r.bestSimilarity > 8) confidence = "Medium";
         else confidence = "Low";
 
         const avgRankStr = r.avgRank.toFixed(1);
         const winPct = (r.winRate * 100).toFixed(0);
+        const similarityNote = r.bestSimilarity > 20 ? "Very similar conditions found." : r.bestSimilarity > 8 ? "Moderately similar conditions found." : "Limited similar data — treat with caution.";
 
         return {
           title: `#${idx + 1} ${productName}`,
-          description: `Avg rank ${avgRankStr} across ${r.count} similar test${r.count > 1 ? "s" : ""}. Win rate: ${winPct}%. Based on ${topTests.length} matching tests.`,
+          description: `Avg rank ${avgRankStr} across ${r.count} test${r.count > 1 ? "s" : ""}. Win rate: ${winPct}%. ${similarityNote}`,
           products: [productName],
           confidence,
         };

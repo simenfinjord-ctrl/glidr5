@@ -73,7 +73,7 @@ function AuthGuard() {
   const { user, isLoading, isSuperAdmin, isStealthActive, userTeams, userTeamsLoading } = useAuth();
   const [location] = useLocation();
 
-  const { data: maintenanceData } = useQuery<{ enabled: boolean }>({
+  const { data: maintenanceData } = useQuery<{ enabled: boolean; reopenAt?: string | null }>({
     queryKey: ["/api/admin/maintenance-mode"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     refetchInterval: 30000,
@@ -89,12 +89,16 @@ function AuthGuard() {
 
   // Maintenance mode: block non-SA authenticated users
   if (maintenanceData?.enabled && user && !isSuperAdmin) {
+    const reopenAt = maintenanceData.reopenAt;
+    const reopenStr = reopenAt
+      ? `The system will reopen at ${new Date(reopenAt).toLocaleString("no-NO", { dateStyle: "short", timeStyle: "short" })}.`
+      : "The system will be back shortly.";
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
         <div className="text-5xl mb-2">🔧</div>
-        <h1 className="text-2xl font-bold text-foreground">Under Maintenance</h1>
+        <h1 className="text-2xl font-bold text-foreground">Under vedlikehold</h1>
         <p className="text-muted-foreground max-w-sm leading-relaxed">
-          Glidr is temporarily offline for maintenance. We'll be back shortly. Please try again later.
+          Det foregår for øyeblikket vedlikehold på Glidr. {reopenStr} Ved spørsmål eller akutte behov, ta kontakt med teamadminen din.
         </p>
         <p className="text-xs text-muted-foreground/60 mt-4">If you need immediate access, contact your administrator.</p>
       </div>

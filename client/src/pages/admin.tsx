@@ -7,7 +7,7 @@ import {
   Plus, Pencil, Trash2, KeyRound, Check, X, Clock, Download, EyeOff,
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle,
-  HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown,
+  HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole,
 } from "lucide-react";
 import {
   PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS,
@@ -41,6 +41,8 @@ type ApiUser = {
   permissions: string;
   isActive: number;
   garminWatch: number;
+  loginLocked: number;
+  failedAttempts: number;
 };
 
 type ApiTeam = {
@@ -289,7 +291,10 @@ const editSchema = z.object({
 });
 
 const resetSchema = z.object({
-  password: z.string().min(1, "Password is required"),
+  password: z.string()
+    .min(7, "Password must be at least 7 characters")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
 });
 
 function getTeamDisabledAreas(teams: ApiTeam[], teamId: number, isSuperAdmin: boolean): string[] {
@@ -456,12 +461,13 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
 }
 
 function TeamPermRow({
-  userId, team, existingPerms, existingGroupScope, allTeams, isExpanded, onToggle, onSaved, onReset,
+  userId, team, existingPerms, existingGroupScope, existingIsTeamAdmin, allTeams, isExpanded, onToggle, onSaved, onReset,
 }: {
   userId: number;
   team: ApiTeam;
   existingPerms: string | null;
   existingGroupScope: string | null;
+  existingIsTeamAdmin: boolean;
   allTeams: ApiTeam[];
   isExpanded: boolean;
   onToggle: () => void;
@@ -476,6 +482,7 @@ function TeamPermRow({
   const [localGroupScope, setLocalGroupScope] = useState<string[]>(
     existingGroupScope ? parseGroups(existingGroupScope) : []
   );
+  const [localIsTeamAdmin, setLocalIsTeamAdmin] = useState<boolean>(existingIsTeamAdmin);
 
   const { data: teamGroupsData = [] } = useQuery<ApiGroup[]>({
     queryKey: [`/api/groups?teamScope=${team.id}`],
@@ -488,6 +495,7 @@ function TeamPermRow({
       const res = await apiRequest("PUT", `/api/users/${userId}/team-permissions/${team.id}`, {
         permissions: JSON.stringify(perms),
         groupScope: localGroupScope.join(","),
+        isTeamAdmin: localIsTeamAdmin,
       });
       return res.json();
     },
@@ -516,6 +524,9 @@ function TeamPermRow({
           {(existingPerms || existingGroupScope) && (
             <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full">Custom</span>
           )}
+          {existingIsTeamAdmin && (
+            <span className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full">Team Admin</span>
+          )}
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-180")} />
         </div>
       </button>
@@ -524,6 +535,27 @@ function TeamPermRow({
           <p className="text-[11px] text-muted-foreground">
             {existingPerms ? "Custom settings active for this team." : "Using global settings. Save to create team-specific override."}
           </p>
+
+          {/* Team Admin toggle */}
+          <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
+            <div>
+              <p className="text-xs font-medium">Team Admin for {team.name}</p>
+              <p className="text-[10px] text-muted-foreground">Can manage users and settings for this team</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLocalIsTeamAdmin((v) => !v)}
+              className={cn(
+                "relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors",
+                localIsTeamAdmin ? "bg-purple-500" : "bg-muted-foreground/25"
+              )}
+            >
+              <span className={cn(
+                "pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform",
+                localIsTeamAdmin ? "translate-x-[18px]" : "translate-x-[2px]"
+              )} />
+            </button>
+          </div>
 
           {/* Groups for this team */}
           {teamGroupNames.length > 0 && (
@@ -839,6 +871,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
                       team={t}
                       existingPerms={existingPerms?.permissions ?? null}
                       existingGroupScope={existingPerms?.group_scope ?? null}
+                      existingIsTeamAdmin={!!(existingPerms as any)?.isTeamAdmin}
                       allTeams={teams}
                       isExpanded={expandedTeamPerms === t.id}
                       onToggle={() => setExpandedTeamPerms(expandedTeamPerms === t.id ? null : t.id)}
@@ -921,20 +954,25 @@ type ActiveSession = {
 
 function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId: number }) {
   const { toast } = useToast();
+  const [reopenAt, setReopenAt] = useState("");
 
   // Maintenance mode
-  const { data: maintenanceData, refetch: refetchMaintenance } = useQuery<{ enabled: boolean }>({
+  const { data: maintenanceData, refetch: refetchMaintenance } = useQuery<{ enabled: boolean; reopenAt: string | null }>({
     queryKey: ["/api/admin/maintenance-mode"],
   });
   const maintenanceEnabled = maintenanceData?.enabled ?? false;
 
   const toggleMaintenanceMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
-      const res = await apiRequest("POST", "/api/admin/maintenance-mode", { enabled });
+      const res = await apiRequest("POST", "/api/admin/maintenance-mode", {
+        enabled,
+        reopenAt: enabled && reopenAt ? reopenAt : null,
+      });
       return res.json();
     },
     onSuccess: (data) => {
       refetchMaintenance();
+      if (!data.enabled) setReopenAt("");
       toast({ title: data.enabled ? "Maintenance mode ON" : "Maintenance mode OFF", description: data.enabled ? "All non-SA users are now blocked." : "Normal access restored." });
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -984,6 +1022,17 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
             <p className="text-sm text-muted-foreground leading-relaxed">
               When enabled, all non-Super Admin users see a maintenance screen and are blocked from the API. You retain full access. Use this before applying critical updates or during an incident.
             </p>
+            {!maintenanceEnabled && (
+              <div className="mt-3 flex items-center gap-2">
+                <label className="text-xs text-muted-foreground whitespace-nowrap">Reopen at (optional):</label>
+                <Input
+                  type="datetime-local"
+                  value={reopenAt}
+                  onChange={(e) => setReopenAt(e.target.value)}
+                  className="h-7 text-xs w-auto"
+                />
+              </div>
+            )}
           </div>
           <button
             type="button"
@@ -1002,8 +1051,17 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
           </button>
         </div>
         {maintenanceEnabled && (
-          <div className="mt-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
-            ⚠️ Maintenance mode is currently <strong>ON</strong>. All other users are locked out. Remember to turn it off when done.
+          <div className="mt-3 space-y-2">
+            <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+              ⚠️ Maintenance mode is currently <strong>ON</strong>. All other users are locked out. Remember to turn it off when done.
+            </div>
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs text-slate-600 dark:text-slate-400">
+              <span className="font-medium text-slate-700 dark:text-slate-300">Message shown to users: </span>
+              Maintenance in progress.{maintenanceData?.reopenAt
+                ? ` The system will reopen at ${new Date(maintenanceData.reopenAt).toLocaleString("no-NO", { dateStyle: "short", timeStyle: "short" })}.`
+                : " The system will be back shortly."}
+              {" "}If you have urgent needs, contact your Team Admin.
+            </div>
           </div>
         )}
       </Card>
@@ -1931,6 +1989,20 @@ export default function Admin() {
     },
   });
 
+  const unlockMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await apiRequest("POST", `/api/users/${userId}/unlock`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+      toast({ title: "Account unlocked" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
   const createTeamMutation = useMutation({
     mutationFn: async (payload: { name: string; enabledAreas: string[] }) => {
       const res = await apiRequest("POST", "/api/teams", payload);
@@ -2217,6 +2289,11 @@ export default function Admin() {
                           {!u.isActive && (
                             <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600">Inactive</span>
                           )}
+                          {!!u.loginLocked && (
+                            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700 flex items-center gap-0.5">
+                              <LockKeyhole className="inline h-2.5 w-2.5" />Locked
+                            </span>
+                          )}
                           {adminTeamScope !== "current" && teams.length > 0 && (
                             <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-600">
                               {teams.find((t) => t.id === u.teamId)?.name ?? `Team ${u.teamId}`}
@@ -2255,6 +2332,16 @@ export default function Admin() {
                         >
                           <KeyRound className="h-4.5 w-4.5" />
                         </button>
+                        {!!u.loginLocked && (
+                          <button
+                            className="rounded p-1 text-red-500 hover:bg-red-50"
+                            data-testid={`button-unlock-user-${u.id}`}
+                            title="Unlock account"
+                            onClick={() => unlockMutation.mutate(u.id)}
+                          >
+                            <LockKeyhole className="h-4.5 w-4.5" />
+                          </button>
+                        )}
                         <button
                           className="rounded p-1 text-orange-500 hover:bg-orange-50"
                           data-testid={`button-force-logout-${u.id}`}

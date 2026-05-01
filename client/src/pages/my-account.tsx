@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, Watch, RefreshCw, Copy, Check, KeyRound, Eye, EyeOff } from "lucide-react";
+import { User, Watch, RefreshCw, Copy, Check, KeyRound, Mail, Users, Shield, Smartphone, Eye, EyeOff } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,17 +8,35 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useMobileNav } from "@/components/mobile-nav";
 
 export default function MyAccount() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Watch code
   const [copied, setCopied] = useState(false);
+
+  // Password form
   const [showPassForm, setShowPassForm] = useState(false);
   const [currentPass, setCurrentPass] = useState("");
   const [newPass, setNewPass] = useState("");
+  const [confirmPass, setConfirmPass] = useState("");
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [passError, setPassError] = useState("");
+
+  // Mobile nav toggle
+  const mobileNavStore = useMobileNav();
+  const [mobileNavOn, setMobileNavOn] = useState(false);
+  useEffect(() => { setMobileNavOn(mobileNavStore.get()); }, []);
+  const toggleMobileNav = () => {
+    const next = !mobileNavOn;
+    setMobileNavOn(next);
+    mobileNavStore.set(next);
+  };
 
   const { data: watchCodeData, isLoading: watchCodeLoading } = useQuery<{ watchCode: string }>({
     queryKey: ["/api/auth/my-watch-code"],
@@ -50,9 +68,24 @@ export default function MyAccount() {
       setShowPassForm(false);
       setCurrentPass("");
       setNewPass("");
+      setConfirmPass("");
+      setPassError("");
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
+
+  const handleSavePassword = () => {
+    if (newPass.length < 4) {
+      setPassError("New password must be at least 4 characters");
+      return;
+    }
+    if (newPass !== confirmPass) {
+      setPassError("Passwords don't match");
+      return;
+    }
+    setPassError("");
+    changePasswordMutation.mutate();
+  };
 
   const handleCopy = () => {
     if (watchCodeData?.watchCode) {
@@ -64,6 +97,9 @@ export default function MyAccount() {
 
   if (!user) return null;
 
+  const groups = user.groupScope?.split(",").map((s: string) => s.trim()).filter(Boolean) || [];
+  const roleLabel = user.isAdmin ? "Super Admin" : user.isTeamAdmin ? "Team Admin" : "Member";
+
   return (
     <AppShell>
       <div className="max-w-lg mx-auto space-y-6">
@@ -72,15 +108,70 @@ export default function MyAccount() {
           My Account
         </h1>
 
-        {/* User info */}
-        <Card className="p-5 space-y-3">
+        {/* Profile */}
+        <Card className="p-5 space-y-4">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Profile</h2>
-          <div className="space-y-1">
-            <div className="text-lg font-bold">{user.name}</div>
-            <div className="text-sm text-muted-foreground">{user.email}</div>
-            <div className="text-xs text-muted-foreground">
-              {user.isAdmin ? "Super Admin" : user.isTeamAdmin ? "Team Admin" : "Member"}
+
+          <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-4 py-3">
+            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+            <div>
+              <div className="text-xs text-muted-foreground">Name</div>
+              <div className="text-sm font-medium" data-testid="text-profile-name">{user.name}</div>
             </div>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-4 py-3">
+            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+            <div>
+              <div className="text-xs text-muted-foreground">Email</div>
+              <div className="text-sm font-medium" data-testid="text-profile-email">{user.email}</div>
+            </div>
+          </div>
+
+          {groups.length > 0 && (
+            <div className="flex items-start gap-3 rounded-xl bg-muted/50 px-4 py-3">
+              <Users className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Groups</div>
+                <div className="flex flex-wrap gap-1">
+                  {groups.map((g: string) => (
+                    <span key={g} className="inline-flex rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-200 dark:bg-green-900/20 dark:text-green-400 dark:ring-green-800">
+                      {g}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-4 py-3">
+            <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
+            <div>
+              <div className="text-xs text-muted-foreground">Role</div>
+              <div className="text-sm font-medium">{roleLabel}</div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Display preferences */}
+        <Card className="p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+            <Smartphone className="h-4 w-4" />
+            Display preferences
+          </h2>
+          <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-3">
+            <div>
+              <div className="text-sm font-medium">Mobile navigation</div>
+              <div className="text-xs text-muted-foreground">Show a bottom tab bar on small screens</div>
+            </div>
+            <button
+              onClick={toggleMobileNav}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none ${mobileNavOn ? "bg-primary" : "bg-muted-foreground/30"}`}
+              role="switch"
+              aria-checked={mobileNavOn}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${mobileNavOn ? "translate-x-6" : "translate-x-1"}`} />
+            </button>
           </div>
         </Card>
 
@@ -108,6 +199,7 @@ export default function MyAccount() {
                     value={currentPass}
                     onChange={(e) => setCurrentPass(e.target.value)}
                     placeholder="Current password"
+                    data-testid="input-current-password"
                   />
                   <button
                     type="button"
@@ -126,6 +218,7 @@ export default function MyAccount() {
                     value={newPass}
                     onChange={(e) => setNewPass(e.target.value)}
                     placeholder="New password"
+                    data-testid="input-new-password"
                   />
                   <button
                     type="button"
@@ -136,18 +229,47 @@ export default function MyAccount() {
                   </button>
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Confirm new password</label>
+                <div className="relative">
+                  <Input
+                    type={showConfirm ? "text" : "password"}
+                    value={confirmPass}
+                    onChange={(e) => setConfirmPass(e.target.value)}
+                    placeholder="Confirm new password"
+                    data-testid="input-confirm-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(!showConfirm)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              {passError && (
+                <p className="text-xs text-destructive">{passError}</p>
+              )}
               <div className="flex gap-2 justify-end">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => { setShowPassForm(false); setCurrentPass(""); setNewPass(""); }}
+                  onClick={() => {
+                    setShowPassForm(false);
+                    setCurrentPass("");
+                    setNewPass("");
+                    setConfirmPass("");
+                    setPassError("");
+                  }}
                 >
                   Cancel
                 </Button>
                 <Button
                   size="sm"
-                  disabled={!currentPass || !newPass || changePasswordMutation.isPending}
-                  onClick={() => changePasswordMutation.mutate()}
+                  disabled={!currentPass || !newPass || !confirmPass || changePasswordMutation.isPending}
+                  onClick={handleSavePassword}
+                  data-testid="button-change-password"
                 >
                   {changePasswordMutation.isPending ? "Saving…" : "Save"}
                 </Button>

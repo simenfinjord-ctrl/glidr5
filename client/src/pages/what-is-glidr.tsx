@@ -164,16 +164,23 @@ export default function WhatIsGlidr() {
           </div>
         </div>
 
-        <div className="mt-16 flex justify-center gap-6 text-xs text-muted-foreground">
-          <AppLink href="/pricing" testId="link-pricing-from-features" className="underline hover:text-foreground">
-            Pricing
+        <div className="mt-16 flex flex-col items-center gap-6">
+          <AppLink href="/login" testId="link-login-from-features">
+            <button className="px-8 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base shadow hover:opacity-90 transition-opacity">
+              Sign in to Glidr
+            </button>
           </AppLink>
-          <AppLink href="/contact" testId="link-contact-from-features" className="underline hover:text-foreground">
-            Contact
-          </AppLink>
-          <AppLink href="/legal" testId="link-legal-from-features" className="underline hover:text-foreground">
-            Terms of Service & Privacy Policy
-          </AppLink>
+          <div className="flex justify-center gap-6 text-xs text-muted-foreground">
+            <AppLink href="/pricing" testId="link-pricing-from-features" className="underline hover:text-foreground">
+              Pricing
+            </AppLink>
+            <AppLink href="/contact" testId="link-contact-from-features" className="underline hover:text-foreground">
+              Contact
+            </AppLink>
+            <AppLink href="/legal" testId="link-legal-from-features" className="underline hover:text-foreground">
+              Terms of Service & Privacy Policy
+            </AppLink>
+          </div>
         </div>
       </div>
     </div>

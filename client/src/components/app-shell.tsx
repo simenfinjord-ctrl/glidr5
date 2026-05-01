@@ -348,7 +348,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             <AppLink
-              href="/profile"
+              href="/my-account"
               testId="link-profile"
               className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mr-1 transition-colors"
             >

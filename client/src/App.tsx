@@ -50,7 +50,7 @@ function Router() {
       <Route path="/tests/:id/edit" component={EditTest} />
       <Route path="/tests/:id" component={TestDetail} />
       <Route path="/analytics" component={Analytics} />
-      <Route path="/profile" component={Profile} />
+      <Route path="/profile" component={() => <Redirect to="/my-account" />} />
       <Route path="/grinding" component={Grinding} />
       <Route path="/raceskis" component={RaceSkis} />
       <Route path="/raceskis/:id" component={AthleteDetail} />

@@ -185,7 +185,14 @@ export default function Legal() {
         </p>
       </section>
 
-      <div className="mt-10 pt-6 border-t border-border">
+      <div className="mt-10 pt-6 border-t border-border flex flex-col items-center gap-4">
+        <a
+          href="/login"
+          className="px-8 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base shadow hover:opacity-90 transition-opacity"
+          data-testid="link-login-from-legal"
+        >
+          Sign in to Glidr
+        </a>
         <p className="text-xs text-muted-foreground">
           For questions about these terms or your data, contact your Glidr account administrator.
         </p>

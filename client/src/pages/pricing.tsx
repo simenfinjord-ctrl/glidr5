@@ -297,8 +297,15 @@ export default function Pricing() {
           </div>
         </div>
 
-        <div className="mt-16 text-center border-t border-border pt-8">
-          <p className="text-sm text-muted-foreground mb-4">
+        <div className="mt-16 text-center border-t border-border pt-8 flex flex-col items-center gap-6">
+          <a
+            href="/login"
+            className="px-8 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base shadow hover:opacity-90 transition-opacity"
+            data-testid="link-login-from-pricing"
+          >
+            Sign in to Glidr
+          </a>
+          <p className="text-sm text-muted-foreground">
             All plans include encrypted connections, daily backups, and GDPR compliance.
           </p>
           <div className="flex justify-center gap-6 text-xs text-muted-foreground">

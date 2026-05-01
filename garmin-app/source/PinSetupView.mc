@@ -1,5 +1,5 @@
-// PinSetupView.mc — First-time team PIN entry
-// User enters the 4-digit team PIN shown in the Glidr web app (Watch Queue page)
+// PinSetupView.mc — Team PIN entry.
+// Used both for initial login (loginUserCode set) and from Settings to change PIN.
 
 using Toybox.WatchUi;
 using Toybox.Graphics;
@@ -10,6 +10,7 @@ class PinSetupView extends WatchUi.View {
     var cursorPos = 0;
     var statusText = "Enter team PIN";
     var isVerifying = false;
+    var loginUserCode = null; // set externally when coming from login flow
 
     function initialize() {
         View.initialize();
@@ -23,17 +24,23 @@ class PinSetupView extends WatchUi.View {
         var h = dc.getHeight();
         var cx = w / 2;
 
+        // ── Header ──────────────────────────────────────────────
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.10, Graphics.FONT_SMALL, "GLIDR", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.04, Graphics.FONT_SMALL, "GLIDR", Graphics.TEXT_JUSTIFY_CENTER);
+
+        if (loginUserCode != null) {
+            dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, h * 0.16, Graphics.FONT_XTINY, "Step 2 of 2", Graphics.TEXT_JUSTIFY_CENTER);
+        }
 
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.22, Graphics.FONT_XTINY, statusText, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.24, Graphics.FONT_XTINY, statusText, Graphics.TEXT_JUSTIFY_CENTER);
 
-        // PIN label
+        // ── Label ───────────────────────────────────────────────
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.33, Graphics.FONT_XTINY, "Team PIN", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.34, Graphics.FONT_XTINY, "Team PIN", Graphics.TEXT_JUSTIFY_CENTER);
 
-        // Digit boxes
+        // ── Digit boxes ─────────────────────────────────────────
         var digitWidth = 36;
         var totalWidth = digitWidth * 4 + 10;
         var startX = cx - totalWidth / 2;
@@ -52,7 +59,6 @@ class PinSetupView extends WatchUi.View {
             dc.drawText(textX, digitY, Graphics.FONT_NUMBER_MILD,
                 digits[i].toString(), Graphics.TEXT_JUSTIFY_CENTER);
 
-            // Underline for active digit only
             if (i == cursorPos) {
                 var underlineY = digitY + 30;
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
@@ -62,10 +68,11 @@ class PinSetupView extends WatchUi.View {
             }
         }
 
+        // ── Hints ───────────────────────────────────────────────
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, h * 0.68, Graphics.FONT_XTINY, "UP/DN: change digit", Graphics.TEXT_JUSTIFY_CENTER);
         dc.drawText(cx, h * 0.76, Graphics.FONT_XTINY, "SELECT: next / confirm", Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(cx, h * 0.84, Graphics.FONT_XTINY, "BACK: prev digit", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.84, Graphics.FONT_XTINY, "BACK: prev digit / back", Graphics.TEXT_JUSTIFY_CENTER);
         dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, h * 0.92, Graphics.FONT_XTINY, "MENU: settings", Graphics.TEXT_JUSTIFY_CENTER);
     }

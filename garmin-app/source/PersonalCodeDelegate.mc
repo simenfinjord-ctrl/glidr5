@@ -1,4 +1,7 @@
-// PersonalCodeDelegate.mc — handles input for personal watch code entry
+// PersonalCodeDelegate.mc — handles input for personal watch code entry.
+// Used both for initial login (loginMode=true) and from Settings to change code.
+// In login mode: collecting code only, then proceeds to PinSetupView.
+// In settings mode: verifies code with server, stores name.
 
 using Toybox.WatchUi;
 using Toybox.Communications;
@@ -6,14 +9,17 @@ using Toybox.Application.Storage;
 
 class PersonalCodeDelegate extends WatchUi.BehaviorDelegate {
     var view;
-    var settingsView;  // reference to settings view to refresh after save
+    var settingsView;  // reference to settings view (settings mode only)
     var teamPin;
+    var isLoginMode;
 
-    function initialize(v, sv, pin) {
+    // loginMode (4th param) defaults to false when called with 3 args from settings
+    function initialize(v, sv, pin, loginMode) {
         BehaviorDelegate.initialize();
         view = v;
         settingsView = sv;
         teamPin = pin;
+        isLoginMode = (loginMode == true);
     }
 
     function onNextPage() {
@@ -33,7 +39,13 @@ class PersonalCodeDelegate extends WatchUi.BehaviorDelegate {
             view.cursorPos++;
             WatchUi.requestUpdate();
         } else {
-            verifyCode();
+            if (isLoginMode) {
+                // Login mode: don't verify yet — proceed to team PIN entry
+                proceedToPinSetup();
+            } else {
+                // Settings mode: verify the code with server
+                verifyCode();
+            }
         }
         return true;
     }
@@ -44,11 +56,27 @@ class PersonalCodeDelegate extends WatchUi.BehaviorDelegate {
             WatchUi.requestUpdate();
             return true;
         }
-        // Cancel — return to settings
-        WatchUi.switchToView(settingsView, new SettingsDelegate(settingsView, teamPin), WatchUi.SLIDE_RIGHT);
-        return true;
+        if (isLoginMode) {
+            // At digit 0 in login mode — exit app
+            return false;
+        } else {
+            // Settings mode — return to settings
+            WatchUi.switchToView(settingsView, new SettingsDelegate(settingsView, teamPin), WatchUi.SLIDE_RIGHT);
+            return true;
+        }
     }
 
+    // Login mode: move to team PIN entry, passing the entered personal code
+    function proceedToPinSetup() {
+        var personalCode = view.getCode();
+        var pinView = new PinSetupView();
+        pinView.loginUserCode = personalCode;
+        pinView.statusText = "Enter team PIN";
+        var pinDelegate = new PinSetupDelegate(pinView, personalCode, false);
+        WatchUi.switchToView(pinView, pinDelegate, WatchUi.SLIDE_LEFT);
+    }
+
+    // Settings mode: verify personal code alone via resolve-user endpoint
     function verifyCode() {
         view.statusText = "Verifying...";
         WatchUi.requestUpdate();

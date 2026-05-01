@@ -1,6 +1,5 @@
-// PersonalCodeView.mc — Enter your personal 4-digit watch code
-// The code is shown in "My Account" in the Glidr web app.
-// Once entered, your name will appear in Live Runsheet.
+// PersonalCodeView.mc — Enter your personal 4-digit watch code.
+// Used both for initial login (isLoginMode = true) and from Settings to change your code.
 
 using Toybox.WatchUi;
 using Toybox.Graphics;
@@ -9,14 +8,15 @@ using Toybox.Application.Storage;
 class PersonalCodeView extends WatchUi.View {
     var digits = [0, 0, 0, 0];
     var cursorPos = 0;
-    var statusText = "Enter your code";
+    var statusText = null;   // null = use default based on mode
     var isVerifying = false;
+    var isLoginMode = false; // set externally before showing
 
     function initialize() {
         View.initialize();
         // Pre-fill with existing code if stored
         var existing = Storage.getValue("userCode");
-        if (existing != null && existing.length() == 4) {
+        if (existing != null && existing instanceof String && existing.length() == 4) {
             for (var i = 0; i < 4; i++) {
                 digits[i] = existing.substring(i, i + 1).toNumber();
             }
@@ -31,20 +31,34 @@ class PersonalCodeView extends WatchUi.View {
         var h = dc.getHeight();
         var cx = w / 2;
 
+        // ── Header ──────────────────────────────────────────────
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.06, Graphics.FONT_SMALL, "MY CODE", Graphics.TEXT_JUSTIFY_CENTER);
+        if (isLoginMode) {
+            dc.drawText(cx, h * 0.04, Graphics.FONT_SMALL, "GLIDR LOGIN", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, h * 0.16, Graphics.FONT_XTINY, "Step 1 of 2", Graphics.TEXT_JUSTIFY_CENTER);
+        } else {
+            dc.drawText(cx, h * 0.06, Graphics.FONT_SMALL, "MY CODE", Graphics.TEXT_JUSTIFY_CENTER);
+        }
 
+        // ── Status text ─────────────────────────────────────────
+        var displayStatus = statusText;
+        if (displayStatus == null) {
+            displayStatus = isLoginMode ? "Enter personal ID" : "Enter your code";
+        }
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.20, Graphics.FONT_XTINY, statusText, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.25, Graphics.FONT_XTINY, displayStatus, Graphics.TEXT_JUSTIFY_CENTER);
 
+        // ── Label ───────────────────────────────────────────────
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.30, Graphics.FONT_XTINY, "Personal code", Graphics.TEXT_JUSTIFY_CENTER);
+        var labelText = isLoginMode ? "Personal ID" : "Personal code";
+        dc.drawText(cx, h * 0.35, Graphics.FONT_XTINY, labelText, Graphics.TEXT_JUSTIFY_CENTER);
 
-        // Digit boxes
+        // ── Digit boxes ─────────────────────────────────────────
         var digitWidth = 36;
         var totalWidth = digitWidth * 4 + 10;
         var startX = cx - totalWidth / 2;
-        var digitY = h * 0.40;
+        var digitY = h * 0.45;
 
         for (var i = 0; i < 4; i++) {
             var dx = startX + i * digitWidth + (i >= 2 ? 10 : 0);
@@ -68,16 +82,24 @@ class PersonalCodeView extends WatchUi.View {
             }
         }
 
+        // ── Hints ───────────────────────────────────────────────
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.65, Graphics.FONT_XTINY, "UP/DN: change digit", Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(cx, h * 0.73, Graphics.FONT_XTINY, "SELECT: next / confirm", Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(cx, h * 0.81, Graphics.FONT_XTINY, "BACK: prev / cancel", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.70, Graphics.FONT_XTINY, "UP/DN: change digit", Graphics.TEXT_JUSTIFY_CENTER);
+        if (isLoginMode) {
+            dc.drawText(cx, h * 0.78, Graphics.FONT_XTINY, "SELECT: next digit / continue", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.86, Graphics.FONT_XTINY, "BACK: prev digit", Graphics.TEXT_JUSTIFY_CENTER);
+        } else {
+            dc.drawText(cx, h * 0.78, Graphics.FONT_XTINY, "SELECT: next / confirm", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.86, Graphics.FONT_XTINY, "BACK: prev / cancel", Graphics.TEXT_JUSTIFY_CENTER);
+        }
 
-        // Show stored name if verified
-        var storedName = Storage.getValue("userName");
-        if (storedName != null) {
-            dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.89, Graphics.FONT_XTINY, storedName, Graphics.TEXT_JUSTIFY_CENTER);
+        // ── Stored name (settings mode only) ────────────────────
+        if (!isLoginMode) {
+            var storedName = Storage.getValue("userName");
+            if (storedName != null) {
+                dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
+                dc.drawText(cx, h * 0.93, Graphics.FONT_XTINY, storedName, Graphics.TEXT_JUSTIFY_CENTER);
+            }
         }
     }
 

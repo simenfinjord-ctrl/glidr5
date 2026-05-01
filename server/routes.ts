@@ -262,6 +262,7 @@ export async function registerRoutes(
       END $$;
       ALTER TABLE user_team_permissions ADD COLUMN IF NOT EXISTS group_scope TEXT NOT NULL DEFAULT '';
       ALTER TABLE watch_sessions ADD COLUMN IF NOT EXISTS operator_name TEXT;
+      ALTER TABLE tests ADD COLUMN IF NOT EXISTS watch_operator_name TEXT;
     `);
   }
 
@@ -3251,7 +3252,10 @@ export async function registerRoutes(
     }
 
     await db.update(tests)
-      .set({ runsheetBracket: JSON.stringify(session.bracket) })
+      .set({
+        runsheetBracket: JSON.stringify(session.bracket),
+        watchOperatorName: session.operatorName ?? null,
+      })
       .where(eq(tests.id, session.testId));
 
     res.json({ ok: true, applied: results.length });

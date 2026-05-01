@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, Trophy } from "lucide-react";
+import { ClipboardList, Watch } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Heat = {
@@ -21,6 +21,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   bracketJson: string;
   skiLabels?: Record<number, string>;
+  watchOperatorName?: string | null;
 };
 
 function getRoundName(roundIndex: number, totalRounds: number): string {
@@ -63,7 +64,7 @@ function calculateDiffs(bracket: Heat[][]): Map<number, number> {
   return diffs;
 }
 
-export function ReviewRunsheetDialog({ open, onOpenChange, bracketJson, skiLabels }: Props) {
+export function ReviewRunsheetDialog({ open, onOpenChange, bracketJson, skiLabels, watchOperatorName }: Props) {
   const label = (pair: number | null) =>
     pair !== null && skiLabels?.[pair] ? skiLabels[pair] : pair !== null ? String(pair) : "—";
 
@@ -103,6 +104,12 @@ export function ReviewRunsheetDialog({ open, onOpenChange, bracketJson, skiLabel
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-teal-500" />
             Review runsheet
+            {watchOperatorName && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 ml-1">
+                <Watch className="h-3 w-3" />
+                Watch-{watchOperatorName}
+              </span>
+            )}
           </DialogTitle>
         </DialogHeader>
 

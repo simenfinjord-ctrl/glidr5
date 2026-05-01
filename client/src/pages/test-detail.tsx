@@ -867,6 +867,7 @@ export default function TestDetail() {
             onOpenChange={setShowReviewRunsheet}
             bracketJson={(test as any).runsheetBracket}
             skiLabels={skiLabels}
+            watchOperatorName={(test as any).watchOperatorName}
           />
         )}
 

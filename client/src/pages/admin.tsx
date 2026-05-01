@@ -456,11 +456,12 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
 }
 
 function TeamPermRow({
-  userId, team, existingPerms, allTeams, isExpanded, onToggle, onSaved, onReset,
+  userId, team, existingPerms, existingGroupScope, allTeams, isExpanded, onToggle, onSaved, onReset,
 }: {
   userId: number;
   team: ApiTeam;
   existingPerms: string | null;
+  existingGroupScope: string | null;
   allTeams: ApiTeam[];
   isExpanded: boolean;
   onToggle: () => void;
@@ -472,13 +473,25 @@ function TeamPermRow({
   const [localPerms, setLocalPerms] = useState<UserPermissions>(
     existingPerms ? parsePermissions(existingPerms) : { ...DEFAULT_PERMISSIONS }
   );
+  const [localGroupScope, setLocalGroupScope] = useState<string[]>(
+    existingGroupScope ? parseGroups(existingGroupScope) : []
+  );
+
+  const { data: teamGroupsData = [] } = useQuery<ApiGroup[]>({
+    queryKey: [`/api/groups?teamScope=${team.id}`],
+    enabled: isExpanded,
+  });
+  const teamGroupNames = teamGroupsData.filter((g) => g.teamId === team.id).map((g) => g.name);
 
   const saveTeamPermsMutation = useMutation({
     mutationFn: async (perms: UserPermissions) => {
-      const res = await apiRequest("PUT", `/api/users/${userId}/team-permissions/${team.id}`, { permissions: JSON.stringify(perms) });
+      const res = await apiRequest("PUT", `/api/users/${userId}/team-permissions/${team.id}`, {
+        permissions: JSON.stringify(perms),
+        groupScope: localGroupScope.join(","),
+      });
       return res.json();
     },
-    onSuccess: () => { onSaved(); toast({ title: `Permissions saved for ${team.name}` }); },
+    onSuccess: () => { onSaved(); toast({ title: `Settings saved for ${team.name}` }); },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
@@ -487,7 +500,7 @@ function TeamPermRow({
       const res = await apiRequest("DELETE", `/api/users/${userId}/team-permissions/${team.id}`);
       return res.json();
     },
-    onSuccess: () => { onReset(); toast({ title: `Reset to global permissions for ${team.name}` }); },
+    onSuccess: () => { onReset(); toast({ title: `Reset to global settings for ${team.name}` }); },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
@@ -500,7 +513,7 @@ function TeamPermRow({
       >
         <span className="text-xs font-medium">{team.name}</span>
         <div className="flex items-center gap-2">
-          {existingPerms && (
+          {(existingPerms || existingGroupScope) && (
             <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full">Custom</span>
           )}
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-180")} />
@@ -509,8 +522,22 @@ function TeamPermRow({
       {isExpanded && (
         <div className="p-3 space-y-3 border-t border-border">
           <p className="text-[11px] text-muted-foreground">
-            {existingPerms ? "Custom permissions active for this team." : "Using global permissions. Save to create team-specific override."}
+            {existingPerms ? "Custom settings active for this team." : "Using global settings. Save to create team-specific override."}
           </p>
+
+          {/* Groups for this team */}
+          {teamGroupNames.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium">Groups in {team.name}</p>
+              <GroupCheckboxes
+                groupNames={teamGroupNames}
+                selected={localGroupScope}
+                onChange={setLocalGroupScope}
+                testIdPrefix={`team-group-${team.id}`}
+              />
+            </div>
+          )}
+
           <PermissionsMatrix
             value={localPerms}
             onChange={setLocalPerms}
@@ -518,7 +545,7 @@ function TeamPermRow({
             disabledAreas={getTeamDisabledAreas(allTeams, team.id, isSuperAdmin)}
           />
           <div className="flex items-center justify-between pt-1">
-            {existingPerms && (
+            {(existingPerms || existingGroupScope) && (
               <Button
                 type="button"
                 variant="ghost"
@@ -561,8 +588,8 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
   });
   const memberTeamIds = userTeamMemberships.map((m) => m.teamId);
 
-  // Per-team permissions for multi-team users
-  const { data: teamPermsData = [], refetch: refetchTeamPerms } = useQuery<{ team_id: number; permissions: string }[]>({
+  // Per-team permissions and group scope for multi-team users
+  const { data: teamPermsData = [], refetch: refetchTeamPerms } = useQuery<{ team_id: number; permissions: string; group_scope: string }[]>({
     queryKey: [`/api/users/${user.id}/team-permissions`],
     enabled: isSuperAdmin && memberTeamIds.length > 0,
   });
@@ -811,6 +838,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
                       userId={user.id}
                       team={t}
                       existingPerms={existingPerms?.permissions ?? null}
+                      existingGroupScope={existingPerms?.group_scope ?? null}
                       allTeams={teams}
                       isExpanded={expandedTeamPerms === t.id}
                       onToggle={() => setExpandedTeamPerms(expandedTeamPerms === t.id ? null : t.id)}

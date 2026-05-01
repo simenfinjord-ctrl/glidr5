@@ -93,6 +93,13 @@ function getEffectivePermissionsStr(req: Request): string {
   return sessionPerms ?? req.user!.permissions;
 }
 
+function getEffectiveGroupScope(req: Request): string {
+  // Per-team group scope overrides global group scope when viewing a non-primary team
+  const sessionScope = (req.session as any)?.effectiveGroupScope;
+  if (sessionScope !== undefined && sessionScope !== null) return sessionScope;
+  return req.user!.groupScope;
+}
+
 function userInfo(req: Request) {
   const u = req.user!;
   const perms = parsePermissions(getEffectivePermissionsStr(req), u.isAdmin === 1, u.isTeamAdmin === 1);
@@ -100,7 +107,7 @@ function userInfo(req: Request) {
     id: u.id,
     email: u.email,
     name: u.name,
-    groupScope: u.groupScope,
+    groupScope: getEffectiveGroupScope(req),
     isAdmin: u.isAdmin === 1,
     isTeamAdmin: u.isTeamAdmin === 1,
     isScopeAdmin: u.isAdmin === 1 || u.isTeamAdmin === 1,
@@ -253,6 +260,7 @@ export async function registerRoutes(
           ALTER TABLE user_team_permissions ADD CONSTRAINT utp_user_team_unique UNIQUE (user_id, team_id);
         END IF;
       END $$;
+      ALTER TABLE user_team_permissions ADD COLUMN IF NOT EXISTS group_scope TEXT NOT NULL DEFAULT '';
     `);
   }
 
@@ -396,20 +404,28 @@ export async function registerRoutes(
       delete (req.session as any).incognitoBeforeStealth;
     }
 
-    // Resolve per-team permissions for regular users switching to a non-primary team
-    if (u.isAdmin !== 1 && u.isTeamAdmin !== 1 && teamId !== u.teamId) {
+    // Resolve per-team permissions and group scope for users switching to a non-primary team
+    if (u.isAdmin !== 1 && teamId !== u.teamId) {
       try {
         const { pool: p } = await import("./db");
         const tpRes = await (p as any).query(
-          "SELECT permissions FROM user_team_permissions WHERE user_id = $1 AND team_id = $2",
+          "SELECT permissions, group_scope FROM user_team_permissions WHERE user_id = $1 AND team_id = $2",
           [u.id, teamId]
         );
-        (req.session as any).effectivePermissions = tpRes.rows.length > 0 ? tpRes.rows[0].permissions : u.permissions;
+        if (tpRes.rows.length > 0) {
+          (req.session as any).effectivePermissions = tpRes.rows[0].permissions ?? null;
+          (req.session as any).effectiveGroupScope = tpRes.rows[0].group_scope ?? u.groupScope;
+        } else {
+          (req.session as any).effectivePermissions = null;
+          (req.session as any).effectiveGroupScope = u.groupScope;
+        }
       } catch (_) {
         (req.session as any).effectivePermissions = null;
+        (req.session as any).effectiveGroupScope = null;
       }
     } else {
       (req.session as any).effectivePermissions = null;
+      (req.session as any).effectiveGroupScope = null;
     }
 
     req.session.save(() => {
@@ -1877,7 +1893,7 @@ export async function registerRoutes(
     const userId = parseInt(req.params.id);
     const { pool: p } = await import("./db");
     const result = await (p as any).query(
-      "SELECT team_id, permissions FROM user_team_permissions WHERE user_id = $1",
+      "SELECT team_id, permissions, group_scope FROM user_team_permissions WHERE user_id = $1",
       [userId]
     );
     res.json(result.rows);
@@ -1897,11 +1913,12 @@ export async function registerRoutes(
       perms = await enforceTeamAreas(perms, teamId);
     }
     const { pool: p } = await import("./db");
+    const groupScope = req.body.groupScope !== undefined ? String(req.body.groupScope) : "";
     await (p as any).query(
-      `INSERT INTO user_team_permissions (user_id, team_id, permissions)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (user_id, team_id) DO UPDATE SET permissions = $3`,
-      [userId, teamId, JSON.stringify(perms)]
+      `INSERT INTO user_team_permissions (user_id, team_id, permissions, group_scope)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT ON CONSTRAINT utp_user_team_unique DO UPDATE SET permissions = $3, group_scope = $4`,
+      [userId, teamId, JSON.stringify(perms), groupScope]
     );
     res.json({ ok: true });
   });

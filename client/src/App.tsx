@@ -70,7 +70,7 @@ function Router() {
 }
 
 function AuthGuard() {
-  const { user, isLoading, isSuperAdmin, isStealthActive, userTeams } = useAuth();
+  const { user, isLoading, isSuperAdmin, isStealthActive, userTeams, userTeamsLoading } = useAuth();
   const [location] = useLocation();
 
   const { data: maintenanceData } = useQuery<{ enabled: boolean }>({
@@ -110,12 +110,10 @@ function AuthGuard() {
     return <Redirect to="/dashboard" />;
   }
 
-  if (isSuperAdmin && !isStealthActive) {
+  if (isSuperAdmin && !isStealthActive && !userTeamsLoading) {
     const activeTeamId = user?.activeTeamId || user?.teamId;
-    // Own team = primary team, OR an explicitly-added team once userTeams has loaded.
-    // Always treat primary team as own to avoid redirect before userTeams query resolves.
-    const isViewingOwnTeam = activeTeamId === user?.teamId ||
-      (userTeams.length > 0 && userTeams.some(t => t.id === activeTeamId));
+    // Own team = primary team OR any team the SA is explicitly a member of
+    const isViewingOwnTeam = userTeams.some(t => t.id === activeTeamId);
     if (!isViewingOwnTeam) {
       const dataPages = ["/tests", "/testskis", "/products", "/weather", "/analytics", "/grinding", "/raceskis", "/suggestions", "/live-runsheets", "/dashboard"];
       const isDataPage = dataPages.some(p => location === p || location.startsWith(p + "/"));

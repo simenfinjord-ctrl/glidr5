@@ -175,7 +175,7 @@ const nav: NavItem[] = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { user, logout, can, isSuperAdmin, canManage, switchTeam, toggleIncognito, toggleStealth, isViewingOtherTeam, isStealthActive, userTeams } = useAuth();
+  const { user, logout, can, isSuperAdmin, canManage, switchTeam, toggleIncognito, toggleStealth, isViewingOtherTeam, isStealthActive, userTeams, userTeamsLoading } = useAuth();
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -189,8 +189,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     ? teams.find((t: any) => t.id === activeTeamId)
     : userTeams.find((t) => t.id === activeTeamId);
 
-  // Own team = primary team OR any team explicitly given access to via admin
-  const isViewingOwnTeam = !isSuperAdmin || userTeams.some((t) => t.id === activeTeamId);
+  // Own team = primary team OR any explicitly-assigned team.
+  // While userTeams is still loading, treat as own team to avoid hiding nav prematurely.
+  const isViewingOwnTeam = !isSuperAdmin || userTeamsLoading || userTeams.some((t) => t.id === activeTeamId);
 
   const hasGarminWatch = can("garmin_watch");
   const mobileNavStore = useMobileNav();

@@ -38,7 +38,7 @@ export function useAuth() {
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
-  const { data: userTeams = [] } = useQuery<{ id: number; name: string }[]>({
+  const { data: userTeams = [], isLoading: userTeamsLoading } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/user/teams"],
     enabled: !!user,
   });
@@ -95,9 +95,10 @@ export function useAuth() {
     await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
   };
 
-  // "Other team" = a team the SA has NOT been explicitly added to via admin
-  // Explicitly-added teams are in userTeams (primary + user_teams table entries)
+  // "Other team" = a team the SA has NOT been explicitly added to via admin.
+  // While userTeams is still loading, assume it's not "other team" to avoid false stealth activation.
   const isViewingOtherTeam = isSuperAdmin &&
+    !userTeamsLoading &&
     user?.activeTeamId != null &&
     !userTeams.some(t => t.id === user?.activeTeamId);
   const isStealthActive = !!user?.stealth && isViewingOtherTeam;
@@ -119,5 +120,6 @@ export function useAuth() {
     isViewingOtherTeam,
     isStealthActive,
     userTeams,
+    userTeamsLoading,
   };
 }

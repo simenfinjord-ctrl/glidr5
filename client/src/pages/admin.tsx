@@ -1452,6 +1452,12 @@ export default function Admin() {
     ? (user?.teamId ?? 1)
     : parseInt(adminTeamScope);
 
+  // Keep newGroupTeamId in sync with the selected admin scope so creating a group
+  // always targets the currently viewed team without needing the top dropdown.
+  useEffect(() => {
+    setNewGroupTeamId(effectiveTeamId);
+  }, [effectiveTeamId]);
+
   const scopeLabel = adminTeamScope === "all"
     ? "All teams"
     : adminTeamScope === "current"
@@ -2375,20 +2381,19 @@ export default function Admin() {
                   data-testid="input-new-group"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && newGroupName.trim()) {
-                      createGroupMutation.mutate({ name: newGroupName.trim(), teamId: newGroupTeamId });
+                      createGroupMutation.mutate({ name: newGroupName.trim(), teamId: newGroupTeamId ?? effectiveTeamId });
                     }
                   }}
                 />
                 {isSuperAdmin && teams.length > 1 && (
                   <Select
-                    value={newGroupTeamId ? String(newGroupTeamId) : "default"}
-                    onValueChange={(v) => setNewGroupTeamId(v === "default" ? undefined : parseInt(v))}
+                    value={String(newGroupTeamId ?? effectiveTeamId)}
+                    onValueChange={(v) => setNewGroupTeamId(parseInt(v))}
                   >
                     <SelectTrigger className="h-8 w-[140px] text-sm" data-testid="select-new-group-team">
                       <SelectValue placeholder="Team" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="default">Current team</SelectItem>
                       {teams.map((t) => (
                         <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
                       ))}
@@ -2399,7 +2404,7 @@ export default function Admin() {
                   size="sm"
                   data-testid="button-add-group"
                   disabled={!newGroupName.trim() || createGroupMutation.isPending}
-                  onClick={() => createGroupMutation.mutate({ name: newGroupName.trim(), teamId: newGroupTeamId })}
+                  onClick={() => createGroupMutation.mutate({ name: newGroupName.trim(), teamId: newGroupTeamId ?? effectiveTeamId })}
                 >
                   <Plus className="mr-1 h-4 w-4" />
                   Add

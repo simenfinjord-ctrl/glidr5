@@ -189,7 +189,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     ? teams.find((t: any) => t.id === activeTeamId)
     : userTeams.find((t) => t.id === activeTeamId);
 
-  const isViewingOwnTeam = !isSuperAdmin || activeTeamId === user?.teamId;
+  // Own team = primary team OR any team explicitly given access to via admin
+  const isViewingOwnTeam = !isSuperAdmin || userTeams.some((t) => t.id === activeTeamId);
 
   const hasGarminWatch = can("garmin_watch");
   const mobileNavStore = useMobileNav();

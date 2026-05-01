@@ -168,10 +168,11 @@ function RankBadge({ rank, size = "sm" }: { rank: number | null; size?: "sm" | "
   );
 }
 
-function AddToWatchButton({ testId, testName, seriesId }: { testId: number; testName: string; seriesId: number }) {
+function AddToWatchButton({ testId, testName, seriesId, hasAccess }: { testId: number; testName: string; seriesId: number; hasAccess: boolean }) {
   const { toast } = useToast();
   const { data: queue = [] } = useQuery<any[]>({
     queryKey: ["/api/watch/queue"],
+    enabled: hasAccess,
   });
   const inQueue = queue.some((q: any) => q.test_id === testId && q.status === "active");
 
@@ -208,7 +209,8 @@ function AddToWatchButton({ testId, testName, seriesId }: { testId: number; test
 export default function TestDetail() {
   const [, params] = useRoute("/tests/:id");
   const id = params?.id;
-  const { isBlindTester, isSuperAdmin } = useAuth();
+  const { isBlindTester, isSuperAdmin, can } = useAuth();
+  const hasWatchAccess = can("garmin_watch");
   const [hideDetailsState, setHideDetails] = useState(false);
   const hideDetails = isBlindTester || hideDetailsState;
   const [, setLocation] = useLocation();
@@ -722,7 +724,7 @@ export default function TestDetail() {
                 <Download className="mr-2 h-4 w-4" />
                 Excel
               </Button>
-              <AddToWatchButton testId={test.id} testName={test.testName || `${test.location} · ${test.date}`} seriesId={test.seriesId} />
+              {hasWatchAccess && <AddToWatchButton testId={test.id} testName={test.testName || `${test.location} · ${test.date}`} seriesId={test.seriesId} />}
               </>}
               {!isBlindTester && (
                 <Button

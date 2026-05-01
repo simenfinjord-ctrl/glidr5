@@ -95,7 +95,11 @@ export function useAuth() {
     await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
   };
 
-  const isViewingOtherTeam = isSuperAdmin && user?.activeTeamId != null && user.activeTeamId !== user.teamId;
+  // "Other team" = a team the SA has NOT been explicitly added to via admin
+  // Explicitly-added teams are in userTeams (primary + user_teams table entries)
+  const isViewingOtherTeam = isSuperAdmin &&
+    user?.activeTeamId != null &&
+    !userTeams.some(t => t.id === user?.activeTeamId);
   const isStealthActive = !!user?.stealth && isViewingOtherTeam;
 
   return {

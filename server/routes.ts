@@ -397,7 +397,11 @@ export async function registerRoutes(
     }
 
     await storage.updateUser(u.id, { activeTeamId: teamId } as any);
-    if (teamId === u.teamId && (req.session as any).stealth) {
+
+    // Clear stealth when switching to primary team OR any team the user is explicitly a member of
+    const memberships = await storage.getUserTeams(u.id);
+    const isExplicitMember = teamId === u.teamId || memberships.some(m => m.teamId === teamId);
+    if (isExplicitMember && (req.session as any).stealth) {
       (req.session as any).stealth = false;
       const prev = (req.session as any).incognitoBeforeStealth;
       (req.session as any).incognito = !!prev;

@@ -70,7 +70,7 @@ function Router() {
 }
 
 function AuthGuard() {
-  const { user, isLoading, isSuperAdmin, isStealthActive } = useAuth();
+  const { user, isLoading, isSuperAdmin, isStealthActive, userTeams } = useAuth();
   const [location] = useLocation();
 
   const { data: maintenanceData } = useQuery<{ enabled: boolean }>({
@@ -112,7 +112,8 @@ function AuthGuard() {
 
   if (isSuperAdmin && !isStealthActive) {
     const activeTeamId = user?.activeTeamId || user?.teamId;
-    const isViewingOwnTeam = activeTeamId === user?.teamId;
+    // Own team = primary team OR any team explicitly added via admin
+    const isViewingOwnTeam = userTeams.some(t => t.id === activeTeamId);
     if (!isViewingOwnTeam) {
       const dataPages = ["/tests", "/testskis", "/products", "/weather", "/analytics", "/grinding", "/raceskis", "/suggestions", "/live-runsheets", "/dashboard"];
       const isDataPage = dataPages.some(p => location === p || location.startsWith(p + "/"));

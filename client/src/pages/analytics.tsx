@@ -1125,15 +1125,6 @@ export default function Analytics() {
           weatherById={weatherById}
         />
 
-        <BestProductsByConditions
-          products={products}
-          tests={tests}
-          allEntries={allEntries}
-          productsById={productsById}
-          testsById={testsById}
-          weatherById={weatherById}
-        />
-
         <ProductCompare
           products={products}
           allEntries={allEntries}

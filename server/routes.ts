@@ -290,6 +290,17 @@ export async function registerRoutes(
       );
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_extra_params TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS is_paused INTEGER NOT NULL DEFAULT 0;
+      CREATE TABLE IF NOT EXISTS inbox_messages (
+        id SERIAL PRIMARY KEY,
+        to_user_id INTEGER NOT NULL,
+        from_user_id INTEGER,
+        from_name TEXT,
+        subject TEXT NOT NULL,
+        body TEXT NOT NULL,
+        is_read INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        team_name TEXT
+      );
     `);
   }
 
@@ -2430,6 +2441,7 @@ export async function registerRoutes(
       const regrinds = await storage.listTestSkiRegrinds(series.id);
       allTestSkiRegrinds.push(...regrinds.map((r) => ({ ...r, seriesName: series.name })));
     }
+    const grindProfilesList = await storage.listGrindProfiles(teamId);
     res.json({
       tests: allTests,
       entriesByTest,
@@ -2446,6 +2458,7 @@ export async function registerRoutes(
       grindingSheets: grindingSheetsList,
       raceSkiRegrinds: allRaceSkiRegrinds,
       testSkiRegrinds: allTestSkiRegrinds,
+      grindProfiles: grindProfilesList,
     });
   });
 
@@ -2790,7 +2803,7 @@ export async function registerRoutes(
     const u = userInfo(req);
     if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
     const { pool } = await import("./db");
-    const [teamsRes, recentTestsRes, recentLoginsRes, statsRes] = await Promise.all([
+    const [teamsRes, recentTestsRes, recentLoginsRes, statsRes, activeSessionsRes] = await Promise.all([
       (pool as any).query(`
         SELECT t.id, t.name, t.is_paused,
           COUNT(DISTINCT u.id) AS user_count,
@@ -2816,7 +2829,7 @@ export async function registerRoutes(
         LEFT JOIN users u ON u.id = ll.user_id
         LEFT JOIN teams t ON t.id = u.team_id
         ORDER BY ll.id DESC
-        LIMIT 20
+        LIMIT 500
       `),
       (pool as any).query(`
         SELECT
@@ -2824,6 +2837,17 @@ export async function registerRoutes(
           (SELECT COUNT(*) FROM users) AS total_users,
           (SELECT COUNT(*) FROM tests) AS total_tests,
           (SELECT COUNT(*) FROM products) AS total_products
+      `),
+      (pool as any).query(`
+        SELECT us.sid, us.sess, us.expire,
+          u.id AS user_id,
+          u.name AS name,
+          t.name AS team_name
+        FROM user_sessions us
+        LEFT JOIN users u ON u.id = (us.sess::json->'passport'->>'user')::int
+        LEFT JOIN teams t ON t.id = u.team_id
+        WHERE us.expire > NOW()
+        ORDER BY us.expire DESC
       `),
     ]);
     const stats = statsRes.rows[0];
@@ -2850,6 +2874,14 @@ export async function registerRoutes(
         teamName: r.team_name,
         loggedInAt: r.logged_in_at,
       })),
+      activeSessions: activeSessionsRes.rows
+        .filter((r: any) => r.user_id != null)
+        .map((r: any) => ({
+          userId: r.user_id,
+          name: r.name || "Unknown",
+          teamName: r.team_name || "—",
+          lastActive: r.expire,
+        })),
       stats: {
         totalTeams: parseInt(stats.total_teams) || 0,
         totalUsers: parseInt(stats.total_users) || 0,
@@ -3588,21 +3620,30 @@ export async function registerRoutes(
       const weatherMap = new Map(allWeather.map((w) => [w.id, w]));
       const productMap = new Map(products.map((p) => [p.id, p]));
 
-      const filteredTests = allTests.filter((t) => {
+      // Include tests with weather linked first; fall back to all tests if needed
+      const weatherLinkedTests = allTests.filter((t) => {
         if (testType && t.testType !== testType) return false;
         return t.weatherId && weatherMap.has(t.weatherId);
+      });
+      // Also keep tests without weather for the "no weather data" fallback
+      const allTypeFilteredTests = allTests.filter((t) => {
+        if (testType && t.testType !== testType) return false;
+        return true;
       });
 
       function weatherSimilarity(w: any): number {
         let score = 0;
+        // Temperature — most important signal (max 18 pts)
         const snowTDiff = Math.abs((w.snowTemperatureC ?? 0) - (snowTemperatureC ?? 0));
-        const airTDiff = Math.abs((w.airTemperatureC ?? 0) - (airTemperatureC ?? 0));
-        score += Math.max(0, 10 - snowTDiff * 2);
-        score += Math.max(0, 8 - airTDiff * 1.5);
+        const airTDiff  = Math.abs((w.airTemperatureC  ?? 0) - (airTemperatureC  ?? 0));
+        score += Math.max(0, 10 - snowTDiff * 2);   // 0–10 pts
+        score += Math.max(0, 8  - airTDiff  * 1.5); // 0–8 pts
+        // Humidity (max 9 pts)
         const snowHDiff = Math.abs((w.snowHumidityPct ?? 50) - (snowHumidityPct ?? 50));
-        const airHDiff = Math.abs((w.airHumidityPct ?? 50) - (airHumidityPct ?? 50));
+        const airHDiff  = Math.abs((w.airHumidityPct  ?? 50) - (airHumidityPct  ?? 50));
         score += Math.max(0, 5 - snowHDiff / 10);
-        score += Math.max(0, 4 - airHDiff / 10);
+        score += Math.max(0, 4 - airHDiff  / 10);
+        // Categorical fields (max 15 pts)
         if (artificialSnow && w.artificialSnow) score += 6;
         if (naturalSnow && w.naturalSnow === naturalSnow) score += 6;
         if (grainSize && w.grainSize === grainSize) score += 3;
@@ -3611,9 +3652,27 @@ export async function registerRoutes(
         return score;
       }
 
+      // Helper: extract the best rank from an entry (supports both old rank0km and new results JSON)
+      function extractBestRank(entry: any): number | null {
+        // Try new multi-round results array first
+        if (entry.results) {
+          try {
+            const rounds: { result?: number | null; rank?: number | null }[] = JSON.parse(entry.results);
+            const ranks = rounds.map((r) => r.rank).filter((r) => r != null && r > 0) as number[];
+            if (ranks.length > 0) return Math.min(...ranks);
+          } catch {}
+        }
+        // Fall back to legacy columns
+        const r0 = entry.rank0km;
+        const rX = entry.rankXkm;
+        if (r0 != null && r0 > 0) return r0;
+        if (rX != null && rX > 0) return rX;
+        return null;
+      }
+
       // Score all tests that have weather data
       const scoredTests: { test: any; weather: any; similarity: number }[] = [];
-      for (const test of filteredTests) {
+      for (const test of weatherLinkedTests) {
         const weather = weatherMap.get(test.weatherId!);
         if (!weather) continue;
         const similarity = weatherSimilarity(weather);
@@ -3621,10 +3680,11 @@ export async function registerRoutes(
       }
       scoredTests.sort((a, b) => b.similarity - a.similarity);
 
-      // Tiered matching — only use tests that actually resemble the given conditions
-      const HIGH_SIM = 20;
-      const MED_SIM = 10;
-      const LOW_SIM = 5;
+      // Tiered matching — progressive fallback so we always try to return something useful
+      // Thresholds: perfect temp match ≈ 18 pts, so HIGH=16 catches "almost perfect temp"
+      const HIGH_SIM = 16;
+      const MED_SIM  = 8;
+      const LOW_SIM  = 2;  // any temperature overlap at all
 
       const highMatches = scoredTests.filter((t) => t.similarity >= HIGH_SIM);
       const medMatches  = scoredTests.filter((t) => t.similarity >= MED_SIM);
@@ -3633,31 +3693,44 @@ export async function registerRoutes(
       let selectedTests: typeof scoredTests;
       let tierConfidence: "High" | "Medium" | "Low";
       let matchDescription: string;
+      let noWeatherFallback = false;
 
-      if (highMatches.length >= 3) {
+      if (highMatches.length >= 1) {
         selectedTests = highMatches;
         tierConfidence = "High";
-        matchDescription = "Very similar conditions found in test history.";
-      } else if (medMatches.length >= 3) {
+        matchDescription = "Very similar conditions in test history.";
+      } else if (medMatches.length >= 1) {
         selectedTests = medMatches;
         tierConfidence = "Medium";
-        matchDescription = "Moderately similar conditions found in test history.";
-      } else if (lowMatches.length >= 2) {
+        matchDescription = "Moderately similar conditions in test history.";
+      } else if (lowMatches.length >= 1) {
         selectedTests = lowMatches;
         tierConfidence = "Low";
         matchDescription = "Limited similar data — treat with caution.";
+      } else if (scoredTests.length >= 1) {
+        // Have weather-linked tests but none match — show the closest ones
+        selectedTests = scoredTests.slice(0, 20);
+        tierConfidence = "Low";
+        matchDescription = "No closely matching conditions found. Showing best available data.";
+      } else if (allTypeFilteredTests.length >= 1) {
+        // No weather data at all — fall back to all tests of this type
+        selectedTests = allTypeFilteredTests.map((t) => ({ test: t, weather: null, similarity: 0 }));
+        tierConfidence = "Low";
+        matchDescription = "No weather data linked to tests. Showing overall product performance.";
+        noWeatherFallback = true;
       } else {
-        return res.json({ suggestions: [{ title: "No data", description: "Not enough matching test data for these conditions. Run more tests in similar weather to build a recommendation history.", products: [], confidence: "Low" }] });
+        return res.json({ suggestions: [{ title: "No data", description: "No test data found for this test type. Run some tests first to build recommendations.", products: [], confidence: "Low" }] });
       }
 
-      // Aggregate product stats only from the matched tests
+      // Aggregate product stats from the selected tests
       const productStats = new Map<number, { totalRank: number; count: number; wins: number }>();
-      for (const { test } of selectedTests.slice(0, 100)) {
+      for (const { test } of selectedTests.slice(0, 200)) {
         const entries = await storage.listEntries(test.id);
         if (entries.length === 0) continue;
         for (const entry of entries) {
           if (!entry.productId) continue;
-          const rank = entry.rank0km ?? 999;
+          const rank = extractBestRank(entry);
+          if (rank == null) continue; // skip entries with no ranking data
           const stats = productStats.get(entry.productId) || { totalRank: 0, count: 0, wins: 0 };
           stats.totalRank += rank;
           stats.count += 1;
@@ -3666,15 +3739,43 @@ export async function registerRoutes(
         }
       }
 
+      // If no ranked entries found, show frequency (how often a product was tested) as proxy
+      if (productStats.size === 0) {
+        const freqStats = new Map<number, number>();
+        for (const { test } of selectedTests.slice(0, 200)) {
+          const entries = await storage.listEntries(test.id);
+          for (const entry of entries) {
+            if (!entry.productId) continue;
+            freqStats.set(entry.productId, (freqStats.get(entry.productId) ?? 0) + 1);
+          }
+        }
+        const suggestions = Array.from(freqStats.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 6)
+          .map(([productId, count], idx) => {
+            const prod = productMap.get(productId);
+            const productName = prod ? `${prod.brand} ${prod.name}` : "Unknown";
+            return {
+              title: `#${idx + 1} ${productName}`,
+              description: `Tested ${count} time${count > 1 ? "s" : ""} in similar conditions. No ranking data recorded yet.`,
+              products: [productName],
+              confidence: "Low",
+            };
+          });
+        if (suggestions.length === 0) {
+          return res.json({ suggestions: [{ title: "No data", description: "Tests found but no products or rankings recorded. Add products and results to your tests to get suggestions.", products: [], confidence: "Low" }] });
+        }
+        return res.json({ suggestions });
+      }
+
       const ranked = Array.from(productStats.entries())
-        .filter(([_, s]) => s.count >= 1)
         .map(([productId, stats]) => {
           const avgRank = stats.totalRank / stats.count;
           const winRate = stats.wins / stats.count;
           const score = (1 / avgRank) * 0.6 + winRate * 0.4;
           const confidence: string =
-            tierConfidence === "High" && stats.count >= 3 ? "High" :
-            tierConfidence !== "Low"  && stats.count >= 2 ? "Medium" : "Low";
+            !noWeatherFallback && tierConfidence === "High" && stats.count >= 3 ? "High" :
+            !noWeatherFallback && tierConfidence !== "Low"  && stats.count >= 2 ? "Medium" : "Low";
           return { productId, avgRank, winRate, score, confidence, count: stats.count };
         })
         .sort((a, b) => b.score - a.score)
@@ -3687,17 +3788,13 @@ export async function registerRoutes(
         const winPct = (r.winRate * 100).toFixed(0);
         return {
           title: `#${idx + 1} ${productName}`,
-          description: `Avg rank ${avgRankStr} in ${r.count} matching test${r.count > 1 ? "s" : ""}. Win rate: ${winPct}%. ${matchDescription}`,
+          description: `Avg rank ${avgRankStr} across ${r.count} test${r.count > 1 ? "s" : ""}. Win rate: ${winPct}%. ${matchDescription}`,
           products: [productName],
           confidence: r.confidence,
         };
       });
 
-      if (suggestions.length === 0) {
-        res.json({ suggestions: [{ title: "No data", description: "Products in the matching tests have no recorded results. Run more wax tests to improve suggestions.", products: [], confidence: "Low" }] });
-      } else {
-        res.json({ suggestions });
-      }
+      res.json({ suggestions });
     } catch (err: any) {
       console.error("Suggestion error:", err);
       res.status(500).json({ message: "Failed to generate suggestions", error: err.message });
@@ -4104,6 +4201,114 @@ export async function registerRoutes(
       [new Date().toISOString(), parseInt(itemId), teamId]
     );
     res.json({ ok: true });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+
+  // ─── Report a Problem + SA Inbox ─────────────────────────────────────────
+
+  // POST /api/report-problem — any authenticated user submits a problem report
+  app.post("/api/report-problem", requireAuth, async (req, res) => {
+    const { subject, body } = req.body || {};
+    if (!subject || typeof subject !== "string" || subject.trim().length === 0) {
+      return res.status(400).json({ message: "Subject is required" });
+    }
+    if (subject.length > 200) {
+      return res.status(400).json({ message: "Subject must be 200 characters or fewer" });
+    }
+    if (!body || typeof body !== "string" || body.trim().length === 0) {
+      return res.status(400).json({ message: "Body is required" });
+    }
+    if (body.length > 2000) {
+      return res.status(400).json({ message: "Body must be 2000 characters or fewer" });
+    }
+
+    const sender = req.user!;
+    const { pool } = await import("./db");
+
+    // Get sender's team name
+    let teamName: string | null = null;
+    try {
+      const teamRow = await (pool as any).query(
+        `SELECT name FROM teams WHERE id = $1`,
+        [sender.teamId]
+      );
+      teamName = teamRow.rows[0]?.name ?? null;
+    } catch (_) {}
+
+    // Get all SA users
+    const saResult = await (pool as any).query(
+      `SELECT id, name FROM users WHERE is_admin = 1`
+    );
+    const saUsers: { id: number; name: string }[] = saResult.rows;
+
+    const now = new Date().toISOString();
+    for (const sa of saUsers) {
+      await (pool as any).query(
+        `INSERT INTO inbox_messages (to_user_id, from_user_id, from_name, subject, body, is_read, created_at, team_name)
+         VALUES ($1, $2, $3, $4, $5, 0, $6, $7)`,
+        [sa.id, sender.id, sender.name, subject.trim(), body.trim(), now, teamName]
+      );
+    }
+
+    return res.json({ ok: true });
+  });
+
+  // GET /api/inbox — return inbox messages for current user
+  app.get("/api/inbox", requireAuth, async (req, res) => {
+    const userId = req.user!.id;
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT * FROM inbox_messages WHERE to_user_id = $1 ORDER BY created_at DESC LIMIT 100`,
+      [userId]
+    );
+    return res.json(result.rows);
+  });
+
+  // GET /api/inbox/unread-count — return unread count for current user
+  app.get("/api/inbox/unread-count", requireAuth, async (req, res) => {
+    const userId = req.user!.id;
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT COUNT(*) FROM inbox_messages WHERE to_user_id = $1 AND is_read = 0`,
+      [userId]
+    );
+    return res.json({ count: parseInt(result.rows[0].count, 10) });
+  });
+
+  // PUT /api/inbox/:id/read — mark a message as read
+  app.put("/api/inbox/:id/read", requireAuth, async (req, res) => {
+    const userId = req.user!.id;
+    const msgId = parseInt(req.params.id, 10);
+    const { pool } = await import("./db");
+    await (pool as any).query(
+      `UPDATE inbox_messages SET is_read = 1 WHERE id = $1 AND to_user_id = $2`,
+      [msgId, userId]
+    );
+    return res.json({ ok: true });
+  });
+
+  // PUT /api/inbox/read-all — mark all messages as read for current user
+  app.put("/api/inbox/read-all", requireAuth, async (req, res) => {
+    const userId = req.user!.id;
+    const { pool } = await import("./db");
+    await (pool as any).query(
+      `UPDATE inbox_messages SET is_read = 1 WHERE to_user_id = $1`,
+      [userId]
+    );
+    return res.json({ ok: true });
+  });
+
+  // DELETE /api/inbox/:id — delete a message (only if it belongs to current user)
+  app.delete("/api/inbox/:id", requireAuth, async (req, res) => {
+    const userId = req.user!.id;
+    const msgId = parseInt(req.params.id, 10);
+    const { pool } = await import("./db");
+    await (pool as any).query(
+      `DELETE FROM inbox_messages WHERE id = $1 AND to_user_id = $2`,
+      [msgId, userId]
+    );
+    return res.json({ ok: true });
   });
 
   // ──────────────────────────────────────────────────────────────────────────

@@ -29,6 +29,7 @@ import {
   Filter,
   BarChart2,
   ChevronUp,
+  Thermometer,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -1947,7 +1948,7 @@ export default function AthleteDetail() {
                 <TestListView tests={filteredTests} skiIds={skiIds} allSkis={skis} activeTestColumns={activeTestColumns} weather={weather} />
               ) : (
                 filteredTests.map((test) => (
-                  <RaceSkiTestCard key={test.id} test={test} skiIds={skiIds} allSkis={skis} activeTestColumns={activeTestColumns} />
+                  <RaceSkiTestCard key={test.id} test={test} skiIds={skiIds} allSkis={skis} activeTestColumns={activeTestColumns} weather={weather} />
                 ))
               )}
             </div>
@@ -2980,7 +2981,8 @@ function TestListView({ tests, skiIds, allSkis, activeTestColumns, weather = [] 
   );
 }
 
-function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns }: { test: RaceSkiTest; skiIds: Set<number>; allSkis: RaceSki[]; activeTestColumns: string[] }) {
+function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns, weather = [] }: { test: RaceSkiTest; skiIds: Set<number>; allSkis: RaceSki[]; activeTestColumns: string[]; weather?: WeatherItem[] }) {
+  const weatherMap = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);
   const [expanded, setExpanded] = useState(false);
   const [, navigate] = useLocation();
 
@@ -3032,6 +3034,19 @@ function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns }: { test: R
             <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800" data-testid={`text-test-type-${test.id}`}>
               {test.testType}
             </span>
+            {test.weatherId != null && weatherMap.get(test.weatherId) && (() => {
+              const w = weatherMap.get(test.weatherId!)!;
+              const parts = [
+                w.snowTemperatureC != null ? `Snow ${w.snowTemperatureC}°` : null,
+                w.airTemperatureC != null ? `Air ${w.airTemperatureC}°` : null,
+              ].filter(Boolean);
+              return parts.length > 0 ? (
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <Thermometer className="h-3 w-3 shrink-0" />
+                  {parts.join(' / ')}
+                </span>
+              ) : null;
+            })()}
             <span className="text-xs text-muted-foreground">{test.createdByName}</span>
           </div>
         </div>

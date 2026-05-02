@@ -457,29 +457,24 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {user?.incognito ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             )}
-            {/* Mail button: SA → navigate to /inbox; others → open report dialog */}
-            <Button
-              variant="ghost"
-              size="sm"
-              data-testid="button-mail"
-              onClick={() => {
-                if (isSuperAdmin) {
-                  navigate("/inbox");
-                } else {
-                  setReportOpen(true);
-                }
-              }}
-              className="relative text-muted-foreground hover:text-foreground hover:bg-muted"
-              title={isSuperAdmin ? "SA Inbox" : "Report a Problem"}
-            >
-              <Mail className="h-4 w-4" />
-              {isSuperAdmin && unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              )}
-            </Button>
-            <ReportProblemDialog open={reportOpen} onClose={() => setReportOpen(false)} />
+            {/* Mail/Inbox button — SA only */}
+            {isSuperAdmin && (
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="button-mail"
+                onClick={() => navigate("/inbox")}
+                className="relative text-muted-foreground hover:text-foreground hover:bg-muted"
+                title="SA Inbox"
+              >
+                <Mail className="h-4 w-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -578,9 +573,19 @@ export function AppShell({ children }: { children: ReactNode }) {
             <AppLink href="/contact" testId="link-contact" className="underline hover:text-foreground transition-colors">
               Contact
             </AppLink>
+            <span className="text-border">|</span>
+            <button
+              onClick={() => setReportOpen(true)}
+              className="underline hover:text-foreground transition-colors flex items-center gap-1"
+              data-testid="link-report-problem"
+            >
+              <Mail className="h-3 w-3" />
+              Report a Problem
+            </button>
           </div>
         </div>
       </footer>
+      <ReportProblemDialog open={reportOpen} onClose={() => setReportOpen(false)} />
     </div>
   );
 }

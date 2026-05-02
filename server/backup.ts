@@ -71,13 +71,15 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
   try {
     const sheets = await getUncachableGoogleSheetClient();
 
-    const [allGroups, allTests, allWeather, allSeries, allProducts, allAthletes] = await Promise.all([
+    const [allGroups, allTests, allWeather, allSeries, allProducts, allAthletes, allGrindProfiles, allGrindingRecords] = await Promise.all([
       storage.listGroups(teamId),
       storage.listAllTestsForTeam(teamId),
       storage.listAllWeatherForTeam(teamId),
       storage.listSeries('', true, teamId),
       storage.listProducts('', true, teamId),
       storage.listAthletes(0, true, teamId),
+      storage.listGrindProfiles(teamId),
+      storage.listGrindingRecords('', true, teamId),
     ]);
 
     const testIds = allTests.map((t: any) => t.id);
@@ -324,18 +326,32 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       await clearAndWrite(sheets, spreadsheetId, sheetTitle, rows);
     }
 
-    // Grinds sheet
-    const grindsTitle = 'Grind Profiles';
+    // Grinds sheet — profiles + grinding records
+    const grindsTitle = 'Grinds';
     await ensureSheet(sheets, spreadsheetId, grindsTitle);
-    const grindProfiles = await storage.listGrindProfiles(teamId);
     const grindRows: any[][] = [
-      ['GLIDR GRIND PROFILES — ' + team.name],
+      ['GLIDR GRIND DATA — ' + team.name],
       ['Generated: ' + new Date().toISOString()],
       [],
+      ['=== GRIND PROFILES ==='],
       ['ID', 'Name', 'Type', 'Stone', 'Pattern', 'Extra Params', 'Created By', 'Created At'],
     ];
-    for (const gp of grindProfiles) {
-      grindRows.push([gp.id, gp.name, gp.grindType, gp.stone || '', gp.pattern || '', gp.extraParams || '', gp.createdByName || '', gp.createdAt || '']);
+    for (const gp of allGrindProfiles) {
+      // Expand extra params to key=value pairs for readability
+      let extraStr = '';
+      if (gp.extraParams) {
+        try {
+          const ep = JSON.parse(gp.extraParams);
+          extraStr = Object.entries(ep).map(([k, v]) => `${k}: ${v}`).join(', ');
+        } catch { extraStr = gp.extraParams; }
+      }
+      grindRows.push([gp.id, gp.name, gp.grindType, gp.stone || '', gp.pattern || '', extraStr, gp.createdByName || '', gp.createdAt || '']);
+    }
+    grindRows.push([]);
+    grindRows.push(['=== GRINDING RECORDS ===']);
+    grindRows.push(['ID', 'Date', 'Series/Scope', 'Grind Type', 'Stone', 'Notes', 'Created By', 'Created At']);
+    for (const gr of allGrindingRecords) {
+      grindRows.push([gr.id, gr.date, gr.groupScope || '', gr.grindType, gr.stone || '', gr.notes || '', gr.createdByName || '', gr.createdAt || '']);
     }
     await clearAndWrite(sheets, spreadsheetId, grindsTitle, grindRows);
 

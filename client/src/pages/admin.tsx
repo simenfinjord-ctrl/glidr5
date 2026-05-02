@@ -1552,10 +1552,7 @@ export default function Admin() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [createOpen, setCreateOpen] = useState(false);
-  const [adminMode, setAdminMode] = useState<boolean>(() => {
-    try { return localStorage.getItem("glidr-sa-admin-mode") === "true"; } catch { return false; }
-  });
-  const [editUser, setEditUser] = useState<ApiUser | undefined>();
+const [editUser, setEditUser] = useState<ApiUser | undefined>();
   const [resetUser, setResetUser] = useState<ApiUser | undefined>();
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupTeamId, setNewGroupTeamId] = useState<number | undefined>(undefined);
@@ -1648,10 +1645,11 @@ export default function Admin() {
 
   const [pdfLoading, setPdfLoading] = useState(false);
 
-  async function downloadFullPdf() {
+  async function downloadFullPdf(exportScopeParam?: string) {
     setPdfLoading(true);
     try {
-      const exportRes = await apiRequest("GET", "/api/admin/full-export");
+      const scope = exportScopeParam !== undefined ? exportScopeParam : "";
+      const exportRes = await apiRequest("GET", `/api/admin/full-export${scope}`);
       const rawText = await exportRes.text();
       let data: any;
       try {
@@ -1930,6 +1928,20 @@ export default function Admin() {
             ];
           }),
           styles: { fontSize: 6.5 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      if (data.grindProfiles && data.grindProfiles.length > 0) {
+        checkPage();
+        doc.setFontSize(13);
+        doc.text(`Grind Profiles (${data.grindProfiles.length})`, 14, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [["Name", "Type", "Stone", "Pattern", "Extra Params", "Created By"]],
+          body: data.grindProfiles.map((gp: any) => [gp.name || "", gp.grindType || "", gp.stone || "", gp.pattern || "", gp.extraParams || "", gp.createdByName || ""]),
+          styles: { fontSize: 7 }, headStyles: hStyle, margin: { left: 14, right: 14 },
         });
         y = (doc as any).lastAutoTable.finalY + 10;
       }
@@ -2297,27 +2309,6 @@ export default function Admin() {
                   ))}
                 </SelectContent>
               </Select>
-            )}
-            {isSuperAdmin && (
-              <button
-                type="button"
-                data-testid="button-admin-mode-toggle"
-                onClick={() => {
-                  const next = !adminMode;
-                  setAdminMode(next);
-                  try { localStorage.setItem("glidr-sa-admin-mode", String(next)); } catch {}
-                  toast({ title: next ? "Admin Mode ON" : "Admin Mode OFF", description: next ? "Overview nav item is now visible." : "Overview nav item hidden." });
-                }}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
-                  adminMode
-                    ? "border-purple-300 bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700"
-                    : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
-                )}
-              >
-                <ToggleRight className={cn("h-3.5 w-3.5", adminMode ? "text-purple-600" : "text-muted-foreground")} />
-                {adminMode ? "Admin Mode ON" : "Admin Mode"}
-              </button>
             )}
             <Button
               variant="outline"
@@ -3035,7 +3026,7 @@ export default function Admin() {
           </div>
         )}
 
-        {activeTab === "data" && <DataManagementTab teamScopeParam={teamScopeParam} downloadFullPdf={downloadFullPdf} pdfLoading={pdfLoading} />}
+        {activeTab === "data" && <DataManagementTab teamScopeParam={teamScopeParam} downloadFullPdf={downloadFullPdf} pdfLoading={pdfLoading} isSuperAdmin={isSuperAdmin} teams={teams} />}
 
         {activeTab === "danger" && <DangerZoneTab />}
       </div>
@@ -3043,9 +3034,30 @@ export default function Admin() {
   );
 }
 
-function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { teamScopeParam: string; downloadFullPdf: () => void; pdfLoading: boolean }) {
+function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSuperAdmin, teams }: { teamScopeParam: string; downloadFullPdf: (scope?: string) => void; pdfLoading: boolean; isSuperAdmin: boolean; teams: ApiTeam[] }) {
   const { toast } = useToast();
   const { data: dbStats } = useQuery<any>({ queryKey: [`/api/admin/db-stats${teamScopeParam}`] });
+
+  const [exportTeamId, setExportTeamId] = useState<number | "all">("all");
+  const exportTeamScopeParam = isSuperAdmin
+    ? exportTeamId === "all"
+      ? "?teamScope=all"
+      : `?teamScope=${exportTeamId}`
+    : "";
+
+  const removeDuplicatesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/products/remove-duplicates");
+      return res.json();
+    },
+    onSuccess: (data: { removed: number }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({ title: data.removed > 0 ? `Removed ${data.removed} duplicate${data.removed !== 1 ? "s" : ""}` : "No duplicates found" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
 
   const [xlsLoading, setXlsLoading] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -3100,7 +3112,7 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
   async function downloadXlsExport() {
     setXlsLoading(true);
     try {
-      const exportRes = await apiRequest("GET", "/api/admin/full-export");
+      const exportRes = await apiRequest("GET", `/api/admin/full-export${exportTeamScopeParam}`);
       const rawText = await exportRes.text();
       let data: any;
       try {
@@ -3157,6 +3169,14 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(raceSkiRows), "Race Skis");
       }
 
+      if (data.grindProfiles?.length) {
+        const grindProfileRows = data.grindProfiles.map((gp: any) => ({
+          ID: gp.id, Name: gp.name, Type: gp.grindType || "", Stone: gp.stone || "",
+          Pattern: gp.pattern || "", ExtraParams: gp.extraParams || "", CreatedBy: gp.createdByName || "", CreatedAt: gp.createdAt || "",
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(grindProfileRows), "Grind Profiles");
+      }
+
       XLSX.writeFile(wb, "glidr-export.xlsx");
       toast({ title: "Excel exported" });
     } catch (err: any) {
@@ -3209,18 +3229,34 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
           </div>
           <h2 className="text-sm font-semibold text-foreground">Export Tools</h2>
         </div>
+        {isSuperAdmin && teams.length > 0 && (
+          <div className="mb-4 flex items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Export for team:</span>
+            <Select value={String(exportTeamId)} onValueChange={(v) => setExportTeamId(v === "all" ? "all" : parseInt(v))}>
+              <SelectTrigger className="h-7 w-48 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All teams</SelectItem>
+                {teams.map((t) => (
+                  <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="rounded-xl border border-border bg-muted/30 p-4">
             <h3 className="text-sm font-medium text-foreground mb-1">PDF Export</h3>
             <p className="text-xs text-muted-foreground mb-3">Export all app data as a comprehensive PDF document.</p>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" data-testid="button-export-pdf-data" onClick={downloadFullPdf} disabled={pdfLoading}>
+              <Button size="sm" variant="outline" data-testid="button-export-pdf-data" onClick={() => downloadFullPdf(exportTeamScopeParam)} disabled={pdfLoading}>
                 {pdfLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
                 {pdfLoading ? "Exporting…" : "Export PDF"}
               </Button>
               <Button size="sm" variant="outline" onClick={async () => {
                 try {
-                  const res = await apiRequest("GET", "/api/admin/full-export");
+                  const res = await apiRequest("GET", `/api/admin/full-export${exportTeamScopeParam}`);
                   const json = await res.text();
                   const blob = new Blob([json], { type: "application/json" });
                   const url = URL.createObjectURL(blob);
@@ -3315,6 +3351,40 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading }: { te
             <p className="text-[11px] text-muted-foreground">
               Use "Download JSON" above to get the export file.
             </p>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-maintenance">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-orange-50">
+            <Trash2 className="h-4 w-4 text-orange-600" />
+          </div>
+          <h2 className="text-sm font-semibold text-foreground">Maintenance</h2>
+        </div>
+        <div className="rounded-xl border border-border bg-muted/30 p-4 flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-medium text-foreground">Remove Duplicate Products</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Removes duplicate products with identical brand+name. Cannot be undone.</p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-800"
+              data-testid="button-remove-duplicates"
+              disabled={removeDuplicatesMutation.isPending}
+              onClick={() => {
+                if (confirm("Remove duplicate products? This will keep the oldest entry for each brand + name combination and delete the rest.")) {
+                  removeDuplicatesMutation.mutate();
+                }
+              }}
+            >
+              {removeDuplicatesMutation.isPending
+                ? <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                : <Trash2 className="mr-1.5 h-3.5 w-3.5" />}
+              Remove Duplicates
+            </Button>
           </div>
         </div>
       </Card>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, Watch, RefreshCw, Copy, Check, KeyRound, Mail, Users, Shield, Smartphone, Eye, EyeOff } from "lucide-react";
+import { User, Watch, RefreshCw, Copy, Check, KeyRound, Mail, Users, Shield, Smartphone, Eye, EyeOff, ToggleLeft, ToggleRight } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMobileNav } from "@/components/mobile-nav";
+import { cn } from "@/lib/utils";
 
 export default function MyAccount() {
   const { user } = useAuth();
@@ -27,6 +28,11 @@ export default function MyAccount() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [passError, setPassError] = useState("");
+
+  // Admin mode toggle (super admin only)
+  const [adminMode, setAdminMode] = useState<boolean>(() => {
+    try { return localStorage.getItem("glidr-sa-admin-mode") === "true"; } catch { return false; }
+  });
 
   // Mobile nav toggle
   const mobileNavStore = useMobileNav();
@@ -182,6 +188,43 @@ export default function MyAccount() {
             </button>
           </div>
         </Card>
+
+        {/* Admin Mode (super admin only) */}
+        {user.isAdmin === 1 && (
+          <Card className="p-5 space-y-3">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+              <Shield className="h-4 w-4 text-purple-500" />
+              Admin Settings
+            </h2>
+            <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-3">
+              <div>
+                <div className="text-sm font-medium">Admin Mode</div>
+                <div className="text-xs text-muted-foreground">Show the Overview nav item and admin-only UI</div>
+              </div>
+              <button
+                type="button"
+                data-testid="button-admin-mode-toggle"
+                onClick={() => {
+                  const next = !adminMode;
+                  setAdminMode(next);
+                  try { localStorage.setItem("glidr-sa-admin-mode", String(next)); } catch {}
+                  toast({ title: next ? "Admin Mode ON" : "Admin Mode OFF", description: next ? "Overview nav item is now visible." : "Overview nav item hidden." });
+                }}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
+                  adminMode
+                    ? "border-purple-300 bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700"
+                    : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {adminMode
+                  ? <ToggleRight className="h-3.5 w-3.5 text-purple-600" />
+                  : <ToggleLeft className="h-3.5 w-3.5 text-muted-foreground" />}
+                {adminMode ? "Admin Mode ON" : "Admin Mode"}
+              </button>
+            </div>
+          </Card>
+        )}
 
         {/* Change password */}
         <Card className="p-5 space-y-3">

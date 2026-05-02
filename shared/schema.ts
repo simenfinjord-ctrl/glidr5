@@ -594,3 +594,16 @@ export const watchQueue = pgTable("watch_queue", {
   sessionCode: text("session_code"), // auto-created watch session code
 });
 
+// Inbox messages (used for SA notifications from "Report a Problem")
+export const inboxMessages = pgTable("inbox_messages", {
+  id: serial("id").primaryKey(),
+  toUserId: integer("to_user_id").notNull(),      // recipient (SA user)
+  fromUserId: integer("from_user_id"),             // sender (may be null for system msgs)
+  fromName: text("from_name"),                      // display name of sender
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  isRead: integer("is_read").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+  teamName: text("team_name"),                      // sender's team name for context
+});
+

@@ -176,11 +176,10 @@ type UserItem = {
 
 export default function AthleteDetail() {
   const [, params] = useRoute("/raceskis/:id");
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const athleteId = params?.id ? parseInt(params.id) : null;
   const { user, can } = useAuth();
-  const viewParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("view") : null;
-  const isAnalyticsView = viewParam === "analytics";
+  const isAnalyticsView = location.includes("view=analytics");
   const { toast } = useToast();
 
   const [skiDialogOpen, setSkiDialogOpen] = useState(false);
@@ -1945,7 +1944,7 @@ export default function AthleteDetail() {
                   No race ski tests yet.
                 </Card>
               ) : testViewMode === "list" ? (
-                <TestListView tests={filteredTests} skiIds={skiIds} allSkis={skis} activeTestColumns={activeTestColumns} />
+                <TestListView tests={filteredTests} skiIds={skiIds} allSkis={skis} activeTestColumns={activeTestColumns} weather={weather} />
               ) : (
                 filteredTests.map((test) => (
                   <RaceSkiTestCard key={test.id} test={test} skiIds={skiIds} allSkis={skis} activeTestColumns={activeTestColumns} />
@@ -2866,7 +2865,7 @@ function SkiCard({
   );
 }
 
-function TestListView({ tests, skiIds, allSkis, activeTestColumns }: { tests: RaceSkiTest[]; skiIds: Set<number>; allSkis: RaceSki[]; activeTestColumns: string[] }) {
+function TestListView({ tests, skiIds, allSkis, activeTestColumns, weather = [] }: { tests: RaceSkiTest[]; skiIds: Set<number>; allSkis: RaceSki[]; activeTestColumns: string[]; weather?: WeatherItem[] }) {
   const testIds = useMemo(() => tests.map((t) => t.id), [tests]);
   const [, navigate] = useLocation();
 
@@ -2887,6 +2886,7 @@ function TestListView({ tests, skiIds, allSkis, activeTestColumns }: { tests: Ra
   });
 
   const raceSkiById = useMemo(() => new Map(allSkis.map((s) => [s.id, s])), [allSkis]);
+  const weatherById = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);
 
   // One row per test: count of skis tested + top ski (rank 1)
   const testRows = useMemo(() => {
@@ -2915,6 +2915,7 @@ function TestListView({ tests, skiIds, allSkis, activeTestColumns }: { tests: Ra
               <th className="px-3 py-2.5 font-medium">Date</th>
               <th className="px-3 py-2.5 font-medium">Location</th>
               <th className="px-3 py-2.5 font-medium">Type</th>
+              <th className="px-3 py-2.5 font-medium">Weather</th>
               <th className="px-3 py-2.5 font-medium"># Skis</th>
               <th className="px-3 py-2.5 font-medium">Top Ski</th>
               <th className="px-3 py-2.5 font-medium"></th>
@@ -2923,7 +2924,7 @@ function TestListView({ tests, skiIds, allSkis, activeTestColumns }: { tests: Ra
           <tbody>
             {isLoading && testIds.length > 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">Loading…</td>
+                <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">Loading…</td>
               </tr>
             ) : (
               testRows.map(({ test, skiCount, topSki, topEntry }, idx) => (
@@ -2938,6 +2939,16 @@ function TestListView({ tests, skiIds, allSkis, activeTestColumns }: { tests: Ra
                     <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800">
                       {test.testType}
                     </span>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-muted-foreground text-[11px]">
+                    {test.weatherId != null && weatherById.get(test.weatherId) ? (
+                      (() => {
+                        const w = weatherById.get(test.weatherId!)!;
+                        const snow = w.snowTemperatureC != null ? `${w.snowTemperatureC}°` : null;
+                        const air = w.airTemperatureC != null ? `${w.airTemperatureC}°` : null;
+                        return snow || air ? <span>{[snow, air].filter(Boolean).join(" / ")}</span> : <span className="opacity-50">—</span>;
+                      })()
+                    ) : <span className="opacity-50">—</span>}
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {skiCount > 0 ? skiCount : <span className="opacity-50">—</span>}

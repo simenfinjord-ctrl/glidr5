@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CopyX, CheckSquare, Square } from "lucide-react";
+import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -437,20 +437,6 @@ export default function Products() {
     },
   });
 
-  const removeDuplicatesMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/products/remove-duplicates");
-      return res.json();
-    },
-    onSuccess: (data: { removed: number }) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: data.removed > 0 ? `Removed ${data.removed} duplicate${data.removed !== 1 ? "s" : ""}` : "No duplicates found" });
-    },
-    onError: (e) => {
-      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
-    },
-  });
-
   const bulkAssignMutation = useMutation({
     mutationFn: async ({ ids, groupScope }: { ids: number[]; groupScope: string }) => {
       const res = await apiRequest("POST", "/api/products/bulk-assign-group", { ids, groupScope });
@@ -488,23 +474,6 @@ export default function Products() {
               <Warehouse className="mr-2 h-4 w-4" />
               Storage
             </Button>
-            {isAdmin && (
-              <Button
-                variant="outline"
-                size="sm"
-                data-testid="button-remove-duplicates"
-                onClick={() => {
-                  if (confirm("Remove duplicate products? This will keep the oldest entry for each brand + name combination and delete the rest.")) {
-                    removeDuplicatesMutation.mutate();
-                  }
-                }}
-                disabled={removeDuplicatesMutation.isPending}
-                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-              >
-                <CopyX className="mr-2 h-4 w-4" />
-                Remove Duplicates
-              </Button>
-            )}
             <Button
               variant={viewMode === "stock-changes" ? "default" : "outline"}
               size="sm"

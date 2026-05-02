@@ -32,6 +32,7 @@ import WhatIsGlidr from "@/pages/what-is-glidr";
 import Legal from "@/pages/legal";
 import Pricing from "@/pages/pricing";
 import Contact from "@/pages/contact";
+import Inbox from "@/pages/inbox";
 
 import Login from "@/pages/login";
 
@@ -66,6 +67,7 @@ function Router() {
       <Route path="/legal" component={Legal} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/contact" component={Contact} />
+      <Route path="/inbox" component={Inbox} />
       <Route component={NotFound} />
     </Switch>
   );

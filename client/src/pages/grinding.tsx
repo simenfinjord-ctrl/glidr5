@@ -147,23 +147,30 @@ type GrindProfileFormValues = {
 function GrindProfileForm({
   onDone,
   editProfile,
+  allProfileParamKeys = [],
 }: {
   onDone: () => void;
   editProfile?: GrindProfile;
+  allProfileParamKeys?: string[];
 }) {
   const { toast } = useToast();
 
-  // Build initial param rows: fixed (stone, pattern, RA-value) + custom from extraParams
+  // Build initial param rows: fixed (stone, pattern, RA-value) + custom from extraParams + missing team-wide keys
   const initParams = (): ParamRow[] => {
     const parsed = parseExtraParams(editProfile?.extraParams ?? null);
     const custom = Object.entries(parsed)
       .filter(([k]) => !["stone", "pattern", "ra_value"].includes(k))
       .map(([key, value]) => ({ key, value }));
+    const existingKeys = new Set(custom.map((p) => p.key));
+    const missingKeys = allProfileParamKeys
+      .filter((k) => !existingKeys.has(k))
+      .map((key) => ({ key, value: "" }));
     return [
       { key: "stone", value: editProfile?.stone ?? "", fixed: true },
       { key: "pattern", value: editProfile?.pattern ?? "", fixed: true },
       { key: "ra_value", value: parsed["ra_value"] ?? "", fixed: true },
       ...custom,
+      ...missingKeys,
     ];
   };
 
@@ -451,6 +458,20 @@ export default function Grinding() {
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
   const { data: grindProfiles = [] } = useQuery<GrindProfile[]>({ queryKey: ["/api/grind-profiles"] });
 
+  const allProfileParamKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const p of grindProfiles) {
+      if (!p.extraParams) continue;
+      try {
+        const parsed = JSON.parse(p.extraParams);
+        for (const k of Object.keys(parsed)) {
+          if (!["stone", "pattern", "ra_value"].includes(k)) keys.add(k);
+        }
+      } catch {}
+    }
+    return Array.from(keys);
+  }, [grindProfiles]);
+
   const grindTests = useMemo(() => allTests.filter((t) => t.testType === "Grind"), [allTests]);
 
   const grindTestIds = grindTests.map((t) => t.id);
@@ -585,6 +606,7 @@ export default function Grinding() {
                   <GrindProfileForm
                     key={editProfile ? `edit-${editProfile.id}` : "create"}
                     editProfile={editProfile}
+                    allProfileParamKeys={allProfileParamKeys}
                     onDone={() => { setGrindDialogOpen(false); setEditProfile(undefined); }}
                   />
                 </DialogContent>

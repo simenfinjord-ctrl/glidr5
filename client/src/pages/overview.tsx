@@ -31,6 +31,12 @@ type OverviewData = {
     teamName: string;
     loggedInAt: string;
   }[];
+  activeSessions: {
+    userId: number;
+    name: string;
+    teamName: string;
+    lastActive: string;
+  }[];
   stats: {
     totalTeams: number;
     totalUsers: number;
@@ -220,38 +226,76 @@ export default function Overview() {
                 )}
               </Card>
 
-              {/* Recent Logins */}
+              {/* Current Sessions */}
               <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
                 <div className="flex items-center gap-2 p-5 pb-3">
-                  <LogIn className="h-4 w-4 text-emerald-500" />
-                  <span className="font-semibold text-foreground">Recent Logins</span>
+                  <Eye className="h-4 w-4 text-violet-500" />
+                  <span className="font-semibold text-foreground">Current Sessions</span>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground ml-auto">
-                    last 20
+                    {(data.activeSessions ?? []).length} active
                   </span>
                 </div>
-                {data.recentLogins.length === 0 ? (
-                  <p className="px-5 pb-4 text-sm text-muted-foreground">No logins found.</p>
+                {(data.activeSessions ?? []).length === 0 ? (
+                  <p className="px-5 pb-4 text-sm text-muted-foreground">No active sessions.</p>
                 ) : (
-                  <div className="space-y-1 px-4 pb-4 max-h-[340px] overflow-y-auto">
-                    {data.recentLogins.map((login, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2 text-xs"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Activity className="h-3 w-3 text-emerald-500 flex-shrink-0" />
-                          <span className="font-medium text-foreground truncate">{login.name || "Unknown"}</span>
-                          <span className="text-muted-foreground truncate">{login.teamName || "—"}</span>
-                        </div>
-                        <span className="text-muted-foreground whitespace-nowrap ml-2 flex-shrink-0">
-                          {timeAgo(login.loggedInAt)}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="overflow-x-auto" style={{ maxHeight: 400, overflowY: "auto" }}>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-muted/40 border-y border-border">
+                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">User</th>
+                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">Team</th>
+                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">Expires</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {(data.activeSessions ?? []).map((s, i) => (
+                          <tr key={i} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-2.5 font-medium text-foreground text-xs">{s.name}</td>
+                            <td className="px-4 py-2.5 text-xs text-muted-foreground">{s.teamName}</td>
+                            <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{timeAgo(s.lastActive)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </Card>
             </div>
+
+            {/* Recent Logins */}
+            <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 p-5 pb-3">
+                <LogIn className="h-4 w-4 text-emerald-500" />
+                <span className="font-semibold text-foreground">Recent Logins</span>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground ml-auto">
+                  last {data.recentLogins.length}
+                </span>
+              </div>
+              {data.recentLogins.length === 0 ? (
+                <p className="px-5 pb-4 text-sm text-muted-foreground">No logins found.</p>
+              ) : (
+                <div className="overflow-x-auto" style={{ maxHeight: 400, overflowY: "auto" }}>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/40 border-y border-border">
+                        <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">User</th>
+                        <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">Team</th>
+                        <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">When</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {data.recentLogins.map((login, i) => (
+                        <tr key={i} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-2.5 font-medium text-foreground text-xs">{login.name || "Unknown"}</td>
+                          <td className="px-4 py-2.5 text-xs text-muted-foreground">{login.teamName || "—"}</td>
+                          <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{timeAgo(login.loggedInAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
           </>
         )}
       </div>

@@ -116,6 +116,14 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       groupNames = scopeSet.size > 0 ? Array.from(scopeSet) : ['default'];
     }
 
+    // Ensure any groupScope values present in actual data are included even when groups exist
+    const extraScopes = new Set<string>();
+    for (const t of allTests) if ((t as any).groupScope && !groupNames.includes((t as any).groupScope)) extraScopes.add((t as any).groupScope);
+    for (const p of allProducts) if ((p as any).groupScope && !groupNames.includes((p as any).groupScope)) extraScopes.add((p as any).groupScope);
+    for (const w of allWeather) if ((w as any).groupScope && !groupNames.includes((w as any).groupScope)) extraScopes.add((w as any).groupScope);
+    for (const s of allSeries) if ((s as any).groupScope && !groupNames.includes((s as any).groupScope)) extraScopes.add((s as any).groupScope);
+    groupNames = [...groupNames, ...Array.from(extraScopes)];
+
     for (const groupName of groupNames) {
       const sheetTitle = sanitizeSheetTitle(`${groupName}`);
       await ensureSheet(sheets, spreadsheetId, sheetTitle);
@@ -315,6 +323,21 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
 
       await clearAndWrite(sheets, spreadsheetId, sheetTitle, rows);
     }
+
+    // Grinds sheet
+    const grindsTitle = 'Grind Profiles';
+    await ensureSheet(sheets, spreadsheetId, grindsTitle);
+    const grindProfiles = await storage.listGrindProfiles(teamId);
+    const grindRows: any[][] = [
+      ['GLIDR GRIND PROFILES — ' + team.name],
+      ['Generated: ' + new Date().toISOString()],
+      [],
+      ['ID', 'Name', 'Type', 'Stone', 'Pattern', 'Extra Params', 'Created By', 'Created At'],
+    ];
+    for (const gp of grindProfiles) {
+      grindRows.push([gp.id, gp.name, gp.grindType, gp.stone || '', gp.pattern || '', gp.extraParams || '', gp.createdByName || '', gp.createdAt || '']);
+    }
+    await clearAndWrite(sheets, spreadsheetId, grindsTitle, grindRows);
 
     const overviewTitle = 'Overview';
     await ensureSheet(sheets, spreadsheetId, overviewTitle);

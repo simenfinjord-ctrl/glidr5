@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   ListChecks,
@@ -26,15 +26,22 @@ import {
   Eye,
   Lock,
   Unlock,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useAuth, type UserPermissions } from "@/lib/auth";
 import { useOffline } from "@/lib/offline-context";
 import { useTheme } from "@/lib/theme";
 import { AppLink } from "@/components/app-link";
 import { MobileNav, useMobileNav } from "@/components/mobile-nav";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 type NavItem = {
   href: string;
@@ -172,11 +179,84 @@ const nav: NavItem[] = [
   },
 ];
 
+function ReportProblemDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { toast } = useToast();
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", "/api/report-problem", { subject, body }),
+    onSuccess: () => {
+      toast({ title: "Report sent", description: "Thank you — your report has been forwarded to the support team." });
+      setSubject("");
+      setBody("");
+      onClose();
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to send report", description: err?.message ?? "Please try again.", variant: "destructive" });
+    },
+  });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!subject.trim() || !body.trim()) return;
+    mutation.mutate();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Report a Problem</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="mt-2 flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="rp-subject">Subject</Label>
+            <Input
+              id="rp-subject"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Brief description of the issue"
+              maxLength={200}
+              required
+              data-testid="input-report-subject"
+            />
+            <span className="text-right text-[11px] text-muted-foreground">{subject.length}/200</span>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="rp-body">Details</Label>
+            <Textarea
+              id="rp-body"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Describe what happened, what you expected, and any steps to reproduce…"
+              maxLength={2000}
+              rows={6}
+              required
+              data-testid="input-report-body"
+            />
+            <span className="text-right text-[11px] text-muted-foreground">{body.length}/2000</span>
+          </div>
+          <Button
+            type="submit"
+            disabled={mutation.isPending || !subject.trim() || !body.trim()}
+            data-testid="button-report-submit"
+          >
+            {mutation.isPending ? "Sending…" : "Submit Report"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { user, logout, can, isSuperAdmin, canManage, switchTeam, toggleIncognito, toggleStealth, isViewingOtherTeam, isStealthActive, userTeams, userTeamsLoading } = useAuth();
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
   const { theme, toggle: toggleTheme } = useTheme();
+  const [reportOpen, setReportOpen] = useState(false);
 
   const [adminMode, setAdminMode] = useState<boolean>(() => {
     try { return localStorage.getItem("glidr-sa-admin-mode") === "true"; } catch { return false; }
@@ -197,6 +277,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     queryKey: ["/api/teams"],
     enabled: isSuperAdmin,
   });
+
+  const { data: unreadData } = useQuery<{ count: number }>({
+    queryKey: ["/api/inbox/unread-count"],
+    enabled: !!user && isSuperAdmin,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+  const unreadCount = unreadData?.count ?? 0;
 
   const activeTeamId = user?.activeTeamId || user?.teamId || 1;
   const activeTeam = isSuperAdmin
@@ -369,6 +457,29 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {user?.incognito ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             )}
+            {/* Mail button: SA → navigate to /inbox; others → open report dialog */}
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid="button-mail"
+              onClick={() => {
+                if (isSuperAdmin) {
+                  navigate("/inbox");
+                } else {
+                  setReportOpen(true);
+                }
+              }}
+              className="relative text-muted-foreground hover:text-foreground hover:bg-muted"
+              title={isSuperAdmin ? "SA Inbox" : "Report a Problem"}
+            >
+              <Mail className="h-4 w-4" />
+              {isSuperAdmin && unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </Button>
+            <ReportProblemDialog open={reportOpen} onClose={() => setReportOpen(false)} />
             <Button
               variant="ghost"
               size="sm"

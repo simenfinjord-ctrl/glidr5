@@ -2003,6 +2003,19 @@ export default function Admin() {
     },
   });
 
+  const toggleWatchMutation = useMutation({
+    mutationFn: async ({ userId, enabled }: { userId: number; enabled: boolean }) => {
+      const res = await apiRequest("PUT", `/api/users/${userId}/garmin-watch`, { enabled });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/users${teamScopeParam}`] });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
   const createTeamMutation = useMutation({
     mutationFn: async (payload: { name: string; enabledAreas: string[] }) => {
       const res = await apiRequest("POST", "/api/teams", payload);
@@ -2294,6 +2307,11 @@ export default function Admin() {
                               <LockKeyhole className="inline h-2.5 w-2.5" />Locked
                             </span>
                           )}
+                          {!!u.garminWatch && (
+                            <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-600 flex items-center gap-0.5">
+                              <Watch className="inline h-2.5 w-2.5" />Watch
+                            </span>
+                          )}
                           {adminTeamScope !== "current" && teams.length > 0 && (
                             <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-600">
                               {teams.find((t) => t.id === u.teamId)?.name ?? `Team ${u.teamId}`}
@@ -2315,6 +2333,17 @@ export default function Admin() {
                           onClick={() => toggleActiveMutation.mutate({ userId: u.id, value: !u.isActive })}
                         >
                           {u.isActive ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
+                        </button>
+                        <button
+                          className={cn(
+                            "rounded p-1 transition-colors",
+                            u.garminWatch ? "text-sky-500 hover:bg-sky-50" : "text-muted-foreground/40 hover:bg-muted"
+                          )}
+                          data-testid={`toggle-watch-${u.id}`}
+                          title={u.garminWatch ? "Revoke Watch Queue access" : "Grant Watch Queue access"}
+                          onClick={() => toggleWatchMutation.mutate({ userId: u.id, enabled: !u.garminWatch })}
+                        >
+                          <Watch className="h-4.5 w-4.5" />
                         </button>
                         <button
                           className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground/80"

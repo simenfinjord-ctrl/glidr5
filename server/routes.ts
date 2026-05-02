@@ -2078,27 +2078,19 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
-  // Google Places Autocomplete proxy (keeps API key server-side)
-  app.get("/api/places/autocomplete", requireAuth, async (req, res) => {
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-    if (!apiKey) {
-      return res.status(501).json({ error: "Google Maps API key not configured" });
-    }
-    const input = String(req.query.input ?? "").trim();
-    if (!input || input.length < 2) return res.json({ suggestions: [] });
+  // Location history — unique locations from tests for the current team
+  app.get("/api/locations/history", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const { pool: pg } = await import("./db");
     try {
-      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=geocode&key=${apiKey}`;
-      const placesRes = await fetch(url);
-      const data = (await placesRes.json()) as any;
-      const suggestions = (data.predictions ?? []).map((p: any) => ({
-        placeId: p.place_id,
-        description: p.description,
-        mainText: p.structured_formatting?.main_text ?? p.description,
-        secondaryText: p.structured_formatting?.secondary_text ?? "",
-      }));
-      return res.json({ suggestions });
-    } catch (err) {
-      return res.status(500).json({ error: "Failed to fetch places" });
+      const result = await (pg as any).query(
+        `SELECT DISTINCT location FROM tests WHERE team_id = $1 AND location IS NOT NULL AND location != '' ORDER BY location`,
+        [teamId]
+      );
+      const locations = result.rows.map((r: any) => r.location as string).filter(Boolean);
+      return res.json(locations);
+    } catch {
+      return res.json([]);
     }
   });
 

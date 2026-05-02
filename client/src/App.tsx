@@ -87,8 +87,8 @@ function AuthGuard() {
     );
   }
 
-  // Maintenance mode: block non-SA authenticated users
-  if (maintenanceData?.enabled && user && !isSuperAdmin) {
+  // Maintenance mode: block all non-SA users (authenticated or not)
+  if (maintenanceData?.enabled && !isSuperAdmin) {
     const reopenAt = maintenanceData.reopenAt;
     const reopenStr = reopenAt
       ? `The system will reopen at ${new Date(reopenAt).toLocaleString("no-NO", { dateStyle: "short", timeStyle: "short" })}.`

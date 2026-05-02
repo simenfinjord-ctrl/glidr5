@@ -209,8 +209,7 @@ export default function AthleteDetail() {
   const [garageRaSort, setGarageRaSort] = useState<string>("none");
   const [showGarageFilters, setShowGarageFilters] = useState(false);
 
-  // Analytics section
-  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  // Analytics section (used by dedicated analytics view)
   const [compareSkiIds, setCompareSkiIds] = useState<Set<number>>(new Set());
 
   // Test result column chooser
@@ -3042,28 +3041,60 @@ function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns }: { test: R
             <table className="w-full border-separate border-spacing-0 text-xs">
               <thead>
                 <tr className="text-left text-muted-foreground">
-                  <th className="px-3 py-2">Ski</th>
+                  {activeTestColumns.includes("skiId") && <th className="px-3 py-2">Ski ID</th>}
+                  {!activeTestColumns.includes("skiId") && <th className="px-3 py-2">Ski</th>}
+                  {activeTestColumns.includes("serialNumber") && <th className="px-3 py-2">Serial</th>}
+                  {activeTestColumns.includes("brand") && <th className="px-3 py-2">Brand</th>}
+                  {activeTestColumns.includes("discipline") && <th className="px-3 py-2">Discipline</th>}
+                  {activeTestColumns.includes("construction") && <th className="px-3 py-2">Construction</th>}
+                  {activeTestColumns.includes("mold") && <th className="px-3 py-2">Mold</th>}
+                  {activeTestColumns.includes("base") && <th className="px-3 py-2">Base</th>}
+                  {activeTestColumns.includes("grind") && <th className="px-3 py-2">Grind</th>}
+                  {activeTestColumns.includes("heights") && <th className="px-3 py-2">Heights</th>}
+                  {activeTestColumns.includes("year") && <th className="px-3 py-2">Year</th>}
                   {activeTestColumns.includes("result") && <th className="px-3 py-2">Result</th>}
                   {activeTestColumns.includes("rank") && <th className="px-3 py-2">Rank</th>}
                   {activeTestColumns.includes("feeling") && <th className="px-3 py-2">Feeling</th>}
-                  {activeTestColumns.includes("kick") && test.testType === "Classic" && <th className="px-3 py-2">Kick</th>}
-                  {activeTestColumns.includes("grindType") && <th className="px-3 py-2">Grind Type</th>}
-                  {activeTestColumns.includes("grindStone") && <th className="px-3 py-2">Stone</th>}
-                  {activeTestColumns.includes("grindPattern") && <th className="px-3 py-2">Pattern</th>}
                   {activeTestColumns.includes("methodology") && <th className="px-3 py-2">Methodology</th>}
-                  {activeTestColumns.filter((k) => !["result","rank","feeling","kick","grindType","grindStone","grindPattern","methodology"].includes(k)).map((k) => (
-                    <th key={k} className="px-3 py-2">{k.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</th>
-                  ))}
                 </tr>
               </thead>
               <tbody>
                 {relevantEntries.map((entry) => {
                   const linkedSki = entry.raceSkiId ? raceSkiById.get(entry.raceSkiId) : undefined;
-                  let skiCp: Record<string, string> = {};
-                  try { skiCp = linkedSki?.customParams ? JSON.parse(linkedSki.customParams) : {}; } catch {}
                   return (
                   <tr key={entry.id} className="border-t" data-testid={`row-test-result-${entry.id}`}>
-                    <td className="px-3 py-1.5 font-medium">{getSkiLabel(entry)}</td>
+                    {activeTestColumns.includes("skiId") ? (
+                      <td className="px-3 py-1.5 font-medium">{linkedSki?.skiId ?? getSkiLabel(entry)}</td>
+                    ) : (
+                      <td className="px-3 py-1.5 font-medium">{getSkiLabel(entry)}</td>
+                    )}
+                    {activeTestColumns.includes("serialNumber") && (
+                      <td className="px-3 py-1.5 text-muted-foreground">{linkedSki?.serialNumber ?? "—"}</td>
+                    )}
+                    {activeTestColumns.includes("brand") && (
+                      <td className="px-3 py-1.5 text-muted-foreground">{linkedSki?.brand ?? "—"}</td>
+                    )}
+                    {activeTestColumns.includes("discipline") && (
+                      <td className="px-3 py-1.5 text-muted-foreground">{linkedSki?.discipline ?? "—"}</td>
+                    )}
+                    {activeTestColumns.includes("construction") && (
+                      <td className="px-3 py-1.5 text-muted-foreground">{linkedSki?.construction ?? "—"}</td>
+                    )}
+                    {activeTestColumns.includes("mold") && (
+                      <td className="px-3 py-1.5 text-muted-foreground">{linkedSki?.mold ?? "—"}</td>
+                    )}
+                    {activeTestColumns.includes("base") && (
+                      <td className="px-3 py-1.5 text-muted-foreground">{linkedSki?.base ?? "—"}</td>
+                    )}
+                    {activeTestColumns.includes("grind") && (
+                      <td className="px-3 py-1.5 text-muted-foreground">{linkedSki?.grind ?? "—"}</td>
+                    )}
+                    {activeTestColumns.includes("heights") && (
+                      <td className="px-3 py-1.5 text-muted-foreground">{linkedSki?.heights ?? "—"}</td>
+                    )}
+                    {activeTestColumns.includes("year") && (
+                      <td className="px-3 py-1.5 text-muted-foreground">{linkedSki?.year ?? "—"}</td>
+                    )}
                     {activeTestColumns.includes("result") && (
                       <td className="px-3 py-1.5">{entry.result0kmCmBehind ?? "—"}</td>
                     )}
@@ -3083,24 +3114,9 @@ function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns }: { test: R
                     {activeTestColumns.includes("feeling") && (
                       <td className="px-3 py-1.5">{entry.feelingRank ?? "—"}</td>
                     )}
-                    {activeTestColumns.includes("kick") && test.testType === "Classic" && (
-                      <td className="px-3 py-1.5">{entry.kickRank ?? "—"}</td>
-                    )}
-                    {activeTestColumns.includes("grindType") && (
-                      <td className="px-3 py-1.5 text-muted-foreground">{entry.grindType ?? "—"}</td>
-                    )}
-                    {activeTestColumns.includes("grindStone") && (
-                      <td className="px-3 py-1.5 text-muted-foreground">{entry.grindStone ?? "—"}</td>
-                    )}
-                    {activeTestColumns.includes("grindPattern") && (
-                      <td className="px-3 py-1.5 text-muted-foreground">{entry.grindPattern ?? "—"}</td>
-                    )}
                     {activeTestColumns.includes("methodology") && (
                       <td className="px-3 py-1.5 text-muted-foreground">{entry.methodology || "—"}</td>
                     )}
-                    {activeTestColumns.filter((k) => !["result","rank","feeling","kick","grindType","grindStone","grindPattern","methodology"].includes(k)).map((k) => (
-                      <td key={k} className="px-3 py-1.5 text-muted-foreground">{skiCp[k] ?? "—"}</td>
-                    ))}
                   </tr>
                   );
                 })}

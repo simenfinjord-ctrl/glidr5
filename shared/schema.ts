@@ -337,6 +337,7 @@ export const testEntries = pgTable("test_entries", {
   grindType: text("grind_type"),
   grindStone: text("grind_stone"),
   grindPattern: text("grind_pattern"),
+  grindExtraParams: text("grind_extra_params"),
   raceSkiId: integer("race_ski_id"),
   createdAt: text("created_at").notNull(),
   createdById: integer("created_by_id").notNull(),

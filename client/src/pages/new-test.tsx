@@ -31,7 +31,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { TestEntryTable, type EntryRow, type RoundResult, type RaceSkiOption, cleanAdditionalIds } from "@/components/test-entry-table";
+import { TestEntryTable, type EntryRow, type RoundResult, type RaceSkiOption, type GrindProfile, cleanAdditionalIds } from "@/components/test-entry-table";
 import { RunsheetDialog, type BracketResult } from "@/components/runsheet-dialog";
 
 type TestType = "Glide" | "Structure" | "Grind" | "Classic" | "Skating" | "Double Poling";
@@ -134,6 +134,10 @@ export default function NewTest() {
     enabled: testSkiSource === "raceskis" && can("raceskis"),
   });
 
+  const { data: grindProfiles = [] } = useQuery<GrindProfile[]>({
+    queryKey: ["/api/grind-profiles"],
+  });
+
   const { data: sourceTest } = useQuery<any>({
     queryKey: [`/api/tests/${duplicateId}`],
     enabled: !!duplicateId,
@@ -145,6 +149,22 @@ export default function NewTest() {
 
   const [duplicateApplied, setDuplicateApplied] = useState(false);
   const [runsheetOpen, setRunsheetOpen] = useState(false);
+
+  // Grind column visibility: compute from profiles once loaded, default all on
+  const allGrindParamKeys = useMemo(() => {
+    const keys = new Set<string>(["stone", "pattern"]);
+    for (const p of grindProfiles) {
+      if (p.extraParams) {
+        try {
+          const parsed = JSON.parse(p.extraParams);
+          for (const k of Object.keys(parsed)) keys.add(k);
+        } catch {}
+      }
+    }
+    return Array.from(keys);
+  }, [grindProfiles]);
+
+  const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>(["stone", "pattern", "ra_value"]);
 
   const userGroups = useMemo(() => {
     if (user?.isAdmin && groups.length > 0) {
@@ -454,6 +474,7 @@ export default function NewTest() {
                     grindType: r.grindType || null,
                     grindStone: r.grindStone || null,
                     grindPattern: r.grindPattern || null,
+                    grindExtraParams: r.grindExtraParams ? JSON.stringify(r.grindExtraParams) : null,
                     raceSkiId: testSkiSource === "raceskis" ? (r.raceSkiId || null) : null,
                   })),
                 });
@@ -736,6 +757,34 @@ export default function NewTest() {
           </Form>
         </Card>
 
+        {/* Grind column chooser */}
+        {watchTestType === "Grind" && allGrindParamKeys.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/30 px-4 py-2.5 text-sm">
+            <span className="font-medium text-foreground mr-1">Visible columns:</span>
+            {allGrindParamKeys.map((col) => {
+              const label = col === "stone" ? "Stone" : col === "pattern" ? "Pattern" : col === "ra_value" ? "RA-value" : col;
+              const checked = visibleGrindCols.includes(col);
+              return (
+                <label key={col} className="inline-flex items-center gap-1.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setVisibleGrindCols((prev) => [...prev, col]);
+                      } else {
+                        setVisibleGrindCols((prev) => prev.filter((k) => k !== col));
+                      }
+                    }}
+                    className="h-3.5 w-3.5 rounded"
+                  />
+                  <span className="text-foreground/80">{label}</span>
+                </label>
+              );
+            })}
+          </div>
+        )}
+
         <div>
           <TestEntryTable
             testType={watchTestType}
@@ -747,6 +796,8 @@ export default function NewTest() {
             testSkiSource={testSkiSource}
             raceSkis={raceSkiOptions}
             skiLabels={seriesPairLabels}
+            grindProfiles={grindProfiles}
+            visibleGrindCols={visibleGrindCols}
           />
           <div
             className="mt-2 text-xs text-muted-foreground"

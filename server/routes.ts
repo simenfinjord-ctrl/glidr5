@@ -288,6 +288,7 @@ export async function registerRoutes(
         team_id INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL
       );
+      ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_extra_params TEXT;
     `);
   }
 
@@ -1075,6 +1076,7 @@ export async function registerRoutes(
         grindType: e.grindType || null,
         grindStone: e.grindStone || null,
         grindPattern: e.grindPattern || null,
+        grindExtraParams: e.grindExtraParams || null,
         raceSkiId: e.raceSkiId || null,
         createdAt: now,
         createdById: u.id,
@@ -1354,6 +1356,7 @@ export async function registerRoutes(
             grindType: entry.grindType || null,
             grindStone: entry.grindStone || null,
             grindPattern: entry.grindPattern || null,
+            grindExtraParams: entry.grindExtraParams || null,
             raceSkiId: null,
             createdAt: now,
             createdById: sharerId,
@@ -1446,6 +1449,7 @@ export async function registerRoutes(
           grindType: e.grindType || null,
           grindStone: e.grindStone || null,
           grindPattern: e.grindPattern || null,
+          grindExtraParams: e.grindExtraParams || null,
           raceSkiId: e.raceSkiId || null,
           createdAt: now,
           createdById: u.id,
@@ -2556,6 +2560,7 @@ export async function registerRoutes(
             grindType: e.grindType || null,
             grindStone: e.grindStone || null,
             grindPattern: e.grindPattern || null,
+            grindExtraParams: e.grindExtraParams || null,
             raceSkiId: null,
             createdAt: new Date().toISOString(),
             createdById: u.id,

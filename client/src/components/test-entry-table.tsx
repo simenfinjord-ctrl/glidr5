@@ -32,7 +32,18 @@ export type EntryRow = {
   grindType?: string;
   grindStone?: string;
   grindPattern?: string;
+  grindExtraParams?: Record<string, string>;
+  grindProfileId?: number;
   raceSkiId?: number;
+};
+
+export type GrindProfile = {
+  id: number;
+  name: string;
+  grindType: string;
+  stone: string;
+  pattern: string;
+  extraParams: string | null;
 };
 
 function competitionRanks(values: Array<{ rowId: string; v: number }>) {
@@ -79,6 +90,11 @@ export type RaceSkiOption = {
   grind: string | null;
 };
 
+function parseExtraParams(json: string | null): Record<string, string> {
+  if (!json) return {};
+  try { return JSON.parse(json); } catch { return {}; }
+}
+
 export function TestEntryTable({
   testType,
   products,
@@ -89,6 +105,8 @@ export function TestEntryTable({
   testSkiSource = "series",
   raceSkis = [],
   skiLabels,
+  grindProfiles = [],
+  visibleGrindCols = ["stone", "pattern", "ra_value"],
 }: {
   testType: TestType;
   products: Product[];
@@ -99,6 +117,8 @@ export function TestEntryTable({
   testSkiSource?: "series" | "raceskis";
   raceSkis?: RaceSkiOption[];
   skiLabels?: Record<number, string>;
+  grindProfiles?: GrindProfile[];
+  visibleGrindCols?: string[];
 }) {
   const roundRanks = useMemo(() => {
     return distanceLabels.map((_, roundIdx) => {
@@ -143,17 +163,23 @@ export function TestEntryTable({
   const isClassic = testType === "Classic";
   const isRaceSki = testSkiSource === "raceskis";
 
+  // Grind param columns: stone/pattern/ra_value (fixed labels) + custom keys
+  const GRIND_PARAM_LABELS: Record<string, string> = { stone: "Stone / Tool", pattern: "Pattern", ra_value: "RA-value" };
+  // Compute all extra param columns that are visible (beyond profile selector)
+  const extraGrindCols = visibleGrindCols.filter((k) => !["profile"].includes(k));
+
   return (
     <div className="overflow-x-auto rounded-2xl border bg-card/50">
-      <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${(isGrind ? 700 : 560) + distanceLabels.length * 200 + (isClassic ? 80 : 0)}px` }}>
+      <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${(isGrind ? 300 + extraGrindCols.length * 120 : 560) + distanceLabels.length * 200 + (isClassic ? 80 : 0)}px` }}>
         <thead>
           <tr className="text-left text-xs text-muted-foreground">
             <th className="sticky left-0 z-10 bg-card/80 px-3 py-3">Ski No.</th>
             {!isGrind && <th className="px-3 py-3">{isRaceSki ? "Raceski" : "Product(s)"}</th>}
             {!isGrind && <th className="px-3 py-3">Method</th>}
-            {isGrind && <th className="px-3 py-3">Grind Type</th>}
-            {isGrind && <th className="px-3 py-3">Stone / Tool</th>}
-            {isGrind && <th className="px-3 py-3">Pattern</th>}
+            {isGrind && <th className="px-3 py-3">Grind Profile</th>}
+            {isGrind && extraGrindCols.map((col) => (
+              <th key={col} className="px-3 py-3">{GRIND_PARAM_LABELS[col] ?? col}</th>
+            ))}
             {distanceLabels.map((label, roundIdx) => (
               <th key={roundIdx} className="px-3 py-3" colSpan={2}>
                 <div className="flex items-center gap-1">
@@ -202,8 +228,7 @@ export function TestEntryTable({
             {!isGrind && <th></th>}
             {!isGrind && <th></th>}
             {isGrind && <th></th>}
-            {isGrind && <th></th>}
-            {isGrind && <th></th>}
+            {isGrind && extraGrindCols.map((col) => <th key={col}></th>)}
             {distanceLabels.map((_, roundIdx) => (
               <>
                 <th key={`res-${roundIdx}`} className="px-3 pb-1">Result (cm)</th>
@@ -386,44 +411,85 @@ export function TestEntryTable({
                 <>
                   <td className="px-3 py-2">
                     <select
-                      value={row.grindType || ""}
+                      value={row.grindProfileId?.toString() || ""}
                       onChange={(e) => {
-                        const next = rows.map((r) => (r.id === row.id ? { ...r, grindType: e.target.value || undefined } : r));
-                        setRows(next);
+                        const profileId = e.target.value ? Number(e.target.value) : undefined;
+                        const profile = grindProfiles.find((p) => p.id === profileId);
+                        if (profile) {
+                          const extra = parseExtraParams(profile.extraParams);
+                          const next = rows.map((r) =>
+                            r.id === row.id
+                              ? {
+                                  ...r,
+                                  grindProfileId: profile.id,
+                                  grindType: profile.name,
+                                  grindStone: profile.stone,
+                                  grindPattern: profile.pattern,
+                                  grindExtraParams: extra,
+                                }
+                              : r
+                          );
+                          setRows(next);
+                        } else {
+                          const next = rows.map((r) =>
+                            r.id === row.id
+                              ? { ...r, grindProfileId: undefined, grindType: undefined, grindStone: undefined, grindPattern: undefined, grindExtraParams: undefined }
+                              : r
+                          );
+                          setRows(next);
+                        }
                       }}
                       className="h-9 w-full rounded-md border bg-background/70 px-2 text-sm"
-                      data-testid={`select-grind-type-${row.id}`}
+                      data-testid={`select-grind-profile-${row.id}`}
                     >
-                      <option value="">—</option>
-                      {["New grind", "Regrind", "Hand finish", "Stone grind", "Linear", "Cross-hatch", "Custom"].map((t) => (
-                        <option key={t} value={t}>{t}</option>
+                      <option value="">— Select grind —</option>
+                      {grindProfiles.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name} ({p.grindType})</option>
                       ))}
                     </select>
                   </td>
-                  <td className="px-3 py-2">
-                    <Input
-                      value={row.grindStone || ""}
-                      onChange={(e) => {
-                        const next = rows.map((r) => (r.id === row.id ? { ...r, grindStone: e.target.value || undefined } : r));
-                        setRows(next);
-                      }}
-                      className="h-9 bg-background/70"
-                      placeholder="e.g., SG12"
-                      data-testid={`input-grind-stone-${row.id}`}
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <Input
-                      value={row.grindPattern || ""}
-                      onChange={(e) => {
-                        const next = rows.map((r) => (r.id === row.id ? { ...r, grindPattern: e.target.value || undefined } : r));
-                        setRows(next);
-                      }}
-                      className="h-9 bg-background/70"
-                      placeholder="e.g., 0.5mm"
-                      data-testid={`input-grind-pattern-${row.id}`}
-                    />
-                  </td>
+                  {extraGrindCols.map((col) => (
+                    <td key={col} className="px-3 py-2">
+                      {col === "stone" ? (
+                        <Input
+                          value={row.grindStone || ""}
+                          onChange={(e) => {
+                            const next = rows.map((r) => (r.id === row.id ? { ...r, grindStone: e.target.value || undefined } : r));
+                            setRows(next);
+                          }}
+                          className="h-9 bg-background/70"
+                          placeholder="e.g., SG12"
+                          data-testid={`input-grind-stone-${row.id}`}
+                        />
+                      ) : col === "pattern" ? (
+                        <Input
+                          value={row.grindPattern || ""}
+                          onChange={(e) => {
+                            const next = rows.map((r) => (r.id === row.id ? { ...r, grindPattern: e.target.value || undefined } : r));
+                            setRows(next);
+                          }}
+                          className="h-9 bg-background/70"
+                          placeholder="e.g., 0.5mm"
+                          data-testid={`input-grind-pattern-${row.id}`}
+                        />
+                      ) : (
+                        <Input
+                          value={row.grindExtraParams?.[col] || ""}
+                          onChange={(e) => {
+                            const next = rows.map((r) =>
+                              r.id === row.id
+                                ? { ...r, grindExtraParams: { ...(r.grindExtraParams || {}), [col]: e.target.value } }
+                                : r
+                            );
+                            setRows(next);
+                          }}
+                          className="h-9 bg-background/70"
+                          placeholder="—"
+                          data-testid={`input-grind-extra-${col}-${row.id}`}
+                        />
+                      )}
+                    </td>
+                  ))}
                 </>
                 )}
                 {row.roundResults.map((rr, roundIdx) => (

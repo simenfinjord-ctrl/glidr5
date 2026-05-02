@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54,15 +54,6 @@ type Weather = {
   snowTemperatureC: number;
 };
 
-type GrindingSheet = {
-  id: number;
-  name: string;
-  url: string;
-  createdAt: string;
-  createdById: number;
-  createdByName: string;
-  groupScope: string;
-};
 
 type GrindProfile = {
   id: number;
@@ -139,76 +130,6 @@ function formatDate(iso: string): string {
   } catch {
     return iso.slice(0, 10);
   }
-}
-
-// ─── Sheet form ────────────────────────────────────────────────────────────────
-
-const sheetSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  url: z.string().url("Must be a valid URL"),
-});
-
-function toEmbedUrl(url: string): string {
-  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  if (m) {
-    const gidMatch = url.match(/gid=(\d+)/);
-    const gid = gidMatch ? gidMatch[1] : "0";
-    return `https://docs.google.com/spreadsheets/d/${m[1]}/gviz/tq?tqx=out:html&gid=${gid}`;
-  }
-  if (url.includes("docs.google.com")) {
-    return url.replace(/\/edit.*$/, "/gviz/tq?tqx=out:html");
-  }
-  return url;
-}
-
-function SheetForm({ onDone, editSheet }: { onDone: () => void; editSheet?: GrindingSheet }) {
-  const { toast } = useToast();
-  const form = useForm<z.infer<typeof sheetSchema>>({
-    resolver: zodResolver(sheetSchema),
-    defaultValues: editSheet ? { name: editSheet.name, url: editSheet.url } : { name: "", url: "" },
-  });
-
-  const mutation = useMutation({
-    mutationFn: async (data: z.infer<typeof sheetSchema>) => {
-      if (editSheet) {
-        const res = await apiRequest("PUT", `/api/grinding-sheets/${editSheet.id}`, data);
-        return res.json();
-      }
-      const res = await apiRequest("POST", "/api/grinding-sheets", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/grinding-sheets"] });
-      toast({ title: editSheet ? "Sheet updated" : "Sheet added" });
-      onDone();
-    },
-    onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
-    },
-  });
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
-        <FormField control={form.control} name="name" render={({ field }) => (
-          <FormItem><FormLabel>Sheet Name</FormLabel><FormControl><Input {...field} placeholder="e.g. Season 2025/2026 Grinds" data-testid="input-sheet-name" /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="url" render={({ field }) => (
-          <FormItem>
-            <FormLabel>Google Sheets URL</FormLabel>
-            <FormControl><Input {...field} placeholder="https://docs.google.com/spreadsheets/d/..." data-testid="input-sheet-url" /></FormControl>
-            <p className="text-xs text-muted-foreground mt-1">Paste the full URL from Google Sheets. Make sure the sheet is shared (anyone with the link can view).</p>
-            <FormMessage />
-          </FormItem>
-        )} />
-        <div className="flex justify-end">
-          <Button type="submit" data-testid="button-save-sheet" disabled={mutation.isPending}>
-            {editSheet ? "Save" : "Add Sheet"}
-          </Button>
-        </div>
-      </form>
-    </Form>
-  );
 }
 
 // ─── Grind Profile form ────────────────────────────────────────────────────────

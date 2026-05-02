@@ -182,6 +182,7 @@ export const teams = pgTable("teams", {
   backupSheetUrl: text("backup_sheet_url"),
   lastBackupAt: text("last_backup_at"),
   watchPin: text("watch_pin"), // 4-digit PIN for Garmin watch app authentication
+  isPaused: integer("is_paused").notNull().default(0),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });

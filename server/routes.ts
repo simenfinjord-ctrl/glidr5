@@ -2792,7 +2792,7 @@ export async function registerRoutes(
         ORDER BY t.name
       `),
       (pool as any).query(`
-        SELECT te.id, t.name AS team_name, te.date, te.location, te.snow_type AS test_type,
+        SELECT te.id, t.name AS team_name, te.date, te.location, te.test_type,
           te.created_by_name
         FROM tests te
         LEFT JOIN teams t ON t.id = te.team_id

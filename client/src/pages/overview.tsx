@@ -1,0 +1,260 @@
+import { useQuery } from "@tanstack/react-query";
+import { Users, FlaskConical, Package, Building2, Activity, LogIn, Eye, Clock } from "lucide-react";
+import { AppShell } from "@/components/app-shell";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { getQueryFn } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth";
+import { Redirect } from "wouter";
+import { Spinner } from "@/components/ui/spinner";
+
+type OverviewData = {
+  teams: {
+    id: number;
+    name: string;
+    isPaused: boolean;
+    userCount: number;
+    testCount: number;
+    lastActivity: string | null;
+  }[];
+  recentTests: {
+    id: number;
+    teamName: string;
+    date: string;
+    location: string;
+    testType: string;
+    createdByName: string;
+  }[];
+  recentLogins: {
+    userId: number;
+    name: string;
+    teamName: string;
+    loggedInAt: string;
+  }[];
+  stats: {
+    totalTeams: number;
+    totalUsers: number;
+    totalTests: number;
+    totalProducts: number;
+  };
+};
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  color,
+}: {
+  label: string;
+  value: number;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}) {
+  const colorMap: Record<string, { bg: string; text: string; ring: string }> = {
+    blue: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-600 dark:text-blue-400", ring: "ring-blue-200 dark:ring-blue-800" },
+    emerald: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-600 dark:text-emerald-400", ring: "ring-emerald-200 dark:ring-emerald-800" },
+    amber: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-600 dark:text-amber-400", ring: "ring-amber-200 dark:ring-amber-800" },
+    violet: { bg: "bg-violet-50 dark:bg-violet-900/20", text: "text-violet-600 dark:text-violet-400", ring: "ring-violet-200 dark:ring-violet-800" },
+  };
+  const c = colorMap[color] || colorMap.blue;
+  return (
+    <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+          <div className="mt-1 text-3xl font-bold text-foreground">{value.toLocaleString()}</div>
+        </div>
+        <div className={cn("inline-flex h-12 w-12 items-center justify-center rounded-2xl ring-1", c.bg, c.ring)}>
+          <Icon className={cn("h-6 w-6", c.text)} />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function timeAgo(dateStr: string | null): string {
+  if (!dateStr) return "Never";
+  const date = new Date(dateStr);
+  const diff = Date.now() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
+
+export default function Overview() {
+  const { isSuperAdmin, isLoading: authLoading } = useAuth();
+
+  const { data, isLoading } = useQuery<OverviewData>({
+    queryKey: ["/api/admin/overview"],
+    queryFn: getQueryFn({ on401: "throw" }),
+    refetchInterval: 30000,
+    enabled: isSuperAdmin,
+  });
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Spinner className="h-8 w-8" />
+      </div>
+    );
+  }
+
+  if (!isSuperAdmin) {
+    return <Redirect to="/dashboard" />;
+  }
+
+  return (
+    <AppShell>
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">SA Overview</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Cross-team activity and platform health. Refreshes every 30 s.
+          </p>
+        </div>
+
+        {isLoading || !data ? (
+          <div className="flex items-center justify-center py-20">
+            <Spinner className="h-8 w-8" />
+          </div>
+        ) : (
+          <>
+            {/* Stats row */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatCard label="Total Teams" value={data.stats.totalTeams} icon={Building2} color="blue" />
+              <StatCard label="Total Users" value={data.stats.totalUsers} icon={Users} color="emerald" />
+              <StatCard label="Total Tests" value={data.stats.totalTests} icon={FlaskConical} color="amber" />
+              <StatCard label="Total Products" value={data.stats.totalProducts} icon={Package} color="violet" />
+            </div>
+
+            {/* Teams table */}
+            <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 p-5 pb-3">
+                <Building2 className="h-4 w-4 text-blue-500" />
+                <span className="font-semibold text-foreground">Teams ({data.teams.length})</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/40 border-y border-border">
+                      <th className="text-left px-5 py-2.5 font-medium text-foreground/80 text-xs">Team</th>
+                      <th className="text-right px-5 py-2.5 font-medium text-foreground/80 text-xs">Users</th>
+                      <th className="text-right px-5 py-2.5 font-medium text-foreground/80 text-xs">Tests</th>
+                      <th className="text-left px-5 py-2.5 font-medium text-foreground/80 text-xs">Last Activity</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {data.teams.map((team) => (
+                      <tr
+                        key={team.id}
+                        className={cn(
+                          "transition-colors",
+                          team.isPaused ? "bg-red-50/60 dark:bg-red-900/10" : "hover:bg-muted/30"
+                        )}
+                      >
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-foreground">{team.name}</span>
+                            {team.isPaused && (
+                              <span className="rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">
+                                Suspended
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-5 py-3 text-right text-muted-foreground">{team.userCount}</td>
+                        <td className="px-5 py-3 text-right text-muted-foreground">{team.testCount}</td>
+                        <td className="px-5 py-3 text-muted-foreground text-xs">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {timeAgo(team.lastActivity)}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {/* Recent Tests */}
+              <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2 p-5 pb-3">
+                  <FlaskConical className="h-4 w-4 text-amber-500" />
+                  <span className="font-semibold text-foreground">Recent Tests</span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground ml-auto">
+                    last 20
+                  </span>
+                </div>
+                {data.recentTests.length === 0 ? (
+                  <p className="px-5 pb-4 text-sm text-muted-foreground">No tests found.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-muted/40 border-y border-border">
+                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">Date</th>
+                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">Team</th>
+                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">Location</th>
+                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">By</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {data.recentTests.map((t) => (
+                          <tr key={t.id} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{t.date || "—"}</td>
+                            <td className="px-4 py-2.5 font-medium text-foreground text-xs">{t.teamName || "—"}</td>
+                            <td className="px-4 py-2.5 text-xs text-muted-foreground">{t.location || "—"}</td>
+                            <td className="px-4 py-2.5 text-xs text-muted-foreground">{t.createdByName || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+
+              {/* Recent Logins */}
+              <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2 p-5 pb-3">
+                  <LogIn className="h-4 w-4 text-emerald-500" />
+                  <span className="font-semibold text-foreground">Recent Logins</span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground ml-auto">
+                    last 20
+                  </span>
+                </div>
+                {data.recentLogins.length === 0 ? (
+                  <p className="px-5 pb-4 text-sm text-muted-foreground">No logins found.</p>
+                ) : (
+                  <div className="space-y-1 px-4 pb-4 max-h-[340px] overflow-y-auto">
+                    {data.recentLogins.map((login, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2 text-xs"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Activity className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+                          <span className="font-medium text-foreground truncate">{login.name || "Unknown"}</span>
+                          <span className="text-muted-foreground truncate">{login.teamName || "—"}</span>
+                        </div>
+                        <span className="text-muted-foreground whitespace-nowrap ml-2 flex-shrink-0">
+                          {timeAgo(login.loggedInAt)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </div>
+          </>
+        )}
+      </div>
+    </AppShell>
+  );
+}

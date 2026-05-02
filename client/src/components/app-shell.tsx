@@ -21,7 +21,6 @@ import {
   Trophy,
   Radio,
   Watch,
-
   ChevronDown,
   EyeOff,
   Eye,
@@ -179,6 +178,21 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
   const { theme, toggle: toggleTheme } = useTheme();
 
+  const [adminMode, setAdminMode] = useState<boolean>(() => {
+    try { return localStorage.getItem("glidr-sa-admin-mode") === "true"; } catch { return false; }
+  });
+
+  // Sync adminMode when localStorage changes (e.g. toggled from admin page)
+  useEffect(() => {
+    const handler = () => {
+      try { setAdminMode(localStorage.getItem("glidr-sa-admin-mode") === "true"); } catch {}
+    };
+    window.addEventListener("storage", handler);
+    // Also poll on focus in case toggle happened in same tab
+    window.addEventListener("focus", handler);
+    return () => { window.removeEventListener("storage", handler); window.removeEventListener("focus", handler); };
+  }, []);
+
   const { data: teams = [] } = useQuery<any[]>({
     queryKey: ["/api/teams"],
     enabled: isSuperAdmin,
@@ -220,7 +234,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
 
   const perms = user?.parsedPermissions;
-  const visibleNav = [...filteredNav].sort((a, b) => {
+  const sortedNav = [...filteredNav].sort((a, b) => {
     if (user?.isAdmin || user?.isTeamAdmin) return 0;
     if (!perms) return 0;
     const levelOrder = (item: NavItem) => {
@@ -233,6 +247,21 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
     return levelOrder(a) - levelOrder(b);
   });
+
+  const overviewNavItem: NavItem = {
+    href: "/overview",
+    label: "Overview",
+    icon: Eye,
+    testId: "link-overview",
+    color: "text-muted-foreground",
+    activeColor: "text-purple-600",
+    activeBg: "bg-purple-50",
+    adminOnly: true,
+  };
+
+  const visibleNav = isSuperAdmin && adminMode
+    ? [overviewNavItem, ...sortedNav]
+    : sortedNav;
 
   return (
     <div className="min-h-screen fs-grid">

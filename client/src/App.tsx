@@ -27,6 +27,7 @@ import Suggestions from "@/pages/suggestions";
 import LiveRunsheets from "@/pages/live-runsheets";
 import WatchQueue from "@/pages/watch-queue";
 import MyAccount from "@/pages/my-account";
+import Overview from "@/pages/overview";
 import WhatIsGlidr from "@/pages/what-is-glidr";
 import Legal from "@/pages/legal";
 import Pricing from "@/pages/pricing";
@@ -60,6 +61,7 @@ function Router() {
       <Route path="/my-account" component={MyAccount} />
       <Route path="/suggestions" component={Suggestions} />
       <Route path="/admin" component={Admin} />
+      <Route path="/overview" component={Overview} />
       <Route path="/what-is-glidr" component={WhatIsGlidr} />
       <Route path="/legal" component={Legal} />
       <Route path="/pricing" component={Pricing} />
@@ -72,6 +74,7 @@ function Router() {
 function AuthGuard() {
   const { user, isLoading, isSuperAdmin, isStealthActive, userTeams, userTeamsLoading } = useAuth();
   const [location] = useLocation();
+  const adminMode = isSuperAdmin && (() => { try { return localStorage.getItem("glidr-sa-admin-mode") === "true"; } catch { return false; } })();
 
   const { data: maintenanceData } = useQuery<{ enabled: boolean; reopenAt?: string | null }>({
     queryKey: ["/api/admin/maintenance-mode"],
@@ -112,6 +115,10 @@ function AuthGuard() {
 
   if (user && location === "/login") {
     return <Redirect to="/dashboard" />;
+  }
+
+  if (isSuperAdmin && adminMode && location === "/") {
+    return <Redirect to="/overview" />;
   }
 
   if (isSuperAdmin && !isStealthActive && !userTeamsLoading) {

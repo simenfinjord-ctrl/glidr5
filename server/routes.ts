@@ -375,6 +375,18 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  // Check whether Google Sheets backup is configured on this server
+  app.get("/api/backup/status", requireAuth, async (_req, res) => {
+    const { isGoogleSheetsAvailable } = await import('./googleSheets');
+    const available = isGoogleSheetsAvailable();
+    const mode = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+      ? 'service_account'
+      : process.env.REPL_IDENTITY || process.env.WEB_REPL_RENEWAL
+      ? 'replit'
+      : 'none';
+    res.json({ available, mode });
+  });
+
   app.put("/api/teams/:id/backup-sheet", requireAuth, async (req, res) => {
     const u = req.user!;
     const id = parseInt(req.params.id);
@@ -402,12 +414,11 @@ export async function registerRoutes(
     if (u.isAdmin !== 1 && !(u.isTeamAdmin === 1 && u.teamId === id)) {
       return res.status(403).json({ message: "Admin access required" });
     }
-    // Backup to Google Sheets requires the Replit Google connector.
-    // On other platforms (Render, Fly, etc.) this is not available.
-    const isReplit = !!(process.env.REPL_IDENTITY || process.env.WEB_REPL_RENEWAL);
-    if (!isReplit) {
+    const { isGoogleSheetsAvailable } = await import('./googleSheets');
+    if (!isGoogleSheetsAvailable()) {
       return res.status(503).json({
-        message: "Google Sheets backup is only available on Replit. Export your data as CSV from the admin panel instead.",
+        message:
+          "Google Sheets backup is not configured. Set the GOOGLE_SERVICE_ACCOUNT_JSON environment variable in your Render dashboard.",
       });
     }
     const team = await storage.getTeam(id);

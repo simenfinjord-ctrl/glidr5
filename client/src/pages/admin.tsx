@@ -26,7 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 
 type ApiUser = {
@@ -1468,6 +1468,58 @@ const ALL_TABS: { id: TabId; label: string; superAdminOnly?: boolean }[] = [
 
 ];
 
+function BackupStatusCard() {
+  const { data } = useQuery<{ available: boolean; mode: string }>({
+    queryKey: ["/api/backup/status"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    staleTime: 60_000,
+  });
+
+  if (!data) return null;
+
+  if (data.available) {
+    const label = data.mode === "service_account" ? "Service Account" : "Replit connector";
+    return (
+      <Card className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-800">
+            <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">Google Sheets backup is ready ({label})</p>
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">Paste a Google Sheets URL below and make sure the sheet is shared with your service account email (Editor access).</p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-800">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+        </div>
+        <div className="space-y-2 text-xs text-amber-800 dark:text-amber-300">
+          <p className="font-semibold">Google Sheets backup is not configured</p>
+          <p>To enable backup on Render, add a Google Service Account:</p>
+          <ol className="list-decimal pl-4 space-y-1 text-[11px]">
+            <li>Go to <strong>console.cloud.google.com</strong> → create or select a project</li>
+            <li>Enable the <strong>Google Sheets API</strong></li>
+            <li>Go to <strong>IAM &amp; Admin → Service Accounts</strong> → create a service account</li>
+            <li>Open the service account → <strong>Keys</strong> tab → <strong>Add Key → JSON</strong></li>
+            <li>Copy the entire JSON file content</li>
+            <li>In <strong>Render dashboard → Environment</strong>, add:<br />
+              <code className="bg-amber-100 dark:bg-amber-900 px-1 rounded font-mono">GOOGLE_SERVICE_ACCOUNT_JSON</code> = the JSON content</li>
+            <li>Redeploy the service</li>
+            <li>Share your Google Sheet with the service account email (<code className="font-mono">client_email</code> in the JSON) — give it <strong>Editor</strong> access</li>
+          </ol>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function StatCard({ label, value, icon: Icon, color, testId }: { label: string; value: number; icon: React.ComponentType<{ className?: string }>; color: string; testId: string }) {
   const colorMap: Record<string, { bg: string; text: string; ring: string }> = {
     blue: { bg: "bg-green-50", text: "text-green-600", ring: "ring-green-200" },
@@ -2813,6 +2865,7 @@ export default function Admin() {
 
         {activeTab === "backup" && (
           <div className="flex flex-col gap-4" data-testid="tab-content-backup">
+            <BackupStatusCard />
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-backup">
               <div className="flex items-center gap-2 mb-1">
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/30">

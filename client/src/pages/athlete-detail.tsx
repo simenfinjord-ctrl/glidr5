@@ -1,5 +1,8 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from "recharts";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -103,6 +106,7 @@ type RaceSkiTest = {
   testSkiSource: string;
   seriesId: number | null;
   athleteId: number | null;
+  weatherId: number | null;
   notes: string | null;
   distanceLabels: string | null;
   createdAt: string;
@@ -175,6 +179,8 @@ export default function AthleteDetail() {
   const [, navigate] = useLocation();
   const athleteId = params?.id ? parseInt(params.id) : null;
   const { user, can } = useAuth();
+  const viewParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("view") : null;
+  const isAnalyticsView = viewParam === "analytics";
   const { toast } = useToast();
 
   const [skiDialogOpen, setSkiDialogOpen] = useState(false);
@@ -208,7 +214,7 @@ export default function AthleteDetail() {
   const [compareSkiIds, setCompareSkiIds] = useState<Set<number>>(new Set());
 
   // Test result column chooser
-  const defaultTestColumns = ["result", "rank", "feeling", "kick"];
+  const defaultTestColumns = ["skiId", "brand", "grind", "result", "rank", "feeling", "methodology"];
   const [activeTestColumns, setActiveTestColumns] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem("glidr-raceski-test-columns");
@@ -434,33 +440,23 @@ export default function AthleteDetail() {
 
   const skiIds = useMemo(() => new Set(skis.map((s) => s.id)), [skis]);
 
-  // Build allTestColumns dynamically, including any custom param keys found across all skis
-  const allTestColumns = useMemo<{ key: string; label: string }[]>(() => {
-    const base: { key: string; label: string }[] = [
-      { key: "result", label: "Result (cm)" },
-      { key: "rank", label: "Rank" },
-      { key: "feeling", label: "Feeling" },
-      { key: "kick", label: "Kick" },
-      { key: "grindType", label: "Grind Type" },
-      { key: "grindStone", label: "Grind Stone" },
-      { key: "grindPattern", label: "Grind Pattern" },
-      { key: "methodology", label: "Methodology" },
-    ];
-    const seenKeys = new Set(base.map((c) => c.key));
-    for (const ski of skis) {
-      try {
-        const cp = ski.customParams ? JSON.parse(ski.customParams) : {};
-        for (const k of Object.keys(cp)) {
-          if (!seenKeys.has(k)) {
-            seenKeys.add(k);
-            const label = k.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-            base.push({ key: k, label });
-          }
-        }
-      } catch {}
-    }
-    return base;
-  }, [skis]);
+  // Fixed set of test columns mirroring ski properties + result columns
+  const allTestColumns: { key: string; label: string }[] = [
+    { key: "skiId", label: "Ski ID" },
+    { key: "serialNumber", label: "Serial Number" },
+    { key: "brand", label: "Brand" },
+    { key: "discipline", label: "Discipline" },
+    { key: "construction", label: "Construction" },
+    { key: "mold", label: "Mold" },
+    { key: "base", label: "Base" },
+    { key: "grind", label: "Grind" },
+    { key: "heights", label: "Heights" },
+    { key: "year", label: "Year" },
+    { key: "result", label: "Result (cm)" },
+    { key: "rank", label: "Rank" },
+    { key: "feeling", label: "Feeling" },
+    { key: "methodology", label: "Methodology" },
+  ];
 
   const raceSkiTests = useMemo(() => {
     return allTests.filter((t) => t.testSkiSource === "raceskis" && t.athleteId === Number(athleteId));
@@ -957,6 +953,38 @@ export default function AthleteDetail() {
     );
   }
 
+  if (isAnalyticsView) {
+    return (
+      <AppShell>
+        <div className="flex flex-col gap-5">
+          <div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(`/raceskis/${athleteId}`)}
+              data-testid="button-back-from-analytics"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+          </div>
+          <div className="flex items-center gap-3">
+            <BarChart2 className="h-5 w-5 text-muted-foreground" />
+            <h1 className="text-2xl sm:text-3xl" data-testid="text-analytics-heading">
+              {athlete.name} — Analytics
+            </h1>
+          </div>
+          <AthleteAnalyticsView
+            skis={skis}
+            raceSkiTests={raceSkiTests}
+            compareSkiIds={compareSkiIds}
+            setCompareSkiIds={setCompareSkiIds}
+          />
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <div className="flex flex-col gap-5">
@@ -992,33 +1020,44 @@ export default function AthleteDetail() {
             </div>
           </div>
 
-          {isOwnerOrAdmin && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                data-testid="button-edit-athlete"
-                onClick={openEditAthlete}
-              >
-                <Edit2 className="mr-1.5 h-3.5 w-3.5" />
-                Edit
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                data-testid="button-delete-athlete"
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
-                onClick={() => {
-                  if (confirm("Delete this athlete and all their skis?")) {
-                    deleteAthleteMutation.mutate();
-                  }
-                }}
-              >
-                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                Delete
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="button-athlete-analytics"
+              onClick={() => navigate(`/raceskis/${athleteId}?view=analytics`)}
+            >
+              <BarChart2 className="mr-1.5 h-3.5 w-3.5" />
+              Analytics
+            </Button>
+            {isOwnerOrAdmin && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-edit-athlete"
+                  onClick={openEditAthlete}
+                >
+                  <Edit2 className="mr-1.5 h-3.5 w-3.5" />
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-delete-athlete"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                  onClick={() => {
+                    if (confirm("Delete this athlete and all their skis?")) {
+                      deleteAthleteMutation.mutate();
+                    }
+                  }}
+                >
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                  Delete
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Access management */}
@@ -1326,32 +1365,6 @@ export default function AthleteDetail() {
           </CollapsibleContent>
         </Collapsible>
 
-        {/* Analytics Section */}
-        <div className="border-t border-border/40 pt-4" data-testid="section-analytics">
-          <div
-            className="flex items-center gap-2 cursor-pointer select-none"
-            onClick={() => setAnalyticsOpen(!analyticsOpen)}
-            data-testid="toggle-analytics"
-          >
-            {analyticsOpen ? (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            )}
-            <BarChart2 className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">Analytics</h2>
-          </div>
-
-          {analyticsOpen && (
-            <SkiAnalyticsSection
-              skis={skis}
-              raceSkiTests={raceSkiTests}
-              compareSkiIds={compareSkiIds}
-              setCompareSkiIds={setCompareSkiIds}
-            />
-          )}
-        </div>
-
         {/* Race Ski Tests Section */}
         <div className="border-t border-border/40 pt-4" data-testid="section-race-ski-tests">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1454,6 +1467,28 @@ export default function AthleteDetail() {
                       <SelectItem value="location-desc">Location Z-A</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+              {/* Column chooser bar */}
+              {!showTestForm && raceSkiTests.length > 0 && (
+                <div className="rounded-xl border border-border bg-muted/30 px-4 py-2.5" data-testid="test-column-chooser">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <span className="text-xs font-medium text-muted-foreground shrink-0">Columns:</span>
+                    {allTestColumns.map((col) => (
+                      <label key={col.key} className="flex items-center gap-1.5 cursor-pointer select-none" data-testid={`col-toggle-${col.key}`}>
+                        <Checkbox
+                          checked={activeTestColumns.includes(col.key)}
+                          onCheckedChange={(checked) => {
+                            setActiveTestColumns((prev) =>
+                              checked ? [...prev, col.key] : prev.filter((k) => k !== col.key)
+                            );
+                          }}
+                          className="h-3.5 w-3.5"
+                        />
+                        <span className="text-xs">{col.label}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               )}
               {/* Inline Test Form */}
@@ -2834,8 +2869,9 @@ function SkiCard({
 
 function TestListView({ tests, skiIds, allSkis, activeTestColumns }: { tests: RaceSkiTest[]; skiIds: Set<number>; allSkis: RaceSki[]; activeTestColumns: string[] }) {
   const testIds = useMemo(() => tests.map((t) => t.id), [tests]);
+  const [, navigate] = useLocation();
 
-  const { data: allEntries = [] } = useQuery<(TestEntry & { testId: number })[]>({
+  const { data: allEntries = [], isLoading } = useQuery<(TestEntry & { testId: number })[]>({
     queryKey: [`/api/test-list-view/entries`, testIds.join(",")],
     enabled: testIds.length > 0,
     queryFn: async () => {
@@ -2853,40 +2889,23 @@ function TestListView({ tests, skiIds, allSkis, activeTestColumns }: { tests: Ra
 
   const raceSkiById = useMemo(() => new Map(allSkis.map((s) => [s.id, s])), [allSkis]);
 
-  const rows = useMemo(() => {
-    const out: Array<{ test: RaceSkiTest; entry: TestEntry & { testId: number }; ski: RaceSki | undefined }> = [];
-    for (const test of tests) {
+  // One row per test: count of skis tested + top ski (rank 1)
+  const testRows = useMemo(() => {
+    return tests.map((test) => {
       const entries = allEntries.filter((e) => e.testId === test.id && e.raceSkiId && skiIds.has(e.raceSkiId));
-      for (const entry of entries) {
-        out.push({ test, entry, ski: entry.raceSkiId ? raceSkiById.get(entry.raceSkiId) : undefined });
-      }
-    }
-    return out;
+      const skiCount = entries.length;
+      const topEntry = entries.find((e) => e.rank0km === 1) ?? entries.reduce<(typeof entries)[0] | null>((best, e) => {
+        if (!best) return e;
+        const bRank = best.rank0km ?? Infinity;
+        const eRank = e.rank0km ?? Infinity;
+        return eRank < bRank ? e : best;
+      }, null);
+      const topSki = topEntry?.raceSkiId ? raceSkiById.get(topEntry.raceSkiId) : undefined;
+      return { test, skiCount, topSki, topEntry };
+    });
   }, [tests, allEntries, skiIds, raceSkiById]);
 
-  const customParamKeys = useMemo(() => {
-    const keys: string[] = [];
-    const seen = new Set<string>();
-    for (const col of activeTestColumns) {
-      if (["result","rank","feeling","kick","grindType","grindStone","grindPattern","methodology"].includes(col)) continue;
-      if (!seen.has(col)) { seen.add(col); keys.push(col); }
-    }
-    return keys;
-  }, [activeTestColumns]);
-
   if (tests.length === 0) return null;
-
-  const rankBadge = (rank: number | null) => (
-    <span className={cn(
-      "inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-      rank === 1 ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" :
-      rank === 2 ? "bg-slate-300/15 text-slate-500 dark:text-slate-300" :
-      rank === 3 ? "bg-amber-700/15 text-amber-700 dark:text-amber-600" :
-      "bg-muted/70 text-foreground"
-    )}>
-      {rank ?? "—"}
-    </span>
-  );
 
   return (
     <Card className="fs-card rounded-2xl overflow-hidden" data-testid="tests-list-view">
@@ -2897,63 +2916,52 @@ function TestListView({ tests, skiIds, allSkis, activeTestColumns }: { tests: Ra
               <th className="px-3 py-2.5 font-medium">Date</th>
               <th className="px-3 py-2.5 font-medium">Location</th>
               <th className="px-3 py-2.5 font-medium">Type</th>
-              <th className="px-3 py-2.5 font-medium">Ski Pair #</th>
-              {activeTestColumns.includes("rank") && <th className="px-3 py-2.5 font-medium">Rank</th>}
-              {activeTestColumns.includes("result") && <th className="px-3 py-2.5 font-medium">Result</th>}
-              {activeTestColumns.includes("feeling") && <th className="px-3 py-2.5 font-medium">Feeling</th>}
-              {activeTestColumns.includes("kick") && <th className="px-3 py-2.5 font-medium">Kick</th>}
-              {activeTestColumns.includes("grindType") && <th className="px-3 py-2.5 font-medium">Grind Type</th>}
-              {activeTestColumns.includes("grindStone") && <th className="px-3 py-2.5 font-medium">Stone</th>}
-              {activeTestColumns.includes("grindPattern") && <th className="px-3 py-2.5 font-medium">Pattern</th>}
-              {activeTestColumns.includes("methodology") && <th className="px-3 py-2.5 font-medium">Methodology</th>}
-              {customParamKeys.map((k) => {
-                const label = k.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-                return <th key={k} className="px-3 py-2.5 font-medium">{label}</th>;
-              })}
+              <th className="px-3 py-2.5 font-medium"># Skis</th>
+              <th className="px-3 py-2.5 font-medium">Top Ski</th>
+              <th className="px-3 py-2.5 font-medium"></th>
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && allEntries.length === 0 ? (
+            {isLoading && testIds.length > 0 ? (
               <tr>
-                <td colSpan={20} className="px-3 py-6 text-center text-muted-foreground">Loading…</td>
-              </tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={20} className="px-3 py-6 text-center text-muted-foreground">No entries found.</td>
+                <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">Loading…</td>
               </tr>
             ) : (
-              rows.map(({ test, entry, ski }, idx) => {
-                let skiCp: Record<string, string> = {};
-                try { skiCp = ski?.customParams ? JSON.parse(ski.customParams) : {}; } catch {}
-                const skiLabel = ski ? (ski.serialNumber || ski.skiId) : String(entry.skiNumber);
-                return (
-                  <tr
-                    key={entry.id}
-                    className={cn("border-t border-border/30", idx % 2 === 0 ? "bg-background/30" : "bg-background/10")}
-                    data-testid={`list-row-entry-${entry.id}`}
-                  >
-                    <td className="px-3 py-2 whitespace-nowrap">{test.date}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{test.location}</td>
-                    <td className="px-3 py-2">
-                      <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800">
-                        {test.testType}
+              testRows.map(({ test, skiCount, topSki, topEntry }, idx) => (
+                <tr
+                  key={test.id}
+                  className={cn("border-t border-border/30", idx % 2 === 0 ? "bg-background/30" : "bg-background/10")}
+                  data-testid={`list-row-test-${test.id}`}
+                >
+                  <td className="px-3 py-2 whitespace-nowrap font-medium">{test.date}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{test.location}</td>
+                  <td className="px-3 py-2">
+                    <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800">
+                      {test.testType}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {skiCount > 0 ? skiCount : <span className="opacity-50">—</span>}
+                  </td>
+                  <td className="px-3 py-2">
+                    {topSki ? (
+                      <span className="inline-flex items-center gap-1">
+                        <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-yellow-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-yellow-600 dark:text-yellow-400">#1</span>
+                        <span className="font-medium">{topSki.skiId}</span>
                       </span>
-                    </td>
-                    <td className="px-3 py-2 font-medium">{skiLabel}</td>
-                    {activeTestColumns.includes("rank") && <td className="px-3 py-2">{rankBadge(entry.rank0km)}</td>}
-                    {activeTestColumns.includes("result") && <td className="px-3 py-2">{entry.result0kmCmBehind ?? "—"}</td>}
-                    {activeTestColumns.includes("feeling") && <td className="px-3 py-2">{entry.feelingRank ?? "—"}</td>}
-                    {activeTestColumns.includes("kick") && <td className="px-3 py-2">{entry.kickRank ?? "—"}</td>}
-                    {activeTestColumns.includes("grindType") && <td className="px-3 py-2 text-muted-foreground">{entry.grindType ?? "—"}</td>}
-                    {activeTestColumns.includes("grindStone") && <td className="px-3 py-2 text-muted-foreground">{entry.grindStone ?? "—"}</td>}
-                    {activeTestColumns.includes("grindPattern") && <td className="px-3 py-2 text-muted-foreground">{entry.grindPattern ?? "—"}</td>}
-                    {activeTestColumns.includes("methodology") && <td className="px-3 py-2 text-muted-foreground">{entry.methodology || "—"}</td>}
-                    {customParamKeys.map((k) => (
-                      <td key={k} className="px-3 py-2 text-muted-foreground">{skiCp[k] ?? "—"}</td>
-                    ))}
-                  </tr>
-                );
-              })
+                    ) : <span className="text-muted-foreground opacity-50">—</span>}
+                  </td>
+                  <td className="px-3 py-2">
+                    <button
+                      className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                      onClick={() => navigate(`/tests/${test.id}`)}
+                      data-testid={`list-open-test-${test.id}`}
+                    >
+                      Open
+                    </button>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
@@ -3107,5 +3115,257 @@ function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns }: { test: R
         </div>
       )}
     </Card>
+  );
+}
+
+// ─── Full-page analytics view (shown when ?view=analytics) ───────────────────
+
+function AthleteAnalyticsView({
+  skis,
+  raceSkiTests,
+  compareSkiIds,
+  setCompareSkiIds,
+}: {
+  skis: RaceSki[];
+  raceSkiTests: RaceSkiTest[];
+  compareSkiIds: Set<number>;
+  setCompareSkiIds: React.Dispatch<React.SetStateAction<Set<number>>>;
+}) {
+  const testIds = useMemo(() => raceSkiTests.map((t) => t.id), [raceSkiTests]);
+
+  const { data: allEntries = [] } = useQuery<(TestEntry & { testId: number })[]>({
+    queryKey: [`/api/athletes/analytics/entries`, testIds.join(",")],
+    enabled: testIds.length > 0,
+    queryFn: async () => {
+      const results = await Promise.all(
+        testIds.map(async (tid) => {
+          const res = await fetch(`/api/tests/${tid}/entries`, { credentials: "include" });
+          if (!res.ok) return [];
+          const data = await res.json();
+          return (data as TestEntry[]).map((e) => ({ ...e, testId: tid }));
+        })
+      );
+      return results.flat();
+    },
+  });
+
+  // Weather data for conditions analysis
+  const { data: weather = [] } = useQuery<WeatherItem[]>({
+    queryKey: ["/api/weather"],
+  });
+
+  const weatherById = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);
+
+  const skiStats = useMemo(() => {
+    return skis.map((ski) => {
+      const entries = allEntries.filter((e) => e.raceSkiId === ski.id);
+      const testCount = new Set(entries.map((e) => e.testId)).size;
+      const ranks = entries.map((e) => e.rank0km).filter((r): r is number => r !== null);
+      const avgRank = ranks.length > 0 ? ranks.reduce((a, b) => a + b, 0) / ranks.length : null;
+      const bestRank = ranks.length > 0 ? Math.min(...ranks) : null;
+      const wins = ranks.filter((r) => r === 1).length;
+      const winRate = ranks.length > 0 ? (wins / ranks.length) * 100 : null;
+      return { ski, testCount, avgRank, bestRank, winRate, entryCount: entries.length };
+    }).filter((s) => s.entryCount > 0).sort((a, b) => (a.avgRank ?? 999) - (b.avgRank ?? 999));
+  }, [skis, allEntries]);
+
+  // Snow temp brackets
+  const tempBrackets = [
+    { label: "< -10°C", test: (t: number) => t < -10 },
+    { label: "-10 to -5°C", test: (t: number) => t >= -10 && t < -5 },
+    { label: "-5 to 0°C", test: (t: number) => t >= -5 && t < 0 },
+    { label: "0°C+", test: (t: number) => t >= 0 },
+  ];
+
+  // Avg rank by snow temp bracket for top 5 skis
+  const top5Skis = skiStats.slice(0, 5);
+  const conditionsChartData = useMemo(() => {
+    return tempBrackets.map(({ label, test: inBracket }) => {
+      const row: Record<string, string | number> = { bracket: label };
+      for (const { ski } of top5Skis) {
+        const entries = allEntries.filter((e) => e.raceSkiId === ski.id);
+        const bracketEntries = entries.filter((e) => {
+          const testObj = raceSkiTests.find((t) => t.id === e.testId);
+          if (!testObj?.weatherId) return false;
+          const w = weatherById.get(testObj.weatherId);
+          if (!w || w.snowTemperatureC === null) return false;
+          return inBracket(w.snowTemperatureC);
+        });
+        const ranks = bracketEntries.map((e) => e.rank0km).filter((r): r is number => r !== null);
+        row[ski.skiId] = ranks.length > 0 ? parseFloat((ranks.reduce((a, b) => a + b, 0) / ranks.length).toFixed(1)) : 0;
+      }
+      return row;
+    });
+  }, [allEntries, raceSkiTests, weatherById, top5Skis]);
+
+  // Best conditions per ski: show snow temp range where ski ranked #1 or top 3
+  const bestConditionsPerSki = useMemo(() => {
+    return skiStats.map(({ ski }) => {
+      const entries = allEntries.filter((e) => e.raceSkiId === ski.id);
+      const top1Conditions: string[] = [];
+      const top3Conditions: string[] = [];
+      for (const { label, test: inBracket } of tempBrackets) {
+        const bracketEntries = entries.filter((e) => {
+          const testObj = raceSkiTests.find((t) => t.id === e.testId);
+          if (!testObj?.weatherId) return false;
+          const w = weatherById.get(testObj.weatherId);
+          if (!w || w.snowTemperatureC === null) return false;
+          return inBracket(w.snowTemperatureC);
+        });
+        const hasWin = bracketEntries.some((e) => e.rank0km === 1);
+        const hasTop3 = bracketEntries.some((e) => e.rank0km !== null && e.rank0km <= 3);
+        if (hasWin) top1Conditions.push(label);
+        else if (hasTop3) top3Conditions.push(label);
+      }
+      return { ski, top1Conditions, top3Conditions };
+    });
+  }, [skiStats, allEntries, raceSkiTests, weatherById]);
+
+  const COLORS = ["#6366f1", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b"];
+
+  if (skiStats.length === 0) {
+    return (
+      <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-analytics-view">
+        No test data yet. Add race ski tests to see analytics.
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6" data-testid="full-analytics-view">
+      {/* Per-ski performance summary */}
+      <Card className="fs-card rounded-2xl overflow-hidden" data-testid="analytics-perf-table">
+        <div className="px-4 pt-4 pb-2">
+          <h2 className="text-base font-semibold">Per-Ski Performance Summary</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full border-separate border-spacing-0 text-sm">
+            <thead>
+              <tr className="text-left text-xs text-muted-foreground border-b">
+                <th className="px-4 py-2.5 font-medium">Ski ID</th>
+                <th className="px-3 py-2.5 font-medium"># Tests</th>
+                <th className="px-3 py-2.5 font-medium">Avg Rank</th>
+                <th className="px-3 py-2.5 font-medium">Best Rank</th>
+                <th className="px-3 py-2.5 font-medium">Win Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {skiStats.map(({ ski, testCount, avgRank, bestRank, winRate }, idx) => (
+                <tr
+                  key={ski.id}
+                  className={cn("border-t border-border/30", idx % 2 === 0 ? "bg-background/30" : "bg-background/10")}
+                  data-testid={`analytics-perf-row-${ski.id}`}
+                >
+                  <td className="px-4 py-2.5">
+                    <div className="font-semibold">{ski.skiId}</div>
+                    {ski.brand && <div className="text-xs text-muted-foreground">{ski.brand}</div>}
+                  </td>
+                  <td className="px-3 py-2.5 text-muted-foreground">{testCount}</td>
+                  <td className="px-3 py-2.5">{avgRank !== null ? avgRank.toFixed(1) : "—"}</td>
+                  <td className="px-3 py-2.5">
+                    {bestRank !== null ? (
+                      <span className={cn(
+                        "inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                        bestRank === 1 ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" :
+                        bestRank === 2 ? "bg-slate-300/15 text-slate-500 dark:text-slate-300" :
+                        bestRank === 3 ? "bg-amber-700/15 text-amber-700 dark:text-amber-600" :
+                        "bg-muted/70 text-foreground"
+                      )}>#{bestRank}</span>
+                    ) : "—"}
+                  </td>
+                  <td className="px-3 py-2.5">{winRate !== null ? `${winRate.toFixed(0)}%` : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Top skis per condition bracket — bar chart */}
+      {top5Skis.length > 0 && conditionsChartData.some((d) => top5Skis.some(({ ski }) => (d[ski.skiId] as number) > 0)) && (
+        <Card className="fs-card rounded-2xl p-4" data-testid="analytics-conditions-chart">
+          <h2 className="text-base font-semibold mb-4">Avg Rank by Snow Temperature (Top 5 Skis)</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={conditionsChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+              <XAxis dataKey="bracket" tick={{ fontSize: 11 }} />
+              <YAxis reversed tick={{ fontSize: 11 }} label={{ value: "Avg Rank", angle: -90, position: "insideLeft", style: { fontSize: 11 } }} />
+              <Tooltip
+                contentStyle={{ fontSize: 12 }}
+                formatter={(value: number) => [value === 0 ? "No data" : value.toFixed(1), ""]}
+              />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              {top5Skis.map(({ ski }, i) => (
+                <Bar key={ski.id} dataKey={ski.skiId} fill={COLORS[i % COLORS.length]} radius={[3, 3, 0, 0]} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+          <p className="mt-2 text-xs text-muted-foreground">Lower rank = better. 0 = no data in that bracket.</p>
+        </Card>
+      )}
+
+      {/* Best conditions per ski */}
+      <Card className="fs-card rounded-2xl overflow-hidden" data-testid="analytics-best-conditions">
+        <div className="px-4 pt-4 pb-2">
+          <h2 className="text-base font-semibold">Best Conditions Per Ski</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Snow temperature ranges where each ski ranked #1 or top 3</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full border-separate border-spacing-0 text-sm">
+            <thead>
+              <tr className="text-left text-xs text-muted-foreground border-b">
+                <th className="px-4 py-2.5 font-medium">Ski ID</th>
+                <th className="px-3 py-2.5 font-medium">Won in conditions</th>
+                <th className="px-3 py-2.5 font-medium">Top 3 in conditions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bestConditionsPerSki.map(({ ski, top1Conditions, top3Conditions }, idx) => (
+                <tr
+                  key={ski.id}
+                  className={cn("border-t border-border/30", idx % 2 === 0 ? "bg-background/30" : "bg-background/10")}
+                  data-testid={`analytics-conditions-row-${ski.id}`}
+                >
+                  <td className="px-4 py-2.5">
+                    <div className="font-semibold">{ski.skiId}</div>
+                    {ski.brand && <div className="text-xs text-muted-foreground">{ski.brand}</div>}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {top1Conditions.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {top1Conditions.map((c) => (
+                          <span key={c} className="inline-flex items-center rounded-full bg-yellow-500/15 px-2 py-0.5 text-[10px] font-medium text-yellow-600 dark:text-yellow-400">
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    ) : <span className="text-muted-foreground">—</span>}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {top3Conditions.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {top3Conditions.map((c) => (
+                          <span key={c} className="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    ) : <span className="text-muted-foreground">—</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Existing ski comparison section */}
+      <SkiAnalyticsSection
+        skis={skis}
+        raceSkiTests={raceSkiTests}
+        compareSkiIds={compareSkiIds}
+        setCompareSkiIds={setCompareSkiIds}
+      />
+    </div>
   );
 }

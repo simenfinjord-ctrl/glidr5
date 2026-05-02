@@ -289,6 +289,7 @@ export async function registerRoutes(
         created_at TEXT NOT NULL
       );
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_extra_params TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS is_paused INTEGER NOT NULL DEFAULT 0;
     `);
   }
 
@@ -400,6 +401,14 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     if (u.isAdmin !== 1 && !(u.isTeamAdmin === 1 && u.teamId === id)) {
       return res.status(403).json({ message: "Admin access required" });
+    }
+    // Backup to Google Sheets requires the Replit Google connector.
+    // On other platforms (Render, Fly, etc.) this is not available.
+    const isReplit = !!(process.env.REPL_IDENTITY || process.env.WEB_REPL_RENEWAL);
+    if (!isReplit) {
+      return res.status(503).json({
+        message: "Google Sheets backup is only available on Replit. Export your data as CSV from the admin panel instead.",
+      });
     }
     const team = await storage.getTeam(id);
     if (!team) return res.status(404).json({ message: "Team not found" });
@@ -2749,6 +2758,96 @@ export async function registerRoutes(
     );
     res.json({ loggedOut: result.rowCount || 0 });
   });
+
+  // Team pause
+  app.put("/api/admin/teams/:id/pause", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const teamId = parseInt(req.params.id);
+    const paused = req.body.paused === true ? 1 : 0;
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `UPDATE teams SET is_paused = $1 WHERE id = $2 RETURNING *`,
+      [paused, teamId]
+    );
+    if (!result.rows[0]) return res.status(404).json({ message: "Team not found" });
+    res.json(result.rows[0]);
+  });
+
+  // SA Overview
+  app.get("/api/admin/overview", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const { pool } = await import("./db");
+    const [teamsRes, recentTestsRes, recentLoginsRes, statsRes] = await Promise.all([
+      (pool as any).query(`
+        SELECT t.id, t.name, t.is_paused,
+          COUNT(DISTINCT u.id) AS user_count,
+          COUNT(DISTINCT te.id) AS test_count,
+          MAX(te.date) AS last_activity
+        FROM teams t
+        LEFT JOIN users u ON u.team_id = t.id
+        LEFT JOIN tests te ON te.team_id = t.id
+        GROUP BY t.id, t.name, t.is_paused
+        ORDER BY t.name
+      `),
+      (pool as any).query(`
+        SELECT te.id, t.name AS team_name, te.date, te.location, te.snow_type AS test_type,
+          te.created_by_name
+        FROM tests te
+        LEFT JOIN teams t ON t.id = te.team_id
+        ORDER BY te.id DESC
+        LIMIT 20
+      `),
+      (pool as any).query(`
+        SELECT ll.user_id, ll.name, t.name AS team_name, ll.login_at AS logged_in_at
+        FROM login_logs ll
+        LEFT JOIN users u ON u.id = ll.user_id
+        LEFT JOIN teams t ON t.id = u.team_id
+        ORDER BY ll.id DESC
+        LIMIT 20
+      `),
+      (pool as any).query(`
+        SELECT
+          (SELECT COUNT(*) FROM teams) AS total_teams,
+          (SELECT COUNT(*) FROM users) AS total_users,
+          (SELECT COUNT(*) FROM tests) AS total_tests,
+          (SELECT COUNT(*) FROM products) AS total_products
+      `),
+    ]);
+    const stats = statsRes.rows[0];
+    res.json({
+      teams: teamsRes.rows.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        isPaused: r.is_paused === 1 || r.is_paused === true,
+        userCount: parseInt(r.user_count) || 0,
+        testCount: parseInt(r.test_count) || 0,
+        lastActivity: r.last_activity || null,
+      })),
+      recentTests: recentTestsRes.rows.map((r: any) => ({
+        id: r.id,
+        teamName: r.team_name,
+        date: r.date,
+        location: r.location,
+        testType: r.test_type,
+        createdByName: r.created_by_name,
+      })),
+      recentLogins: recentLoginsRes.rows.map((r: any) => ({
+        userId: r.user_id,
+        name: r.name,
+        teamName: r.team_name,
+        loggedInAt: r.logged_in_at,
+      })),
+      stats: {
+        totalTeams: parseInt(stats.total_teams) || 0,
+        totalUsers: parseInt(stats.total_users) || 0,
+        totalTests: parseInt(stats.total_tests) || 0,
+        totalProducts: parseInt(stats.total_products) || 0,
+      },
+    });
+  });
+
   // ───────────────────────────────────────────────────────────────────────────
 
   // --- Athletes CRUD ---
@@ -3501,78 +3600,90 @@ export async function registerRoutes(
         return score;
       }
 
+      // Score all tests that have weather data
       const scoredTests: { test: any; weather: any; similarity: number }[] = [];
       for (const test of filteredTests) {
         const weather = weatherMap.get(test.weatherId!);
         if (!weather) continue;
         const similarity = weatherSimilarity(weather);
-        // Lower threshold: include anything with any resemblance (> 0)
-        if (similarity >= 0) {
-          scoredTests.push({ test, weather, similarity });
-        }
-      }
-      // Also include tests without weather (lowest priority, similarity = 0)
-      const testsWithoutWeather = allTests.filter((t) => {
-        if (testType && t.testType !== testType) return false;
-        return !t.weatherId;
-      });
-      for (const test of testsWithoutWeather) {
-        scoredTests.push({ test, weather: null, similarity: 0 });
+        scoredTests.push({ test, weather, similarity });
       }
       scoredTests.sort((a, b) => b.similarity - a.similarity);
 
-      const productStats = new Map<number, { totalRank: number; count: number; wins: number; testCount: number; bestSimilarity: number }>();
-      const topTests = scoredTests.slice(0, 100); // Expand to 100 for more data
+      // Tiered matching — only use tests that actually resemble the given conditions
+      const HIGH_SIM = 20;
+      const MED_SIM = 10;
+      const LOW_SIM = 5;
 
-      for (const { test, similarity } of topTests) {
+      const highMatches = scoredTests.filter((t) => t.similarity >= HIGH_SIM);
+      const medMatches  = scoredTests.filter((t) => t.similarity >= MED_SIM);
+      const lowMatches  = scoredTests.filter((t) => t.similarity >= LOW_SIM);
+
+      let selectedTests: typeof scoredTests;
+      let tierConfidence: "High" | "Medium" | "Low";
+      let matchDescription: string;
+
+      if (highMatches.length >= 3) {
+        selectedTests = highMatches;
+        tierConfidence = "High";
+        matchDescription = "Very similar conditions found in test history.";
+      } else if (medMatches.length >= 3) {
+        selectedTests = medMatches;
+        tierConfidence = "Medium";
+        matchDescription = "Moderately similar conditions found in test history.";
+      } else if (lowMatches.length >= 2) {
+        selectedTests = lowMatches;
+        tierConfidence = "Low";
+        matchDescription = "Limited similar data — treat with caution.";
+      } else {
+        return res.json({ suggestions: [{ title: "No data", description: "Not enough matching test data for these conditions. Run more tests in similar weather to build a recommendation history.", products: [], confidence: "Low" }] });
+      }
+
+      // Aggregate product stats only from the matched tests
+      const productStats = new Map<number, { totalRank: number; count: number; wins: number }>();
+      for (const { test } of selectedTests.slice(0, 100)) {
         const entries = await storage.listEntries(test.id);
         if (entries.length === 0) continue;
-        const sorted = [...entries].sort((a, b) => (a.rank0km ?? 999) - (b.rank0km ?? 999));
-        for (const entry of sorted) {
+        for (const entry of entries) {
           if (!entry.productId) continue;
           const rank = entry.rank0km ?? 999;
-          const stats = productStats.get(entry.productId) || { totalRank: 0, count: 0, wins: 0, testCount: 0, bestSimilarity: 0 };
+          const stats = productStats.get(entry.productId) || { totalRank: 0, count: 0, wins: 0 };
           stats.totalRank += rank;
           stats.count += 1;
           if (rank === 1) stats.wins += 1;
-          stats.testCount += 1;
-          if (similarity > stats.bestSimilarity) stats.bestSimilarity = similarity;
           productStats.set(entry.productId, stats);
         }
       }
 
       const ranked = Array.from(productStats.entries())
+        .filter(([_, s]) => s.count >= 1)
         .map(([productId, stats]) => {
           const avgRank = stats.totalRank / stats.count;
           const winRate = stats.wins / stats.count;
-          const compositeScore = (1 / avgRank) * 0.4 + winRate * 0.3 + (stats.bestSimilarity / 40) * 0.3;
-          return { productId, avgRank, winRate, compositeScore, ...stats };
+          const score = (1 / avgRank) * 0.6 + winRate * 0.4;
+          const confidence: string =
+            tierConfidence === "High" && stats.count >= 3 ? "High" :
+            tierConfidence !== "Low"  && stats.count >= 2 ? "Medium" : "Low";
+          return { productId, avgRank, winRate, score, confidence, count: stats.count };
         })
-        .sort((a, b) => b.compositeScore - a.compositeScore)
+        .sort((a, b) => b.score - a.score)
         .slice(0, 6);
 
       const suggestions = ranked.map((r, idx) => {
         const prod = productMap.get(r.productId);
         const productName = prod ? `${prod.brand} ${prod.name}` : "Unknown";
-        let confidence: string;
-        if (r.count >= 5 && r.bestSimilarity > 25) confidence = "High";
-        else if (r.count >= 2 && r.bestSimilarity > 8) confidence = "Medium";
-        else confidence = "Low";
-
         const avgRankStr = r.avgRank.toFixed(1);
         const winPct = (r.winRate * 100).toFixed(0);
-        const similarityNote = r.bestSimilarity > 20 ? "Very similar conditions found." : r.bestSimilarity > 8 ? "Moderately similar conditions found." : "Limited similar data — treat with caution.";
-
         return {
           title: `#${idx + 1} ${productName}`,
-          description: `Avg rank ${avgRankStr} across ${r.count} test${r.count > 1 ? "s" : ""}. Win rate: ${winPct}%. ${similarityNote}`,
+          description: `Avg rank ${avgRankStr} in ${r.count} matching test${r.count > 1 ? "s" : ""}. Win rate: ${winPct}%. ${matchDescription}`,
           products: [productName],
-          confidence,
+          confidence: r.confidence,
         };
       });
 
       if (suggestions.length === 0) {
-        res.json({ suggestions: [{ title: "No data", description: "Not enough historical test data matching these conditions. Try adjusting the parameters or run more tests.", products: [], confidence: "Low" }] });
+        res.json({ suggestions: [{ title: "No data", description: "Products in the matching tests have no recorded results. Run more wax tests to improve suggestions.", products: [], confidence: "Low" }] });
       } else {
         res.json({ suggestions });
       }

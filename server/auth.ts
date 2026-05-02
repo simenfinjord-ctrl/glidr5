@@ -108,6 +108,16 @@ export async function setupAuth(app: Express) {
           if ((user as any).loginLocked === 1) {
             return done(null, false, { message: "Account is locked due to too many failed login attempts. Contact your Team Admin or Super Admin to reset." });
           }
+          // Check if team is paused (Super Admins bypass this check)
+          if (user.isAdmin !== 1 && user.teamId) {
+            const teamRes = await pool.query(
+              `SELECT is_paused FROM teams WHERE id = $1`,
+              [user.teamId]
+            );
+            if (teamRes.rows[0]?.is_paused === 1) {
+              return done(null, false, { message: "Your team account is currently suspended. Contact your administrator." });
+            }
+          }
           const valid = await verifyPassword(password, user.password);
           if (!valid) {
             // Increment failed attempts

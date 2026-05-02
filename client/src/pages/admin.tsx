@@ -53,6 +53,7 @@ type ApiTeam = {
   enabledAreas: string | null;
   backupSheetUrl: string | null;
   lastBackupAt: string | null;
+  isPaused?: number;
 };
 
 const AREA_LABELS: Record<string, string> = {
@@ -1003,6 +1004,19 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  // Team pause
+  const pauseTeamSecurityMutation = useMutation({
+    mutationFn: async ({ id, paused }: { id: number; paused: boolean }) => {
+      const res = await apiRequest("PUT", `/api/admin/teams/${id}/pause`, { paused });
+      return res.json();
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      toast({ title: vars.paused ? "Team suspended" : "Team unsuspended", description: vars.paused ? "Team members will be unable to log in." : "Team members can log in again." });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   return (
     <div className="flex flex-col gap-4" data-testid="tab-content-security">
 
@@ -1101,6 +1115,61 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
               </Button>
             </div>
           ))}
+        </div>
+      </Card>
+
+      {/* Team Pause */}
+      <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-1">
+          <UserX className="h-4 w-4 text-red-500" />
+          <span className="font-semibold text-foreground">Team Pause</span>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Suspend a team's login access. <strong>All team members will be unable to log in</strong> while paused. Super Admins are unaffected. Use this to temporarily block a team without deleting any data.
+        </p>
+        <div className="space-y-2">
+          {teams.map((team) => {
+            const isPaused = !!team.isPaused;
+            return (
+              <div key={team.id} className={cn(
+                "flex items-center justify-between rounded-xl border px-3 py-2.5 transition-colors",
+                isPaused ? "border-red-300 bg-red-50/60 dark:bg-red-900/10 dark:border-red-800" : "border-border bg-muted/30"
+              )}>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium text-foreground">{team.name}</span>
+                    {isPaused && (
+                      <span className="rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-1.5 py-0.5 text-[9px] font-bold uppercase">Suspended</span>
+                    )}
+                  </div>
+                  {isPaused && (
+                    <p className="text-[11px] text-red-500 mt-0.5">All members cannot log in</p>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid={`button-security-pause-team-${team.id}`}
+                  disabled={pauseTeamSecurityMutation.isPending}
+                  className={cn(
+                    isPaused
+                      ? "border-green-300 text-green-700 hover:bg-green-50 hover:text-green-800"
+                      : "border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+                  )}
+                  onClick={() => {
+                    if (!isPaused && !confirm(`Pause "${team.name}"? All team members will be unable to log in while paused.`)) return;
+                    pauseTeamSecurityMutation.mutate({ id: team.id, paused: !isPaused });
+                  }}
+                >
+                  {isPaused ? (
+                    <><ToggleRight className="h-3.5 w-3.5 mr-1.5" />Unpause</>
+                  ) : (
+                    <><ToggleLeft className="h-3.5 w-3.5 mr-1.5" />Pause</>
+                  )}
+                </Button>
+              </div>
+            );
+          })}
         </div>
       </Card>
 
@@ -1431,6 +1500,9 @@ export default function Admin() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [createOpen, setCreateOpen] = useState(false);
+  const [adminMode, setAdminMode] = useState<boolean>(() => {
+    try { return localStorage.getItem("glidr-sa-admin-mode") === "true"; } catch { return false; }
+  });
   const [editUser, setEditUser] = useState<ApiUser | undefined>();
   const [resetUser, setResetUser] = useState<ApiUser | undefined>();
   const [newGroupName, setNewGroupName] = useState("");
@@ -2076,6 +2148,20 @@ export default function Admin() {
     },
   });
 
+  const pauseTeamMutation = useMutation({
+    mutationFn: async ({ id, paused }: { id: number; paused: boolean }) => {
+      const res = await apiRequest("PUT", `/api/admin/teams/${id}/pause`, { paused });
+      return res.json();
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      toast({ title: vars.paused ? "Team suspended" : "Team unsuspended", description: vars.paused ? "Team members will be unable to log in." : "Team members can log in again." });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
   const saveBackupSheetMutation = useMutation({
     mutationFn: async ({ id, url }: { id: number; url: string }) => {
       const res = await apiRequest("PUT", `/api/teams/${id}/backup-sheet`, { url });
@@ -2159,6 +2245,27 @@ export default function Admin() {
                   ))}
                 </SelectContent>
               </Select>
+            )}
+            {isSuperAdmin && (
+              <button
+                type="button"
+                data-testid="button-admin-mode-toggle"
+                onClick={() => {
+                  const next = !adminMode;
+                  setAdminMode(next);
+                  try { localStorage.setItem("glidr-sa-admin-mode", String(next)); } catch {}
+                  toast({ title: next ? "Admin Mode ON" : "Admin Mode OFF", description: next ? "Overview nav item is now visible." : "Overview nav item hidden." });
+                }}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
+                  adminMode
+                    ? "border-purple-300 bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700"
+                    : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
+                )}
+              >
+                <ToggleRight className={cn("h-3.5 w-3.5", adminMode ? "text-purple-600" : "text-muted-foreground")} />
+                {adminMode ? "Admin Mode ON" : "Admin Mode"}
+              </button>
             )}
             <Button
               variant="outline"
@@ -2560,7 +2667,10 @@ export default function Admin() {
                   return (
                     <div
                       key={team.id}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5"
+                      className={cn(
+                        "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5",
+                        team.isPaused ? "border-red-300 bg-red-50/60 dark:bg-red-900/10 dark:border-red-800" : "border-border bg-muted/30"
+                      )}
                       data-testid={`row-team-${team.id}`}
                     >
                       <div className="min-w-0 flex-1">
@@ -2568,6 +2678,9 @@ export default function Admin() {
                           <span className="text-sm font-medium text-foreground">{team.name}</span>
                           {team.isDefault === 1 && (
                             <span className="rounded-full bg-green-50 dark:bg-green-900/30 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-300">Default</span>
+                          )}
+                          {!!team.isPaused && (
+                            <span className="rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Suspended</span>
                           )}
                           {planPreset && planStyle && (
                             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", planStyle.badge)}>
@@ -2583,6 +2696,7 @@ export default function Admin() {
                         <div className="text-[10px] text-muted-foreground mt-0.5">
                           {users.filter((u) => u.teamId === team.id).length} users
                           {featureCount !== null && <> · {featureCount} features enabled</>}
+                          {!!team.isPaused && <> · <span className="text-red-500 font-medium">All members cannot log in</span></>}
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
@@ -2598,6 +2712,21 @@ export default function Admin() {
                             <Shield className="h-4 w-4 text-green-500" />
                           </Button>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          data-testid={`button-pause-team-${team.id}`}
+                          title={team.isPaused ? "Unpause team" : "Pause team — members cannot log in"}
+                          disabled={pauseTeamMutation.isPending}
+                          onClick={() => {
+                            const willPause = !team.isPaused;
+                            if (willPause && !confirm(`Pause "${team.name}"? All team members will be unable to log in while paused.`)) return;
+                            pauseTeamMutation.mutate({ id: team.id, paused: willPause });
+                          }}
+                          className={cn(team.isPaused ? "text-red-600 hover:text-red-700 hover:bg-red-50" : "text-muted-foreground hover:text-amber-600 hover:bg-amber-50")}
+                        >
+                          {team.isPaused ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"

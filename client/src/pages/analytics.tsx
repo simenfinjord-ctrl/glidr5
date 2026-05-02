@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X } from "lucide-react";
+import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake } from "lucide-react";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter, Cell,
 } from "recharts";
@@ -78,18 +78,235 @@ function getRank(entry: TestEntry): number | null {
   return entry.rank0km;
 }
 
-function ProductSearchStats({
+const TEMP_BRACKETS = [
+  { label: "< −10°C",   min: -Infinity, max: -10 },
+  { label: "−10 to −5°C", min: -10,   max: -5  },
+  { label: "−5 to 0°C",   min: -5,    max: 0   },
+  { label: "0°C +",        min: 0,    max: Infinity },
+];
+
+function tempBracket(temp: number) {
+  return TEMP_BRACKETS.find((b) => temp >= b.min && temp < b.max)?.label ?? "Unknown";
+}
+
+/** Show which snow-temp brackets a product performs best in */
+function ConditionsBestBreakdown({
+  productId,
+  allEntries,
+  testsById,
+  weatherById,
+}: {
+  productId: number;
+  allEntries: TestEntry[];
+  testsById: Map<number, Test>;
+  weatherById: Map<number, Weather>;
+}) {
+  const data = useMemo(() => {
+    const bracketStats = new Map<string, { ranks: number[]; wins: number }>();
+    const entries = allEntries.filter((e) => e.productId === productId);
+    for (const entry of entries) {
+      const test = testsById.get(entry.testId);
+      if (!test || !test.weatherId) continue;
+      const w = weatherById.get(test.weatherId);
+      if (!w) continue;
+      const bracket = tempBracket(w.snowTemperatureC);
+      const rank = getRank(entry);
+      if (!bracketStats.has(bracket)) bracketStats.set(bracket, { ranks: [], wins: 0 });
+      const s = bracketStats.get(bracket)!;
+      if (rank !== null) {
+        s.ranks.push(rank);
+        if (rank === 1) s.wins++;
+      }
+    }
+    return TEMP_BRACKETS.map((b) => {
+      const s = bracketStats.get(b.label);
+      if (!s || s.ranks.length === 0) return { label: b.label, avgRank: null, wins: 0, tests: 0 };
+      const avgRank = parseFloat((s.ranks.reduce((a, c) => a + c, 0) / s.ranks.length).toFixed(2));
+      return { label: b.label, avgRank, wins: s.wins, tests: s.ranks.length };
+    }).filter((d) => d.tests > 0);
+  }, [productId, allEntries, testsById, weatherById]);
+
+  if (data.length === 0) return <p className="text-xs text-muted-foreground">No weather-linked tests for this product.</p>;
+
+  const best = [...data].sort((a, b) => (a.avgRank ?? 99) - (b.avgRank ?? 99))[0];
+
+  return (
+    <div className="space-y-2">
+      {best && (
+        <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+          Best in: <span className="font-bold">{best.label}</span> — avg rank {best.avgRank} ({best.wins} win{best.wins !== 1 ? "s" : ""} in {best.tests} test{best.tests !== 1 ? "s" : ""})
+        </div>
+      )}
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/60">
+            <tr>
+              <th className="text-left px-3 py-2 text-xs font-medium">Snow temp range</th>
+              <th className="text-center px-3 py-2 text-xs font-medium">Tests</th>
+              <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
+              <th className="text-center px-3 py-2 text-xs font-medium">Wins</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.label} className={cn("border-t", row.label === best?.label && "bg-emerald-50/50 dark:bg-emerald-900/10")}>
+                <td className="px-3 py-1.5 font-medium">{row.label}</td>
+                <td className="px-3 py-1.5 text-center text-muted-foreground">{row.tests}</td>
+                <td className="px-3 py-1.5 text-center font-semibold">{row.avgRank ?? "—"}</td>
+                <td className="px-3 py-1.5 text-center">{row.wins > 0 ? <span className="text-amber-600 font-bold">{row.wins}</span> : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/** Show best products for a given snow temperature bracket */
+function BestProductsByConditions({
   products,
   tests,
   allEntries,
   productsById,
   testsById,
+  weatherById,
 }: {
   products: Product[];
   tests: Test[];
   allEntries: TestEntry[];
   productsById: Map<number, Product>;
   testsById: Map<number, Test>;
+  weatherById: Map<number, Weather>;
+}) {
+  const [selectedBracket, setSelectedBracket] = useState(TEMP_BRACKETS[1].label);
+
+  const data = useMemo(() => {
+    const bracket = TEMP_BRACKETS.find((b) => b.label === selectedBracket);
+    if (!bracket) return [];
+
+    const matchingTestIds = new Set<number>();
+    for (const t of tests) {
+      if (!t.weatherId) continue;
+      const w = weatherById.get(t.weatherId);
+      if (!w) continue;
+      if (w.snowTemperatureC >= bracket.min && w.snowTemperatureC < bracket.max) {
+        matchingTestIds.add(t.id);
+      }
+    }
+
+    const pStats = new Map<number, { totalRank: number; count: number; wins: number }>();
+    for (const e of allEntries) {
+      if (!matchingTestIds.has(e.testId) || !e.productId) continue;
+      const rank = getRank(e);
+      if (rank === null) continue;
+      const s = pStats.get(e.productId) || { totalRank: 0, count: 0, wins: 0 };
+      s.totalRank += rank;
+      s.count++;
+      if (rank === 1) s.wins++;
+      pStats.set(e.productId, s);
+    }
+
+    return Array.from(pStats.entries())
+      .filter(([_, s]) => s.count >= 2)
+      .map(([pid, s]) => {
+        const p = productsById.get(pid);
+        return {
+          name: p ? `${p.brand} ${p.name}` : `#${pid}`,
+          avgRank: parseFloat((s.totalRank / s.count).toFixed(2)),
+          wins: s.wins,
+          tests: s.count,
+          winRate: parseFloat(((s.wins / s.count) * 100).toFixed(0)),
+        };
+      })
+      .sort((a, b) => a.avgRank - b.avgRank)
+      .slice(0, 8);
+  }, [selectedBracket, tests, allEntries, productsById, weatherById]);
+
+  return (
+    <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-best-by-conditions">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 dark:bg-sky-900/30">
+          <Snowflake className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+        </div>
+        <h2 className="text-base font-semibold">Best products by conditions</h2>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        {TEMP_BRACKETS.map((b) => (
+          <Button
+            key={b.label}
+            variant={selectedBracket === b.label ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedBracket(b.label)}
+          >
+            {b.label}
+          </Button>
+        ))}
+      </div>
+
+      {data.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No products with 2+ tests in this temperature range.</p>
+      ) : (
+        <div className="space-y-3">
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={data} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+              <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} label={{ value: "Avg rank (lower = better)", position: "insideBottom", offset: -2, style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }} />
+              <YAxis dataKey="name" type="category" width={140} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px" }}
+                formatter={(v: any, name: string) => [v, name === "avgRank" ? "Avg rank" : name]}
+              />
+              <Bar dataKey="avgRank" radius={[0, 6, 6, 0]}>
+                {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/60">
+                <tr>
+                  <th className="text-left px-3 py-2 text-xs font-medium">#</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium">Product</th>
+                  <th className="text-center px-3 py-2 text-xs font-medium">Tests</th>
+                  <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
+                  <th className="text-center px-3 py-2 text-xs font-medium">Win rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((row, i) => (
+                  <tr key={row.name} className="border-t hover:bg-muted/30">
+                    <td className="px-3 py-1.5 text-muted-foreground">{i + 1}</td>
+                    <td className="px-3 py-1.5 font-medium truncate max-w-[180px]">{row.name}</td>
+                    <td className="px-3 py-1.5 text-center text-muted-foreground">{row.tests}</td>
+                    <td className="px-3 py-1.5 text-center font-semibold">{row.avgRank}</td>
+                    <td className="px-3 py-1.5 text-center">{row.winRate}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function ProductSearchStats({
+  products,
+  tests,
+  allEntries,
+  productsById,
+  testsById,
+  weatherById = new Map(),
+}: {
+  products: Product[];
+  tests: Test[];
+  allEntries: TestEntry[];
+  productsById: Map<number, Product>;
+  testsById: Map<number, Test>;
+  weatherById?: Map<number, Weather>;
 }) {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
@@ -250,7 +467,7 @@ function ProductSearchStats({
       </div>
 
       {selectedProduct && stats && (
-        <div className="flex flex-col gap-4" data-testid="card-product-stats">
+        <div className="flex flex-col gap-5" data-testid="card-product-stats">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-xl border p-3 text-center">
               <Hash className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
@@ -319,6 +536,21 @@ function ProductSearchStats({
                   <Line type="monotone" dataKey="avgRank" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} connectNulls />
                 </LineChart>
               </ResponsiveContainer>
+            </div>
+          )}
+
+          {selectedProductId && (
+            <div>
+              <div className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                <Snowflake className="h-4 w-4 text-sky-500" />
+                Performance by snow temperature
+              </div>
+              <ConditionsBestBreakdown
+                productId={selectedProductId}
+                allEntries={allEntries}
+                testsById={testsById}
+                weatherById={weatherById}
+              />
             </div>
           )}
 
@@ -890,6 +1122,16 @@ export default function Analytics() {
           allEntries={allEntries}
           productsById={productsById}
           testsById={testsById}
+          weatherById={weatherById}
+        />
+
+        <BestProductsByConditions
+          products={products}
+          tests={tests}
+          allEntries={allEntries}
+          productsById={productsById}
+          testsById={testsById}
+          weatherById={weatherById}
         />
 
         <ProductCompare

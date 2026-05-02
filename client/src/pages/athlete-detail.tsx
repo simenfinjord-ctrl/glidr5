@@ -198,6 +198,9 @@ export default function AthleteDetail() {
   const [garageDisciplineFilter, setGarageDisciplineFilter] = useState<string>("all");
   const [garageBrandFilter, setGarageBrandFilter] = useState<string>("all");
   const [garageYearFilter, setGarageYearFilter] = useState<string>("all");
+  const [garageGrindFilter, setGarageGrindFilter] = useState<string>("");
+  const [garageRaValueFilter, setGarageRaValueFilter] = useState<string>("");
+  const [garageRaSort, setGarageRaSort] = useState<string>("none");
   const [showGarageFilters, setShowGarageFilters] = useState(false);
 
   // Analytics section
@@ -206,16 +209,6 @@ export default function AthleteDetail() {
 
   // Test result column chooser
   const defaultTestColumns = ["result", "rank", "feeling", "kick"];
-  const allTestColumns: { key: string; label: string }[] = [
-    { key: "result", label: "Result (cm)" },
-    { key: "rank", label: "Rank" },
-    { key: "feeling", label: "Feeling" },
-    { key: "kick", label: "Kick" },
-    { key: "grindType", label: "Grind Type" },
-    { key: "grindStone", label: "Grind Stone" },
-    { key: "grindPattern", label: "Grind Pattern" },
-    { key: "methodology", label: "Methodology" },
-  ];
   const [activeTestColumns, setActiveTestColumns] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem("glidr-raceski-test-columns");
@@ -233,6 +226,7 @@ export default function AthleteDetail() {
   }, [activeTestColumns]);
 
   const [testsExpanded, setTestsExpanded] = useState(true);
+  const [testViewMode, setTestViewMode] = useState<"card" | "list">("card");
   const [showTestForm, setShowTestForm] = useState(false);
   const [testForm, setTestForm] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -440,6 +434,34 @@ export default function AthleteDetail() {
 
   const skiIds = useMemo(() => new Set(skis.map((s) => s.id)), [skis]);
 
+  // Build allTestColumns dynamically, including any custom param keys found across all skis
+  const allTestColumns = useMemo<{ key: string; label: string }[]>(() => {
+    const base: { key: string; label: string }[] = [
+      { key: "result", label: "Result (cm)" },
+      { key: "rank", label: "Rank" },
+      { key: "feeling", label: "Feeling" },
+      { key: "kick", label: "Kick" },
+      { key: "grindType", label: "Grind Type" },
+      { key: "grindStone", label: "Grind Stone" },
+      { key: "grindPattern", label: "Grind Pattern" },
+      { key: "methodology", label: "Methodology" },
+    ];
+    const seenKeys = new Set(base.map((c) => c.key));
+    for (const ski of skis) {
+      try {
+        const cp = ski.customParams ? JSON.parse(ski.customParams) : {};
+        for (const k of Object.keys(cp)) {
+          if (!seenKeys.has(k)) {
+            seenKeys.add(k);
+            const label = k.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+            base.push({ key: k, label });
+          }
+        }
+      } catch {}
+    }
+    return base;
+  }, [skis]);
+
   const raceSkiTests = useMemo(() => {
     return allTests.filter((t) => t.testSkiSource === "raceskis" && t.athleteId === Number(athleteId));
   }, [allTests, athleteId]);
@@ -463,8 +485,32 @@ export default function AthleteDetail() {
     if (garageDisciplineFilter !== "all") list = list.filter((s) => s.discipline === garageDisciplineFilter);
     if (garageBrandFilter !== "all") list = list.filter((s) => s.brand === garageBrandFilter);
     if (garageYearFilter !== "all") list = list.filter((s) => s.year === garageYearFilter);
+    if (garageGrindFilter.trim()) {
+      const q = garageGrindFilter.trim().toLowerCase();
+      list = list.filter((s) => s.grind?.toLowerCase().includes(q));
+    }
+    if (garageRaValueFilter.trim()) {
+      const q = garageRaValueFilter.trim().toLowerCase();
+      list = list.filter((s) => {
+        try {
+          const cp = s.customParams ? JSON.parse(s.customParams) : {};
+          return String(cp.ra_value ?? "").toLowerCase().includes(q);
+        } catch { return false; }
+      });
+    }
+    if (garageRaSort === "ra-high") {
+      list = [...list].sort((a, b) => {
+        const getRa = (s: RaceSki) => { try { const cp = s.customParams ? JSON.parse(s.customParams) : {}; return parseFloat(cp.ra_value) || 0; } catch { return 0; } };
+        return getRa(b) - getRa(a);
+      });
+    } else if (garageRaSort === "ra-low") {
+      list = [...list].sort((a, b) => {
+        const getRa = (s: RaceSki) => { try { const cp = s.customParams ? JSON.parse(s.customParams) : {}; return parseFloat(cp.ra_value) || 0; } catch { return 0; } };
+        return getRa(a) - getRa(b);
+      });
+    }
     return list;
-  }, [skis, garageDisciplineFilter, garageBrandFilter, garageYearFilter]);
+  }, [skis, garageDisciplineFilter, garageBrandFilter, garageYearFilter, garageGrindFilter, garageRaValueFilter, garageRaSort]);
 
   function setGarageView(mode: "grid" | "list") {
     setGarageViewMode(mode);
@@ -1102,12 +1148,36 @@ export default function AthleteDetail() {
                     ))}
                   </SelectContent>
                 </Select>
-                {(garageDisciplineFilter !== "all" || garageBrandFilter !== "all" || garageYearFilter !== "all") && (
+                <Input
+                  value={garageGrindFilter}
+                  onChange={(e) => setGarageGrindFilter(e.target.value)}
+                  placeholder="Grind…"
+                  className="h-7 w-[110px] text-xs"
+                  data-testid="input-garage-grind-filter"
+                />
+                <Input
+                  value={garageRaValueFilter}
+                  onChange={(e) => setGarageRaValueFilter(e.target.value)}
+                  placeholder="RA-value…"
+                  className="h-7 w-[110px] text-xs"
+                  data-testid="input-garage-ra-value-filter"
+                />
+                <Select value={garageRaSort} onValueChange={setGarageRaSort}>
+                  <SelectTrigger className="h-7 w-[160px] text-xs" data-testid="select-garage-ra-sort">
+                    <SelectValue placeholder="Sort by RA" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No RA sort</SelectItem>
+                    <SelectItem value="ra-high">RA-value High→Low</SelectItem>
+                    <SelectItem value="ra-low">RA-value Low→High</SelectItem>
+                  </SelectContent>
+                </Select>
+                {(garageDisciplineFilter !== "all" || garageBrandFilter !== "all" || garageYearFilter !== "all" || garageGrindFilter !== "" || garageRaValueFilter !== "" || garageRaSort !== "none") && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-7 px-2 text-xs text-muted-foreground"
-                    onClick={() => { setGarageDisciplineFilter("all"); setGarageBrandFilter("all"); setGarageYearFilter("all"); }}
+                    onClick={() => { setGarageDisciplineFilter("all"); setGarageBrandFilter("all"); setGarageYearFilter("all"); setGarageGrindFilter(""); setGarageRaValueFilter(""); setGarageRaSort("none"); }}
                     data-testid="button-garage-clear-filters"
                   >
                     <X className="h-3 w-3 mr-1" />
@@ -1300,6 +1370,29 @@ export default function AthleteDetail() {
               </h2>
             </div>
             <div className="flex items-center gap-2">
+              {/* Tests view toggle */}
+              <div className="flex items-center rounded-lg border border-border bg-background/60 p-0.5" data-testid="tests-view-toggle">
+                <button
+                  onClick={() => setTestViewMode("card")}
+                  className={cn(
+                    "flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors",
+                    testViewMode === "card" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                  )}
+                  data-testid="button-tests-card-view"
+                >
+                  <LayoutGrid className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={() => setTestViewMode("list")}
+                  className={cn(
+                    "flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors",
+                    testViewMode === "list" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                  )}
+                  data-testid="button-tests-list-view"
+                >
+                  <List className="h-3 w-3" />
+                </button>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
@@ -1817,6 +1910,8 @@ export default function AthleteDetail() {
                 <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-tests">
                   No race ski tests yet.
                 </Card>
+              ) : testViewMode === "list" ? (
+                <TestListView tests={filteredTests} skiIds={skiIds} allSkis={skis} activeTestColumns={activeTestColumns} />
               ) : (
                 filteredTests.map((test) => (
                   <RaceSkiTestCard key={test.id} test={test} skiIds={skiIds} allSkis={skis} activeTestColumns={activeTestColumns} />
@@ -2737,6 +2832,136 @@ function SkiCard({
   );
 }
 
+function TestListView({ tests, skiIds, allSkis, activeTestColumns }: { tests: RaceSkiTest[]; skiIds: Set<number>; allSkis: RaceSki[]; activeTestColumns: string[] }) {
+  const testIds = useMemo(() => tests.map((t) => t.id), [tests]);
+
+  const { data: allEntries = [] } = useQuery<(TestEntry & { testId: number })[]>({
+    queryKey: [`/api/test-list-view/entries`, testIds.join(",")],
+    enabled: testIds.length > 0,
+    queryFn: async () => {
+      const results = await Promise.all(
+        testIds.map(async (tid) => {
+          const res = await fetch(`/api/tests/${tid}/entries`, { credentials: "include" });
+          if (!res.ok) return [];
+          const data = await res.json();
+          return (data as TestEntry[]).map((e) => ({ ...e, testId: tid }));
+        })
+      );
+      return results.flat();
+    },
+  });
+
+  const raceSkiById = useMemo(() => new Map(allSkis.map((s) => [s.id, s])), [allSkis]);
+
+  const rows = useMemo(() => {
+    const out: Array<{ test: RaceSkiTest; entry: TestEntry & { testId: number }; ski: RaceSki | undefined }> = [];
+    for (const test of tests) {
+      const entries = allEntries.filter((e) => e.testId === test.id && e.raceSkiId && skiIds.has(e.raceSkiId));
+      for (const entry of entries) {
+        out.push({ test, entry, ski: entry.raceSkiId ? raceSkiById.get(entry.raceSkiId) : undefined });
+      }
+    }
+    return out;
+  }, [tests, allEntries, skiIds, raceSkiById]);
+
+  const customParamKeys = useMemo(() => {
+    const keys: string[] = [];
+    const seen = new Set<string>();
+    for (const col of activeTestColumns) {
+      if (["result","rank","feeling","kick","grindType","grindStone","grindPattern","methodology"].includes(col)) continue;
+      if (!seen.has(col)) { seen.add(col); keys.push(col); }
+    }
+    return keys;
+  }, [activeTestColumns]);
+
+  if (tests.length === 0) return null;
+
+  const rankBadge = (rank: number | null) => (
+    <span className={cn(
+      "inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+      rank === 1 ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" :
+      rank === 2 ? "bg-slate-300/15 text-slate-500 dark:text-slate-300" :
+      rank === 3 ? "bg-amber-700/15 text-amber-700 dark:text-amber-600" :
+      "bg-muted/70 text-foreground"
+    )}>
+      {rank ?? "—"}
+    </span>
+  );
+
+  return (
+    <Card className="fs-card rounded-2xl overflow-hidden" data-testid="tests-list-view">
+      <div className="overflow-x-auto">
+        <table className="w-full border-separate border-spacing-0 text-xs">
+          <thead>
+            <tr className="text-left text-muted-foreground border-b">
+              <th className="px-3 py-2.5 font-medium">Date</th>
+              <th className="px-3 py-2.5 font-medium">Location</th>
+              <th className="px-3 py-2.5 font-medium">Type</th>
+              <th className="px-3 py-2.5 font-medium">Ski Pair #</th>
+              {activeTestColumns.includes("rank") && <th className="px-3 py-2.5 font-medium">Rank</th>}
+              {activeTestColumns.includes("result") && <th className="px-3 py-2.5 font-medium">Result</th>}
+              {activeTestColumns.includes("feeling") && <th className="px-3 py-2.5 font-medium">Feeling</th>}
+              {activeTestColumns.includes("kick") && <th className="px-3 py-2.5 font-medium">Kick</th>}
+              {activeTestColumns.includes("grindType") && <th className="px-3 py-2.5 font-medium">Grind Type</th>}
+              {activeTestColumns.includes("grindStone") && <th className="px-3 py-2.5 font-medium">Stone</th>}
+              {activeTestColumns.includes("grindPattern") && <th className="px-3 py-2.5 font-medium">Pattern</th>}
+              {activeTestColumns.includes("methodology") && <th className="px-3 py-2.5 font-medium">Methodology</th>}
+              {customParamKeys.map((k) => {
+                const label = k.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+                return <th key={k} className="px-3 py-2.5 font-medium">{label}</th>;
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 && allEntries.length === 0 ? (
+              <tr>
+                <td colSpan={20} className="px-3 py-6 text-center text-muted-foreground">Loading…</td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={20} className="px-3 py-6 text-center text-muted-foreground">No entries found.</td>
+              </tr>
+            ) : (
+              rows.map(({ test, entry, ski }, idx) => {
+                let skiCp: Record<string, string> = {};
+                try { skiCp = ski?.customParams ? JSON.parse(ski.customParams) : {}; } catch {}
+                const skiLabel = ski ? (ski.serialNumber || ski.skiId) : String(entry.skiNumber);
+                return (
+                  <tr
+                    key={entry.id}
+                    className={cn("border-t border-border/30", idx % 2 === 0 ? "bg-background/30" : "bg-background/10")}
+                    data-testid={`list-row-entry-${entry.id}`}
+                  >
+                    <td className="px-3 py-2 whitespace-nowrap">{test.date}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{test.location}</td>
+                    <td className="px-3 py-2">
+                      <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800">
+                        {test.testType}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 font-medium">{skiLabel}</td>
+                    {activeTestColumns.includes("rank") && <td className="px-3 py-2">{rankBadge(entry.rank0km)}</td>}
+                    {activeTestColumns.includes("result") && <td className="px-3 py-2">{entry.result0kmCmBehind ?? "—"}</td>}
+                    {activeTestColumns.includes("feeling") && <td className="px-3 py-2">{entry.feelingRank ?? "—"}</td>}
+                    {activeTestColumns.includes("kick") && <td className="px-3 py-2">{entry.kickRank ?? "—"}</td>}
+                    {activeTestColumns.includes("grindType") && <td className="px-3 py-2 text-muted-foreground">{entry.grindType ?? "—"}</td>}
+                    {activeTestColumns.includes("grindStone") && <td className="px-3 py-2 text-muted-foreground">{entry.grindStone ?? "—"}</td>}
+                    {activeTestColumns.includes("grindPattern") && <td className="px-3 py-2 text-muted-foreground">{entry.grindPattern ?? "—"}</td>}
+                    {activeTestColumns.includes("methodology") && <td className="px-3 py-2 text-muted-foreground">{entry.methodology || "—"}</td>}
+                    {customParamKeys.map((k) => (
+                      <td key={k} className="px-3 py-2 text-muted-foreground">{skiCp[k] ?? "—"}</td>
+                    ))}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
 function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns }: { test: RaceSkiTest; skiIds: Set<number>; allSkis: RaceSki[]; activeTestColumns: string[] }) {
   const [expanded, setExpanded] = useState(false);
   const [, navigate] = useLocation();
@@ -2818,10 +3043,17 @@ function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns }: { test: R
                   {activeTestColumns.includes("grindStone") && <th className="px-3 py-2">Stone</th>}
                   {activeTestColumns.includes("grindPattern") && <th className="px-3 py-2">Pattern</th>}
                   {activeTestColumns.includes("methodology") && <th className="px-3 py-2">Methodology</th>}
+                  {activeTestColumns.filter((k) => !["result","rank","feeling","kick","grindType","grindStone","grindPattern","methodology"].includes(k)).map((k) => (
+                    <th key={k} className="px-3 py-2">{k.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {relevantEntries.map((entry) => (
+                {relevantEntries.map((entry) => {
+                  const linkedSki = entry.raceSkiId ? raceSkiById.get(entry.raceSkiId) : undefined;
+                  let skiCp: Record<string, string> = {};
+                  try { skiCp = linkedSki?.customParams ? JSON.parse(linkedSki.customParams) : {}; } catch {}
+                  return (
                   <tr key={entry.id} className="border-t" data-testid={`row-test-result-${entry.id}`}>
                     <td className="px-3 py-1.5 font-medium">{getSkiLabel(entry)}</td>
                     {activeTestColumns.includes("result") && (
@@ -2858,8 +3090,12 @@ function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns }: { test: R
                     {activeTestColumns.includes("methodology") && (
                       <td className="px-3 py-1.5 text-muted-foreground">{entry.methodology || "—"}</td>
                     )}
+                    {activeTestColumns.filter((k) => !["result","rank","feeling","kick","grindType","grindStone","grindPattern","methodology"].includes(k)).map((k) => (
+                      <td key={k} className="px-3 py-1.5 text-muted-foreground">{skiCp[k] ?? "—"}</td>
+                    ))}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

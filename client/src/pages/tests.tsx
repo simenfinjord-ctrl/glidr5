@@ -114,7 +114,8 @@ function RankBadge({ rank }: { rank: number | null }) {
 
 export default function Tests() {
   const [, navigate] = useLocation();
-  const { isBlindTester } = useAuth();
+  const { isBlindTester, can } = useAuth();
+  const canViewGrinding = can("grinding", "view");
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
@@ -205,7 +206,8 @@ export default function Tests() {
 
   const filtered = useMemo(() => {
     const result = tests.filter((t) => {
-      if (t.testType === "Grind") return false;
+      // Grind tests are only shown when user has grinding access AND explicitly selects "Grind"
+      if (t.testType === "Grind" && !(canViewGrinding && filterType === "Grind")) return false;
       if (filterSeason !== "All" && getSeason(t.date) !== filterSeason) return false;
       if (filterType !== "All" && t.testType !== filterType) return false;
       if (filterLocation && !t.location.toLowerCase().includes(filterLocation.toLowerCase())) return false;
@@ -341,6 +343,7 @@ export default function Tests() {
                     <SelectItem value="Classic">Classic</SelectItem>
                     <SelectItem value="Skating">Skating</SelectItem>
                     <SelectItem value="Double Poling">Double Poling</SelectItem>
+                    {canViewGrinding && <SelectItem value="Grind">Grind</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>

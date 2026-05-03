@@ -364,6 +364,38 @@ export default function TestDetail() {
 
   const sortedEntries = [...entries].sort((a, b) => a.skiNumber - b.skiNumber);
 
+  // ── Grind column helpers (hooks must be before any early returns) ────────────
+  function parseExtraParams(json: string | null): Record<string, string> {
+    if (!json) return {};
+    try { return JSON.parse(json); } catch { return {}; }
+  }
+  const isGrindTest = test?.testType === "Grind";
+  const grindExtraParamKeys = useMemo(() => {
+    if (!isGrindTest) return [];
+    const keys = new Set<string>();
+    for (const e of sortedEntries) {
+      for (const k of Object.keys(parseExtraParams(e.grindExtraParams))) keys.add(k);
+    }
+    return Array.from(keys);
+  }, [isGrindTest, sortedEntries]);
+  const allGrindCols = useMemo(
+    () => ["grindType", "grindStone", "grindPattern", ...grindExtraParamKeys],
+    [grindExtraParamKeys]
+  );
+  const GRIND_COL_LABELS: Record<string, string> = { grindType: "Grind", grindStone: "Stone", grindPattern: "Pattern" };
+  function getEntryGrindValue(entry: TestEntry, col: string): string | null {
+    if (col === "grindType") return entry.grindType || null;
+    if (col === "grindStone") return entry.grindStone || null;
+    if (col === "grindPattern") return entry.grindPattern || null;
+    return parseExtraParams(entry.grindExtraParams)[col] ?? null;
+  }
+  function toggleGrindCol(col: string) {
+    setVisibleGrindCols((prev) =>
+      prev.includes(col) ? prev.filter((c) => c !== col) : [...prev, col]
+    );
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   if (testLoading) {
     return (
       <AppShell>
@@ -393,36 +425,6 @@ export default function TestDetail() {
   const isGrind = test.testType === "Grind";
   const isClassic = test.testType === "Classic";
   const grindParams = isGrind && test.grindParameters ? (() => { try { return JSON.parse(test.grindParameters); } catch { return {}; } })() : {};
-
-  // Grind column chooser — discover extra param keys from entries
-  function parseExtraParams(json: string | null): Record<string, string> {
-    if (!json) return {};
-    try { return JSON.parse(json); } catch { return {}; }
-  }
-  const grindExtraParamKeys = useMemo(() => {
-    if (!isGrind) return [];
-    const keys = new Set<string>();
-    for (const e of sortedEntries) {
-      for (const k of Object.keys(parseExtraParams(e.grindExtraParams))) keys.add(k);
-    }
-    return Array.from(keys);
-  }, [isGrind, sortedEntries]);
-  const allGrindCols = useMemo(
-    () => ["grindType", "grindStone", "grindPattern", ...grindExtraParamKeys],
-    [grindExtraParamKeys]
-  );
-  const GRIND_COL_LABELS: Record<string, string> = { grindType: "Grind", grindStone: "Stone", grindPattern: "Pattern" };
-  function getEntryGrindValue(entry: TestEntry, col: string): string | null {
-    if (col === "grindType") return entry.grindType || null;
-    if (col === "grindStone") return entry.grindStone || null;
-    if (col === "grindPattern") return entry.grindPattern || null;
-    return parseExtraParams(entry.grindExtraParams)[col] ?? null;
-  }
-  function toggleGrindCol(col: string) {
-    setVisibleGrindCols((prev) =>
-      prev.includes(col) ? prev.filter((c) => c !== col) : [...prev, col]
-    );
-  }
   const testTypeBadgeClass = test.testType === "Glide" ? "fs-badge-glide" : test.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure";
 
   return (

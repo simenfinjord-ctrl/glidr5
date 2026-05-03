@@ -3291,7 +3291,7 @@ export async function registerRoutes(
         operatorName: session.operatorName ?? null,
         teamId: session.teamId ?? null,
         createdAt: new Date(session.createdAt).toISOString(),
-        expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       }).onConflictDoUpdate({
         target: watchSessions.code,
         set: { bracket: JSON.stringify(session.bracket), skiLabels: labelsJson, operatorName: session.operatorName ?? null },
@@ -4078,10 +4078,52 @@ export async function registerRoutes(
     const { pin } = req.params;
     const { pool } = await import("./db");
     const teamResult = await (pool as any).query(
-      `SELECT id FROM teams WHERE watch_pin = $1`, [pin]
+      `SELECT id, enabled_areas FROM teams WHERE watch_pin = $1`, [pin]
     );
     if (!teamResult.rows[0]) return res.status(404).json({ message: "Invalid PIN" });
     const teamId = teamResult.rows[0].id;
+
+    // Validate userCode if provided (query param ?userCode=XXXX)
+    const userCode = typeof req.query.userCode === "string" ? req.query.userCode : null;
+    if (userCode && /^\d{4}$/.test(userCode)) {
+      try {
+        const userRow = await (pool as any).query(
+          "SELECT id, is_admin, is_team_admin, garmin_watch, team_id FROM users WHERE watch_code = $1 AND is_active = 1",
+          [userCode]
+        );
+        const watchUser = userRow.rows[0];
+        if (!watchUser) {
+          return res.status(403).json({ message: "Personal ID not found" });
+        }
+        if (watchUser.is_admin !== 1) {
+          // Check team membership
+          const isOwnTeam = watchUser.team_id === teamId;
+          let isMember = isOwnTeam;
+          if (!isMember) {
+            const memberRow = await (pool as any).query(
+              "SELECT id FROM user_teams WHERE user_id = $1 AND team_id = $2",
+              [watchUser.id, teamId]
+            );
+            isMember = memberRow.rows.length > 0;
+          }
+          if (!isMember) {
+            return res.status(403).json({ message: "No access to this team" });
+          }
+          // Check garmin_watch feature gate
+          let enabledAreas: string[] = [];
+          try { enabledAreas = JSON.parse(teamResult.rows[0].enabled_areas ?? "[]"); } catch (_) {}
+          if (!enabledAreas.includes("garmin_watch")) {
+            return res.status(403).json({ message: "Watch access not enabled for this team" });
+          }
+          if (watchUser.is_team_admin !== 1 && !watchUser.garmin_watch) {
+            return res.status(403).json({ message: "Watch Queue access not granted for your account" });
+          }
+        }
+      } catch (_) {
+        // userCode validation failed silently — still return list
+      }
+    }
+
     const result = await (pool as any).query(
       `SELECT id, test_id, series_id, test_name, series_name, added_by_name, added_at FROM watch_queue
        WHERE team_id = $1 AND status = 'active' ORDER BY added_at DESC`,

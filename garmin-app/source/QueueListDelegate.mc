@@ -85,10 +85,10 @@ class QueueListDelegate extends WatchUi.BehaviorDelegate {
                 heatView.statusText = "Select winner";
                 fetchCurrentHeat(code, heatView);
             } else {
-                // No active session for this test yet.
+                // No session auto-created (test has no entries yet).
                 // Navigate to code entry so user can enter session code from web app.
                 var codeView = new CodeEntryView();
-                codeView.statusText = "Enter session code";
+                codeView.statusText = "Start test in web app";
                 var codeDelegate = new CodeEntryDelegate(codeView);
                 // Pass the queueItemId so HeatDelegate can mark it complete later
                 codeDelegate.pendingQueueItemId = queueItemId;

@@ -101,8 +101,12 @@ class CodeEntryDelegate extends WatchUi.BehaviorDelegate {
 
             var heatDelegate = new HeatDelegate(heatView);
             WatchUi.switchToView(heatView, heatDelegate, WatchUi.SLIDE_LEFT);
+        } else if (responseCode == 404) {
+            view.statusText = "Code expired!";
+            view.cursorPos = 0;
+            WatchUi.requestUpdate();
         } else {
-            view.statusText = "Invalid code!";
+            view.statusText = "Error " + responseCode.toString();
             view.cursorPos = 0;
             WatchUi.requestUpdate();
         }

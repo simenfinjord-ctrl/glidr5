@@ -3,6 +3,7 @@
 using Toybox.WatchUi;
 using Toybox.Graphics;
 using Toybox.Communications;
+using Toybox.Application.Storage;
 
 class QueueListView extends WatchUi.View {
     var teamPin;
@@ -28,6 +29,10 @@ class QueueListView extends WatchUi.View {
         WatchUi.requestUpdate();
 
         var url = ServerConfig.BASE_URL + "/api/watch/list/" + teamPin;
+        var userCode = Storage.getValue("userCode");
+        if (userCode != null) {
+            url = url + "?userCode=" + userCode;
+        }
         Communications.makeWebRequest(
             url,
             null,
@@ -45,13 +50,24 @@ class QueueListView extends WatchUi.View {
             items = data["items"];
             if (items.size() == 0) {
                 statusText = "Queue is empty";
+                errorText = "Add tests from web app";
             } else {
                 statusText = "";
+                errorText = null;
                 selectedIndex = 0;
             }
-        } else if (responseCode == 404) {
-            errorText = "Invalid PIN";
-            statusText = "Check team PIN";
+        } else if (responseCode == 404 || responseCode == 403) {
+            // PIN no longer valid, or no longer have access → clear stored credentials and re-login
+            Storage.deleteValue("teamPin");
+            Storage.deleteValue("teamName");
+            var msg = (data != null && data instanceof Dictionary && data["message"] != null)
+                ? data["message"] : (responseCode == 404 ? "PIN not found" : "Access denied");
+            var codeView = new PersonalCodeView();
+            codeView.isLoginMode = true;
+            codeView.statusText = msg;
+            var codeDelegate = new PersonalCodeDelegate(codeView, null, null, true);
+            WatchUi.switchToView(codeView, codeDelegate, WatchUi.SLIDE_RIGHT);
+            return;
         } else {
             errorText = "Error " + responseCode.toString();
             statusText = "Try again";

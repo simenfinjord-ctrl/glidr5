@@ -71,6 +71,10 @@ type TestEntry = {
   feelingRank: number | null;
   kickRank: number | null;
   raceSkiId: number | null;
+  grindType: string | null;
+  grindStone: string | null;
+  grindPattern: string | null;
+  grindExtraParams: string | null;
 };
 
 type RaceSki = {
@@ -221,6 +225,7 @@ export default function TestDetail() {
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
 
   const [showReviewRunsheet, setShowReviewRunsheet] = useState(false);
+  const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>(["grindType"]);
 
   const runsheetMutation = useMutation({
     mutationFn: async ({ results, bracket }: { results: BracketResult[]; bracket: any[][] }) => {
@@ -388,6 +393,36 @@ export default function TestDetail() {
   const isGrind = test.testType === "Grind";
   const isClassic = test.testType === "Classic";
   const grindParams = isGrind && test.grindParameters ? (() => { try { return JSON.parse(test.grindParameters); } catch { return {}; } })() : {};
+
+  // Grind column chooser — discover extra param keys from entries
+  function parseExtraParams(json: string | null): Record<string, string> {
+    if (!json) return {};
+    try { return JSON.parse(json); } catch { return {}; }
+  }
+  const grindExtraParamKeys = useMemo(() => {
+    if (!isGrind) return [];
+    const keys = new Set<string>();
+    for (const e of sortedEntries) {
+      for (const k of Object.keys(parseExtraParams(e.grindExtraParams))) keys.add(k);
+    }
+    return Array.from(keys);
+  }, [isGrind, sortedEntries]);
+  const allGrindCols = useMemo(
+    () => ["grindType", "grindStone", "grindPattern", ...grindExtraParamKeys],
+    [grindExtraParamKeys]
+  );
+  const GRIND_COL_LABELS: Record<string, string> = { grindType: "Grind", grindStone: "Stone", grindPattern: "Pattern" };
+  function getEntryGrindValue(entry: TestEntry, col: string): string | null {
+    if (col === "grindType") return entry.grindType || null;
+    if (col === "grindStone") return entry.grindStone || null;
+    if (col === "grindPattern") return entry.grindPattern || null;
+    return parseExtraParams(entry.grindExtraParams)[col] ?? null;
+  }
+  function toggleGrindCol(col: string) {
+    setVisibleGrindCols((prev) =>
+      prev.includes(col) ? prev.filter((c) => c !== col) : [...prev, col]
+    );
+  }
   const testTypeBadgeClass = test.testType === "Glide" ? "fs-badge-glide" : test.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure";
 
   return (
@@ -739,6 +774,33 @@ export default function TestDetail() {
               )}
             </div>
           </div>
+          {/* Grind column chooser */}
+          {isGrind && allGrindCols.length > 0 && (
+            <div className="mb-4 flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mr-1">Vis per ski:</span>
+              {allGrindCols.map((col) => {
+                const active = visibleGrindCols.includes(col);
+                const label = GRIND_COL_LABELS[col] ?? col;
+                return (
+                  <button
+                    key={col}
+                    type="button"
+                    onClick={() => toggleGrindCol(col)}
+                    className={cn(
+                      "rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 transition-colors",
+                      active
+                        ? "bg-violet-600 text-white ring-violet-600"
+                        : "bg-muted text-muted-foreground ring-border hover:ring-violet-400 hover:text-foreground"
+                    )}
+                    data-testid={`toggle-grind-col-${col}`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {sortedEntries.length === 0 ? (
             <p className="text-sm text-muted-foreground" data-testid="empty-entries">
               No entries recorded.
@@ -751,6 +813,9 @@ export default function TestDetail() {
                     <th className="pb-3 pr-3">Ski</th>
                     {!isGrind && <th className="pb-3 pr-3">Product</th>}
                     {!isGrind && <th className="pb-3 pr-3">Method</th>}
+                    {isGrind && visibleGrindCols.map((col) => (
+                      <th key={col} className="pb-3 pr-3">{GRIND_COL_LABELS[col] ?? col}</th>
+                    ))}
                     {distLabels.map((label, i) => (
                       <th key={i} className="pb-3 pr-3">
                         {(label?.trim() || `Round ${i + 1}`)} (cm)
@@ -807,6 +872,11 @@ export default function TestDetail() {
                             {hideDetails ? "" : (entry.methodology || "—")}
                           </td>
                         )}
+                        {isGrind && visibleGrindCols.map((col) => (
+                          <td key={col} className="py-3 pr-3 text-sm text-muted-foreground" data-testid={`text-grind-${col}-${entry.id}`}>
+                            {getEntryGrindValue(entry, col) ?? <span className="opacity-40">—</span>}
+                          </td>
+                        ))}
                         {rounds.map((rr, roundIdx) => (
                           <td key={`res-${roundIdx}`} className="py-3 pr-3 font-mono text-sm" data-testid={`text-result-${roundIdx}-${entry.id}`}>
                             {rr.result ?? "—"}

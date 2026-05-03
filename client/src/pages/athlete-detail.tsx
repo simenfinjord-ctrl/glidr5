@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, useSearch } from "wouter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
@@ -188,10 +188,11 @@ type UserItem = {
 
 export default function AthleteDetail() {
   const [, params] = useRoute("/raceskis/:id");
-  const [location, navigate] = useLocation();
+  const [, navigate] = useLocation();
+  const search = useSearch();
   const athleteId = params?.id ? parseInt(params.id) : null;
   const { user, can } = useAuth();
-  const isAnalyticsView = new URLSearchParams(window.location.search).get("view") === "analytics";
+  const isAnalyticsView = new URLSearchParams(search).get("view") === "analytics";
   const { toast } = useToast();
 
   const [skiDialogOpen, setSkiDialogOpen] = useState(false);

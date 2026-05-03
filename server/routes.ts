@@ -2387,6 +2387,76 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  // Grind profile test history — returns tests whose entries match this profile's grind params
+  app.get("/api/grind-profiles/:id/tests", requirePermission("grinding", "view"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const profileId = parseInt(req.params.id);
+    const profile = await storage.getGrindProfile(profileId);
+    if (!profile) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(profile, req)) return res.status(403).json({ message: "Forbidden" });
+
+    const { pool: pg } = await import("./db");
+    // Find test entries matching this profile's grindType+stone+pattern, then join tests + weather
+    const result = await (pg as any).query(
+      `SELECT DISTINCT
+         t.id, t.date, t.location, t.test_name, t.weather_id, t.test_type, t.notes,
+         t.distance_labels, t.distance_label_0km, t.distance_label_xkm,
+         t.series_id, t.created_by_name, t.created_at, t.group_scope,
+         w.air_temperature_c, w.snow_temperature_c, w.humidity, w.weather_type
+       FROM test_entries te
+       JOIN tests t ON t.id = te.test_id
+       LEFT JOIN daily_weather w ON w.id = t.weather_id
+       WHERE te.team_id = $1
+         AND te.grind_type = $2
+         AND te.grind_stone = $3
+         AND te.grind_pattern = $4
+       ORDER BY t.date DESC, t.id DESC`,
+      [teamId, profile.grindType, profile.stone, profile.pattern]
+    );
+
+    // For each test, fetch its entries
+    const testIds: number[] = result.rows.map((r: any) => r.id);
+    let entriesByTestId: Record<number, any[]> = {};
+    if (testIds.length > 0) {
+      const entryRows = await (pg as any).query(
+        `SELECT te.*, rs.model as ski_model, rs.brand as ski_brand
+         FROM test_entries te
+         LEFT JOIN race_skis rs ON rs.id = te.race_ski_id
+         WHERE te.test_id = ANY($1) AND te.team_id = $2
+           AND te.grind_type = $3 AND te.grind_stone = $4 AND te.grind_pattern = $5
+         ORDER BY te.ski_number ASC`,
+        [testIds, teamId, profile.grindType, profile.stone, profile.pattern]
+      );
+      for (const e of entryRows.rows) {
+        if (!entriesByTestId[e.test_id]) entriesByTestId[e.test_id] = [];
+        entriesByTestId[e.test_id].push({
+          id: e.id, testId: e.test_id, skiNumber: e.ski_number,
+          productId: e.product_id, raceSkiId: e.race_ski_id,
+          skiModel: e.ski_model, skiBrand: e.ski_brand,
+          methodology: e.methodology,
+          result0kmCmBehind: e.result_0km_cm_behind, rank0km: e.rank_0km,
+          resultXkmCmBehind: e.result_xkm_cm_behind, rankXkm: e.rank_xkm,
+          results: e.results, feelingRank: e.feeling_rank, kickRank: e.kick_rank,
+        });
+      }
+    }
+
+    const tests = result.rows.map((r: any) => ({
+      id: r.id, date: r.date, location: r.location, testName: r.test_name,
+      weatherId: r.weather_id, testType: r.test_type, notes: r.notes,
+      distanceLabels: r.distance_labels, distanceLabel0km: r.distance_label_0km,
+      distanceLabelXkm: r.distance_label_xkm, seriesId: r.series_id,
+      createdByName: r.created_by_name, createdAt: r.created_at, groupScope: r.group_scope,
+      weather: r.weather_id ? {
+        airTemperatureC: r.air_temperature_c, snowTemperatureC: r.snow_temperature_c,
+        humidity: r.humidity, weatherType: r.weather_type,
+      } : null,
+      entries: entriesByTestId[r.id] || [],
+    }));
+
+    res.json({ profile, tests });
+  });
+
   // Admin stats
   app.get("/api/admin/stats", requireAuth, async (req, res) => {
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });

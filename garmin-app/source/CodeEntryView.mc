@@ -25,13 +25,14 @@ class CodeEntryView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, h * 0.28, Graphics.FONT_XTINY, statusText, Graphics.TEXT_JUSTIFY_CENTER);
 
-        var digitWidth = 36;
-        var totalWidth = digitWidth * 4 + 10;
+        var digitWidth = Ld.dw(w);
+        var gap = Ld.dgap(w);
+        var totalWidth = digitWidth * 4 + gap;
         var startX = cx - totalWidth / 2;
         var digitY = h * 0.45;
 
         for (var i = 0; i < 4; i++) {
-            var dx = startX + i * digitWidth + (i >= 2 ? 10 : 0);
+            var dx = startX + i * digitWidth + (i >= 2 ? gap : 0);
             var textX = dx + digitWidth / 2;
 
             // Active digit: white, others: gray
@@ -46,7 +47,7 @@ class CodeEntryView extends WatchUi.View {
 
             // Underline for active digit only
             if (i == cursorPos) {
-                var underlineY = digitY + 30;
+                var underlineY = digitY + (h * 0.07).toNumber();
                 var underlineHalfW = 10;
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
                 dc.setPenWidth(2);

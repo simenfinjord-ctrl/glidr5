@@ -55,13 +55,14 @@ class PersonalCodeView extends WatchUi.View {
         dc.drawText(cx, h * 0.35, Graphics.FONT_XTINY, labelText, Graphics.TEXT_JUSTIFY_CENTER);
 
         // ── Digit boxes ─────────────────────────────────────────
-        var digitWidth = 36;
-        var totalWidth = digitWidth * 4 + 10;
+        var digitWidth = Ld.dw(w);
+        var gap = Ld.dgap(w);
+        var totalWidth = digitWidth * 4 + gap;
         var startX = cx - totalWidth / 2;
         var digitY = h * 0.45;
 
         for (var i = 0; i < 4; i++) {
-            var dx = startX + i * digitWidth + (i >= 2 ? 10 : 0);
+            var dx = startX + i * digitWidth + (i >= 2 ? gap : 0);
             var textX = dx + digitWidth / 2;
 
             if (i == cursorPos) {
@@ -74,7 +75,7 @@ class PersonalCodeView extends WatchUi.View {
                 digits[i].toString(), Graphics.TEXT_JUSTIFY_CENTER);
 
             if (i == cursorPos) {
-                var underlineY = digitY + 30;
+                var underlineY = digitY + (h * 0.07).toNumber();
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
                 dc.setPenWidth(2);
                 dc.drawLine(textX - 10, underlineY, textX + 10, underlineY);

@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
@@ -68,6 +68,25 @@ type GrindProfile = {
 };
 
 type RoundResult = { result: number | null; rank: number | null };
+
+type ProfileTestEntry = {
+  id: number; testId: number; skiNumber: number;
+  productId: number | null; raceSkiId: number | null;
+  skiModel: string | null; skiBrand: string | null;
+  methodology: string;
+  result0kmCmBehind: number | null; rank0km: number | null;
+  resultXkmCmBehind: number | null; rankXkm: number | null;
+  results: string | null; feelingRank: number | null; kickRank: number | null;
+};
+type ProfileTest = {
+  id: number; date: string; location: string; testName: string | null;
+  weatherId: number | null; testType: string; notes: string | null;
+  distanceLabels: string | null; distanceLabel0km: string | null; distanceLabelXkm: string | null;
+  seriesId: number | null; createdByName: string; createdAt: string; groupScope: string;
+  weather: { airTemperatureC: number; snowTemperatureC: number; humidity: number | null; weatherType: string | null } | null;
+  entries: ProfileTestEntry[];
+};
+type ProfileTestsResponse = { profile: GrindProfile; tests: ProfileTest[] };
 
 function getDistanceLabels(test: Test): string[] {
   if (test.distanceLabels) {
@@ -368,11 +387,13 @@ function GrindProfileCard({
   onEdit,
   onDuplicate,
   onDelete,
+  onViewResults,
 }: {
   profile: GrindProfile;
   onEdit: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onViewResults: () => void;
 }) {
   const extra = parseExtraParams(profile.extraParams);
   const raValue = extra["ra_value"];
@@ -382,9 +403,14 @@ function GrindProfileCard({
     <Card className="fs-card rounded-2xl p-4 sm:p-5" data-testid={`card-grind-profile-${profile.id}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-          <span className="text-base font-semibold text-foreground truncate" data-testid={`text-grind-profile-name-${profile.id}`}>
+          <button
+            type="button"
+            onClick={onViewResults}
+            className="text-left text-base font-semibold text-foreground hover:text-violet-600 transition-colors truncate"
+            data-testid={`text-grind-profile-name-${profile.id}`}
+          >
             {profile.name}
-          </span>
+          </button>
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-200">
               {profile.grindType}
@@ -417,6 +443,9 @@ function GrindProfileCard({
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <Button variant="ghost" size="sm" onClick={onViewResults} data-testid={`button-view-results-grind-profile-${profile.id}`} title="View test results">
+            <BarChart2 className="h-4 w-4 text-violet-600" />
+          </Button>
           <Button variant="ghost" size="sm" onClick={onDuplicate} data-testid={`button-duplicate-grind-profile-${profile.id}`} title="Duplicate profile">
             <Copy className="h-4 w-4" />
           </Button>
@@ -438,6 +467,202 @@ function GrindProfileCard({
   );
 }
 
+// ─── Grind Profile Detail Dialog ──────────────────────────────────────────────
+
+function GrindProfileDetailDialog({
+  profile,
+  open,
+  onClose,
+}: {
+  profile: GrindProfile | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { data, isLoading } = useQuery<ProfileTestsResponse>({
+    queryKey: [`/api/grind-profiles/${profile?.id}/tests`],
+    queryFn: async () => {
+      const res = await fetch(`/api/grind-profiles/${profile!.id}/tests`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load");
+      return res.json();
+    },
+    enabled: open && profile != null,
+  });
+
+  const tests = data?.tests ?? [];
+
+  function getDistLabels(test: ProfileTest): string[] {
+    if (test.distanceLabels) {
+      try {
+        const p = JSON.parse(test.distanceLabels);
+        if (Array.isArray(p) && p.length > 0) return p;
+      } catch {}
+    }
+    const labels = [test.distanceLabel0km || "0 km"];
+    if (test.distanceLabelXkm) labels.push(test.distanceLabelXkm);
+    return labels;
+  }
+
+  function getEntryResults(entry: ProfileTestEntry, numRounds: number): RoundResult[] {
+    if (entry.results) {
+      try {
+        const p = JSON.parse(entry.results);
+        if (Array.isArray(p)) {
+          while (p.length < numRounds) p.push({ result: null, rank: null });
+          return p.slice(0, numRounds);
+        }
+      } catch {}
+    }
+    const results: RoundResult[] = [{ result: entry.result0kmCmBehind, rank: entry.rank0km }];
+    if (numRounds > 1) results.push({ result: entry.resultXkmCmBehind ?? null, rank: entry.rankXkm ?? null });
+    while (results.length < numRounds) results.push({ result: null, rank: null });
+    return results;
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-violet-600" />
+            {profile?.name}
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Profile params summary */}
+        {profile && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
+              {profile.grindType}
+            </span>
+            {profile.stone && (
+              <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                Stone: {profile.stone}
+              </span>
+            )}
+            {profile.pattern && (
+              <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                Pattern: {profile.pattern}
+              </span>
+            )}
+            {(() => {
+              const extra = parseExtraParams(profile.extraParams);
+              return Object.entries(extra).map(([k, v]) => (
+                <span key={k} className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-200">
+                  {k === "ra_value" ? "RA" : k}: {v}
+                </span>
+              ));
+            })()}
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">Loading test results…</div>
+        ) : tests.length === 0 ? (
+          <div className="py-8 text-center">
+            <Disc3 className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+            <p className="text-sm text-muted-foreground">No tests found with this grind profile.</p>
+            <p className="text-xs text-muted-foreground mt-1">Tests using the same grind type, stone and pattern will appear here.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <BarChart2 className="h-3.5 w-3.5" />
+              <span>{tests.length} test{tests.length !== 1 ? "s" : ""} with this grind</span>
+            </div>
+            {tests.map((test) => {
+              const distLabels = getDistLabels(test);
+              return (
+                <Card key={test.id} className="fs-card rounded-xl p-3 sm:p-4" data-testid={`card-grind-detail-test-${test.id}`}>
+                  {/* Test header */}
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <AppLink href={`/tests/${test.id}`} testId={`link-grind-detail-test-${test.id}`}>
+                        <span className="font-semibold text-sm hover:text-violet-600 transition-colors cursor-pointer">
+                          {test.location}
+                        </span>
+                      </AppLink>
+                      <span className="text-xs text-muted-foreground">{test.date}</span>
+                      {test.testName && (
+                        <span className="text-xs text-muted-foreground italic">"{test.testName}"</span>
+                      )}
+                    </div>
+                    {/* Weather badge */}
+                    {test.weather && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
+                          <Wind className="h-2.5 w-2.5" /> Air {test.weather.airTemperatureC}°C
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
+                          <Snowflake className="h-2.5 w-2.5" /> Snow {test.weather.snowTemperatureC}°C
+                        </span>
+                        {test.weather.humidity != null && (
+                          <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            {test.weather.humidity}% RH
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {test.notes && (
+                    <p className="mb-2 text-xs text-muted-foreground italic truncate">{test.notes}</p>
+                  )}
+
+                  {/* Entries table */}
+                  {test.entries.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                            <th className="pb-1.5 pr-3">Ski</th>
+                            {test.entries[0].skiBrand || test.entries[0].skiModel ? (
+                              <th className="pb-1.5 pr-3">Model</th>
+                            ) : null}
+                            {distLabels.map((label, i) => (
+                              <th key={i} className="pb-1.5 pr-3">{label} / Rank</th>
+                            ))}
+                            <th className="pb-1.5">Feel</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {test.entries.map((entry) => {
+                            const rounds = getEntryResults(entry, distLabels.length);
+                            const hasSkiInfo = entry.skiBrand || entry.skiModel;
+                            return (
+                              <tr key={entry.id} className="border-b border-border/20">
+                                <td className="py-1.5 pr-3 font-medium text-xs">{entry.skiNumber}</td>
+                                {hasSkiInfo ? (
+                                  <td className="py-1.5 pr-3 text-xs text-muted-foreground">
+                                    {[entry.skiBrand, entry.skiModel].filter(Boolean).join(" ")}
+                                  </td>
+                                ) : null}
+                                {rounds.map((r, i) => (
+                                  <td key={i} className="py-1.5 pr-3">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs tabular-nums">{r.result ?? "—"}</span>
+                                      <RankBadge rank={r.rank} />
+                                    </div>
+                                  </td>
+                                ))}
+                                <td className="py-1.5">
+                                  {entry.feelingRank ? <RankBadge rank={entry.feelingRank} /> : <span className="text-xs text-muted-foreground">—</span>}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Grinding() {
@@ -452,6 +677,8 @@ export default function Grinding() {
   const [grindSearch, setGrindSearch] = useState("");
   const [grindDialogOpen, setGrindDialogOpen] = useState(false);
   const [editProfile, setEditProfile] = useState<GrindProfile | undefined>();
+  const [detailProfile, setDetailProfile] = useState<GrindProfile | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const { data: allTests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
@@ -840,6 +1067,10 @@ export default function Grinding() {
                   <GrindProfileCard
                     key={profile.id}
                     profile={profile}
+                    onViewResults={() => {
+                      setDetailProfile(profile);
+                      setDetailOpen(true);
+                    }}
                     onEdit={() => {
                       setEditProfile(profile);
                       setGrindDialogOpen(true);
@@ -862,6 +1093,13 @@ export default function Grinding() {
         )}
 
       </div>
+
+      {/* Grind profile detail dialog */}
+      <GrindProfileDetailDialog
+        profile={detailProfile}
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+      />
     </AppShell>
   );
 }

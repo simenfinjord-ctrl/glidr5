@@ -48,11 +48,12 @@ class SettingsView extends WatchUi.View {
 
     function drawToggleItem(dc, w, h, cx, index, label, isOn) {
         var itemY = h * 0.15 + index * (h * 0.155);
+        var itemH = Ld.ih(h);
         var isSelected = (index == selectedIndex);
 
         if (isSelected) {
             dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
-            dc.fillRoundedRectangle(cx - w * 0.42, itemY - 4, w * 0.84, 28, 6);
+            dc.fillRoundedRectangle(cx - Ld.hx(w), itemY - 4, Ld.fw(w), itemH, 6);
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         } else {
             dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
@@ -68,11 +69,12 @@ class SettingsView extends WatchUi.View {
 
     function drawActionItem(dc, w, h, cx, index, label, color) {
         var itemY = h * 0.15 + index * (h * 0.155);
+        var itemH = Ld.ih(h);
         var isSelected = (index == selectedIndex);
 
         if (isSelected) {
             dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
-            dc.fillRoundedRectangle(cx - w * 0.42, itemY - 4, w * 0.84, 28, 6);
+            dc.fillRoundedRectangle(cx - Ld.hx(w), itemY - 4, Ld.fw(w), itemH, 6);
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         } else {
             dc.setColor(color, Graphics.COLOR_TRANSPARENT);

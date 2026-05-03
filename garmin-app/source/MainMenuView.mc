@@ -36,7 +36,6 @@ class MainMenuView extends WatchUi.View {
         var userName = Storage.getValue("userName");
 
         if (teamName != null && userName != null) {
-            // Both team and user name: show both on one header line each
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
             dc.drawText(cx, h * 0.14, Graphics.FONT_XTINY, teamName, Graphics.TEXT_JUSTIFY_CENTER);
             dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
@@ -50,13 +49,13 @@ class MainMenuView extends WatchUi.View {
         }
 
         // ── Menu items ───────────────────────────────────────────
-        // 4 items starting at 29%, spaced 17% apart → last at 80%
+        var itemH = Ld.ih(h);
         for (var i = 0; i < menuItems.size(); i++) {
             var itemY = h * 0.29 + i * (h * 0.165);
 
             if (i == selectedIndex) {
                 dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
-                dc.fillRoundedRectangle(cx - w * 0.42, itemY - 3, w * 0.84, 32, 6);
+                dc.fillRoundedRectangle(cx - Ld.hx(w), itemY - 3, Ld.fw(w), itemH, 6);
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
             } else {
                 dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);

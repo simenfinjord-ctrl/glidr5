@@ -160,6 +160,17 @@ type WeatherItem = {
   airTemperatureC: number | null;
   snowHumidityPct: number | null;
   airHumidityPct: number | null;
+  clouds: number | null;
+  visibility: string | null;
+  wind: string | null;
+  precipitation: string | null;
+  artificialSnow: string | null;
+  naturalSnow: string | null;
+  grainSize: string | null;
+  snowHumidityType: string | null;
+  trackHardness: string | null;
+  testQuality: number | null;
+  snowType: string | null;
   groupScope: string;
 };
 
@@ -180,7 +191,7 @@ export default function AthleteDetail() {
   const [location, navigate] = useLocation();
   const athleteId = params?.id ? parseInt(params.id) : null;
   const { user, can } = useAuth();
-  const isAnalyticsView = location.includes("view=analytics");
+  const isAnalyticsView = new URLSearchParams(window.location.search).get("view") === "analytics";
   const { toast } = useToast();
 
   const [skiDialogOpen, setSkiDialogOpen] = useState(false);
@@ -2941,15 +2952,26 @@ function TestListView({ tests, skiIds, allSkis, activeTestColumns, weather = [] 
                       {test.testType}
                     </span>
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-muted-foreground text-[11px]">
+                  <td className="px-3 py-2 text-[10px]">
                     {test.weatherId != null && weatherById.get(test.weatherId) ? (
                       (() => {
                         const w = weatherById.get(test.weatherId!)!;
-                        const snow = w.snowTemperatureC != null ? `${w.snowTemperatureC}°` : null;
-                        const air = w.airTemperatureC != null ? `${w.airTemperatureC}°` : null;
-                        return snow || air ? <span>{[snow, air].filter(Boolean).join(" / ")}</span> : <span className="opacity-50">—</span>;
+                        const parts: string[] = [];
+                        if (w.snowTemperatureC != null) parts.push(`Snow ${w.snowTemperatureC}°`);
+                        if (w.airTemperatureC != null) parts.push(`Air ${w.airTemperatureC}°`);
+                        if (w.snowHumidityPct != null) parts.push(`SRH ${w.snowHumidityPct}%`);
+                        if (w.airHumidityPct != null) parts.push(`ARH ${w.airHumidityPct}%`);
+                        if (w.wind) parts.push(w.wind);
+                        if (w.snowType) parts.push(w.snowType);
+                        if (w.trackHardness) parts.push(w.trackHardness);
+                        if (w.grainSize) parts.push(w.grainSize);
+                        if (w.precipitation) parts.push(w.precipitation);
+                        if (w.testQuality != null) parts.push(`Q${w.testQuality}/5`);
+                        return parts.length > 0
+                          ? <span className="text-muted-foreground">{parts.join(" · ")}</span>
+                          : <span className="opacity-50">—</span>;
                       })()
-                    ) : <span className="opacity-50">—</span>}
+                    ) : <span className="opacity-50 text-muted-foreground">—</span>}
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {skiCount > 0 ? skiCount : <span className="opacity-50">—</span>}
@@ -3036,15 +3058,30 @@ function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns, weather = [
             </span>
             {test.weatherId != null && weatherMap.get(test.weatherId) && (() => {
               const w = weatherMap.get(test.weatherId!)!;
-              const parts = [
-                w.snowTemperatureC != null ? `Snow ${w.snowTemperatureC}°` : null,
-                w.airTemperatureC != null ? `Air ${w.airTemperatureC}°` : null,
-              ].filter(Boolean);
-              return parts.length > 0 ? (
-                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                  <Thermometer className="h-3 w-3 shrink-0" />
-                  {parts.join(' / ')}
-                </span>
+              const badges: { label: string; value: string; color: string }[] = [];
+              if (w.snowTemperatureC != null) badges.push({ label: "Snow", value: `${w.snowTemperatureC}°C`, color: "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-800" });
+              if (w.airTemperatureC != null) badges.push({ label: "Air", value: `${w.airTemperatureC}°C`, color: "bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-300 ring-orange-200 dark:ring-orange-800" });
+              if (w.snowHumidityPct != null) badges.push({ label: "Snow RH", value: `${w.snowHumidityPct}%`, color: "bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 ring-cyan-200 dark:ring-cyan-800" });
+              if (w.airHumidityPct != null) badges.push({ label: "Air RH", value: `${w.airHumidityPct}%`, color: "bg-slate-50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 ring-slate-200 dark:ring-slate-700" });
+              if (w.wind) badges.push({ label: "Wind", value: w.wind, color: "bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-300 ring-teal-200 dark:ring-teal-800" });
+              if (w.snowType) badges.push({ label: "Snow", value: w.snowType, color: "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 ring-indigo-200 dark:ring-indigo-800" });
+              if (w.trackHardness) badges.push({ label: "Track", value: w.trackHardness, color: "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-800" });
+              if (w.grainSize) badges.push({ label: "Grain", value: w.grainSize, color: "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 ring-violet-200 dark:ring-violet-800" });
+              if (w.precipitation) badges.push({ label: "Precip", value: w.precipitation, color: "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 ring-blue-200 dark:ring-blue-800" });
+              if (w.clouds != null) badges.push({ label: "Clouds", value: `${w.clouds}/8`, color: "bg-muted text-muted-foreground ring-border" });
+              if (w.visibility) badges.push({ label: "Visibility", value: w.visibility, color: "bg-muted text-muted-foreground ring-border" });
+              if (w.naturalSnow) badges.push({ label: "Natural", value: w.naturalSnow, color: "bg-muted text-muted-foreground ring-border" });
+              if (w.artificialSnow) badges.push({ label: "Artificial", value: w.artificialSnow, color: "bg-muted text-muted-foreground ring-border" });
+              if (w.testQuality != null) badges.push({ label: "Quality", value: `${w.testQuality}/5`, color: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800" });
+              return badges.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                  {badges.map((b, i) => (
+                    <span key={i} className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ${b.color}`}>
+                      <span className="opacity-60">{b.label}</span>
+                      <span className="font-semibold">{b.value}</span>
+                    </span>
+                  ))}
+                </div>
               ) : null;
             })()}
             <span className="text-xs text-muted-foreground">{test.createdByName}</span>

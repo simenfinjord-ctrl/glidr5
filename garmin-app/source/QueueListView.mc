@@ -142,7 +142,7 @@ class QueueListView extends WatchUi.View {
 
             if (i == selectedIndex) {
                 dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
-                dc.fillRoundedRectangle(cx - w * 0.44, yPos - 4, w * 0.88, 30, 6);
+                dc.fillRoundedRectangle(cx - Ld.hx(w), yPos - 4, Ld.fw(w), Ld.ih(h), 6);
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
             } else {
                 dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);

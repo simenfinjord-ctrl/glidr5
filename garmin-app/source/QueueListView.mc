@@ -57,16 +57,27 @@ class QueueListView extends WatchUi.View {
                 selectedIndex = 0;
             }
         } else if (responseCode == 404 || responseCode == 403) {
-            // PIN no longer valid, or no longer have access → clear stored credentials and re-login
+            // PIN no longer valid or no longer have access → clear team PIN and force re-auth
             Storage.deleteValue("teamPin");
             Storage.deleteValue("teamName");
             var msg = (data != null && data instanceof Dictionary && data["message"] != null)
                 ? data["message"] : (responseCode == 404 ? "PIN not found" : "Access denied");
-            var codeView = new PersonalCodeView();
-            codeView.isLoginMode = true;
-            codeView.statusText = msg;
-            var codeDelegate = new PersonalCodeDelegate(codeView, null, null, true);
-            WatchUi.switchToView(codeView, codeDelegate, WatchUi.SLIDE_RIGHT);
+            var storedUserCode = Storage.getValue("userCode");
+            if (storedUserCode != null) {
+                // Personal code still valid — skip straight to team PIN entry
+                var pinView = new PinSetupView();
+                pinView.loginUserCode = storedUserCode;
+                pinView.statusText = msg;
+                var pinDelegate = new PinSetupDelegate(pinView, storedUserCode, false);
+                WatchUi.switchToView(pinView, pinDelegate, WatchUi.SLIDE_RIGHT);
+            } else {
+                // No personal code either — full re-login
+                var codeView = new PersonalCodeView();
+                codeView.isLoginMode = true;
+                codeView.statusText = msg;
+                var codeDelegate = new PersonalCodeDelegate(codeView, null, null, true);
+                WatchUi.switchToView(codeView, codeDelegate, WatchUi.SLIDE_RIGHT);
+            }
             return;
         } else {
             errorText = "Error " + responseCode.toString();

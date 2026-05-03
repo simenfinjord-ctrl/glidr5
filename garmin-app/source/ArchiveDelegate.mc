@@ -1,7 +1,8 @@
-// ArchiveDelegate.mc — handles navigation in archive and resumes a session
+// ArchiveDelegate.mc — handles navigation in archive and re-runs a completed session
 
 using Toybox.WatchUi;
 using Toybox.Communications;
+using Toybox.Application.Storage;
 
 class ArchiveDelegate extends WatchUi.BehaviorDelegate {
     var view;
@@ -35,38 +36,63 @@ class ArchiveDelegate extends WatchUi.BehaviorDelegate {
 
         var item = view.items[view.selectedIndex];
         isResuming = true;
+        view.statusText = "Starting...";
         WatchUi.requestUpdate();
 
-        // Try to resume: look up existing watch session for this test
         var itemId = item["id"].toString();
         var url = ServerConfig.BASE_URL + "/api/watch/list/" + view.teamPin + "/start/" + itemId;
 
-        // First restore to active, then start
-        var restoreUrl = ServerConfig.BASE_URL + "/api/watch/queue/" + itemId + "/restore";
-        // Note: we can't chain requests easily in Monkey C, so we just call start directly
-        // The restore will happen server-side when the web user wants it from archive
-        // For watch, just attempt to load the session if it still exists
-        if (item["test_id"] != null) {
-            resumeSession(item);
-        } else {
-            // No test ID — nothing to resume
-            isResuming = false;
-            view.statusText = "Cannot resume";
-            WatchUi.requestUpdate();
+        var body = {};
+        var userCode = Storage.getValue("userCode");
+        if (userCode != null) {
+            body = { "userCode" => userCode };
         }
+
+        Communications.makeWebRequest(
+            url,
+            body,
+            {
+                :method => Communications.HTTP_REQUEST_METHOD_POST,
+                :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,
+                :headers => { "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON }
+            },
+            method(:onStartResponse)
+        );
         return true;
     }
 
-    function resumeSession(item) {
-        var testId = item["test_id"].toString();
-        // Try to find any active watch session for this test via the code entry fallback
-        // Show a "no active session" message — user must restart from code
+    function onStartResponse(responseCode, data) {
         isResuming = false;
-        // Switch to code entry with a hint
-        var codeView = new CodeEntryView();
-        codeView.statusText = "Enter session code\nto resume";
-        var codeDelegate = new CodeEntryDelegate(codeView);
-        WatchUi.switchToView(codeView, codeDelegate, WatchUi.SLIDE_LEFT);
+        view.statusText = "";
+        WatchUi.requestUpdate();
+
+        if (responseCode == 200 && data != null && data instanceof Dictionary) {
+            var code = data["code"];
+            var queueItemId = data["queueItemId"];
+            if (code != null) {
+                var heatView = new HeatView(code);
+                heatView.queueItemId = queueItemId;
+                heatView.teamPin = view.teamPin;
+                heatView.statusText = "Select winner";
+                // Fetch current heat state before showing
+                var heatUrl = ServerConfig.BASE_URL + "/api/runsheet/watch/" + code;
+                Communications.makeWebRequest(
+                    heatUrl,
+                    null,
+                    {
+                        :method => Communications.HTTP_REQUEST_METHOD_GET,
+                        :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON
+                    },
+                    new HeatLoadCallback(heatView, view.teamPin).method(:onResponse)
+                );
+            } else {
+                view.statusText = "No entries yet";
+                WatchUi.requestUpdate();
+            }
+        } else {
+            view.statusText = "Error. Try again.";
+            WatchUi.requestUpdate();
+        }
     }
 
     function onBack() {

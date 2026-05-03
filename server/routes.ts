@@ -4031,8 +4031,8 @@ export async function registerRoutes(
 
     // Check user has access to this team (primary team OR member of team via user_teams)
     if (watchUser.is_admin !== 1) {
-      const teamId: number = team.id;
-      const isOwnTeam = watchUser.team_id === teamId;
+      const teamId: number = Number(team.id);
+      const isOwnTeam = Number(watchUser.team_id) === teamId;
       let isMember = isOwnTeam;
       if (!isMember) {
         const memberRow = await (pool as any).query(
@@ -4084,11 +4084,12 @@ export async function registerRoutes(
     const teamId = teamResult.rows[0].id;
 
     // Validate userCode if provided (query param ?userCode=XXXX)
+    // Only checks team membership — garmin_watch feature is validated at /api/watch/auth time
     const userCode = typeof req.query.userCode === "string" ? req.query.userCode : null;
     if (userCode && /^\d{4}$/.test(userCode)) {
       try {
         const userRow = await (pool as any).query(
-          "SELECT id, is_admin, is_team_admin, garmin_watch, team_id FROM users WHERE watch_code = $1 AND is_active = 1",
+          "SELECT id, is_admin, team_id FROM users WHERE watch_code = $1 AND is_active = 1",
           [userCode]
         );
         const watchUser = userRow.rows[0];
@@ -4096,8 +4097,8 @@ export async function registerRoutes(
           return res.status(403).json({ message: "Personal ID not found" });
         }
         if (watchUser.is_admin !== 1) {
-          // Check team membership
-          const isOwnTeam = watchUser.team_id === teamId;
+          // Only check team membership (garmin_watch access already validated at login)
+          const isOwnTeam = Number(watchUser.team_id) === Number(teamId);
           let isMember = isOwnTeam;
           if (!isMember) {
             const memberRow = await (pool as any).query(
@@ -4109,18 +4110,9 @@ export async function registerRoutes(
           if (!isMember) {
             return res.status(403).json({ message: "No access to this team" });
           }
-          // Check garmin_watch feature gate
-          let enabledAreas: string[] = [];
-          try { enabledAreas = JSON.parse(teamResult.rows[0].enabled_areas ?? "[]"); } catch (_) {}
-          if (!enabledAreas.includes("garmin_watch")) {
-            return res.status(403).json({ message: "Watch access not enabled for this team" });
-          }
-          if (watchUser.is_team_admin !== 1 && !watchUser.garmin_watch) {
-            return res.status(403).json({ message: "Watch Queue access not granted for your account" });
-          }
         }
       } catch (_) {
-        // userCode validation failed silently — still return list
+        // Validation error — still return list to avoid blocking watch access
       }
     }
 

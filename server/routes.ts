@@ -307,9 +307,11 @@ export async function registerRoutes(
   // --- Maintenance mode gate (runs before all other /api routes) ---
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
     if (!maintenanceMode) return next();
-    // Always allow health check, auth, and the maintenance-mode status endpoint
+    // Always allow health check, auth, maintenance-mode status, and Garmin watch endpoints
     const exemptPaths = ["/api/health", "/api/admin/maintenance-mode"];
-    if (exemptPaths.includes(req.path) || req.path.startsWith("/api/auth/")) return next();
+    if (exemptPaths.includes(req.path)) return next();
+    // req.path inside app.use("/api", ...) includes the /api prefix
+    if (req.path.startsWith("/api/auth/") || req.path.startsWith("/api/watch/") || req.path.startsWith("/api/runsheet/watch")) return next();
     // Super Admins always pass through
     if (req.isAuthenticated() && (req.user as any)?.isAdmin === 1) return next();
     const reopenMsg = maintenanceReopenAt
@@ -4088,6 +4090,54 @@ export async function registerRoutes(
     res.json({ items: result.rows });
   });
 
+  // Watch diagnostic endpoint — shows queue status, session state, and config
+  app.get("/api/watch/debug/:pin", async (req, res) => {
+    const { pin } = req.params;
+    const { pool } = await import("./db");
+    const teamResult = await (pool as any).query(
+      `SELECT id, name, watch_pin, enabled_areas FROM teams WHERE watch_pin = $1`, [pin]
+    );
+    if (!teamResult.rows[0]) return res.status(404).json({ message: "Invalid PIN", pin });
+    const team = teamResult.rows[0];
+    const teamId = team.id;
+    let enabledAreas: string[] = [];
+    try { enabledAreas = JSON.parse(team.enabled_areas ?? "[]"); } catch {}
+    const garminEnabled = enabledAreas.includes("garmin_watch");
+
+    const queueResult = await (pool as any).query(
+      `SELECT id, test_id, series_id, test_name, series_name, session_code, status, added_at FROM watch_queue
+       WHERE team_id = $1 ORDER BY added_at DESC LIMIT 20`,
+      [teamId]
+    );
+    const items = queueResult.rows;
+
+    // Check which items have valid sessions
+    const now = new Date().toISOString();
+    const sessionChecks = await Promise.all(items.map(async (item: any) => {
+      let sessionStatus = "no_code";
+      if (item.session_code) {
+        const sess = await getWatchSession(item.session_code);
+        sessionStatus = sess ? "active" : "expired";
+      }
+      let entryCount = 0;
+      if (item.test_id) {
+        try {
+          const ec = await (pool as any).query(`SELECT COUNT(*) FROM test_entries WHERE test_id = $1`, [item.test_id]);
+          entryCount = parseInt(ec.rows[0]?.count ?? "0");
+        } catch {}
+      }
+      return { id: item.id, name: item.test_name || item.series_name, status: item.status, sessionStatus, entryCount, testId: item.test_id, seriesId: item.series_id };
+    }));
+
+    res.json({
+      team: { id: teamId, name: team.name, garminEnabled, watchPin: pin },
+      maintenanceMode,
+      queueItems: sessionChecks,
+      activeSessions: watchSessionsMemory.size,
+      serverTime: now,
+    });
+  });
+
   // Get archive by PIN (Garmin app — last 10 completed)
   app.get("/api/watch/archive/:pin", async (req, res) => {
     const { pin } = req.params;
@@ -4152,7 +4202,7 @@ export async function registerRoutes(
       }
     }
 
-    // 2. Session expired or missing — recreate it from the test's entries
+    // 2. Session expired or missing — recreate from test entries
     if (item.test_id) {
       try {
         const entriesRows = await db.select().from(testEntries).where(eq(testEntries.testId, Number(item.test_id)));
@@ -4166,14 +4216,13 @@ export async function registerRoutes(
             bracket: watchInitBracket(skiPairs),
             createdAt: Date.now(),
             userId: 0,
-            userName: item.added_by_name,  // always the person who added to queue
-            operatorName: resolvedOperatorName, // person logged in on the watch device
+            userName: item.added_by_name,
+            operatorName: resolvedOperatorName,
             testId: Number(item.test_id),
             testInfo: null,
             teamId,
           };
           await saveWatchSession(session);
-          // Update queue item with new code
           await (pool as any).query(
             `UPDATE watch_queue SET session_code = $1 WHERE id = $2`,
             [newCode, item.id]
@@ -4183,7 +4232,48 @@ export async function registerRoutes(
       } catch (_) {}
     }
 
-    // 3. Cannot create session (no entries)
+    // 3. No test_id — try series-based: build ski pairs from series pairLabels
+    if (item.series_id) {
+      try {
+        const seriesRows = await db.select({ pairLabels: testSkiSeries.pairLabels, name: testSkiSeries.name })
+          .from(testSkiSeries).where(eq(testSkiSeries.id, Number(item.series_id)));
+        const seriesRow = seriesRows[0];
+        if (seriesRow?.pairLabels) {
+          const parsed = JSON.parse(seriesRow.pairLabels);
+          const labelKeys = Object.keys(parsed).map(Number).filter(n => !isNaN(n));
+          if (labelKeys.length >= 2) {
+            const skiPairs = labelKeys.sort((a, b) => a - b);
+            const seriesLabels: Record<number, string> = {};
+            for (const k of skiPairs) {
+              const v = parsed[k];
+              if (typeof v === "string" && v.trim()) seriesLabels[k] = v.trim();
+            }
+            const newCode = await generateSessionCode();
+            const session: WatchSession = {
+              code: newCode,
+              skiPairs,
+              skiLabels: seriesLabels,
+              bracket: watchInitBracket(skiPairs),
+              createdAt: Date.now(),
+              userId: 0,
+              userName: item.added_by_name,
+              operatorName: resolvedOperatorName,
+              testId: null,
+              testInfo: null,
+              teamId,
+            };
+            await saveWatchSession(session);
+            await (pool as any).query(
+              `UPDATE watch_queue SET session_code = $1 WHERE id = $2`,
+              [newCode, item.id]
+            );
+            return res.json({ code: newCode, testName: item.test_name, seriesName: item.series_name ?? seriesRow.name, queueItemId: item.id });
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 4. Cannot create session
     res.json({ code: null, testName: item.test_name, seriesName: item.series_name, queueItemId: item.id });
   });
 

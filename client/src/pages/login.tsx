@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { LogIn, Mail, Lock, ArrowLeft, Sun, Moon } from "lucide-react";
+import { LogIn, User, Lock, Mail, ArrowLeft, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 
 const schema = z.object({
-  email: z.string().email("Enter a valid email"),
+  username: z.string().min(1, "Enter your username"),
   password: z.string().min(1, "Enter your password"),
   rememberMe: z.boolean().default(false),
 });
@@ -29,7 +29,7 @@ export default function Login() {
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "", rememberMe: false },
+    defaultValues: { username: "", password: "", rememberMe: false },
   });
 
   return (
@@ -89,7 +89,7 @@ export default function Login() {
                   onSubmit={form.handleSubmit(async (values) => {
                     setIsSubmitting(true);
                     try {
-                      await login(values.email, values.password, values.rememberMe);
+                      await login(values.username, values.password, values.rememberMe);
                       setLocation("/dashboard");
                     } catch (e) {
                       toast({
@@ -105,19 +105,19 @@ export default function Login() {
                 >
                   <FormField
                     control={form.control}
-                    name="email"
+                    name="username"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-foreground/80">Email</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground/80">Username</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                               {...field}
-                              placeholder="name@team.org"
-                              autoComplete="email"
+                              placeholder="Enter your username"
+                              autoComplete="username"
                               className="pl-10 h-11 bg-muted/30 border-border focus:bg-card"
-                              data-testid="input-email"
+                              data-testid="input-username"
                             />
                           </div>
                         </FormControl>

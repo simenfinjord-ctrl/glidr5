@@ -34,6 +34,7 @@ export function parseGroupScopes(groupScope: string): string[] {
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
@@ -169,6 +170,23 @@ export class DatabaseStorage implements IStorage {
       sql`lower(${users.email}) = lower(${email})`
     );
     return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT * FROM users WHERE lower(username) = lower($1) LIMIT 1`,
+      [username]
+    );
+    if (!result.rows[0]) return undefined;
+    const r = result.rows[0];
+    return {
+      id: r.id, email: r.email, password: r.password, name: r.name,
+      groupScope: r.group_scope, isAdmin: r.is_admin, isTeamAdmin: r.is_team_admin,
+      teamId: r.team_id, activeTeamId: r.active_team_id, permissions: r.permissions,
+      isActive: r.is_active, isBlindTester: r.is_blind_tester, garminWatch: r.garmin_watch,
+      failedAttempts: r.failed_attempts, loginLocked: r.login_locked, watchCode: r.watch_code,
+    } as User;
   }
 
   async createUser(user: InsertUser): Promise<User> {

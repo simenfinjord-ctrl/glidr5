@@ -94,12 +94,12 @@ export async function setupAuth(app: Express) {
 
   passport.use(
     new LocalStrategy(
-      { usernameField: "email" },
-      async (email, password, done) => {
+      { usernameField: "username" },
+      async (username, password, done) => {
         try {
-          const user = await storage.getUserByEmail(email);
+          const user = (await storage.getUserByUsername(username)) ?? (await storage.getUserByEmail(username));
           if (!user) {
-            return done(null, false, { message: "No user found for that email." });
+            return done(null, false, { message: "Invalid username or password." });
           }
           if (user.isActive === 0) {
             return done(null, false, { message: "Account is deactivated. Contact your administrator." });

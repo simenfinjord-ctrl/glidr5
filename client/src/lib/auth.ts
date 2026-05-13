@@ -43,8 +43,8 @@ export function useAuth() {
     enabled: !!user,
   });
 
-  const login = async (email: string, password: string, rememberMe?: boolean) => {
-    const res = await apiRequest("POST", "/api/auth/login", { email, password, rememberMe });
+  const login = async (username: string, password: string, rememberMe?: boolean) => {
+    const res = await apiRequest("POST", "/api/auth/login", { username, password, rememberMe });
     const data = await res.json();
     await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     return data;

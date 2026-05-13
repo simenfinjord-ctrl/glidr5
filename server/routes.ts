@@ -290,6 +290,9 @@ export async function registerRoutes(
       );
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_extra_params TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS is_paused INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
+      UPDATE users SET username = email WHERE username IS NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS users_username_idx ON users(username);
       CREATE TABLE IF NOT EXISTS inbox_messages (
         id SERIAL PRIMARY KEY,
         to_user_id INTEGER NOT NULL,
@@ -813,6 +816,65 @@ export async function registerRoutes(
       });
     } catch (_) {}
     res.json({ ok: true });
+  });
+
+  // Product test history
+  app.get("/api/products/:id/tests", requirePermission("products", "view"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const productId = parseInt(req.params.id);
+    const product = await storage.getProduct(productId);
+    if (!product) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(product, req)) return res.status(403).json({ message: "Forbidden" });
+
+    const { pool: pg } = await import("./db");
+    // Find tests where at least one entry references this product (directly or in additional_product_ids)
+    const result = await (pg as any).query(
+      `SELECT DISTINCT
+         t.id, t.date, t.location, t.test_name, t.test_type, t.notes, t.weather_id,
+         w.air_temperature_c, w.snow_temperature_c
+       FROM test_entries te
+       JOIN tests t ON t.id = te.test_id
+       LEFT JOIN daily_weather w ON w.id = t.weather_id
+       WHERE t.team_id = $1
+         AND (
+           te.product_id = $2
+           OR te.additional_product_ids LIKE $3
+         )
+       ORDER BY t.date DESC, t.id DESC`,
+      [teamId, productId, `%${productId}%`]
+    );
+
+    const testIds: number[] = result.rows.map((r: any) => r.id);
+    let entriesByTestId: Record<number, any[]> = {};
+    if (testIds.length > 0) {
+      const entryRows = await (pg as any).query(
+        `SELECT id, test_id, ski_number, product_id, additional_product_ids,
+                result_0km_cm_behind, rank_0km, result_xkm_cm_behind, rank_xkm, results, feeling_rank
+         FROM test_entries
+         WHERE test_id = ANY($1)
+           AND (product_id = $2 OR additional_product_ids LIKE $3)
+         ORDER BY ski_number ASC`,
+        [testIds, productId, `%${productId}%`]
+      );
+      for (const e of entryRows.rows) {
+        if (!entriesByTestId[e.test_id]) entriesByTestId[e.test_id] = [];
+        entriesByTestId[e.test_id].push({
+          id: e.id, skiNumber: e.ski_number,
+          result0kmCmBehind: e.result_0km_cm_behind, rank0km: e.rank_0km,
+          resultXkmCmBehind: e.result_xkm_cm_behind, rankXkm: e.rank_xkm,
+          results: e.results, feelingRank: e.feeling_rank,
+        });
+      }
+    }
+
+    const tests = result.rows.map((r: any) => ({
+      id: r.id, date: r.date, location: r.location, testName: r.test_name,
+      testType: r.test_type, notes: r.notes,
+      weather: r.weather_id ? { airTemperatureC: r.air_temperature_c, snowTemperatureC: r.snow_temperature_c } : null,
+      entries: entriesByTestId[r.id] || [],
+    }));
+
+    res.json({ tests });
   });
 
   app.post("/api/products/bulk-assign-group", requirePermission("products", "edit"), async (req, res) => {
@@ -2397,21 +2459,24 @@ export async function registerRoutes(
 
     const { pool: pg } = await import("./db");
     // Find test entries matching this profile's grindType+stone+pattern, then join tests + weather
+    // Use ILIKE for case-insensitive matching; treat empty profile fields as "match NULL or empty"
+    const stoneIsEmpty = !profile.stone;
+    const patternIsEmpty = !profile.pattern;
     const result = await (pg as any).query(
       `SELECT DISTINCT
          t.id, t.date, t.location, t.test_name, t.weather_id, t.test_type, t.notes,
          t.distance_labels, t.distance_label_0km, t.distance_label_xkm,
          t.series_id, t.created_by_name, t.created_at, t.group_scope,
-         w.air_temperature_c, w.snow_temperature_c, w.humidity, w.weather_type
+         w.air_temperature_c, w.snow_temperature_c, w.air_humidity_pct as humidity, w.snow_type as weather_type
        FROM test_entries te
        JOIN tests t ON t.id = te.test_id
        LEFT JOIN daily_weather w ON w.id = t.weather_id
        WHERE te.team_id = $1
-         AND te.grind_type = $2
-         AND te.grind_stone = $3
-         AND te.grind_pattern = $4
+         AND te.grind_type ILIKE $2
+         AND ($3::boolean OR te.grind_stone ILIKE $4)
+         AND ($5::boolean OR te.grind_pattern ILIKE $6)
        ORDER BY t.date DESC, t.id DESC`,
-      [teamId, profile.grindType, profile.stone, profile.pattern]
+      [teamId, profile.grindType, stoneIsEmpty, profile.stone || '', patternIsEmpty, profile.pattern || '']
     );
 
     // For each test, fetch its entries
@@ -2423,9 +2488,11 @@ export async function registerRoutes(
          FROM test_entries te
          LEFT JOIN race_skis rs ON rs.id = te.race_ski_id
          WHERE te.test_id = ANY($1) AND te.team_id = $2
-           AND te.grind_type = $3 AND te.grind_stone = $4 AND te.grind_pattern = $5
+           AND te.grind_type ILIKE $3
+           AND ($4::boolean OR te.grind_stone ILIKE $5)
+           AND ($6::boolean OR te.grind_pattern ILIKE $7)
          ORDER BY te.ski_number ASC`,
-        [testIds, teamId, profile.grindType, profile.stone, profile.pattern]
+        [testIds, teamId, profile.grindType, stoneIsEmpty, profile.stone || '', patternIsEmpty, profile.pattern || '']
       );
       for (const e of entryRows.rows) {
         if (!entriesByTestId[e.test_id]) entriesByTestId[e.test_id] = [];
@@ -2437,6 +2504,8 @@ export async function registerRoutes(
           result0kmCmBehind: e.result_0km_cm_behind, rank0km: e.rank_0km,
           resultXkmCmBehind: e.result_xkm_cm_behind, rankXkm: e.rank_xkm,
           results: e.results, feelingRank: e.feeling_rank, kickRank: e.kick_rank,
+          grindType: e.grind_type, grindStone: e.grind_stone,
+          grindPattern: e.grind_pattern, grindExtraParams: e.grind_extra_params,
         });
       }
     }
@@ -2774,6 +2843,44 @@ export async function registerRoutes(
     const { pool } = await import("./db");
     await (pool as any).query(`DELETE FROM user_sessions WHERE sess::jsonb -> 'passport' ->> 'user' = $1`, [String(targetId)]);
     res.json({ ok: true });
+  });
+
+  // ── User history (SA only) ──────────────────────────────────────────────────
+  app.get("/api/admin/users/:id/history", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const targetId = parseInt(req.params.id);
+    const { pool: pg } = await import("./db");
+
+    const [loginResult, activityResult] = await Promise.all([
+      (pg as any).query(
+        `SELECT id, user_id, email, name, login_at, ip_address, action, details
+         FROM login_logs WHERE user_id = $1 ORDER BY login_at DESC LIMIT 200`,
+        [targetId]
+      ),
+      (pg as any).query(
+        `SELECT id, user_id, user_name, action, entity_type, entity_id, details, created_at, team_id
+         FROM activity_logs WHERE user_id = $1 ORDER BY created_at DESC LIMIT 200`,
+        [targetId]
+      ),
+    ]);
+
+    const loginLogs = loginResult.rows.map((r: any) => ({
+      id: r.id, userId: r.user_id, email: r.email, name: r.name,
+      loginAt: r.login_at, ipAddress: r.ip_address, action: r.action, details: r.details,
+    }));
+
+    const activityLogs = activityResult.rows.map((r: any) => ({
+      id: r.id, userId: r.user_id, userName: r.user_name, action: r.action,
+      entityType: r.entity_type, entityId: r.entity_id, details: r.details,
+      createdAt: r.created_at, teamId: r.team_id,
+    }));
+
+    const passwordChanges = activityLogs.filter((l: any) =>
+      l.action === "password_changed" || l.action === "password_reset" || l.entityType === "password"
+    );
+
+    res.json({ loginLogs, activityLogs, passwordChanges });
   });
 
   // ── Security routes (Super Admin only) ─────────────────────────────────────

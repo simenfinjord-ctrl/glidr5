@@ -4656,17 +4656,17 @@ export async function registerRoutes(
 
   // ── Add from picture ──────────────────────────────────────────────────────
 
-  // POST /api/tests/from-picture/analyze — analyze image with Claude vision
+  // POST /api/tests/from-picture/analyze — analyze image with Google Gemini vision (free tier)
   app.post("/api/tests/from-picture/analyze", requireAuth, async (req, res) => {
     const { imageBase64, mimeType } = req.body;
     if (!imageBase64 || !mimeType) {
       return res.status(400).json({ message: "imageBase64 and mimeType required" });
     }
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ message: "ANTHROPIC_API_KEY not configured on server" });
+      return res.status(500).json({ message: "GEMINI_API_KEY not configured on server" });
     }
-    const prompt = `You are analyzing an image of a ski test result sheet or similar test document. Extract all relevant data and return ONLY raw JSON — no markdown, no explanation.
+    const prompt = `You are analyzing an image of a ski test result sheet or similar test document. Extract all relevant data and return ONLY raw JSON — no markdown, no explanation, no code block.
 
 Return a JSON object with this exact structure (use null for missing values):
 {
@@ -4712,36 +4712,28 @@ Return a JSON object with this exact structure (use null for missing values):
   ]
 }`;
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "claude-opus-4-5",
-          max_tokens: 4096,
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "image",
-                  source: { type: "base64", media_type: mimeType, data: imageBase64 },
-                },
-                { type: "text", text: prompt },
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { inline_data: { mime_type: mimeType, data: imageBase64 } },
+                { text: prompt },
               ],
-            },
-          ],
-        }),
-      });
+            }],
+            generationConfig: { temperature: 0, maxOutputTokens: 4096 },
+          }),
+        }
+      );
       if (!response.ok) {
         const errText = await response.text();
         return res.status(500).json({ message: `AI error: ${errText.slice(0, 300)}` });
       }
       const data = await response.json() as any;
-      const text = (data.content?.[0]?.text || "").trim();
+      const text = (data.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
       try {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square } from "lucide-react";
+import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -372,6 +372,7 @@ export default function Products() {
   const [editingProduct, setEditingProduct] = useState<Product | undefined>();
   const [editingDetailsProduct, setEditingDetailsProduct] = useState<Product | undefined>();
   const [deletingProduct, setDeletingProduct] = useState<Product | undefined>();
+  const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkGroup, setBulkGroup] = useState<string>("");
   const { toast } = useToast();
@@ -713,6 +714,7 @@ export default function Products() {
                     onEdit={() => setEditingDetailsProduct(p)}
                     onEditGroups={() => setEditingProduct(p)}
                     onDelete={() => setDeletingProduct(p)}
+                    onViewHistory={() => setHistoryProduct(p)}
                   />
                 ))
               )}
@@ -769,6 +771,12 @@ export default function Products() {
             )}
           </DialogContent>
         </Dialog>
+
+        <ProductTestHistoryDialog
+          product={historyProduct}
+          open={historyProduct != null}
+          onClose={() => setHistoryProduct(null)}
+        />
       </div>
     </AppShell>
   );
@@ -1039,6 +1047,109 @@ function StockRow({ product: p }: { product: Product }) {
   );
 }
 
+type ProductTest = {
+  id: number;
+  date: string;
+  location: string;
+  testName: string | null;
+  testType: string;
+  notes: string | null;
+  weather: { airTemperatureC: number; snowTemperatureC: number } | null;
+  entries: { id: number; skiNumber: number; result0kmCmBehind: number | null; rank0km: number | null; resultXkmCmBehind: number | null; rankXkm: number | null; results: string | null; feelingRank: number | null }[];
+};
+
+function ProductTestHistoryDialog({ product, open, onClose }: { product: Product | null; open: boolean; onClose: () => void }) {
+  const { data, isLoading } = useQuery<{ tests: ProductTest[] }>({
+    queryKey: [`/api/products/${product?.id}/tests`],
+    queryFn: async () => {
+      const res = await fetch(`/api/products/${product!.id}/tests`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load");
+      return res.json();
+    },
+    enabled: open && product != null,
+  });
+
+  const tests = data?.tests ?? [];
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <History className="h-5 w-5 text-amber-600" />
+            Test History — {product?.brand} {product?.name}
+          </DialogTitle>
+        </DialogHeader>
+        {isLoading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">Loading test history…</div>
+        ) : tests.length === 0 ? (
+          <div className="py-8 text-center">
+            <FlaskConical className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+            <p className="text-sm text-muted-foreground">No tests found for this product.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs text-muted-foreground">{tests.length} test{tests.length !== 1 ? "s" : ""} found</p>
+            {tests.map((test) => (
+              <Card key={test.id} className="fs-card rounded-xl p-3 sm:p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a
+                      href={`/tests/${test.id}`}
+                      className="font-semibold text-sm hover:text-amber-600 transition-colors"
+                      data-testid={`link-product-test-${test.id}`}
+                    >
+                      {test.location}
+                    </a>
+                    <span className="text-xs text-muted-foreground">{test.date}</span>
+                    {test.testName && <span className="text-xs text-muted-foreground italic">"{test.testName}"</span>}
+                    <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      {test.testType}
+                    </span>
+                  </div>
+                  {test.weather && (
+                    <div className="flex items-center gap-1">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
+                        <Thermometer className="h-2.5 w-2.5" /> Air {test.weather.airTemperatureC}°C
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
+                        <MapPin className="h-2.5 w-2.5" /> Snow {test.weather.snowTemperatureC}°C
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {test.notes && <p className="mb-2 text-xs text-muted-foreground italic truncate">{test.notes}</p>}
+                {test.entries.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                          <th className="pb-1.5 pr-3">Ski</th>
+                          <th className="pb-1.5 pr-3">Result</th>
+                          <th className="pb-1.5">Rank</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {test.entries.map((e) => (
+                          <tr key={e.id} className="border-b border-border/20">
+                            <td className="py-1 pr-3 font-medium">{e.skiNumber}</td>
+                            <td className="py-1 pr-3 tabular-nums">{e.result0kmCmBehind ?? "—"}</td>
+                            <td className="py-1">{e.rank0km != null ? <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-muted/60 px-1.5 py-0.5 font-bold">{e.rank0km}</span> : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ProductCard({
   product: p,
   isAdmin,
@@ -1047,6 +1158,7 @@ function ProductCard({
   onEdit,
   onEditGroups,
   onDelete,
+  onViewHistory,
 }: {
   product: Product;
   isAdmin: boolean;
@@ -1055,6 +1167,7 @@ function ProductCard({
   onEdit: () => void;
   onEditGroups: () => void;
   onDelete: () => void;
+  onViewHistory: () => void;
 }) {
   const groups = p.groupScope.split(",").map((s) => s.trim()).filter(Boolean);
 
@@ -1106,6 +1219,17 @@ function ProductCard({
             {new Date(p.createdAt).toLocaleDateString()}
           </div>
           <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs text-muted-foreground hover:text-amber-600"
+              data-testid={`button-history-product-${p.id}`}
+              onClick={onViewHistory}
+              title="Test history"
+            >
+              <History className="mr-1 h-3 w-3" />
+              History
+            </Button>
             <Button
               variant="ghost"
               size="sm"

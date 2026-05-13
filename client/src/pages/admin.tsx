@@ -1547,13 +1547,165 @@ function StatCard({ label, value, icon: Icon, color, testId }: { label: string; 
   );
 }
 
+type UserHistoryData = {
+  loginLogs: LoginLog[];
+  activityLogs: ActivityEntry[];
+  passwordChanges: ActivityEntry[];
+};
+
+function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser | null; open: boolean; onClose: () => void }) {
+  const [historyTab, setHistoryTab] = useState<"logins" | "activity" | "passwords">("logins");
+
+  const { data, isLoading } = useQuery<UserHistoryData>({
+    queryKey: [`/api/admin/users/${targetUser?.id}/history`],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/users/${targetUser!.id}/history`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load");
+      return res.json();
+    },
+    enabled: open && targetUser != null,
+  });
+
+  const loginLogs = data?.loginLogs ?? [];
+  const activityLogs = data?.activityLogs ?? [];
+  const passwordChanges = data?.passwordChanges ?? [];
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-violet-600" />
+            History — {targetUser?.name}
+          </DialogTitle>
+        </DialogHeader>
+        {isLoading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">Loading history…</div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {/* Tab switcher */}
+            <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/30 w-fit">
+              {([
+                { id: "logins", label: `Logins (${loginLogs.length})` },
+                { id: "activity", label: `Activity (${activityLogs.length})` },
+                { id: "passwords", label: `Password Changes (${passwordChanges.length})` },
+              ] as const).map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setHistoryTab(t.id)}
+                  className={cn(
+                    "rounded px-3 py-1.5 text-xs font-medium transition-colors",
+                    historyTab === t.id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {historyTab === "logins" && (
+              loginLogs.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No login events found.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <th className="pb-2 pr-3">Date/Time</th>
+                        <th className="pb-2 pr-3">Action</th>
+                        <th className="pb-2">IP Address</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loginLogs.map((l) => (
+                        <tr key={l.id} className="border-b border-border/30">
+                          <td className="py-1.5 pr-3 tabular-nums text-muted-foreground">{new Date(l.loginAt).toLocaleString()}</td>
+                          <td className="py-1.5 pr-3">
+                            <span className={cn(
+                              "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                              l.action === "login" ? "bg-green-50 text-green-700" : "bg-muted text-muted-foreground"
+                            )}>{l.action}</span>
+                          </td>
+                          <td className="py-1.5 text-muted-foreground font-mono">{l.ipAddress || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            )}
+
+            {historyTab === "activity" && (
+              activityLogs.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No activity logs found.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <th className="pb-2 pr-3">Date/Time</th>
+                        <th className="pb-2 pr-3">Action</th>
+                        <th className="pb-2 pr-3">Entity</th>
+                        <th className="pb-2">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activityLogs.map((l) => (
+                        <tr key={l.id} className="border-b border-border/30">
+                          <td className="py-1.5 pr-3 tabular-nums text-muted-foreground">{new Date(l.createdAt).toLocaleString()}</td>
+                          <td className="py-1.5 pr-3">
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{l.action}</span>
+                          </td>
+                          <td className="py-1.5 pr-3 text-muted-foreground">{l.entityType}{l.entityId ? ` #${l.entityId}` : ""}</td>
+                          <td className="py-1.5 text-muted-foreground truncate max-w-[200px]">{l.details || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            )}
+
+            {historyTab === "passwords" && (
+              passwordChanges.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No password change records found.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <th className="pb-2 pr-3">Date/Time</th>
+                        <th className="pb-2">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {passwordChanges.map((l) => (
+                        <tr key={l.id} className="border-b border-border/30">
+                          <td className="py-1.5 pr-3 tabular-nums text-muted-foreground">{new Date(l.createdAt).toLocaleString()}</td>
+                          <td className="py-1.5 text-muted-foreground">{l.details || l.action}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Admin() {
   const { user, isSuperAdmin, canManage } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [createOpen, setCreateOpen] = useState(false);
-const [editUser, setEditUser] = useState<ApiUser | undefined>();
+  const [editUser, setEditUser] = useState<ApiUser | undefined>();
   const [resetUser, setResetUser] = useState<ApiUser | undefined>();
+  const [historyUser, setHistoryUser] = useState<ApiUser | null>(null);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupTeamId, setNewGroupTeamId] = useState<number | undefined>(undefined);
   const [editingGroup, setEditingGroup] = useState<ApiGroup | null>(null);
@@ -2546,6 +2698,16 @@ const [editUser, setEditUser] = useState<ApiUser | undefined>();
                         >
                           <Trash2 className="h-4.5 w-4.5" />
                         </button>
+                        {isSuperAdmin && (
+                          <button
+                            className="rounded p-1 text-violet-500 hover:bg-violet-50"
+                            data-testid={`button-history-user-${u.id}`}
+                            title="View user history"
+                            onClick={() => setHistoryUser(u)}
+                          >
+                            <Activity className="h-4.5 w-4.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -2566,6 +2728,12 @@ const [editUser, setEditUser] = useState<ApiUser | undefined>();
                 {resetUser && <ResetPasswordForm user={resetUser} onDone={() => setResetUser(undefined)} />}
               </DialogContent>
             </Dialog>
+
+            <UserHistoryDialog
+              user={historyUser}
+              open={historyUser != null}
+              onClose={() => setHistoryUser(null)}
+            />
           </div>
         )}
 

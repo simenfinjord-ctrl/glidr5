@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2, LayoutGrid, LayoutList } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
@@ -388,6 +388,100 @@ function GrindProfileForm({
 
 // ─── Grind Profile Card ────────────────────────────────────────────────────────
 
+function GrindProfilesTable({
+  profiles,
+  onViewResults,
+  onEdit,
+  onDuplicate,
+  onDelete,
+}: {
+  profiles: GrindProfile[];
+  onViewResults: (p: GrindProfile) => void;
+  onEdit: (p: GrindProfile) => void;
+  onDuplicate: (p: GrindProfile) => void;
+  onDelete: (p: GrindProfile) => void;
+}) {
+  // Discover all extra param keys across all profiles
+  const allExtraKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const p of profiles) {
+      const extra = parseExtraParams(p.extraParams);
+      for (const k of Object.keys(extra)) keys.add(k);
+    }
+    return Array.from(keys);
+  }, [profiles]);
+
+  return (
+    <Card className="fs-card rounded-2xl overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm" data-testid="table-grind-profiles">
+          <thead>
+            <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/30">
+              <th className="px-3 py-2.5">Name</th>
+              <th className="px-3 py-2.5">Type</th>
+              <th className="px-3 py-2.5">Stone</th>
+              <th className="px-3 py-2.5">Pattern</th>
+              {allExtraKeys.map((k) => (
+                <th key={k} className="px-3 py-2.5">{k === "ra_value" ? "RA" : k}</th>
+              ))}
+              <th className="px-3 py-2.5">Added by</th>
+              <th className="px-3 py-2.5">Date</th>
+              <th className="px-3 py-2.5 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {profiles.map((profile) => {
+              const extra = parseExtraParams(profile.extraParams);
+              return (
+                <tr key={profile.id} className="border-b border-border/40 hover:bg-muted/20 transition-colors" data-testid={`row-grind-profile-${profile.id}`}>
+                  <td className="px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => onViewResults(profile)}
+                      className="font-medium text-foreground hover:text-violet-600 transition-colors text-left"
+                      data-testid={`text-grind-profile-name-list-${profile.id}`}
+                    >
+                      {profile.name}
+                    </button>
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-200">
+                      {profile.grindType}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground text-xs">{profile.stone || "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground text-xs">{profile.pattern || "—"}</td>
+                  {allExtraKeys.map((k) => (
+                    <td key={k} className="px-3 py-2 text-muted-foreground text-xs">{extra[k] ?? "—"}</td>
+                  ))}
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{profile.createdByName}</td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(profile.createdAt)}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center justify-end gap-0.5">
+                      <Button variant="ghost" size="sm" onClick={() => onViewResults(profile)} title="View test results" data-testid={`button-view-results-grind-profile-list-${profile.id}`}>
+                        <BarChart2 className="h-3.5 w-3.5 text-violet-600" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => onDuplicate(profile)} title="Duplicate" data-testid={`button-duplicate-grind-profile-list-${profile.id}`}>
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => onEdit(profile)} title="Edit" data-testid={`button-edit-grind-profile-list-${profile.id}`}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => onDelete(profile)} title="Delete" data-testid={`button-delete-grind-profile-list-${profile.id}`}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
 function GrindProfileCard({
   profile,
   onEdit,
@@ -653,6 +747,14 @@ function GrindProfileDetailDialog({
             <Disc3 className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
             <p className="text-sm text-muted-foreground">Ingen tester funnet med denne slipeprofilen.</p>
             <p className="text-xs text-muted-foreground mt-1">Tester med samme type, stein og mønster vil vises her.</p>
+            {profile && (
+              <div className="mt-3 rounded-lg bg-muted/50 px-3 py-2 text-left text-[11px] text-muted-foreground inline-block">
+                <span className="font-semibold">Søkte på:</span>{" "}
+                Type: <span className="text-foreground">{profile.grindType || "—"}</span>{" · "}
+                Stein: <span className="text-foreground">{profile.stone || "—"}</span>{" · "}
+                Mønster: <span className="text-foreground">{profile.pattern || "—"}</span>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col gap-4">
@@ -776,6 +878,9 @@ export default function Grinding() {
   const [editProfile, setEditProfile] = useState<GrindProfile | undefined>();
   const [detailProfile, setDetailProfile] = useState<GrindProfile | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [grindViewMode, setGrindViewMode] = useState<"grid" | "list">(() => {
+    try { return (localStorage.getItem("glidr-grinds-view-mode") as "grid" | "list") || "grid"; } catch { return "grid"; }
+  });
 
   const { data: allTests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
@@ -1126,26 +1231,48 @@ export default function Grinding() {
         {/* Grinds tab */}
         {tab === "grinds" && (
           <div className="flex flex-col gap-4">
-            {/* Search bar */}
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <Input
-                value={grindSearch}
-                onChange={(e) => setGrindSearch(e.target.value)}
-                placeholder="Search grinds…"
-                className="pl-9"
-                data-testid="input-grind-profile-search"
-              />
-              {grindSearch && (
+            {/* Search bar + view toggle */}
+            <div className="flex items-center gap-2">
+              <div className="relative max-w-sm flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  value={grindSearch}
+                  onChange={(e) => setGrindSearch(e.target.value)}
+                  placeholder="Search grinds…"
+                  className="pl-9"
+                  data-testid="input-grind-profile-search"
+                />
+                {grindSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setGrindSearch("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid="button-clear-grind-search"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center rounded-lg border border-border overflow-hidden shrink-0">
                 <button
                   type="button"
-                  onClick={() => setGrindSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="button-clear-grind-search"
+                  onClick={() => { setGrindViewMode("grid"); try { localStorage.setItem("glidr-grinds-view-mode", "grid"); } catch {} }}
+                  className={cn("px-2.5 py-1.5 transition-colors", grindViewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                  data-testid="button-grinds-view-grid"
+                  title="Grid view"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <LayoutGrid className="h-4 w-4" />
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => { setGrindViewMode("list"); try { localStorage.setItem("glidr-grinds-view-mode", "list"); } catch {} }}
+                  className={cn("px-2.5 py-1.5 transition-colors", grindViewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                  data-testid="button-grinds-view-list"
+                  title="List view"
+                >
+                  <LayoutList className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             {/* Profile list */}
@@ -1158,6 +1285,14 @@ export default function Grinding() {
               <Card className="fs-card rounded-2xl p-6 text-center">
                 <div className="text-sm text-muted-foreground">No grind profiles match your search.</div>
               </Card>
+            ) : grindViewMode === "list" ? (
+              <GrindProfilesTable
+                profiles={filteredProfiles}
+                onViewResults={(profile) => { setDetailProfile(profile); setDetailOpen(true); }}
+                onEdit={(profile) => { setEditProfile(profile); setGrindDialogOpen(true); }}
+                onDuplicate={(profile) => { if (confirm(`Duplicate "${profile.name}"?`)) duplicateProfileMutation.mutate(profile.id); }}
+                onDelete={(profile) => { if (confirm(`Delete "${profile.name}"? This cannot be undone.`)) deleteProfileMutation.mutate(profile.id); }}
+              />
             ) : (
               <div className="flex flex-col gap-3">
                 {filteredProfiles.map((profile) => (
@@ -1201,11 +1336,12 @@ export default function Grinding() {
   );
 }
 
-function GrindTestCard({ test, entries, seriesById, weatherById }: {
+function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles = [] }: {
   test: Test;
   entries: TestEntry[];
   seriesById: Map<number, string>;
   weatherById: Map<number, Weather>;
+  grindProfiles?: GrindProfile[];
 }) {
   const distLabels = getDistanceLabels(test);
   const sortedEntries = [...entries].sort((a, b) => a.skiNumber - b.skiNumber);
@@ -1216,25 +1352,27 @@ function GrindTestCard({ test, entries, seriesById, weatherById }: {
   const extraParamKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const e of sortedEntries) {
-      const ep = parseExtraParams(e.grindExtraParams);
+      const ep = parseExtraParams(e.grindExtraParams ?? null);
       for (const k of Object.keys(ep)) keys.add(k);
     }
     return Array.from(keys);
   }, [sortedEntries]);
 
-  // Available grind columns: grindType is always first (default on), rest optional
+  // Available columns: "name" first (default on), then grindType, stone, pattern, extras (all default off)
   const allGrindCols = useMemo(
-    () => ["grindType", "grindStone", "grindPattern", ...extraParamKeys],
+    () => ["name", "grindType", "grindStone", "grindPattern", ...extraParamKeys],
     [extraParamKeys]
   );
 
-  const GRIND_COL_LABELS: Record<string, string> = {
-    grindType: "Grind",
-    grindStone: "Stone",
-    grindPattern: "Pattern",
+  const colLabels: Record<string, string> = {
+    name: "Slipenavn",
+    grindType: "Type",
+    grindStone: "Stein",
+    grindPattern: "Mønster",
+    ra_value: "RA",
   };
 
-  const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>(["grindType"]);
+  const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>(["name"]);
 
   function toggleGrindCol(col: string) {
     setVisibleGrindCols((prev) =>
@@ -1243,10 +1381,11 @@ function GrindTestCard({ test, entries, seriesById, weatherById }: {
   }
 
   function getEntryGrindValue(entry: TestEntry, col: string): string | null {
+    if (col === "name") return matchProfileName(entry.grindType, entry.grindStone, entry.grindPattern, grindProfiles);
     if (col === "grindType") return entry.grindType || null;
     if (col === "grindStone") return entry.grindStone || null;
     if (col === "grindPattern") return entry.grindPattern || null;
-    const ep = parseExtraParams(entry.grindExtraParams);
+    const ep = parseExtraParams(entry.grindExtraParams ?? null);
     return ep[col] ?? null;
   }
 
@@ -1283,27 +1422,15 @@ function GrindTestCard({ test, entries, seriesById, weatherById }: {
       {/* Grind column chooser */}
       {allGrindCols.length > 0 && (
         <div className="mb-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mr-1">Show per ski:</span>
-          {allGrindCols.map((col) => {
-            const active = visibleGrindCols.includes(col);
-            const label = GRIND_COL_LABELS[col] ?? col;
-            return (
-              <button
-                key={col}
-                type="button"
-                onClick={() => toggleGrindCol(col)}
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 transition-colors",
-                  active
-                    ? "bg-violet-600 text-white ring-violet-600"
-                    : "bg-muted text-muted-foreground ring-border hover:ring-violet-400 hover:text-foreground"
-                )}
-                data-testid={`toggle-grind-col-${col}`}
-              >
-                {label}
-              </button>
-            );
-          })}
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mr-1">Vis per ski:</span>
+          {allGrindCols.map((col) => (
+            <ColToggle
+              key={col}
+              label={colLabels[col] ?? col}
+              active={visibleGrindCols.includes(col)}
+              onClick={() => toggleGrindCol(col)}
+            />
+          ))}
         </div>
       )}
 
@@ -1314,7 +1441,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById }: {
               <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                 <th className="pb-2 pr-3">Ski</th>
                 {visibleGrindCols.map((col) => (
-                  <th key={col} className="pb-2 pr-3">{GRIND_COL_LABELS[col] ?? col}</th>
+                  <th key={col} className="pb-2 pr-3">{colLabels[col] ?? col}</th>
                 ))}
                 {distLabels.map((label, i) => (
                   <th key={i} className="pb-2 pr-3">

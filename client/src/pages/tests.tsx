@@ -374,21 +374,42 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               </div>
             )}
 
-            {/* Products */}
-            {(analysis.products || []).length > 0 && (
-              <div className="rounded-lg border border-border p-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Products ({analysis.products.length})</p>
-                <div className="flex flex-col gap-1.5">
-                  {analysis.products.map((p) => (
-                    <div key={p.skiNumber} className="flex items-center gap-2 text-xs">
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">{p.skiNumber}</span>
-                      <span className="font-medium">{p.brand} {p.name}</span>
-                      <span className="text-muted-foreground">{p.category}</span>
-                    </div>
-                  ))}
+            {/* Products — group by skiNumber so combined products show together */}
+            {(analysis.products || []).length > 0 && (() => {
+              // Build ordered map: skiNumber → product[]
+              const grouped = new Map<number, typeof analysis.products>();
+              for (const p of analysis.products) {
+                const k = Number(p.skiNumber);
+                const list = grouped.get(k) ?? [];
+                list.push(p);
+                grouped.set(k, list);
+              }
+              const rows = Array.from(grouped.entries()).sort(([a], [b]) => a - b);
+              return (
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                    Products ({rows.length} ski{rows.length !== 1 ? "s" : ""}, {analysis.products.length} product{analysis.products.length !== 1 ? "s" : ""})
+                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    {rows.map(([skiNum, prods]) => (
+                      <div key={skiNum} className="flex items-start gap-2 text-xs">
+                        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary mt-0.5">
+                          {skiNum}
+                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          {prods.map((p, i) => (
+                            <span key={i} className="font-medium">
+                              {p.brand} {p.name}
+                              {i < prods.length - 1 && <span className="text-muted-foreground mx-1">+</span>}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Entries */}
             {(analysis.entries || []).length > 0 && (

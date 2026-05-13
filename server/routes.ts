@@ -289,6 +289,9 @@ export async function registerRoutes(
         created_at TEXT NOT NULL
       );
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_extra_params TEXT;
+      ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_type TEXT;
+      ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_stone TEXT;
+      ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_pattern TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS is_paused INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
       UPDATE users SET username = email WHERE username IS NULL;
@@ -2541,11 +2544,11 @@ export async function registerRoutes(
        FROM test_entries te
        JOIN tests t ON t.id = te.test_id
        LEFT JOIN daily_weather w ON w.id = t.weather_id
-       WHERE te.team_id = $1
+       WHERE t.team_id = $1
          AND (
-           te.grind_type ILIKE $2
+           TRIM(LOWER(te.grind_type)) = TRIM(LOWER($2))
            OR (
-             te.grind_type ILIKE $3
+             TRIM(LOWER(te.grind_type)) = TRIM(LOWER($3))
              AND ($4::boolean OR te.grind_stone ILIKE $5)
              AND ($6::boolean OR te.grind_pattern ILIKE $7)
            )
@@ -2561,12 +2564,13 @@ export async function registerRoutes(
       const entryRows = await (pg as any).query(
         `SELECT te.*, rs.model as ski_model, rs.brand as ski_brand
          FROM test_entries te
+         JOIN tests t ON t.id = te.test_id
          LEFT JOIN race_skis rs ON rs.id = te.race_ski_id
-         WHERE te.test_id = ANY($1) AND te.team_id = $2
+         WHERE te.test_id = ANY($1) AND t.team_id = $2
            AND (
-             te.grind_type ILIKE $3
+             TRIM(LOWER(te.grind_type)) = TRIM(LOWER($3))
              OR (
-               te.grind_type ILIKE $4
+               TRIM(LOWER(te.grind_type)) = TRIM(LOWER($4))
                AND ($5::boolean OR te.grind_stone ILIKE $6)
                AND ($7::boolean OR te.grind_pattern ILIKE $8)
              )

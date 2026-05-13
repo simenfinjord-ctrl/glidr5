@@ -4830,7 +4830,7 @@ Return a JSON object with this exact structure (use null for missing values):
         });
         productId = created.id;
       }
-      productMap.set(p.skiNumber, productId);
+      productMap.set(Number(p.skiNumber), productId);
     }
 
     // 3. Create weather if data is present
@@ -4892,7 +4892,7 @@ Return a JSON object with this exact structure (use null for missing values):
       await storage.createEntry({
         testId: test.id,
         skiNumber: e.skiNumber,
-        productId: productMap.get(e.skiNumber) || null,
+        productId: productMap.get(Number(e.skiNumber)) || null,
         freeTextProduct: null,
         additionalProductIds: null,
         methodology: e.methodology || "",

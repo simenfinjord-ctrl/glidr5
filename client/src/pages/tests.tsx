@@ -240,6 +240,8 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
       }
       setCreatedTestId(data.testId);
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/series"] });
       setStep("done");
     } catch (e: any) {
       setErrorMsg(e.message || "Unknown error");

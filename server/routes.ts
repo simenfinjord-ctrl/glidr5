@@ -4577,6 +4577,277 @@ export async function registerRoutes(
     return res.json({ count: parseInt(result.rows[0].count, 10) });
   });
 
+  // ── Add from picture ──────────────────────────────────────────────────────
+
+  // POST /api/tests/from-picture/analyze — analyze image with Claude vision
+  app.post("/api/tests/from-picture/analyze", requireAuth, async (req, res) => {
+    const { imageBase64, mimeType } = req.body;
+    if (!imageBase64 || !mimeType) {
+      return res.status(400).json({ message: "imageBase64 and mimeType required" });
+    }
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ message: "ANTHROPIC_API_KEY not configured on server" });
+    }
+    const prompt = `You are analyzing an image of a ski test result sheet or similar test document. Extract all relevant data and return ONLY raw JSON — no markdown, no explanation.
+
+Return a JSON object with this exact structure (use null for missing values):
+{
+  "date": "YYYY-MM-DD or null",
+  "location": "location name or null",
+  "testType": "Glide" or "Structure" or "Classic" or "Skating" or "Double Poling" or null,
+  "testName": "test name or null",
+  "notes": "any notes or null",
+  "weather": {
+    "airTemperatureC": number or null,
+    "snowTemperatureC": number or null,
+    "airHumidityPct": number 0-100 or null,
+    "snowHumidityPct": number 0-100 or null,
+    "snowType": "string or null",
+    "artificialSnow": "string or null",
+    "naturalSnow": "string or null",
+    "grainSize": "string or null",
+    "snowHumidityType": "dry" or "moist" or "wet" or null,
+    "trackHardness": "soft" or "medium" or "hard" or null,
+    "testQuality": integer 1-5 or null,
+    "wind": "string or null",
+    "clouds": integer 0-100 or null,
+    "precipitation": "string or null",
+    "visibility": "string or null"
+  },
+  "products": [
+    {
+      "skiNumber": integer,
+      "category": "Ski" or "Wax" or "Binding" or "Boot" or "Other",
+      "brand": "brand name",
+      "name": "product/model name"
+    }
+  ],
+  "entries": [
+    {
+      "skiNumber": integer,
+      "result0kmCmBehind": number or null,
+      "rank0km": integer or null,
+      "methodology": "string or empty string",
+      "feelingRank": integer or null,
+      "kickRank": integer or null
+    }
+  ]
+}`;
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-opus-4-5",
+          max_tokens: 4096,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image",
+                  source: { type: "base64", media_type: mimeType, data: imageBase64 },
+                },
+                { type: "text", text: prompt },
+              ],
+            },
+          ],
+        }),
+      });
+      if (!response.ok) {
+        const errText = await response.text();
+        return res.status(500).json({ message: `AI error: ${errText.slice(0, 300)}` });
+      }
+      const data = await response.json() as any;
+      const text = (data.content?.[0]?.text || "").trim();
+      try {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+        return res.json(parsed);
+      } catch {
+        return res.status(500).json({ message: "Failed to parse AI response", raw: text.slice(0, 500) });
+      }
+    } catch (e: any) {
+      return res.status(500).json({ message: e.message || "Failed to analyze image" });
+    }
+  });
+
+  // POST /api/tests/from-picture/create — create series/products/weather/test from analyzed data
+  app.post("/api/tests/from-picture/create", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (u.permissions.tests === "none" && !u.isAdmin && !u.isTeamAdmin) {
+      return res.status(403).json({ message: "No access" });
+    }
+    const teamId = getActiveTeamId(req);
+    const groupScope = resolveCreateGroupScope(req);
+    const now = new Date().toISOString();
+    const { pool } = await import("./db");
+    const body = req.body as {
+      date: string;
+      location: string;
+      testType: string;
+      testName?: string | null;
+      notes?: string | null;
+      weather?: Record<string, any> | null;
+      products?: Array<{ skiNumber: number; category: string; brand: string; name: string }>;
+      entries?: Array<Record<string, any>>;
+    };
+
+    // 1. Find or create "From picture - no series available" series for this team
+    const SERIES_NAME = "From picture - no series available";
+    let seriesId: number;
+    const existingSeriesRows = await (pool as any).query(
+      `SELECT id FROM test_ski_series WHERE name = $1 AND team_id = $2 AND archived_at IS NULL LIMIT 1`,
+      [SERIES_NAME, teamId]
+    );
+    if (existingSeriesRows.rows.length > 0) {
+      seriesId = existingSeriesRows.rows[0].id;
+    } else {
+      const createdSeries = await storage.createSeries({
+        name: SERIES_NAME,
+        type: body.testType === "Classic" || body.testType === "Skating" || body.testType === "Double Poling" ? "Classic" : "Glide",
+        brand: null,
+        skiType: null,
+        grind: null,
+        numberOfSkis: (body.entries || []).length || 8,
+        pairLabels: null,
+        lastRegrind: null,
+        createdAt: now,
+        createdById: u.id,
+        createdByName: u.name,
+        groupScope,
+        teamId,
+      });
+      seriesId = createdSeries.id;
+    }
+
+    // 2. Find or create each product, build skiNumber→productId map
+    const productMap = new Map<number, number>();
+    for (const p of (body.products || [])) {
+      if (!p.brand || !p.name) continue;
+      const existingProds = await (pool as any).query(
+        `SELECT id FROM products WHERE LOWER(brand) = LOWER($1) AND LOWER(name) = LOWER($2) AND team_id = $3 LIMIT 1`,
+        [p.brand.trim(), p.name.trim(), teamId]
+      );
+      let productId: number;
+      if (existingProds.rows.length > 0) {
+        productId = existingProds.rows[0].id;
+      } else {
+        const created = await storage.createProduct({
+          category: p.category || "Ski",
+          brand: p.brand.trim(),
+          name: p.name.trim(),
+          createdAt: now,
+          createdById: u.id,
+          createdByName: u.name,
+          groupScope,
+          teamId,
+        });
+        productId = created.id;
+      }
+      productMap.set(p.skiNumber, productId);
+    }
+
+    // 3. Create weather if data is present
+    let weatherId: number | null = null;
+    const w = body.weather;
+    if (w && (w.airTemperatureC != null || w.snowTemperatureC != null)) {
+      const createdWeather = await storage.createWeather({
+        date: body.date,
+        time: "",
+        location: body.location?.trim() || "Unknown",
+        airTemperatureC: w.airTemperatureC ?? 0,
+        snowTemperatureC: w.snowTemperatureC ?? 0,
+        airHumidityPct: w.airHumidityPct ?? 0,
+        snowHumidityPct: w.snowHumidityPct ?? 0,
+        clouds: w.clouds ?? null,
+        visibility: w.visibility?.trim() || null,
+        wind: w.wind?.trim() || null,
+        precipitation: w.precipitation?.trim() || null,
+        artificialSnow: w.artificialSnow || null,
+        naturalSnow: w.naturalSnow || null,
+        grainSize: w.grainSize || null,
+        snowHumidityType: w.snowHumidityType || null,
+        trackHardness: w.trackHardness || null,
+        testQuality: w.testQuality ?? null,
+        snowType: w.snowType?.trim() || null,
+        createdAt: now,
+        createdById: u.id,
+        createdByName: u.name,
+        groupScope,
+        teamId,
+      });
+      weatherId = createdWeather.id;
+    }
+
+    // 4. Create test
+    const test = await storage.createTest({
+      date: body.date,
+      location: body.location?.trim() || "Unknown",
+      testName: body.testName?.trim() || null,
+      weatherId,
+      testType: body.testType || "Glide",
+      seriesId,
+      athleteId: null,
+      testSkiSource: "series",
+      notes: body.notes?.trim() || null,
+      distanceLabel0km: null,
+      distanceLabelXkm: null,
+      distanceLabels: null,
+      grindParameters: null,
+      createdAt: now,
+      createdById: u.id,
+      createdByName: u.name,
+      groupScope,
+      teamId,
+    });
+
+    // 5. Create entries
+    for (const e of (body.entries || [])) {
+      await storage.createEntry({
+        testId: test.id,
+        skiNumber: e.skiNumber,
+        productId: productMap.get(e.skiNumber) || null,
+        freeTextProduct: null,
+        additionalProductIds: null,
+        methodology: e.methodology || "",
+        result0kmCmBehind: e.result0kmCmBehind ?? null,
+        rank0km: e.rank0km ?? null,
+        resultXkmCmBehind: e.resultXkmCmBehind ?? null,
+        rankXkm: e.rankXkm ?? null,
+        results: e.results || null,
+        feelingRank: e.feelingRank ?? null,
+        kickRank: e.kickRank ?? null,
+        grindType: e.grindType || null,
+        grindStone: e.grindStone || null,
+        grindPattern: e.grindPattern || null,
+        grindExtraParams: e.grindExtraParams || null,
+        raceSkiId: null,
+        createdAt: now,
+        createdById: u.id,
+        createdByName: u.name,
+        groupScope,
+        teamId,
+      });
+    }
+
+    try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "created",
+        entityType: "test", entityId: test.id,
+        details: `Test from picture: ${body.testType} on ${body.date}`,
+        createdAt: now, groupScope, teamId,
+      });
+    } catch (_) {}
+
+    return res.json({ testId: test.id, seriesId, weatherId, productIds: Object.fromEntries(productMap) });
+  });
+
   // PUT /api/inbox/:id/read — mark a message as read
   app.put("/api/inbox/:id/read", requireAuth, async (req, res) => {
     const userId = req.user!.id;

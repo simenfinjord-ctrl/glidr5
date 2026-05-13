@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
-import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState, useRef, useCallback } from "react";
+import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { LocationAutocomplete } from "@/components/location-autocomplete";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 
@@ -112,6 +113,352 @@ function RankBadge({ rank }: { rank: number | null }) {
   );
 }
 
+// ── Add from picture ─────────────────────────────────────────────────────────
+
+type PictureAnalysis = {
+  date: string | null;
+  location: string | null;
+  testType: string | null;
+  testName: string | null;
+  notes: string | null;
+  weather: Record<string, any> | null;
+  products: Array<{ skiNumber: number; category: string; brand: string; name: string }>;
+  entries: Array<{ skiNumber: number; result0kmCmBehind: number | null; rank0km: number | null; methodology: string; feelingRank: number | null; kickRank: number | null }>;
+};
+
+function toBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const result = reader.result as string;
+      // strip data:...;base64, prefix
+      resolve(result.split(",")[1] || "");
+    };
+    reader.onerror = reject;
+  });
+}
+
+function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+
+  type Step = "upload" | "analyzing" | "review" | "creating" | "done" | "error";
+  const [step, setStep] = useState<Step>("upload");
+  const [dragOver, setDragOver] = useState(false);
+  const [analysis, setAnalysis] = useState<PictureAnalysis | null>(null);
+  const [createdTestId, setCreatedTestId] = useState<number | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string>("");
+
+  // Editable fields
+  const [editDate, setEditDate] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editTestType, setEditTestType] = useState("");
+  const [editTestName, setEditTestName] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+
+  function reset() {
+    setStep("upload");
+    setAnalysis(null);
+    setCreatedTestId(null);
+    setErrorMsg("");
+    setDragOver(false);
+  }
+
+  async function processFile(file: File) {
+    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      setErrorMsg("Only JPEG, PNG, GIF or WebP images are supported.");
+      setStep("error");
+      return;
+    }
+    setStep("analyzing");
+    try {
+      const base64 = await toBase64(file);
+      const res = await fetch("/api/tests/from-picture/analyze", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.message || "Failed to analyze image");
+        setStep("error");
+        return;
+      }
+      setAnalysis(data as PictureAnalysis);
+      setEditDate(data.date || "");
+      setEditLocation(data.location || "");
+      setEditTestType(data.testType || "Glide");
+      setEditTestName(data.testName || "");
+      setEditNotes(data.notes || "");
+      setStep("review");
+    } catch (e: any) {
+      setErrorMsg(e.message || "Unknown error");
+      setStep("error");
+    }
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  }
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
+  }, []);
+
+  async function handleCreate() {
+    if (!analysis) return;
+    setStep("creating");
+    try {
+      const payload = {
+        ...analysis,
+        date: editDate || analysis.date || new Date().toISOString().slice(0, 10),
+        location: editLocation || analysis.location || "Unknown",
+        testType: editTestType || analysis.testType || "Glide",
+        testName: editTestName || null,
+        notes: editNotes || null,
+      };
+      const res = await fetch("/api/tests/from-picture/create", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.message || "Failed to create test");
+        setStep("error");
+        return;
+      }
+      setCreatedTestId(data.testId);
+      queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
+      setStep("done");
+    } catch (e: any) {
+      setErrorMsg(e.message || "Unknown error");
+      setStep("error");
+    }
+  }
+
+  const weatherFields = analysis?.weather
+    ? Object.entries(analysis.weather).filter(([, v]) => v != null && v !== "")
+    : [];
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Camera className="h-5 w-5 text-primary" />
+            Add from picture
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* ── Upload step ── */}
+        {step === "upload" && (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">
+              Take a photo or upload an image of an existing test sheet. AI will extract the data and create the test automatically.
+            </p>
+            <div
+              ref={dropRef}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              className={cn(
+                "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-10 transition-colors cursor-pointer",
+                dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-muted/30"
+              )}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <ImagePlus className="h-10 w-10 text-muted-foreground/60" />
+              <div className="text-center">
+                <p className="text-sm font-medium">Drop image here or click to browse</p>
+                <p className="text-xs text-muted-foreground mt-1">JPEG, PNG, WebP supported</p>
+              </div>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="hidden"
+              capture="environment"
+              onChange={handleFileChange}
+            />
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Camera className="h-4 w-4" />
+              Take photo / Choose image
+            </Button>
+          </div>
+        )}
+
+        {/* ── Analyzing step ── */}
+        {step === "analyzing" && (
+          <div className="flex flex-col items-center gap-4 py-8">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-sm font-medium">Analyzing with AI…</p>
+            <p className="text-xs text-muted-foreground">This usually takes 5–15 seconds</p>
+          </div>
+        )}
+
+        {/* ── Review step ── */}
+        {step === "review" && analysis && (
+          <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto pr-1">
+            <p className="text-sm text-muted-foreground">Review and edit the extracted data before saving.</p>
+
+            {/* Basic info */}
+            <div className="rounded-lg border border-border p-3 flex flex-col gap-2.5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Test info</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">Date</label>
+                  <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-8 text-sm mt-0.5" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Type</label>
+                  <Select value={editTestType} onValueChange={setEditTestType}>
+                    <SelectTrigger className="h-8 text-sm mt-0.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Glide">Glide</SelectItem>
+                      <SelectItem value="Structure">Structure</SelectItem>
+                      <SelectItem value="Classic">Classic</SelectItem>
+                      <SelectItem value="Skating">Skating</SelectItem>
+                      <SelectItem value="Double Poling">Double Poling</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Location</label>
+                <Input value={editLocation} onChange={(e) => setEditLocation(e.target.value)} className="h-8 text-sm mt-0.5" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Test name (optional)</label>
+                <Input value={editTestName} onChange={(e) => setEditTestName(e.target.value)} placeholder="e.g. Morning glide test" className="h-8 text-sm mt-0.5" />
+              </div>
+              {editNotes && (
+                <div>
+                  <label className="text-xs text-muted-foreground">Notes</label>
+                  <p className="text-xs text-foreground mt-0.5 leading-relaxed">{editNotes}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Weather */}
+            {weatherFields.length > 0 && (
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Weather</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {weatherFields.map(([key, val]) => (
+                    <span key={key} className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] text-foreground/80">
+                      {key.replace(/([A-Z])/g, " $1").toLowerCase()}: <strong>{String(val)}</strong>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Products */}
+            {(analysis.products || []).length > 0 && (
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Products ({analysis.products.length})</p>
+                <div className="flex flex-col gap-1.5">
+                  {analysis.products.map((p) => (
+                    <div key={p.skiNumber} className="flex items-center gap-2 text-xs">
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">{p.skiNumber}</span>
+                      <span className="font-medium">{p.brand} {p.name}</span>
+                      <span className="text-muted-foreground">{p.category}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Entries */}
+            {(analysis.entries || []).length > 0 && (
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Results ({analysis.entries.length} entries)</p>
+                <div className="flex flex-col gap-1">
+                  {[...analysis.entries].sort((a, b) => (a.rank0km ?? 99) - (b.rank0km ?? 99)).map((e) => (
+                    <div key={e.skiNumber} className="flex items-center gap-2 text-xs">
+                      <span className={cn(
+                        "inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold",
+                        e.rank0km === 1 ? "bg-yellow-500/20 text-yellow-600" : e.rank0km === 2 ? "bg-slate-300/20 text-slate-500" : e.rank0km === 3 ? "bg-amber-700/20 text-amber-600" : "bg-muted/40 text-muted-foreground"
+                      )}>{e.rank0km ?? "—"}</span>
+                      <span>Ski #{e.skiNumber}</span>
+                      {e.result0kmCmBehind != null && <span className="text-muted-foreground">+{e.result0kmCmBehind} cm</span>}
+                      {e.feelingRank != null && <span className="text-muted-foreground">feel: {e.feelingRank}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={reset}>
+                Re-upload
+              </Button>
+              <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={handleCreate}>
+                Create test
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Creating step ── */}
+        {step === "creating" && (
+          <div className="flex flex-col items-center gap-4 py-8">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-sm font-medium">Creating test…</p>
+          </div>
+        )}
+
+        {/* ── Done step ── */}
+        {step === "done" && createdTestId && (
+          <div className="flex flex-col items-center gap-4 py-6">
+            <CheckCircle2 className="h-12 w-12 text-green-500" />
+            <p className="text-base font-semibold">Test created!</p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => { reset(); onOpenChange(false); }}>
+                Close
+              </Button>
+              <Button
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => { reset(); onOpenChange(false); navigate(`/tests/${createdTestId}`); }}
+              >
+                View test
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Error step ── */}
+        {step === "error" && (
+          <div className="flex flex-col items-center gap-4 py-6">
+            <AlertCircle className="h-12 w-12 text-destructive" />
+            <p className="text-sm font-semibold text-destructive">Something went wrong</p>
+            <p className="text-xs text-muted-foreground text-center max-w-xs">{errorMsg}</p>
+            <Button variant="outline" onClick={reset}>Try again</Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Tests() {
   const [, navigate] = useLocation();
   const { isBlindTester, can } = useAuth();
@@ -135,6 +482,8 @@ export default function Tests() {
     },
     enabled: allTestIds.length > 0,
   });
+
+  const [fromPictureOpen, setFromPictureOpen] = useState(false);
 
   const [sortOrder, setSortOrder] = useState<string>("date-desc");
   const [filterSeason, setFilterSeason] = useState<string>("All");
@@ -278,6 +627,7 @@ export default function Tests() {
 
   return (
     <AppShell>
+      <AddFromPictureDialog open={fromPictureOpen} onOpenChange={setFromPictureOpen} />
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -286,12 +636,24 @@ export default function Tests() {
               {filtered.length} test{filtered.length !== 1 ? "s" : ""}{hasFilters ? " matching filters" : " total"}
             </p>
           </div>
-          <AppLink href="/tests/new">
-            <Button data-testid="button-new-test" className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
-              <Plus className="mr-2 h-4 w-4" />
-              New test
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground gap-1.5"
+              onClick={() => setFromPictureOpen(true)}
+              title="Add test from picture"
+            >
+              <Camera className="h-4 w-4" />
+              <span className="hidden sm:inline text-xs">Add from picture</span>
             </Button>
-          </AppLink>
+            <AppLink href="/tests/new">
+              <Button data-testid="button-new-test" className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
+                <Plus className="mr-2 h-4 w-4" />
+                New test
+              </Button>
+            </AppLink>
+          </div>
         </div>
 
         <Card className="fs-card rounded-2xl p-4">

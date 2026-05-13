@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer } from "lucide-react";
+import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer, Droplets, Snowflake } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -1054,8 +1054,25 @@ type ProductTest = {
   testName: string | null;
   testType: string;
   notes: string | null;
-  weather: { airTemperatureC: number; snowTemperatureC: number } | null;
-  entries: { id: number; skiNumber: number; result0kmCmBehind: number | null; rank0km: number | null; resultXkmCmBehind: number | null; rankXkm: number | null; results: string | null; feelingRank: number | null }[];
+  distanceLabels: string | null;
+  distanceLabel0km: string | null;
+  distanceLabelXkm: string | null;
+  weather: {
+    airTemperatureC: number; snowTemperatureC: number;
+    airHumidityPct: number | null; snowHumidityPct: number | null;
+    snowType: string | null; artificialSnow: string | null; naturalSnow: string | null;
+    grainSize: string | null; snowHumidityType: string | null; trackHardness: string | null;
+    testQuality: number | null; wind: string | null; clouds: number | null; precipitation: string | null;
+  } | null;
+  entries: {
+    id: number; skiNumber: number;
+    productId: number | null; additionalProductIds: string | null;
+    productBrand: string | null; productName: string | null;
+    result0kmCmBehind: number | null; rank0km: number | null;
+    resultXkmCmBehind: number | null; rankXkm: number | null;
+    results: string | null; feelingRank: number | null;
+    isSelectedProduct: boolean;
+  }[];
 };
 
 function ProductTestHistoryDialog({ product, open, onClose }: { product: Product | null; open: boolean; onClose: () => void }) {
@@ -1090,7 +1107,14 @@ function ProductTestHistoryDialog({ product, open, onClose }: { product: Product
         ) : (
           <div className="flex flex-col gap-3">
             <p className="text-xs text-muted-foreground">{tests.length} test{tests.length !== 1 ? "s" : ""} found</p>
-            {tests.map((test) => (
+            {tests.map((test) => {
+              const distLabels: string[] = (() => {
+                if (test.distanceLabels) { try { const p = JSON.parse(test.distanceLabels); if (Array.isArray(p) && p.length > 0) return p; } catch {} }
+                const labels = [test.distanceLabel0km || "0 km"];
+                if (test.distanceLabelXkm) labels.push(test.distanceLabelXkm);
+                return labels;
+              })();
+              return (
               <Card key={test.id} className="fs-card rounded-xl p-3 sm:p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <div className="flex flex-wrap items-center gap-2">
@@ -1107,17 +1131,38 @@ function ProductTestHistoryDialog({ product, open, onClose }: { product: Product
                       {test.testType}
                     </span>
                   </div>
-                  {test.weather && (
-                    <div className="flex items-center gap-1">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
-                        <Thermometer className="h-2.5 w-2.5" /> Air {test.weather.airTemperatureC}°C
-                      </span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
-                        <MapPin className="h-2.5 w-2.5" /> Snow {test.weather.snowTemperatureC}°C
-                      </span>
-                    </div>
-                  )}
                 </div>
+                {/* Weather */}
+                {test.weather && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
+                      <Thermometer className="h-2.5 w-2.5" /> Air {test.weather.airTemperatureC}°C
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
+                      <Snowflake className="h-2.5 w-2.5" /> Snow {test.weather.snowTemperatureC}°C
+                    </span>
+                    {test.weather.airHumidityPct != null && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700 ring-1 ring-violet-200">
+                        <Droplets className="h-2.5 w-2.5" /> {test.weather.airHumidityPct}% RH
+                      </span>
+                    )}
+                    {test.weather.artificialSnow && (
+                      <span className="inline-flex rounded-full bg-pink-50 px-2 py-0.5 text-[10px] font-medium text-pink-700 ring-1 ring-pink-200">Art: {test.weather.artificialSnow}</span>
+                    )}
+                    {test.weather.naturalSnow && (
+                      <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-indigo-200">Nat: {test.weather.naturalSnow}</span>
+                    )}
+                    {test.weather.snowHumidityType && (
+                      <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{test.weather.snowHumidityType}</span>
+                    )}
+                    {test.weather.trackHardness && (
+                      <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{test.weather.trackHardness}</span>
+                    )}
+                    {test.weather.wind && (
+                      <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">Wind: {test.weather.wind}</span>
+                    )}
+                  </div>
+                )}
                 {test.notes && <p className="mb-2 text-xs text-muted-foreground italic truncate">{test.notes}</p>}
                 {test.entries.length > 0 && (
                   <div className="overflow-x-auto">
@@ -1125,24 +1170,57 @@ function ProductTestHistoryDialog({ product, open, onClose }: { product: Product
                       <thead>
                         <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                           <th className="pb-1.5 pr-3">Ski</th>
-                          <th className="pb-1.5 pr-3">Result</th>
-                          <th className="pb-1.5">Rank</th>
+                          <th className="pb-1.5 pr-3">Product</th>
+                          {distLabels.map((label, i) => (
+                            <th key={i} className="pb-1.5 pr-3">{label} / Rank</th>
+                          ))}
+                          <th className="pb-1.5">Feel</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {test.entries.map((e) => (
-                          <tr key={e.id} className="border-b border-border/20">
-                            <td className="py-1 pr-3 font-medium">{e.skiNumber}</td>
-                            <td className="py-1 pr-3 tabular-nums">{e.result0kmCmBehind ?? "—"}</td>
-                            <td className="py-1">{e.rank0km != null ? <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-muted/60 px-1.5 py-0.5 font-bold">{e.rank0km}</span> : "—"}</td>
+                        {test.entries.map((e) => {
+                          const rounds: { result: number | null; rank: number | null }[] = (() => {
+                            if (e.results) { try { const p = JSON.parse(e.results); if (Array.isArray(p)) { while (p.length < distLabels.length) p.push({ result: null, rank: null }); return p.slice(0, distLabels.length); } } catch {} }
+                            const r = [{ result: e.result0kmCmBehind, rank: e.rank0km }];
+                            if (distLabels.length > 1) r.push({ result: e.resultXkmCmBehind ?? null, rank: e.rankXkm ?? null });
+                            while (r.length < distLabels.length) r.push({ result: null, rank: null });
+                            return r;
+                          })();
+                          return (
+                          <tr key={e.id} className={cn("border-b border-border/20", e.isSelectedProduct && "bg-yellow-500/10")}>
+                            <td className={cn("py-1.5 pr-3 font-bold text-xs", e.isSelectedProduct && "text-yellow-600")}>{e.skiNumber}</td>
+                            <td className="py-1.5 pr-3 text-xs text-muted-foreground">
+                              {e.isSelectedProduct
+                                ? <span className="font-semibold text-yellow-700">{product?.brand} {product?.name}</span>
+                                : (e.productBrand ? `${e.productBrand} ${e.productName || ""}` : "—")
+                              }
+                            </td>
+                            {rounds.map((r, i) => (
+                              <td key={i} className="py-1.5 pr-3">
+                                <div className="flex items-center gap-1">
+                                  <span className="tabular-nums">{r.result ?? "—"}</span>
+                                  {r.rank != null && (
+                                    <span className={cn("inline-flex min-w-5 items-center justify-center rounded-full px-1 py-0.5 text-[10px] font-bold",
+                                      r.rank === 1 ? "bg-yellow-500/20 text-yellow-600 ring-1 ring-yellow-500/30" :
+                                      r.rank === 2 ? "bg-slate-300/20 text-slate-500 ring-1 ring-slate-300/30" :
+                                      r.rank === 3 ? "bg-amber-700/20 text-amber-600 ring-1 ring-amber-700/30" :
+                                      "bg-muted/60 text-muted-foreground"
+                                    )}>{r.rank}</span>
+                                  )}
+                                </div>
+                              </td>
+                            ))}
+                            <td className="py-1.5 text-muted-foreground">{e.feelingRank ?? "—"}</td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 )}
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </DialogContent>

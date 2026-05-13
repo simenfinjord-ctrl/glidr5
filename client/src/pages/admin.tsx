@@ -33,6 +33,7 @@ type ApiUser = {
   id: number;
   email: string;
   name: string;
+  username?: string;
   groupScope: string;
   isAdmin: number;
   isTeamAdmin: number;
@@ -269,6 +270,7 @@ function GroupCheckboxes({
 const userSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Valid email required"),
+  username: z.string().optional(),
   password: z.string().min(1, "Password is required"),
   groupScope: z.string().min(1, "At least one group is required"),
   isAdmin: z.boolean(),
@@ -282,6 +284,7 @@ const userSchema = z.object({
 const editSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Valid email required"),
+  username: z.string().optional(),
   groupScope: z.string().min(1, "At least one group is required"),
   isAdmin: z.boolean(),
   isTeamAdmin: z.boolean(),
@@ -324,7 +327,7 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
   const groupNames = effectiveGroups.filter((g) => g.teamId === selectedTeamId).map((g) => g.name);
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
-    defaultValues: { name: "", email: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, isTeamAdmin: false, isBlindTester: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true, teamId: defaultTeamId },
+    defaultValues: { name: "", email: "", username: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, isTeamAdmin: false, isBlindTester: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true, teamId: defaultTeamId },
   });
 
   const selectedGroups = parseGroups(form.watch("groupScope"));
@@ -352,6 +355,9 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
         )} />
         <FormField control={form.control} name="email" render={({ field }) => (
           <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} data-testid="input-user-email" /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="username" render={({ field }) => (
+          <FormItem><FormLabel>Username <span className="text-xs text-muted-foreground font-normal">(optional — will be derived from email if empty)</span></FormLabel><FormControl><Input {...field} placeholder="e.g. johndoe" autoComplete="off" data-testid="input-user-username" /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={form.control} name="password" render={({ field }) => (
           <FormItem><FormLabel>Password</FormLabel><FormControl><Input {...field} type="password" data-testid="input-user-password" /></FormControl><FormMessage /></FormItem>
@@ -670,6 +676,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
     defaultValues: {
       name: user.name,
       email: user.email,
+      username: user.username || "",
       groupScope: user.groupScope,
       isAdmin: !!user.isAdmin,
       isTeamAdmin: !!user.isTeamAdmin,
@@ -705,6 +712,9 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
         )} />
         <FormField control={form.control} name="email" render={({ field }) => (
           <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} data-testid="input-edit-email" /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="username" render={({ field }) => (
+          <FormItem><FormLabel>Username <span className="text-xs text-muted-foreground font-normal">(used for login)</span></FormLabel><FormControl><Input {...field} placeholder="e.g. johndoe" autoComplete="off" data-testid="input-edit-username" /></FormControl><FormMessage /></FormItem>
         )} />
         {isSuperAdmin && teams.length > 1 && (
           <div className="space-y-2">
@@ -2590,6 +2600,7 @@ export default function Admin() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-foreground">{u.name}</span>
                           <span className="text-xs text-muted-foreground">{u.email}</span>
+                          {u.username && <span className="text-xs text-muted-foreground/70">@{u.username}</span>}
                           <span className={cn(
                             "rounded-full px-2 py-0.5 text-[10px] font-medium",
                             u.isAdmin ? "bg-amber-50 text-amber-600" : u.isTeamAdmin ? "bg-purple-50 text-purple-600" : "bg-muted text-muted-foreground"

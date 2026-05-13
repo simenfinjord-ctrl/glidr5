@@ -831,7 +831,10 @@ export async function registerRoutes(
     const result = await (pg as any).query(
       `SELECT DISTINCT
          t.id, t.date, t.location, t.test_name, t.test_type, t.notes, t.weather_id,
-         w.air_temperature_c, w.snow_temperature_c
+         t.distance_labels, t.distance_label_0km, t.distance_label_xkm,
+         w.air_temperature_c, w.snow_temperature_c, w.air_humidity_pct, w.snow_humidity_pct,
+         w.snow_type, w.artificial_snow, w.natural_snow, w.grain_size, w.snow_humidity_type,
+         w.track_hardness, w.test_quality, w.wind, w.clouds, w.precipitation
        FROM test_entries te
        JOIN tests t ON t.id = te.test_id
        LEFT JOIN daily_weather w ON w.id = t.weather_id
@@ -847,22 +850,31 @@ export async function registerRoutes(
     const testIds: number[] = result.rows.map((r: any) => r.id);
     let entriesByTestId: Record<number, any[]> = {};
     if (testIds.length > 0) {
+      // Fetch ALL entries for these tests so we can show every ski and highlight the selected product
       const entryRows = await (pg as any).query(
-        `SELECT id, test_id, ski_number, product_id, additional_product_ids,
-                result_0km_cm_behind, rank_0km, result_xkm_cm_behind, rank_xkm, results, feeling_rank
-         FROM test_entries
-         WHERE test_id = ANY($1)
-           AND (product_id = $2 OR additional_product_ids LIKE $3)
-         ORDER BY ski_number ASC`,
-        [testIds, productId, `%${productId}%`]
+        `SELECT te.id, te.test_id, te.ski_number, te.product_id, te.additional_product_ids,
+                te.result_0km_cm_behind, te.rank_0km, te.result_xkm_cm_behind, te.rank_xkm,
+                te.results, te.feeling_rank,
+                p.brand as product_brand, p.name as product_name
+         FROM test_entries te
+         LEFT JOIN products p ON p.id = te.product_id
+         WHERE te.test_id = ANY($1)
+         ORDER BY te.ski_number ASC`,
+        [testIds]
       );
       for (const e of entryRows.rows) {
         if (!entriesByTestId[e.test_id]) entriesByTestId[e.test_id] = [];
+        const isSelectedProduct =
+          e.product_id === productId ||
+          (e.additional_product_ids && e.additional_product_ids.split(",").map((x: string) => parseInt(x.trim(), 10)).includes(productId));
         entriesByTestId[e.test_id].push({
           id: e.id, skiNumber: e.ski_number,
+          productId: e.product_id, additionalProductIds: e.additional_product_ids,
+          productBrand: e.product_brand, productName: e.product_name,
           result0kmCmBehind: e.result_0km_cm_behind, rank0km: e.rank_0km,
           resultXkmCmBehind: e.result_xkm_cm_behind, rankXkm: e.rank_xkm,
           results: e.results, feelingRank: e.feeling_rank,
+          isSelectedProduct,
         });
       }
     }
@@ -870,7 +882,14 @@ export async function registerRoutes(
     const tests = result.rows.map((r: any) => ({
       id: r.id, date: r.date, location: r.location, testName: r.test_name,
       testType: r.test_type, notes: r.notes,
-      weather: r.weather_id ? { airTemperatureC: r.air_temperature_c, snowTemperatureC: r.snow_temperature_c } : null,
+      distanceLabels: r.distance_labels, distanceLabel0km: r.distance_label_0km, distanceLabelXkm: r.distance_label_xkm,
+      weather: r.weather_id ? {
+        airTemperatureC: r.air_temperature_c, snowTemperatureC: r.snow_temperature_c,
+        airHumidityPct: r.air_humidity_pct, snowHumidityPct: r.snow_humidity_pct,
+        snowType: r.snow_type, artificialSnow: r.artificial_snow, naturalSnow: r.natural_snow,
+        grainSize: r.grain_size, snowHumidityType: r.snow_humidity_type, trackHardness: r.track_hardness,
+        testQuality: r.test_quality, wind: r.wind, clouds: r.clouds, precipitation: r.precipitation,
+      } : null,
       entries: entriesByTestId[r.id] || [],
     }));
 
@@ -1942,17 +1961,32 @@ export async function registerRoutes(
       sanitizedPerms = await enforceTeamAreas(sanitizedPerms, teamId);
     }
     const hashedPw = await hashPassword(req.body.password);
+    // Derive username: use provided username, or fall back to email prefix
+    let usernameToSet = req.body.username?.trim()?.toLowerCase() || null;
+    if (!usernameToSet) {
+      usernameToSet = req.body.email.split("@")[0].toLowerCase().replace(/[^a-z0-9._-]/g, "");
+    }
+    // Ensure uniqueness by appending number if needed
+    const { pool: pgUser } = await import("./db");
+    let finalUsername = usernameToSet;
+    let suffix = 2;
+    while (true) {
+      const existingUn = await (pgUser as any).query(`SELECT id FROM users WHERE LOWER(username) = $1`, [finalUsername]);
+      if (existingUn.rows.length === 0) break;
+      finalUsername = `${usernameToSet}${suffix++}`;
+    }
     const created = await storage.createUser({
       email: req.body.email,
       password: hashedPw,
       name: req.body.name,
+      username: finalUsername,
       groupScope: req.body.groupScope,
       isAdmin: isSuperAdmin && req.body.isAdmin ? 1 : 0,
       isTeamAdmin: req.body.isTeamAdmin ? 1 : 0,
       permissions: JSON.stringify(sanitizedPerms),
       teamId,
       isBlindTester: req.body.isBlindTester ? 1 : 0,
-    });
+    } as any);
     const { password, ...safe } = created;
     res.json(safe);
   });
@@ -1970,6 +2004,13 @@ export async function registerRoutes(
     const data: any = {};
     if (req.body.name !== undefined) data.name = req.body.name;
     if (req.body.email !== undefined) data.email = req.body.email;
+    if (req.body.username !== undefined && req.body.username.trim()) {
+      const newUsername = req.body.username.trim().toLowerCase();
+      const { pool: pgEdit } = await import("./db");
+      const existing = await (pgEdit as any).query(`SELECT id FROM users WHERE LOWER(username) = $1 AND id != $2`, [newUsername, id]);
+      if (existing.rows.length > 0) return res.status(409).json({ message: "Username already taken" });
+      data.username = newUsername;
+    }
     if (req.body.groupScope !== undefined) data.groupScope = req.body.groupScope;
     if (u.isAdmin === 1 && req.body.isAdmin !== undefined) data.isAdmin = req.body.isAdmin ? 1 : 0;
     if (req.body.isTeamAdmin !== undefined) data.isTeamAdmin = req.body.isTeamAdmin ? 1 : 0;
@@ -2160,6 +2201,32 @@ export async function registerRoutes(
     const hashed = await hp(newPassword);
     await storage.updateUser(u.id, { password: hashed });
     res.json({ ok: true });
+  });
+
+  // Change own username
+  app.put("/api/users/me/username", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const { username } = req.body;
+    if (!username || typeof username !== "string" || username.trim().length < 2) {
+      return res.status(400).json({ message: "Username must be at least 2 characters" });
+    }
+    const clean = username.trim().toLowerCase();
+    if (!/^[a-z0-9._-]+$/.test(clean)) {
+      return res.status(400).json({ message: "Username may only contain letters, numbers, dots, underscores and dashes" });
+    }
+    const { pool } = await import("./db");
+    // Check uniqueness
+    const existing = await (pool as any).query(
+      `SELECT id FROM users WHERE LOWER(username) = $1 AND id != $2`,
+      [clean, u.id]
+    );
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ message: "Username already taken" });
+    }
+    await storage.updateUser(u.id, { username: clean } as any);
+    // Update session
+    (u as any).username = clean;
+    return res.json({ ok: true, username: clean });
   });
 
   // Alias used by My Account page
@@ -2458,8 +2525,8 @@ export async function registerRoutes(
     if (!verifyTeamOwnership(profile, req)) return res.status(403).json({ message: "Forbidden" });
 
     const { pool: pg } = await import("./db");
-    // Find test entries matching this profile's grindType+stone+pattern, then join tests + weather
-    // Use ILIKE for case-insensitive matching; treat empty profile fields as "match NULL or empty"
+    // Entries store grindType as the PROFILE NAME (profile.name), not profile.grindType.
+    // Stone/pattern matching is secondary — also match entries that use the profile name alone.
     const stoneIsEmpty = !profile.stone;
     const patternIsEmpty = !profile.pattern;
     const result = await (pg as any).query(
@@ -2472,11 +2539,16 @@ export async function registerRoutes(
        JOIN tests t ON t.id = te.test_id
        LEFT JOIN daily_weather w ON w.id = t.weather_id
        WHERE te.team_id = $1
-         AND te.grind_type ILIKE $2
-         AND ($3::boolean OR te.grind_stone ILIKE $4)
-         AND ($5::boolean OR te.grind_pattern ILIKE $6)
+         AND (
+           te.grind_type ILIKE $2
+           OR (
+             te.grind_type ILIKE $3
+             AND ($4::boolean OR te.grind_stone ILIKE $5)
+             AND ($6::boolean OR te.grind_pattern ILIKE $7)
+           )
+         )
        ORDER BY t.date DESC, t.id DESC`,
-      [teamId, profile.grindType, stoneIsEmpty, profile.stone || '', patternIsEmpty, profile.pattern || '']
+      [teamId, profile.name, profile.grindType, stoneIsEmpty, profile.stone || '', patternIsEmpty, profile.pattern || '']
     );
 
     // For each test, fetch its entries
@@ -2488,11 +2560,16 @@ export async function registerRoutes(
          FROM test_entries te
          LEFT JOIN race_skis rs ON rs.id = te.race_ski_id
          WHERE te.test_id = ANY($1) AND te.team_id = $2
-           AND te.grind_type ILIKE $3
-           AND ($4::boolean OR te.grind_stone ILIKE $5)
-           AND ($6::boolean OR te.grind_pattern ILIKE $7)
+           AND (
+             te.grind_type ILIKE $3
+             OR (
+               te.grind_type ILIKE $4
+               AND ($5::boolean OR te.grind_stone ILIKE $6)
+               AND ($7::boolean OR te.grind_pattern ILIKE $8)
+             )
+           )
          ORDER BY te.ski_number ASC`,
-        [testIds, teamId, profile.grindType, stoneIsEmpty, profile.stone || '', patternIsEmpty, profile.pattern || '']
+        [testIds, teamId, profile.name, profile.grindType, stoneIsEmpty, profile.stone || '', patternIsEmpty, profile.pattern || '']
       );
       for (const e of entryRows.rows) {
         if (!entriesByTestId[e.test_id]) entriesByTestId[e.test_id] = [];

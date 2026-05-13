@@ -648,9 +648,9 @@ function GrindProfileDetailDialog({
   }
 
   function colLabel(col: GrindCol): string {
-    if (col === "name") return "Slipenavn";
-    if (col === "stone") return "Stein";
-    if (col === "pattern") return "Mønster";
+    if (col === "name") return "Grind name";
+    if (col === "stone") return "Stone";
+    if (col === "pattern") return "Pattern";
     if (col === "ra_value") return "RA";
     return col;
   }
@@ -711,12 +711,12 @@ function GrindProfileDetailDialog({
             </span>
             {profile.stone && (
               <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                Stein: {profile.stone}
+                Stone: {profile.stone}
               </span>
             )}
             {profile.pattern && (
               <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                Mønster: {profile.pattern}
+                Pattern: {profile.pattern}
               </span>
             )}
             {(() => {
@@ -733,7 +733,7 @@ function GrindProfileDetailDialog({
         {/* Column visibility toggles */}
         {!isLoading && tests.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 py-2 border-b border-border mb-1">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold shrink-0">Vis kolonner:</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold shrink-0">Show columns:</span>
             {allCols.map((col) => (
               <ColToggle key={col} label={colLabel(col)} active={visibleCols.has(col)} onClick={() => toggleCol(col)} />
             ))}
@@ -741,18 +741,19 @@ function GrindProfileDetailDialog({
         )}
 
         {isLoading ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">Laster testresultater…</div>
+          <div className="py-8 text-center text-sm text-muted-foreground">Loading test results…</div>
         ) : tests.length === 0 ? (
           <div className="py-8 text-center">
             <Disc3 className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
-            <p className="text-sm text-muted-foreground">Ingen tester funnet med denne slipeprofilen.</p>
-            <p className="text-xs text-muted-foreground mt-1">Tester med samme type, stein og mønster vil vises her.</p>
+            <p className="text-sm text-muted-foreground">No tests found for this grind profile.</p>
+            <p className="text-xs text-muted-foreground mt-1">Tests using the same type, stone and pattern will appear here.</p>
             {profile && (
               <div className="mt-3 rounded-lg bg-muted/50 px-3 py-2 text-left text-[11px] text-muted-foreground inline-block">
-                <span className="font-semibold">Søkte på:</span>{" "}
+                <span className="font-semibold">Searched for:</span>{" "}
+                Name: <span className="text-foreground">{profile.name || "—"}</span>{" · "}
                 Type: <span className="text-foreground">{profile.grindType || "—"}</span>{" · "}
-                Stein: <span className="text-foreground">{profile.stone || "—"}</span>{" · "}
-                Mønster: <span className="text-foreground">{profile.pattern || "—"}</span>
+                Stone: <span className="text-foreground">{profile.stone || "—"}</span>{" · "}
+                Pattern: <span className="text-foreground">{profile.pattern || "—"}</span>
               </div>
             )}
           </div>
@@ -760,7 +761,7 @@ function GrindProfileDetailDialog({
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <BarChart2 className="h-3.5 w-3.5" />
-              <span>{tests.length} test{tests.length !== 1 ? "er" : ""} med denne slipen</span>
+              <span>{tests.length} test{tests.length !== 1 ? "s" : ""} with this grind</span>
             </div>
             {tests.map((test) => {
               const distLabels = getDistLabels(test);
@@ -784,10 +785,10 @@ function GrindProfileDetailDialog({
                     {test.weather && (
                       <div className="flex flex-wrap items-center gap-1">
                         <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
-                          <Wind className="h-2.5 w-2.5" /> Luft {test.weather.airTemperatureC}°C
+                          <Wind className="h-2.5 w-2.5" /> Air {test.weather.airTemperatureC}°C
                         </span>
                         <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
-                          <Snowflake className="h-2.5 w-2.5" /> Snø {test.weather.snowTemperatureC}°C
+                          <Snowflake className="h-2.5 w-2.5" /> Snow {test.weather.snowTemperatureC}°C
                         </span>
                         {test.weather.humidity != null && (
                           <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -808,14 +809,14 @@ function GrindProfileDetailDialog({
                         <thead>
                           <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                             <th className="pb-1.5 pr-3">Ski</th>
-                            {hasSkiInfo && <th className="pb-1.5 pr-3">Modell</th>}
+                            {hasSkiInfo && <th className="pb-1.5 pr-3">Model</th>}
                             {activeCols.map((col) => (
                               <th key={col} className="pb-1.5 pr-3">{colLabel(col)}</th>
                             ))}
                             {distLabels.map((label, i) => (
                               <th key={i} className="pb-1.5 pr-3">{label} / Rank</th>
                             ))}
-                            <th className="pb-1.5">Følelse</th>
+                            <th className="pb-1.5">Feel</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1365,10 +1366,10 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
   );
 
   const colLabels: Record<string, string> = {
-    name: "Slipenavn",
+    name: "Grind name",
     grindType: "Type",
-    grindStone: "Stein",
-    grindPattern: "Mønster",
+    grindStone: "Stone",
+    grindPattern: "Pattern",
     ra_value: "RA",
   };
 
@@ -1422,7 +1423,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
       {/* Grind column chooser */}
       {allGrindCols.length > 0 && (
         <div className="mb-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mr-1">Vis per ski:</span>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mr-1">Show per ski:</span>
           {allGrindCols.map((col) => (
             <ColToggle
               key={col}
@@ -1439,7 +1440,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
           <table className="w-full text-sm" data-testid={`table-grind-day-${test.id}`}>
             <thead>
               <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                <th className="pb-2 pr-3">Ski</th>
+                <th className="pb-2 pr-3">Ski #</th>
                 {visibleGrindCols.map((col) => (
                   <th key={col} className="pb-2 pr-3">{colLabels[col] ?? col}</th>
                 ))}

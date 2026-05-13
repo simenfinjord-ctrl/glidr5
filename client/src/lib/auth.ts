@@ -18,6 +18,7 @@ type User = {
   id: number;
   email: string;
   name: string;
+  username?: string;
   groupScope: string;
   isAdmin: number;
   isTeamAdmin: number;

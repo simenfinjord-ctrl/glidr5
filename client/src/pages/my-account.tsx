@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, Watch, RefreshCw, Copy, Check, KeyRound, Mail, Users, Shield, Smartphone, Eye, EyeOff, ToggleLeft, ToggleRight } from "lucide-react";
+import { User, Watch, RefreshCw, Copy, Check, KeyRound, Mail, Users, Shield, Smartphone, Eye, EyeOff, ToggleLeft, ToggleRight, AtSign, Pencil } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,28 @@ export default function MyAccount() {
 
   // Watch code
   const [copied, setCopied] = useState(false);
+
+  // Username form
+  const [showUsernameForm, setShowUsernameForm] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+
+  const changeUsernameMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("PUT", "/api/users/me/username", { username: newUsername.trim() });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Username updated" });
+      setShowUsernameForm(false);
+      setNewUsername("");
+      setUsernameError("");
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+    onError: (e: Error) => {
+      setUsernameError(e.message || "Failed to update username");
+    },
+  });
 
   // Password form
   const [showPassForm, setShowPassForm] = useState(false);
@@ -140,6 +162,44 @@ export default function MyAccount() {
               <div className="text-xs text-muted-foreground">Email</div>
               <div className="text-sm font-medium" data-testid="text-profile-email">{user.email}</div>
             </div>
+          </div>
+
+          {/* Username */}
+          <div className="rounded-xl bg-muted/50 px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <AtSign className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div>
+                  <div className="text-xs text-muted-foreground">Username</div>
+                  <div className="text-sm font-medium" data-testid="text-profile-username">{user.username || <span className="text-muted-foreground italic">not set</span>}</div>
+                </div>
+              </div>
+              {!showUsernameForm && (
+                <Button variant="ghost" size="sm" onClick={() => { setNewUsername(user.username || ""); setShowUsernameForm(true); }}>
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  Change
+                </Button>
+              )}
+            </div>
+            {showUsernameForm && (
+              <div className="mt-3 space-y-2">
+                <Input
+                  value={newUsername}
+                  onChange={(e) => { setNewUsername(e.target.value); setUsernameError(""); }}
+                  placeholder="e.g. johndoe"
+                  autoComplete="username"
+                  data-testid="input-new-username"
+                />
+                {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
+                <p className="text-xs text-muted-foreground">Letters, numbers, dots, underscores and dashes only.</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => { setShowUsernameForm(false); setUsernameError(""); }}>Cancel</Button>
+                  <Button size="sm" onClick={() => changeUsernameMutation.mutate()} disabled={changeUsernameMutation.isPending || !newUsername.trim()}>
+                    {changeUsernameMutation.isPending ? "Saving…" : "Save"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {groups.length > 0 && (

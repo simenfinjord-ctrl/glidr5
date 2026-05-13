@@ -4809,24 +4809,37 @@ Return a JSON object with this exact structure (use null for missing values):
       seriesId = createdSeries.id;
     }
 
+    // Derive product category from test type (overrides AI-assigned category)
+    const pictureProductCategory = body.testType === "Structure" ? "Structure tool" : "Glide product";
+
+    // Helper: normalize a string for matching (collapse whitespace, lowercase)
+    const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+
     // 2. Find or create each product, build skiNumber→productId map
     // Also keep an ordered list for positional fallback (when AI omits skiNumbers)
     const productMap = new Map<number, number>();
     const orderedProductIds: number[] = []; // positional list
     for (const p of (body.products || [])) {
       if (!p.brand || !p.name) continue;
+      const normBrand = normalize(p.brand);
+      const normName  = normalize(p.name);
+      // Match ignoring whitespace differences and case
       const existingProds = await (pool as any).query(
-        `SELECT id FROM products WHERE LOWER(brand) = LOWER($1) AND LOWER(name) = LOWER($2) AND team_id = $3 LIMIT 1`,
-        [p.brand.trim(), p.name.trim(), teamId]
+        `SELECT id FROM products
+         WHERE LOWER(REGEXP_REPLACE(brand, '\\s+', ' ', 'g')) = $1
+           AND LOWER(REGEXP_REPLACE(name,  '\\s+', ' ', 'g')) = $2
+           AND team_id = $3
+         LIMIT 1`,
+        [normBrand, normName, teamId]
       );
       let productId: number;
       if (existingProds.rows.length > 0) {
         productId = existingProds.rows[0].id;
       } else {
         const created = await storage.createProduct({
-          category: p.category || "Ski",
-          brand: p.brand.trim(),
-          name: p.name.trim(),
+          category: pictureProductCategory,
+          brand: p.brand.trim().replace(/\s+/g, " "),
+          name: p.name.trim().replace(/\s+/g, " "),
           createdAt: now,
           createdById: u.id,
           createdByName: u.name,

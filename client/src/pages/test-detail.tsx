@@ -382,7 +382,7 @@ export default function TestDetail() {
     () => ["grindType", "grindStone", "grindPattern", ...grindExtraParamKeys],
     [grindExtraParamKeys]
   );
-  const GRIND_COL_LABELS: Record<string, string> = { grindType: "Grind", grindStone: "Stone", grindPattern: "Pattern" };
+  const GRIND_COL_LABELS: Record<string, string> = { grindType: "Grind Name", grindStone: "Stone", grindPattern: "Pattern" };
   function getEntryGrindValue(entry: TestEntry, col: string): string | null {
     if (col === "grindType") return entry.grindType || null;
     if (col === "grindStone") return entry.grindStone || null;

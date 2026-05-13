@@ -863,6 +863,16 @@ function GrindProfileDetailDialog({
   );
 }
 
+// Predefined colors for compare mode (Tailwind static classes)
+const GRIND_COMPARE_COLORS = [
+  { row: "bg-yellow-400/15", nameBg: "bg-yellow-400/20 text-yellow-700 ring-1 ring-yellow-400/50", dot: "bg-yellow-400" },
+  { row: "bg-blue-400/15",   nameBg: "bg-blue-400/20 text-blue-700 ring-1 ring-blue-400/50",   dot: "bg-blue-400" },
+  { row: "bg-green-400/15",  nameBg: "bg-green-400/20 text-green-700 ring-1 ring-green-400/50",  dot: "bg-green-400" },
+  { row: "bg-purple-400/15", nameBg: "bg-purple-400/20 text-purple-700 ring-1 ring-purple-400/50", dot: "bg-purple-400" },
+  { row: "bg-orange-400/15", nameBg: "bg-orange-400/20 text-orange-700 ring-1 ring-orange-400/50", dot: "bg-orange-400" },
+  { row: "bg-pink-400/15",   nameBg: "bg-pink-400/20 text-pink-700 ring-1 ring-pink-400/50",   dot: "bg-pink-400" },
+] as const;
+
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Grinding() {
@@ -872,6 +882,8 @@ export default function Grinding() {
   const [filterSeason, setFilterSeason] = useState<string>("All");
   const [filterLocation, setFilterLocation] = useState("");
   const [filterDate, setFilterDate] = useState("");
+  const [filterGrinds, setFilterGrinds] = useState<string[]>([]);
+  const [compareMode, setCompareMode] = useState(false);
 
   // Grind profiles state
   const [grindSearch, setGrindSearch] = useState("");
@@ -972,9 +984,18 @@ export default function Grinding() {
       if (filterSeason !== "All" && getSeason(t.date) !== filterSeason) return false;
       if (filterLocation && !t.location.toLowerCase().includes(filterLocation.toLowerCase())) return false;
       if (filterDate && t.date !== filterDate) return false;
+      if (filterGrinds.length > 0) {
+        const testEntries = allEntries.filter((e) => e.testId === t.id);
+        const testGrindNames = new Set(testEntries.map((e) => e.grindType).filter(Boolean) as string[]);
+        if (compareMode) {
+          if (!filterGrinds.every((g) => testGrindNames.has(g))) return false;
+        } else {
+          if (!filterGrinds.some((g) => testGrindNames.has(g))) return false;
+        }
+      }
       return true;
     });
-  }, [grindTests, filterSeason, filterLocation, filterDate]);
+  }, [grindTests, filterSeason, filterLocation, filterDate, filterGrinds, compareMode, allEntries]);
 
   const filteredProfiles = useMemo(() => {
     if (!grindSearch.trim()) return grindProfiles;
@@ -988,7 +1009,16 @@ export default function Grinding() {
     );
   }, [grindProfiles, grindSearch]);
 
-  const hasFilters = filterSeason !== "All" || filterLocation || filterDate;
+  const grindHighlight = useMemo(() => {
+    const map = new Map<string, typeof GRIND_COMPARE_COLORS[number]>();
+    filterGrinds.forEach((name, i) => {
+      if (i < GRIND_COMPARE_COLORS.length) map.set(name, GRIND_COMPARE_COLORS[i]);
+    });
+    return map;
+  }, [filterGrinds]);
+
+  const isGrindFilterActive = filterGrinds.length > 0;
+  const hasFilters = filterSeason !== "All" || filterLocation || filterDate || isGrindFilterActive;
   const isDayView = !!filterDate;
 
   function getTabSubtitle() {
@@ -1128,6 +1158,8 @@ export default function Grinding() {
                       setFilterSeason("All");
                       setFilterLocation("");
                       setFilterDate("");
+                      setFilterGrinds([]);
+                      setCompareMode(false);
                     }}
                   >
                     Clear
@@ -1156,6 +1188,87 @@ export default function Grinding() {
                   </div>
                 </div>
               )}
+
+              {grindProfiles.length > 0 && (
+                <div className="mt-3 border-t border-border pt-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
+                      <Disc3 className="h-3 w-3" />
+                      Grind
+                    </div>
+                    {!compareMode ? (
+                      <Select
+                        value={filterGrinds[0] ?? "all"}
+                        onValueChange={(v) => setFilterGrinds(v === "all" ? [] : [v])}
+                      >
+                        <SelectTrigger className="h-8 text-xs min-w-[160px] max-w-xs">
+                          <SelectValue placeholder="All grinds" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All grinds</SelectItem>
+                          {grindProfiles.map((p) => (
+                            <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {grindProfiles.map((p) => {
+                          const idx = filterGrinds.indexOf(p.name);
+                          const isSelected = idx !== -1;
+                          const color = isSelected ? GRIND_COMPARE_COLORS[idx] : null;
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() =>
+                                setFilterGrinds((prev) =>
+                                  prev.includes(p.name)
+                                    ? prev.filter((g) => g !== p.name)
+                                    : prev.length < GRIND_COMPARE_COLORS.length
+                                      ? [...prev, p.name]
+                                      : prev
+                                )
+                              }
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                                isSelected && color
+                                  ? color.nameBg
+                                  : "bg-muted text-muted-foreground hover:bg-muted/70"
+                              )}
+                            >
+                              {isSelected && color && (
+                                <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", color.dot)} />
+                              )}
+                              {p.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <Button
+                      variant={compareMode ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 text-xs shrink-0"
+                      onClick={() => {
+                        if (compareMode) setFilterGrinds((prev) => prev.slice(0, 1));
+                        setCompareMode((m) => !m);
+                      }}
+                    >
+                      Compare
+                    </Button>
+                    {filterGrinds.length > 0 && (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={() => setFilterGrinds([])}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </Card>
 
             {isDayView ? (
@@ -1170,7 +1283,7 @@ export default function Grinding() {
                     No grind tests on this date.
                   </Card>
                 ) : (
-                  filtered.map((t) => <GrindTestCard key={t.id} test={t} entries={allEntries.filter((e) => e.testId === t.id)} seriesById={seriesById} weatherById={weatherById} grindProfiles={grindProfiles} />)
+                  filtered.map((t) => <GrindTestCard key={t.id} test={t} entries={allEntries.filter((e) => e.testId === t.id)} seriesById={seriesById} weatherById={weatherById} grindProfiles={grindProfiles} grindHighlight={grindHighlight} />)
                 )}
               </div>
             ) : filtered.length === 0 ? (
@@ -1180,6 +1293,20 @@ export default function Grinding() {
                   {hasFilters ? "No grind tests match your filters." : "No grind tests yet. Create your first one above."}
                 </div>
               </Card>
+            ) : isGrindFilterActive ? (
+              <div className="flex flex-col gap-4">
+                {filtered.map((t) => (
+                  <GrindTestCard
+                    key={t.id}
+                    test={t}
+                    entries={allEntries.filter((e) => e.testId === t.id)}
+                    seriesById={seriesById}
+                    weatherById={weatherById}
+                    grindProfiles={grindProfiles}
+                    grindHighlight={grindHighlight}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="flex flex-col gap-3">
                 {filtered.map((t) => {
@@ -1337,12 +1464,14 @@ export default function Grinding() {
   );
 }
 
-function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles = [] }: {
+function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles = [], grindHighlight = new Map() }: {
   test: Test;
   entries: TestEntry[];
   seriesById: Map<number, string>;
   weatherById: Map<number, Weather>;
   grindProfiles?: GrindProfile[];
+  // maps profile name → color config (from GRIND_COMPARE_COLORS)
+  grindHighlight?: Map<string, typeof GRIND_COMPARE_COLORS[number]>;
 }) {
   const distLabels = getDistanceLabels(test);
   const sortedEntries = [...entries].sort((a, b) => a.skiNumber - b.skiNumber);
@@ -1359,15 +1488,14 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
     return Array.from(keys);
   }, [sortedEntries]);
 
-  // Available columns: "name" first (default on), then grindType, stone, pattern, extras (all default off)
+  // Available columns: "name" first (default on), then stone, pattern, extras — no "grindType" (it IS the name)
   const allGrindCols = useMemo(
-    () => ["name", "grindType", "grindStone", "grindPattern", ...extraParamKeys],
+    () => ["name", "grindStone", "grindPattern", ...extraParamKeys],
     [extraParamKeys]
   );
 
   const colLabels: Record<string, string> = {
     name: "Grind name",
-    grindType: "Type",
     grindStone: "Stone",
     grindPattern: "Pattern",
     ra_value: "RA",
@@ -1382,8 +1510,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
   }
 
   function getEntryGrindValue(entry: TestEntry, col: string): string | null {
-    if (col === "name") return matchProfileName(entry.grindType, entry.grindStone, entry.grindPattern, grindProfiles);
-    if (col === "grindType") return entry.grindType || null;
+    if (col === "name") return entry.grindType || matchProfileName(entry.grindType, entry.grindStone, entry.grindPattern, grindProfiles) || null;
     if (col === "grindStone") return entry.grindStone || null;
     if (col === "grindPattern") return entry.grindPattern || null;
     const ep = parseExtraParams(entry.grindExtraParams ?? null);
@@ -1399,12 +1526,8 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
               {test.location}
             </span>
           </AppLink>
+          <span className="text-xs text-muted-foreground">{test.date}</span>
           <span className="text-xs text-muted-foreground">{seriesById.get(test.seriesId) ?? ""}</span>
-          {gp.grindType && (
-            <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-200">
-              {gp.grindType}
-            </span>
-          )}
           {gp.stone && (
             <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{gp.stone}</span>
           )}
@@ -1415,6 +1538,17 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
             <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
               <Thermometer className="h-2.5 w-2.5" /> Snow {w.snowTemperatureC}°C
             </span>
+          )}
+          {/* Highlighted grind name badges */}
+          {grindHighlight.size > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {Array.from(grindHighlight.entries()).map(([name, color]) => (
+                <span key={name} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold", color.nameBg)}>
+                  <span className={cn("h-1.5 w-1.5 rounded-full", color.dot)} />
+                  {name}
+                </span>
+              ))}
+            </div>
           )}
         </div>
         <span className="text-xs text-muted-foreground">{sortedEntries.length} entries</span>
@@ -1440,39 +1574,46 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
           <table className="w-full text-sm" data-testid={`table-grind-day-${test.id}`}>
             <thead>
               <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                <th className="pb-2 pr-3">Ski #</th>
+                <th className="pb-2 pr-4">Ski #</th>
                 {visibleGrindCols.map((col) => (
-                  <th key={col} className="pb-2 pr-3">{colLabels[col] ?? col}</th>
+                  <th key={col} className="pb-2 pr-4">{colLabels[col] ?? col}</th>
                 ))}
                 {distLabels.map((label, i) => (
-                  <th key={i} className="pb-2 pr-3">
-                    {label} <span className="text-[9px]">(cm)</span> / Rank
+                  <th key={i} className="pb-2 pr-6">
+                    {label} <span className="text-[9px]">(cm)</span>
                   </th>
                 ))}
+                <th className="pb-2 pr-4">Rank</th>
                 <th className="pb-2 pr-3">Feel</th>
               </tr>
             </thead>
             <tbody>
               {sortedEntries.map((entry) => {
                 const rounds = getEntryRounds(entry, distLabels.length);
+                const entryName = entry.grindType || null;
+                const color = entryName ? grindHighlight.get(entryName) : undefined;
                 return (
-                  <tr key={entry.id} className="border-b border-border/20" data-testid={`row-grind-entry-${entry.id}`}>
-                    <td className="py-1.5 pr-3 font-medium text-xs">{entry.skiNumber}</td>
+                  <tr
+                    key={entry.id}
+                    className={cn("border-b border-border/20 transition-colors", color?.row)}
+                    data-testid={`row-grind-entry-${entry.id}`}
+                  >
+                    <td className="py-1.5 pr-4 font-medium text-xs">{entry.skiNumber}</td>
                     {visibleGrindCols.map((col) => (
-                      <td key={col} className="py-1.5 pr-3">
-                        <span className="text-xs text-muted-foreground">
+                      <td key={col} className="py-1.5 pr-4">
+                        <span className={cn("text-xs", color ? "font-medium" : "text-muted-foreground")}>
                           {getEntryGrindValue(entry, col) ?? <span className="opacity-40">—</span>}
                         </span>
                       </td>
                     ))}
                     {rounds.map((r, i) => (
-                      <td key={i} className="py-1.5 pr-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs tabular-nums">{r.result ?? "—"}</span>
-                          <RankBadge rank={r.rank} />
-                        </div>
+                      <td key={i} className="py-1.5 pr-6 font-mono text-sm tabular-nums">
+                        {r.result ?? "—"}
                       </td>
                     ))}
+                    <td className="py-1.5 pr-4">
+                      <RankBadge rank={rounds[0]?.rank ?? null} />
+                    </td>
                     <td className="py-1.5 pr-3">
                       {entry.feelingRank ? <RankBadge rank={entry.feelingRank} /> : <span className="text-xs text-muted-foreground">—</span>}
                     </td>

@@ -4656,15 +4656,15 @@ export async function registerRoutes(
 
   // ── Add from picture ──────────────────────────────────────────────────────
 
-  // POST /api/tests/from-picture/analyze — analyze image with Google Gemini vision (free tier)
+  // POST /api/tests/from-picture/analyze — analyze image with Groq vision (free tier)
   app.post("/api/tests/from-picture/analyze", requireAuth, async (req, res) => {
     const { imageBase64, mimeType } = req.body;
     if (!imageBase64 || !mimeType) {
       return res.status(400).json({ message: "imageBase64 and mimeType required" });
     }
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ message: "GEMINI_API_KEY not configured on server" });
+      return res.status(500).json({ message: "GROQ_API_KEY not configured on server. Get a free key at console.groq.com" });
     }
     const prompt = `You are analyzing an image of a ski test result sheet or similar test document. Extract all relevant data and return ONLY raw JSON — no markdown, no explanation, no code block.
 
@@ -4713,18 +4713,29 @@ Return a JSON object with this exact structure (use null for missing values):
 }`;
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        "https://api.groq.com/openai/v1/chat/completions",
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${apiKey}`,
+          },
           body: JSON.stringify({
-            contents: [{
-              parts: [
-                { inline_data: { mime_type: mimeType, data: imageBase64 } },
-                { text: prompt },
-              ],
-            }],
-            generationConfig: { temperature: 0, maxOutputTokens: 4096 },
+            model: "meta-llama/llama-4-scout-17b-16e-instruct",
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "image_url",
+                    image_url: { url: `data:${mimeType};base64,${imageBase64}` },
+                  },
+                  { type: "text", text: prompt },
+                ],
+              },
+            ],
+            temperature: 0,
+            max_tokens: 4096,
           }),
         }
       );
@@ -4733,7 +4744,7 @@ Return a JSON object with this exact structure (use null for missing values):
         return res.status(500).json({ message: `AI error: ${errText.slice(0, 300)}` });
       }
       const data = await response.json() as any;
-      const text = (data.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
+      const text = (data.choices?.[0]?.message?.content || "").trim();
       try {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);

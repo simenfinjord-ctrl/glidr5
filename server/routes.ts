@@ -4707,6 +4707,8 @@ Return a JSON object with this exact structure (use null for missing values):
       "name": "product/model name"
     }
   ],
+
+IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rode Cera HF + Rex LP" or "Swix HF7 / Toko Red"), list each as a SEPARATE object in the products array with the SAME skiNumber. Do NOT merge them into a single product name with "+" or "/". Example: ski 3 has "Rode Cera HF + Rex HF" → two entries: {skiNumber:3, brand:"Rode", name:"Cera HF"} and {skiNumber:3, brand:"Rex", name:"HF"}.
   "entries": [
     {
       "skiNumber": integer,
@@ -4819,15 +4821,14 @@ Return a JSON object with this exact structure (use null for missing values):
     // Helper: normalize a string for matching (collapse whitespace, lowercase)
     const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 
-    // 2. Find or create each product, build skiNumber→productId map
-    // Also keep an ordered list for positional fallback (when AI omits skiNumbers)
-    const productMap = new Map<number, number>();
-    const orderedProductIds: number[] = []; // positional list
-    for (const p of (body.products || [])) {
-      if (!p.brand || !p.name) continue;
-      const normBrand = normalize(p.brand);
-      const normName  = normalize(p.name);
-      // Match ignoring whitespace differences and case
+    // 2. Find or create each product, build skiNumber→[productId, ...] map (supports combined products)
+    // Also keep an ordered list (first product per unique appearance) for positional fallback
+    const productListMap = new Map<number, number[]>(); // skiNumber → ordered list of productIds
+    const orderedFirstProductIds: number[] = []; // first occurrence per ski, for positional fallback
+
+    const findOrCreateProduct = async (brand: string, name: string): Promise<number> => {
+      const normBrand = normalize(brand);
+      const normName  = normalize(name);
       const existingProds = await (pool as any).query(
         `SELECT id FROM products
          WHERE LOWER(REGEXP_REPLACE(brand, '\\s+', ' ', 'g')) = $1
@@ -4836,41 +4837,54 @@ Return a JSON object with this exact structure (use null for missing values):
          LIMIT 1`,
         [normBrand, normName, teamId]
       );
-      let productId: number;
-      if (existingProds.rows.length > 0) {
-        productId = existingProds.rows[0].id;
-      } else {
-        const created = await storage.createProduct({
-          category: pictureProductCategory,
-          brand: p.brand.trim().replace(/\s+/g, " "),
-          name: p.name.trim().replace(/\s+/g, " "),
-          createdAt: now,
-          createdById: u.id,
-          createdByName: u.name,
-          groupScope,
-          teamId,
-        });
-        productId = created.id;
-      }
-      orderedProductIds.push(productId);
+      if (existingProds.rows.length > 0) return existingProds.rows[0].id;
+      const created = await storage.createProduct({
+        category: pictureProductCategory,
+        brand: brand.trim().replace(/\s+/g, " "),
+        name: name.trim().replace(/\s+/g, " "),
+        createdAt: now,
+        createdById: u.id,
+        createdByName: u.name,
+        groupScope,
+        teamId,
+      });
+      return created.id;
+    };
+
+    for (const p of (body.products || [])) {
+      if (!p.brand || !p.name) continue;
+      const productId = await findOrCreateProduct(p.brand, p.name);
       const skiNum = Number(p.skiNumber);
-      if (!isNaN(skiNum) && skiNum > 0) productMap.set(skiNum, productId);
+      if (!isNaN(skiNum) && skiNum > 0) {
+        const existing = productListMap.get(skiNum) ?? [];
+        if (!existing.includes(productId)) existing.push(productId);
+        productListMap.set(skiNum, existing);
+        if (existing.length === 1) orderedFirstProductIds.push(productId);
+      } else {
+        orderedFirstProductIds.push(productId);
+      }
+    }
+
+    // productMap: skiNumber → primary productId (first product for that ski)
+    const productMap = new Map<number, number>();
+    for (const [skiNum, ids] of productListMap) {
+      if (ids.length > 0) productMap.set(skiNum, ids[0]);
     }
 
     // Positional fallback: if AI returned no valid ski numbers but we have products,
     // match them to entries sorted by ski number (position 0 → ski 1, etc.)
     const sortedEntries = [...(body.entries || [])].sort((a: any, b: any) => Number(a.skiNumber) - Number(b.skiNumber));
-    const usePositional = productMap.size === 0 && orderedProductIds.length > 0;
+    const usePositional = productMap.size === 0 && orderedFirstProductIds.length > 0;
     if (usePositional) {
       sortedEntries.forEach((e: any, i: number) => {
-        const pid = orderedProductIds[i] ?? orderedProductIds[0]; // last fallback: first product
+        const pid = orderedFirstProductIds[i] ?? orderedFirstProductIds[0];
         if (pid) productMap.set(Number(e.skiNumber), pid);
       });
     }
     // Single-product fallback: if only one product, apply to all entries
-    if (productMap.size === 0 && orderedProductIds.length === 1) {
+    if (productMap.size === 0 && orderedFirstProductIds.length === 1) {
       for (const e of (body.entries || [])) {
-        productMap.set(Number(e.skiNumber), orderedProductIds[0]);
+        productMap.set(Number(e.skiNumber), orderedFirstProductIds[0]);
       }
     }
 
@@ -4930,12 +4944,18 @@ Return a JSON object with this exact structure (use null for missing values):
 
     // 5. Create entries
     for (const e of (body.entries || [])) {
+      const skiNum = Number(e.skiNumber);
+      const allPids = productListMap.get(skiNum) ?? [];
+      const primaryId = allPids[0] ?? productMap.get(skiNum) ?? null;
+      const additionalIds = allPids.length > 1
+        ? allPids.slice(1).join(",")
+        : null;
       await storage.createEntry({
         testId: test.id,
         skiNumber: e.skiNumber,
-        productId: productMap.get(Number(e.skiNumber)) || null,
+        productId: primaryId,
         freeTextProduct: null,
-        additionalProductIds: null,
+        additionalProductIds: additionalIds,
         methodology: e.methodology || "",
         result0kmCmBehind: e.result0kmCmBehind ?? null,
         rank0km: e.rank0km ?? null,

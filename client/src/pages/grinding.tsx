@@ -150,6 +150,12 @@ function parseExtraParams(json: string | null): Record<string, string> {
   try { return JSON.parse(json); } catch { return {}; }
 }
 
+/** Format a param key for display: underscores → spaces, capitalize first letter. */
+function formatParamKey(k: string): string {
+  if (k === "ra_value") return "RA";
+  return k.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+}
+
 function formatDate(iso: string): string {
   try {
     return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -402,12 +408,14 @@ function GrindProfilesTable({
   onDuplicate: (p: GrindProfile) => void;
   onDelete: (p: GrindProfile) => void;
 }) {
-  // Discover all extra param keys across all profiles
+  // Discover all extra param keys across all profiles (excluding stone/pattern already shown)
   const allExtraKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const p of profiles) {
       const extra = parseExtraParams(p.extraParams);
-      for (const k of Object.keys(extra)) keys.add(k);
+      for (const k of Object.keys(extra)) {
+        if (!["stone", "pattern"].includes(k)) keys.add(k);
+      }
     }
     return Array.from(keys);
   }, [profiles]);
@@ -423,7 +431,7 @@ function GrindProfilesTable({
               <th className="px-3 py-2.5">Stone</th>
               <th className="px-3 py-2.5">Pattern</th>
               {allExtraKeys.map((k) => (
-                <th key={k} className="px-3 py-2.5">{k === "ra_value" ? "RA" : k}</th>
+                <th key={k} className="px-3 py-2.5">{formatParamKey(k)}</th>
               ))}
               <th className="px-3 py-2.5">Added by</th>
               <th className="px-3 py-2.5">Date</th>
@@ -533,7 +541,7 @@ function GrindProfileCard({
             )}
             {otherEntries.map(([k, v]) => (
               <span key={k} className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
-                {k}: {v}
+                {formatParamKey(k)}: {v}
               </span>
             ))}
           </div>
@@ -653,7 +661,7 @@ function GrindProfileDetailDialog({
     if (col === "stone") return "Stone";
     if (col === "pattern") return "Pattern";
     if (col === "ra_value") return "RA";
-    return col;
+    return formatParamKey(col);
   }
 
   function getColValue(entry: ProfileTestEntry, col: GrindCol): string {
@@ -722,11 +730,22 @@ function GrindProfileDetailDialog({
             )}
             {(() => {
               const extra = parseExtraParams(profile.extraParams);
-              return Object.entries(extra).map(([k, v]) => (
-                <span key={k} className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-200">
-                  {k === "ra_value" ? "RA" : k}: {v}
-                </span>
-              ));
+              const ra = extra["ra_value"];
+              const others = Object.entries(extra).filter(([k]) => !["stone", "pattern", "ra_value"].includes(k));
+              return (
+                <>
+                  {ra && (
+                    <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-200">
+                      RA: {ra}
+                    </span>
+                  )}
+                  {others.map(([k, v]) => (
+                    <span key={k} className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-200">
+                      {formatParamKey(k)}: {v}
+                    </span>
+                  ))}
+                </>
+              );
             })()}
           </div>
         )}
@@ -1503,7 +1522,6 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
     name: "Grind name",
     grindStone: "Stone",
     grindPattern: "Pattern",
-    ra_value: "RA",
   };
 
   const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>(["name"]);
@@ -1569,7 +1587,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
           {allGrindCols.map((col) => (
             <ColToggle
               key={col}
-              label={colLabels[col] ?? col}
+              label={colLabels[col] ?? formatParamKey(col)}
               active={visibleGrindCols.includes(col)}
               onClick={() => toggleGrindCol(col)}
             />
@@ -1584,7 +1602,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
               <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                 <th className="pb-2 pr-4">Ski #</th>
                 {visibleGrindCols.map((col) => (
-                  <th key={col} className="pb-2 pr-4">{colLabels[col] ?? col}</th>
+                  <th key={col} className="pb-2 pr-4">{colLabels[col] ?? formatParamKey(col)}</th>
                 ))}
                 {distLabels.map((label, i) => (
                   <th key={i} className="pb-2 pr-6">

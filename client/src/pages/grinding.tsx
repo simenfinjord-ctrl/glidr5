@@ -14,11 +14,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { cn } from "@/lib/utils";
+import { cn, fmtDate } from "@/lib/utils";
 
 type Test = {
   id: number;
   date: string;
+  startTime: string | null;
   location: string;
   weatherId: number | null;
   testType: string;
@@ -776,7 +777,7 @@ function GrindProfileDetailDialog({
                           {test.location}
                         </span>
                       </AppLink>
-                      <span className="text-xs text-muted-foreground">{test.date}</span>
+                      <span className="text-xs text-muted-foreground">{fmtDate(test.date)}</span>
                       {test.testName && (
                         <span className="text-xs text-muted-foreground italic">"{test.testName}"</span>
                       )}
@@ -980,7 +981,7 @@ export default function Grinding() {
   }, [grindTests]);
 
   const filtered = useMemo(() => {
-    return grindTests.filter((t) => {
+    const result = grindTests.filter((t) => {
       if (filterSeason !== "All" && getSeason(t.date) !== filterSeason) return false;
       if (filterLocation && !t.location.toLowerCase().includes(filterLocation.toLowerCase())) return false;
       if (filterDate && t.date !== filterDate) return false;
@@ -995,6 +996,10 @@ export default function Grinding() {
       }
       return true;
     });
+    if (filterDate) {
+      result.sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99"));
+    }
+    return result;
   }, [grindTests, filterSeason, filterLocation, filterDate, filterGrinds, compareMode, allEntries]);
 
   const filteredProfiles = useMemo(() => {
@@ -1182,7 +1187,7 @@ export default function Grinding() {
                         className="rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-500/20 transition-colors"
                         data-testid={`button-grind-date-${d}`}
                       >
-                        {d}
+                        {fmtDate(d)}
                       </button>
                     ))}
                   </div>
@@ -1275,7 +1280,7 @@ export default function Grinding() {
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-2">
                   <CalendarDays className="h-5 w-5 text-indigo-600" />
-                  <h2 className="text-lg font-semibold">Day view: {filterDate}</h2>
+                  <h2 className="text-lg font-semibold">Day view: {fmtDate(filterDate)}</h2>
                   <span className="rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">{filtered.length} test{filtered.length !== 1 ? "s" : ""}</span>
                 </div>
                 {filtered.length === 0 ? (
@@ -1318,7 +1323,7 @@ export default function Grinding() {
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-base font-semibold text-foreground">{t.location}</span>
-                            <span className="text-sm text-muted-foreground">{t.date}</span>
+                            <span className="text-sm text-muted-foreground">{fmtDate(t.date)}</span>
                             <span className="text-xs text-muted-foreground">{seriesById.get(t.seriesId) ?? ""}</span>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
@@ -1526,7 +1531,10 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
               {test.location}
             </span>
           </AppLink>
-          <span className="text-xs text-muted-foreground">{test.date}</span>
+          <span className="text-xs text-muted-foreground">{fmtDate(test.date)}</span>
+          {test.startTime && (
+            <span className="font-mono text-xs text-muted-foreground tabular-nums">{test.startTime}</span>
+          )}
           <span className="text-xs text-muted-foreground">{seriesById.get(test.seriesId) ?? ""}</span>
           {gp.stone && (
             <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{gp.stone}</span>

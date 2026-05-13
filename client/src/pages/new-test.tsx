@@ -78,6 +78,7 @@ type Weather = {
 
 const formSchema = z.object({
   date: z.string().min(1, "Date is required"),
+  startTime: z.string().min(1, "Start time is required"),
   seriesId: z.string().optional(),
   testType: z.enum(["Glide", "Structure", "Grind", "Classic", "Skating", "Double Poling"]),
   location: z.string().min(1, "Location is required"),
@@ -182,6 +183,7 @@ export default function NewTest() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       date: today,
+      startTime: "",
       testType: initialType,
       seriesId: "",
       location: defaultLocation,
@@ -447,6 +449,7 @@ export default function NewTest() {
                 const effectiveGroup = values.testType === "Grind" ? (userGroups[0] || "Grinding") : values.groupScope;
                 saveMutation.mutate({
                   date: values.date,
+                  startTime: values.startTime || null,
                   location: values.location,
                   testName: values.testName || null,
                   weatherId: chosenWeatherId,
@@ -605,6 +608,26 @@ export default function NewTest() {
                             {...field}
                             type="date"
                             data-testid="input-test-date"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="lg:col-span-1">
+                  <FormField
+                    control={form.control}
+                    name="startTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Start time</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="time"
+                            data-testid="input-test-start-time"
                           />
                         </FormControl>
                         <FormMessage />

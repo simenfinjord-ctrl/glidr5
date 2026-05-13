@@ -6,7 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn, fmtDate } from "@/lib/utils";
 
 type Series = {
   id: number;
@@ -201,7 +201,7 @@ export default function SeriesDetail() {
                     <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", test.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
                       {test.testType}
                     </span>
-                    <span className="text-xs text-muted-foreground">{test.date}</span>
+                    <span className="text-xs text-muted-foreground">{fmtDate(test.date)}</span>
                   </div>
                   <span className="text-xs text-muted-foreground">{sortedEntries.length} entries</span>
                 </div>

@@ -55,7 +55,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { cn } from "@/lib/utils";
+import { cn, fmtDate } from "@/lib/utils";
 
 type Athlete = {
   id: number;
@@ -1574,7 +1574,7 @@ export default function AthleteDetail() {
                           </SelectItem>
                           {weather.map((w) => (
                             <SelectItem key={w.id} value={String(w.id)} data-testid={`option-weather-${w.id}`}>
-                              {w.date} · {w.location} · {w.time} · Air {w.airTemperatureC}°C
+                              {fmtDate(w.date)} · {w.location} · {w.time} · Air {w.airTemperatureC}°C
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -2438,7 +2438,7 @@ function SkiDetailPanel({
                 data-testid={`row-regrind-panel-${rg.id}`}
               >
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
-                  <span className="font-medium">{rg.date}</span>
+                  <span className="font-medium">{fmtDate(rg.date)}</span>
                   <span className="font-semibold text-foreground">{rg.grindType}</span>
                   {rg.stone && <span className="text-muted-foreground">Stone: {rg.stone}</span>}
                   {rg.pattern && <span className="text-muted-foreground">Pattern: {rg.pattern}</span>}
@@ -2850,7 +2850,7 @@ function SkiCard({
                     data-testid={`row-regrind-${rg.id}`}
                   >
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
-                      <span className="font-medium">{rg.date}</span>
+                      <span className="font-medium">{fmtDate(rg.date)}</span>
                       <span className="font-semibold text-foreground">{rg.grindType}</span>
                       {rg.stone && <span className="text-muted-foreground">Stone: {rg.stone}</span>}
                       {rg.pattern && <span className="text-muted-foreground">Pattern: {rg.pattern}</span>}
@@ -2946,7 +2946,7 @@ function TestListView({ tests, skiIds, allSkis, activeTestColumns, weather = [] 
                   className={cn("border-t border-border/30", idx % 2 === 0 ? "bg-background/30" : "bg-background/10")}
                   data-testid={`list-row-test-${test.id}`}
                 >
-                  <td className="px-3 py-2 whitespace-nowrap font-medium">{test.date}</td>
+                  <td className="px-3 py-2 whitespace-nowrap font-medium">{fmtDate(test.date)}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{test.location}</td>
                   <td className="px-3 py-2">
                     <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800">
@@ -3048,7 +3048,7 @@ function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns, weather = [
           <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
             <span className="flex items-center gap-1 text-sm font-medium" data-testid={`text-test-date-${test.id}`}>
               <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-              {test.date}
+              {fmtDate(test.date)}
             </span>
             <span className="flex items-center gap-1 text-xs text-muted-foreground" data-testid={`text-test-location-${test.id}`}>
               <MapPin className="h-3 w-3" />

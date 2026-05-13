@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Users, FlaskConical, Package, Building2, Activity, LogIn, Eye, Clock } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn, fmtDate } from "@/lib/utils";
 import { getQueryFn } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import { Redirect } from "wouter";
@@ -214,7 +214,7 @@ export default function Overview() {
                       <tbody className="divide-y divide-border/50">
                         {data.recentTests.map((t) => (
                           <tr key={t.id} className="hover:bg-muted/30 transition-colors">
-                            <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{t.date || "—"}</td>
+                            <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{fmtDate(t.date) || "—"}</td>
                             <td className="px-4 py-2.5 font-medium text-foreground text-xs">{t.teamName || "—"}</td>
                             <td className="px-4 py-2.5 text-xs text-muted-foreground">{t.location || "—"}</td>
                             <td className="px-4 py-2.5 text-xs text-muted-foreground">{t.createdByName || "—"}</td>

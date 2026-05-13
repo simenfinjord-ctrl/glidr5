@@ -16,7 +16,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { cn } from "@/lib/utils";
+import { cn, fmtDate } from "@/lib/utils";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -569,7 +569,7 @@ function ProductSearchStats({
                 <tbody>
                   {stats.testResults.map(({ test, rank }, i) => (
                     <tr key={`${test.id}-${i}`} className="border-t hover:bg-muted/30" data-testid={`row-product-test-${test.id}`}>
-                      <td className="px-3 py-2">{test.date}</td>
+                      <td className="px-3 py-2">{fmtDate(test.date)}</td>
                       <td className="px-3 py-2 truncate max-w-[120px]">{test.location}</td>
                       <td className="px-3 py-2">
                         <Badge variant="outline" className="text-xs">{test.testType}</Badge>
@@ -898,7 +898,7 @@ function ProductCompare({
                       const bestRank = Math.min(...ranks.map((r) => r.rank ?? Infinity));
                       return (
                         <tr key={test.id} className="border-t hover:bg-muted/30" data-testid={`row-h2h-${test.id}`}>
-                          <td className="px-3 py-2">{test.date}</td>
+                          <td className="px-3 py-2">{fmtDate(test.date)}</td>
                           <td className="px-3 py-2 truncate max-w-[100px]">{test.location}</td>
                           {ranks.map((r) => (
                             <td key={r.product.id} className="text-center px-3 py-2">

@@ -293,6 +293,7 @@ export async function registerRoutes(
       ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
       UPDATE users SET username = email WHERE username IS NULL;
       CREATE UNIQUE INDEX IF NOT EXISTS users_username_idx ON users(username);
+      ALTER TABLE tests ADD COLUMN IF NOT EXISTS start_time TEXT;
       CREATE TABLE IF NOT EXISTS inbox_messages (
         id SERIAL PRIMARY KEY,
         to_user_id INTEGER NOT NULL,
@@ -1158,6 +1159,7 @@ export async function registerRoutes(
       distanceLabelXkm: req.body.distanceLabelXkm?.trim() || null,
       distanceLabels: req.body.distanceLabels || null,
       grindParameters: req.body.grindParameters || null,
+      startTime: req.body.startTime?.trim() || null,
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
@@ -1522,6 +1524,7 @@ export async function registerRoutes(
       distanceLabelXkm: req.body.distanceLabelXkm?.trim() || null,
       distanceLabels: req.body.distanceLabels || null,
       grindParameters: req.body.grindParameters ?? null,
+      startTime: req.body.startTime?.trim() || null,
     };
     if (req.body.groupScope) testData.groupScope = req.body.groupScope;
 
@@ -4807,7 +4810,9 @@ Return a JSON object with this exact structure (use null for missing values):
     }
 
     // 2. Find or create each product, build skiNumber→productId map
+    // Also keep an ordered list for positional fallback (when AI omits skiNumbers)
     const productMap = new Map<number, number>();
+    const orderedProductIds: number[] = []; // positional list
     for (const p of (body.products || [])) {
       if (!p.brand || !p.name) continue;
       const existingProds = await (pool as any).query(
@@ -4830,7 +4835,26 @@ Return a JSON object with this exact structure (use null for missing values):
         });
         productId = created.id;
       }
-      productMap.set(Number(p.skiNumber), productId);
+      orderedProductIds.push(productId);
+      const skiNum = Number(p.skiNumber);
+      if (!isNaN(skiNum) && skiNum > 0) productMap.set(skiNum, productId);
+    }
+
+    // Positional fallback: if AI returned no valid ski numbers but we have products,
+    // match them to entries sorted by ski number (position 0 → ski 1, etc.)
+    const sortedEntries = [...(body.entries || [])].sort((a: any, b: any) => Number(a.skiNumber) - Number(b.skiNumber));
+    const usePositional = productMap.size === 0 && orderedProductIds.length > 0;
+    if (usePositional) {
+      sortedEntries.forEach((e: any, i: number) => {
+        const pid = orderedProductIds[i] ?? orderedProductIds[0]; // last fallback: first product
+        if (pid) productMap.set(Number(e.skiNumber), pid);
+      });
+    }
+    // Single-product fallback: if only one product, apply to all entries
+    if (productMap.size === 0 && orderedProductIds.length === 1) {
+      for (const e of (body.entries || [])) {
+        productMap.set(Number(e.skiNumber), orderedProductIds[0]);
+      }
     }
 
     // 3. Create weather if data is present

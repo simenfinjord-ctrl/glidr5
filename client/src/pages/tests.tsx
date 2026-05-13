@@ -10,12 +10,13 @@ import { Input } from "@/components/ui/input";
 import { LocationAutocomplete } from "@/components/location-autocomplete";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { cn, fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 
 type Test = {
   id: number;
   date: string;
+  startTime: string | null;
   location: string;
   testName: string | null;
   weatherId: number | null;
@@ -589,20 +590,25 @@ export default function Tests() {
       return true;
     });
 
-    result.sort((a, b) => {
-      switch (sortOrder) {
-        case "date-asc":
-          return a.date.localeCompare(b.date);
-        case "date-desc":
-          return b.date.localeCompare(a.date);
-        case "location-az":
-          return a.location.localeCompare(b.location);
-        case "location-za":
-          return b.location.localeCompare(a.location);
-        default:
-          return b.date.localeCompare(a.date);
-      }
-    });
+    // In day view, always sort by startTime ascending
+    if (filterDate) {
+      result.sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99"));
+    } else {
+      result.sort((a, b) => {
+        switch (sortOrder) {
+          case "date-asc":
+            return a.date.localeCompare(b.date);
+          case "date-desc":
+            return b.date.localeCompare(a.date);
+          case "location-az":
+            return a.location.localeCompare(b.location);
+          case "location-za":
+            return b.location.localeCompare(a.location);
+          default:
+            return b.date.localeCompare(a.date);
+        }
+      });
+    }
 
     return result;
   }, [tests, filterSeason, filterType, filterProduct, filterSnowType, filterLocation, filterDate, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, allEntries, weatherById, sortOrder]);
@@ -689,7 +695,7 @@ export default function Tests() {
                     <SelectItem value="all">All dates</SelectItem>
                     {availableDates.map((d) => (
                       <SelectItem key={d} value={d}>
-                        {new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", year: "numeric", month: "short", day: "numeric" })}
+                        {fmtDate(d)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -850,7 +856,7 @@ export default function Tests() {
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2 flex-wrap">
               <CalendarDays className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Day view: {filterDate}</h2>
+              <h2 className="text-lg font-semibold">Day view: {fmtDate(filterDate)}</h2>
               <span className="rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">{filtered.length} test{filtered.length !== 1 ? "s" : ""}</span>
               {filtered.length > 0 && !isBlindTester && (
                 <Button
@@ -883,6 +889,7 @@ export default function Tests() {
                   <table className="w-full text-sm" data-testid="table-day-tests-overview">
                     <thead>
                       <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                        <th className="px-4 py-3 font-semibold">Time</th>
                         <th className="px-4 py-3 font-semibold">Name</th>
                         <th className="px-4 py-3 font-semibold">Location</th>
                         <th className="px-4 py-3 font-semibold">Type</th>
@@ -904,6 +911,7 @@ export default function Tests() {
                             onClick={() => navigate(`/tests/${t.id}`)}
                             data-testid={`row-day-test-${t.id}`}
                           >
+                            <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{t.startTime || "—"}</td>
                             <td className="px-4 py-3 font-medium">{t.testName || t.location}</td>
                             <td className="px-4 py-3">{t.location}</td>
                             <td className="px-4 py-3">
@@ -949,6 +957,9 @@ export default function Tests() {
                   <Card key={t.id} className="fs-card rounded-2xl p-4 sm:p-5" data-testid={`card-day-test-${t.id}`}>
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
+                        {t.startTime && (
+                          <span className="font-mono text-xs font-semibold text-muted-foreground tabular-nums">{t.startTime}</span>
+                        )}
                         <AppLink href={`/tests/${t.id}`} testId={`link-test-${t.id}`}>
                           <span className="text-base font-semibold hover:text-primary transition-colors cursor-pointer">
                             {t.testName || t.location}
@@ -1119,7 +1130,7 @@ export default function Tests() {
                           onClick={() => navigate(`/tests/${t.id}`)}
                           data-testid={`row-test-${t.id}`}
                         >
-                          <td className="px-4 py-3 whitespace-nowrap text-xs">{t.date}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs">{fmtDate(t.date)}</td>
                           <td className="px-4 py-3 font-medium">{t.testName || t.location}</td>
                           <td className="px-4 py-3">{t.location}</td>
                           <td className="px-4 py-3">
@@ -1183,7 +1194,8 @@ export default function Tests() {
                             <span className="text-base font-semibold">{t.testName || t.location}</span>
                           </div>
                           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            <span>{t.date}</span>
+                            <span>{fmtDate(t.date)}</span>
+                            {t.startTime && <span className="font-mono tabular-nums">{t.startTime}</span>}
                             <span className="text-border">·</span>
                             <span>{(t as any).seriesName || seriesById.get(t.seriesId) || ""}</span>
                           </div>

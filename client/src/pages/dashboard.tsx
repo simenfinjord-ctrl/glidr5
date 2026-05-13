@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
-import { cn } from "@/lib/utils";
+import { cn, fmtDate } from "@/lib/utils";
 
 type Test = { id: number; date: string; location: string; testName: string | null; testType: string; createdByName: string; groupScope: string; weatherId: number | null; seriesId: number; createdAt: string };
 type Product = { id: number; brand: string; name: string; category: string; groupScope: string };
@@ -252,7 +252,7 @@ export default function Dashboard() {
                         {t.testType}
                       </span>
                       <span className="text-sm font-medium text-foreground truncate">{t.testName || t.location}</span>
-                      <span className="text-xs text-muted-foreground shrink-0">{t.date}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">{fmtDate(t.date)}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
                       {isBlindTester ? (
@@ -302,7 +302,7 @@ export default function Dashboard() {
                   <div key={w.id} className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs" data-testid={`weather-row-${w.id}`}>
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-foreground">{w.location}</span>
-                      <span className="text-muted-foreground">{w.date}</span>
+                      <span className="text-muted-foreground">{fmtDate(w.date)}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-green-600">Air {w.airTemperatureC}°C</span>

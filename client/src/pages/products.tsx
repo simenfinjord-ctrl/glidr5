@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient, OfflineError } from "@/lib/queryClient";
 import { useOffline } from "@/lib/offline-context";
-import { cn } from "@/lib/utils";
+import { cn, fmtDate } from "@/lib/utils";
 
 type ProductCategory = "Glide product" | "Topping product" | "Structure tool";
 
@@ -1125,7 +1125,7 @@ function ProductTestHistoryDialog({ product, open, onClose }: { product: Product
                     >
                       {test.location}
                     </a>
-                    <span className="text-xs text-muted-foreground">{test.date}</span>
+                    <span className="text-xs text-muted-foreground">{fmtDate(test.date)}</span>
                     {test.testName && <span className="text-xs text-muted-foreground italic">"{test.testName}"</span>}
                     <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                       {test.testType}

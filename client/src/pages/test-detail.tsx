@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch } from "lucide-react";
 import { generateTestPDF } from "@/lib/pdf-report";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
@@ -9,7 +9,7 @@ import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn, fmtDate } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
@@ -506,7 +506,7 @@ export default function TestDetail() {
               {test.testType}
             </span>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">{test.date} · {seriesById.get(test.seriesId) ?? "Series"} · {test.groupScope}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{fmtDate(test.date)} · {seriesById.get(test.seriesId) ?? "Series"} · {test.groupScope}</p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -522,7 +522,14 @@ export default function TestDetail() {
                 <Calendar className="h-4 w-4 text-primary/70" />
                 <div>
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Date</div>
-                  <div className="text-sm font-medium" data-testid="text-test-date">{test.date}</div>
+                  <div className="text-sm font-medium" data-testid="text-test-date">
+                    {fmtDate(test.date)}
+                    {(test as any).startTime && (
+                      <span className="ml-2 inline-flex items-center gap-1 font-mono text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />{(test as any).startTime}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-3 rounded-xl bg-background/40 px-3 py-2.5">

@@ -112,6 +112,7 @@ type TestEntry = {
 
 const formSchemaEdit = z.object({
   date: z.string().min(1, "Date is required"),
+  startTime: z.string().optional(),
   seriesId: z.string().optional(),
   testType: z.enum(["Glide", "Structure", "Grind", "Classic", "Skating", "Double Poling"]),
   location: z.string().min(1, "Location is required"),
@@ -222,6 +223,7 @@ export default function EditTest() {
     resolver: zodResolver(formSchemaEdit),
     defaultValues: {
       date: "",
+      startTime: "",
       testType: "Glide",
       seriesId: "",
       location: "",
@@ -237,6 +239,7 @@ export default function EditTest() {
     setTestSkiSource(test.testSkiSource === "raceskis" ? "raceskis" : "series");
     form.reset({
       date: test.date,
+      startTime: (test as any).startTime || "",
       testType: test.testType as TestType,
       seriesId: test.seriesId ? String(test.seriesId) : "",
       location: test.location,
@@ -480,6 +483,7 @@ export default function EditTest() {
                 const effectiveGroup = values.testType === "Grind" ? (userGroups[0] || "Grinding") : values.groupScope;
                 const payload: any = {
                   date: values.date,
+                  startTime: values.startTime || null,
                   location: values.location,
                   testName: values.testName || null,
                   weatherId: chosenWeatherId,
@@ -631,6 +635,22 @@ export default function EditTest() {
                         <FormLabel>Date</FormLabel>
                         <FormControl>
                           <Input {...field} type="date" data-testid="input-test-date" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="lg:col-span-1">
+                  <FormField
+                    control={form.control}
+                    name="startTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Start time</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="time" data-testid="input-test-start-time" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

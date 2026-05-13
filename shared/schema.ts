@@ -314,6 +314,7 @@ export const tests = pgTable("tests", {
   teamId: integer("team_id").notNull().default(1),
   runsheetBracket: text("runsheet_bracket"),
   watchOperatorName: text("watch_operator_name"), // name of person who ran the test on watch
+  startTime: text("start_time"), // HH:MM format
 });
 
 export const insertTestSchema = createInsertSchema(tests).omit({ id: true, runsheetBracket: true });

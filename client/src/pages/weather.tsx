@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { fmtDate } from "@/lib/utils";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -707,7 +708,7 @@ export default function WeatherPage() {
                       <MapPin className="h-4 w-4 text-violet-600" />
                       <span className="text-base font-semibold">{w.location}</span>
                       <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700 ring-1 ring-violet-200">
-                        {w.date} · {w.time}
+                        {fmtDate(w.date)} · {w.time}
                       </span>
                       {w.testQuality != null && (
                         <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-300 ring-1 ring-amber-200">
@@ -815,7 +816,7 @@ export default function WeatherPage() {
             {confirmDelete && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Are you sure you want to delete the weather log for <span className="font-medium text-foreground">{confirmDelete.location}</span> on <span className="font-medium text-foreground">{confirmDelete.date}</span>?
+                  Are you sure you want to delete the weather log for <span className="font-medium text-foreground">{confirmDelete.location}</span> on <span className="font-medium text-foreground">{fmtDate(confirmDelete.date)}</span>?
                 </p>
                 <div className="flex justify-end gap-2">
                   <Button variant="ghost" onClick={() => setConfirmDelete(undefined)}>Cancel</Button>

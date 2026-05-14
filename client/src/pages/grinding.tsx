@@ -153,12 +153,6 @@ function parseExtraParams(json: string | null): Record<string, string> {
   try { return JSON.parse(json); } catch { return {}; }
 }
 
-/** Format a param key for display: underscores → spaces, capitalize first letter. */
-function formatParamKey(k: string): string {
-  if (k === "ra_value") return "RA-value";
-  return k.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
-}
-
 function formatDate(iso: string): string {
   try {
     return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -169,8 +163,8 @@ function formatDate(iso: string): string {
 
 // ─── Grind Profile form ────────────────────────────────────────────────────────
 
-// A "param" row: fixed params (stone, pattern, RA-value) plus user-defined ones
-type ParamRow = { key: string; value: string; fixed?: boolean };
+// All params are equal: editable name, editable value, reorderable, removable
+type ParamRow = { key: string; value: string };
 
 const GRIND_TYPE_OPTIONS = ["Classic", "Skate", "Universal"];
 
@@ -190,22 +184,37 @@ function GrindProfileForm({
 }) {
   const { toast } = useToast();
 
-  // Build initial param rows: fixed (stone, pattern, RA-value) + custom from extraParams + missing team-wide keys
+  // Build initial param rows from stored order; all params are equal
   const initParams = (): ParamRow[] => {
-    const parsed = parseExtraParams(editProfile?.extraParams ?? null);
-    const custom = Object.entries(parsed)
-      .filter(([k]) => !["stone", "pattern", "ra_value"].includes(k))
-      .map(([key, value]) => ({ key, value }));
-    const existingKeys = new Set(custom.map((p) => p.key));
-    const missingKeys = allProfileParamKeys
-      .filter((k) => !existingKeys.has(k))
-      .map((key) => ({ key, value: "" }));
+    if (editProfile) {
+      // Read from extraParams in stored order (preserves user-defined order)
+      const parsed = parseExtraParams(editProfile.extraParams ?? null);
+      const result: ParamRow[] = Object.entries(parsed).map(([key, value]) => ({ key, value }));
+      const existingKeys = new Set(result.map((p) => p.key));
+      // Backward compat: if stone/pattern only in DB columns (pre-extraParams profiles)
+      if (!existingKeys.has("stone") && editProfile.stone) {
+        result.unshift({ key: "stone", value: editProfile.stone });
+        existingKeys.add("stone");
+      }
+      if (!existingKeys.has("pattern") && editProfile.pattern) {
+        const si = result.findIndex((p) => p.key === "stone");
+        result.splice(si >= 0 ? si + 1 : 0, 0, { key: "pattern", value: editProfile.pattern });
+        existingKeys.add("pattern");
+      }
+      // Append any missing team-wide custom keys (empty — user fills if relevant)
+      for (const k of allProfileParamKeys) {
+        if (!existingKeys.has(k)) result.push({ key: k, value: "" });
+      }
+      return result;
+    }
+    // New profile: start with stone/pattern/ra_value defaults + any team custom keys
+    const defaults = new Set(["stone", "pattern", "ra_value"]);
+    const teamCustomKeys = allProfileParamKeys.filter((k) => !defaults.has(k));
     return [
-      { key: "stone", value: editProfile?.stone ?? "", fixed: true },
-      { key: "pattern", value: editProfile?.pattern ?? "", fixed: true },
-      { key: "ra_value", value: parsed["ra_value"] ?? "", fixed: true },
-      ...custom,
-      ...missingKeys,
+      { key: "stone", value: "" },
+      { key: "pattern", value: "" },
+      { key: "ra_value", value: "" },
+      ...teamCustomKeys.map((k) => ({ key: k, value: "" })),
     ];
   };
 
@@ -224,11 +233,15 @@ function GrindProfileForm({
     },
   });
 
-  const allParamsValid = params.every((p) => p.key.trim() !== "" && p.value.trim() !== "");
+  // A row is invalid only if it has one field filled but not the other; fully empty rows are skipped on save
+  const allParamsValid = params.every((p) => {
+    const hasKey = p.key.trim() !== "";
+    const hasValue = p.value.trim() !== "";
+    return (hasKey && hasValue) || (!hasKey && !hasValue);
+  });
 
   const addParam = () => setParams((prev) => [...prev, { key: "", value: "" }]);
   const removeParam = (idx: number) => {
-    if (params[idx].fixed) return; // can't remove fixed params
     setParams((prev) => prev.filter((_, i) => i !== idx));
   };
   const updateParam = (idx: number, field: "key" | "value", val: string) => {
@@ -237,8 +250,6 @@ function GrindProfileForm({
   const moveParam = (idx: number, dir: -1 | 1) => {
     const next = idx + dir;
     if (next < 0 || next >= params.length) return;
-    // Don't allow moving past/over fixed params
-    if (params[next].fixed || params[idx].fixed) return;
     setParams((prev) => {
       const arr = [...prev];
       [arr[idx], arr[next]] = [arr[next], arr[idx]];
@@ -281,12 +292,6 @@ function GrindProfileForm({
   });
 
   const canSave = form.formState.isValid && allParamsValid && !mutation.isPending;
-
-  const FIXED_LABELS: Record<string, string> = {
-    stone: "Stone",
-    pattern: "Pattern",
-    ra_value: "RA-value",
-  };
 
   return (
     <Form {...form}>
@@ -331,7 +336,7 @@ function GrindProfileForm({
           )}
         />
 
-        {/* Parameters list — fixed + custom, reorderable */}
+        {/* Parameters — all equal: editable name + value, reorderable, removable */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">Parameters</span>
@@ -347,42 +352,49 @@ function GrindProfileForm({
             </Button>
           </div>
           {params.map((param, idx) => (
-            <div key={idx} className={cn("flex items-center gap-2", param.fixed && "bg-muted/30 rounded-lg px-2 py-1")} data-testid={`param-row-${idx}`}>
-              {param.fixed ? (
-                <span className="text-xs font-medium text-muted-foreground w-20 shrink-0">{FIXED_LABELS[param.key] ?? param.key}</span>
-              ) : (
-                <Input
-                  value={param.key}
-                  onChange={(e) => updateParam(idx, "key", e.target.value)}
-                  placeholder="Parameter name"
-                  className="flex-1"
-                  data-testid={`input-param-key-${idx}`}
-                />
-              )}
+            <div key={idx} className="flex items-center gap-2" data-testid={`param-row-${idx}`}>
+              <Input
+                value={param.key}
+                onChange={(e) => updateParam(idx, "key", e.target.value)}
+                placeholder="Name"
+                className="flex-1"
+                data-testid={`input-param-key-${idx}`}
+              />
               <Input
                 value={param.value}
                 onChange={(e) => updateParam(idx, "value", e.target.value)}
-                placeholder={param.fixed ? `Enter ${FIXED_LABELS[param.key] ?? param.key}` : "Value"}
+                placeholder="Value"
                 className="flex-1"
                 data-testid={`input-param-value-${idx}`}
               />
-              {!param.fixed && (
-                <>
-                  <button type="button" onClick={() => moveParam(idx, -1)} className="p-1 rounded text-muted-foreground hover:text-foreground" disabled={idx === 0 || params[idx - 1]?.fixed}>
-                    <ChevronUp className="h-3.5 w-3.5" />
-                  </button>
-                  <button type="button" onClick={() => moveParam(idx, 1)} className="p-1 rounded text-muted-foreground hover:text-foreground" disabled={idx === params.length - 1}>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </button>
-                  <button type="button" onClick={() => removeParam(idx)} className="p-1 rounded text-muted-foreground hover:text-red-600" data-testid={`button-remove-param-${idx}`}>
-                    <X className="h-4 w-4" />
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                onClick={() => moveParam(idx, -1)}
+                className="p-1 rounded text-muted-foreground hover:text-foreground"
+                disabled={idx === 0}
+              >
+                <ChevronUp className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveParam(idx, 1)}
+                className="p-1 rounded text-muted-foreground hover:text-foreground"
+                disabled={idx === params.length - 1}
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => removeParam(idx)}
+                className="p-1 rounded text-muted-foreground hover:text-red-600"
+                data-testid={`button-remove-param-${idx}`}
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           ))}
           {!allParamsValid && (
-            <p className="text-xs text-destructive">All parameter names and values must be filled in.</p>
+            <p className="text-xs text-destructive">Each parameter needs both a name and a value.</p>
           )}
         </div>
 
@@ -511,9 +523,13 @@ function GrindProfileCard({
   onDelete: () => void;
   onViewResults: () => void;
 }) {
+  // Build ordered param list from extraParams (user-defined order), with legacy fallback
   const extra = parseExtraParams(profile.extraParams);
-  const raValue = extra["ra_value"];
-  const otherEntries = Object.entries(extra).filter(([k]) => !["stone", "pattern", "ra_value"].includes(k));
+  const extraKeys = new Set(Object.keys(extra));
+  const legacyParams: [string, string][] = [];
+  if (!extraKeys.has("stone") && profile.stone) legacyParams.push(["stone", profile.stone]);
+  if (!extraKeys.has("pattern") && profile.pattern) legacyParams.push(["pattern", profile.pattern]);
+  const allParamEntries = [...legacyParams, ...Object.entries(extra).filter(([, v]) => v)];
 
   return (
     <Card className="fs-card rounded-2xl p-4 sm:p-5" data-testid={`card-grind-profile-${profile.id}`}>
@@ -536,23 +552,8 @@ function GrindProfileCard({
                 #{profile.grindId}
               </span>
             )}
-            {profile.stone && (
-              <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                Stone: {profile.stone}
-              </span>
-            )}
-            {profile.pattern && (
-              <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                Pattern: {profile.pattern}
-              </span>
-            )}
-            {raValue && (
-              <span className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
-                RA-value: {raValue}
-              </span>
-            )}
-            {otherEntries.map(([k, v]) => (
-              <span key={k} className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
+            {allParamEntries.map(([k, v]) => (
+              <span key={k} className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                 {k}: {v}
               </span>
             ))}
@@ -730,40 +731,23 @@ function GrindProfileDetailDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Profile params summary */}
+        {/* Profile params summary — shown in user-defined order */}
         {profile && (
           <div className="flex flex-wrap gap-1.5 mb-1">
             <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
               {profile.grindType}
             </span>
-            {profile.stone && (
-              <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                Stone: {profile.stone}
-              </span>
-            )}
-            {profile.pattern && (
-              <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                Pattern: {profile.pattern}
-              </span>
-            )}
             {(() => {
               const extra = parseExtraParams(profile.extraParams);
-              const ra = extra["ra_value"];
-              const others = Object.entries(extra).filter(([k]) => !["stone", "pattern", "ra_value"].includes(k));
-              return (
-                <>
-                  {ra && (
-                    <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-200">
-                      RA-value: {ra}
-                    </span>
-                  )}
-                  {others.map(([k, v]) => (
-                    <span key={k} className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-200">
-                      {k}: {v}
-                    </span>
-                  ))}
-                </>
-              );
+              const extraKeys = new Set(Object.keys(extra));
+              const legacy: [string, string][] = [];
+              if (!extraKeys.has("stone") && profile.stone) legacy.push(["stone", profile.stone]);
+              if (!extraKeys.has("pattern") && profile.pattern) legacy.push(["pattern", profile.pattern]);
+              return [...legacy, ...Object.entries(extra).filter(([, v]) => v)].map(([k, v]) => (
+                <span key={k} className="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                  {k}: {v}
+                </span>
+              ));
             })()}
           </div>
         )}

@@ -373,8 +373,12 @@ export default function TestDetail() {
   const grindExtraParamKeys = useMemo(() => {
     if (!isGrindTest) return [];
     const keys = new Set<string>();
+    // "stone" and "pattern" are already shown via dedicated grindStone/grindPattern columns
+    const SKIP = new Set(["stone", "pattern"]);
     for (const e of sortedEntries) {
-      for (const k of Object.keys(parseExtraParams(e.grindExtraParams))) keys.add(k);
+      for (const k of Object.keys(parseExtraParams(e.grindExtraParams))) {
+        if (!SKIP.has(k.toLowerCase())) keys.add(k);
+      }
     }
     return Array.from(keys);
   }, [isGrindTest, sortedEntries]);
@@ -382,7 +386,17 @@ export default function TestDetail() {
     () => ["grindType", "grindStone", "grindPattern", ...grindExtraParamKeys],
     [grindExtraParamKeys]
   );
-  const GRIND_COL_LABELS: Record<string, string> = { grindType: "Grind Name", grindStone: "Stone", grindPattern: "Pattern" };
+  const GRIND_COL_LABELS: Record<string, string> = {
+    grindType: "Grind Name",
+    grindStone: "Stone",
+    grindPattern: "Pattern",
+    ra_value: "RA-value",
+  };
+  function formatGrindColLabel(col: string): string {
+    if (GRIND_COL_LABELS[col]) return GRIND_COL_LABELS[col];
+    // Show the key exactly as written (preserving user capitalisation)
+    return col;
+  }
   function getEntryGrindValue(entry: TestEntry, col: string): string | null {
     if (col === "grindType") return entry.grindType || null;
     if (col === "grindStone") return entry.grindStone || null;
@@ -789,7 +803,7 @@ export default function TestDetail() {
               <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mr-1">Vis per ski:</span>
               {allGrindCols.map((col) => {
                 const active = visibleGrindCols.includes(col);
-                const label = GRIND_COL_LABELS[col] ?? col;
+                const label = formatGrindColLabel(col);
                 return (
                   <button
                     key={col}
@@ -823,7 +837,7 @@ export default function TestDetail() {
                     {!isGrind && <th className="pb-3 pr-3">Product</th>}
                     {!isGrind && <th className="pb-3 pr-3">Method</th>}
                     {isGrind && visibleGrindCols.map((col) => (
-                      <th key={col} className="pb-3 pr-3">{GRIND_COL_LABELS[col] ?? col}</th>
+                      <th key={col} className="pb-3 pr-3">{formatGrindColLabel(col)}</th>
                     ))}
                     {distLabels.map((label, i) => (
                       <th key={i} className="pb-3 pr-3">

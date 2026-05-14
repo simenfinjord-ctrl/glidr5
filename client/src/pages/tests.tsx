@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useCallback } from "react";
+import { Fragment, useMemo, useState, useRef, useCallback } from "react";
 import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -404,7 +404,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               </div>
             )}
 
-            {/* Products — editable */}
+            {/* Products — editable, grouped by ski number */}
             <div className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -422,38 +422,64 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                 <p className="text-xs text-muted-foreground italic">No products</p>
               ) : (
                 <div className="flex flex-col gap-1.5">
-                  {editProducts.map((p, i) => (
-                    <div key={i} className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        value={p.skiNumber || ""}
-                        onChange={(e) => setEditProducts((prev) => prev.map((r, j) => j === i ? { ...r, skiNumber: parseInt(e.target.value) || 0 } : r))}
-                        placeholder="Ski #"
-                        className="h-7 w-14 rounded border border-input bg-background px-1.5 text-xs text-center"
-                      />
-                      <input
-                        type="text"
-                        value={p.brand}
-                        onChange={(e) => setEditProducts((prev) => prev.map((r, j) => j === i ? { ...r, brand: e.target.value } : r))}
-                        placeholder="Brand"
-                        className="h-7 flex-1 rounded border border-input bg-background px-1.5 text-xs"
-                      />
-                      <input
-                        type="text"
-                        value={p.name}
-                        onChange={(e) => setEditProducts((prev) => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
-                        placeholder="Name"
-                        className="h-7 flex-1 rounded border border-input bg-background px-1.5 text-xs"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setEditProducts((prev) => prev.filter((_, j) => j !== i))}
-                        className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-muted"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                  {(() => {
+                    // Group products by skiNumber; preserve original indices for editing
+                    const indexed = editProducts.map((p, i) => ({ ...p, _i: i }));
+                    const grouped = new Map<number, typeof indexed>();
+                    for (const p of indexed) {
+                      const key = p.skiNumber || 0;
+                      if (!grouped.has(key)) grouped.set(key, []);
+                      grouped.get(key)!.push(p);
+                    }
+                    // Sort groups by ski number
+                    const sortedGroups = Array.from(grouped.entries()).sort(([a], [b]) => a - b);
+                    return sortedGroups.map(([skiNum, group]) => (
+                      <div key={skiNum} className="flex items-center gap-1 flex-wrap">
+                        {/* Ski number — shared across all products in group */}
+                        <input
+                          type="number"
+                          value={skiNum || ""}
+                          onChange={(e) => {
+                            const n = parseInt(e.target.value) || 0;
+                            setEditProducts((prev) =>
+                              prev.map((r, j) => group.some((g) => g._i === j) ? { ...r, skiNumber: n } : r)
+                            );
+                          }}
+                          placeholder="#"
+                          className="h-7 w-12 rounded border border-input bg-background px-1.5 text-xs text-center flex-shrink-0"
+                        />
+                        {/* All products for this ski, inline with "+" separator */}
+                        {group.map((p, pos) => (
+                          <Fragment key={p._i}>
+                            {pos > 0 && (
+                              <span className="text-xs font-bold text-muted-foreground px-0.5">+</span>
+                            )}
+                            <input
+                              type="text"
+                              value={p.brand}
+                              onChange={(e) => setEditProducts((prev) => prev.map((r, j) => j === p._i ? { ...r, brand: e.target.value } : r))}
+                              placeholder="Brand"
+                              className="h-7 w-20 rounded border border-input bg-background px-1.5 text-xs flex-shrink-0"
+                            />
+                            <input
+                              type="text"
+                              value={p.name}
+                              onChange={(e) => setEditProducts((prev) => prev.map((r, j) => j === p._i ? { ...r, name: e.target.value } : r))}
+                              placeholder="Name"
+                              className="h-7 w-24 rounded border border-input bg-background px-1.5 text-xs flex-shrink-0"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setEditProducts((prev) => prev.filter((_, j) => j !== p._i))}
+                              className="h-7 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-muted text-sm flex-shrink-0"
+                            >
+                              ×
+                            </button>
+                          </Fragment>
+                        ))}
+                      </div>
+                    ));
+                  })()}
                 </div>
               )}
             </div>

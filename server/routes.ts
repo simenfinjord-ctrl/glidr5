@@ -4776,6 +4776,52 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
       try {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+
+        // ── Fuzzy-match AI product names against the team's product database ──
+        // When handwriting is unclear the AI may misspell brand/name. We compare
+        // the combined "brand name" string against every DB product and substitute
+        // the best match when the token-overlap score is ≥ 0.5.
+        try {
+          const teamIdForMatch = getActiveTeamId(req);
+          const { pool } = await import("./db");
+          const dbRows = await (pool as any).query(
+            `SELECT id, brand, name FROM products WHERE team_id = $1`,
+            [teamIdForMatch]
+          );
+          const dbProducts: { id: number; brand: string; name: string }[] = dbRows.rows;
+
+          if (dbProducts.length > 0 && Array.isArray(parsed.products)) {
+            const norm = (s: string) =>
+              s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+            const tokenSet = (s: string): Set<string> =>
+              new Set(norm(s).split(" ").filter(Boolean));
+            const fuzzyScore = (a: string, b: string): number => {
+              const ta = tokenSet(a);
+              const tb = tokenSet(b);
+              if (ta.size === 0 || tb.size === 0) return 0;
+              let hits = 0;
+              for (const t of ta) if (tb.has(t)) hits++;
+              return hits / Math.max(ta.size, tb.size);
+            };
+
+            parsed.products = (parsed.products as any[]).map((p: any) => {
+              const aiStr = `${p.brand || ""} ${p.name || ""}`.trim();
+              let bestScore = 0;
+              let bestMatch: { id: number; brand: string; name: string } | null = null;
+              for (const dp of dbProducts) {
+                const score = fuzzyScore(aiStr, `${dp.brand} ${dp.name}`);
+                if (score > bestScore) { bestScore = score; bestMatch = dp; }
+              }
+              if (bestMatch && bestScore >= 0.5) {
+                return { ...p, brand: bestMatch.brand, name: bestMatch.name };
+              }
+              return p;
+            });
+          }
+        } catch (_) {
+          // fuzzy matching is best-effort — never fail the whole request
+        }
+
         return res.json(parsed);
       } catch {
         return res.status(500).json({ message: "Failed to parse AI response", raw: text.slice(0, 500) });

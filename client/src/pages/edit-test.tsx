@@ -626,10 +626,14 @@ export default function EditTest() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            {/* Always render all possible types for the current source so
+                                Radix UI can match the stored value even before auth loads */}
                             {testSkiSource !== "raceskis" && (
                               <>
                                 <SelectItem value="Glide">Glide</SelectItem>
                                 <SelectItem value="Structure">Structure</SelectItem>
+                                <SelectItem value="Classic">Classic</SelectItem>
+                                <SelectItem value="Grind">Grind</SelectItem>
                               </>
                             )}
                             {testSkiSource === "raceskis" && (
@@ -638,9 +642,6 @@ export default function EditTest() {
                                 <SelectItem value="Skating">Skating</SelectItem>
                                 <SelectItem value="Double Poling">Double Poling</SelectItem>
                               </>
-                            )}
-                            {can("grinding") && testSkiSource !== "raceskis" && (
-                              <SelectItem value="Grind">Grind</SelectItem>
                             )}
                           </SelectContent>
                         </Select>

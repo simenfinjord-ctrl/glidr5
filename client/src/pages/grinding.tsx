@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2, LayoutGrid, LayoutList } from "lucide-react";
+import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2, LayoutGrid, LayoutList, ExternalLink } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
@@ -818,22 +818,30 @@ function GrindProfileDetailDialog({
                         <span className="text-xs text-muted-foreground italic">"{test.testName}"</span>
                       )}
                     </div>
-                    {/* Weather badges */}
-                    {test.weather && (
-                      <div className="flex flex-wrap items-center gap-1">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
-                          <Wind className="h-2.5 w-2.5" /> Air {test.weather.airTemperatureC}°C
-                        </span>
-                        <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
-                          <Snowflake className="h-2.5 w-2.5" /> Snow {test.weather.snowTemperatureC}°C
-                        </span>
-                        {test.weather.humidity != null && (
-                          <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            {test.weather.humidity}% RH
+                    {/* Weather + Open button */}
+                    <div className="flex items-center gap-2">
+                      {test.weather && (
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
+                            <Wind className="h-2.5 w-2.5" /> Air {test.weather.airTemperatureC}°C
                           </span>
-                        )}
-                      </div>
-                    )}
+                          <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
+                            <Snowflake className="h-2.5 w-2.5" /> Snow {test.weather.snowTemperatureC}°C
+                          </span>
+                          {test.weather.humidity != null && (
+                            <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                              {test.weather.humidity}% RH
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <AppLink href={`/tests/${test.id}`} testId={`link-open-detail-test-${test.id}`}>
+                        <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1">
+                          <ExternalLink className="h-3 w-3" />
+                          Open
+                        </Button>
+                      </AppLink>
+                    </div>
                   </div>
                   {test.notes && (
                     <p className="mb-2 text-xs text-muted-foreground italic truncate">{test.notes}</p>
@@ -1616,7 +1624,15 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
             </div>
           )}
         </div>
-        <span className="text-xs text-muted-foreground">{sortedEntries.length} entries</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{sortedEntries.length} entries</span>
+          <AppLink href={`/tests/${test.id}`} testId={`link-open-grind-test-${test.id}`}>
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1">
+              <ExternalLink className="h-3 w-3" />
+              Open
+            </Button>
+          </AppLink>
+        </div>
       </div>
 
       {/* Grind column chooser */}

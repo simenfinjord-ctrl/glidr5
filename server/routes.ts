@@ -4821,11 +4821,7 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
     // Helper: normalize a string for matching (collapse whitespace, lowercase)
     const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 
-    // 2. Find or create each product, build skiNumber→[productId, ...] map (supports combined products)
-    // Also keep an ordered list (first product per unique appearance) for positional fallback
-    const productListMap = new Map<number, number[]>(); // skiNumber → ordered list of productIds
-    const orderedFirstProductIds: number[] = []; // first occurrence per ski, for positional fallback
-
+    // 2. Find or create each product, then resolve which entries get which products
     const findOrCreateProduct = async (brand: string, name: string): Promise<number> => {
       const normBrand = normalize(brand);
       const normName  = normalize(name);
@@ -4851,40 +4847,59 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
       return created.id;
     };
 
+    // Step 1: resolve all products and record their skiNumber (null if missing/invalid)
+    type ResolvedProduct = { skiNumber: number | null; productId: number };
+    const resolvedProducts: ResolvedProduct[] = [];
     for (const p of (body.products || [])) {
       if (!p.brand || !p.name) continue;
       const productId = await findOrCreateProduct(p.brand, p.name);
-      const skiNum = Number(p.skiNumber);
-      if (!isNaN(skiNum) && skiNum > 0) {
-        const existing = productListMap.get(skiNum) ?? [];
-        if (!existing.includes(productId)) existing.push(productId);
-        productListMap.set(skiNum, existing);
-        if (existing.length === 1) orderedFirstProductIds.push(productId);
-      } else {
-        orderedFirstProductIds.push(productId);
-      }
+      const raw = Number(p.skiNumber);
+      const skiNumber = (!isNaN(raw) && raw > 0) ? raw : null;
+      resolvedProducts.push({ skiNumber, productId });
     }
 
-    // productMap: skiNumber → primary productId (first product for that ski)
-    const productMap = new Map<number, number>();
-    for (const [skiNum, ids] of productListMap) {
-      if (ids.length > 0) productMap.set(skiNum, ids[0]);
+    // Step 2: group by skiNumber → entryProductsMap (entry skiNum → [primaryId, ...additionalIds])
+    // Only include entries that had a valid skiNumber from the AI
+    const entryProductsMap = new Map<number, number[]>();
+    for (const rp of resolvedProducts) {
+      if (rp.skiNumber === null) continue;
+      const list = entryProductsMap.get(rp.skiNumber) ?? [];
+      if (!list.includes(rp.productId)) list.push(rp.productId);
+      entryProductsMap.set(rp.skiNumber, list);
     }
 
-    // Positional fallback: if AI returned no valid ski numbers but we have products,
-    // match them to entries sorted by ski number (position 0 → ski 1, etc.)
     const sortedEntries = [...(body.entries || [])].sort((a: any, b: any) => Number(a.skiNumber) - Number(b.skiNumber));
-    const usePositional = productMap.size === 0 && orderedFirstProductIds.length > 0;
-    if (usePositional) {
+
+    // Step 3: check how many actual entry skiNumbers appear in entryProductsMap
+    const assignedCount = sortedEntries.filter((e: any) => entryProductsMap.has(Number(e.skiNumber))).length;
+
+    if (assignedCount === 0 && resolvedProducts.length > 0) {
+      // No entry ski numbers matched any product ski number → positional fallback.
+      // Group consecutive products (preserving combined-product order) into position slots.
+      const posSlots: number[][] = [];
+      let lastSki: number | null | undefined = undefined;
+      for (const rp of resolvedProducts) {
+        if (rp.skiNumber !== lastSki) {
+          posSlots.push([rp.productId]);
+          lastSki = rp.skiNumber;
+        } else {
+          if (!posSlots[posSlots.length - 1].includes(rp.productId))
+            posSlots[posSlots.length - 1].push(rp.productId);
+        }
+      }
       sortedEntries.forEach((e: any, i: number) => {
-        const pid = orderedFirstProductIds[i] ?? orderedFirstProductIds[0];
-        if (pid) productMap.set(Number(e.skiNumber), pid);
+        const slot = posSlots[i] ?? posSlots[posSlots.length - 1];
+        if (slot?.length) entryProductsMap.set(Number(e.skiNumber), [...slot]);
       });
-    }
-    // Single-product fallback: if only one product, apply to all entries
-    if (productMap.size === 0 && orderedFirstProductIds.length === 1) {
-      for (const e of (body.entries || [])) {
-        productMap.set(Number(e.skiNumber), orderedFirstProductIds[0]);
+    } else if (assignedCount < sortedEntries.length) {
+      // Some entries matched, others didn't.
+      // If there is only ONE unique product across everything → broadcast to unassigned.
+      const uniqueIds = [...new Set(resolvedProducts.map((r) => r.productId))];
+      if (uniqueIds.length === 1) {
+        for (const e of sortedEntries) {
+          const skiNum = Number(e.skiNumber);
+          if (!entryProductsMap.has(skiNum)) entryProductsMap.set(skiNum, [uniqueIds[0]]);
+        }
       }
     }
 
@@ -4945,11 +4960,9 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
     // 5. Create entries
     for (const e of (body.entries || [])) {
       const skiNum = Number(e.skiNumber);
-      const allPids = productListMap.get(skiNum) ?? [];
-      const primaryId = allPids[0] ?? productMap.get(skiNum) ?? null;
-      const additionalIds = allPids.length > 1
-        ? allPids.slice(1).join(",")
-        : null;
+      const allPids = entryProductsMap.get(skiNum) ?? [];
+      const primaryId = allPids[0] ?? null;
+      const additionalIds = allPids.length > 1 ? allPids.slice(1).join(",") : null;
       await storage.createEntry({
         testId: test.id,
         skiNumber: e.skiNumber,

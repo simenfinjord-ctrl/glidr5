@@ -2626,16 +2626,7 @@ export async function registerRoutes(
       entries: entriesByTestId[r.id] || [],
     }));
 
-    // Debug: also return sample entries to diagnose matching
-    const debugRows = await (pg as any).query(
-      `SELECT te.id, te.test_id, te.grind_type, te.grind_stone, te.grind_pattern, te.grind_profile_id, t.team_id
-       FROM test_entries te
-       JOIN tests t ON t.id = te.test_id
-       WHERE t.team_id = $1 AND t.test_type = 'Grind'
-       LIMIT 20`,
-      [teamId]
-    );
-    res.json({ profile, tests, _debug: { params: { teamId, profileId: profile.id, profileName: profile.name, profileGrindType: profile.grindType }, sampleEntries: debugRows.rows, testCount: result.rows.length } });
+    res.json({ profile, tests });
   });
 
   // Admin stats

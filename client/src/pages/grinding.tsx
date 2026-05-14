@@ -86,6 +86,7 @@ type ProfileTestEntry = {
   results: string | null; feelingRank: number | null; kickRank: number | null;
   grindType: string | null; grindStone: string | null;
   grindPattern: string | null; grindExtraParams: string | null;
+  isSelectedGrind?: boolean;
 };
 type ProfileTest = {
   id: number; date: string; location: string; testName: string | null;
@@ -677,7 +678,7 @@ function GrindProfileDetailDialog({
   }
 
   function getColValue(entry: ProfileTestEntry, col: GrindCol): string {
-    if (col === "name") return profile?.name ?? "—";
+    if (col === "name") return entry.grindType ?? "—";
     if (col === "stone") return entry.grindStone ?? "—";
     if (col === "pattern") return entry.grindPattern ?? "—";
     const extras = parseExtraParams(entry.grindExtraParams);
@@ -867,8 +868,17 @@ function GrindProfileDetailDialog({
                         <tbody>
                           {test.entries.map((entry) => {
                             const rounds = getEntryResults(entry, distLabels.length);
+                            const isSelected = entry.isSelectedGrind === true;
+                            const hasGrind = !!entry.grindType;
                             return (
-                              <tr key={entry.id} className="border-b border-border/20">
+                              <tr
+                                key={entry.id}
+                                className={cn(
+                                  "border-b border-border/20",
+                                  isSelected && "bg-yellow-400/15",
+                                  !hasGrind && "opacity-40",
+                                )}
+                              >
                                 <td className="py-1.5 pr-3 font-medium text-xs">{entry.skiNumber}</td>
                                 {hasSkiInfo && (
                                   <td className="py-1.5 pr-3 text-xs text-muted-foreground">
@@ -876,7 +886,15 @@ function GrindProfileDetailDialog({
                                   </td>
                                 )}
                                 {activeCols.map((col) => (
-                                  <td key={col} className="py-1.5 pr-3 text-xs text-muted-foreground">
+                                  <td
+                                    key={col}
+                                    className={cn(
+                                      "py-1.5 pr-3 text-xs",
+                                      col === "name" && isSelected
+                                        ? "font-semibold text-yellow-700 dark:text-yellow-400"
+                                        : "text-muted-foreground",
+                                    )}
+                                  >
                                     {getColValue(entry, col)}
                                   </td>
                                 ))}

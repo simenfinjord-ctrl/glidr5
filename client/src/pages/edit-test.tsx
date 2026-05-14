@@ -170,9 +170,6 @@ export default function EditTest() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, can } = useAuth();
-  const [initialized, setInitialized] = useState(false);
-
-  const [testSkiSource, setTestSkiSource] = useState<"series" | "raceskis">("series");
 
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
@@ -182,6 +179,27 @@ export default function EditTest() {
     queryKey: ["/api/athletes"],
     enabled: can("raceskis"),
   });
+
+  // Test + entries queries come first so their cached data is available for lazy
+  // state initialisers and useForm defaultValues on the very first render.
+  const { data: test, isLoading: testLoading } = useQuery<Test>({
+    queryKey: [`/api/tests/${testId}`],
+    enabled: !!testId,
+  });
+  const { data: entries = [], isLoading: entriesLoading } = useQuery<TestEntry[]>({
+    queryKey: [`/api/tests/${testId}/entries`],
+    enabled: !!testId,
+  });
+
+  // Lazy initialisers run once at mount. When React Query cache is warm (e.g.
+  // after prefetchQuery in test-detail or a previous SPA visit) `test` is
+  // available synchronously, so these start with the correct values and avoid
+  // the Radix Select race condition.
+  const [testSkiSource, setTestSkiSource] = useState<"series" | "raceskis">(
+    () => test?.testSkiSource === "raceskis" ? "raceskis" : "series"
+  );
+  const [initialized, setInitialized] = useState(() => !!test);
+
   const { data: allRaceSkis = [] } = useQuery<RaceSkiData[]>({
     queryKey: ["/api/race-skis/all"],
     enabled: testSkiSource === "raceskis" && can("raceskis"),
@@ -197,17 +215,11 @@ export default function EditTest() {
     }
     return (user?.groupScope ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   }, [user, groups]);
-  const { data: test, isLoading: testLoading } = useQuery<Test>({
-    queryKey: [`/api/tests/${testId}`],
-    enabled: !!testId,
-  });
-  const { data: entries = [], isLoading: entriesLoading } = useQuery<TestEntry[]>({
-    queryKey: [`/api/tests/${testId}/entries`],
-    enabled: !!testId,
-  });
 
   const [rows, setRows] = useState<EntryRow[]>([]);
-  const [distanceLabels, setDistanceLabels] = useState<string[]>(["0 km"]);
+  const [distanceLabels, setDistanceLabels] = useState<string[]>(
+    () => test ? parseDistanceLabels(test) : ["0 km"]
+  );
   const [entriesLoaded, setEntriesLoaded] = useState(false);
 
   const allGrindParamKeys = useMemo(() => {
@@ -227,17 +239,29 @@ export default function EditTest() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchemaEdit),
-    defaultValues: {
-      date: "",
-      startTime: "",
-      testType: "Glide",
-      seriesId: "",
-      location: "",
-      testName: "",
-      weatherId: undefined,
-      notes: "",
-      groupScope: "",
-    },
+    defaultValues: test
+      ? {
+          date: test.date,
+          startTime: (test as any).startTime || "",
+          testType: test.testType as TestType,
+          seriesId: test.seriesId ? String(test.seriesId) : "",
+          location: test.location,
+          testName: (test as any).testName || "",
+          weatherId: test.weatherId ? String(test.weatherId) : undefined,
+          notes: test.notes || "",
+          groupScope: test.groupScope || "",
+        }
+      : {
+          date: "",
+          startTime: "",
+          testType: "Glide",
+          seriesId: "",
+          location: "",
+          testName: "",
+          weatherId: undefined,
+          notes: "",
+          groupScope: "",
+        },
   });
 
   useEffect(() => {

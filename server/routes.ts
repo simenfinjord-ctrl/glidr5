@@ -2584,7 +2584,7 @@ export async function registerRoutes(
                 te.result_0km_cm_behind, te.rank_0km, te.result_xkm_cm_behind, te.rank_xkm,
                 te.results, te.feeling_rank, te.kick_rank,
                 te.grind_type, te.grind_stone, te.grind_pattern, te.grind_extra_params, te.grind_profile_id,
-                rs.model as ski_model, rs.brand as ski_brand
+                rs.ski_id as ski_model, rs.brand as ski_brand
          FROM test_entries te
          LEFT JOIN race_skis rs ON rs.id = te.race_ski_id
          WHERE te.test_id = ANY($1)

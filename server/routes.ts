@@ -868,15 +868,48 @@ export async function registerRoutes(
          ORDER BY te.ski_number ASC`,
         [testIds]
       );
+
+      // Collect all unique additional product IDs across all entries so we can
+      // look up their brand/name in one query and show the full combination.
+      const allAdditionalIds = new Set<number>();
+      for (const e of entryRows.rows) {
+        if (e.additional_product_ids) {
+          for (const part of String(e.additional_product_ids).split(",")) {
+            const n = parseInt(part.trim(), 10);
+            if (!isNaN(n)) allAdditionalIds.add(n);
+          }
+        }
+      }
+      const additionalProductMap = new Map<number, { brand: string; name: string }>();
+      if (allAdditionalIds.size > 0) {
+        const addRows = await (pg as any).query(
+          `SELECT id, brand, name FROM products WHERE id = ANY($1)`,
+          [Array.from(allAdditionalIds)]
+        );
+        for (const p of addRows.rows) {
+          additionalProductMap.set(p.id, { brand: p.brand, name: p.name });
+        }
+      }
+
       for (const e of entryRows.rows) {
         if (!entriesByTestId[e.test_id]) entriesByTestId[e.test_id] = [];
+        const additionalIds: number[] = e.additional_product_ids
+          ? String(e.additional_product_ids).split(",").map((x: string) => parseInt(x.trim(), 10)).filter((n: number) => !isNaN(n))
+          : [];
         const isSelectedProduct =
-          e.product_id === productId ||
-          (e.additional_product_ids && e.additional_product_ids.split(",").map((x: string) => parseInt(x.trim(), 10)).includes(productId));
+          e.product_id === productId || additionalIds.includes(productId);
+        const additionalProducts = additionalIds
+          .map((id: number) => {
+            const p = additionalProductMap.get(id);
+            return p ? { id, brand: p.brand, name: p.name } : null;
+          })
+          .filter(Boolean) as { id: number; brand: string; name: string }[];
+
         entriesByTestId[e.test_id].push({
           id: e.id, skiNumber: e.ski_number,
           productId: e.product_id, additionalProductIds: e.additional_product_ids,
           productBrand: e.product_brand, productName: e.product_name,
+          additionalProducts,
           result0kmCmBehind: e.result_0km_cm_behind, rank0km: e.rank_0km,
           resultXkmCmBehind: e.result_xkm_cm_behind, rankXkm: e.rank_xkm,
           results: e.results, feelingRank: e.feeling_rank,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -1068,6 +1068,7 @@ type ProductTest = {
     id: number; skiNumber: number;
     productId: number | null; additionalProductIds: string | null;
     productBrand: string | null; productName: string | null;
+    additionalProducts: { id: number; brand: string; name: string }[];
     result0kmCmBehind: number | null; rank0km: number | null;
     resultXkmCmBehind: number | null; rankXkm: number | null;
     results: string | null; feelingRank: number | null;
@@ -1190,10 +1191,30 @@ function ProductTestHistoryDialog({ product, open, onClose }: { product: Product
                           <tr key={e.id} className={cn("border-b border-border/20", e.isSelectedProduct && "bg-yellow-500/10")}>
                             <td className={cn("py-1.5 pr-3 font-bold text-xs", e.isSelectedProduct && "text-yellow-600")}>{e.skiNumber}</td>
                             <td className="py-1.5 pr-3 text-xs text-muted-foreground">
-                              {e.isSelectedProduct
-                                ? <span className="font-semibold text-yellow-700">{product?.brand} {product?.name}</span>
-                                : (e.productBrand ? `${e.productBrand} ${e.productName || ""}` : "—")
-                              }
+                              {(() => {
+                                // Build full list: primary product + all additional products
+                                const all: { id: number | null; label: string }[] = [];
+                                if (e.productId != null && e.productBrand) {
+                                  all.push({ id: e.productId, label: `${e.productBrand} ${e.productName || ""}`.trim() });
+                                }
+                                for (const ap of (e.additionalProducts ?? [])) {
+                                  all.push({ id: ap.id, label: `${ap.brand} ${ap.name}`.trim() });
+                                }
+                                if (all.length === 0) return <span>—</span>;
+                                return (
+                                  <span className="flex flex-wrap items-center gap-0.5">
+                                    {all.map((p, i) => {
+                                      const isViewed = p.id === product?.id;
+                                      return (
+                                        <Fragment key={i}>
+                                          {i > 0 && <span className="text-muted-foreground/50 mx-0.5">+</span>}
+                                          <span className={isViewed ? "font-semibold text-yellow-700" : ""}>{p.label}</span>
+                                        </Fragment>
+                                      );
+                                    })}
+                                  </span>
+                                );
+                              })()}
                             </td>
                             {rounds.map((r, i) => (
                               <td key={i} className="py-1.5 pr-3">

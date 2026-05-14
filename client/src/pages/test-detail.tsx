@@ -477,12 +477,34 @@ export default function TestDetail() {
                   Duplicate
                 </Button>
               </AppLink>
-              <AppLink href={`/tests/${id}/edit`} testId="link-edit-test">
-                <Button variant="outline" size="sm" data-testid="button-edit-test">
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
-              </AppLink>
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid="button-edit-test"
+                onClick={async () => {
+                  // Warm the React Query cache before navigating to edit.
+                  // This replicates the manual "edit → back → edit" workaround:
+                  // on a second visit the test + entries data is already cached so
+                  // form.reset() runs with real values before the first render, avoiding
+                  // the Radix Select race condition that blanks the form fields.
+                  await Promise.all([
+                    queryClient.prefetchQuery({
+                      queryKey: [`/api/tests/${id}`],
+                      queryFn: () =>
+                        fetch(`/api/tests/${id}`, { credentials: "include" }).then((r) => r.json()),
+                    }),
+                    queryClient.prefetchQuery({
+                      queryKey: [`/api/tests/${id}/entries`],
+                      queryFn: () =>
+                        fetch(`/api/tests/${id}/entries`, { credentials: "include" }).then((r) => r.json()),
+                    }),
+                  ]);
+                  setLocation(`/tests/${id}/edit`);
+                }}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
               <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" data-testid="button-delete-test">

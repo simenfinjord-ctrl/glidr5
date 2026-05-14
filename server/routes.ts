@@ -5018,7 +5018,7 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
       });
     } catch (_) {}
 
-    return res.json({ testId: test.id, seriesId, weatherId, productIds: Object.fromEntries(productMap) });
+    return res.json({ testId: test.id, seriesId, weatherId, productIds: Object.fromEntries(entryProductsMap) });
   });
 
   // PUT /api/inbox/:id/read — mark a message as read

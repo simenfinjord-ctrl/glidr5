@@ -50,6 +50,7 @@ type TestEntry = {
   grindStone: string | null;
   grindPattern: string | null;
   grindExtraParams: string | null;
+  grindProfileId?: number | null;
 };
 type Weather = {
   id: number;
@@ -67,6 +68,7 @@ type GrindProfile = {
   stone: string;
   pattern: string;
   extraParams: string | null;
+  grindId?: string | null;
   createdByName: string;
   teamId: number;
   createdAt: string;
@@ -152,7 +154,7 @@ function parseExtraParams(json: string | null): Record<string, string> {
 
 /** Format a param key for display: underscores → spaces, capitalize first letter. */
 function formatParamKey(k: string): string {
-  if (k === "ra_value") return "RA";
+  if (k === "ra_value") return "RA-value";
   return k.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 }
 
@@ -427,11 +429,12 @@ function GrindProfilesTable({
           <thead>
             <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/30">
               <th className="px-3 py-2.5">Name</th>
+              <th className="px-3 py-2.5">ID</th>
               <th className="px-3 py-2.5">Type</th>
               <th className="px-3 py-2.5">Stone</th>
               <th className="px-3 py-2.5">Pattern</th>
               {allExtraKeys.map((k) => (
-                <th key={k} className="px-3 py-2.5">{k === "ra_value" ? "RA" : k}</th>
+                <th key={k} className="px-3 py-2.5">{k === "ra_value" ? "RA-value" : k}</th>
               ))}
               <th className="px-3 py-2.5">Added by</th>
               <th className="px-3 py-2.5">Date</th>
@@ -452,6 +455,9 @@ function GrindProfilesTable({
                     >
                       {profile.name}
                     </button>
+                  </td>
+                  <td className="px-3 py-2 text-xs font-mono text-muted-foreground">
+                    {profile.grindId ? `#${profile.grindId}` : "—"}
                   </td>
                   <td className="px-3 py-2">
                     <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-200">
@@ -524,6 +530,11 @@ function GrindProfileCard({
             <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-200">
               {profile.grindType}
             </span>
+            {profile.grindId && (
+              <span className="inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700 ring-1 ring-violet-200 font-mono">
+                #{profile.grindId}
+              </span>
+            )}
             {profile.stone && (
               <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                 Stone: {profile.stone}
@@ -536,7 +547,7 @@ function GrindProfileCard({
             )}
             {raValue && (
               <span className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
-                RA: {raValue}
+                RA-value: {raValue}
               </span>
             )}
             {otherEntries.map(([k, v]) => (
@@ -660,7 +671,7 @@ function GrindProfileDetailDialog({
     if (col === "name") return "Grind name";
     if (col === "stone") return "Stone";
     if (col === "pattern") return "Pattern";
-    if (col === "ra_value") return "RA";
+    if (col === "ra_value") return "RA-value";
     // User-defined keys: show exactly as stored
     return col;
   }
@@ -710,6 +721,11 @@ function GrindProfileDetailDialog({
           <DialogTitle className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-violet-600" />
             {profile?.name}
+            {profile?.grindId && (
+              <span className="inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700 ring-1 ring-violet-200 font-mono">
+                #{profile.grindId}
+              </span>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -737,7 +753,7 @@ function GrindProfileDetailDialog({
                 <>
                   {ra && (
                     <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-200">
-                      RA: {ra}
+                      RA-value: {ra}
                     </span>
                   )}
                   {others.map(([k, v]) => (
@@ -1517,16 +1533,25 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
   }, [sortedEntries]);
 
   // Available columns: "name" first (default on), then stone, pattern, extras — no "grindType" (it IS the name)
+  // Also show grindProfileId as "Grind-ID" if any entries have it
+  const hasGrindProfileIds = sortedEntries.some((e) => e.grindProfileId != null);
   const allGrindCols = useMemo(
-    () => ["name", "grindStone", "grindPattern", ...extraParamKeys],
-    [extraParamKeys]
+    () => [
+      "name",
+      ...(hasGrindProfileIds ? ["grindProfileId"] : []),
+      "grindStone",
+      "grindPattern",
+      ...extraParamKeys,
+    ],
+    [extraParamKeys, hasGrindProfileIds]
   );
 
   const colLabels: Record<string, string> = {
     name: "Grind name",
+    grindProfileId: "Grind-ID",
     grindStone: "Stone",
     grindPattern: "Pattern",
-    ra_value: "RA",
+    ra_value: "RA-value",
   };
 
   // For column labels: use colLabels for known internal keys, otherwise show key exactly as stored
@@ -1544,6 +1569,10 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
 
   function getEntryGrindValue(entry: TestEntry, col: string): string | null {
     if (col === "name") return entry.grindType || matchProfileName(entry.grindType, entry.grindStone, entry.grindPattern, grindProfiles) || null;
+    if (col === "grindProfileId") {
+      const profile = grindProfiles.find((p) => p.id === entry.grindProfileId);
+      return profile?.grindId ? `#${profile.grindId}` : null;
+    }
     if (col === "grindStone") return entry.grindStone || null;
     if (col === "grindPattern") return entry.grindPattern || null;
     const ep = parseExtraParams(entry.grindExtraParams ?? null);

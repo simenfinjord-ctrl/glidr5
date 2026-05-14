@@ -292,6 +292,8 @@ export async function registerRoutes(
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_type TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_stone TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_pattern TEXT;
+      ALTER TABLE grind_profiles ADD COLUMN IF NOT EXISTS grind_id TEXT;
+      ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_profile_id INTEGER;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS is_paused INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
       UPDATE users SET username = email WHERE username IS NULL;
@@ -1196,6 +1198,7 @@ export async function registerRoutes(
         grindStone: e.grindStone || null,
         grindPattern: e.grindPattern || null,
         grindExtraParams: e.grindExtraParams || null,
+        grindProfileId: e.grindProfileId || null,
         raceSkiId: e.raceSkiId || null,
         createdAt: now,
         createdById: u.id,
@@ -1570,6 +1573,7 @@ export async function registerRoutes(
           grindStone: e.grindStone || null,
           grindPattern: e.grindPattern || null,
           grindExtraParams: e.grindExtraParams || null,
+          grindProfileId: e.grindProfileId || null,
           raceSkiId: e.raceSkiId || null,
           createdAt: now,
           createdById: u.id,
@@ -2443,12 +2447,20 @@ export async function registerRoutes(
     if (!name || !grindType || !stone || !pattern) {
       return res.status(400).json({ message: "name, grindType, stone, and pattern are required" });
     }
+    const { pool: pg2 } = await import("./db");
+    const maxRow = await (pg2 as any).query(
+      `SELECT grind_id FROM grind_profiles WHERE team_id = $1 AND grind_id IS NOT NULL ORDER BY grind_id DESC LIMIT 1`,
+      [teamId]
+    );
+    const nextNum = maxRow.rows.length > 0 ? parseInt(maxRow.rows[0].grind_id) + 1 : 1;
+    const grindId = String(nextNum).padStart(3, "0");
     const profile = await storage.createGrindProfile({
       name,
       grindType,
       stone,
       pattern,
       extraParams: extraParams ? JSON.stringify(extraParams) : null,
+      grindId,
       createdByName: u.name,
       teamId,
       createdAt: new Date().toISOString(),
@@ -2491,12 +2503,20 @@ export async function registerRoutes(
     const existing = await storage.getGrindProfile(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
     if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
+    const { pool: pg3 } = await import("./db");
+    const maxRowDup = await (pg3 as any).query(
+      `SELECT grind_id FROM grind_profiles WHERE team_id = $1 AND grind_id IS NOT NULL ORDER BY grind_id DESC LIMIT 1`,
+      [teamId]
+    );
+    const nextNumDup = maxRowDup.rows.length > 0 ? parseInt(maxRowDup.rows[0].grind_id) + 1 : 1;
+    const grindIdDup = String(nextNumDup).padStart(3, "0");
     const copy = await storage.createGrindProfile({
       name: `${existing.name} (copy)`,
       grindType: existing.grindType,
       stone: existing.stone,
       pattern: existing.pattern,
       extraParams: existing.extraParams,
+      grindId: grindIdDup,
       createdByName: u.name,
       teamId,
       createdAt: new Date().toISOString(),
@@ -2533,6 +2553,7 @@ export async function registerRoutes(
     const { pool: pg } = await import("./db");
     // Entries store grindType as the PROFILE NAME (profile.name), not profile.grindType.
     // Stone/pattern matching is secondary — also match entries that use the profile name alone.
+    // Also match by grind_profile_id if set.
     const stoneIsEmpty = !profile.stone;
     const patternIsEmpty = !profile.pattern;
     const result = await (pg as any).query(
@@ -2546,15 +2567,16 @@ export async function registerRoutes(
        LEFT JOIN daily_weather w ON w.id = t.weather_id
        WHERE t.team_id = $1
          AND (
-           TRIM(LOWER(te.grind_type)) = TRIM(LOWER($2))
+           te.grind_profile_id = $2
+           OR TRIM(LOWER(te.grind_type)) = TRIM(LOWER($3))
            OR (
-             TRIM(LOWER(te.grind_type)) = TRIM(LOWER($3))
-             AND ($4::boolean OR te.grind_stone ILIKE $5)
-             AND ($6::boolean OR te.grind_pattern ILIKE $7)
+             TRIM(LOWER(te.grind_type)) = TRIM(LOWER($4))
+             AND ($5::boolean OR te.grind_stone ILIKE $6)
+             AND ($7::boolean OR te.grind_pattern ILIKE $8)
            )
          )
        ORDER BY t.date DESC, t.id DESC`,
-      [teamId, profile.name, profile.grindType, stoneIsEmpty, profile.stone || '', patternIsEmpty, profile.pattern || '']
+      [teamId, profile.id, profile.name, profile.grindType, stoneIsEmpty, profile.stone || '', patternIsEmpty, profile.pattern || '']
     );
 
     // For each test, fetch its entries
@@ -2568,15 +2590,16 @@ export async function registerRoutes(
          LEFT JOIN race_skis rs ON rs.id = te.race_ski_id
          WHERE te.test_id = ANY($1) AND t.team_id = $2
            AND (
-             TRIM(LOWER(te.grind_type)) = TRIM(LOWER($3))
+             te.grind_profile_id = $3
+             OR TRIM(LOWER(te.grind_type)) = TRIM(LOWER($4))
              OR (
-               TRIM(LOWER(te.grind_type)) = TRIM(LOWER($4))
-               AND ($5::boolean OR te.grind_stone ILIKE $6)
-               AND ($7::boolean OR te.grind_pattern ILIKE $8)
+               TRIM(LOWER(te.grind_type)) = TRIM(LOWER($5))
+               AND ($6::boolean OR te.grind_stone ILIKE $7)
+               AND ($8::boolean OR te.grind_pattern ILIKE $9)
              )
            )
          ORDER BY te.ski_number ASC`,
-        [testIds, teamId, profile.name, profile.grindType, stoneIsEmpty, profile.stone || '', patternIsEmpty, profile.pattern || '']
+        [testIds, teamId, profile.id, profile.name, profile.grindType, stoneIsEmpty, profile.stone || '', patternIsEmpty, profile.pattern || '']
       );
       for (const e of entryRows.rows) {
         if (!entriesByTestId[e.test_id]) entriesByTestId[e.test_id] = [];

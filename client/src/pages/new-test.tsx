@@ -478,6 +478,7 @@ export default function NewTest() {
                     grindStone: r.grindStone || null,
                     grindPattern: r.grindPattern || null,
                     grindExtraParams: r.grindExtraParams ? JSON.stringify(r.grindExtraParams) : null,
+                    grindProfileId: r.grindProfileId || null,
                     raceSkiId: testSkiSource === "raceskis" ? (r.raceSkiId || null) : null,
                   })),
                 });

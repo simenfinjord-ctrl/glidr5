@@ -340,6 +340,7 @@ export const testEntries = pgTable("test_entries", {
   grindStone: text("grind_stone"),
   grindPattern: text("grind_pattern"),
   grindExtraParams: text("grind_extra_params"),
+  grindProfileId: integer("grind_profile_id"), // FK to grind_profiles.id
   raceSkiId: integer("race_ski_id"),
   createdAt: text("created_at").notNull(),
   createdById: integer("created_by_id").notNull(),
@@ -422,6 +423,7 @@ export const grindProfiles = pgTable("grind_profiles", {
   stone: text("stone").notNull(),
   pattern: text("pattern").notNull(),
   extraParams: text("extra_params"), // JSON: Record<string, string>
+  grindId: text("grind_id"), // e.g. "001", "002" — team-scoped sequential
   createdByName: text("created_by_name").notNull(),
   teamId: integer("team_id").notNull().default(1),
   createdAt: text("created_at").notNull(),

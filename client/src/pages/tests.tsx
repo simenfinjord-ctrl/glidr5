@@ -159,6 +159,19 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   const [editTestType, setEditTestType] = useState("");
   const [editTestName, setEditTestName] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editEntries, setEditEntries] = useState<Array<{
+    skiNumber: number;
+    result0kmCmBehind: number | null;
+    rank0km: number | null;
+    methodology: string;
+    feelingRank: number | null;
+  }>>([]);
+  const [editProducts, setEditProducts] = useState<Array<{
+    skiNumber: number;
+    brand: string;
+    name: string;
+    category: string;
+  }>>([]);
 
   function reset() {
     setStep("upload");
@@ -166,6 +179,8 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     setCreatedTestId(null);
     setErrorMsg("");
     setDragOver(false);
+    setEditEntries([]);
+    setEditProducts([]);
   }
 
   async function processFile(file: File) {
@@ -196,6 +211,19 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
       setEditTestType(data.testType || "Glide");
       setEditTestName(data.testName || "");
       setEditNotes(data.notes || "");
+      setEditEntries((data.entries || []).map((e: any) => ({
+        skiNumber: e.skiNumber,
+        result0kmCmBehind: e.result0kmCmBehind ?? null,
+        rank0km: e.rank0km ?? null,
+        methodology: e.methodology || "",
+        feelingRank: e.feelingRank ?? null,
+      })));
+      setEditProducts((data.products || []).map((p: any) => ({
+        skiNumber: p.skiNumber,
+        brand: p.brand || "",
+        name: p.name || "",
+        category: p.category || "",
+      })));
       setStep("review");
     } catch (e: any) {
       setErrorMsg(e.message || "Unknown error");
@@ -226,6 +254,8 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         testType: editTestType || analysis.testType || "Glide",
         testName: editTestName || null,
         notes: editNotes || null,
+        entries: editEntries,
+        products: editProducts,
       };
       const res = await fetch("/api/tests/from-picture/create", {
         method: "POST",
@@ -374,62 +404,126 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               </div>
             )}
 
-            {/* Products — group by skiNumber so combined products show together */}
-            {(analysis.products || []).length > 0 && (() => {
-              // Build ordered map: skiNumber → product[]
-              const grouped = new Map<number, typeof analysis.products>();
-              for (const p of analysis.products) {
-                const k = Number(p.skiNumber);
-                const list = grouped.get(k) ?? [];
-                list.push(p);
-                grouped.set(k, list);
-              }
-              const rows = Array.from(grouped.entries()).sort(([a], [b]) => a - b);
-              return (
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                    Products ({rows.length} ski{rows.length !== 1 ? "s" : ""}, {analysis.products.length} product{analysis.products.length !== 1 ? "s" : ""})
-                  </p>
-                  <div className="flex flex-col gap-1.5">
-                    {rows.map(([skiNum, prods]) => (
-                      <div key={skiNum} className="flex items-start gap-2 text-xs">
-                        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary mt-0.5">
-                          {skiNum}
-                        </span>
-                        <div className="flex flex-col gap-0.5">
-                          {prods.map((p, i) => (
-                            <span key={i} className="font-medium">
-                              {p.brand} {p.name}
-                              {i < prods.length - 1 && <span className="text-muted-foreground mx-1">+</span>}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Entries */}
-            {(analysis.entries || []).length > 0 && (
-              <div className="rounded-lg border border-border p-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Results ({analysis.entries.length} entries)</p>
-                <div className="flex flex-col gap-1">
-                  {[...analysis.entries].sort((a, b) => (a.rank0km ?? 99) - (b.rank0km ?? 99)).map((e) => (
-                    <div key={e.skiNumber} className="flex items-center gap-2 text-xs">
-                      <span className={cn(
-                        "inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold",
-                        e.rank0km === 1 ? "bg-yellow-500/20 text-yellow-600" : e.rank0km === 2 ? "bg-slate-300/20 text-slate-500" : e.rank0km === 3 ? "bg-amber-700/20 text-amber-600" : "bg-muted/40 text-muted-foreground"
-                      )}>{e.rank0km ?? "—"}</span>
-                      <span>Ski #{e.skiNumber}</span>
-                      {e.result0kmCmBehind != null && <span className="text-muted-foreground">+{e.result0kmCmBehind} cm</span>}
-                      {e.feelingRank != null && <span className="text-muted-foreground">feel: {e.feelingRank}</span>}
+            {/* Products — editable */}
+            <div className="rounded-lg border border-border p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Products ({editProducts.length})
+                </p>
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={() => setEditProducts((prev) => [...prev, { skiNumber: 0, brand: "", name: "", category: "" }])}
+                >
+                  + Add product
+                </button>
+              </div>
+              {editProducts.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">No products</p>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {editProducts.map((p, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        value={p.skiNumber || ""}
+                        onChange={(e) => setEditProducts((prev) => prev.map((r, j) => j === i ? { ...r, skiNumber: parseInt(e.target.value) || 0 } : r))}
+                        placeholder="Ski #"
+                        className="h-7 w-14 rounded border border-input bg-background px-1.5 text-xs text-center"
+                      />
+                      <input
+                        type="text"
+                        value={p.brand}
+                        onChange={(e) => setEditProducts((prev) => prev.map((r, j) => j === i ? { ...r, brand: e.target.value } : r))}
+                        placeholder="Brand"
+                        className="h-7 flex-1 rounded border border-input bg-background px-1.5 text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={p.name}
+                        onChange={(e) => setEditProducts((prev) => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
+                        placeholder="Name"
+                        className="h-7 flex-1 rounded border border-input bg-background px-1.5 text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEditProducts((prev) => prev.filter((_, j) => j !== i))}
+                        className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-muted"
+                      >
+                        ×
+                      </button>
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+
+            {/* Entries — editable */}
+            <div className="rounded-lg border border-border p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Results ({editEntries.length} entries)
+                </p>
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={() => setEditEntries((prev) => [...prev, { skiNumber: 0, result0kmCmBehind: null, rank0km: null, methodology: "", feelingRank: null }])}
+                >
+                  + Add row
+                </button>
               </div>
-            )}
+              {editEntries.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">No entries</p>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <div className="grid gap-1 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold" style={{ gridTemplateColumns: "2rem 3rem 3rem 3rem 1fr 1.5rem" }}>
+                    <span>Ski</span><span>Result</span><span>Rank</span><span>Feel</span><span>Method</span><span></span>
+                  </div>
+                  {editEntries.map((e, i) => (
+                    <div key={i} className="grid gap-1 items-center" style={{ gridTemplateColumns: "2rem 3rem 3rem 3rem 1fr 1.5rem" }}>
+                      <input
+                        type="number"
+                        value={e.skiNumber || ""}
+                        onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, skiNumber: parseInt(ev.target.value) || 0 } : r))}
+                        className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
+                      />
+                      <input
+                        type="number"
+                        value={e.result0kmCmBehind ?? ""}
+                        onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, result0kmCmBehind: ev.target.value !== "" ? parseFloat(ev.target.value) : null } : r))}
+                        className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
+                      />
+                      <input
+                        type="number"
+                        value={e.rank0km ?? ""}
+                        onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, rank0km: ev.target.value !== "" ? parseInt(ev.target.value) : null } : r))}
+                        className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
+                      />
+                      <input
+                        type="number"
+                        value={e.feelingRank ?? ""}
+                        onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, feelingRank: ev.target.value !== "" ? parseInt(ev.target.value) : null } : r))}
+                        className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
+                      />
+                      <input
+                        type="text"
+                        value={e.methodology}
+                        onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, methodology: ev.target.value } : r))}
+                        placeholder="method"
+                        className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEditEntries((prev) => prev.filter((_, j) => j !== i))}
+                        className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-muted text-sm"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="flex gap-2 pt-1">
               <Button variant="outline" className="flex-1" onClick={reset}>

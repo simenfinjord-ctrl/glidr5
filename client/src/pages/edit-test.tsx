@@ -108,6 +108,12 @@ type TestEntry = {
   results: string | null;
   feelingRank: number | null;
   kickRank: number | null;
+  grindType?: string | null;
+  grindStone?: string | null;
+  grindPattern?: string | null;
+  grindExtraParams?: string | null;
+  grindProfileId?: number | null;
+  raceSkiId?: number | null;
 };
 
 const formSchemaEdit = z.object({
@@ -271,16 +277,33 @@ export default function EditTest() {
         roundResults: parseEntryResults(e, numRounds),
         feelingRank: e.feelingRank ?? null,
         kickRank: e.kickRank ?? null,
-        grindType: (e as any).grindType ?? undefined,
-        grindStone: (e as any).grindStone ?? undefined,
-        grindPattern: (e as any).grindPattern ?? undefined,
-        grindExtraParams: (e as any).grindExtraParams ? (() => { try { return JSON.parse((e as any).grindExtraParams); } catch { return undefined; } })() : undefined,
-        grindProfileId: grindProfiles.find((p) => p.name === (e as any).grindType)?.id,
-        raceSkiId: (e as any).raceSkiId ?? undefined,
+        grindType: e.grindType ?? undefined,
+        grindStone: e.grindStone ?? undefined,
+        grindPattern: e.grindPattern ?? undefined,
+        grindExtraParams: e.grindExtraParams ? (() => { try { return JSON.parse(e.grindExtraParams!); } catch { return undefined; } })() : undefined,
+        // Use the stored grind_profile_id directly; fall back to name-based lookup if needed
+        grindProfileId: e.grindProfileId
+          ?? grindProfiles.find((p) => p.name === e.grindType)?.id,
+        raceSkiId: e.raceSkiId ?? undefined,
       }))
     );
     setEntriesLoaded(true);
-  }, [entries, test, initialized, entriesLoaded, entriesLoading]);
+  }, [entries, test, initialized, entriesLoaded, entriesLoading, grindProfiles]);
+
+  // If grindProfiles loaded after rows were initialised, back-fill any missing grindProfileId.
+  // This handles the first-visit case where grindProfiles weren't in cache yet.
+  useEffect(() => {
+    if (!entriesLoaded || grindProfiles.length === 0) return;
+    setRows((prev) => {
+      const needsUpdate = prev.some((r) => !r.grindProfileId && r.grindType);
+      if (!needsUpdate) return prev;
+      return prev.map((r) => {
+        if (r.grindProfileId || !r.grindType) return r;
+        const found = grindProfiles.find((p) => p.name === r.grindType);
+        return found ? { ...r, grindProfileId: found.id } : r;
+      });
+    });
+  }, [grindProfiles, entriesLoaded]);
 
   const watchSeriesId = form.watch("seriesId");
   useEffect(() => {

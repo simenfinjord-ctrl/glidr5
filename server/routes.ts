@@ -2551,11 +2551,10 @@ export async function registerRoutes(
     if (!verifyTeamOwnership(profile, req)) return res.status(403).json({ message: "Forbidden" });
 
     const { pool: pg } = await import("./db");
-    // Entries store grindType as the PROFILE NAME (profile.name), not profile.grindType.
-    // Stone/pattern matching is secondary — also match entries that use the profile name alone.
-    // Also match by grind_profile_id if set.
-    const stoneIsEmpty = !profile.stone;
-    const patternIsEmpty = !profile.pattern;
+    // Match tests where at least one entry references this grind profile:
+    // 1. By direct ID link (grind_profile_id)
+    // 2. By profile name stored in grind_type (case/space insensitive)
+    // 3. By grind type name stored in grind_type (for older entries before profile IDs were used)
     const result = await (pg as any).query(
       `SELECT DISTINCT
          t.id, t.date, t.location, t.test_name, t.weather_id, t.test_type, t.notes,
@@ -2568,51 +2567,48 @@ export async function registerRoutes(
        WHERE t.team_id = $1
          AND (
            te.grind_profile_id = $2
-           OR TRIM(LOWER(te.grind_type)) = TRIM(LOWER($3))
-           OR (
-             TRIM(LOWER(te.grind_type)) = TRIM(LOWER($4))
-             AND ($5::boolean OR te.grind_stone ILIKE $6)
-             AND ($7::boolean OR te.grind_pattern ILIKE $8)
-           )
+           OR LOWER(TRIM(te.grind_type)) = LOWER(TRIM($3))
+           OR LOWER(TRIM(te.grind_type)) = LOWER(TRIM($4))
          )
        ORDER BY t.date DESC, t.id DESC`,
-      [teamId, profile.id, profile.name, profile.grindType, stoneIsEmpty, profile.stone || '', patternIsEmpty, profile.pattern || '']
+      [teamId, profile.id, profile.name, profile.grindType]
     );
 
-    // For each test, fetch its entries
+    // Fetch ALL entries for the matching tests (same pattern as product history)
     const testIds: number[] = result.rows.map((r: any) => r.id);
     let entriesByTestId: Record<number, any[]> = {};
     if (testIds.length > 0) {
       const entryRows = await (pg as any).query(
-        `SELECT te.*, rs.model as ski_model, rs.brand as ski_brand
+        `SELECT te.id, te.test_id, te.ski_number, te.product_id, te.additional_product_ids,
+                te.race_ski_id, te.methodology,
+                te.result_0km_cm_behind, te.rank_0km, te.result_xkm_cm_behind, te.rank_xkm,
+                te.results, te.feeling_rank, te.kick_rank,
+                te.grind_type, te.grind_stone, te.grind_pattern, te.grind_extra_params, te.grind_profile_id,
+                rs.model as ski_model, rs.brand as ski_brand
          FROM test_entries te
-         JOIN tests t ON t.id = te.test_id
          LEFT JOIN race_skis rs ON rs.id = te.race_ski_id
-         WHERE te.test_id = ANY($1) AND t.team_id = $2
-           AND (
-             te.grind_profile_id = $3
-             OR TRIM(LOWER(te.grind_type)) = TRIM(LOWER($4))
-             OR (
-               TRIM(LOWER(te.grind_type)) = TRIM(LOWER($5))
-               AND ($6::boolean OR te.grind_stone ILIKE $7)
-               AND ($8::boolean OR te.grind_pattern ILIKE $9)
-             )
-           )
+         WHERE te.test_id = ANY($1)
          ORDER BY te.ski_number ASC`,
-        [testIds, teamId, profile.id, profile.name, profile.grindType, stoneIsEmpty, profile.stone || '', patternIsEmpty, profile.pattern || '']
+        [testIds]
       );
       for (const e of entryRows.rows) {
         if (!entriesByTestId[e.test_id]) entriesByTestId[e.test_id] = [];
+        const isSelectedGrind =
+          e.grind_profile_id === profile.id ||
+          (e.grind_type && e.grind_type.trim().toLowerCase() === profile.name.trim().toLowerCase()) ||
+          (e.grind_type && e.grind_type.trim().toLowerCase() === profile.grindType.trim().toLowerCase());
         entriesByTestId[e.test_id].push({
           id: e.id, testId: e.test_id, skiNumber: e.ski_number,
-          productId: e.product_id, raceSkiId: e.race_ski_id,
-          skiModel: e.ski_model, skiBrand: e.ski_brand,
+          productId: e.product_id, additionalProductIds: e.additional_product_ids,
+          raceSkiId: e.race_ski_id, skiModel: e.ski_model, skiBrand: e.ski_brand,
           methodology: e.methodology,
           result0kmCmBehind: e.result_0km_cm_behind, rank0km: e.rank_0km,
           resultXkmCmBehind: e.result_xkm_cm_behind, rankXkm: e.rank_xkm,
           results: e.results, feelingRank: e.feeling_rank, kickRank: e.kick_rank,
           grindType: e.grind_type, grindStone: e.grind_stone,
           grindPattern: e.grind_pattern, grindExtraParams: e.grind_extra_params,
+          grindProfileId: e.grind_profile_id,
+          isSelectedGrind,
         });
       }
     }

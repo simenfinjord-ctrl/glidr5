@@ -296,6 +296,13 @@ export async function registerRoutes(
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_profile_id INTEGER;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS is_paused INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS plan_name TEXT DEFAULT 'free';
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'active';
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS current_period_end TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS trial_ends_at TEXT;
       UPDATE users SET username = email WHERE username IS NULL;
       CREATE UNIQUE INDEX IF NOT EXISTS users_username_idx ON users(username);
       ALTER TABLE tests ADD COLUMN IF NOT EXISTS start_time TEXT;

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake } from "lucide-react";
+import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft } from "lucide-react";
+import React from "react";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter, Cell,
 } from "recharts";
@@ -40,6 +41,8 @@ type TestEntry = {
   rank0km: number | null;
   result0kmCmBehind: number | null;
   results: string | null;
+  feelingRank: number | null;
+  methodology: string | null;
 };
 
 type Product = {
@@ -55,12 +58,18 @@ type Weather = {
   location: string;
   snowTemperatureC: number;
   airTemperatureC: number;
-  snowHumidityPct: number;
-  airHumidityPct: number;
+  snowHumidityPct: number | null;
+  airHumidityPct: number | null;
   artificialSnow: string | null;
   naturalSnow: string | null;
   snowHumidityType: string | null;
+  trackHardness: string | null;
   testQuality: number | null;
+  snowType: string | null;
+  wind: string | null;
+  clouds: number | null;
+  precipitation: string | null;
+  grainSize: string | null;
 };
 
 const CHART_COLORS = [
@@ -87,6 +96,410 @@ const TEMP_BRACKETS = [
 
 function tempBracket(temp: number) {
   return TEMP_BRACKETS.find((b) => temp >= b.min && temp < b.max)?.label ?? "Unknown";
+}
+
+const AIR_TEMP_BRACKETS = [
+  { label: "< −15°C", min: -Infinity, max: -15 },
+  { label: "−15 to −10°C", min: -15, max: -10 },
+  { label: "−10 to −5°C", min: -10, max: -5 },
+  { label: "−5 to 0°C", min: -5, max: 0 },
+  { label: "0 to +5°C", min: 0, max: 5 },
+  { label: "> +5°C", min: 5, max: Infinity },
+];
+function airTempBracket(temp: number) {
+  return AIR_TEMP_BRACKETS.find((b) => temp >= b.min && temp < b.max)?.label ?? "Unknown";
+}
+
+const HUMIDITY_BRACKETS = [
+  { label: "< 40%", min: 0, max: 40 },
+  { label: "40–60%", min: 40, max: 60 },
+  { label: "60–80%", min: 60, max: 80 },
+  { label: "> 80%", min: 80, max: Infinity },
+];
+function humidityBracket(pct: number) {
+  return HUMIDITY_BRACKETS.find((b) => pct >= b.min && pct < b.max)?.label ?? "Unknown";
+}
+
+function median(arr: number[]): number | null {
+  if (arr.length === 0) return null;
+  const s = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 === 0 ? parseFloat(((s[mid - 1] + s[mid]) / 2).toFixed(2)) : s[mid];
+}
+
+function stdDev(arr: number[]): number | null {
+  if (arr.length < 2) return null;
+  const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
+  const variance = arr.reduce((sum, v) => sum + (v - avg) ** 2, 0) / arr.length;
+  return parseFloat(Math.sqrt(variance).toFixed(2));
+}
+
+// Generic bucket-based performance breakdown table
+function BucketBreakdown({
+  title,
+  icon,
+  entries,
+  getBucket,
+  testsById,
+  weatherById,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  entries: TestEntry[];
+  getBucket: (entry: TestEntry, test: Test, weather: Weather | null) => string | null;
+  testsById: Map<number, Test>;
+  weatherById: Map<number, Weather>;
+}) {
+  const rows = useMemo(() => {
+    const stats = new Map<string, { ranks: number[]; wins: number }>();
+    for (const entry of entries) {
+      const test = testsById.get(entry.testId);
+      if (!test) continue;
+      const w = test.weatherId ? (weatherById.get(test.weatherId) ?? null) : null;
+      const bucket = getBucket(entry, test, w);
+      if (!bucket) continue;
+      if (!stats.has(bucket)) stats.set(bucket, { ranks: [], wins: 0 });
+      const s = stats.get(bucket)!;
+      const rank = getRank(entry);
+      if (rank !== null) { s.ranks.push(rank); if (rank === 1) s.wins++; }
+    }
+    return Array.from(stats.entries())
+      .map(([label, s]) => ({
+        label,
+        tests: s.ranks.length,
+        avgRank: s.ranks.length > 0 ? parseFloat((s.ranks.reduce((a, b) => a + b, 0) / s.ranks.length).toFixed(2)) : null,
+        wins: s.wins,
+      }))
+      .filter((r) => r.tests > 0)
+      .sort((a, b) => (a.avgRank ?? 99) - (b.avgRank ?? 99));
+  }, [entries, getBucket, testsById, weatherById]);
+
+  if (rows.length === 0) return null;
+  const best = rows[0];
+
+  return (
+    <div>
+      <div className="text-sm font-medium mb-1.5 flex items-center gap-1.5">
+        {icon}
+        {title}
+      </div>
+      {best && (
+        <div className="mb-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+          Best: <span className="font-bold">{best.label}</span> — avg rank {best.avgRank} ({best.wins} win{best.wins !== 1 ? "s" : ""} in {best.tests} test{best.tests !== 1 ? "s" : ""})
+        </div>
+      )}
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-xs">
+          <thead className="bg-muted/60">
+            <tr>
+              <th className="text-left px-3 py-2 font-medium">{title}</th>
+              <th className="text-center px-3 py-2 font-medium">Tests</th>
+              <th className="text-center px-3 py-2 font-medium">Avg rank</th>
+              <th className="text-center px-3 py-2 font-medium">Wins</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.label} className={cn("border-t", row.label === best.label && "bg-emerald-50/50 dark:bg-emerald-900/10")}>
+                <td className="px-3 py-1.5 font-medium">{row.label}</td>
+                <td className="px-3 py-1.5 text-center text-muted-foreground">{row.tests}</td>
+                <td className="px-3 py-1.5 text-center font-semibold">{row.avgRank ?? "—"}</td>
+                <td className="px-3 py-1.5 text-center">{row.wins > 0 ? <span className="text-amber-600 font-bold">{row.wins}</span> : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Overview Stats ─────────────────────────────────────────────────────────────
+
+function OverviewStats({
+  tests, allEntries, products, productsById, testsById, weatherById,
+}: {
+  tests: Test[];
+  allEntries: TestEntry[];
+  products: Product[];
+  productsById: Map<number, Product>;
+  testsById: Map<number, Test>;
+  weatherById: Map<number, Weather>;
+}) {
+  const stats = useMemo(() => {
+    const weatherLinked = tests.filter((t) => t.weatherId != null).length;
+    const weatherPct = tests.length > 0 ? Math.round((weatherLinked / tests.length) * 100) : 0;
+
+    // Per-product appearances + ranks
+    const pStats = new Map<number, { appearances: number; ranks: number[]; wins: number }>();
+    for (const e of allEntries) {
+      const ids: number[] = [];
+      if (e.productId != null) ids.push(e.productId);
+      if (e.additionalProductIds) {
+        for (const s of e.additionalProductIds.split(",")) { const n = parseInt(s, 10); if (!isNaN(n)) ids.push(n); }
+      }
+      const rank = getRank(e);
+      for (const pid of ids) {
+        if (!pStats.has(pid)) pStats.set(pid, { appearances: 0, ranks: [], wins: 0 });
+        const ps = pStats.get(pid)!;
+        ps.appearances++;
+        if (rank !== null) { ps.ranks.push(rank); if (rank === 1) ps.wins++; }
+      }
+    }
+
+    // Top products by win rate (min 3 appearances)
+    const topByWinRate = Array.from(pStats.entries())
+      .filter(([, s]) => s.appearances >= 3 && s.ranks.length > 0)
+      .map(([pid, s]) => {
+        const p = productsById.get(pid);
+        return {
+          name: p ? `${p.brand} ${p.name}` : `#${pid}`,
+          appearances: s.appearances,
+          avgRank: parseFloat((s.ranks.reduce((a, b) => a + b, 0) / s.ranks.length).toFixed(2)),
+          winRate: parseFloat(((s.wins / s.ranks.length) * 100).toFixed(1)),
+          wins: s.wins,
+        };
+      })
+      .sort((a, b) => b.winRate - a.winRate || a.avgRank - b.avgRank)
+      .slice(0, 10);
+
+    // Most used products
+    const mostUsed = Array.from(pStats.entries())
+      .map(([pid, s]) => {
+        const p = productsById.get(pid);
+        return { name: p ? `${p.brand} ${p.name}` : `#${pid}`, appearances: s.appearances };
+      })
+      .sort((a, b) => b.appearances - a.appearances)
+      .slice(0, 8);
+
+    // Top locations
+    const locMap = new Map<string, { tests: number; weatherTests: number; wins: Map<number, number> }>();
+    for (const t of tests) {
+      if (!locMap.has(t.location)) locMap.set(t.location, { tests: 0, weatherTests: 0, wins: new Map() });
+      const lm = locMap.get(t.location)!;
+      lm.tests++;
+      if (t.weatherId) lm.weatherTests++;
+    }
+    const topLocations = Array.from(locMap.entries())
+      .map(([loc, s]) => ({ location: loc, tests: s.tests, weatherPct: Math.round((s.weatherTests / s.tests) * 100) }))
+      .sort((a, b) => b.tests - a.tests)
+      .slice(0, 8);
+
+    // Tests by type
+    const byType = new Map<string, number>();
+    for (const t of tests) byType.set(t.testType, (byType.get(t.testType) || 0) + 1);
+
+    // Weather condition distribution (of weather-linked tests)
+    const snowTempDist = new Map<string, number>();
+    const airTempDist = new Map<string, number>();
+    const humidityTypeDist = new Map<string, number>();
+    const trackHardnessDist = new Map<string, number>();
+    for (const t of tests) {
+      if (!t.weatherId) continue;
+      const w = weatherById.get(t.weatherId);
+      if (!w) continue;
+      const st = tempBracket(w.snowTemperatureC); snowTempDist.set(st, (snowTempDist.get(st) || 0) + 1);
+      const at = airTempBracket(w.airTemperatureC); airTempDist.set(at, (airTempDist.get(at) || 0) + 1);
+      if (w.snowHumidityType) humidityTypeDist.set(w.snowHumidityType, (humidityTypeDist.get(w.snowHumidityType) || 0) + 1);
+      if (w.trackHardness) trackHardnessDist.set(w.trackHardness, (trackHardnessDist.get(w.trackHardness) || 0) + 1);
+    }
+
+    return { weatherLinked, weatherPct, topByWinRate, mostUsed, topLocations, byType, snowTempDist, airTempDist, humidityTypeDist, trackHardnessDist };
+  }, [tests, allEntries, productsById, weatherById]);
+
+  const totalEntries = allEntries.length;
+  const uniqueProductsUsed = new Set(allEntries.map((e) => e.productId).filter(Boolean)).size;
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Summary row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { icon: <Hash className="h-4 w-4 text-blue-500" />, value: tests.length, label: "Total tests" },
+          { icon: <Layers className="h-4 w-4 text-violet-500" />, value: totalEntries, label: "Ski appearances" },
+          { icon: <Activity className="h-4 w-4 text-emerald-500" />, value: uniqueProductsUsed, label: "Products tested" },
+          { icon: <Snowflake className="h-4 w-4 text-sky-500" />, value: `${stats.weatherPct}%`, label: "Tests with weather" },
+        ].map((c) => (
+          <Card key={c.label} className="fs-card rounded-xl p-3 text-center">
+            <div className="flex justify-center mb-1">{c.icon}</div>
+            <div className="text-2xl font-bold">{c.value}</div>
+            <div className="text-xs text-muted-foreground">{c.label}</div>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Top products by win rate */}
+        <Card className="fs-card rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Trophy className="h-4 w-4 text-amber-500" />
+            <h3 className="text-sm font-semibold">Top products by win rate</h3>
+            <span className="text-xs text-muted-foreground">(min 3 tests)</span>
+          </div>
+          {stats.topByWinRate.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Not enough data yet.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/60">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-medium">#</th>
+                    <th className="text-left px-3 py-2 font-medium">Product</th>
+                    <th className="text-center px-3 py-2 font-medium">Tests</th>
+                    <th className="text-center px-3 py-2 font-medium">Avg rank</th>
+                    <th className="text-center px-3 py-2 font-medium">Win rate</th>
+                    <th className="text-center px-3 py-2 font-medium">Wins</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.topByWinRate.map((p, i) => (
+                    <tr key={p.name} className={cn("border-t hover:bg-muted/30", i === 0 && "bg-amber-50/50 dark:bg-amber-900/10")}>
+                      <td className="px-3 py-1.5 text-muted-foreground">{i + 1}</td>
+                      <td className="px-3 py-1.5 font-medium truncate max-w-[160px]">{i === 0 && "🏆 "}{p.name}</td>
+                      <td className="px-3 py-1.5 text-center text-muted-foreground">{p.appearances}</td>
+                      <td className="px-3 py-1.5 text-center font-semibold">{p.avgRank}</td>
+                      <td className="px-3 py-1.5 text-center"><span className={cn("font-bold", i === 0 && "text-amber-600")}>{p.winRate}%</span></td>
+                      <td className="px-3 py-1.5 text-center text-amber-600 font-bold">{p.wins}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
+        {/* Most tested products */}
+        <Card className="fs-card rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <AlignLeft className="h-4 w-4 text-blue-500" />
+            <h3 className="text-sm font-semibold">Most tested products</h3>
+          </div>
+          {stats.mostUsed.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No data yet.</p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {stats.mostUsed.map((p, i) => {
+                const maxCount = stats.mostUsed[0].appearances;
+                const pct = Math.round((p.appearances / maxCount) * 100);
+                return (
+                  <div key={p.name} className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground w-4 text-right shrink-0">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-xs font-medium truncate">{p.name}</span>
+                        <span className="text-xs text-muted-foreground ml-2 shrink-0">{p.appearances}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Top locations */}
+        <Card className="fs-card rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <MapPin className="h-4 w-4 text-rose-500" />
+            <h3 className="text-sm font-semibold">Test locations</h3>
+          </div>
+          {stats.topLocations.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No data yet.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/60">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-medium">Location</th>
+                    <th className="text-center px-3 py-2 font-medium">Tests</th>
+                    <th className="text-center px-3 py-2 font-medium">Weather coverage</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.topLocations.map((loc) => (
+                    <tr key={loc.location} className="border-t hover:bg-muted/30">
+                      <td className="px-3 py-1.5 font-medium truncate max-w-[160px]">{loc.location}</td>
+                      <td className="px-3 py-1.5 text-center">{loc.tests}</td>
+                      <td className="px-3 py-1.5 text-center">
+                        <span className={cn("font-medium", loc.weatherPct === 100 && "text-emerald-600", loc.weatherPct === 0 && "text-muted-foreground")}>{loc.weatherPct}%</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
+        {/* Weather distribution */}
+        <Card className="fs-card rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Snowflake className="h-4 w-4 text-sky-500" />
+            <h3 className="text-sm font-semibold">Tested conditions overview</h3>
+          </div>
+          {stats.weatherLinked === 0 ? (
+            <p className="text-xs text-muted-foreground">No weather-linked tests yet.</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {[
+                { label: "Snow temp", dist: stats.snowTempDist },
+                { label: "Air temp", dist: stats.airTempDist },
+              ].map(({ label, dist }) => {
+                const total = Array.from(dist.values()).reduce((a, b) => a + b, 0);
+                return total > 0 ? (
+                  <div key={label}>
+                    <p className="text-xs text-muted-foreground mb-1">{label}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {Array.from(dist.entries()).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
+                        <span key={k} className="rounded-full bg-sky-50 dark:bg-sky-900/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200">
+                          {k}: {v} ({Math.round((v / total) * 100)}%)
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })}
+              {stats.humidityTypeDist.size > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Snow humidity</p>
+                  <div className="flex flex-wrap gap-1">
+                    {Array.from(stats.humidityTypeDist.entries()).map(([k, v]) => (
+                      <span key={k} className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-blue-200">{k}: {v}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {stats.trackHardnessDist.size > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Track hardness</p>
+                  <div className="flex flex-wrap gap-1">
+                    {Array.from(stats.trackHardnessDist.entries()).map(([k, v]) => (
+                      <span key={k} className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-700 ring-1 ring-orange-200">{k}: {v}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {stats.byType.size > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Test types</p>
+                  <div className="flex flex-wrap gap-1">
+                    {Array.from(stats.byType.entries()).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
+                      <span key={k} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border">{k}: {v}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
 }
 
 /** Show which snow-temp brackets a product performs best in */
@@ -421,15 +834,21 @@ function ProductSearchStats({
       .sort((a, b) => b.count - a.count || (a.avgRank ?? 99) - (b.avgRank ?? 99))
       .slice(0, 6);
 
+    const medianRank = median(ranks);
+    const rankStdDev = stdDev(ranks);
+
     return {
       totalTests: testsUsed.length,
       totalWins,
       avgRank,
       winRate,
+      medianRank,
+      rankStdDev,
       methodologyBreakdown,
       performanceOverTime,
       testResults,
       bestCombinations,
+      productEntries,
     };
   }, [selectedProductId, allEntries, testsById]);
 
@@ -497,7 +916,7 @@ function ProductSearchStats({
 
       {selectedProduct && stats && (
         <div className="flex flex-col gap-5" data-testid="card-product-stats">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="rounded-xl border p-3 text-center">
               <Hash className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
               <div className="text-2xl font-bold" data-testid="text-product-total-tests">{stats.totalTests}</div>
@@ -517,6 +936,16 @@ function ProductSearchStats({
               <Percent className="h-4 w-4 mx-auto text-emerald-500 mb-1" />
               <div className="text-2xl font-bold" data-testid="text-product-win-rate">{stats.winRate}%</div>
               <div className="text-xs text-muted-foreground">Win rate</div>
+            </div>
+            <div className="rounded-xl border p-3 text-center">
+              <Target className="h-4 w-4 mx-auto text-blue-500 mb-1" />
+              <div className="text-2xl font-bold">{stats.medianRank ?? "—"}</div>
+              <div className="text-xs text-muted-foreground">Median rank</div>
+            </div>
+            <div className="rounded-xl border p-3 text-center">
+              <Activity className="h-4 w-4 mx-auto text-orange-500 mb-1" />
+              <div className="text-2xl font-bold">{stats.rankStdDev ?? "—"}</div>
+              <div className="text-xs text-muted-foreground">Consistency (σ)</div>
             </div>
           </div>
 
@@ -568,20 +997,62 @@ function ProductSearchStats({
             </div>
           )}
 
-          {selectedProductId && (
-            <div>
-              <div className="text-sm font-medium mb-2 flex items-center gap-1.5">
-                <Snowflake className="h-4 w-4 text-sky-500" />
-                Performance by snow temperature
-              </div>
-              <ConditionsBestBreakdown
-                productId={selectedProductId}
-                allEntries={allEntries}
+          <div>
+            <div className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+              <Snowflake className="h-4 w-4 text-sky-500" />
+              Performance by weather conditions
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <BucketBreakdown
+                title="Snow temperature"
+                icon={<Snowflake className="h-3.5 w-3.5 text-sky-500" />}
+                entries={stats.productEntries}
+                getBucket={(e, t, w) => w?.snowTemperatureC != null ? tempBracket(w.snowTemperatureC) : null}
+                testsById={testsById}
+                weatherById={weatherById}
+              />
+              <BucketBreakdown
+                title="Air temperature"
+                icon={<Thermometer className="h-3.5 w-3.5 text-orange-500" />}
+                entries={stats.productEntries}
+                getBucket={(e, t, w) => w?.airTemperatureC != null ? airTempBracket(w.airTemperatureC) : null}
+                testsById={testsById}
+                weatherById={weatherById}
+              />
+              <BucketBreakdown
+                title="Snow humidity type"
+                icon={<Droplets className="h-3.5 w-3.5 text-blue-500" />}
+                entries={stats.productEntries}
+                getBucket={(e, t, w) => w?.snowHumidityType ?? null}
+                testsById={testsById}
+                weatherById={weatherById}
+              />
+              <BucketBreakdown
+                title="Track hardness"
+                icon={<Target className="h-3.5 w-3.5 text-amber-600" />}
+                entries={stats.productEntries}
+                getBucket={(e, t, w) => w?.trackHardness ?? null}
+                testsById={testsById}
+                weatherById={weatherById}
+              />
+              <BucketBreakdown
+                title="Air humidity"
+                icon={<Wind className="h-3.5 w-3.5 text-teal-500" />}
+                entries={stats.productEntries}
+                getBucket={(e, t, w) => w?.airHumidityPct != null ? humidityBracket(w.airHumidityPct) : null}
+                testsById={testsById}
+                weatherById={weatherById}
+              />
+              <BucketBreakdown
+                title="Test location"
+                icon={<MapPin className="h-3.5 w-3.5 text-rose-500" />}
+                entries={stats.productEntries}
+                getBucket={(e, t) => t.location}
                 testsById={testsById}
                 weatherById={weatherById}
               />
             </div>
-          )}
+          </div>
 
           {stats.bestCombinations.length > 0 && (
             <div>
@@ -622,41 +1093,52 @@ function ProductSearchStats({
 
           <div>
             <div className="text-sm font-medium mb-2">Test history ({stats.testResults.length})</div>
-            <div className="max-h-64 overflow-y-auto rounded-lg border" data-testid="list-product-test-history">
-              <table className="w-full text-sm">
+            <div className="max-h-80 overflow-y-auto rounded-lg border" data-testid="list-product-test-history">
+              <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
                   <tr>
                     <th className="text-left px-3 py-2 font-medium">Date</th>
                     <th className="text-left px-3 py-2 font-medium">Location</th>
                     <th className="text-left px-3 py-2 font-medium">Type</th>
+                    <th className="text-center px-3 py-2 font-medium">Snow °C</th>
+                    <th className="text-center px-3 py-2 font-medium">Air °C</th>
+                    <th className="text-center px-3 py-2 font-medium">Humidity</th>
+                    <th className="text-center px-3 py-2 font-medium">Track</th>
                     <th className="text-center px-3 py-2 font-medium">Rank</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.testResults.map(({ test, rank }, i) => (
-                    <tr key={`${test.id}-${i}`} className="border-t hover:bg-muted/30" data-testid={`row-product-test-${test.id}`}>
-                      <td className="px-3 py-2">{fmtDate(test.date)}</td>
-                      <td className="px-3 py-2 truncate max-w-[120px]">{test.location}</td>
-                      <td className="px-3 py-2">
-                        <Badge variant="outline" className="text-xs">{test.testType}</Badge>
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        {rank !== null ? (
-                          <span className={cn(
-                            "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
-                            rank === 1 && "bg-amber-100 text-amber-700",
-                            rank === 2 && "bg-muted text-foreground/80",
-                            rank === 3 && "bg-orange-100 text-orange-700",
-                            rank > 3 && "text-muted-foreground",
-                          )}>
-                            {rank}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {stats.testResults.map(({ test, rank }, i) => {
+                    const w = test.weatherId ? weatherById.get(test.weatherId) ?? null : null;
+                    return (
+                      <tr key={`${test.id}-${i}`} className="border-t hover:bg-muted/30" data-testid={`row-product-test-${test.id}`}>
+                        <td className="px-3 py-2">{fmtDate(test.date)}</td>
+                        <td className="px-3 py-2 truncate max-w-[100px]">{test.location}</td>
+                        <td className="px-3 py-2">
+                          <Badge variant="outline" className="text-xs">{test.testType}</Badge>
+                        </td>
+                        <td className="px-3 py-2 text-center text-muted-foreground">{w?.snowTemperatureC != null ? `${w.snowTemperatureC}°` : "—"}</td>
+                        <td className="px-3 py-2 text-center text-muted-foreground">{w?.airTemperatureC != null ? `${w.airTemperatureC}°` : "—"}</td>
+                        <td className="px-3 py-2 text-center text-muted-foreground capitalize">{w?.snowHumidityType ?? "—"}</td>
+                        <td className="px-3 py-2 text-center text-muted-foreground capitalize">{w?.trackHardness ?? "—"}</td>
+                        <td className="px-3 py-2 text-center">
+                          {rank !== null ? (
+                            <span className={cn(
+                              "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+                              rank === 1 && "bg-amber-100 text-amber-700",
+                              rank === 2 && "bg-muted text-foreground/80",
+                              rank === 3 && "bg-orange-100 text-orange-700",
+                              rank > 3 && "text-muted-foreground",
+                            )}>
+                              {rank}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1261,6 +1743,7 @@ export default function Analytics() {
   });
 
   const [testTypeFilter, setTestTypeFilter] = useState<"All" | "Glide" | "Structure">("All");
+  const [activeTab, setActiveTab] = useState<"overview" | "products" | "compare" | "conditions">("overview");
 
   const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const testsById = useMemo(() => new Map(tests.map((t) => [t.id, t])), [tests]);
@@ -1399,6 +1882,13 @@ export default function Analytics() {
 
   const hasData = tests.length > 0;
 
+  const TABS = [
+    { id: "overview" as const, label: "Overview", icon: <BarChart3 className="h-4 w-4" /> },
+    { id: "products" as const, label: "Products", icon: <Search className="h-4 w-4" /> },
+    { id: "compare" as const, label: "Compare", icon: <TrendingUp className="h-4 w-4" /> },
+    { id: "conditions" as const, label: "Conditions", icon: <Snowflake className="h-4 w-4" /> },
+  ];
+
   return (
     <AppShell>
       <div className="flex flex-col gap-6">
@@ -1427,148 +1917,167 @@ export default function Analytics() {
           </div>
         </div>
 
-        <ProductSearchStats
-          products={products}
-          tests={tests}
-          allEntries={allEntries}
-          productsById={productsById}
-          testsById={testsById}
-          weatherById={weatherById}
-        />
-
-        <ProductCompare
-          products={products}
-          allEntries={allEntries}
-          productsById={productsById}
-          testsById={testsById}
-          filteredTestIds={filteredTestIds}
-        />
-
-        <CombinationSearch
-          products={products}
-          allEntries={allEntries}
-          productsById={productsById}
-          testsById={testsById}
-          weatherById={weatherById}
-        />
-
-        {!hasData ? (
-          <Card className="fs-card rounded-2xl p-8 text-center">
-            <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground/40" />
-            <p className="mt-4 text-muted-foreground" data-testid="empty-analytics">No test data to analyze yet. Create some tests to see trends.</p>
-          </Card>
-        ) : (
-          <>
-            <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-wins-trend">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50">
-                  <TrendingUp className="h-4 w-4 text-emerald-600" />
-                </div>
-                <h2 className="text-base font-semibold">Product wins over time</h2>
-              </div>
-              {productWinTrend.length > 0 && productWinTrendKeys.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={productWinTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                    <XAxis dataKey="month" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-                    <YAxis allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "12px",
-                        fontSize: "12px",
-                      }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: "12px" }} />
-                    {productWinTrendKeys.map((key, i) => (
-                      <Line
-                        key={key}
-                        type="monotone"
-                        dataKey={key}
-                        stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                        activeDot={{ r: 6 }}
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="text-sm text-muted-foreground">Not enough win data to display trend.</p>
+        {/* Tab bar */}
+        <div className="flex gap-1 rounded-xl bg-muted/50 p-1 border">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+                activeTab === tab.id
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
               )}
-            </Card>
+            >
+              {tab.icon}
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          ))}
+        </div>
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-avg-rank">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-green-50">
-                    <Award className="h-4 w-4 text-green-600" />
+        {/* Overview tab */}
+        {activeTab === "overview" && (
+          <>
+            {!hasData ? (
+              <Card className="fs-card rounded-2xl p-8 text-center">
+                <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground/40" />
+                <p className="mt-4 text-muted-foreground" data-testid="empty-analytics">No test data to analyze yet. Create some tests to see trends.</p>
+              </Card>
+            ) : (
+              <>
+                <OverviewStats
+                  tests={tests}
+                  allEntries={allEntries}
+                  products={products}
+                  productsById={productsById}
+                  testsById={testsById}
+                  weatherById={weatherById}
+                />
+
+                <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-wins-trend">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50">
+                      <TrendingUp className="h-4 w-4 text-emerald-600" />
+                    </div>
+                    <h2 className="text-base font-semibold">Product wins over time</h2>
                   </div>
-                  <h2 className="text-base font-semibold">Average rank by product</h2>
-                  <span className="text-xs text-muted-foreground">(min 2 tests)</span>
-                </div>
-                {avgRankByProduct.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={avgRankByProduct} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                      <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-                      <YAxis dataKey="name" type="category" width={130} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "12px",
-                          fontSize: "12px",
-                        }}
-                        formatter={(value: any, name: string) => {
-                          if (name === "avgRank") return [value, "Avg Rank"];
-                          return [value, name];
-                        }}
-                      />
-                      <Bar dataKey="avgRank" radius={[0, 6, 6, 0]}>
-                        {avgRankByProduct.map((_, i) => (
-                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                  {productWinTrend.length > 0 && productWinTrendKeys.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={productWinTrend}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                        <XAxis dataKey="month" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                        <YAxis allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                        <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px" }} />
+                        <Legend wrapperStyle={{ fontSize: "12px" }} />
+                        {productWinTrendKeys.map((key, i) => (
+                          <Line key={key} type="monotone" dataKey={key} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                         ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Not enough data (need products with 2+ test appearances).</p>
-                )}
-              </Card>
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Not enough win data to display trend.</p>
+                  )}
+                </Card>
 
-              <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-tests-month">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50">
-                    <BarChart3 className="h-4 w-4 text-violet-600" />
-                  </div>
-                  <h2 className="text-base font-semibold">Tests per month</h2>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-avg-rank">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-green-50">
+                        <Award className="h-4 w-4 text-green-600" />
+                      </div>
+                      <h2 className="text-base font-semibold">Average rank by product</h2>
+                      <span className="text-xs text-muted-foreground">(min 2 tests)</span>
+                    </div>
+                    {avgRankByProduct.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={avgRankByProduct} layout="vertical">
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                          <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                          <YAxis dataKey="name" type="category" width={130} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px" }} formatter={(value: any, name: string) => { if (name === "avgRank") return [value, "Avg Rank"]; return [value, name]; }} />
+                          <Bar dataKey="avgRank" radius={[0, 6, 6, 0]}>
+                            {avgRankByProduct.map((_, i) => (<Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Not enough data (need products with 2+ test appearances).</p>
+                    )}
+                  </Card>
+
+                  <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-tests-month">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50">
+                        <BarChart3 className="h-4 w-4 text-violet-600" />
+                      </div>
+                      <h2 className="text-base font-semibold">Tests per month</h2>
+                    </div>
+                    {testsByMonth.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={testsByMonth}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                          <XAxis dataKey="month" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                          <YAxis allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px" }} />
+                          <Legend wrapperStyle={{ fontSize: "12px" }} />
+                          <Bar dataKey="glide" name="Glide" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="structure" name="Structure" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No test data yet.</p>
+                    )}
+                  </Card>
                 </div>
-                {testsByMonth.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={testsByMonth}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                      <XAxis dataKey="month" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-                      <YAxis allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "12px",
-                          fontSize: "12px",
-                        }}
-                      />
-                      <Legend wrapperStyle={{ fontSize: "12px" }} />
-                      <Bar dataKey="glide" name="Glide" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="structure" name="Structure" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No test data yet.</p>
-                )}
-              </Card>
-            </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* Products tab */}
+        {activeTab === "products" && (
+          <ProductSearchStats
+            products={products}
+            tests={tests}
+            allEntries={allEntries}
+            productsById={productsById}
+            testsById={testsById}
+            weatherById={weatherById}
+          />
+        )}
+
+        {/* Compare tab */}
+        {activeTab === "compare" && (
+          <>
+            <ProductCompare
+              products={products}
+              allEntries={allEntries}
+              productsById={productsById}
+              testsById={testsById}
+              filteredTestIds={filteredTestIds}
+            />
+            <CombinationSearch
+              products={products}
+              allEntries={allEntries}
+              productsById={productsById}
+              testsById={testsById}
+              weatherById={weatherById}
+            />
+          </>
+        )}
+
+        {/* Conditions tab */}
+        {activeTab === "conditions" && (
+          <>
+            <BestProductsByConditions
+              products={products}
+              tests={filteredTests}
+              allEntries={filteredEntries}
+              productsById={productsById}
+              testsById={testsById}
+              weatherById={weatherById}
+            />
 
             <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-temp-rank">
               <div className="flex items-center gap-2 mb-4">
@@ -1582,27 +2091,10 @@ export default function Analytics() {
                 <ResponsiveContainer width="100%" height={350}>
                   <ScatterChart>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                    <XAxis
-                      dataKey="snowTemp"
-                      name="Snow Temp"
-                      unit="°C"
-                      tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                    />
-                    <YAxis
-                      dataKey="avgRank"
-                      name="Rank"
-                      reversed
-                      tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                    />
+                    <XAxis dataKey="snowTemp" name="Snow Temp" unit="°C" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                    <YAxis dataKey="avgRank" name="Rank" reversed tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
                     <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "12px",
-                        fontSize: "12px",
-                      }}
-                      formatter={(value: any, name: string) => [value, name]}
-                      labelFormatter={() => ""}
+                      contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px" }}
                       content={({ payload }) => {
                         if (!payload || payload.length === 0) return null;
                         const d = payload[0]?.payload;
@@ -1617,9 +2109,7 @@ export default function Analytics() {
                       }}
                     />
                     <Scatter data={tempVsRank}>
-                      {tempVsRank.map((point, i) => (
-                        <Cell key={i} fill={point.color} />
-                      ))}
+                      {tempVsRank.map((point, i) => (<Cell key={i} fill={point.color} />))}
                     </Scatter>
                   </ScatterChart>
                 </ResponsiveContainer>

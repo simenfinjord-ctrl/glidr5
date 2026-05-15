@@ -432,7 +432,70 @@ export default function MyAccount() {
             Keep this code private. If it's compromised, regenerate it.
           </p>
         </Card>
+
+        {/* Danger zone */}
+        <Card className="rounded-2xl p-5 sm:p-6 border-red-200 dark:border-red-900/50">
+          <div className="flex items-center gap-2 mb-4">
+            <Shield className="h-4 w-4 text-red-500" />
+            <h2 className="text-base font-semibold">Danger zone</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+            Deleting your account anonymises all your personal data in accordance with GDPR. Test data entered by your account remains (attributed to "Deleted User") to preserve your team's records. This cannot be undone.
+          </p>
+          <DeleteAccountButton />
+        </Card>
       </div>
     </AppShell>
+  );
+}
+
+function DeleteAccountButton() {
+  const [confirming, setConfirming] = useState(false);
+  const [inputVal, setInputVal] = useState("");
+  const { toast } = useToast();
+
+  async function handleDelete() {
+    if (inputVal !== "DELETE") return;
+    try {
+      await apiRequest("POST", "/api/account/delete", {});
+      window.location.href = "/login";
+    } catch {
+      toast({ title: "Error", description: "Could not delete account. Contact support.", variant: "destructive" });
+    }
+  }
+
+  if (!confirming) {
+    return (
+      <button
+        onClick={() => setConfirming(true)}
+        className="rounded-lg border border-red-300 dark:border-red-800 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+      >
+        Delete my account
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/10 p-4 space-y-3">
+      <p className="text-sm font-medium text-red-700 dark:text-red-400">Type <strong>DELETE</strong> to confirm:</p>
+      <Input
+        value={inputVal}
+        onChange={(e) => setInputVal(e.target.value)}
+        placeholder="DELETE"
+        className="border-red-300 focus-visible:ring-red-400 font-mono"
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={handleDelete}
+          disabled={inputVal !== "DELETE"}
+          className="rounded-lg bg-red-600 text-white px-4 py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-40 transition-colors"
+        >
+          Permanently delete
+        </button>
+        <button onClick={() => { setConfirming(false); setInputVal(""); }} className="rounded-lg border px-4 py-2 text-sm hover:bg-muted transition-colors">
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }

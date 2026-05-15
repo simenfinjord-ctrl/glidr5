@@ -5140,6 +5140,63 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
   });
 
   // ──────────────────────────────────────────────────────────────────────────
+  // ── Billing (Stripe) ──────────────────────────────────────────────────────
+
+  const billing = await import("./stripe");
+
+  // Webhook must receive raw body — register before express.json() parses it
+  app.post(
+    "/api/billing/webhook",
+    (req, res, next) => {
+      // express.raw() is applied in vite.ts / index.ts; if already raw, skip
+      next();
+    },
+    billing.handleWebhook,
+  );
+
+  app.get("/api/billing/status", requireAuth, billing.getBillingStatus);
+
+  app.post("/api/billing/checkout", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    if (!u.isTeamAdmin && !u.isAdmin) return res.status(403).json({ message: "Only team admins can manage billing" });
+    return billing.createCheckout(req, res);
+  });
+
+  app.post("/api/billing/portal", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    if (!u.isTeamAdmin && !u.isAdmin) return res.status(403).json({ message: "Only team admins can manage billing" });
+    return billing.createPortalSession(req, res);
+  });
+
+  // POST /api/account/delete — GDPR: delete own data
+  app.post("/api/account/delete", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    const { pool } = await import("./db");
+    // Anonymise user data rather than hard-delete to preserve referential integrity
+    await (pool as any).query(
+      `UPDATE users SET
+         email = $1,
+         password = 'DELETED',
+         name = 'Deleted User',
+         is_active = 0,
+         watch_code = NULL,
+         onboarding_completed = 0
+       WHERE id = $2`,
+      [`deleted+${u.id}@glidr.io`, u.id]
+    );
+    req.logout(() => {
+      res.json({ ok: true });
+    });
+  });
+
+  // PATCH /api/account/onboarding — mark onboarding as complete
+  app.patch("/api/account/onboarding", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    await db.update(users).set({ onboardingCompleted: 1 } as any).where(eq(users.id, u.id));
+    res.json({ ok: true });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
 
   return httpServer;
 }

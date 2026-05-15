@@ -110,6 +110,11 @@ export const FEATURE_CATEGORIES: { label: string; features: readonly TeamFeature
 ];
 
 export const PLAN_FEATURE_PRESETS: Record<string, { label: string; color: string; features: readonly TeamFeature[] }> = {
+  free: {
+    label: "Free",
+    color: "gray",
+    features: ["dashboard", "tests", "products", "weather"],
+  },
   starter: {
     label: "Starter",
     color: "gray",
@@ -181,8 +186,15 @@ export const teams = pgTable("teams", {
   superAdminAccess: integer("super_admin_access").notNull().default(1),
   backupSheetUrl: text("backup_sheet_url"),
   lastBackupAt: text("last_backup_at"),
-  watchPin: text("watch_pin"), // 4-digit PIN for Garmin watch app authentication
+  watchPin: text("watch_pin"),
   isPaused: integer("is_paused").notNull().default(0),
+  // Billing / subscription
+  planName: text("plan_name").default("free"),
+  subscriptionStatus: text("subscription_status").default("active"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  currentPeriodEnd: text("current_period_end"),
+  trialEndsAt: text("trial_ends_at"),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });
@@ -205,7 +217,8 @@ export const users = pgTable("users", {
   garminWatch: integer("garmin_watch").notNull().default(0),
   failedAttempts: integer("failed_attempts").notNull().default(0),
   loginLocked: integer("login_locked").notNull().default(0),
-  watchCode: text("watch_code"), // 4-digit personal watch code
+  watchCode: text("watch_code"),
+  onboardingCompleted: integer("onboarding_completed").notNull().default(0),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });

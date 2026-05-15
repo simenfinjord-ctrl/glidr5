@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { Spinner } from "@/components/ui/spinner";
 import { OfflineProvider } from "@/lib/offline-context";
 import { ThemeProvider } from "@/lib/theme";
+import { useState, useEffect } from "react";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
@@ -33,6 +34,8 @@ import Legal from "@/pages/legal";
 import Pricing from "@/pages/pricing";
 import Contact from "@/pages/contact";
 import Inbox from "@/pages/inbox";
+import Demo from "@/pages/demo";
+import OnboardingWizard from "@/components/onboarding-wizard";
 
 import Login from "@/pages/login";
 
@@ -68,6 +71,7 @@ function Router() {
       <Route path="/pricing" component={Pricing} />
       <Route path="/contact" component={Contact} />
       <Route path="/inbox" component={Inbox} />
+      <Route path="/demo" component={Demo} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -76,6 +80,19 @@ function Router() {
 function AuthGuard() {
   const { user, isLoading, isSuperAdmin, isStealthActive, userTeams, userTeamsLoading } = useAuth();
   const [location] = useLocation();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    // Show onboarding wizard for users who haven't completed it yet
+    const u = user as any;
+    if (!u.onboardingCompleted && !u.isAdmin && !u.isTeamAdmin) {
+      // Small delay so the app renders first
+      const t = setTimeout(() => setShowOnboarding(true), 800);
+      return () => clearTimeout(t);
+    }
+  }, [user?.id]);
+
   const adminMode = isSuperAdmin && (() => { try { return localStorage.getItem("glidr-sa-admin-mode") === "true"; } catch { return false; } })();
 
   const { data: maintenanceData } = useQuery<{ enabled: boolean; reopenAt?: string | null }>({
@@ -110,7 +127,7 @@ function AuthGuard() {
     );
   }
 
-  const publicPaths = ["/login", "/what-is-glidr", "/legal", "/pricing", "/contact"];
+  const publicPaths = ["/login", "/what-is-glidr", "/legal", "/pricing", "/contact", "/demo"];
   if (!user && !publicPaths.includes(location)) {
     return <Redirect to="/login" />;
   }
@@ -136,7 +153,12 @@ function AuthGuard() {
     }
   }
 
-  return <Router />;
+  return (
+    <>
+      <Router />
+      {showOnboarding && <OnboardingWizard onClose={() => setShowOnboarding(false)} />}
+    </>
+  );
 }
 
 export default function App() {

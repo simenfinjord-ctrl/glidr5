@@ -4901,7 +4901,11 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
         brand: null,
         skiType: null,
         grind: null,
-        numberOfSkis: (body.entries || []).length || 8,
+        numberOfSkis: (() => {
+          const el = body.entries || [];
+          const maxSki = el.reduce((m: number, e: any) => Math.max(m, e.skiNumber || 0), 0);
+          return maxSki > 0 ? maxSki : el.length || 1;
+        })(),
         pairLabels: null,
         lastRegrind: null,
         createdAt: now,

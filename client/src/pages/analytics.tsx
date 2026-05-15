@@ -219,8 +219,7 @@ function BestProductsByConditions({
           winRate: parseFloat(((s.wins / s.count) * 100).toFixed(0)),
         };
       })
-      .sort((a, b) => a.avgRank - b.avgRank)
-      .slice(0, 8);
+      .sort((a, b) => a.avgRank - b.avgRank);
   }, [selectedBracket, tests, allEntries, productsById, weatherById]);
 
   return (
@@ -393,6 +392,35 @@ function ProductSearchStats({
 
     testResults.sort((a, b) => b.test.date.localeCompare(a.test.date));
 
+    // Best combinations: other products that appear on the same ski in the same entry
+    const comboMap = new Map<number, { count: number; wins: number; totalRank: number }>();
+    for (const entry of productEntries) {
+      const partners: number[] = [];
+      if (entry.productId !== null && entry.productId !== selectedProductId) partners.push(entry.productId);
+      if (entry.additionalProductIds) {
+        for (const idStr of entry.additionalProductIds.split(",")) {
+          const n = parseInt(idStr.trim(), 10);
+          if (!isNaN(n) && n !== selectedProductId) partners.push(n);
+        }
+      }
+      const rank = getRank(entry);
+      for (const pid of partners) {
+        if (!comboMap.has(pid)) comboMap.set(pid, { count: 0, wins: 0, totalRank: 0 });
+        const c = comboMap.get(pid)!;
+        c.count++;
+        if (rank !== null) { c.totalRank += rank; if (rank === 1) c.wins++; }
+      }
+    }
+    const bestCombinations = Array.from(comboMap.entries())
+      .map(([partnerId, s]) => ({
+        partnerId,
+        count: s.count,
+        avgRank: s.count > 0 ? parseFloat((s.totalRank / s.count).toFixed(2)) : null,
+        wins: s.wins,
+      }))
+      .sort((a, b) => b.count - a.count || (a.avgRank ?? 99) - (b.avgRank ?? 99))
+      .slice(0, 6);
+
     return {
       totalTests: testsUsed.length,
       totalWins,
@@ -401,6 +429,7 @@ function ProductSearchStats({
       methodologyBreakdown,
       performanceOverTime,
       testResults,
+      bestCombinations,
     };
   }, [selectedProductId, allEntries, testsById]);
 
@@ -554,6 +583,43 @@ function ProductSearchStats({
             </div>
           )}
 
+          {stats.bestCombinations.length > 0 && (
+            <div>
+              <div className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                <TrendingUp className="h-4 w-4 text-violet-500" />
+                Best combinations
+              </div>
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/60">
+                    <tr>
+                      <th className="text-left px-3 py-2 text-xs font-medium">Combined with</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Times</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Wins</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.bestCombinations.map((c, i) => {
+                      const p = productsById.get(c.partnerId);
+                      return (
+                        <tr key={c.partnerId} className={cn("border-t", i === 0 && "bg-violet-50/40 dark:bg-violet-900/10")}>
+                          <td className="px-3 py-1.5 font-medium">
+                            {i === 0 && <span className="mr-1 text-violet-500">★</span>}
+                            {p ? `${p.brand} ${p.name}` : `#${c.partnerId}`}
+                          </td>
+                          <td className="px-3 py-1.5 text-center text-muted-foreground">{c.count}</td>
+                          <td className="px-3 py-1.5 text-center font-semibold">{c.avgRank ?? "—"}</td>
+                          <td className="px-3 py-1.5 text-center">{c.wins > 0 ? <span className="text-amber-600 font-bold">{c.wins}</span> : "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           <div>
             <div className="text-sm font-medium mb-2">Test history ({stats.testResults.length})</div>
             <div className="max-h-64 overflow-y-auto rounded-lg border" data-testid="list-product-test-history">
@@ -602,6 +668,251 @@ function ProductSearchStats({
         <p className="text-sm text-muted-foreground" data-testid="text-product-no-data">
           No test data found for {selectedProduct.brand} {selectedProduct.name}.
         </p>
+      )}
+    </Card>
+  );
+}
+
+// ── Combination Search ─────────────────────────────────────────────────────────
+
+function CombinationSearch({
+  products,
+  allEntries,
+  productsById,
+  testsById,
+  weatherById,
+}: {
+  products: Product[];
+  allEntries: TestEntry[];
+  productsById: Map<number, Product>;
+  testsById: Map<number, Test>;
+  weatherById: Map<number, Weather>;
+}) {
+  const [p1Id, setP1Id] = useState<number | null>(null);
+  const [p2Id, setP2Id] = useState<number | null>(null);
+  const [open1, setOpen1] = useState(false);
+  const [open2, setOpen2] = useState(false);
+
+  const stats = useMemo(() => {
+    if (!p1Id || !p2Id || p1Id === p2Id) return null;
+
+    // Find entries where BOTH products appear on the same ski (same entry)
+    const combined: { entry: TestEntry; test: Test }[] = [];
+    for (const entry of allEntries) {
+      const ids: number[] = [];
+      if (entry.productId != null) ids.push(entry.productId);
+      if (entry.additionalProductIds) {
+        for (const s of entry.additionalProductIds.split(",")) {
+          const n = parseInt(s.trim(), 10);
+          if (!isNaN(n)) ids.push(n);
+        }
+      }
+      if (ids.includes(p1Id) && ids.includes(p2Id)) {
+        const test = testsById.get(entry.testId);
+        if (test) combined.push({ entry, test });
+      }
+    }
+    if (combined.length === 0) return null;
+
+    const ranks = combined.map(({ entry }) => getRank(entry)).filter((r): r is number => r !== null);
+    const wins = ranks.filter((r) => r === 1).length;
+    const avgRank = ranks.length > 0 ? parseFloat((ranks.reduce((a, b) => a + b, 0) / ranks.length).toFixed(2)) : null;
+    const winRate = ranks.length > 0 ? parseFloat(((wins / ranks.length) * 100).toFixed(1)) : 0;
+
+    // Weather (snow temp) breakdown
+    const bracketMap = new Map<string, { ranks: number[]; wins: number }>();
+    for (const { entry, test } of combined) {
+      if (!test.weatherId) continue;
+      const w = weatherById.get(test.weatherId);
+      if (!w) continue;
+      const label = tempBracket(w.snowTemperatureC);
+      if (!bracketMap.has(label)) bracketMap.set(label, { ranks: [], wins: 0 });
+      const b = bracketMap.get(label)!;
+      const rank = getRank(entry);
+      if (rank !== null) { b.ranks.push(rank); if (rank === 1) b.wins++; }
+    }
+    const conditionStats = TEMP_BRACKETS.map((b) => {
+      const s = bracketMap.get(b.label);
+      if (!s || s.ranks.length === 0) return null;
+      return {
+        label: b.label,
+        avgRank: parseFloat((s.ranks.reduce((a, c) => a + c, 0) / s.ranks.length).toFixed(2)),
+        wins: s.wins,
+        tests: s.ranks.length,
+      };
+    }).filter(Boolean) as { label: string; avgRank: number; wins: number; tests: number }[];
+
+    const best = conditionStats.length > 0 ? [...conditionStats].sort((a, b) => a.avgRank - b.avgRank)[0] : null;
+
+    const recentTests = [...combined]
+      .sort((a, b) => b.test.date.localeCompare(a.test.date))
+      .slice(0, 8)
+      .map(({ entry, test }) => ({ entry, test, rank: getRank(entry) }));
+
+    return { count: combined.length, avgRank, wins, winRate, conditionStats, best, recentTests };
+  }, [p1Id, p2Id, allEntries, testsById, weatherById]);
+
+  const p1 = p1Id ? productsById.get(p1Id) : null;
+  const p2 = p2Id ? productsById.get(p2Id) : null;
+
+  function ProductPicker({
+    value, onChange, open, onOpenChange, placeholder, exclude,
+  }: { value: number | null; onChange: (id: number) => void; open: boolean; onOpenChange: (v: boolean) => void; placeholder: string; exclude?: number | null }) {
+    const p = value ? productsById.get(value) : null;
+    return (
+      <Popover open={open} onOpenChange={onOpenChange}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="h-9 flex-1 min-w-0 justify-between bg-background/70">
+            <span className={cn("truncate text-sm", !p && "text-muted-foreground")}>{p ? `${p.brand} ${p.name}` : placeholder}</span>
+            <ChevronsUpDown className="h-4 w-4 opacity-60 shrink-0 ml-1" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[min(380px,calc(100vw-2rem))] p-0" align="start">
+          <Command>
+            <CommandInput placeholder="Search products…" />
+            <CommandList>
+              <CommandEmpty>No matches.</CommandEmpty>
+              <CommandGroup>
+                {products.filter((p) => p.id !== exclude).map((p) => (
+                  <CommandItem key={p.id} value={`${p.brand} ${p.name}`} onSelect={() => { onChange(p.id); onOpenChange(false); }}>
+                    <span className="truncate">{p.brand} {p.name}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">{p.category}</span>
+                    <Check className={cn("ml-2 h-4 w-4", value === p.id ? "opacity-100" : "opacity-0")} />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  return (
+    <Card className="fs-card rounded-2xl p-4 sm:p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-900/30">
+          <TrendingUp className="h-4 w-4 text-violet-600" />
+        </div>
+        <h2 className="text-base font-semibold">Combination search</h2>
+        <span className="text-xs text-muted-foreground">— find tests where two products were used together on the same ski</span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <ProductPicker value={p1Id} onChange={setP1Id} open={open1} onOpenChange={setOpen1} placeholder="Product 1…" exclude={p2Id} />
+        <span className="text-sm font-bold text-muted-foreground">+</span>
+        <ProductPicker value={p2Id} onChange={setP2Id} open={open2} onOpenChange={setOpen2} placeholder="Product 2…" exclude={p1Id} />
+        {(p1Id || p2Id) && (
+          <Button variant="ghost" size="sm" onClick={() => { setP1Id(null); setP2Id(null); }}>
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      {p1Id && p2Id && !stats && (
+        <p className="text-sm text-muted-foreground">
+          No tests found where <strong>{p1?.brand} {p1?.name}</strong> and <strong>{p2?.brand} {p2?.name}</strong> were used together on the same ski.
+        </p>
+      )}
+
+      {stats && (
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl border p-3 text-center">
+              <Hash className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+              <div className="text-2xl font-bold">{stats.count}</div>
+              <div className="text-xs text-muted-foreground">Ski appearances</div>
+            </div>
+            <div className="rounded-xl border p-3 text-center">
+              <Trophy className="h-4 w-4 mx-auto text-amber-500 mb-1" />
+              <div className="text-2xl font-bold">{stats.wins}</div>
+              <div className="text-xs text-muted-foreground">Wins (#1)</div>
+            </div>
+            <div className="rounded-xl border p-3 text-center">
+              <Award className="h-4 w-4 mx-auto text-green-500 mb-1" />
+              <div className="text-2xl font-bold">{stats.avgRank ?? "—"}</div>
+              <div className="text-xs text-muted-foreground">Avg rank</div>
+            </div>
+            <div className="rounded-xl border p-3 text-center">
+              <Percent className="h-4 w-4 mx-auto text-emerald-500 mb-1" />
+              <div className="text-2xl font-bold">{stats.winRate}%</div>
+              <div className="text-xs text-muted-foreground">Win rate</div>
+            </div>
+          </div>
+
+          {stats.best && (
+            <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+              Best conditions: <span className="font-bold">{stats.best.label}</span> — avg rank {stats.best.avgRank} ({stats.best.wins} win{stats.best.wins !== 1 ? "s" : ""} in {stats.best.tests} test{stats.best.tests !== 1 ? "s" : ""})
+            </div>
+          )}
+
+          {stats.conditionStats.length > 0 && (
+            <div>
+              <div className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                <Snowflake className="h-4 w-4 text-sky-500" />
+                Performance by snow temperature
+              </div>
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/60">
+                    <tr>
+                      <th className="text-left px-3 py-2 text-xs font-medium">Snow temp range</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Tests</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">Wins</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.conditionStats.map((row) => (
+                      <tr key={row.label} className={cn("border-t", row.label === stats.best?.label && "bg-emerald-50/50 dark:bg-emerald-900/10")}>
+                        <td className="px-3 py-1.5 font-medium">{row.label}</td>
+                        <td className="px-3 py-1.5 text-center text-muted-foreground">{row.tests}</td>
+                        <td className="px-3 py-1.5 text-center font-semibold">{row.avgRank}</td>
+                        <td className="px-3 py-1.5 text-center">{row.wins > 0 ? <span className="text-amber-600 font-bold">{row.wins}</span> : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <div className="text-sm font-medium mb-2">Recent tests ({stats.recentTests.length})</div>
+            <div className="rounded-lg border overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/60">
+                  <tr>
+                    <th className="text-left px-3 py-2 text-xs font-medium">Date</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium">Location</th>
+                    <th className="text-center px-3 py-2 text-xs font-medium">Ski #</th>
+                    <th className="text-center px-3 py-2 text-xs font-medium">Rank</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.recentTests.map(({ entry, test, rank }, i) => (
+                    <tr key={`${test.id}-${entry.id}-${i}`} className="border-t hover:bg-muted/30">
+                      <td className="px-3 py-2">{fmtDate(test.date)}</td>
+                      <td className="px-3 py-2 truncate max-w-[120px]">{test.location}</td>
+                      <td className="px-3 py-2 text-center font-mono">{entry.skiNumber}</td>
+                      <td className="px-3 py-2 text-center">
+                        {rank !== null ? (
+                          <span className={cn(
+                            "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+                            rank === 1 && "bg-amber-100 text-amber-700",
+                            rank === 2 && "bg-muted text-foreground/80",
+                            rank === 3 && "bg-orange-100 text-orange-700",
+                            rank > 3 && "text-muted-foreground",
+                          )}>{rank}</span>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
     </Card>
   );
@@ -1131,6 +1442,14 @@ export default function Analytics() {
           productsById={productsById}
           testsById={testsById}
           filteredTestIds={filteredTestIds}
+        />
+
+        <CombinationSearch
+          products={products}
+          allEntries={allEntries}
+          productsById={productsById}
+          testsById={testsById}
+          weatherById={weatherById}
         />
 
         {!hasData ? (

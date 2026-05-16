@@ -8,7 +8,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { RunsheetDialog, type BracketResult } from "@/components/runsheet-dialog";
-import { useI18n } from "@/lib/i18n";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,7 +42,6 @@ type TestEntry = {
 
 export default function Runsheets() {
   const { toast } = useToast();
-  const { t } = useI18n();
   const [activeRunsheet, setActiveRunsheet] = useState<RunsheetItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<RunsheetItem | null>(null);
   const [applyingForTestId, setApplyingForTestId] = useState<number | null>(null);
@@ -72,14 +70,14 @@ export default function Runsheets() {
     onSuccess: ({ testId }) => {
       queryClient.invalidateQueries({ queryKey: [`/api/tests/${testId}/entries`] });
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
-      toast({ title: t("runsheets.resultsApplied") });
+      toast({ title: "Results applied to test" });
       setActiveRunsheet(null);
       setApplyingForTestId(null);
     },
     onError: (e) => {
       toast({
-        title: t("runsheets.couldNotApply"),
-        description: e instanceof Error ? e.message : t("common.error"),
+        title: "Could not apply results",
+        description: e instanceof Error ? e.message : "Unknown error",
         variant: "destructive",
       });
       setApplyingForTestId(null);
@@ -92,7 +90,7 @@ export default function Runsheets() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/runsheets"] });
-      toast({ title: t("runsheets.removed") });
+      toast({ title: "Removed from runsheets" });
       setDeleteTarget(null);
     },
   });
@@ -112,25 +110,25 @@ export default function Runsheets() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50">
               <ClipboardList className="h-5 w-5 text-teal-600" />
             </div>
-            {t("runsheets.title")}
+            Runsheets
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {t("runsheets.subtitle")}
+            Quick access to test runsheets. Tap a card to start the bracket.
           </p>
         </div>
 
         {isLoading && (
           <div className="flex items-center justify-center py-20 text-muted-foreground" data-testid="loading-runsheets">
-            {t("runsheets.loading")}
+            Loading…
           </div>
         )}
 
         {!isLoading && items.length === 0 && (
           <Card className="fs-card rounded-2xl p-8 text-center" data-testid="empty-runsheets">
             <ClipboardList className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground">{t("runsheets.noRunsheets")}</p>
+            <p className="text-muted-foreground">No runsheets yet.</p>
             <p className="text-sm text-muted-foreground/70 mt-1">
-              {t("runsheets.addHint")}
+              Go to a test and tap "Add to Runsheets" to add one here.
             </p>
           </Card>
         )}
@@ -161,7 +159,7 @@ export default function Runsheets() {
                       {item.label}
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      {t("runsheets.added")} {new Date(item.createdAt).toLocaleDateString()}
+                      Added {new Date(item.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                 </div>
@@ -193,25 +191,25 @@ export default function Runsheets() {
         }}
         skiPairs={skiPairsReady ? skiPairs : []}
         loading={dialogOpen && entriesLoading}
-        error={entriesError ? t("runsheets.entriesError") : undefined}
+        error={entriesError ? "Could not load test entries. You may not have access to this test." : undefined}
         onApplyResults={handleApplyResults}
       />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("runsheets.removeTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>Remove from runsheets?</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("runsheets.removeDesc", { label: deleteTarget?.label ?? "" })}
+              This removes "{deleteTarget?.label}" from your runsheets list. The test data is not affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
             >
-              {t("runsheets.remove")}
+              Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

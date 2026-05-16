@@ -172,30 +172,6 @@ export default function RaceSkis() {
           </div>
         </div>
 
-        {/* Stat cards */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("raceskis.statAthletes")}</div>
-            <div className="mt-1 text-3xl font-bold text-foreground">{athletes.length}</div>
-            <div className="mt-0.5 text-xs text-muted-foreground">{t("raceskis.statAthletesSub")}</div>
-          </Card>
-          <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("raceskis.statSkis")}</div>
-            <div className="mt-1 text-3xl font-bold text-foreground">—</div>
-            <div className="mt-0.5 text-xs text-muted-foreground">{t("raceskis.statSkisSub")}</div>
-          </Card>
-          <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("raceskis.statClassic")}</div>
-            <div className="mt-1 text-3xl font-bold text-foreground">—</div>
-            <div className="mt-0.5 text-xs text-muted-foreground">{t("raceskis.statClassicSub")}</div>
-          </Card>
-          <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("raceskis.statSkate")}</div>
-            <div className="mt-1 text-3xl font-bold text-foreground">—</div>
-            <div className="mt-0.5 text-xs text-muted-foreground">{t("raceskis.statSkateSub")}</div>
-          </Card>
-        </div>
-
         {/* Athletes list */}
         {athletes.length === 0 ? (
           <Card

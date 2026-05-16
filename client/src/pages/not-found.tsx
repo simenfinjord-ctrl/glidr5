@@ -2,10 +2,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 import { AppLink } from "@/components/app-link";
-import { useI18n } from "@/lib/i18n";
 
 export default function NotFound() {
-  const { t } = useI18n();
   return (
     <div className="min-h-screen w-full fs-grid flex items-center justify-center px-4">
       <Card className="w-full max-w-md fs-card">
@@ -15,20 +13,20 @@ export default function NotFound() {
               <AlertCircle className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-xl leading-tight">{t("notFound.title")}</h1>
+              <h1 className="text-xl leading-tight">Page not found</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                {t("notFound.desc")}
+                The page you’re trying to open doesn’t exist.
               </p>
             </div>
           </div>
 
           <div className="mt-6 flex items-center gap-2">
             <AppLink href="/dashboard">
-              <Button data-testid="button-go-dashboard">{t("notFound.goToDashboard")}</Button>
+              <Button data-testid="button-go-dashboard">Go to Dashboard</Button>
             </AppLink>
             <AppLink href="/tests/new">
               <Button variant="secondary" data-testid="button-go-new-test">
-                {t("notFound.newTest")}
+                New test
               </Button>
             </AppLink>
           </div>

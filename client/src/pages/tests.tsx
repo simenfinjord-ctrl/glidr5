@@ -808,27 +808,6 @@ export default function Tests() {
         </div>
 
         <Card className="fs-card rounded-2xl p-4">
-          {/* Quick type filter pills */}
-          {!isDayView && (
-            <div className="mb-3 flex flex-wrap gap-1.5">
-              {(["All", "Glide", "Structure", "Classic", "Skating", "Grind"] as const).filter(
-                (type) => type !== "Grind" || canViewGrinding
-              ).map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setFilterType(type)}
-                  className={cn(
-                    "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                    filterType === type
-                      ? "bg-foreground text-background"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  {type}{type === "All" ? ` ${filtered.length}` : ""}
-                </button>
-              ))}
-            </div>
-          )}
           <div className="flex flex-wrap items-center gap-3">
             <div className="inline-flex items-center gap-2 text-sm font-semibold">
               <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10">
@@ -1272,113 +1251,62 @@ export default function Tests() {
                 <table className="w-full text-sm" data-testid="table-tests-overview">
                   <thead>
                     <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                      <th className="px-4 py-3 font-semibold">{t("common.type")}</th>
                       <th className="px-4 py-3 font-semibold">{t("common.date")}</th>
-                      <th className="px-4 py-3 font-semibold">{t("common.location")} · {t("tests.series")}</th>
-                      {!isBlindTester && <th className="px-4 py-3 font-semibold">{t("tests.product")}</th>}
-                      <th className="px-4 py-3 font-semibold">{t("tests.tester")}</th>
-                      <th className="px-4 py-3 font-semibold">{t("tests.results")}</th>
-                      <th className="px-4 py-3 font-semibold">{t("tests.status")}</th>
+                      <th className="px-4 py-3 font-semibold">Name</th>
+                      <th className="px-4 py-3 font-semibold">{t("common.location")}</th>
+                      <th className="px-4 py-3 font-semibold">{t("common.type")}</th>
+                      <th className="px-4 py-3 font-semibold">{t("tests.series")}</th>
+                      <th className="px-4 py-3 font-semibold">Air temp</th>
+                      <th className="px-4 py-3 font-semibold">Snow temp</th>
+                      <th className="px-4 py-3 font-semibold">Created by</th>
+                      {!isBlindTester && <th className="px-4 py-3 font-semibold">{t("tests.winner")}</th>}
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((test) => {
-                      const winner = winnersByTest.get(test.id);
-                      const testEntries = allEntries.filter((e) => e.testId === test.id);
-                      const entryCount = testEntries.length;
-                      const resultsCount = testEntries.filter((e) => e.rank0km != null).length;
-                      const seriesName = (test as any).seriesName || seriesById.get(test.seriesId) || null;
-
-                      // Avatar color based on name length % 4
-                      const name = test.createdByName || "";
-                      const nameParts = name.trim().split(/\s+/);
-                      const initials = nameParts.length >= 2
-                        ? (nameParts[0][0] || "") + (nameParts[nameParts.length - 1][0] || "")
-                        : name.slice(0, 2);
-                      const avatarColors = [
-                        "bg-blue-100 text-blue-700",
-                        "bg-emerald-100 text-emerald-700",
-                        "bg-amber-100 text-amber-700",
-                        "bg-violet-100 text-violet-700",
-                      ];
-                      const avatarColor = avatarColors[name.length % 4];
-
+                    {filtered.map((t) => {
+                      const winner = winnersByTest.get(t.id);
+                      const w = t.weatherId ? weatherById.get(t.weatherId) : null;
                       return (
                         <tr
-                          key={test.id}
+                          key={t.id}
                           className="border-b border-border/30 transition-colors hover:bg-muted/20 cursor-pointer"
-                          onClick={() => navigate(`/tests/${test.id}`)}
-                          data-testid={`row-test-${test.id}`}
+                          onClick={() => navigate(`/tests/${t.id}`)}
+                          data-testid={`row-test-${t.id}`}
                         >
-                          {/* TYPE */}
+                          <td className="px-4 py-3 whitespace-nowrap text-xs">{fmtDate(t.date)}</td>
+                          <td className="px-4 py-3 font-medium">{t.testName || t.location}</td>
+                          <td className="px-4 py-3">{t.location}</td>
                           <td className="px-4 py-3">
-                            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", test.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
-                              {test.testType}
+                            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
+                              {t.testType}
                             </span>
                           </td>
-                          {/* DATE */}
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">{fmtDate(test.date)}</td>
-                          {/* LOCATION · SERIES */}
-                          <td className="px-4 py-3">
-                            <span className="font-medium text-sm text-foreground">{test.location}</span>
-                            {seriesName && (
-                              <p className="text-[11px] text-muted-foreground mt-0.5">{seriesName}</p>
-                            )}
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{(t as any).seriesName || seriesById.get(t.seriesId) || "—"}</td>
+                          <td className="px-4 py-3 text-xs">
+                            {w ? (
+                              <span className="inline-flex items-center gap-1 text-sky-600">
+                                {w.airTemperatureC}°C
+                              </span>
+                            ) : "—"}
                           </td>
-                          {/* PRODUCTS (winner/top product) */}
+                          <td className="px-4 py-3 text-xs">
+                            {w ? (
+                              <span className="inline-flex items-center gap-1 text-emerald-600">
+                                {w.snowTemperatureC}°C
+                              </span>
+                            ) : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{t.createdByName}</td>
                           {!isBlindTester && (
                             <td className="px-4 py-3 text-xs">
                               {winner ? (
                                 <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
-                                  <Trophy className="h-3 w-3 shrink-0" />
-                                  <span className="truncate max-w-[140px]">{winner.productName}</span>
+                                  <Trophy className="h-3 w-3" />
+                                  {winner.productName}
                                 </span>
                               ) : "—"}
                             </td>
                           )}
-                          {/* TESTER */}
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <span className={cn("inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold uppercase", avatarColor)}>
-                                {initials.toUpperCase()}
-                              </span>
-                              <span className="text-xs text-foreground/80 truncate max-w-[100px]">{name || "—"}</span>
-                            </div>
-                          </td>
-                          {/* RESULTS */}
-                          <td className="px-4 py-3">
-                            {entryCount === 0 ? (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            ) : isBlindTester ? (
-                              <div className="flex flex-col gap-0.5 min-w-[52px]">
-                                <span className="text-xs font-medium text-foreground">— / {entryCount}</span>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col gap-0.5 min-w-[52px]">
-                                <span className="text-xs font-medium text-foreground">{resultsCount}/{entryCount}</span>
-                                <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
-                                  <div
-                                    className="h-full bg-emerald-500 rounded-full transition-all"
-                                    style={{ width: `${entryCount > 0 ? (resultsCount / entryCount) * 100 : 0}%` }}
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </td>
-                          {/* STATUS */}
-                          <td className="px-4 py-3">
-                            {!isBlindTester && resultsCount === entryCount && entryCount > 0 ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                                <CheckCircle2 className="h-3 w-3" /> Done
-                              </span>
-                            ) : !isBlindTester && resultsCount > 0 && resultsCount < entryCount ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 ring-1 ring-emerald-300">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </td>
                         </tr>
                       );
                     })}

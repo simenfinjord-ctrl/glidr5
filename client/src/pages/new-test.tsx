@@ -354,7 +354,7 @@ export default function NewTest() {
         });
       } else {
         toast({
-          title: "Test saved",
+          title: t("newTest.saved"),
           description: `Saved ${rows.length} entries.`,
         });
       }
@@ -671,7 +671,7 @@ export default function NewTest() {
                           <Input
                             {...field}
                             data-testid="input-test-name"
-                            placeholder="Uses location if empty"
+                            placeholder={t("newTest.namePlaceholder")}
                           />
                         </FormControl>
                         <FormMessage />

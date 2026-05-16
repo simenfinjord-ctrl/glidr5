@@ -2375,14 +2375,14 @@ function SkiDetailPanel({
   try { customParams = ski.customParams ? JSON.parse(ski.customParams) : {}; } catch {}
 
   const paramRows: { label: string; value: string | null }[] = [
-    { label: "Serial Number", value: ski.serialNumber },
+    { label: t("raceskis.serialNumber"), value: ski.serialNumber },
     { label: "Brand", value: ski.brand },
-    { label: "Discipline", value: ski.discipline },
-    { label: "Construction", value: ski.construction },
-    { label: "Mold", value: ski.mold },
-    { label: "Base", value: ski.base },
-    { label: "Grind", value: ski.grind },
-    ...(ski.discipline === "Classic" ? [{ label: "Heights", value: ski.heights }] : []),
+    { label: t("raceskis.discipline"), value: ski.discipline },
+    { label: t("raceskis.construction"), value: ski.construction },
+    { label: t("raceskis.mold"), value: ski.mold },
+    { label: t("raceskis.base"), value: ski.base },
+    { label: t("raceskis.grind"), value: ski.grind },
+    ...(ski.discipline === "Classic" ? [{ label: t("raceskis.heights"), value: ski.heights }] : []),
     { label: "Year", value: ski.year },
     ...Object.entries(customParams).map(([k, v]) => ({
       label: k.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
@@ -2809,14 +2809,14 @@ function SkiCard({
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Parameters</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
               {[
-                { label: "Serial Number", value: ski.serialNumber },
+                { label: t("raceskis.serialNumber"), value: ski.serialNumber },
                 { label: "Brand", value: ski.brand },
-                { label: "Discipline", value: ski.discipline },
-                { label: "Construction", value: ski.construction },
-                { label: "Mold", value: ski.mold },
-                { label: "Base", value: ski.base },
-                { label: "Grind", value: ski.grind },
-                ...(ski.discipline === "Classic" ? [{ label: "Heights", value: ski.heights }] : []),
+                { label: t("raceskis.discipline"), value: ski.discipline },
+                { label: t("raceskis.construction"), value: ski.construction },
+                { label: t("raceskis.mold"), value: ski.mold },
+                { label: t("raceskis.base"), value: ski.base },
+                { label: t("raceskis.grind"), value: ski.grind },
+                ...(ski.discipline === "Classic" ? [{ label: t("raceskis.heights"), value: ski.heights }] : []),
                 { label: "Year", value: ski.year },
                 ...(() => {
                   try {

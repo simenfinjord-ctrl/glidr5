@@ -20,18 +20,51 @@ type InboxMessage = {
   is_read: number;
   created_at: string;
   team_name: string | null;
+  action_type: string | null;
+  action_data: string | null;
 };
 
 export default function Inbox() {
   const [, navigate] = useLocation();
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, isTeamAdmin } = useAuth();
   const { toast } = useToast();
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  // Redirect non-SA users
-  if (!isSuperAdmin) {
+  // Redirect users who are neither SA nor TA
+  if (!isSuperAdmin && !isTeamAdmin) {
     navigate("/dashboard");
     return null;
+  }
+
+  const [resetTarget, setResetTarget] = useState<{ userId: number; userName: string; userEmail: string } | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [resetDone, setResetDone] = useState<string | null>(null); // holds the new password after reset
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+
+  function generateTempPassword(): string {
+    const chars = "abcdefghjkmnpqrstuvwxyz";
+    const digits = "23456789";
+    const upper = chars[Math.floor(Math.random() * chars.length)].toUpperCase();
+    const rest = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    const nums = Array.from({ length: 2 }, () => digits[Math.floor(Math.random() * digits.length)]).join("");
+    return `${upper}${rest}${nums}!`;
+  }
+
+  async function handleReset() {
+    if (!resetTarget || !newPassword) return;
+    setResetting(true);
+    setResetError(null);
+    try {
+      const res = await apiRequest("POST", `/api/users/${resetTarget.userId}/reset-password`, { password: newPassword });
+      const data = await res.json();
+      if (!res.ok) { setResetError(data.message || "Failed"); return; }
+      setResetDone(newPassword);
+    } catch {
+      setResetError("Something went wrong.");
+    } finally {
+      setResetting(false);
+    }
   }
 
   const { data: messages = [], isLoading } = useQuery<InboxMessage[]>({
@@ -93,10 +126,10 @@ export default function Inbox() {
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2" data-testid="heading-inbox">
               <Mail className="h-6 w-6 text-primary" />
-              SA Inbox
+              Inbox
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Problem reports from users
+              Notifications and requests
               {unreadCount > 0 && (
                 <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400">
                   {unreadCount} unread
@@ -186,6 +219,58 @@ export default function Inbox() {
                       <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                         {msg.body}
                       </p>
+                      {msg.action_type === "reset_password" && (() => {
+                        let actionData: { userId: number; userName: string; userEmail: string } | null = null;
+                        try { actionData = JSON.parse(msg.action_data ?? ""); } catch {}
+                        if (!actionData) return null;
+                        return (
+                          <div className="mt-4 rounded-xl border border-border bg-background p-4 space-y-3">
+                            <div className="text-sm font-semibold">Reset password for {actionData.userName}</div>
+                            <div className="text-xs text-muted-foreground">{actionData.userEmail}</div>
+                            {!resetDone || resetTarget?.userId !== actionData.userId ? (
+                              <>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={resetTarget?.userId === actionData.userId ? newPassword : ""}
+                                    onChange={(e) => { setResetTarget(actionData!); setNewPassword(e.target.value); setResetDone(null); }}
+                                    onFocus={() => setResetTarget(actionData!)}
+                                    placeholder="New temporary password"
+                                    className="flex-1 rounded-lg border border-border px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                                  />
+                                  <Button size="sm" variant="outline" type="button"
+                                    onClick={() => { setResetTarget(actionData!); setNewPassword(generateTempPassword()); setResetDone(null); }}>
+                                    Generate
+                                  </Button>
+                                </div>
+                                {resetError && resetTarget?.userId === actionData.userId && (
+                                  <p className="text-xs text-red-500">{resetError}</p>
+                                )}
+                                <Button size="sm"
+                                  disabled={resetting || !newPassword || resetTarget?.userId !== actionData.userId}
+                                  onClick={() => { setResetTarget(actionData!); handleReset(); }}>
+                                  {resetting && resetTarget?.userId === actionData.userId ? "Resetting…" : "Reset password"}
+                                </Button>
+                              </>
+                            ) : (
+                              <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 space-y-2">
+                                <p className="text-xs font-semibold text-green-800 dark:text-green-300">Password reset successfully</p>
+                                <p className="text-xs text-green-700 dark:text-green-400">Share this temporary password with the user:</p>
+                                <div className="flex items-center gap-2">
+                                  <code className="flex-1 text-sm font-mono bg-white dark:bg-black/20 rounded px-2 py-1 border border-green-200 dark:border-green-700">{resetDone}</code>
+                                  <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(resetDone!); toast({ title: "Copied!" }); }}>
+                                    Copy
+                                  </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">Ask the user to change their password after logging in.</p>
+                                <Button size="sm" variant="ghost" className="text-xs" onClick={() => { setResetDone(null); setNewPassword(""); setResetTarget(null); }}>
+                                  Reset again
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <div className="mt-4 flex items-center justify-end">
                         <Button
                           variant="ghost"

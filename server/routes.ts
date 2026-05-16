@@ -348,6 +348,8 @@ export async function registerRoutes(
         used INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL
       );
+      ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS action_type TEXT;
+      ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS action_data TEXT;
     `);
   }
 
@@ -5307,6 +5309,58 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
   });
 
   // ──────────────────────────────────────────────────────────────────────────
+
+  // ── In-app password reset request (no email needed) ────────────────────────
+  const inAppResetLimit = rateLimit({ windowMs: 15*60*1000, max: 10, message: { message: "Too many requests." } });
+
+  app.post("/api/auth/request-password-reset", inAppResetLimit, async (req, res) => {
+    // Always return success — never reveal if email/user exists
+    const { email } = req.body;
+    if (!email) return res.json({ ok: true });
+    try {
+      const { pool } = await import("./db");
+      // Find user
+      const user = await storage.getUserByEmail(email);
+      if (!user) return res.json({ ok: true });
+
+      const now = new Date().toISOString();
+      const subject = `Password reset request — ${user.name ?? user.email}`;
+      const body = `${user.name ?? user.email} (${user.email}) has requested a password reset for their Glidr account.\n\nGo to your Inbox and click "Reset password" to set a new temporary password, then share it with the user.`;
+      const actionData = JSON.stringify({ userId: user.id, userName: user.name ?? user.email, userEmail: user.email });
+
+      // Notify all Super Admins
+      const saRows = await (pool as any).query(`SELECT id FROM users WHERE is_admin = 1`);
+      for (const sa of saRows.rows) {
+        await (pool as any).query(
+          `INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at, action_type, action_data)
+           VALUES ($1, $2, $3, $4, 0, $5, 'reset_password', $6)`,
+          [sa.id, user.name ?? user.email, subject, body, now, actionData]
+        );
+      }
+
+      // Notify Team Admins in the same team
+      if (user.teamId) {
+        const taRows = await (pool as any).query(
+          `SELECT utp.user_id FROM user_team_permissions utp
+           WHERE utp.team_id = $1 AND utp.is_team_admin = 1`,
+          [user.teamId]
+        );
+        for (const ta of taRows.rows) {
+          // Don't double-notify if TA is also SA
+          const alreadyNotified = saRows.rows.some((sa: any) => sa.id === ta.user_id);
+          if (alreadyNotified) continue;
+          await (pool as any).query(
+            `INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at, action_type, action_data)
+             VALUES ($1, $2, $3, $4, 0, $5, 'reset_password', $6)`,
+            [ta.user_id, user.name ?? user.email, subject, body, now, actionData]
+          );
+        }
+      }
+    } catch (e) {
+      console.error("[request-password-reset]", e);
+    }
+    return res.json({ ok: true });
+  });
 
   // ── Password Reset ──────────────────────────────────────────────────────────
   const pwResetLimit = rateLimit({ windowMs: 60*60*1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { message: "Too many password reset requests. Try again in an hour." } });

@@ -1,30 +1,32 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { PublicNav } from "@/components/public-nav";
-import { Mail, ArrowLeft, Check } from "lucide-react";
 import { useLanguage } from "@/lib/language";
+import { Mail, ArrowLeft, Check, ShieldCheck } from "lucide-react";
 
 const T = {
   en: {
     title: "Forgot your password?",
-    sub: "Enter your email and we'll send you a reset link if an account exists.",
+    sub: "Enter your email address. Your administrator will receive a notification and reset your password.",
     label: "Email address",
     placeholder: "your@email.com",
-    cta: "Send reset link",
+    cta: "Request password reset",
     sending: "Sending...",
-    successTitle: "Check your email",
-    successSub: "If an account exists for that address, we've sent a password reset link. It expires in 1 hour.",
+    successTitle: "Request sent",
+    successSub: "Your administrator has been notified. They will contact you with a new temporary password.",
+    note: "This usually takes a few minutes during working hours.",
     back: "Back to login",
   },
   no: {
     title: "Glemt passordet?",
-    sub: "Skriv inn e-postadressen din, så sender vi en tilbakestillingslenke hvis kontoen finnes.",
+    sub: "Skriv inn e-postadressen din. Administratoren din vil få et varsel og tilbakestille passordet ditt.",
     label: "E-postadresse",
     placeholder: "din@epost.no",
-    cta: "Send tilbakestillingslenke",
+    cta: "Be om tilbakestilling",
     sending: "Sender...",
-    successTitle: "Sjekk e-posten din",
-    successSub: "Hvis en konto finnes for den adressen, har vi sendt en lenke for tilbakestilling av passord. Den utløper om 1 time.",
+    successTitle: "Forespørsel sendt",
+    successSub: "Administratoren din er varslet. De vil ta kontakt med et nytt midlertidig passord.",
+    note: "Dette tar vanligvis noen minutter i arbeidstiden.",
     back: "Tilbake til innlogging",
   },
 };
@@ -40,7 +42,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await fetch("/api/auth/forgot-password", {
+      await fetch("/api/auth/request-password-reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -62,7 +64,7 @@ export default function ForgotPassword() {
                   <Mail className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <h1 className="text-2xl font-bold">{t.title}</h1>
-                <p className="text-sm text-muted-foreground">{t.sub}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{t.sub}</p>
               </div>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-1.5">
@@ -97,8 +99,12 @@ export default function ForgotPassword() {
                 <Check className="h-7 w-7 text-green-600" />
               </div>
               <h2 className="text-2xl font-bold">{t.successTitle}</h2>
-              <p className="text-sm text-muted-foreground">{t.successSub}</p>
-              <Link href="/login" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mt-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">{t.successSub}</p>
+              <div className="rounded-xl bg-muted p-4 flex items-start gap-3 text-left">
+                <ShieldCheck className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground">{t.note}</p>
+              </div>
+              <Link href="/login" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mt-2">
                 <ArrowLeft className="h-3.5 w-3.5" />
                 {t.back}
               </Link>

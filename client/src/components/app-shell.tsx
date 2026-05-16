@@ -253,7 +253,7 @@ function ReportProblemDialog({ open, onClose }: { open: boolean; onClose: () => 
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
-  const { user, logout, can, isSuperAdmin, canManage, switchTeam, toggleIncognito, toggleStealth, isViewingOtherTeam, isStealthActive, userTeams, userTeamsLoading } = useAuth();
+  const { user, logout, can, isSuperAdmin, isTeamAdmin, canManage, switchTeam, toggleIncognito, toggleStealth, isViewingOtherTeam, isStealthActive, userTeams, userTeamsLoading } = useAuth();
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
   const { theme, toggle: toggleTheme } = useTheme();
   const [reportOpen, setReportOpen] = useState(false);
@@ -280,7 +280,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/inbox/unread-count"],
-    enabled: !!user && isSuperAdmin,
+    enabled: !!user && (isSuperAdmin || isTeamAdmin),
     staleTime: 60_000,
     refetchInterval: 60_000,
   });
@@ -458,7 +458,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Button>
             )}
             {/* Mail/Inbox button — SA only */}
-            {isSuperAdmin && (
+            {(isSuperAdmin || isTeamAdmin) && (
               <Button
                 variant="ghost"
                 size="sm"

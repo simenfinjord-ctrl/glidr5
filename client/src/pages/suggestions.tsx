@@ -96,7 +96,7 @@ export default function Suggestions() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
+        title: t("common.error"),
         description: error.message,
         variant: "destructive",
       });
@@ -120,7 +120,7 @@ export default function Suggestions() {
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-green-50 dark:bg-green-900/30">
               <ThermometerSnowflake className="h-4 w-4 text-green-600 dark:text-green-400" />
             </div>
-            <h2 className="text-base font-semibold">Weather Parameters</h2>
+            <h2 className="text-base font-semibold">{t("suggestions.weatherParams")}</h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -271,7 +271,7 @@ export default function Suggestions() {
         {!mutation.isPending && suggestions === null && (
           <Card className="fs-card rounded-2xl p-8 text-center" data-testid="card-empty-state">
             <Lightbulb className="mx-auto h-12 w-12 text-muted-foreground/40" />
-            <p className="mt-4 text-muted-foreground">Enter weather parameters and click "Get Recommendations" to find the best products based on your test history.</p>
+            <p className="mt-4 text-muted-foreground">{t("suggestions.emptyHint")}</p>
           </Card>
         )}
 

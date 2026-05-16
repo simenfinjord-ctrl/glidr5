@@ -503,6 +503,41 @@ export default function TestSkis() {
           </div>
         </div>
 
+        {/* Stat cards */}
+        {series.length > 0 && (() => {
+          const brands = new Set(series.map((s) => s.brand).filter(Boolean));
+          const totalSkis = series.reduce((sum, s) => sum + s.numberOfSkis, 0);
+          const lastRegrind = series
+            .map((s) => s.lastRegrind)
+            .filter(Boolean)
+            .sort()
+            .at(-1);
+          return (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("testskis.statSeries")}</div>
+                <div className="mt-1 text-3xl font-bold text-foreground">{series.length}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{t("testskis.statSeriesSub")}</div>
+              </Card>
+              <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("testskis.statBrands")}</div>
+                <div className="mt-1 text-3xl font-bold text-foreground">{brands.size}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{t("testskis.statBrandsSub")}</div>
+              </Card>
+              <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("testskis.statLastRegrind")}</div>
+                <div className="mt-1 text-xl font-bold text-foreground truncate">{lastRegrind ?? "—"}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{t("testskis.statLastRegrindSub")}</div>
+              </Card>
+              <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("testskis.statSkis")}</div>
+                <div className="mt-1 text-3xl font-bold text-foreground">{totalSkis}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{t("testskis.statSkisSub")}</div>
+              </Card>
+            </div>
+          );
+        })()}
+
         {showArchive && archived.length > 0 && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-amber-600">Archived series</h2>

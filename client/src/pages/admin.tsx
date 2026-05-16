@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useI18n } from "@/lib/i18n";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -57,11 +58,22 @@ type ApiTeam = {
   isPaused?: number;
 };
 
+// Keep for PDF/Excel export (English labels in documents)
 const AREA_LABELS: Record<string, string> = {
   dashboard: "Dashboard", tests: "Tests", testskis: "Test Skis", products: "Products",
   weather: "Weather", analytics: "Analytics", grinding: "Grinding", raceskis: "Race Skis",
   suggestions: "Suggestions", liverunsheets: "Live Runsheet"
 };
+
+// Translated area labels for UI display
+const AREA_NAV_KEYS: Record<string, string> = {
+  dashboard: "nav.dashboard", tests: "nav.tests", testskis: "nav.testskis", products: "nav.products",
+  weather: "nav.weather", analytics: "nav.analytics", grinding: "nav.grinding", raceskis: "nav.raceskis",
+  suggestions: "nav.suggestions", liverunsheets: "nav.liveRunsheets"
+};
+function areaLabel(area: string, t: (key: string, vars?: Record<string, string | number>) => string): string {
+  return AREA_NAV_KEYS[area] ? t(AREA_NAV_KEYS[area]) : (AREA_LABELS[area] || area);
+}
 
 function parsePermissions(permStr: string): UserPermissions {
   try {
@@ -88,6 +100,7 @@ function PermissionsMatrix({
   onPresetApplied?: (blindTester: boolean) => void;
   disabledAreas?: string[];
 }) {
+  const { t } = useI18n();
   const levels: PermissionLevel[] = ["none", "edit"];
   const levelStyles: Record<PermissionLevel, { active: string; inactive: string }> = {
     none: { active: "bg-gray-500 text-white", inactive: "text-muted-foreground hover:bg-muted" },
@@ -110,9 +123,9 @@ function PermissionsMatrix({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <span className="text-sm font-medium">Permissions</span>
+        <span className="text-sm font-medium">{t("admin.permissionsLabel")}</span>
         <div className="flex items-center gap-1 flex-wrap">
-          <span className="text-[10px] text-muted-foreground mr-1">Presets:</span>
+          <span className="text-[10px] text-muted-foreground mr-1">{t("admin.presetsLabel")}</span>
           {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
             <button
               key={key}
@@ -124,7 +137,7 @@ function PermissionsMatrix({
               {preset.label}
             </button>
           ))}
-          <span className="text-[10px] text-muted-foreground ml-1 mr-1">Set all:</span>
+          <span className="text-[10px] text-muted-foreground ml-1 mr-1">{t("admin.setAll")}</span>
           {levels.map((l) => (
             <button
               key={l}
@@ -143,7 +156,7 @@ function PermissionsMatrix({
           const isDisabled = disabledAreas?.includes(area);
           return (
           <div key={area} className={cn("flex items-center justify-between px-3 h-8", isDisabled && "opacity-40")}>
-            <span className="text-xs text-foreground/80">{AREA_LABELS[area] || area}{isDisabled ? " (not available)" : ""}</span>
+            <span className="text-xs text-foreground/80">{areaLabel(area, t)}{isDisabled ? ` ${t("admin.notAvailable")}` : ""}</span>
             <div className="flex items-center gap-0.5">
               {levels.map((l) => {
                 const selected = isDisabled ? l === "none" : (value[area] || "none") === l;
@@ -315,6 +328,7 @@ function getTeamDisabledAreas(teams: ApiTeam[], teamId: number, isSuperAdmin: bo
 
 function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: () => void; allGroups: ApiGroup[]; defaultTeamId: number; teams: ApiTeam[] }) {
   const { toast } = useToast();
+  const { t } = useI18n();
   const { isSuperAdmin } = useAuth();
   const [perms, setPerms] = useState<UserPermissions>({ ...DEFAULT_PERMISSIONS });
   const [selectedTeamId, setSelectedTeamId] = useState(defaultTeamId);
@@ -339,11 +353,11 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast({ title: "User created" });
+      toast({ title: t("admin.userCreated") });
       onDone();
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -351,20 +365,20 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
     <Form {...form}>
       <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
         <FormField control={form.control} name="name" render={({ field }) => (
-          <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} data-testid="input-user-name" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{t("common.name")}</FormLabel><FormControl><Input {...field} data-testid="input-user-name" /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={form.control} name="email" render={({ field }) => (
-          <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} data-testid="input-user-email" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{t("common.email")}</FormLabel><FormControl><Input {...field} data-testid="input-user-email" /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={form.control} name="username" render={({ field }) => (
-          <FormItem><FormLabel>Username <span className="text-xs text-muted-foreground font-normal">(optional — will be derived from email if empty)</span></FormLabel><FormControl><Input {...field} placeholder="e.g. johndoe" autoComplete="off" data-testid="input-user-username" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{t("admin.username")} <span className="text-xs text-muted-foreground font-normal">{t("admin.usernameOptional")}</span></FormLabel><FormControl><Input {...field} placeholder="e.g. johndoe" autoComplete="off" data-testid="input-user-username" /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={form.control} name="password" render={({ field }) => (
-          <FormItem><FormLabel>Password</FormLabel><FormControl><Input {...field} type="password" data-testid="input-user-password" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{t("common.password")}</FormLabel><FormControl><Input {...field} type="password" data-testid="input-user-password" /></FormControl><FormMessage /></FormItem>
         )} />
         {isSuperAdmin && teams.length > 1 && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">Team</label>
+            <label className="text-sm font-medium">{t("common.team")}</label>
             <Select
               value={String(selectedTeamId)}
               onValueChange={(v) => {
@@ -385,7 +399,7 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
         )}
         <FormField control={form.control} name="groupScope" render={({ field }) => (
           <FormItem>
-            <FormLabel>Groups (select one or more)</FormLabel>
+            <FormLabel>{t("admin.groupsSelect")}</FormLabel>
             <FormControl>
               <GroupCheckboxes
                 groupNames={groupNames}
@@ -399,7 +413,7 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
         )} />
         <FormField control={form.control} name="isAdmin" render={() => (
           <FormItem>
-            <FormLabel>Role</FormLabel>
+            <FormLabel>{t("common.role")}</FormLabel>
             <Select
               value={form.watch("isAdmin") ? "superadmin" : form.watch("isTeamAdmin") ? "teamadmin" : "member"}
               onValueChange={(v) => {
@@ -409,9 +423,9 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
             >
               <FormControl><SelectTrigger data-testid="select-user-role"><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
-                <SelectItem value="member">Member</SelectItem>
-                <SelectItem value="teamadmin">Team Admin</SelectItem>
-                {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
+                <SelectItem value="member">{t("admin.member")}</SelectItem>
+                <SelectItem value="teamadmin">{t("admin.teamAdmin")}</SelectItem>
+                {isSuperAdmin && <SelectItem value="superadmin">{t("admin.superAdmin")}</SelectItem>}
               </SelectContent>
             </Select>
             <FormMessage />
@@ -438,29 +452,29 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
               >
                 <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} className="sr-only" />
                 <EyeOff className="h-3.5 w-3.5" />
-                Blind tester
+                {t("admin.blindTesterLabel")}
               </label>
               {field.value && (
-                <span className="text-[10px] text-muted-foreground">Products & methodology hidden from this user</span>
+                <span className="text-[10px] text-muted-foreground">{t("admin.blindTesterHidden")}</span>
               )}
             </div>
           </FormItem>
         )} />
         <FormField control={form.control} name="isActive" render={({ field }) => (
           <FormItem>
-            <FormLabel>Status</FormLabel>
+            <FormLabel>{t("common.status")}</FormLabel>
             <Select value={field.value ? "active" : "inactive"} onValueChange={(v) => field.onChange(v === "active")}>
               <FormControl><SelectTrigger data-testid="select-user-status"><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="active">{t("admin.statusActive")}</SelectItem>
+                <SelectItem value="inactive">{t("admin.statusInactive")}</SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />
           </FormItem>
         )} />
         <div className="flex justify-end">
-          <Button type="submit" data-testid="button-create-user" disabled={mutation.isPending}>Create</Button>
+          <Button type="submit" data-testid="button-create-user" disabled={mutation.isPending}>{t("admin.create")}</Button>
         </div>
       </form>
     </Form>
@@ -482,6 +496,7 @@ function TeamPermRow({
   onReset: () => void;
 }) {
   const { toast } = useToast();
+  const { t } = useI18n();
   const { isSuperAdmin } = useAuth();
   const [localPerms, setLocalPerms] = useState<UserPermissions>(
     existingPerms ? parsePermissions(existingPerms) : { ...DEFAULT_PERMISSIONS }
@@ -506,8 +521,8 @@ function TeamPermRow({
       });
       return res.json();
     },
-    onSuccess: () => { onSaved(); toast({ title: `Settings saved for ${team.name}` }); },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onSuccess: () => { onSaved(); toast({ title: t("admin.settingsSaved", { name: team.name }) }); },
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   const resetTeamPermsMutation = useMutation({
@@ -515,8 +530,8 @@ function TeamPermRow({
       const res = await apiRequest("DELETE", `/api/users/${userId}/team-permissions/${team.id}`);
       return res.json();
     },
-    onSuccess: () => { onReset(); toast({ title: `Reset to global settings for ${team.name}` }); },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onSuccess: () => { onReset(); toast({ title: t("admin.resetToGlobalSuccess", { name: team.name }) }); },
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   return (
@@ -529,10 +544,10 @@ function TeamPermRow({
         <span className="text-xs font-medium">{team.name}</span>
         <div className="flex items-center gap-2">
           {(existingPerms || existingGroupScope) && (
-            <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full">Custom</span>
+            <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full">{t("admin.teamCustomBadge")}</span>
           )}
           {existingIsTeamAdmin && (
-            <span className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full">Team Admin</span>
+            <span className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full">{t("admin.teamAdminBadge")}</span>
           )}
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-180")} />
         </div>
@@ -540,14 +555,14 @@ function TeamPermRow({
       {isExpanded && (
         <div className="p-3 space-y-3 border-t border-border">
           <p className="text-[11px] text-muted-foreground">
-            {existingPerms ? "Custom settings active for this team." : "Using global settings. Save to create team-specific override."}
+            {existingPerms ? t("admin.customSettingsActive") : t("admin.usingGlobalSettings")}
           </p>
 
           {/* Team Admin toggle */}
           <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
             <div>
-              <p className="text-xs font-medium">Team Admin for {team.name}</p>
-              <p className="text-[10px] text-muted-foreground">Can manage users and settings for this team</p>
+              <p className="text-xs font-medium">{t("admin.teamAdminFor", { name: team.name })}</p>
+              <p className="text-[10px] text-muted-foreground">{t("admin.teamAdminDesc")}</p>
             </div>
             <button
               type="button"
@@ -567,7 +582,7 @@ function TeamPermRow({
           {/* Groups for this team */}
           {teamGroupNames.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-xs font-medium">Groups in {team.name}</p>
+              <p className="text-xs font-medium">{t("admin.groupsIn", { name: team.name })}</p>
               <GroupCheckboxes
                 groupNames={teamGroupNames}
                 selected={localGroupScope}
@@ -593,7 +608,7 @@ function TeamPermRow({
                 onClick={() => resetTeamPermsMutation.mutate()}
                 disabled={resetTeamPermsMutation.isPending}
               >
-                Reset to global
+                {t("admin.resetToGlobal")}
               </Button>
             )}
             <div className="ml-auto">
@@ -604,7 +619,7 @@ function TeamPermRow({
                 onClick={() => saveTeamPermsMutation.mutate(localPerms)}
                 disabled={saveTeamPermsMutation.isPending}
               >
-                Save for {team.name}
+                {t("admin.saveForTeam", { name: team.name })}
               </Button>
             </div>
           </div>
@@ -616,6 +631,7 @@ function TeamPermRow({
 
 function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDone: () => void; allGroups: ApiGroup[]; teams: ApiTeam[] }) {
   const { toast } = useToast();
+  const { t } = useI18n();
   const { isSuperAdmin } = useAuth();
   const [selectedTeamId, setSelectedTeamId] = useState(user.teamId);
   const [garminWatchOn, setGarminWatchOn] = useState(!!user.garminWatch);
@@ -641,9 +657,9 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
     onSuccess: (data) => {
       setGarminWatchOn(data.garminWatch);
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({ title: data.garminWatch ? "Watch Queue access granted" : "Watch Queue access removed" });
+      toast({ title: data.garminWatch ? t("admin.watchAccessGranted") : t("admin.watchAccessRemoved") });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   const addTeamMutation = useMutation({
@@ -652,7 +668,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
       return res.json();
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/users/${user.id}/teams`] }); },
-    onError: (e: Error) => { toast({ title: "Error", description: e.message, variant: "destructive" }); },
+    onError: (e: Error) => { toast({ title: t("common.error"), description: e.message, variant: "destructive" }); },
   });
 
   const removeTeamMutation = useMutation({
@@ -661,7 +677,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
       return res.json();
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/users/${user.id}/teams`] }); },
-    onError: (e: Error) => { toast({ title: "Error", description: e.message, variant: "destructive" }); },
+    onError: (e: Error) => { toast({ title: t("common.error"), description: e.message, variant: "destructive" }); },
   });
   const teamChanged = selectedTeamId !== user.teamId;
   const { data: teamGroups } = useQuery<ApiGroup[]>({
@@ -696,11 +712,11 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast({ title: "User updated" });
+      toast({ title: t("admin.userUpdated2") });
       onDone();
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -708,17 +724,17 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
     <Form {...form}>
       <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
         <FormField control={form.control} name="name" render={({ field }) => (
-          <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} data-testid="input-edit-name" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{t("common.name")}</FormLabel><FormControl><Input {...field} data-testid="input-edit-name" /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={form.control} name="email" render={({ field }) => (
-          <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} data-testid="input-edit-email" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{t("common.email")}</FormLabel><FormControl><Input {...field} data-testid="input-edit-email" /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={form.control} name="username" render={({ field }) => (
-          <FormItem><FormLabel>Username <span className="text-xs text-muted-foreground font-normal">(used for login)</span></FormLabel><FormControl><Input {...field} placeholder="e.g. johndoe" autoComplete="off" data-testid="input-edit-username" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{t("admin.username")} <span className="text-xs text-muted-foreground font-normal">{t("admin.usernameUsedForLogin")}</span></FormLabel><FormControl><Input {...field} placeholder="e.g. johndoe" autoComplete="off" data-testid="input-edit-username" /></FormControl><FormMessage /></FormItem>
         )} />
         {isSuperAdmin && teams.length > 1 && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">Primary Team</label>
+            <label className="text-sm font-medium">{t("admin.primaryTeam")}</label>
             <Select
               value={String(selectedTeamId)}
               onValueChange={(v) => {
@@ -739,15 +755,15 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
         )}
         {isSuperAdmin && teams.length > 1 && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">Additional Teams</label>
+            <label className="text-sm font-medium">{t("admin.additionalTeams")}</label>
             <div className="flex flex-wrap gap-2">
-              {teams.filter((t) => t.id !== selectedTeamId).map((t) => {
-                const isMember = memberTeamIds.includes(t.id);
+              {teams.filter((tm) => tm.id !== selectedTeamId).map((tm) => {
+                const isMember = memberTeamIds.includes(tm.id);
                 return (
                   <button
-                    key={t.id}
+                    key={tm.id}
                     type="button"
-                    onClick={() => isMember ? removeTeamMutation.mutate(t.id) : addTeamMutation.mutate(t.id)}
+                    onClick={() => isMember ? removeTeamMutation.mutate(tm.id) : addTeamMutation.mutate(tm.id)}
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all",
                       isMember
@@ -756,17 +772,17 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
                     )}
                   >
                     {isMember ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                    {t.name}
+                    {tm.name}
                   </button>
                 );
               })}
             </div>
-            <p className="text-[11px] text-muted-foreground">Click to toggle access. User can switch between primary and additional teams.</p>
+            <p className="text-[11px] text-muted-foreground">{t("admin.additionalTeamsHint")}</p>
           </div>
         )}
         <FormField control={form.control} name="groupScope" render={({ field }) => (
           <FormItem>
-            <FormLabel>Groups (select one or more)</FormLabel>
+            <FormLabel>{t("admin.groupsSelect")}</FormLabel>
             <FormControl>
               <GroupCheckboxes
                 groupNames={groupNames}
@@ -780,7 +796,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
         )} />
         <FormField control={form.control} name="isAdmin" render={() => (
           <FormItem>
-            <FormLabel>Role</FormLabel>
+            <FormLabel>{t("common.role")}</FormLabel>
             <Select
               value={form.watch("isAdmin") ? "superadmin" : form.watch("isTeamAdmin") ? "teamadmin" : "member"}
               onValueChange={(v) => {
@@ -790,9 +806,9 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
             >
               <FormControl><SelectTrigger data-testid="select-edit-role"><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
-                <SelectItem value="member">Member</SelectItem>
-                <SelectItem value="teamadmin">Team Admin</SelectItem>
-                {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
+                <SelectItem value="member">{t("admin.member")}</SelectItem>
+                <SelectItem value="teamadmin">{t("admin.teamAdmin")}</SelectItem>
+                {isSuperAdmin && <SelectItem value="superadmin">{t("admin.superAdmin")}</SelectItem>}
               </SelectContent>
             </Select>
             <FormMessage />
@@ -819,10 +835,10 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
               >
                 <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} className="sr-only" />
                 <EyeOff className="h-3.5 w-3.5" />
-                Blind tester
+                {t("admin.blindTesterLabel")}
               </label>
               {field.value && (
-                <span className="text-[10px] text-muted-foreground">Products & methodology hidden from this user</span>
+                <span className="text-[10px] text-muted-foreground">{t("admin.blindTesterHidden")}</span>
               )}
             </div>
           </FormItem>
@@ -830,23 +846,23 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
         {/* Garmin Watch Queue access toggle */}
         {(() => {
           const teamHasWatch = (() => {
-            const t = teams.find((t) => t.id === selectedTeamId);
-            if (!t || !t.enabledAreas) return false;
-            try { return JSON.parse(t.enabledAreas).includes("garmin_watch"); } catch { return false; }
+            const tm = teams.find((tm) => tm.id === selectedTeamId);
+            if (!tm || !tm.enabledAreas) return false;
+            try { return JSON.parse(tm.enabledAreas).includes("garmin_watch"); } catch { return false; }
           })();
           if (!teamHasWatch && !isSuperAdmin) return null;
           return (
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Watch Queue Access</label>
+              <label className="text-sm font-medium">{t("admin.watchQueueAccess")}</label>
               <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5">
                 <div>
                   <div className="text-sm font-medium flex items-center gap-1.5">
                     <Watch className="h-4 w-4 text-sky-500" />
-                    Garmin Watch Queue
+                    {t("admin.garminQueueAccess")}
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
-                    {garminWatchOn ? "User can access Watch Queue" : "User cannot access Watch Queue"}
-                    {!teamHasWatch && <span className="ml-1 text-amber-600">(team feature not enabled)</span>}
+                    {garminWatchOn ? t("admin.userCanAccessWatch") : t("admin.userCannotAccessWatch")}
+                    {!teamHasWatch && <span className="ml-1 text-amber-600">{t("admin.teamFeatureNotEnabled")}</span>}
                   </div>
                 </div>
                 <button
@@ -868,8 +884,8 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
         {/* Per-team permissions for multi-team users */}
         {isSuperAdmin && memberTeamIds.length > 0 && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">Per-team Permissions</label>
-            <p className="text-[11px] text-muted-foreground">Override permissions for specific teams this user belongs to.</p>
+            <label className="text-sm font-medium">{t("admin.perTeamPermissions")}</label>
+            <p className="text-[11px] text-muted-foreground">{t("admin.perTeamPermissionsHint")}</p>
             <div className="space-y-2">
               {teams
                 .filter((t) => memberTeamIds.includes(t.id))
@@ -897,19 +913,19 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
 
         <FormField control={form.control} name="isActive" render={({ field }) => (
           <FormItem>
-            <FormLabel>Status</FormLabel>
+            <FormLabel>{t("common.status")}</FormLabel>
             <Select value={field.value ? "active" : "inactive"} onValueChange={(v) => field.onChange(v === "active")}>
               <FormControl><SelectTrigger data-testid="select-edit-status"><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="active">{t("admin.statusActive")}</SelectItem>
+                <SelectItem value="inactive">{t("admin.statusInactive")}</SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />
           </FormItem>
         )} />
         <div className="flex justify-end">
-          <Button type="submit" data-testid="button-save-user" disabled={mutation.isPending}>Save</Button>
+          <Button type="submit" data-testid="button-save-user" disabled={mutation.isPending}>{t("common.save")}</Button>
         </div>
       </form>
     </Form>
@@ -918,6 +934,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
 
 function ResetPasswordForm({ user, onDone }: { user: ApiUser; onDone: () => void }) {
   const { toast } = useToast();
+  const { t } = useI18n();
   const form = useForm<z.infer<typeof resetSchema>>({
     resolver: zodResolver(resetSchema),
     defaultValues: { password: "password" },
@@ -929,11 +946,11 @@ function ResetPasswordForm({ user, onDone }: { user: ApiUser; onDone: () => void
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Password reset" });
+      toast({ title: t("admin.passwordReset") });
       onDone();
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -941,10 +958,10 @@ function ResetPasswordForm({ user, onDone }: { user: ApiUser; onDone: () => void
     <Form {...form}>
       <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
         <FormField control={form.control} name="password" render={({ field }) => (
-          <FormItem><FormLabel>New password</FormLabel><FormControl><Input {...field} type="password" data-testid="input-reset-password" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{t("admin.newPassword")}</FormLabel><FormControl><Input {...field} type="password" data-testid="input-reset-password" /></FormControl><FormMessage /></FormItem>
         )} />
         <div className="flex justify-end">
-          <Button type="submit" data-testid="button-reset-password" disabled={mutation.isPending}>Reset</Button>
+          <Button type="submit" data-testid="button-reset-password" disabled={mutation.isPending}>{t("admin.reset")}</Button>
         </div>
       </form>
     </Form>
@@ -965,6 +982,7 @@ type ActiveSession = {
 
 function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId: number }) {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [reopenAt, setReopenAt] = useState("");
 
   // Maintenance mode
@@ -984,9 +1002,9 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
     onSuccess: (data) => {
       refetchMaintenance();
       if (!data.enabled) setReopenAt("");
-      toast({ title: data.enabled ? "Maintenance mode ON" : "Maintenance mode OFF", description: data.enabled ? "All non-SA users are now blocked." : "Normal access restored." });
+      toast({ title: data.enabled ? t("admin.maintenanceOn") : t("admin.maintenanceOff"), description: data.enabled ? t("admin.maintenanceBlockDesc") : t("admin.maintenanceRestoreDesc") });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   // Active sessions
@@ -1000,8 +1018,8 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
       const res = await apiRequest("POST", `/api/admin/force-logout/${userId}`);
       return res.json();
     },
-    onSuccess: () => { refetchSessions(); toast({ title: "User logged out" }); },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onSuccess: () => { refetchSessions(); toast({ title: t("admin.logout") }); },
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   // Emergency lockdown
@@ -1010,8 +1028,8 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
       const res = await apiRequest("POST", `/api/admin/emergency-lockdown/${teamId}`);
       return res.json();
     },
-    onSuccess: (data) => { refetchSessions(); toast({ title: `Lockdown complete`, description: `${data.loggedOut} session(s) terminated.` }); },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onSuccess: (data) => { refetchSessions(); toast({ title: t("admin.lockdown"), description: `${data.loggedOut} session(s) terminated.` }); },
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   // Team pause
@@ -1022,9 +1040,9 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
     },
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: vars.paused ? "Team suspended" : "Team unsuspended", description: vars.paused ? "Team members will be unable to log in." : "Team members can log in again." });
+      toast({ title: vars.paused ? t("admin.teamSuspended") : t("admin.teamUnsuspended"), description: vars.paused ? t("admin.teamSuspendedDesc") : t("admin.teamUnsuspendedDesc") });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   return (
@@ -1036,19 +1054,19 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <Shield className="h-4 w-4 text-amber-500" />
-              <span className="font-semibold text-foreground">Maintenance Mode</span>
+              <span className="font-semibold text-foreground">{t("admin.maintenanceModeTitle")}</span>
               {maintenanceEnabled && (
                 <span className="rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide animate-pulse">
-                  ACTIVE
+                  {t("admin.maintenanceActive")}
                 </span>
               )}
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              When enabled, all non-Super Admin users see a maintenance screen and are blocked from the API. You retain full access. Use this before applying critical updates or during an incident.
+              {t("admin.maintenanceModeDesc")}
             </p>
             {!maintenanceEnabled && (
               <div className="mt-3 flex items-center gap-2">
-                <label className="text-xs text-muted-foreground whitespace-nowrap">Reopen at (optional):</label>
+                <label className="text-xs text-muted-foreground whitespace-nowrap">{t("admin.reopenAt")}</label>
                 <Input
                   type="datetime-local"
                   value={reopenAt}
@@ -1066,7 +1084,7 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
               "relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none mt-1",
               maintenanceEnabled ? "bg-amber-500" : "bg-muted-foreground/25"
             )}
-            aria-label="Toggle maintenance mode"
+            aria-label={t("admin.toggleMaintenanceMode")}
           >
             <span className={cn(
               "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform",
@@ -1077,10 +1095,10 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
         {maintenanceEnabled && (
           <div className="mt-3 space-y-2">
             <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
-              ⚠️ Maintenance mode is currently <strong>ON</strong>. All other users are locked out. Remember to turn it off when done.
+              {t("admin.maintenanceWarning")}
             </div>
             <div className="rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs text-slate-600 dark:text-slate-400">
-              <span className="font-medium text-slate-700 dark:text-slate-300">Message shown to users: </span>
+              <span className="font-medium text-slate-700 dark:text-slate-300">{t("admin.maintenanceMessageLabel")}</span>
               Maintenance in progress.{maintenanceData?.reopenAt
                 ? ` The system will reopen at ${new Date(maintenanceData.reopenAt).toLocaleString("no-NO", { dateStyle: "short", timeStyle: "short" })}.`
                 : " The system will be back shortly."}
@@ -1094,10 +1112,10 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
       <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-1">
           <AlertTriangle className="h-4 w-4 text-destructive" />
-          <span className="font-semibold text-foreground">Emergency Session Lockdown</span>
+          <span className="font-semibold text-foreground">{t("admin.emergencyLockdown")}</span>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          Immediately terminate <strong>all active sessions</strong> for every user in a team. They will be logged out instantly. Use this if credentials are compromised or suspicious activity is detected.
+          {t("admin.emergencyLockdownDesc")}
         </p>
         <div className="space-y-2">
           {teams.map((team) => (
@@ -1121,7 +1139,7 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
                 }}
               >
                 <AlertTriangle className="mr-1.5 h-3.5 w-3.5" />
-                Lockdown
+                {t("admin.lockdown")}
               </Button>
             </div>
           ))}
@@ -1132,10 +1150,10 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
       <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-1">
           <UserX className="h-4 w-4 text-red-500" />
-          <span className="font-semibold text-foreground">Team Pause</span>
+          <span className="font-semibold text-foreground">{t("admin.teamPauseTitle")}</span>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          Suspend a team's login access. <strong>All team members will be unable to log in</strong> while paused. Super Admins are unaffected. Use this to temporarily block a team without deleting any data.
+          {t("admin.teamPauseDesc")}
         </p>
         <div className="space-y-2">
           {teams.map((team) => {
@@ -1149,11 +1167,11 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-medium text-foreground">{team.name}</span>
                     {isPaused && (
-                      <span className="rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-1.5 py-0.5 text-[9px] font-bold uppercase">Suspended</span>
+                      <span className="rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-1.5 py-0.5 text-[9px] font-bold uppercase">{t("admin.suspended")}</span>
                     )}
                   </div>
                   {isPaused && (
-                    <p className="text-[11px] text-red-500 mt-0.5">All members cannot log in</p>
+                    <p className="text-[11px] text-red-500 mt-0.5">{t("admin.allMembersCannotLogin")}</p>
                   )}
                 </div>
                 <Button
@@ -1172,9 +1190,9 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
                   }}
                 >
                   {isPaused ? (
-                    <><ToggleRight className="h-3.5 w-3.5 mr-1.5" />Unpause</>
+                    <><ToggleRight className="h-3.5 w-3.5 mr-1.5" />{t("admin.unpause")}</>
                   ) : (
-                    <><ToggleLeft className="h-3.5 w-3.5 mr-1.5" />Pause</>
+                    <><ToggleLeft className="h-3.5 w-3.5 mr-1.5" />{t("admin.pause")}</>
                   )}
                 </Button>
               </div>
@@ -1188,28 +1206,28 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Activity className="h-4 w-4 text-green-500" />
-            <span className="font-semibold text-foreground">Active Sessions</span>
+            <span className="font-semibold text-foreground">{t("admin.activeSessions")}</span>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
               {sessions.length}
             </span>
           </div>
           <Button variant="outline" size="sm" onClick={() => refetchSessions()}>
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-            Refresh
+            {t("admin.refresh")}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mb-3">Auto-refreshes every 15 s. Your own session is shown but cannot be terminated.</p>
+        <p className="text-xs text-muted-foreground mb-3">{t("admin.activeSessionsDesc")}</p>
         {sessions.length === 0 ? (
-          <div className="text-sm text-muted-foreground text-center py-6">No active sessions found.</div>
+          <div className="text-sm text-muted-foreground text-center py-6">{t("admin.noActiveSessions")}</div>
         ) : (
           <div className="rounded-xl border border-border overflow-hidden">
             <table className="w-full text-sm" data-testid="table-active-sessions">
               <thead>
                 <tr className="bg-muted/40 border-b border-border">
-                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">User</th>
-                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">Email</th>
-                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">Expires</th>
-                  <th className="text-center px-3 py-2 font-medium text-foreground/80 text-xs">Action</th>
+                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{t("admin.tableUser")}</th>
+                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{t("admin.tableEmail")}</th>
+                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{t("admin.tableExpires")}</th>
+                  <th className="text-center px-3 py-2 font-medium text-foreground/80 text-xs">{t("admin.tableAction")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -1246,7 +1264,7 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
                           {isMe ? "—" : (
                             <>
                               <LogOut className="h-3 w-3 mr-1" />
-                              Logout
+                              {t("admin.logout")}
                             </>
                           )}
                         </Button>
@@ -1331,6 +1349,8 @@ function TeamFeaturesDialog({
     return null;
   })();
 
+  const { t } = useI18n();
+
   const toggleFeature = (feat: string) =>
     setFeatures((prev) => prev.includes(feat) ? prev.filter((f) => f !== feat) : [...prev, feat]);
 
@@ -1340,7 +1360,7 @@ function TeamFeaturesDialog({
         {/* Header */}
         <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
           <Settings2 className="h-4 w-4 text-muted-foreground" />
-          <span className="font-semibold text-foreground">Feature Access</span>
+          <span className="font-semibold text-foreground">{t("admin.featureAccess")}</span>
           <span className="text-muted-foreground">·</span>
           <span className="text-sm text-muted-foreground">{team.name}</span>
         </div>
@@ -1348,14 +1368,14 @@ function TeamFeaturesDialog({
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
           {/* Team name */}
           <div className="space-y-1">
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Team name</label>
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("admin.teamName2")}</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8 text-sm" />
           </div>
 
           {/* Plan presets */}
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-              Subscription plan
+              {t("admin.subscriptionPlan")}
             </div>
             <div className="grid grid-cols-4 gap-2">
               {Object.entries(PLAN_FEATURE_PRESETS).map(([key, preset]) => {
@@ -1375,14 +1395,14 @@ function TeamFeaturesDialog({
                   >
                     <div>{preset.label}</div>
                     <div className="text-[10px] font-normal opacity-60 mt-0.5">
-                      {preset.features.length} features
+                      {preset.features.length} {t("admin.features")}
                     </div>
                   </button>
                 );
               })}
             </div>
             {detectedPlan === null && features.length > 0 && (
-              <p className="text-[10px] text-muted-foreground mt-1.5">Custom configuration</p>
+              <p className="text-[10px] text-muted-foreground mt-1.5">{t("admin.customConfig")}</p>
             )}
           </div>
 
@@ -1443,18 +1463,18 @@ function TeamFeaturesDialog({
         {/* Footer */}
         <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/20">
           <span className="text-[11px] text-muted-foreground">
-            {features.length} / {TEAM_FEATURES.length} features enabled
+            {t("admin.featuresEnabled", { n: String(features.length), total: String(TEAM_FEATURES.length) })}
           </span>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               size="sm"
               disabled={!name.trim() || isPending}
               onClick={() => onSave(team.id, name.trim(), features)}
             >
-              {isPending ? "Saving…" : "Save changes"}
+              {isPending ? t("admin.saving") : t("admin.saveChanges")}
             </Button>
           </div>
         </div>
@@ -1464,21 +1484,23 @@ function TeamFeaturesDialog({
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ALL_TABS: { id: TabId; label: string; superAdminOnly?: boolean }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "users", label: "Users" },
-  { id: "groups", label: "Groups" },
-  { id: "teams", label: "Teams", superAdminOnly: true },
-  { id: "backup", label: "Backup" },
-  { id: "activity", label: "Activity Log" },
-  { id: "logins", label: "Login History" },
-  { id: "data", label: "Data Management" },
-  { id: "danger", label: "Danger Zone" },
-  { id: "security", label: "Security", superAdminOnly: true },
-  { id: "registrations", label: "Registrations", superAdminOnly: true },
+// Tab labels are rendered via t() in the component; we keep tab IDs only
+const ALL_TABS: { id: TabId; superAdminOnly?: boolean }[] = [
+  { id: "overview" },
+  { id: "users" },
+  { id: "groups" },
+  { id: "teams", superAdminOnly: true },
+  { id: "backup" },
+  { id: "activity" },
+  { id: "logins" },
+  { id: "data" },
+  { id: "danger" },
+  { id: "security", superAdminOnly: true },
+  { id: "registrations", superAdminOnly: true },
 ];
 
 function BackupStatusCard() {
+  const { t } = useI18n();
   const { data } = useQuery<{ available: boolean; mode: string }>({
     queryKey: ["/api/backup/status"],
     queryFn: getQueryFn({ on401: "returnNull" }),
@@ -1496,8 +1518,8 @@ function BackupStatusCard() {
             <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">Google Sheets backup is ready ({label})</p>
-            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">Paste a Google Sheets URL below and make sure the sheet is shared with your service account email (Editor access).</p>
+            <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">{t("admin.googleSheetsReady", { label })}</p>
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">{t("admin.googleSheetsReadyDesc")}</p>
           </div>
         </div>
       </Card>
@@ -1511,7 +1533,7 @@ function BackupStatusCard() {
           <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
         </div>
         <div className="space-y-2 text-xs text-amber-800 dark:text-amber-300">
-          <p className="font-semibold">Google Sheets backup is not configured</p>
+          <p className="font-semibold">{t("admin.googleSheetsNotConfigured")}</p>
           <p>To enable backup on Render, add a Google Service Account:</p>
           <ol className="list-decimal pl-4 space-y-1 text-[11px]">
             <li>Go to <strong>console.cloud.google.com</strong> → create or select a project</li>
@@ -1564,6 +1586,7 @@ type UserHistoryData = {
 };
 
 function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser | null; open: boolean; onClose: () => void }) {
+  const { t } = useI18n();
   const [historyTab, setHistoryTab] = useState<"logins" | "activity" | "passwords">("logins");
 
   const { data, isLoading } = useQuery<UserHistoryData>({
@@ -1586,45 +1609,45 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-violet-600" />
-            History — {targetUser?.name}
+            {t("admin.historyFor", { name: targetUser?.name ?? "" })}
           </DialogTitle>
         </DialogHeader>
         {isLoading ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">Loading history…</div>
+          <div className="py-8 text-center text-sm text-muted-foreground">{t("admin.loadingHistory")}</div>
         ) : (
           <div className="flex flex-col gap-4">
             {/* Tab switcher */}
             <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/30 w-fit">
               {([
-                { id: "logins", label: `Logins (${loginLogs.length})` },
-                { id: "activity", label: `Activity (${activityLogs.length})` },
-                { id: "passwords", label: `Password Changes (${passwordChanges.length})` },
-              ] as const).map((t) => (
+                { id: "logins", label: t("admin.loginsTab", { n: String(loginLogs.length) }) },
+                { id: "activity", label: t("admin.activityTab", { n: String(activityLogs.length) }) },
+                { id: "passwords", label: t("admin.passwordChangesTab", { n: String(passwordChanges.length) }) },
+              ] as const).map((tab) => (
                 <button
-                  key={t.id}
+                  key={tab.id}
                   type="button"
-                  onClick={() => setHistoryTab(t.id)}
+                  onClick={() => setHistoryTab(tab.id)}
                   className={cn(
                     "rounded px-3 py-1.5 text-xs font-medium transition-colors",
-                    historyTab === t.id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                    historyTab === tab.id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {t.label}
+                  {tab.label}
                 </button>
               ))}
             </div>
 
             {historyTab === "logins" && (
               loginLogs.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No login events found.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t("admin.noLoginEvents")}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                        <th className="pb-2 pr-3">Date/Time</th>
-                        <th className="pb-2 pr-3">Action</th>
-                        <th className="pb-2">IP Address</th>
+                        <th className="pb-2 pr-3">{t("admin.dateTime")}</th>
+                        <th className="pb-2 pr-3">{t("admin.action")}</th>
+                        <th className="pb-2">{t("admin.ipAddress")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1648,16 +1671,16 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
 
             {historyTab === "activity" && (
               activityLogs.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No activity logs found.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t("admin.noActivityLogs")}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                        <th className="pb-2 pr-3">Date/Time</th>
-                        <th className="pb-2 pr-3">Action</th>
-                        <th className="pb-2 pr-3">Entity</th>
-                        <th className="pb-2">Details</th>
+                        <th className="pb-2 pr-3">{t("admin.dateTime")}</th>
+                        <th className="pb-2 pr-3">{t("admin.action")}</th>
+                        <th className="pb-2 pr-3">{t("admin.entity")}</th>
+                        <th className="pb-2">{t("admin.details")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1679,14 +1702,14 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
 
             {historyTab === "passwords" && (
               passwordChanges.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No password change records found.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t("admin.noPasswordChanges")}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                        <th className="pb-2 pr-3">Date/Time</th>
-                        <th className="pb-2">Details</th>
+                        <th className="pb-2 pr-3">{t("admin.dateTime")}</th>
+                        <th className="pb-2">{t("admin.details")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1709,6 +1732,7 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
 }
 
 function RegistrationsTab() {
+  const { t } = useI18n();
   const { data: registrations = [], refetch } = useQuery<any[]>({
     queryKey: ["/api/admin/registrations"],
     queryFn: async () => {
@@ -1730,7 +1754,7 @@ function RegistrationsTab() {
       credentials: "include",
       body: JSON.stringify({ status: editStatus, adminNotes: editNotes }),
     });
-    toast({ title: "Saved" });
+    toast({ title: t("admin.saved") });
     setEditing(null);
     refetch();
   }
@@ -1742,21 +1766,21 @@ function RegistrationsTab() {
     rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
   };
   const STATUS_LABELS: Record<string, string> = {
-    new: "New",
-    contacted: "Contacted",
-    active: "Active",
-    rejected: "Rejected",
+    new: t("admin.statusNew"),
+    contacted: t("admin.statusContacted"),
+    active: t("admin.statusActive"),
+    rejected: t("admin.statusRejected"),
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Registrations ({registrations.length})</h2>
-        <span className="text-xs text-muted-foreground">From /get-started and plan change requests</span>
+        <h2 className="text-lg font-semibold">{t("admin.registrationsTitle", { n: String(registrations.length) })}</h2>
+        <span className="text-xs text-muted-foreground">{t("admin.registrationsSubtitle")}</span>
       </div>
 
       {registrations.length === 0 && (
-        <Card className="rounded-2xl p-8 text-center text-muted-foreground text-sm">No registrations yet.</Card>
+        <Card className="rounded-2xl p-8 text-center text-muted-foreground text-sm">{t("admin.noRegistrationsYet")}</Card>
       )}
 
       <div className="space-y-3">
@@ -1774,23 +1798,23 @@ function RegistrationsTab() {
                 </span>
                 <Button size="sm" variant="outline" className="h-7 text-xs"
                   onClick={() => { setEditing(r); setEditStatus(r.status); setEditNotes(r.admin_notes ?? r.adminNotes ?? ""); }}>
-                  Edit
+                  {t("common.edit")}
                 </Button>
               </div>
             </div>
             <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-              <span>Plan: <strong className="text-foreground">{r.plan_name ?? r.planName}</strong></span>
-              {(r.user_count ?? r.userCount) && <span>Users: {r.user_count ?? r.userCount}</span>}
-              {(r.group_count ?? r.groupCount) && <span>Groups: {r.group_count ?? r.groupCount}</span>}
-              <span>Billing: {(r.billing_period ?? r.billingPeriod) === "annual" ? "Annual" : "Monthly"}</span>
+              <span>{t("admin.planLabel")} <strong className="text-foreground">{r.plan_name ?? r.planName}</strong></span>
+              {(r.user_count ?? r.userCount) && <span>{t("admin.usersLabel")} {r.user_count ?? r.userCount}</span>}
+              {(r.group_count ?? r.groupCount) && <span>{t("admin.groupsLabel")} {r.group_count ?? r.groupCount}</span>}
+              <span>{t("admin.billingLabel")} {(r.billing_period ?? r.billingPeriod) === "annual" ? t("admin.billingAnnual") : t("admin.billingMonthly")}</span>
               <span>{new Date(r.created_at ?? r.createdAt).toLocaleDateString("no-NO")}</span>
             </div>
             {(r.invoice_address ?? r.invoiceAddress) && (
-              <div className="text-xs text-muted-foreground">Invoice address: {r.invoice_address ?? r.invoiceAddress}</div>
+              <div className="text-xs text-muted-foreground">{t("admin.invoiceAddressLabel")} {r.invoice_address ?? r.invoiceAddress}</div>
             )}
             {(r.notes) && <div className="text-xs text-muted-foreground italic">«{r.notes}»</div>}
             {(r.admin_notes ?? r.adminNotes) && (
-              <div className="text-xs bg-muted rounded px-2 py-1">Admin note: {r.admin_notes ?? r.adminNotes}</div>
+              <div className="text-xs bg-muted rounded px-2 py-1">{t("admin.adminNoteLabel")} {r.admin_notes ?? r.adminNotes}</div>
             )}
           </Card>
         ))}
@@ -1800,28 +1824,28 @@ function RegistrationsTab() {
       {editing && (
         <Dialog open={!!editing} onOpenChange={o => !o && setEditing(null)}>
           <DialogContent>
-            <DialogHeader><DialogTitle>Edit registration — {editing.team_name ?? editing.teamName}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t("admin.editRegistration", { name: editing.team_name ?? editing.teamName ?? "" })}</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Status</label>
+                <label className="text-sm font-medium">{t("common.status")}</label>
                 <Select value={editStatus} onValueChange={setEditStatus}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="contacted">Contacted</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="new">{t("admin.statusNew")}</SelectItem>
+                    <SelectItem value="contacted">{t("admin.statusContacted")}</SelectItem>
+                    <SelectItem value="active">{t("admin.statusActive")}</SelectItem>
+                    <SelectItem value="rejected">{t("admin.statusRejected")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Admin note</label>
+                <label className="text-sm font-medium">{t("admin.adminNote")}</label>
                 <textarea className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20"
-                  rows={3} value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Internal note..." />
+                  rows={3} value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder={t("admin.internalNotePlaceholder")} />
               </div>
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-                <Button onClick={saveEdit}>Save</Button>
+                <Button variant="outline" onClick={() => setEditing(null)}>{t("common.cancel")}</Button>
+                <Button onClick={saveEdit}>{t("common.save")}</Button>
               </div>
             </div>
           </DialogContent>
@@ -1834,6 +1858,7 @@ function RegistrationsTab() {
 export default function Admin() {
   const { user, isSuperAdmin, canManage } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<ApiUser | undefined>();
@@ -1923,7 +1948,7 @@ export default function Admin() {
   }, [effectiveTeamId]);
 
   const scopeLabel = adminTeamScope === "all"
-    ? "All teams"
+    ? t("admin.allTeams")
     : adminTeamScope === "current"
       ? undefined
       : teams.find((t) => t.id === parseInt(adminTeamScope))?.name;
@@ -2312,13 +2337,13 @@ export default function Admin() {
         data.raceSkiRegrinds?.length ? `${data.raceSkiRegrinds.length} ski regrinds` : null,
         data.testSkiRegrinds?.length ? `${data.testSkiRegrinds.length} series regrinds` : null,
       ].filter(Boolean).join(", ");
-      toast({ title: "PDF exported", description: sections });
+      toast({ title: t("admin.pdfExported"), description: sections });
       try {
         await apiRequest("POST", "/api/action-log", { action: "pdf_download", details: "Full data export" });
         queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/login-logs") });
       } catch (_) {}
     } catch (err: any) {
-      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+      toast({ title: t("admin.exportFailed"), description: err.message, variant: "destructive" });
     } finally {
       setPdfLoading(false);
     }
@@ -2333,10 +2358,10 @@ export default function Admin() {
       queryClient.invalidateQueries();
       setNewGroupName("");
       setNewGroupTeamId(undefined);
-      toast({ title: "Group created" });
+      toast({ title: t("admin.groupCreated") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2348,10 +2373,10 @@ export default function Admin() {
     onSuccess: () => {
       queryClient.invalidateQueries();
       setEditingGroup(null);
-      toast({ title: "Group renamed" });
+      toast({ title: t("admin.groupRenamed") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2362,10 +2387,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast({ title: "Group deleted" });
+      toast({ title: t("admin.groupDeleted") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2376,10 +2401,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast({ title: "User deleted" });
+      toast({ title: t("admin.userDeleted2") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2389,10 +2414,10 @@ export default function Admin() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "User session terminated" });
+      toast({ title: t("admin.userSessionTerminated") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2403,10 +2428,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast({ title: "User status updated" });
+      toast({ title: t("admin.userStatusUpdated") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2417,10 +2442,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast({ title: "Account unlocked" });
+      toast({ title: t("admin.accountUnlockedToast") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2433,7 +2458,7 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: [`/api/users${teamScopeParam}`] });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2446,10 +2471,10 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       setNewTeamName("");
       setNewTeamAreas([...PERMISSION_AREAS]);
-      toast({ title: "Team created" });
+      toast({ title: t("admin.teamCreated") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2462,10 +2487,10 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       setEditingTeam(null);
       setConfiguringTeam(null);
-      toast({ title: "Team updated" });
+      toast({ title: t("admin.teamUpdated2") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2476,10 +2501,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: "Team deleted" });
+      toast({ title: t("admin.teamDeleted2") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2490,10 +2515,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: "Default team updated" });
+      toast({ title: t("admin.defaultTeamUpdated") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2504,10 +2529,10 @@ export default function Admin() {
     },
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: vars.paused ? "Team suspended" : "Team unsuspended", description: vars.paused ? "Team members will be unable to log in." : "Team members can log in again." });
+      toast({ title: vars.paused ? t("admin.teamSuspended") : t("admin.teamUnsuspended"), description: vars.paused ? t("admin.teamSuspendedDesc") : t("admin.teamUnsuspendedDesc") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2518,10 +2543,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: "Backup sheet saved" });
+      toast({ title: t("admin.backupSheetSaved") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2532,10 +2557,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: "Backup completed successfully" });
+      toast({ title: t("admin.backupCompleted") });
     },
     onError: (e: Error) => {
-      toast({ title: "Backup failed", description: e.message, variant: "destructive" });
+      toast({ title: t("admin.backupFailed"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -2547,9 +2572,9 @@ export default function Admin() {
     return (
       <AppShell>
         <Card className="fs-card rounded-2xl p-6" data-testid="status-admin-forbidden">
-          <div className="text-base font-semibold">Admin only</div>
+          <div className="text-base font-semibold">{t("admin.adminOnlyTitle")}</div>
           <div className="mt-2 text-sm text-muted-foreground">
-            Your account does not have access to Admin tools.
+            {t("admin.adminOnlyDesc")}
           </div>
         </Card>
       </AppShell>
@@ -2572,9 +2597,9 @@ export default function Admin() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Admin</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("admin.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-admin-subtitle">
-              Manage users, groups, and access.{scopeLabel ? ` — ${scopeLabel}` : ""}
+              {t("admin.manageUsersGroups")}{scopeLabel ? ` — ${scopeLabel}` : ""}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -2585,8 +2610,8 @@ export default function Admin() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="current" data-testid="scope-current">Current team</SelectItem>
-                  <SelectItem value="all" data-testid="scope-all">All teams</SelectItem>
+                  <SelectItem value="current" data-testid="scope-current">{t("admin.currentTeam")}</SelectItem>
+                  <SelectItem value="all" data-testid="scope-all">{t("admin.allTeams")}</SelectItem>
                   {teams.map((t) => (
                     <SelectItem key={t.id} value={String(t.id)} data-testid={`scope-team-${t.id}`}>
                       {t.name}
@@ -2602,7 +2627,7 @@ export default function Admin() {
               disabled={pdfLoading}
             >
               {pdfLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-              {pdfLoading ? "Exporting…" : "Download PDF"}
+              {pdfLoading ? t("admin.exporting") : t("admin.downloadPdf")}
             </Button>
           </div>
         </div>
@@ -2620,7 +2645,7 @@ export default function Admin() {
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              {tab.label}
+              {t(`admin.tabs.${tab.id}` as any)}
             </button>
           ))}
         </div>
@@ -2628,14 +2653,14 @@ export default function Admin() {
         {activeTab === "overview" && (
           <div className="flex flex-col gap-5" data-testid="tab-content-overview">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <StatCard label="Users" value={stats.userCount} icon={Users} color="blue" testId="stat-users" />
-              <StatCard label="Tests" value={stats.testCount} icon={FlaskConical} color="emerald" testId="stat-tests" />
-              <StatCard label="Products" value={stats.productCount} icon={Package} color="amber" testId="stat-products" />
-              <StatCard label="Series" value={stats.seriesCount} icon={Layers} color="violet" testId="stat-series" />
-              <StatCard label="Weather" value={stats.weatherCount} icon={CloudSun} color="sky" testId="stat-weather" />
-              <StatCard label="Grinding" value={stats.grindingCount} icon={Disc3} color="rose" testId="stat-grinding" />
-              <StatCard label="Logins" value={stats.loginCount} icon={LogIn} color="indigo" testId="stat-logins" />
-              <StatCard label="Activities" value={stats.activityCount} icon={Activity} color="teal" testId="stat-activities" />
+              <StatCard label={t("common.users")} value={stats.userCount} icon={Users} color="blue" testId="stat-users" />
+              <StatCard label={t("nav.tests")} value={stats.testCount} icon={FlaskConical} color="emerald" testId="stat-tests" />
+              <StatCard label={t("nav.products")} value={stats.productCount} icon={Package} color="amber" testId="stat-products" />
+              <StatCard label={t("testskis.title")} value={stats.seriesCount} icon={Layers} color="violet" testId="stat-series" />
+              <StatCard label={t("nav.weather")} value={stats.weatherCount} icon={CloudSun} color="sky" testId="stat-weather" />
+              <StatCard label={t("nav.grinding")} value={stats.grindingCount} icon={Disc3} color="rose" testId="stat-grinding" />
+              <StatCard label={t("admin.loginHistory")} value={stats.loginCount} icon={LogIn} color="indigo" testId="stat-logins" />
+              <StatCard label={t("admin.tabs.activity")} value={stats.activityCount} icon={Activity} color="teal" testId="stat-activities" />
             </div>
 
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-recent-activity">
@@ -2643,10 +2668,10 @@ export default function Admin() {
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-green-50">
                   <Activity className="h-4 w-4 text-green-600" />
                 </div>
-                <h2 className="text-sm font-semibold text-foreground">Recent Activity</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t("admin.recentActivity")}</h2>
               </div>
               {activities.length === 0 ? (
-                <p className="text-sm text-muted-foreground" data-testid="empty-activity">No activity recorded yet.</p>
+                <p className="text-sm text-muted-foreground" data-testid="empty-activity">{t("admin.noActivity")}</p>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {activities.slice(0, 20).map((a) => (
@@ -2685,16 +2710,16 @@ export default function Admin() {
         {activeTab === "users" && (
           <div className="flex flex-col gap-4" data-testid="tab-content-users">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Users ({users.length})</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t("admin.usersCount", { n: String(users.length) })}</h2>
               <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                 <DialogTrigger asChild>
                   <Button data-testid="button-add-user" className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white">
                     <Plus className="mr-2 h-4 w-4" />
-                    New user
+                    {t("admin.newUser")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader><DialogTitle>Create user</DialogTitle></DialogHeader>
+                  <DialogHeader><DialogTitle>{t("admin.createUser")}</DialogTitle></DialogHeader>
                   <CreateUserForm onDone={() => setCreateOpen(false)} allGroups={apiGroups} defaultTeamId={effectiveTeamId} teams={teams} />
                 </DialogContent>
               </Dialog>
@@ -2707,8 +2732,8 @@ export default function Admin() {
                   const activeAreas = PERMISSION_AREAS.filter((a) => userPerms[a] !== "none");
                   const totalActive = activeAreas.length;
                   const permSummary = totalActive === 0
-                    ? "No permissions"
-                    : `${totalActive} area${totalActive > 1 ? "s" : ""}`;
+                    ? t("admin.noPermissions2")
+                    : `${totalActive} ${totalActive > 1 ? t("admin.areaPlural") : t("admin.areas")}`;
                   const permDetail = [
                     ...(activeAreas.length ? [activeAreas.map((a) => AREA_LABELS[a]).join(", ")] : []),
                   ].join(" · ");
@@ -2728,7 +2753,7 @@ export default function Admin() {
                             "rounded-full px-2 py-0.5 text-[10px] font-medium",
                             u.isAdmin ? "bg-amber-50 text-amber-600" : u.isTeamAdmin ? "bg-purple-50 text-purple-600" : "bg-muted text-muted-foreground"
                           )}>
-                            {u.isAdmin ? "Super Admin" : u.isTeamAdmin ? "Team Admin" : "Member"}
+                            {u.isAdmin ? t("admin.superAdmin") : u.isTeamAdmin ? t("admin.teamAdmin") : t("admin.member")}
                           </span>
                           {!!u.isBlindTester && (
                             <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-600">
@@ -2736,11 +2761,11 @@ export default function Admin() {
                             </span>
                           )}
                           {!u.isActive && (
-                            <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600">Inactive</span>
+                            <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600">{t("common.inactive")}</span>
                           )}
                           {!!u.loginLocked && (
                             <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700 flex items-center gap-0.5">
-                              <LockKeyhole className="inline h-2.5 w-2.5" />Locked
+                              <LockKeyhole className="inline h-2.5 w-2.5" />{t("admin.locked")}
                             </span>
                           )}
                           {!!u.garminWatch && (
@@ -2765,7 +2790,7 @@ export default function Admin() {
                             u.isActive ? "text-green-600 hover:bg-green-50" : "text-red-500 hover:bg-red-50"
                           )}
                           data-testid={`toggle-active-${u.id}`}
-                          title={u.isActive ? "Deactivate user" : "Activate user"}
+                          title={u.isActive ? t("admin.deactivateUser") : t("admin.activateUser")}
                           onClick={() => toggleActiveMutation.mutate({ userId: u.id, value: !u.isActive })}
                         >
                           {u.isActive ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
@@ -2776,7 +2801,7 @@ export default function Admin() {
                             u.garminWatch ? "text-sky-500 hover:bg-sky-50" : "text-muted-foreground/40 hover:bg-muted"
                           )}
                           data-testid={`toggle-watch-${u.id}`}
-                          title={u.garminWatch ? "Revoke Watch Queue access" : "Grant Watch Queue access"}
+                          title={u.garminWatch ? t("admin.revokeWatch") : t("admin.grantWatch")}
                           onClick={() => toggleWatchMutation.mutate({ userId: u.id, enabled: !u.garminWatch })}
                         >
                           <Watch className="h-4.5 w-4.5" />
@@ -2784,7 +2809,7 @@ export default function Admin() {
                         <button
                           className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground/80"
                           data-testid={`button-edit-user-${u.id}`}
-                          title="Edit user"
+                          title={t("admin.editUserTitle2")}
                           onClick={() => setEditUser(u)}
                         >
                           <Pencil className="h-4.5 w-4.5" />
@@ -2792,7 +2817,7 @@ export default function Admin() {
                         <button
                           className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground/80"
                           data-testid={`button-reset-user-${u.id}`}
-                          title="Reset password"
+                          title={t("admin.resetPasswordTitle")}
                           onClick={() => setResetUser(u)}
                         >
                           <KeyRound className="h-4.5 w-4.5" />
@@ -2801,7 +2826,7 @@ export default function Admin() {
                           <button
                             className="rounded p-1 text-red-500 hover:bg-red-50"
                             data-testid={`button-unlock-user-${u.id}`}
-                            title="Unlock account"
+                            title={t("admin.unlockAccountTitle")}
                             onClick={() => unlockMutation.mutate(u.id)}
                           >
                             <LockKeyhole className="h-4.5 w-4.5" />
@@ -2810,7 +2835,7 @@ export default function Admin() {
                         <button
                           className="rounded p-1 text-orange-500 hover:bg-orange-50"
                           data-testid={`button-force-logout-${u.id}`}
-                          title="Force logout"
+                          title={t("admin.forceLogout")}
                           onClick={() => {
                             if (confirm(`Force logout ${u.name}?`)) {
                               forceLogoutMutation.mutate(u.id);
@@ -2823,7 +2848,7 @@ export default function Admin() {
                           className="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-30"
                           data-testid={`button-delete-user-${u.id}`}
                           disabled={u.id === user.id}
-                          title="Delete user"
+                          title={t("admin.deleteUserTitle")}
                           onClick={() => {
                             if (confirm(`Delete ${u.name}?`)) {
                               deleteMutation.mutate(u.id);
@@ -2836,7 +2861,7 @@ export default function Admin() {
                           <button
                             className="rounded p-1 text-violet-500 hover:bg-violet-50"
                             data-testid={`button-history-user-${u.id}`}
-                            title="View user history"
+                            title={t("admin.viewHistory")}
                             onClick={() => setHistoryUser(u)}
                           >
                             <Activity className="h-4.5 w-4.5" />
@@ -2851,14 +2876,14 @@ export default function Admin() {
 
             <Dialog open={!!editUser} onOpenChange={(v) => { if (!v) setEditUser(undefined); }}>
               <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>Edit user</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{t("admin.editUserTitle")}</DialogTitle></DialogHeader>
                 {editUser && <EditUserForm user={editUser} onDone={() => setEditUser(undefined)} allGroups={apiGroups} teams={teams} />}
               </DialogContent>
             </Dialog>
 
             <Dialog open={!!resetUser} onOpenChange={(v) => { if (!v) setResetUser(undefined); }}>
               <DialogContent className="sm:max-w-md">
-                <DialogHeader><DialogTitle>Reset password for {resetUser?.name}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{t("admin.resetPasswordFor", { name: resetUser?.name ?? "" })}</DialogTitle></DialogHeader>
                 {resetUser && <ResetPasswordForm user={resetUser} onDone={() => setResetUser(undefined)} />}
               </DialogContent>
             </Dialog>
@@ -2874,7 +2899,7 @@ export default function Admin() {
         {activeTab === "groups" && (
           <div className="flex flex-col gap-4" data-testid="tab-content-groups">
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-admin-groups">
-              <div className="text-sm font-semibold text-foreground mb-3">Groups ({apiGroups.length})</div>
+              <div className="text-sm font-semibold text-foreground mb-3">{t("admin.groupsCount", { n: String(apiGroups.length) })}</div>
               <div className="grid grid-cols-1 gap-2">
                 {apiGroups.map((g) => (
                   <div
@@ -2944,7 +2969,7 @@ export default function Admin() {
                 <Input
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
-                  placeholder="New group name…"
+                  placeholder={t("admin.newGroupPlaceholder")}
                   className="h-8 text-sm flex-1"
                   data-testid="input-new-group"
                   onKeyDown={(e) => {
@@ -2959,7 +2984,7 @@ export default function Admin() {
                     onValueChange={(v) => setNewGroupTeamId(parseInt(v))}
                   >
                     <SelectTrigger className="h-8 w-[140px] text-sm" data-testid="select-new-group-team">
-                      <SelectValue placeholder="Team" />
+                      <SelectValue placeholder={t("common.team")} />
                     </SelectTrigger>
                     <SelectContent>
                       {teams.map((t) => (
@@ -2975,7 +3000,7 @@ export default function Admin() {
                   onClick={() => createGroupMutation.mutate({ name: newGroupName.trim(), teamId: newGroupTeamId ?? effectiveTeamId })}
                 >
                   <Plus className="mr-1 h-4 w-4" />
-                  Add
+                  {t("admin.addGroupButton")}
                 </Button>
               </div>
             </Card>
@@ -2998,7 +3023,7 @@ export default function Admin() {
             )}
 
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-admin-teams">
-              <div className="text-sm font-semibold text-foreground mb-3">Teams ({teams.length})</div>
+              <div className="text-sm font-semibold text-foreground mb-3">{t("admin.teamsCount", { n: String(teams.length) })}</div>
               <div className="grid grid-cols-1 gap-2">
                 {teams.map((team) => {
                   const planKey = detectPlanKey(team.enabledAreas);
@@ -3022,10 +3047,10 @@ export default function Admin() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-sm font-medium text-foreground">{team.name}</span>
                           {team.isDefault === 1 && (
-                            <span className="rounded-full bg-green-50 dark:bg-green-900/30 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-300">Default</span>
+                            <span className="rounded-full bg-green-50 dark:bg-green-900/30 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-300">{t("admin.default")}</span>
                           )}
                           {!!team.isPaused && (
-                            <span className="rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Suspended</span>
+                            <span className="rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">{t("admin.suspended")}</span>
                           )}
                           {planPreset && planStyle && (
                             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", planStyle.badge)}>
@@ -3034,14 +3059,14 @@ export default function Admin() {
                           )}
                           {planKey === "custom" && (
                             <span className="rounded-full bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300 px-2 py-0.5 text-[10px] font-medium">
-                              Custom
+                              {t("admin.custom")}
                             </span>
                           )}
                         </div>
                         <div className="text-[10px] text-muted-foreground mt-0.5">
                           {users.filter((u) => u.teamId === team.id).length} users
-                          {featureCount !== null && <> · {featureCount} features enabled</>}
-                          {!!team.isPaused && <> · <span className="text-red-500 font-medium">All members cannot log in</span></>}
+                          {featureCount !== null && <> · {featureCount} {t("admin.features")} {t("common.active").toLowerCase()}</>}
+                          {!!team.isPaused && <> · <span className="text-red-500 font-medium">{t("admin.allMembersCannotLogin")}</span></>}
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
@@ -3052,7 +3077,7 @@ export default function Admin() {
                             data-testid={`button-set-default-team-${team.id}`}
                             onClick={() => setDefaultTeamMutation.mutate(team.id)}
                             disabled={setDefaultTeamMutation.isPending}
-                            title="Set as default"
+                            title={t("admin.setDefault")}
                           >
                             <Shield className="h-4 w-4 text-green-500" />
                           </Button>
@@ -3061,7 +3086,7 @@ export default function Admin() {
                           variant="ghost"
                           size="sm"
                           data-testid={`button-pause-team-${team.id}`}
-                          title={team.isPaused ? "Unpause team" : "Pause team — members cannot log in"}
+                          title={team.isPaused ? t("admin.unpauseTeam") : t("admin.pauseTeamMembers")}
                           disabled={pauseTeamMutation.isPending}
                           onClick={() => {
                             const willPause = !team.isPaused;
@@ -3076,7 +3101,7 @@ export default function Admin() {
                           variant="ghost"
                           size="sm"
                           data-testid={`button-configure-team-${team.id}`}
-                          title="Configure features"
+                          title={t("admin.configureFeatures")}
                           onClick={() => setConfiguringTeam(team)}
                         >
                           <Settings2 className="h-4 w-4" />
@@ -3103,17 +3128,17 @@ export default function Admin() {
 
               {/* New team form */}
               <div className="mt-4 rounded-xl border border-border bg-muted/20 p-4 space-y-3">
-                <div className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">New team</div>
+                <div className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">{t("admin.newTeamLabel")}</div>
                 <Input
                   value={newTeamName}
                   onChange={(e) => setNewTeamName(e.target.value)}
-                  placeholder="Team name…"
+                  placeholder={t("admin.teamPlaceholder")}
                   className="h-8 text-sm"
                   data-testid="input-new-team"
                 />
                 {/* Plan preset buttons for new team */}
                 <div>
-                  <div className="text-xs font-medium text-muted-foreground mb-1.5">Subscription plan</div>
+                  <div className="text-xs font-medium text-muted-foreground mb-1.5">{t("admin.subscriptionPlan")}</div>
                   <div className="grid grid-cols-4 gap-1.5">
                     {Object.entries(PLAN_FEATURE_PRESETS).map(([key, preset]) => {
                       const isActive = (() => {
@@ -3145,7 +3170,7 @@ export default function Admin() {
                   onClick={() => createTeamMutation.mutate({ name: newTeamName.trim(), enabledAreas: newTeamAreas })}
                 >
                   <Plus className="mr-1 h-4 w-4" />
-                  Add team
+                  {t("admin.addTeamButton")}
                 </Button>
               </div>
             </Card>
@@ -3164,9 +3189,9 @@ export default function Admin() {
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/30">
                   <Download className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <h2 className="text-sm font-semibold text-foreground">Google Sheets Backup</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t("admin.googleSheetsBackup")}</h2>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">Paste a Google Sheets URL to back up all data. Backups run automatically every 30 minutes and can also be triggered manually.</p>
+              <p className="text-xs text-muted-foreground mb-4">{t("admin.googleSheetsDesc")}</p>
               <div className="space-y-4">
                 {(isSuperAdmin ? teams : teams.filter((t) => t.id === user?.teamId)).map((team) => {
                   const inputVal = backupSheetInputs[team.id] ?? team.backupSheetUrl ?? '';
@@ -3206,12 +3231,12 @@ export default function Admin() {
                           ) : (
                             <Download className="h-3.5 w-3.5" />
                           )}
-                          <span className="ml-1 text-xs">Backup</span>
+                          <span className="ml-1 text-xs">{t("admin.backup")}</span>
                         </Button>
                       </div>
                       {team.lastBackupAt && (
                         <div className="text-[10px] text-muted-foreground">
-                          Last backup: {new Date(team.lastBackupAt).toLocaleString()}
+                          {t("admin.lastBackupLabel", { date: new Date(team.lastBackupAt).toLocaleString() })}
                         </div>
                       )}
                     </div>
@@ -3229,21 +3254,21 @@ export default function Admin() {
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50">
                   <Activity className="h-4 w-4 text-teal-600" />
                 </div>
-                <h2 className="text-sm font-semibold text-foreground">Activity Log ({activities.length})</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t("admin.activityLogCount", { n: String(activities.length) })}</h2>
               </div>
               {activities.length === 0 ? (
-                <p className="text-sm text-muted-foreground" data-testid="empty-activity-log">No activity recorded yet.</p>
+                <p className="text-sm text-muted-foreground" data-testid="empty-activity-log">{t("admin.noActivity")}</p>
               ) : (
                 <div className="max-h-[600px] overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                        <th className="pb-2 pr-3">Time</th>
-                        <th className="pb-2 pr-3">User</th>
-                        <th className="pb-2 pr-3">Action</th>
-                        <th className="pb-2 pr-3">Type</th>
-                        <th className="pb-2 pr-3">Details</th>
-                        <th className="pb-2">Group</th>
+                        <th className="pb-2 pr-3">{t("admin.time")}</th>
+                        <th className="pb-2 pr-3">{t("admin.user")}</th>
+                        <th className="pb-2 pr-3">{t("admin.action")}</th>
+                        <th className="pb-2 pr-3">{t("admin.type")}</th>
+                        <th className="pb-2 pr-3">{t("admin.details")}</th>
+                        <th className="pb-2">{t("admin.group")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3282,20 +3307,20 @@ export default function Admin() {
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50">
                   <Clock className="h-4 w-4 text-indigo-600" />
                 </div>
-                <h2 className="text-sm font-semibold text-foreground">Login History ({loginLogs.length})</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t("admin.loginHistoryCount", { n: String(loginLogs.length) })}</h2>
               </div>
               {loginLogs.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No login records yet.</p>
+                <p className="text-sm text-muted-foreground">{t("admin.noLoginRecords")}</p>
               ) : (
                 <div className="max-h-[600px] overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                        <th className="pb-2 pr-3">Name</th>
-                        <th className="pb-2 pr-3">Email</th>
-                        <th className="pb-2 pr-3">Action</th>
-                        <th className="pb-2 pr-3">IP Address</th>
-                        <th className="pb-2">Time</th>
+                        <th className="pb-2 pr-3">{t("common.name")}</th>
+                        <th className="pb-2 pr-3">{t("common.email")}</th>
+                        <th className="pb-2 pr-3">{t("admin.action")}</th>
+                        <th className="pb-2 pr-3">{t("admin.ipAddress")}</th>
+                        <th className="pb-2">{t("admin.time")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3305,7 +3330,7 @@ export default function Admin() {
                           <td className="py-2 pr-3 text-muted-foreground">{log.email}</td>
                           <td className="py-2 pr-3">
                             {log.action === "login" ? (
-                              <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-200">Login</span>
+                              <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-200">{t("admin.loginBadge")}</span>
                             ) : log.action === "pdf_download" ? (
                               <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
                                 PDF {log.details ? `— ${log.details}` : ""}
@@ -3342,6 +3367,7 @@ export default function Admin() {
 
 function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSuperAdmin, teams }: { teamScopeParam: string; downloadFullPdf: (scope?: string) => void; pdfLoading: boolean; isSuperAdmin: boolean; teams: ApiTeam[] }) {
   const { toast } = useToast();
+  const { t } = useI18n();
   const { data: dbStats } = useQuery<any>({ queryKey: [`/api/admin/db-stats${teamScopeParam}`] });
 
   const [exportTeamId, setExportTeamId] = useState<number | "all">("all");
@@ -3358,10 +3384,10 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
     },
     onSuccess: (data: { removed: number }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: data.removed > 0 ? `Removed ${data.removed} duplicate${data.removed !== 1 ? "s" : ""}` : "No duplicates found" });
+      toast({ title: data.removed > 0 ? t("admin.duplicatesRemoved", { n: String(data.removed) }) : t("admin.noDuplicatesFound") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3375,10 +3401,10 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
   });
 
   const importOptions = [
-    { key: "series" as const, label: "Test Series" },
-    { key: "products" as const, label: "Products" },
-    { key: "tests" as const, label: "Tests & Results" },
-    { key: "weather" as const, label: "Weather Logs" },
+    { key: "series" as const, label: t("admin.importSeries") },
+    { key: "products" as const, label: t("admin.importProducts") },
+    { key: "tests" as const, label: t("admin.importTests") },
+    { key: "weather" as const, label: t("admin.importWeather") },
   ];
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -3403,12 +3429,12 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
       if (importSelections.tests) parts.push(`${result.imported.tests} tests`);
       if (importSelections.weather) parts.push(`${result.imported.weather} weather logs`);
       toast({
-        title: "Import complete",
+        title: t("admin.importComplete"),
         description: `Imported: ${parts.join(", ")}. Skipped: ${result.imported.skipped} duplicates.`,
       });
       queryClient.invalidateQueries();
     } catch (err: any) {
-      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+      toast({ title: t("admin.importFailed"), description: err.message, variant: "destructive" });
     } finally {
       setImporting(false);
       e.target.value = "";
@@ -3484,9 +3510,9 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
       }
 
       XLSX.writeFile(wb, "glidr-export.xlsx");
-      toast({ title: "Excel exported" });
+      toast({ title: t("admin.excelExported") });
     } catch (err: any) {
-      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+      toast({ title: t("admin.exportFailed"), description: err.message, variant: "destructive" });
     } finally {
       setXlsLoading(false);
     }
@@ -3500,22 +3526,22 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
           <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-violet-50">
             <Database className="h-4 w-4 text-violet-600" />
           </div>
-          <h2 className="text-sm font-semibold text-foreground">Database Overview</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("admin.databaseOverview")}</h2>
         </div>
         {dbStats ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
             {[
-              { label: "Users", val: dbStats.userCount },
-              { label: "Tests", val: dbStats.testCount },
-              { label: "Products", val: dbStats.productCount },
-              { label: "Series", val: dbStats.seriesCount },
-              { label: "Weather", val: dbStats.weatherCount },
-              { label: "Grinding", val: dbStats.grindingCount },
-              { label: "Athletes", val: dbStats.athleteCount },
-              { label: "Raceskis", val: dbStats.raceSkiCount },
-              { label: "Login Logs", val: dbStats.loginCount },
-              { label: "Activity Logs", val: dbStats.activityCount },
-              { label: "Active Sessions", val: dbStats.sessionCount },
+              { label: t("admin.dbUsers"), val: dbStats.userCount },
+              { label: t("admin.dbTests"), val: dbStats.testCount },
+              { label: t("admin.dbProducts"), val: dbStats.productCount },
+              { label: t("admin.dbSeries"), val: dbStats.seriesCount },
+              { label: t("admin.dbWeather"), val: dbStats.weatherCount },
+              { label: t("admin.dbGrinding"), val: dbStats.grindingCount },
+              { label: t("admin.dbAthletes"), val: dbStats.athleteCount },
+              { label: t("admin.dbRaceskis"), val: dbStats.raceSkiCount },
+              { label: t("admin.dbLoginLogs"), val: dbStats.loginCount },
+              { label: t("admin.dbActivityLogs"), val: dbStats.activityCount },
+              { label: t("admin.dbActiveSessions"), val: dbStats.sessionCount },
             ].map((item) => (
               <div key={item.label} className="rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-center">
                 <div className="text-lg font-bold text-foreground">{item.val ?? 0}</div>
@@ -3524,7 +3550,7 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <p className="text-sm text-muted-foreground">{t("admin.loadingDots")}</p>
         )}
       </Card>
 
@@ -3533,17 +3559,17 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
           <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50">
             <Download className="h-4 w-4 text-emerald-600" />
           </div>
-          <h2 className="text-sm font-semibold text-foreground">Export Tools</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("admin.exportTools")}</h2>
         </div>
         {isSuperAdmin && teams.length > 0 && (
           <div className="mb-4 flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Export for team:</span>
+            <span className="text-xs font-medium text-muted-foreground">{t("admin.exportForTeam")}</span>
             <Select value={String(exportTeamId)} onValueChange={(v) => setExportTeamId(v === "all" ? "all" : parseInt(v))}>
               <SelectTrigger className="h-7 w-48 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All teams</SelectItem>
+                <SelectItem value="all">{t("admin.allTeams")}</SelectItem>
                 {teams.map((t) => (
                   <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
                 ))}
@@ -3553,12 +3579,12 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="rounded-xl border border-border bg-muted/30 p-4">
-            <h3 className="text-sm font-medium text-foreground mb-1">PDF Export</h3>
-            <p className="text-xs text-muted-foreground mb-3">Export all app data as a comprehensive PDF document.</p>
+            <h3 className="text-sm font-medium text-foreground mb-1">{t("admin.pdfExport")}</h3>
+            <p className="text-xs text-muted-foreground mb-3">{t("admin.pdfExportDesc")}</p>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" data-testid="button-export-pdf-data" onClick={() => downloadFullPdf(exportTeamScopeParam)} disabled={pdfLoading}>
                 {pdfLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
-                {pdfLoading ? "Exporting…" : "Export PDF"}
+                {pdfLoading ? t("admin.exporting") : t("admin.exportPdfButton")}
               </Button>
               <Button size="sm" variant="outline" onClick={async () => {
                 try {
@@ -3572,20 +3598,20 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
                   a.click();
                   URL.revokeObjectURL(url);
                 } catch (err: any) {
-                  toast({ title: "Export failed", description: err.message, variant: "destructive" });
+                  toast({ title: t("admin.exportFailed"), description: err.message, variant: "destructive" });
                 }
               }}>
                 <Download className="mr-2 h-3.5 w-3.5" />
-                Download JSON
+                {t("admin.downloadJson")}
               </Button>
             </div>
           </div>
           <div className="rounded-xl border border-border bg-muted/30 p-4">
-            <h3 className="text-sm font-medium text-foreground mb-1">Excel Export</h3>
-            <p className="text-xs text-muted-foreground mb-3">Export all data as an Excel workbook with separate sheets per data type.</p>
+            <h3 className="text-sm font-medium text-foreground mb-1">{t("admin.excelExport")}</h3>
+            <p className="text-xs text-muted-foreground mb-3">{t("admin.excelExportDesc")}</p>
             <Button size="sm" variant="outline" data-testid="button-export-xlsx" onClick={downloadXlsExport} disabled={xlsLoading}>
               {xlsLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
-              {xlsLoading ? "Exporting…" : "Export Excel"}
+              {xlsLoading ? t("admin.exporting") : t("admin.exportExcelButton")}
             </Button>
           </div>
         </div>
@@ -3596,17 +3622,17 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
           <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-green-50">
             <HardDrive className="h-4 w-4 text-green-600" />
           </div>
-          <h2 className="text-sm font-semibold text-foreground">Import Data</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("admin.importData")}</h2>
         </div>
         <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-4">
           <div>
-            <h3 className="text-sm font-medium text-foreground mb-1">Import from Glidr backup</h3>
+            <h3 className="text-sm font-medium text-foreground mb-1">{t("admin.importFromGlidr")}</h3>
             <p className="text-xs text-muted-foreground">
-              Upload a Glidr JSON export and choose what to import. Duplicates are automatically skipped.
+              {t("admin.importDesc")}
             </p>
           </div>
           <div>
-            <p className="text-xs font-medium text-foreground mb-2">Select what to import:</p>
+            <p className="text-xs font-medium text-foreground mb-2">{t("admin.selectWhatToImport")}</p>
             <div className="grid grid-cols-2 gap-2">
               {importOptions.map((opt) => (
                 <label
@@ -3643,8 +3669,8 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
                 : "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
             )}>
               {importing
-                ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Importing…</>
-                : <><HardDrive className="h-3.5 w-3.5" /> Choose JSON file</>
+                ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> {t("admin.importing")}</>
+                : <><HardDrive className="h-3.5 w-3.5" /> {t("admin.chooseJsonFile")}</>
               }
               <input
                 type="file"
@@ -3655,7 +3681,7 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
               />
             </label>
             <p className="text-[11px] text-muted-foreground">
-              Use "Download JSON" above to get the export file.
+              {t("admin.importJsonHint")}
             </p>
           </div>
         </div>
@@ -3666,13 +3692,13 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
           <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-orange-50">
             <Trash2 className="h-4 w-4 text-orange-600" />
           </div>
-          <h2 className="text-sm font-semibold text-foreground">Maintenance</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("admin.maintenanceCard")}</h2>
         </div>
         <div className="rounded-xl border border-border bg-muted/30 p-4 flex flex-col gap-2">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-medium text-foreground">Remove Duplicate Products</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Removes duplicate products with identical brand+name. Cannot be undone.</p>
+              <p className="text-xs font-medium text-foreground">{t("admin.removeDuplicateProducts")}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{t("admin.removeDuplicateProductsDesc")}</p>
             </div>
             <Button
               size="sm"
@@ -3681,7 +3707,7 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
               data-testid="button-remove-duplicates"
               disabled={removeDuplicatesMutation.isPending}
               onClick={() => {
-                if (confirm("Remove duplicate products? This will keep the oldest entry for each brand + name combination and delete the rest.")) {
+                if (confirm(t("admin.confirmRemoveDuplicates"))) {
                   removeDuplicatesMutation.mutate();
                 }
               }}
@@ -3689,7 +3715,7 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
               {removeDuplicatesMutation.isPending
                 ? <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                 : <Trash2 className="mr-1.5 h-3.5 w-3.5" />}
-              Remove Duplicates
+              {t("admin.removeDuplicates")}
             </Button>
           </div>
         </div>
@@ -3700,6 +3726,7 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
 
 function DangerZoneTab() {
   const { toast } = useToast();
+  const { t } = useI18n();
 
   const purgeActivityMutation = useMutation({
     mutationFn: async (days: number) => {
@@ -3711,9 +3738,9 @@ function DangerZoneTab() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/activity") });
       queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string).startsWith("/api/admin/db-stats") });
-      toast({ title: `${data.deleted} activity log entries removed` });
+      toast({ title: t("admin.purgedActivityEntries", { n: String(data.deleted) }) });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   const purgeLoginMutation = useMutation({
@@ -3726,9 +3753,9 @@ function DangerZoneTab() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/login-logs") });
       queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/admin/db-stats") });
-      toast({ title: `${data.deleted} login log entries removed` });
+      toast({ title: t("admin.purgedLoginEntries", { n: String(data.deleted) }) });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   const forceLogoutAllMutation = useMutation({
@@ -3738,9 +3765,9 @@ function DangerZoneTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/admin/db-stats") });
-      toast({ title: "All other users have been logged out" });
+      toast({ title: t("admin.forceLogoutAllDone") });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   return (
@@ -3750,16 +3777,16 @@ function DangerZoneTab() {
           <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-red-100">
             <AlertTriangle className="h-4 w-4 text-red-600" />
           </div>
-          <h2 className="text-sm font-semibold text-red-900">Danger Zone</h2>
-          <span className="text-xs text-red-500">These actions are irreversible.</span>
+          <h2 className="text-sm font-semibold text-red-900">{t("admin.dangerZoneTitle")}</h2>
+          <span className="text-xs text-red-500">{t("admin.dangerZoneIrreversible")}</span>
         </div>
 
         <div className="space-y-4">
           <div className="rounded-xl border border-red-200 bg-card p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-medium text-foreground">Purge Old Activity Logs</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Remove activity log entries older than a specified period.</p>
+                <h3 className="text-sm font-medium text-foreground">{t("admin.purgeOldActivity")}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("admin.purgeOldActivityDesc")}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Button
@@ -3768,12 +3795,12 @@ function DangerZoneTab() {
                   data-testid="button-purge-activity-90"
                   disabled={purgeActivityMutation.isPending}
                   onClick={() => {
-                    if (confirm("Delete all activity logs older than 90 days? This cannot be undone.")) {
+                    if (confirm(t("admin.confirmPurgeActivity90"))) {
                       purgeActivityMutation.mutate(90);
                     }
                   }}
                 >
-                  <Eraser className="mr-1.5 h-3.5 w-3.5" /> 90+ days
+                  <Eraser className="mr-1.5 h-3.5 w-3.5" /> {t("admin.days90Plus")}
                 </Button>
                 <Button
                   size="sm" variant="outline"
@@ -3781,12 +3808,12 @@ function DangerZoneTab() {
                   data-testid="button-purge-activity-30"
                   disabled={purgeActivityMutation.isPending}
                   onClick={() => {
-                    if (confirm("Delete all activity logs older than 30 days? This cannot be undone.")) {
+                    if (confirm(t("admin.confirmPurgeActivity30"))) {
                       purgeActivityMutation.mutate(30);
                     }
                   }}
                 >
-                  <Eraser className="mr-1.5 h-3.5 w-3.5" /> 30+ days
+                  <Eraser className="mr-1.5 h-3.5 w-3.5" /> {t("admin.days30Plus")}
                 </Button>
               </div>
             </div>
@@ -3795,8 +3822,8 @@ function DangerZoneTab() {
           <div className="rounded-xl border border-red-200 bg-card p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-medium text-foreground">Purge Old Login History</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Remove login history entries older than a specified period.</p>
+                <h3 className="text-sm font-medium text-foreground">{t("admin.purgeOldLogins")}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("admin.purgeOldLoginsDesc")}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Button
@@ -3805,12 +3832,12 @@ function DangerZoneTab() {
                   data-testid="button-purge-logins-90"
                   disabled={purgeLoginMutation.isPending}
                   onClick={() => {
-                    if (confirm("Delete all login logs older than 90 days? This cannot be undone.")) {
+                    if (confirm(t("admin.confirmPurgeLogins90"))) {
                       purgeLoginMutation.mutate(90);
                     }
                   }}
                 >
-                  <Eraser className="mr-1.5 h-3.5 w-3.5" /> 90+ days
+                  <Eraser className="mr-1.5 h-3.5 w-3.5" /> {t("admin.days90Plus")}
                 </Button>
                 <Button
                   size="sm" variant="outline"
@@ -3818,12 +3845,12 @@ function DangerZoneTab() {
                   data-testid="button-purge-logins-30"
                   disabled={purgeLoginMutation.isPending}
                   onClick={() => {
-                    if (confirm("Delete all login logs older than 30 days? This cannot be undone.")) {
+                    if (confirm(t("admin.confirmPurgeLogins30"))) {
                       purgeLoginMutation.mutate(30);
                     }
                   }}
                 >
-                  <Eraser className="mr-1.5 h-3.5 w-3.5" /> 30+ days
+                  <Eraser className="mr-1.5 h-3.5 w-3.5" /> {t("admin.days30Plus")}
                 </Button>
               </div>
             </div>
@@ -3832,8 +3859,8 @@ function DangerZoneTab() {
           <div className="rounded-xl border border-red-200 bg-card p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-medium text-foreground">Force Logout All Users</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Terminate all active sessions except your own. Users will need to log in again.</p>
+                <h3 className="text-sm font-medium text-foreground">{t("admin.forceLogoutAll")}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("admin.forceLogoutAllDesc")}</p>
               </div>
               <Button
                 size="sm" variant="outline"
@@ -3841,12 +3868,12 @@ function DangerZoneTab() {
                 data-testid="button-force-logout-all"
                 disabled={forceLogoutAllMutation.isPending}
                 onClick={() => {
-                  if (confirm("Force logout ALL other users? They will need to log in again.")) {
+                  if (confirm(t("admin.confirmForceLogout"))) {
                     forceLogoutAllMutation.mutate();
                   }
                 }}
               >
-                <UserX className="mr-1.5 h-3.5 w-3.5" /> Logout All
+                <UserX className="mr-1.5 h-3.5 w-3.5" /> {t("admin.logoutAll")}
               </Button>
             </div>
           </div>

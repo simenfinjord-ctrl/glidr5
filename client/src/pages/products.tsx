@@ -524,6 +524,31 @@ export default function Products() {
           </div>
         </div>
 
+        {viewMode === "products" && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("products.statTotal")}</div>
+              <div className="mt-1 text-3xl font-bold text-foreground">{products.length}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{t("products.statTotalSub")}</div>
+            </Card>
+            <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("products.statBrands")}</div>
+              <div className="mt-1 text-3xl font-bold text-foreground">{new Set(products.map(p => p.brand)).size}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{t("products.statBrandsSub")}</div>
+            </Card>
+            <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("products.statLowStock")}</div>
+              <div className="mt-1 text-3xl font-bold text-foreground">{products.filter(p => p.stockQuantity !== null && p.stockQuantity < 3).length}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{t("products.statLowStockSub")}</div>
+            </Card>
+            <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("products.statInRotation")}</div>
+              <div className="mt-1 text-3xl font-bold text-foreground">{products.reduce((sum, p) => sum + (p.stockQuantity ?? 0), 0)}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{t("products.statInRotationSub")}</div>
+            </Card>
+          </div>
+        )}
+
         {viewMode !== "stock-changes" && (<Card className="fs-card rounded-2xl p-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="inline-flex items-center gap-2 text-sm font-semibold">

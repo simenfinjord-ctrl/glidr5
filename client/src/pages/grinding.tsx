@@ -1129,6 +1129,48 @@ export default function Grinding() {
           </div>
         </div>
 
+        {/* Stat cards */}
+        {(() => {
+          const totalProfiles = grindProfiles.length;
+          const totalTests = grindTests.length;
+          const stoneCounts: Record<string, number> = {};
+          for (const p of grindProfiles) {
+            if (p.stone) stoneCounts[p.stone] = (stoneCounts[p.stone] ?? 0) + 1;
+          }
+          const topStone = Object.entries(stoneCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
+          const rankValues: number[] = [];
+          for (const e of allEntries) {
+            if (e.rank0km != null) rankValues.push(e.rank0km);
+          }
+          const avgRank = rankValues.length > 0
+            ? (rankValues.reduce((s, r) => s + r, 0) / rankValues.length).toFixed(1)
+            : "—";
+          return (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("grinding.statProfiles")}</div>
+                <div className="mt-1 text-3xl font-bold text-foreground">{totalProfiles}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{t("grinding.statProfilesSub")}</div>
+              </Card>
+              <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("grinding.statTests")}</div>
+                <div className="mt-1 text-3xl font-bold text-foreground">{totalTests}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{t("grinding.statTestsSub")}</div>
+              </Card>
+              <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("grinding.statTopStone")}</div>
+                <div className="mt-1 text-3xl font-bold text-foreground truncate">{topStone}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{t("grinding.statTopStoneSub")}</div>
+              </Card>
+              <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("grinding.statAvgRank")}</div>
+                <div className="mt-1 text-3xl font-bold text-foreground">{avgRank}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{t("grinding.statAvgRankSub")}</div>
+              </Card>
+            </div>
+          );
+        })()}
+
         {/* Tabs */}
         <div className="flex gap-1 border-b border-border">
           <button

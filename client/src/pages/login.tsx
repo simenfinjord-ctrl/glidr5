@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 
 const schema = z.object({
   username: z.string().min(1, "Enter your username"),
@@ -23,6 +24,7 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login } = useAuth();
+  const { t } = useI18n();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const { theme, toggle: toggleTheme } = useTheme();
@@ -48,11 +50,10 @@ export default function Login() {
         body: JSON.stringify({ code: twoFaCode }),
       });
       const data = await res.json();
-      if (!res.ok) { setTwoFaError(data.message || "Invalid code."); return; }
-      // Success — reload to trigger auth
+      if (!res.ok) { setTwoFaError(data.message || t("auth.loginFailed")); return; }
       window.location.href = "/dashboard";
     } catch {
-      setTwoFaError("Something went wrong. Please try again.");
+      setTwoFaError(t("common.error"));
     } finally {
       setTwoFaSubmitting(false);
     }
@@ -78,10 +79,10 @@ export default function Login() {
         <div className="flex flex-col items-center gap-2 mb-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-foreground tracking-tight">
-              Welcome to Glidr
+              {t("login.title")}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Sign in to your ski testing account
+              {t("login.subtitle")}
             </p>
           </div>
         </div>
@@ -92,11 +93,11 @@ export default function Login() {
               <form onSubmit={handleTwoFaSubmit} className="space-y-4">
                 <div className="text-center space-y-2 mb-4">
                   <div className="text-2xl">🔐</div>
-                  <h2 className="text-lg font-semibold">Two-factor authentication</h2>
-                  <p className="text-sm text-muted-foreground">Enter the 6-digit code from your authenticator app, or one of your backup codes.</p>
+                  <h2 className="text-lg font-semibold">{t("login.twoFactorTitle")}</h2>
+                  <p className="text-sm text-muted-foreground">{t("login.twoFactorDesc")}</p>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Verification code</label>
+                  <label className="text-sm font-medium">{t("login.verificationCode")}</label>
                   <input
                     autoFocus
                     value={twoFaCode}
@@ -109,11 +110,11 @@ export default function Login() {
                 {twoFaError && <p className="text-sm text-red-500">{twoFaError}</p>}
                 <button type="submit" disabled={twoFaSubmitting || twoFaCode.length < 6}
                   className="w-full rounded-xl bg-foreground text-background py-2.5 font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
-                  {twoFaSubmitting ? "Verifying…" : "Verify"}
+                  {twoFaSubmitting ? t("login.verifying") : t("login.verify")}
                 </button>
                 <button type="button" onClick={() => { setRequires2fa(false); setTwoFaCode(""); }}
                   className="w-full text-sm text-muted-foreground hover:text-foreground py-1">
-                  ← Back to login
+                  {t("login.backToLogin")}
                 </button>
               </form>
             ) : showForgot ? (
@@ -122,9 +123,9 @@ export default function Login() {
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-50">
                     <Mail className="h-6 w-6 text-green-600" />
                   </div>
-                  <h2 className="text-lg font-semibold text-foreground">Forgot password?</h2>
+                  <h2 className="text-lg font-semibold text-foreground">{t("login.forgotPasswordTitle")}</h2>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Contact your team administrator to reset your password. Admins can reset passwords from the Admin panel.
+                    {t("login.forgotPasswordDesc")}
                   </p>
                 </div>
                 <Button
@@ -134,7 +135,7 @@ export default function Login() {
                   data-testid="button-back-login"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to sign in
+                  {t("login.backToSignIn")}
                 </Button>
               </div>
             ) : (
@@ -151,8 +152,8 @@ export default function Login() {
                       setLocation("/dashboard");
                     } catch (e) {
                       toast({
-                        title: "Sign in failed",
-                        description: e instanceof Error ? e.message : "Invalid credentials.",
+                        title: t("login.signInFailed"),
+                        description: e instanceof Error ? e.message : t("auth.loginFailed"),
                         variant: "destructive",
                       });
                     } finally {
@@ -166,13 +167,13 @@ export default function Login() {
                     name="username"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-foreground/80">Username</FormLabel>
+                        <FormLabel className="text-sm font-medium text-foreground/80">{t("login.username")}</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                               {...field}
-                              placeholder="Enter your username"
+                              placeholder={t("login.usernamePlaceholder")}
                               autoComplete="username"
                               className="pl-10 h-11 bg-muted/30 border-border focus:bg-card"
                               data-testid="input-username"
@@ -189,13 +190,13 @@ export default function Login() {
                     render={({ field }) => (
                       <FormItem>
                         <div className="flex items-center justify-between">
-                          <FormLabel className="text-sm font-medium text-foreground/80">Password</FormLabel>
+                          <FormLabel className="text-sm font-medium text-foreground/80">{t("common.password")}</FormLabel>
                           <Link
                             href="/forgot-password"
                             className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors"
                             data-testid="button-forgot-password"
                           >
-                            Forgot password?
+                            {t("login.forgotPassword")}
                           </Link>
                         </div>
                         <FormControl>
@@ -204,7 +205,7 @@ export default function Login() {
                             <Input
                               {...field}
                               type="password"
-                              placeholder="Enter your password"
+                              placeholder={t("login.passwordPlaceholder")}
                               autoComplete="current-password"
                               className="pl-10 h-11 bg-muted/30 border-border focus:bg-card"
                               data-testid="input-password"
@@ -228,7 +229,7 @@ export default function Login() {
                             data-testid="checkbox-remember-me"
                           />
                         </FormControl>
-                        <FormLabel className="text-sm text-muted-foreground cursor-pointer">Remember me for 30 days</FormLabel>
+                        <FormLabel className="text-sm text-muted-foreground cursor-pointer">{t("login.rememberMe30")}</FormLabel>
                       </FormItem>
                     )}
                   />
@@ -240,13 +241,13 @@ export default function Login() {
                     disabled={isSubmitting}
                   >
                     <LogIn className="mr-2 h-4 w-4" />
-                    {isSubmitting ? "Signing in..." : "Sign in"}
+                    {isSubmitting ? t("login.signingIn") : t("login.signIn")}
                   </Button>
 
                   <div className="text-center pt-2">
-                    <span className="text-sm text-muted-foreground">New user? </span>
+                    <span className="text-sm text-muted-foreground">{t("login.newUser")} </span>
                     <Link href="/get-started" className="text-sm font-medium text-foreground underline underline-offset-4 hover:opacity-70">
-                      Get started
+                      {t("login.getStarted")}
                     </Link>
                   </div>
                 </form>
@@ -256,19 +257,19 @@ export default function Login() {
         </Card>
 
         <div className="text-center text-xs text-muted-foreground dark:text-muted-foreground mt-6 space-y-1">
-          <p>Glidr &middot; A glide and performance database</p>
+          <p>Glidr &middot; {t("login.tagline")}</p>
           <p>
-            <a href="/what-is-glidr" className="underline hover:text-foreground transition-colors" data-testid="link-login-features">What is Glidr?</a>
+            <a href="/what-is-glidr" className="underline hover:text-foreground transition-colors" data-testid="link-login-features">{t("shell.whatIsGlidr")}</a>
             <span className="mx-2">|</span>
-            <a href="/pricing" className="underline hover:text-foreground transition-colors" data-testid="link-login-pricing">Pricing</a>
+            <a href="/pricing" className="underline hover:text-foreground transition-colors" data-testid="link-login-pricing">{t("shell.pricing")}</a>
             <span className="mx-2">|</span>
             <Link href="/demo" className="text-sm text-muted-foreground hover:text-foreground">
-              View demo
+              {t("login.viewDemo")}
             </Link>
             <span className="mx-2">|</span>
-            <a href="/legal" className="underline hover:text-foreground transition-colors" data-testid="link-login-legal">Legal</a>
+            <a href="/legal" className="underline hover:text-foreground transition-colors" data-testid="link-login-legal">{t("shell.legal")}</a>
             <span className="mx-2">|</span>
-            <a href="/contact" className="underline hover:text-foreground transition-colors" data-testid="link-login-contact">Contact</a>
+            <a href="/contact" className="underline hover:text-foreground transition-colors" data-testid="link-login-contact">{t("shell.contact")}</a>
           </p>
         </div>
       </div>

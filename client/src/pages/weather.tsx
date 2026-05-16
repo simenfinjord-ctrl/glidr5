@@ -710,6 +710,37 @@ export default function WeatherPage() {
           </Dialog>
         </div>
 
+        {weather.length > 0 && (() => {
+          const coldestEntry = weather.reduce((a, b) => a.snowTemperatureC < b.snowTemperatureC ? a : b);
+          const warmestEntry = weather.reduce((a, b) => a.snowTemperatureC > b.snowTemperatureC ? a : b);
+          const avgAirTemp = weather.reduce((sum, e) => sum + e.airTemperatureC, 0) / weather.length;
+          const uniqueLocations = new Set(weather.map(e => e.location)).size;
+          return (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("weather.statColdest")}</div>
+                <div className="mt-1 text-3xl font-bold text-foreground">{coldestEntry.snowTemperatureC}°C</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{coldestEntry.location} · {fmtDate(coldestEntry.date)}</div>
+              </Card>
+              <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("weather.statWarmest")}</div>
+                <div className="mt-1 text-3xl font-bold text-foreground">{warmestEntry.snowTemperatureC}°C</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{warmestEntry.location} · {fmtDate(warmestEntry.date)}</div>
+              </Card>
+              <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("weather.statAvgAir")}</div>
+                <div className="mt-1 text-3xl font-bold text-foreground">{avgAirTemp.toFixed(1)}°C</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{t("weather.statAcrossEntries").replace("{n}", String(weather.length))}</div>
+              </Card>
+              <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("weather.statEntries")}</div>
+                <div className="mt-1 text-3xl font-bold text-foreground">{weather.length}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{t("weather.statLocations").replace("{n}", String(uniqueLocations))}</div>
+              </Card>
+            </div>
+          );
+        })()}
+
         <div className="grid grid-cols-1 gap-3">
           {weather.length === 0 ? (
             <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-weather">

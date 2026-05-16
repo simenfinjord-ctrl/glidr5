@@ -455,15 +455,15 @@ export default function AthleteDetail() {
 
   // Fixed set of test columns mirroring ski properties + result columns
   const allTestColumns: { key: string; label: string }[] = [
-    { key: "skiId", label: "Ski ID" },
-    { key: "serialNumber", label: "Serial Number" },
+    { key: "skiId", label: t("raceskis.skiId") },
+    { key: "serialNumber", label: t("raceskis.serialNumber") },
     { key: "brand", label: "Brand" },
-    { key: "discipline", label: "Discipline" },
-    { key: "construction", label: "Construction" },
-    { key: "mold", label: "Mold" },
-    { key: "base", label: "Base" },
-    { key: "grind", label: "Grind" },
-    { key: "heights", label: "Heights" },
+    { key: "discipline", label: t("raceskis.discipline") },
+    { key: "construction", label: t("raceskis.construction") },
+    { key: "mold", label: t("raceskis.mold") },
+    { key: "base", label: t("raceskis.base") },
+    { key: "grind", label: t("raceskis.grind") },
+    { key: "heights", label: t("raceskis.heights") },
     { key: "year", label: "Year" },
     { key: "result", label: "Result (cm)" },
     { key: "rank", label: "Rank" },
@@ -1984,7 +1984,7 @@ export default function AthleteDetail() {
           </DialogHeader>
           <form onSubmit={handleSkiSubmit} className="space-y-3">
             <div>
-              <label className="mb-1 block text-sm font-medium">Ski ID *</label>
+              <label className="mb-1 block text-sm font-medium">{t("raceskis.skiId")} *</label>
               <Input
                 value={skiForm.skiId}
                 onChange={(e) => setSkiForm((f) => ({ ...f, skiId: e.target.value }))}

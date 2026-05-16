@@ -20,6 +20,7 @@ import {
 import { cn, fmtDate } from "@/lib/utils";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useI18n } from "@/lib/i18n";
 
 type Test = {
   id: number;
@@ -1723,6 +1724,7 @@ function ProductCompare({
 }
 
 export default function Analytics() {
+  const { t } = useI18n();
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
@@ -1895,10 +1897,10 @@ export default function Analytics() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-analytics-title">
-              Analytics
+              {t("analytics.title")}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Product performance trends and weather correlations
+              {t("analytics.subtitle")}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -1942,7 +1944,7 @@ export default function Analytics() {
             {!hasData ? (
               <Card className="fs-card rounded-2xl p-8 text-center">
                 <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground/40" />
-                <p className="mt-4 text-muted-foreground" data-testid="empty-analytics">No test data to analyze yet. Create some tests to see trends.</p>
+                <p className="mt-4 text-muted-foreground" data-testid="empty-analytics">{t("analytics.noData")}</p>
               </Card>
             ) : (
               <>

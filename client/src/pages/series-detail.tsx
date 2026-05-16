@@ -213,17 +213,17 @@ export default function SeriesDetail() {
                     <table className="w-full text-sm" data-testid={`table-series-test-${test.id}`}>
                       <thead>
                         <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                          <th className="pb-2 pr-3">Ski</th>
-                          <th className="pb-2 pr-3">Product</th>
-                          <th className="pb-2 pr-3">Method</th>
+                          <th className="pb-2 pr-3">{t("tests.skiNumber")}</th>
+                          <th className="pb-2 pr-3">{t("tests.product")}</th>
+                          <th className="pb-2 pr-3">{t("tests.methodology")}</th>
                           {distLabels.map((label, i) => (
                             <th key={i} className="pb-2 pr-3">
                               {label?.trim() || `R${i + 1}`}
                             </th>
                           ))}
-                          <th className="pb-2 pr-3">Rank</th>
-                          <th className="pb-2">Feel</th>
-                          {test.testType === "Classic" && <th className="pb-2 pl-2">Kick</th>}
+                          <th className="pb-2 pr-3">{t("common.rank")}</th>
+                          <th className="pb-2">{t("tests.feelingRank")}</th>
+                          {test.testType === "Classic" && <th className="pb-2 pl-2">{t("newTest.kick")}</th>}
                         </tr>
                       </thead>
                       <tbody>

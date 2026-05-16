@@ -2366,6 +2366,7 @@ function SkiDetailPanel({
   onRegrind?: () => void;
   onDeleteRegrind?: (id: number) => void;
 }) {
+  const { t } = useI18n();
   const { data: regrinds = [] } = useQuery<RaceSkiRegrind[]>({
     queryKey: [`/api/race-skis/${ski.id}/regrinds`],
   });
@@ -2428,9 +2429,9 @@ function SkiDetailPanel({
 
       {/* Regrind history */}
       <div>
-        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Regrind History</div>
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{t("raceskis.regrindHistory")}</div>
         {regrinds.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No regrind history</p>
+          <p className="text-xs text-muted-foreground">{t("raceskis.noRegrinds")}</p>
         ) : (
           <div className="space-y-1.5">
             {regrinds.map((rg) => (

@@ -170,7 +170,7 @@ export async function setupAuth(app: Express) {
   });
 
   app.post("/api/auth/login", authLimit, (req, res, next) => {
-    passport.authenticate("local", (err: any, user: Express.User | false, info: { message: string }) => {
+    passport.authenticate("local", async (err: any, user: Express.User | false, info: { message: string }) => {
       if (err) return next(err);
       if (!user) {
         return res.status(401).json({ message: info?.message || "Login failed" });

@@ -219,6 +219,9 @@ export const users = pgTable("users", {
   loginLocked: integer("login_locked").notNull().default(0),
   watchCode: text("watch_code"),
   onboardingCompleted: integer("onboarding_completed").notNull().default(0),
+  totpSecret: text("totp_secret"),
+  totpEnabled: integer("totp_enabled").notNull().default(0),
+  totpBackupCodes: text("totp_backup_codes"),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
@@ -641,4 +644,13 @@ export const interestRegistrations = pgTable("interest_registrations", {
 });
 export type InterestRegistration = typeof interestRegistrations.$inferSelect;
 export type InsertInterestRegistration = typeof interestRegistrations.$inferInsert;
+
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  used: integer("used").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+});
 

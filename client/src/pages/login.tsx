@@ -26,11 +26,37 @@ export default function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const { theme, toggle: toggleTheme } = useTheme();
+  const [requires2fa, setRequires2fa] = useState(false);
+  const [twoFaCode, setTwoFaCode] = useState("");
+  const [twoFaError, setTwoFaError] = useState<string | null>(null);
+  const [twoFaSubmitting, setTwoFaSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: { username: "", password: "", rememberMe: false },
   });
+
+  async function handleTwoFaSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setTwoFaError(null);
+    setTwoFaSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/2fa/login-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ code: twoFaCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setTwoFaError(data.message || "Invalid code."); return; }
+      // Success — reload to trigger auth
+      window.location.href = "/dashboard";
+    } catch {
+      setTwoFaError("Something went wrong. Please try again.");
+    } finally {
+      setTwoFaSubmitting(false);
+    }
+  }
 
   return (
     <div
@@ -62,7 +88,35 @@ export default function Login() {
 
         <Card className="bg-card shadow-xl shadow-foreground/5 border-border rounded-2xl">
           <CardContent className="p-7">
-            {showForgot ? (
+            {requires2fa ? (
+              <form onSubmit={handleTwoFaSubmit} className="space-y-4">
+                <div className="text-center space-y-2 mb-4">
+                  <div className="text-2xl">🔐</div>
+                  <h2 className="text-lg font-semibold">Two-factor authentication</h2>
+                  <p className="text-sm text-muted-foreground">Enter the 6-digit code from your authenticator app, or one of your backup codes.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Verification code</label>
+                  <input
+                    autoFocus
+                    value={twoFaCode}
+                    onChange={(e) => setTwoFaCode(e.target.value)}
+                    placeholder="000000 or XXXX-XXXX"
+                    className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-foreground/20 text-center tracking-widest text-lg"
+                    maxLength={9}
+                  />
+                </div>
+                {twoFaError && <p className="text-sm text-red-500">{twoFaError}</p>}
+                <button type="submit" disabled={twoFaSubmitting || twoFaCode.length < 6}
+                  className="w-full rounded-xl bg-foreground text-background py-2.5 font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
+                  {twoFaSubmitting ? "Verifying…" : "Verify"}
+                </button>
+                <button type="button" onClick={() => { setRequires2fa(false); setTwoFaCode(""); }}
+                  className="w-full text-sm text-muted-foreground hover:text-foreground py-1">
+                  ← Back to login
+                </button>
+              </form>
+            ) : showForgot ? (
               <div className="space-y-4">
                 <div className="text-center space-y-2">
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-50">
@@ -89,7 +143,11 @@ export default function Login() {
                   onSubmit={form.handleSubmit(async (values) => {
                     setIsSubmitting(true);
                     try {
-                      await login(values.username, values.password, values.rememberMe);
+                      const data = await login(values.username, values.password, values.rememberMe);
+                      if (data?.requires2fa) {
+                        setRequires2fa(true);
+                        return;
+                      }
                       setLocation("/dashboard");
                     } catch (e) {
                       toast({
@@ -132,14 +190,13 @@ export default function Login() {
                       <FormItem>
                         <div className="flex items-center justify-between">
                           <FormLabel className="text-sm font-medium text-foreground/80">Password</FormLabel>
-                          <button
-                            type="button"
+                          <Link
+                            href="/forgot-password"
                             className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors"
-                            onClick={() => setShowForgot(true)}
                             data-testid="button-forgot-password"
                           >
                             Forgot password?
-                          </button>
+                          </Link>
                         </div>
                         <FormControl>
                           <div className="relative">

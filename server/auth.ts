@@ -54,6 +54,16 @@ export function parsePermissions(permissionsStr: string | null | undefined, isAd
 }
 
 export async function setupAuth(app: Express) {
+  // Auth-specific rate limiter (20 req / 15 min per IP)
+  const { default: rateLimit } = await import("express-rate-limit");
+  const authLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many login attempts. Please try again in 15 minutes." },
+  });
+
   await (pool as any).query(`
     CREATE TABLE IF NOT EXISTS "user_sessions" (
       "sid" varchar NOT NULL COLLATE "default",
@@ -131,7 +141,7 @@ export async function setupAuth(app: Express) {
               return done(null, false, { message: "Account locked after 5 failed attempts. Contact your Team Admin or Super Admin to reset." });
             }
             const remaining = 5 - newAttempts;
-            return done(null, false, { message: `Invalid password. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining before lockout.` });
+            return done(null, false, { message: "Invalid email or password." });
           }
           // Successful login — reset failed attempts
           await pool.query(
@@ -159,47 +169,64 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/auth/login", (req, res, next) => {
+  app.post("/api/auth/login", authLimit, (req, res, next) => {
     passport.authenticate("local", (err: any, user: Express.User | false, info: { message: string }) => {
       if (err) return next(err);
       if (!user) {
         return res.status(401).json({ message: info?.message || "Login failed" });
       }
-      req.logIn(user, async (err) => {
-        if (err) return next(err);
-        if (req.body.rememberMe && req.session) {
-          req.session.cookie.maxAge = REMEMBER_ME_MAX_AGE;
-        }
-        const isIncognito = !!(req.session as any)?.incognito;
-        if (!isIncognito) {
-          try {
-            const ip = req.headers["x-forwarded-for"]
-              ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
-              : req.socket.remoteAddress || "unknown";
-            await storage.createLoginLog({
-              userId: user.id,
-              email: user.email,
-              name: user.name,
-              loginAt: new Date().toISOString(),
-              ipAddress: ip,
-            });
-          } catch (_) {}
-        }
-        const { password, ...safe } = user;
-        const effectivePermsStr = (req.session as any)?.effectivePermissions ?? safe.permissions;
-        const perms = parsePermissions(effectivePermsStr, !!safe.isAdmin, (safe as any).isTeamAdmin === 1);
-        let teamEnabledAreas: string[] | null = null;
-        const effectiveTeamId = safe.activeTeamId ?? safe.teamId;
-        if (effectiveTeamId && safe.isAdmin !== 1) {
-          try {
-            const team = await storage.getTeam(effectiveTeamId);
-            if (team?.enabledAreas) {
-              teamEnabledAreas = JSON.parse(team.enabledAreas);
-            }
-          } catch {}
-        }
-        const isStealth = !!(req.session as any)?.stealth;
-        return res.json({ ...safe, parsedPermissions: perms, incognito: isIncognito, stealth: isStealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas });
+      // Check if 2FA is required for this user
+      const { pool: authPool } = await import("./db");
+      const userRow = await authPool.query("SELECT totp_enabled FROM users WHERE id = $1", [user.id]);
+      const totpEnabled = userRow.rows[0]?.totp_enabled === 1;
+
+      if (totpEnabled) {
+        // Store pending user ID — login will complete after 2FA verification
+        (req.session as any).pending2faUserId = user.id;
+        if (req.body.rememberMe) (req.session as any).pending2faRememberMe = true;
+        await new Promise<void>((resolve) => req.session.save(() => resolve()));
+        return res.status(200).json({ requires2fa: true });
+      }
+
+      // No 2FA — regenerate session to prevent fixation, then log in
+      req.session.regenerate((regenErr) => {
+        if (regenErr) return next(regenErr);
+        req.logIn(user, async (loginErr) => {
+          if (loginErr) return next(loginErr);
+          if (req.body.rememberMe && req.session) {
+            req.session.cookie.maxAge = REMEMBER_ME_MAX_AGE;
+          }
+          const isIncognito = !!(req.session as any)?.incognito;
+          if (!isIncognito) {
+            try {
+              const ip = req.headers["x-forwarded-for"]
+                ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
+                : req.socket.remoteAddress || "unknown";
+              await storage.createLoginLog({
+                userId: user.id,
+                email: user.email,
+                name: user.name,
+                loginAt: new Date().toISOString(),
+                ipAddress: ip,
+              });
+            } catch (_) {}
+          }
+          const { password, ...safe } = user;
+          const effectivePermsStr = (req.session as any)?.effectivePermissions ?? safe.permissions;
+          const perms = parsePermissions(effectivePermsStr, !!safe.isAdmin, (safe as any).isTeamAdmin === 1);
+          let teamEnabledAreas: string[] | null = null;
+          const effectiveTeamId = safe.activeTeamId ?? safe.teamId;
+          if (effectiveTeamId && safe.isAdmin !== 1) {
+            try {
+              const team = await storage.getTeam(effectiveTeamId);
+              if (team?.enabledAreas) {
+                teamEnabledAreas = JSON.parse(team.enabledAreas);
+              }
+            } catch {}
+          }
+          const isStealth = !!(req.session as any)?.stealth;
+          return res.json({ ...safe, parsedPermissions: perms, incognito: isIncognito, stealth: isStealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas });
+        });
       });
     })(req, res, next);
   });

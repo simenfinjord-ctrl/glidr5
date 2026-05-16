@@ -103,6 +103,193 @@ function PlanChangeSection() {
   );
 }
 
+function TwoFactorSection() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: status, refetch } = useQuery<{ enabled: boolean; hasSecret: boolean }>({
+    queryKey: ["/api/auth/2fa/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/2fa/status", { credentials: "include" });
+      return res.json();
+    },
+  });
+
+  // Setup flow state
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [manualEntry, setManualEntry] = useState<string | null>(null);
+  const [setupCode, setSetupCode] = useState("");
+  const [setupError, setSetupError] = useState<string | null>(null);
+  const [setupSubmitting, setSetupSubmitting] = useState(false);
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+
+  // Disable flow state
+  const [disableOpen, setDisableOpen] = useState(false);
+  const [disablePassword, setDisablePassword] = useState("");
+  const [disableCode, setDisableCode] = useState("");
+  const [disableError, setDisableError] = useState<string | null>(null);
+  const [disableSubmitting, setDisableSubmitting] = useState(false);
+
+  async function startSetup() {
+    const res = await fetch("/api/auth/2fa/setup", { credentials: "include" });
+    const data = await res.json();
+    setQrDataUrl(data.qrDataUrl);
+    setManualEntry(data.manualEntry);
+    setSetupOpen(true);
+  }
+
+  async function confirmEnable(e: React.FormEvent) {
+    e.preventDefault();
+    setSetupError(null);
+    setSetupSubmitting(true);
+    try {
+      const res = await apiRequest("POST", "/api/auth/2fa/enable", { code: setupCode });
+      const data = await res.json();
+      if (!res.ok) { setSetupError(data.message); return; }
+      setBackupCodes(data.backupCodes);
+      refetch();
+    } catch {
+      setSetupError("Something went wrong.");
+    } finally {
+      setSetupSubmitting(false);
+    }
+  }
+
+  async function confirmDisable(e: React.FormEvent) {
+    e.preventDefault();
+    setDisableError(null);
+    setDisableSubmitting(true);
+    try {
+      const res = await apiRequest("POST", "/api/auth/2fa/disable", { password: disablePassword, code: disableCode });
+      const data = await res.json();
+      if (!res.ok) { setDisableError(data.message); return; }
+      toast({ title: "2FA disabled" });
+      setDisableOpen(false);
+      setDisablePassword("");
+      setDisableCode("");
+      refetch();
+    } catch {
+      setDisableError("Something went wrong.");
+    } finally {
+      setDisableSubmitting(false);
+    }
+  }
+
+  return (
+    <Card className="rounded-2xl p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold">Two-factor authentication</h3>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {status?.enabled
+              ? "2FA is enabled. Your account requires a verification code on login."
+              : "Add an extra layer of security to your Super Admin account."}
+          </p>
+        </div>
+        <div className={`text-xs font-semibold px-2.5 py-1 rounded-full ${status?.enabled ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : "bg-muted text-muted-foreground"}`}>
+          {status?.enabled ? "Enabled" : "Disabled"}
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        {!status?.enabled && (
+          <Button size="sm" onClick={startSetup}>Enable 2FA</Button>
+        )}
+        {status?.enabled && (
+          <Button size="sm" variant="destructive" onClick={() => setDisableOpen(true)}>Disable 2FA</Button>
+        )}
+      </div>
+
+      {/* Setup dialog */}
+      <Dialog open={setupOpen} onOpenChange={(o) => { if (!o) { setSetupOpen(false); setBackupCodes(null); setSetupCode(""); setQrDataUrl(null); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{backupCodes ? "Save your backup codes" : "Set up two-factor authentication"}</DialogTitle>
+          </DialogHeader>
+
+          {!backupCodes ? (
+            <form onSubmit={confirmEnable} className="space-y-5 pt-2">
+              <p className="text-sm text-muted-foreground">Scan this QR code with an authenticator app (Google Authenticator, Authy, etc.).</p>
+              {qrDataUrl && (
+                <div className="flex justify-center">
+                  <img src={qrDataUrl} alt="2FA QR Code" className="rounded-xl border border-border" />
+                </div>
+              )}
+              {manualEntry && (
+                <div className="rounded-lg bg-muted px-3 py-2 text-xs font-mono text-center break-all">
+                  {manualEntry}
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Enter the 6-digit code from your app</label>
+                <input
+                  autoFocus
+                  value={setupCode}
+                  onChange={(e) => setSetupCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="000000"
+                  maxLength={6}
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background text-center tracking-widest text-lg focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                />
+              </div>
+              {setupError && <p className="text-sm text-red-500">{setupError}</p>}
+              <div className="flex gap-2 justify-end">
+                <Button type="button" variant="outline" onClick={() => setSetupOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={setupSubmitting || setupCode.length < 6}>
+                  {setupSubmitting ? "Verifying…" : "Enable 2FA"}
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-4 pt-2">
+              <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-4 text-sm text-amber-800 dark:text-amber-300">
+                <strong>Save these backup codes now.</strong> Each code can only be used once. Store them somewhere safe — you'll need them if you lose access to your authenticator app.
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {backupCodes.map((code) => (
+                  <div key={code} className="rounded-lg bg-muted px-3 py-2 text-sm font-mono text-center">{code}</div>
+                ))}
+              </div>
+              <Button className="w-full" onClick={() => { setSetupOpen(false); setBackupCodes(null); toast({ title: "2FA enabled", description: "Your account is now protected with two-factor authentication." }); }}>
+                I've saved my backup codes
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Disable dialog */}
+      <Dialog open={disableOpen} onOpenChange={setDisableOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Disable two-factor authentication</DialogTitle></DialogHeader>
+          <form onSubmit={confirmDisable} className="space-y-4 pt-2">
+            <p className="text-sm text-muted-foreground">Enter your current password and 2FA code to disable two-factor authentication.</p>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Current password</label>
+              <input type="password" value={disablePassword} onChange={(e) => setDisablePassword(e.target.value)}
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-foreground/20" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">2FA code</label>
+              <input value={disableCode} onChange={(e) => setDisableCode(e.target.value)}
+                placeholder="000000"
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-foreground/20" />
+            </div>
+            {disableError && <p className="text-sm text-red-500">{disableError}</p>}
+            <div className="flex gap-2 justify-end">
+              <Button type="button" variant="outline" onClick={() => setDisableOpen(false)}>Cancel</Button>
+              <Button type="submit" variant="destructive" disabled={disableSubmitting}>
+                {disableSubmitting ? "Disabling…" : "Disable 2FA"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
 export default function MyAccount() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -526,6 +713,9 @@ export default function MyAccount() {
             Keep this code private. If it's compromised, regenerate it.
           </p>
         </Card>
+
+        {/* Two-factor authentication (super admin only) */}
+        {user?.isAdmin === 1 && <TwoFactorSection />}
 
         {/* Language preference */}
         <Card className="rounded-2xl p-6 space-y-3">

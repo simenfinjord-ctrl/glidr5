@@ -1,7 +1,11 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
-import { parsePermissions, hashPassword } from "./auth";
+import { parsePermissions, hashPassword, verifyPassword } from "./auth";
+import crypto from "crypto";
+import rateLimit from "express-rate-limit";
+import { sendPasswordResetEmail } from "./email";
+import { generateTotpSecret, getTotpUri, generateQrDataUrl, generateBackupCodes, verifyTotp, verifyBackupCode } from "./totp";
 
 /** Shared password validation: ≥7 chars, ≥1 digit, ≥1 special character */
 export function validatePassword(pw: string): string | null {
@@ -332,6 +336,17 @@ export async function registerRoutes(
         notes TEXT,
         status TEXT NOT NULL DEFAULT 'new',
         admin_notes TEXT
+      );
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_backup_codes TEXT;
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        token_hash TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        used INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
       );
     `);
   }
@@ -5220,7 +5235,9 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
   });
 
   // --- Interest registrations (public sign-up form) ---
-  app.post("/api/interest", async (req, res) => {
+  // interest form rate limit
+  const interestFormLimit = rateLimit({ windowMs: 60*60*1000, max: 10, message: { message: "Too many submissions." } });
+  app.post("/api/interest", interestFormLimit, async (req, res) => {
     const { contactName, email, phone, teamName, planName, userCount, groupCount, billingPeriod, invoiceAddress, notes } = req.body;
     if (!contactName || !email || !teamName) return res.status(400).json({ message: "contactName, email, and teamName are required" });
     const now = new Date().toISOString();
@@ -5290,6 +5307,195 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
   });
 
   // ──────────────────────────────────────────────────────────────────────────
+
+  // ── Password Reset ──────────────────────────────────────────────────────────
+  const pwResetLimit = rateLimit({ windowMs: 60*60*1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { message: "Too many password reset requests. Try again in an hour." } });
+
+  app.post("/api/auth/forgot-password", pwResetLimit, async (req, res) => {
+    // Always return success — never reveal if email exists
+    const { email } = req.body;
+    if (!email) return res.json({ ok: true });
+    try {
+      const user = await storage.getUserByEmail(email);
+      if (user) {
+        const rawToken = crypto.randomBytes(32).toString("hex");
+        const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+        const now = new Date().toISOString();
+        // Invalidate existing tokens for this user
+        await db.execute(sql`UPDATE password_reset_tokens SET used = 1 WHERE user_id = ${user.id} AND used = 0`);
+        await db.execute(sql`
+          INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, used, created_at)
+          VALUES (${user.id}, ${tokenHash}, ${expiresAt}, 0, ${now})
+        `);
+        const appUrl = process.env.APP_URL || "https://glidr.onrender.com";
+        await sendPasswordResetEmail(user.email, user.name, `${appUrl}/reset-password?token=${rawToken}`);
+      }
+    } catch (e) {
+      console.error("[forgot-password]", e);
+    }
+    return res.json({ ok: true });
+  });
+
+  app.get("/api/auth/reset-password/validate", async (req, res) => {
+    const token = req.query.token;
+    if (!token || typeof token !== "string") return res.json({ valid: false });
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const now = new Date().toISOString();
+    const rows = await db.execute(sql`
+      SELECT id FROM password_reset_tokens
+      WHERE token_hash = ${tokenHash} AND used = 0 AND expires_at > ${now} LIMIT 1
+    `);
+    const record = ((rows as any).rows ?? rows)[0];
+    res.json({ valid: !!record });
+  });
+
+  app.post("/api/auth/reset-password", pwResetLimit, async (req, res) => {
+    const { token, password } = req.body;
+    if (!token || !password) return res.status(400).json({ message: "Token and password are required." });
+    const pwErr = validatePassword(password);
+    if (pwErr) return res.status(400).json({ message: pwErr });
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const now = new Date().toISOString();
+    const rows = await db.execute(sql`
+      SELECT * FROM password_reset_tokens
+      WHERE token_hash = ${tokenHash} AND used = 0 AND expires_at > ${now} LIMIT 1
+    `);
+    const record = ((rows as any).rows ?? rows)[0];
+    if (!record) return res.status(400).json({ message: "Invalid or expired reset link. Please request a new one." });
+    // Mark token used
+    await db.execute(sql`UPDATE password_reset_tokens SET used = 1 WHERE id = ${record.id}`);
+    // Update password + unlock account
+    const hashed = await hashPassword(password);
+    await db.execute(sql`
+      UPDATE users SET password = ${hashed}, failed_attempts = 0, login_locked = 0 WHERE id = ${record.user_id}
+    `);
+    // Invalidate all existing sessions for security
+    try {
+      await db.execute(sql`
+        DELETE FROM user_sessions
+        WHERE sess::jsonb -> 'passport' ->> 'user' = ${String(record.user_id)}
+      `);
+    } catch {}
+    res.json({ ok: true });
+  });
+
+  // ── TOTP / 2FA ─────────────────────────────────────────────────────────────
+  const twoFaLimit = rateLimit({ windowMs: 15*60*1000, max: 10, message: { message: "Too many 2FA attempts." } });
+
+  app.get("/api/auth/2fa/status", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const rows = await db.execute(sql`SELECT totp_enabled, totp_secret FROM users WHERE id = ${u.id}`);
+    const row = ((rows as any).rows ?? rows)[0];
+    res.json({ enabled: row?.totp_enabled === 1, hasSecret: !!row?.totp_secret });
+  });
+
+  app.get("/api/auth/2fa/setup", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    const secret = generateTotpSecret();
+    const otpauthUri = getTotpUri(u.email, "Glidr", secret);
+    const qrDataUrl = await generateQrDataUrl(otpauthUri);
+    (req.session as any).pendingTotpSecret = secret;
+    await new Promise<void>((resolve) => req.session.save(() => resolve()));
+    res.json({ qrDataUrl, secret, manualEntry: secret });
+  });
+
+  app.post("/api/auth/2fa/enable", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    const { code } = req.body;
+    const secret = (req.session as any).pendingTotpSecret;
+    if (!secret) return res.status(400).json({ message: "No pending 2FA setup. Please start setup again." });
+    if (!verifyTotp(String(code), secret)) return res.status(400).json({ message: "Invalid code. Check your authenticator app and try again." });
+    const { plain, hashed } = generateBackupCodes();
+    await db.execute(sql`
+      UPDATE users SET totp_secret = ${secret}, totp_enabled = 1, totp_backup_codes = ${JSON.stringify(hashed)}
+      WHERE id = ${u.id}
+    `);
+    delete (req.session as any).pendingTotpSecret;
+    await new Promise<void>((resolve) => req.session.save(() => resolve()));
+    res.json({ ok: true, backupCodes: plain });
+  });
+
+  app.post("/api/auth/2fa/disable", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    const { password, code } = req.body;
+    if (!password) return res.status(400).json({ message: "Current password is required." });
+    const userRows = await db.execute(sql`SELECT password, totp_secret, totp_enabled FROM users WHERE id = ${u.id}`);
+    const userRow = ((userRows as any).rows ?? userRows)[0];
+    if (!userRow) return res.status(404).json({ message: "User not found" });
+    const validPw = await verifyPassword(password, userRow.password);
+    if (!validPw) return res.status(401).json({ message: "Invalid password." });
+    if (userRow.totp_enabled === 1 && userRow.totp_secret && code) {
+      if (!verifyTotp(String(code), userRow.totp_secret)) {
+        return res.status(401).json({ message: "Invalid 2FA code." });
+      }
+    }
+    await db.execute(sql`
+      UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_backup_codes = NULL WHERE id = ${u.id}
+    `);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/auth/2fa/login-verify", twoFaLimit, async (req, res, next) => {
+    const pendingUserId = (req.session as any).pending2faUserId;
+    if (!pendingUserId) return res.status(400).json({ message: "No pending 2FA verification. Please log in again." });
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ message: "Verification code is required." });
+    const userRows = await db.execute(sql`
+      SELECT * FROM users WHERE id = ${pendingUserId} LIMIT 1
+    `);
+    const userRow = ((userRows as any).rows ?? userRows)[0];
+    if (!userRow) return res.status(401).json({ message: "Session expired. Please log in again." });
+
+    let verified = false;
+    // Try TOTP
+    if (userRow.totp_secret && verifyTotp(String(code), userRow.totp_secret)) {
+      verified = true;
+    }
+    // Try backup code
+    if (!verified && userRow.totp_backup_codes) {
+      let hashes: string[] = [];
+      try { hashes = JSON.parse(userRow.totp_backup_codes); } catch {}
+      const result = verifyBackupCode(String(code), hashes);
+      if (result.valid) {
+        verified = true;
+        await db.execute(sql`UPDATE users SET totp_backup_codes = ${JSON.stringify(result.remaining)} WHERE id = ${pendingUserId}`);
+      }
+    }
+    if (!verified) return res.status(401).json({ message: "Invalid code. Try again or use a backup code." });
+
+    const rememberMe = !!(req.session as any).pending2faRememberMe;
+    delete (req.session as any).pending2faUserId;
+    delete (req.session as any).pending2faRememberMe;
+
+    const user = await storage.getUser(pendingUserId);
+    if (!user) return res.status(401).json({ message: "User not found." });
+
+    await new Promise<void>((resolve, reject) =>
+      req.session.regenerate((err) => (err ? reject(err) : resolve()))
+    );
+
+    await new Promise<void>((resolve, reject) =>
+      req.logIn(user as any, async (loginErr) => {
+        if (loginErr) { reject(loginErr); return; }
+        if (rememberMe) req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+        try {
+          const ip = req.headers["x-forwarded-for"]
+            ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
+            : req.socket.remoteAddress || "unknown";
+          await storage.createLoginLog({ userId: user.id, email: user.email, name: user.name, loginAt: new Date().toISOString(), ipAddress: ip });
+        } catch {}
+        resolve();
+      })
+    );
+
+    const { password, ...safe } = user;
+    const perms = parsePermissions(safe.permissions, !!safe.isAdmin, safe.isTeamAdmin === 1);
+    return res.json({ ...safe, parsedPermissions: perms });
+  });
 
   return httpServer;
 }

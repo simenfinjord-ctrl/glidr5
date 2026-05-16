@@ -13,8 +13,10 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMobileNav } from "@/components/mobile-nav";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 function PlanChangeSection() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -38,11 +40,11 @@ function PlanChangeSection() {
     try {
       const res = await apiRequest("POST", "/api/account/plan-change-request", { requestedPlan, billingPeriod, notes });
       if (!res.ok) throw new Error();
-      toast({ title: "Request sent", description: "We'll get back to you within 1–2 business days." });
+      toast({ title: t("account.planChangeSent"), description: t("account.planChangeSentDesc") });
       setOpen(false);
       setNotes("");
     } catch {
-      toast({ title: "Error", description: "Something went wrong. Contact us at hei@glidr.no", variant: "destructive" });
+      toast({ title: t("common.error"), description: "Something went wrong. Contact us at hei@glidr.no", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -52,22 +54,22 @@ function PlanChangeSection() {
     <Card className="rounded-2xl p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold">Subscription</h3>
+          <h3 className="font-semibold">{t("account.subscription")}</h3>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Current plan: <strong className="text-foreground capitalize">{currentPlan}</strong>
+            {t("account.currentPlan")}: <strong className="text-foreground capitalize">{currentPlan}</strong>
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-          Request plan change
+          {t("account.requestPlanChange")}
         </Button>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Request plan change</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("account.requestPlanChange")}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Desired plan</label>
+              <label className="text-sm font-medium">{t("account.desiredPlan")}</label>
               <Select value={requestedPlan} onValueChange={setRequestedPlan}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -76,9 +78,9 @@ function PlanChangeSection() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Billing</label>
+              <label className="text-sm font-medium">{t("account.billing")}</label>
               <div className="flex gap-4">
-                {[{ value: "monthly", label: "Monthly" }, { value: "annual", label: "Annual (2 months free)" }].map(o => (
+                {[{ value: "monthly", label: t("account.monthly") }, { value: "annual", label: t("account.annual") }].map(o => (
                   <label key={o.value} className="flex items-center gap-2 text-sm cursor-pointer">
                     <input type="radio" name="bp" value={o.value} checked={billingPeriod === o.value} onChange={() => setBillingPeriod(o.value)} className="accent-foreground" />
                     {o.label}
@@ -87,14 +89,14 @@ function PlanChangeSection() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Note (optional)</label>
+              <label className="text-sm font-medium">{t("account.noteOptional")}</label>
               <textarea className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background resize-none focus:outline-none"
                 rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Anything we should know?" />
             </div>
-            <p className="text-xs text-muted-foreground">Your request is sent to Glidr admin, who will get back to you within 1–2 business days.</p>
+            <p className="text-xs text-muted-foreground">{t("account.planChangeNote")}</p>
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={submit} disabled={submitting}>{submitting ? "Sending..." : "Send request"}</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>{t("common.cancel")}</Button>
+              <Button onClick={submit} disabled={submitting}>{submitting ? t("common.sending") : t("common.send")}</Button>
             </div>
           </div>
         </DialogContent>
@@ -104,6 +106,7 @@ function PlanChangeSection() {
 }
 
 function TwoFactorSection() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -165,7 +168,7 @@ function TwoFactorSection() {
       const res = await apiRequest("POST", "/api/auth/2fa/disable", { password: disablePassword, code: disableCode });
       const data = await res.json();
       if (!res.ok) { setDisableError(data.message); return; }
-      toast({ title: "2FA disabled" });
+      toast({ title: t("account.twoFactorDisable") });
       setDisableOpen(false);
       setDisablePassword("");
       setDisableCode("");
@@ -181,10 +184,10 @@ function TwoFactorSection() {
     <Card className="rounded-2xl p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold">Two-factor authentication</h3>
+          <h3 className="font-semibold">{t("account.twoFactor")}</h3>
           <p className="text-sm text-muted-foreground mt-0.5">
             {status?.enabled
-              ? "2FA is enabled. Your account requires a verification code on login."
+              ? t("account.twoFactorEnabled")
               : "Add an extra layer of security to your Super Admin account."}
           </p>
         </div>
@@ -195,10 +198,10 @@ function TwoFactorSection() {
 
       <div className="flex gap-2">
         {!status?.enabled && (
-          <Button size="sm" onClick={startSetup}>Enable 2FA</Button>
+          <Button size="sm" onClick={startSetup}>{t("account.twoFactorSetup")}</Button>
         )}
         {status?.enabled && (
-          <Button size="sm" variant="destructive" onClick={() => setDisableOpen(true)}>Disable 2FA</Button>
+          <Button size="sm" variant="destructive" onClick={() => setDisableOpen(true)}>{t("account.twoFactorDisable")}</Button>
         )}
       </div>
 
@@ -206,12 +209,12 @@ function TwoFactorSection() {
       <Dialog open={setupOpen} onOpenChange={(o) => { if (!o) { setSetupOpen(false); setBackupCodes(null); setSetupCode(""); setQrDataUrl(null); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{backupCodes ? "Save your backup codes" : "Set up two-factor authentication"}</DialogTitle>
+            <DialogTitle>{backupCodes ? t("account.backupCodes") : t("account.twoFactorSetup")}</DialogTitle>
           </DialogHeader>
 
           {!backupCodes ? (
             <form onSubmit={confirmEnable} className="space-y-5 pt-2">
-              <p className="text-sm text-muted-foreground">Scan this QR code with an authenticator app (Google Authenticator, Authy, etc.).</p>
+              <p className="text-sm text-muted-foreground">{t("account.twoFactorScanQr")}</p>
               {qrDataUrl && (
                 <div className="flex justify-center">
                   <img src={qrDataUrl} alt="2FA QR Code" className="rounded-xl border border-border" />
@@ -223,21 +226,21 @@ function TwoFactorSection() {
                 </div>
               )}
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Enter the 6-digit code from your app</label>
+                <label className="text-sm font-medium">{t("account.twoFactorCode")}</label>
                 <input
                   autoFocus
                   value={setupCode}
                   onChange={(e) => setSetupCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="000000"
+                  placeholder={t("account.twoFactorCodePlaceholder")}
                   maxLength={6}
                   className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background text-center tracking-widest text-lg focus:outline-none focus:ring-2 focus:ring-foreground/20"
                 />
               </div>
               {setupError && <p className="text-sm text-red-500">{setupError}</p>}
               <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" onClick={() => setSetupOpen(false)}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => setSetupOpen(false)}>{t("common.cancel")}</Button>
                 <Button type="submit" disabled={setupSubmitting || setupCode.length < 6}>
-                  {setupSubmitting ? "Verifying…" : "Enable 2FA"}
+                  {setupSubmitting ? t("account.twoFactorVerifying") : t("account.twoFactorVerify")}
                 </Button>
               </div>
             </form>
@@ -251,7 +254,7 @@ function TwoFactorSection() {
                   <div key={code} className="rounded-lg bg-muted px-3 py-2 text-sm font-mono text-center">{code}</div>
                 ))}
               </div>
-              <Button className="w-full" onClick={() => { setSetupOpen(false); setBackupCodes(null); toast({ title: "2FA enabled", description: "Your account is now protected with two-factor authentication." }); }}>
+              <Button className="w-full" onClick={() => { setSetupOpen(false); setBackupCodes(null); toast({ title: t("account.twoFactorEnabled2"), description: "Your account is now protected with two-factor authentication." }); }}>
                 I've saved my backup codes
               </Button>
             </div>
@@ -262,25 +265,25 @@ function TwoFactorSection() {
       {/* Disable dialog */}
       <Dialog open={disableOpen} onOpenChange={setDisableOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Disable two-factor authentication</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("account.twoFactorDisable")}</DialogTitle></DialogHeader>
           <form onSubmit={confirmDisable} className="space-y-4 pt-2">
-            <p className="text-sm text-muted-foreground">Enter your current password and 2FA code to disable two-factor authentication.</p>
+            <p className="text-sm text-muted-foreground">{t("account.twoFactorDisableDesc")}</p>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Current password</label>
+              <label className="text-sm font-medium">{t("account.currentPassword")}</label>
               <input type="password" value={disablePassword} onChange={(e) => setDisablePassword(e.target.value)}
                 className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-foreground/20" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">2FA code</label>
+              <label className="text-sm font-medium">{t("account.twoFactorCode")}</label>
               <input value={disableCode} onChange={(e) => setDisableCode(e.target.value)}
                 placeholder="000000"
                 className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-foreground/20" />
             </div>
             {disableError && <p className="text-sm text-red-500">{disableError}</p>}
             <div className="flex gap-2 justify-end">
-              <Button type="button" variant="outline" onClick={() => setDisableOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setDisableOpen(false)}>{t("common.cancel")}</Button>
               <Button type="submit" variant="destructive" disabled={disableSubmitting}>
-                {disableSubmitting ? "Disabling…" : "Disable 2FA"}
+                {disableSubmitting ? "Disabling…" : t("account.twoFactorDisable")}
               </Button>
             </div>
           </form>
@@ -291,6 +294,7 @@ function TwoFactorSection() {
 }
 
 export default function MyAccount() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -310,7 +314,7 @@ export default function MyAccount() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Username updated" });
+      toast({ title: "Username updated" }); // no dedicated i18n key; keep as-is
       setShowUsernameForm(false);
       setNewUsername("");
       setUsernameError("");
@@ -372,14 +376,14 @@ export default function MyAccount() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Password changed" });
+      toast({ title: t("account.passwordUpdated") });
       setShowPassForm(false);
       setCurrentPass("");
       setNewPass("");
       setConfirmPass("");
       setPassError("");
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   const handleSavePassword = () => {
@@ -415,24 +419,24 @@ export default function MyAccount() {
 
   const groups = user.groupScope?.split(",").map((s: string) => s.trim()).filter(Boolean) || [];
   const isTeamAdmin = !!(user as any).isTeamAdmin;
-  const roleLabel = user.isAdmin ? "Super Admin" : user.isTeamAdmin ? "Team Admin" : "Member";
+  const roleLabel = user.isAdmin ? t("account.admin") : user.isTeamAdmin ? t("account.teamAdmin") : t("account.member");
 
   return (
     <AppShell>
       <div className="max-w-lg mx-auto space-y-6">
         <h1 className="text-2xl sm:text-3xl flex items-center gap-3" data-testid="text-my-account-title">
           <User className="h-7 w-7 text-blue-500" />
-          My Account
+          {t("account.title")}
         </h1>
 
         {/* Profile */}
         <Card className="p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Profile</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t("account.profile")}</h2>
 
           <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-4 py-3">
             <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
             <div>
-              <div className="text-xs text-muted-foreground">Name</div>
+              <div className="text-xs text-muted-foreground">{t("account.name")}</div>
               <div className="text-sm font-medium" data-testid="text-profile-name">{user.name}</div>
             </div>
           </div>
@@ -440,7 +444,7 @@ export default function MyAccount() {
           <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-4 py-3">
             <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
             <div>
-              <div className="text-xs text-muted-foreground">Email</div>
+              <div className="text-xs text-muted-foreground">{t("account.email")}</div>
               <div className="text-sm font-medium" data-testid="text-profile-email">{user.email}</div>
             </div>
           </div>
@@ -474,9 +478,9 @@ export default function MyAccount() {
                 {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
                 <p className="text-xs text-muted-foreground">Letters, numbers, dots, underscores and dashes only.</p>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => { setShowUsernameForm(false); setUsernameError(""); }}>Cancel</Button>
+                  <Button variant="outline" size="sm" onClick={() => { setShowUsernameForm(false); setUsernameError(""); }}>{t("common.cancel")}</Button>
                   <Button size="sm" onClick={() => changeUsernameMutation.mutate()} disabled={changeUsernameMutation.isPending || !newUsername.trim()}>
-                    {changeUsernameMutation.isPending ? "Saving…" : "Save"}
+                    {changeUsernameMutation.isPending ? t("common.saving") : t("common.save")}
                   </Button>
                 </div>
               </div>
@@ -487,7 +491,7 @@ export default function MyAccount() {
             <div className="flex items-start gap-3 rounded-xl bg-muted/50 px-4 py-3">
               <Users className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
               <div>
-                <div className="text-xs text-muted-foreground mb-1">Groups</div>
+                <div className="text-xs text-muted-foreground mb-1">{t("account.groups")}</div>
                 <div className="flex flex-wrap gap-1">
                   {groups.map((g: string) => (
                     <span key={g} className="inline-flex rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-200 dark:bg-green-900/20 dark:text-green-400 dark:ring-green-800">
@@ -502,7 +506,7 @@ export default function MyAccount() {
           <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-4 py-3">
             <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
             <div>
-              <div className="text-xs text-muted-foreground">Role</div>
+              <div className="text-xs text-muted-foreground">{t("account.role")}</div>
               <div className="text-sm font-medium">{roleLabel}</div>
             </div>
           </div>
@@ -516,8 +520,8 @@ export default function MyAccount() {
           </h2>
           <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-3">
             <div>
-              <div className="text-sm font-medium">Mobile navigation</div>
-              <div className="text-xs text-muted-foreground">Show a bottom tab bar on small screens</div>
+              <div className="text-sm font-medium">{t("account.mobileNav")}</div>
+              <div className="text-xs text-muted-foreground">{t("account.mobileNavDesc")}</div>
             </div>
             <button
               onClick={toggleMobileNav}
@@ -572,11 +576,11 @@ export default function MyAccount() {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
               <KeyRound className="h-4 w-4" />
-              Password
+              {t("account.changePassword")}
             </h2>
             {!showPassForm && (
               <Button variant="outline" size="sm" onClick={() => setShowPassForm(true)}>
-                Change password
+                {t("account.changePassword")}
               </Button>
             )}
           </div>
@@ -584,13 +588,13 @@ export default function MyAccount() {
           {showPassForm && (
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Current password</label>
+                <label className="text-sm font-medium">{t("account.currentPassword")}</label>
                 <div className="relative">
                   <Input
                     type={showCurrent ? "text" : "password"}
                     value={currentPass}
                     onChange={(e) => setCurrentPass(e.target.value)}
-                    placeholder="Current password"
+                    placeholder={t("account.currentPassword")}
                     data-testid="input-current-password"
                   />
                   <button
@@ -603,13 +607,13 @@ export default function MyAccount() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">New password</label>
+                <label className="text-sm font-medium">{t("account.newPassword")}</label>
                 <div className="relative">
                   <Input
                     type={showNew ? "text" : "password"}
                     value={newPass}
                     onChange={(e) => setNewPass(e.target.value)}
-                    placeholder="New password"
+                    placeholder={t("account.newPassword")}
                     data-testid="input-new-password"
                   />
                   <button
@@ -622,13 +626,13 @@ export default function MyAccount() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Confirm new password</label>
+                <label className="text-sm font-medium">{t("account.confirmPassword")}</label>
                 <div className="relative">
                   <Input
                     type={showConfirm ? "text" : "password"}
                     value={confirmPass}
                     onChange={(e) => setConfirmPass(e.target.value)}
-                    placeholder="Confirm new password"
+                    placeholder={t("account.confirmPassword")}
                     data-testid="input-confirm-password"
                   />
                   <button
@@ -655,7 +659,7 @@ export default function MyAccount() {
                     setPassError("");
                   }}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   size="sm"
@@ -663,7 +667,7 @@ export default function MyAccount() {
                   onClick={handleSavePassword}
                   data-testid="button-change-password"
                 >
-                  {changePasswordMutation.isPending ? "Saving…" : "Save"}
+                  {changePasswordMutation.isPending ? t("common.saving") : t("common.save")}
                 </Button>
               </div>
             </div>
@@ -719,20 +723,20 @@ export default function MyAccount() {
 
         {/* Language preference */}
         <Card className="rounded-2xl p-6 space-y-3">
-          <h3 className="font-semibold">Language / Språk</h3>
-          <p className="text-sm text-muted-foreground">Choose your preferred language for the Glidr interface.</p>
+          <h3 className="font-semibold">{t("account.language")}</h3>
+          <p className="text-sm text-muted-foreground">{t("account.languageDesc")}</p>
           <div className="flex gap-2">
             <button
               onClick={() => setLang("en")}
               className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${lang === "en" ? "bg-foreground text-background border-foreground" : "border-border hover:bg-muted"}`}
             >
-              English
+              {t("account.english")}
             </button>
             <button
               onClick={() => setLang("no")}
               className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${lang === "no" ? "bg-foreground text-background border-foreground" : "border-border hover:bg-muted"}`}
             >
-              Norsk
+              {t("account.norwegian")}
             </button>
           </div>
         </Card>

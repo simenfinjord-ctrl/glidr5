@@ -17,6 +17,12 @@ import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient, OfflineError } from "@/lib/queryClient";
 import { useOffline } from "@/lib/offline-context";
 import { cn, fmtDate } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
+
+function productCategoryKey(v: string) {
+  const map: Record<string, string> = { "Glide product": "products.glide", "Topping product": "products.topping", "Structure tool": "products.structure" };
+  return map[v] ?? v;
+}
 
 type ProductCategory = "Glide product" | "Topping product" | "Structure tool";
 
@@ -60,6 +66,7 @@ function categoryBadgeClass(cat: string) {
 }
 
 function AddProductModal({ onSaved }: { onSaved: () => void }) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const { queueMutation } = useOffline();
 
@@ -115,7 +122,7 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
           name="category"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category</FormLabel>
+              <FormLabel>{t("products.category")}</FormLabel>
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger data-testid="select-product-category">
@@ -123,9 +130,9 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="Glide product">Glide product</SelectItem>
-                  <SelectItem value="Topping product">Topping product</SelectItem>
-                  <SelectItem value="Structure tool">Structure tool</SelectItem>
+                  <SelectItem value="Glide product">{t("products.glide")}</SelectItem>
+                  <SelectItem value="Topping product">{t("products.topping")}</SelectItem>
+                  <SelectItem value="Structure tool">{t("products.structure")}</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -139,7 +146,7 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
             name="brand"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Brand</FormLabel>
+                <FormLabel>{t("products.brand")}</FormLabel>
                 <FormControl>
                   <Input {...field} data-testid="input-product-brand" placeholder="e.g., Swix" />
                 </FormControl>
@@ -152,7 +159,7 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Name</FormLabel>
+                <FormLabel>{t("products.name")}</FormLabel>
                 <FormControl>
                   <Input {...field} data-testid="input-product-name" placeholder="e.g., HS10" />
                 </FormControl>
@@ -164,7 +171,7 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
 
         <div className="flex items-center justify-end">
           <Button type="submit" data-testid="button-save-product">
-            Add product
+            {t("products.addProduct")}
           </Button>
         </div>
       </form>
@@ -179,6 +186,7 @@ function EditProductModal({
   product: Product;
   onSaved: () => void;
 }) {
+  const { t } = useI18n();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof schema>>({
@@ -220,7 +228,7 @@ function EditProductModal({
           name="category"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category</FormLabel>
+              <FormLabel>{t("products.category")}</FormLabel>
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger data-testid="select-edit-product-category">
@@ -228,9 +236,9 @@ function EditProductModal({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="Glide product">Glide product</SelectItem>
-                  <SelectItem value="Topping product">Topping product</SelectItem>
-                  <SelectItem value="Structure tool">Structure tool</SelectItem>
+                  <SelectItem value="Glide product">{t("products.glide")}</SelectItem>
+                  <SelectItem value="Topping product">{t("products.topping")}</SelectItem>
+                  <SelectItem value="Structure tool">{t("products.structure")}</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -244,7 +252,7 @@ function EditProductModal({
             name="brand"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Brand</FormLabel>
+                <FormLabel>{t("products.brand")}</FormLabel>
                 <FormControl>
                   <Input {...field} data-testid="input-edit-product-brand" placeholder="e.g., Swix" />
                 </FormControl>
@@ -257,7 +265,7 @@ function EditProductModal({
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Name</FormLabel>
+                <FormLabel>{t("products.name")}</FormLabel>
                 <FormControl>
                   <Input {...field} data-testid="input-edit-product-name" placeholder="e.g., HS10" />
                 </FormControl>
@@ -269,7 +277,7 @@ function EditProductModal({
 
         <div className="flex items-center justify-end">
           <Button type="submit" data-testid="button-update-product" disabled={mutation.isPending}>
-            {mutation.isPending ? "Saving…" : "Save changes"}
+            {mutation.isPending ? "Saving…" : t("common.save")}
           </Button>
         </div>
       </form>
@@ -359,6 +367,7 @@ function GroupAssignModal({
 }
 
 export default function Products() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const isAdmin = !!user?.isAdmin;
   const [open, setOpen] = useState(false);
@@ -459,9 +468,9 @@ export default function Products() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl">{viewMode === "stock-changes" ? "Stock Changes" : viewMode === "storage" ? "Storage" : "Products"}</h1>
+            <h1 className="text-2xl sm:text-3xl">{viewMode === "stock-changes" ? t("products.stockHistory") : viewMode === "storage" ? t("products.stock") : t("products.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-products-subtitle">
-              {viewMode === "stock-changes" ? `${stockChanges.length} log entries` : `${filtered.length} product${filtered.length !== 1 ? "s" : ""}`}
+              {viewMode === "stock-changes" ? `${stockChanges.length} log entries` : t("products.subtitle", { count: filtered.length })}
             </p>
           </div>
 
@@ -501,12 +510,12 @@ export default function Products() {
                 <DialogTrigger asChild>
                   <Button data-testid="button-add-product-prominent" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white">
                     <PackagePlus className="mr-2 h-4 w-4" />
-                    Add product
+                    {t("products.addProduct")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-xl">
                   <DialogHeader>
-                    <DialogTitle>Add product</DialogTitle>
+                    <DialogTitle>{t("products.addProduct")}</DialogTitle>
                   </DialogHeader>
                   <AddProductModal onSaved={() => setOpen(false)} />
                 </DialogContent>
@@ -530,10 +539,10 @@ export default function Products() {
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="All">All categories</SelectItem>
-                    <SelectItem value="Glide product">Glide product</SelectItem>
-                    <SelectItem value="Topping product">Topping product</SelectItem>
-                    <SelectItem value="Structure tool">Structure tool</SelectItem>
+                    <SelectItem value="All">{t("products.filterCategory")}</SelectItem>
+                    <SelectItem value="Glide product">{t("products.glide")}</SelectItem>
+                    <SelectItem value="Topping product">{t("products.topping")}</SelectItem>
+                    <SelectItem value="Structure tool">{t("products.structure")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -544,7 +553,7 @@ export default function Products() {
                       <SelectValue placeholder="Group" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="All">All groups</SelectItem>
+                      <SelectItem value="All">{t("products.filterGroup")}</SelectItem>
                       {uniqueGroups.map((g) => (
                         <SelectItem key={g} value={g}>{g}</SelectItem>
                       ))}
@@ -640,7 +649,7 @@ export default function Products() {
             <div className="space-y-2">
               {sortedFiltered.length === 0 ? (
                 <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-products">
-                  No products match your filters.
+                  {t("products.noProducts")}
                 </Card>
               ) : (
                 sortedFiltered.map((p) => (
@@ -695,7 +704,7 @@ export default function Products() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {filtered.length === 0 ? (
                 <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground sm:col-span-2" data-testid="empty-products">
-                  No products match your filters.
+                  {t("products.noProducts")}
                 </Card>
               ) : (
                 filtered.map((p) => (
@@ -737,7 +746,7 @@ export default function Products() {
 
         <Dialog open={!!editingDetailsProduct} onOpenChange={(v) => { if (!v) setEditingDetailsProduct(undefined); }}>
           <DialogContent className="sm:max-w-xl">
-            <DialogHeader><DialogTitle>Edit product</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t("products.editProduct")}</DialogTitle></DialogHeader>
             {editingDetailsProduct && (
               <EditProductModal
                 product={editingDetailsProduct}
@@ -749,14 +758,14 @@ export default function Products() {
 
         <Dialog open={!!deletingProduct} onOpenChange={(v) => { if (!v) setDeletingProduct(undefined); }}>
           <DialogContent className="sm:max-w-sm">
-            <DialogHeader><DialogTitle>Delete product</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t("common.delete")}</DialogTitle></DialogHeader>
             {deletingProduct && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Are you sure you want to delete <span className="font-medium text-foreground">{deletingProduct.brand} {deletingProduct.name}</span>?
+                  {t("products.confirmDelete")}
                 </p>
                 <div className="flex justify-end gap-2">
-                  <Button variant="ghost" onClick={() => setDeletingProduct(undefined)}>Cancel</Button>
+                  <Button variant="ghost" onClick={() => setDeletingProduct(undefined)}>{t("common.cancel")}</Button>
                   <Button
                     variant="destructive"
                     data-testid="button-confirm-delete-product"
@@ -764,7 +773,7 @@ export default function Products() {
                     onClick={() => deleteMutation.mutate(deletingProduct.id)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
+                    {t("common.delete")}
                   </Button>
                 </div>
               </div>
@@ -1268,6 +1277,7 @@ function ProductCard({
   onDelete: () => void;
   onViewHistory: () => void;
 }) {
+  const { t } = useI18n();
   const groups = p.groupScope.split(",").map((s) => s.trim()).filter(Boolean);
 
   return (
@@ -1337,7 +1347,7 @@ function ProductCard({
               onClick={onEdit}
             >
               <Pencil className="mr-1 h-3 w-3" />
-              Edit
+              {t("common.edit")}
             </Button>
             {isAdmin && (
               <>

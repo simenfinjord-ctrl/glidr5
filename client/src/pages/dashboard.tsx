@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
 import { cn, fmtDate } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 type Test = { id: number; date: string; location: string; testName: string | null; testType: string; createdByName: string; groupScope: string; weatherId: number | null; seriesId: number; createdAt: string };
 type Product = { id: number; brand: string; name: string; category: string; groupScope: string };
@@ -66,6 +67,7 @@ type WatchQueueItem = { id: number; test_name: string | null; series_name: strin
 
 export default function Dashboard() {
   const { user, isBlindTester, can } = useAuth();
+  const { t } = useI18n();
   const hasGarminWatch = can("garmin_watch");
   const [resultLimit, setResultLimit] = useState("10");
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
@@ -87,7 +89,7 @@ export default function Dashboard() {
   });
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const todayTests = tests.filter((t) => t.date === todayStr);
+  const todayTests = tests.filter((test) => test.date === todayStr);
 
   const recentWeather = [...weather].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
 
@@ -116,9 +118,9 @@ export default function Dashboard() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("dashboard.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-dashboard-subtitle">
-              {user ? `Welcome back, ${user.name}.` : "Quick actions and recent activity."}
+              {user ? t("dashboard.welcome", { name: user.name }) : t("dashboard.subtitle")}
             </p>
           </div>
 
@@ -126,19 +128,19 @@ export default function Dashboard() {
             <AppLink href="/tests/new">
               <Button data-testid="button-new-test" className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
                 <Plus className="mr-2 h-4 w-4" />
-                New test
+                {t("dashboard.newTest")}
               </Button>
             </AppLink>
             <AppLink href="/weather">
               <Button variant="outline" data-testid="button-add-weather">
                 <CalendarPlus className="mr-2 h-4 w-4 text-violet-600" />
-                Weather
+                {t("nav.weather")}
               </Button>
             </AppLink>
             <AppLink href="/products">
               <Button variant="outline" data-testid="button-add-product">
                 <PackagePlus className="mr-2 h-4 w-4 text-amber-600" />
-                Product
+                {t("nav.products")}
               </Button>
             </AppLink>
           </div>
@@ -150,20 +152,20 @@ export default function Dashboard() {
               <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50">
                 <Zap className="h-3.5 w-3.5 text-emerald-600" />
               </div>
-              Today's tests
+              {t("dashboard.todayTests")}
               <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200">{todayTests.length}</span>
             </div>
             <div className="mt-3 space-y-2">
-              {todayTests.map((t) => (
-                <AppLink key={t.id} href={`/tests/${t.id}`} testId={`link-today-test-${t.id}`}>
+              {todayTests.map((test) => (
+                <AppLink key={test.id} href={`/tests/${test.id}`} testId={`link-today-test-${test.id}`}>
                   <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2.5 transition hover:bg-card hover:shadow-sm cursor-pointer">
                     <div className="flex items-center gap-2">
-                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : t.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure")}>
-                        {t.testType}
+                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", test.testType === "Glide" ? "fs-badge-glide" : test.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure")}>
+                        {test.testType}
                       </span>
-                      <span className="text-sm font-medium text-foreground">{t.testName || t.location}</span>
+                      <span className="text-sm font-medium text-foreground">{test.testName || test.location}</span>
                     </div>
-                    <span className="text-xs text-muted-foreground">{t.createdByName}</span>
+                    <span className="text-xs text-muted-foreground">{test.createdByName}</span>
                   </div>
                 </AppLink>
               ))}
@@ -178,11 +180,11 @@ export default function Dashboard() {
                 <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
                   <Watch className="h-3.5 w-3.5 text-sky-600" />
                 </div>
-                Watch Queue
+                {t("dashboard.watchQueue")}
                 <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-700 ring-1 ring-sky-200">{activeQueue.length}</span>
               </div>
               <AppLink href="/watch-queue">
-                <span className="text-xs font-medium text-sky-600 hover:text-sky-700">Manage</span>
+                <span className="text-xs font-medium text-sky-600 hover:text-sky-700">{t("dashboard.watchQueueManage")}</span>
               </AppLink>
             </div>
             <div className="space-y-1.5">
@@ -193,17 +195,17 @@ export default function Dashboard() {
                 </div>
               ))}
               {activeQueue.length > 4 && (
-                <p className="text-center text-xs text-muted-foreground pt-1">+{activeQueue.length - 4} more</p>
+                <p className="text-center text-xs text-muted-foreground pt-1">+{activeQueue.length - 4} {t("common.more")}</p>
               )}
             </div>
           </Card>
         )}
 
         <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${isBlindTester ? "" : "lg:grid-cols-4"}`}>
-          {!isBlindTester && <QuickCard title="New test" description="Table-first entry with live ranking" href="/tests/new" icon={ListChecks} iconColor="text-emerald-600" testId="card-quick-new-test" />}
-          {!isBlindTester && <QuickCard title="New test series" description="Track test ski series and regrinds" href="/testskis" icon={Snowflake} iconColor="text-sky-600" testId="card-quick-new-series" />}
-          {!isBlindTester && <QuickCard title="Add product" description="Glide, topping, and structure tools" href="/products" icon={PackagePlus} iconColor="text-amber-600" testId="card-quick-add-product" />}
-          <QuickCard title="Add weather" description="One entry per date + location" href="/weather" icon={CalendarPlus} iconColor="text-violet-600" testId="card-quick-add-weather" />
+          {!isBlindTester && <QuickCard title={t("dashboard.newTest")} description={t("dashboard.newTestDesc")} href="/tests/new" icon={ListChecks} iconColor="text-emerald-600" testId="card-quick-new-test" />}
+          {!isBlindTester && <QuickCard title={t("dashboard.newTestSeries")} description={t("dashboard.newTestSeriesDesc")} href="/testskis" icon={Snowflake} iconColor="text-sky-600" testId="card-quick-new-series" />}
+          {!isBlindTester && <QuickCard title={t("dashboard.addProduct")} description={t("dashboard.addProductDesc")} href="/products" icon={PackagePlus} iconColor="text-amber-600" testId="card-quick-add-product" />}
+          <QuickCard title={t("dashboard.addWeather")} description={t("dashboard.addWeatherDesc")} href="/weather" icon={CalendarPlus} iconColor="text-violet-600" testId="card-quick-add-weather" />
         </div>
 
         <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-results">
@@ -211,8 +213,8 @@ export default function Dashboard() {
             <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-yellow-50">
               <Trophy className="h-3.5 w-3.5 text-yellow-600" />
             </div>
-            Recent results
-            <span className="text-[10px] text-muted-foreground font-normal ml-1">Auto-updates</span>
+            {t("dashboard.recentResults")}
+            <span className="text-[10px] text-muted-foreground font-normal ml-1">{t("dashboard.recentResultsAuto")}</span>
             <div className="ml-auto">
               <Select value={resultLimit} onValueChange={setResultLimit}>
                 <SelectTrigger className="h-7 w-[72px] text-xs" data-testid="select-result-limit">
@@ -228,53 +230,53 @@ export default function Dashboard() {
             </div>
           </div>
           {recentResults.length === 0 ? (
-            <div className="py-6 text-center text-sm text-muted-foreground italic">No tests with results yet</div>
+            <div className="py-6 text-center text-sm text-muted-foreground italic">{t("dashboard.noResults")}</div>
           ) : (
             <div className="space-y-2">
-              {recentResults.map((t) => (
-                <AppLink key={t.id} href={`/tests/${t.id}`} testId={`link-recent-result-${t.id}`}>
+              {recentResults.map((item) => (
+                <AppLink key={item.id} href={`/tests/${item.id}`} testId={`link-recent-result-${item.id}`}>
                   <div
                     className={cn(
                       "flex items-center justify-between rounded-xl border px-3 py-2.5 transition hover:shadow-sm cursor-pointer",
-                      t.id === highlightId
+                      item.id === highlightId
                         ? "animate-highlight-pulse"
                         : "border-border bg-muted/30 hover:bg-card"
                     )}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0",
-                        t.testType === "Glide" ? "fs-badge-glide"
-                          : t.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
-                          : t.testType === "Classic" ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200"
-                          : t.testType === "Skating" ? "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200"
+                        item.testType === "Glide" ? "fs-badge-glide"
+                          : item.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+                          : item.testType === "Classic" ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200"
+                          : item.testType === "Skating" ? "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200"
                           : "fs-badge-structure"
                       )}>
-                        {t.testType}
+                        {item.testType}
                       </span>
-                      <span className="text-sm font-medium text-foreground truncate">{t.testName || t.location}</span>
-                      <span className="text-xs text-muted-foreground shrink-0">{fmtDate(t.date)}</span>
+                      <span className="text-sm font-medium text-foreground truncate">{item.testName || item.location}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">{fmtDate(item.date)}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
                       {isBlindTester ? (
-                        t.hasResults ? (
-                          <span className="text-[10px] text-muted-foreground italic">Results available</span>
+                        item.hasResults ? (
+                          <span className="text-[10px] text-muted-foreground italic">{t("dashboard.resultsAvailable")}</span>
                         ) : (
-                          <span className="text-[10px] text-muted-foreground italic">No results</span>
+                          <span className="text-[10px] text-muted-foreground italic">{t("dashboard.noResultsYet")}</span>
                         )
-                      ) : t.hasResults && t.winnerProduct ? (
+                      ) : item.hasResults && item.winnerProduct ? (
                         <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-300 dark:border-yellow-700">
                           <Trophy className="mr-1 h-2.5 w-2.5" />
-                          {t.winnerProduct.brand} {t.winnerProduct.name}
+                          {item.winnerProduct.brand} {item.winnerProduct.name}
                         </Badge>
-                      ) : t.hasResults ? (
+                      ) : item.hasResults ? (
                         <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-300 dark:border-yellow-700">
                           <Trophy className="mr-1 h-2.5 w-2.5" />
-                          Pair {t.winnerSkiNumber}
+                          {t("dashboard.pair")} {item.winnerSkiNumber}
                         </Badge>
                       ) : (
-                        <span className="text-[10px] text-muted-foreground italic">No results</span>
+                        <span className="text-[10px] text-muted-foreground italic">{t("dashboard.noResultsYet")}</span>
                       )}
-                      <span className="text-xs text-muted-foreground">{t.createdByName}</span>
+                      <span className="text-xs text-muted-foreground">{item.createdByName}</span>
                     </div>
                   </div>
                 </AppLink>
@@ -283,7 +285,7 @@ export default function Dashboard() {
           )}
           <div className="mt-3 text-center">
             <AppLink href="/tests" testId="link-all-tests">
-              <span className="text-xs font-medium text-green-600 hover:text-green-700">View all tests</span>
+              <span className="text-xs font-medium text-green-600 hover:text-green-700">{t("dashboard.viewAllTests")}</span>
             </AppLink>
           </div>
         </Card>
@@ -295,7 +297,7 @@ export default function Dashboard() {
                 <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-50">
                   <CloudSun className="h-3.5 w-3.5 text-violet-600" />
                 </div>
-                Recent weather
+                {t("dashboard.recentWeather")}
               </div>
               <div className="space-y-2">
                 {recentWeather.map((w) => (
@@ -305,15 +307,15 @@ export default function Dashboard() {
                       <span className="text-muted-foreground">{fmtDate(w.date)}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-green-600">Air {w.airTemperatureC}°C</span>
-                      <span className="text-cyan-600">Snow {w.snowTemperatureC}°C</span>
+                      <span className="text-green-600">{t("dashboard.air")} {w.airTemperatureC}°C</span>
+                      <span className="text-cyan-600">{t("dashboard.snow")} {w.snowTemperatureC}°C</span>
                     </div>
                   </div>
                 ))}
               </div>
               <div className="mt-3 text-center">
                 <AppLink href="/weather" testId="link-all-weather">
-                  <span className="text-xs font-medium text-violet-600 hover:text-violet-700">View all weather</span>
+                  <span className="text-xs font-medium text-violet-600 hover:text-violet-700">{t("dashboard.viewAllWeather")}</span>
                 </AppLink>
               </div>
             </Card>
@@ -325,7 +327,7 @@ export default function Dashboard() {
                 <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50">
                   <Package className="h-3.5 w-3.5 text-amber-600" />
                 </div>
-                Products
+                {t("nav.products")}
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{products.length}</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -335,12 +337,12 @@ export default function Dashboard() {
                   </span>
                 ))}
                 {products.length > 8 && (
-                  <span className="rounded-full bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground">+{products.length - 8} more</span>
+                  <span className="rounded-full bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground">+{products.length - 8} {t("common.more")}</span>
                 )}
               </div>
               <div className="mt-3 text-center">
                 <AppLink href="/products" testId="link-all-products">
-                  <span className="text-xs font-medium text-amber-600 hover:text-amber-700">View all products</span>
+                  <span className="text-xs font-medium text-amber-600 hover:text-amber-700">{t("dashboard.viewAllProducts")}</span>
                 </AppLink>
               </div>
             </Card>

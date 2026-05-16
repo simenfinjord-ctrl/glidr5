@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useMobileNav } from "@/components/mobile-nav";
+import { useI18n } from "@/lib/i18n";
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -24,6 +25,7 @@ const passwordSchema = z.object({
 });
 
 export default function Profile() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
@@ -50,11 +52,11 @@ export default function Profile() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Password changed successfully" });
+      toast({ title: t("account.passwordUpdated") });
       form.reset();
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -66,8 +68,8 @@ export default function Profile() {
     <AppShell>
       <div className="flex flex-col gap-6 max-w-2xl">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-profile-title">Profile</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Your account information and settings</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-profile-title">{t("profile.title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("profile.subtitle")}</p>
         </div>
 
         <Card className="fs-card rounded-2xl p-6">
@@ -122,8 +124,8 @@ export default function Profile() {
           </div>
           <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-3">
             <div>
-              <div className="text-sm font-medium">Mobile navigation</div>
-              <div className="text-xs text-muted-foreground">Show a bottom tab bar on small screens</div>
+              <div className="text-sm font-medium">{t("profile.mobileNav")}</div>
+              <div className="text-xs text-muted-foreground">{t("profile.mobileNavToggle")}</div>
             </div>
             <button
               onClick={toggleMobileNav}
@@ -142,8 +144,8 @@ export default function Profile() {
               <KeyRound className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <div className="text-base font-semibold text-foreground">Change Password</div>
-              <div className="text-xs text-muted-foreground">Update your login credentials</div>
+              <div className="text-base font-semibold text-foreground">{t("profile.changePassword")}</div>
+              <div className="text-xs text-muted-foreground">{t("profile.updateCredentials")}</div>
             </div>
           </div>
 

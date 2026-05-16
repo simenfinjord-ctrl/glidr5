@@ -56,6 +56,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn, fmtDate } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 type Athlete = {
   id: number;
@@ -194,6 +195,7 @@ export default function AthleteDetail() {
   const { user, can } = useAuth();
   const isAnalyticsView = new URLSearchParams(search).get("view") === "analytics";
   const { toast } = useToast();
+  const { t } = useI18n();
 
   const [skiDialogOpen, setSkiDialogOpen] = useState(false);
   const [editingSki, setEditingSki] = useState<RaceSki | null>(null);
@@ -956,7 +958,7 @@ export default function AthleteDetail() {
           <AppLink href="/raceskis">
             <Button variant="secondary" data-testid="button-back-raceskis">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
+              {t("athleteDetail.back")}
             </Button>
           </AppLink>
         </div>
@@ -976,7 +978,7 @@ export default function AthleteDetail() {
               data-testid="button-back-from-analytics"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
+              {t("athleteDetail.back")}
             </Button>
           </div>
           <div className="flex items-center gap-3">
@@ -1004,7 +1006,7 @@ export default function AthleteDetail() {
           <AppLink href="/raceskis" testId="link-back-raceskis">
             <Button variant="ghost" size="sm" data-testid="button-back-raceskis">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
+              {t("athleteDetail.back")}
             </Button>
           </AppLink>
         </div>
@@ -1078,7 +1080,7 @@ export default function AthleteDetail() {
               <div>
                 <h2 className="text-sm font-semibold">Access</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground" data-testid="text-shared-with">
-                  Shared with: {access.length > 0
+                  {t("raceskis.sharedWith")}: {access.length > 0
                     ? access.map((a) => {
                         const u = users.find((u) => u.id === a.userId);
                         return u?.name || `User #${a.userId}`;
@@ -1093,7 +1095,7 @@ export default function AthleteDetail() {
                 onClick={openAccessDialog}
               >
                 <Users className="mr-1.5 h-3.5 w-3.5" />
-                Manage Access
+                {t("raceskis.manageAccess")}
               </Button>
             </div>
           </Card>
@@ -1156,7 +1158,7 @@ export default function AthleteDetail() {
                 onClick={openAddSki}
               >
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
-                Add Ski
+                {t("raceskis.addSki")}
               </Button>
             </div>
           </div>
@@ -1978,7 +1980,7 @@ export default function AthleteDetail() {
       >
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingSki ? "Edit" : "Add Ski"}</DialogTitle>
+            <DialogTitle>{editingSki ? t("common.edit") : t("raceskis.addSki")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSkiSubmit} className="space-y-3">
             <div>
@@ -2172,7 +2174,7 @@ export default function AthleteDetail() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Regrind</DialogTitle>
+            <DialogTitle>{t("raceskis.addRegrind")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleRegrindSubmit} className="space-y-3">
             <div>
@@ -2186,7 +2188,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Grind Type *</label>
+              <label className="mb-1 block text-sm font-medium">{t("raceskis.grindType")} *</label>
               <Input
                 value={regrindForm.grindType}
                 onChange={(e) => setRegrindForm((f) => ({ ...f, grindType: e.target.value }))}
@@ -2235,7 +2237,7 @@ export default function AthleteDetail() {
       <Dialog open={accessDialogOpen} onOpenChange={setAccessDialogOpen}>
         <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Manage Access</DialogTitle>
+            <DialogTitle>{t("raceskis.manageAccess")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
             {users.length === 0 ? (

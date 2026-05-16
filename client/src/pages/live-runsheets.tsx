@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 type Heat = {
   pairA: number | null;
@@ -112,6 +113,7 @@ function timeAgo(iso: string): string {
 
 function LiveBracket({ session }: { session: LiveRunsheet }) {
   const [, navigate] = useLocation();
+  const { t } = useI18n();
   const bracket = session.bracket;
   if (!bracket || bracket.length === 0) return null;
 
@@ -143,7 +145,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
             {!isCompleted && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 animate-pulse">
                 <Radio className="h-3 w-3" />
-                Live
+                {t("liveRunsheets.live")}
               </span>
             )}
             {session.isWatchSession && (
@@ -328,7 +330,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
             data-testid={`button-open-test-${session.id}`}
           >
             <ExternalLink className="h-3.5 w-3.5" />
-            Open test
+            {t("liveRunsheets.openRunsheet")}
           </Button>
         </div>
       )}
@@ -337,6 +339,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
 }
 
 export default function LiveRunsheets() {
+  const { t } = useI18n();
   const { data: sessions = [], isLoading } = useQuery<LiveRunsheet[]>({
     queryKey: ["/api/live-runsheets"],
     refetchInterval: 3000,
@@ -365,7 +368,7 @@ export default function LiveRunsheets() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl sm:text-3xl flex items-center gap-3" data-testid="text-live-runsheets-title">
             <Radio className="h-7 w-7 text-green-500" />
-            Live Runsheets
+            {t("liveRunsheets.title")}
           </h1>
           <div className="flex items-center gap-3">
             <Button
@@ -430,12 +433,7 @@ export default function LiveRunsheets() {
           <Card className="p-8 text-center" data-testid="empty-live-runsheets">
             <Radio className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-muted-foreground font-medium">
-              {activeFilters > 0 ? "No runsheets match your filters" : "No active runsheets right now"}
-            </p>
-            <p className="text-sm text-muted-foreground/60 mt-1">
-              {activeFilters > 0
-                ? "Try adjusting the filters to see more results."
-                : "When someone starts a Complete Runsheet, it will appear here in real time."}
+              {t("liveRunsheets.noRunsheets")}
             </p>
           </Card>
         )}

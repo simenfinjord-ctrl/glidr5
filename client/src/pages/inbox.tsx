@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/lib/i18n";
 
 type InboxMessage = {
   id: number;
@@ -28,6 +29,7 @@ export default function Inbox() {
   const [, navigate] = useLocation();
   const { isSuperAdmin, isTeamAdmin } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   // Redirect users who are neither SA nor TA
@@ -84,7 +86,7 @@ export default function Inbox() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/unread-count"] });
-      toast({ title: "All messages marked as read" });
+      toast({ title: t("inbox.allRead") });
     },
   });
 
@@ -93,7 +95,7 @@ export default function Inbox() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/unread-count"] });
-      toast({ title: "Message deleted" });
+      toast({ title: t("inbox.deleted") });
     },
   });
 
@@ -126,13 +128,13 @@ export default function Inbox() {
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2" data-testid="heading-inbox">
               <Mail className="h-6 w-6 text-primary" />
-              Inbox
+              {t("inbox.title")}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Notifications and requests
+              {t("inbox.subtitle")}
               {unreadCount > 0 && (
                 <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                  {unreadCount} unread
+                  {`${unreadCount} ${t("inbox.unread")}`}
                 </span>
               )}
             </p>
@@ -147,19 +149,19 @@ export default function Inbox() {
               className="flex items-center gap-1.5"
             >
               <CheckCheck className="h-4 w-4" />
-              Mark all as read
+              {t("inbox.markAllRead")}
             </Button>
           )}
         </div>
 
         {/* Message list */}
         {isLoading ? (
-          <div className="text-center py-16 text-muted-foreground text-sm">Loading…</div>
+          <div className="text-center py-16 text-muted-foreground text-sm">{t("inbox.loading")}</div>
         ) : messages.length === 0 ? (
           <Card className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground gap-3">
             <MailOpen className="h-12 w-12 opacity-30" />
-            <p className="text-sm font-medium">Your inbox is empty</p>
-            <p className="text-xs">Problem reports from users will appear here.</p>
+            <p className="text-sm font-medium">{t("inbox.empty")}</p>
+            <p className="text-xs">{t("inbox.emptyDesc")}</p>
           </Card>
         ) : (
           <div className="flex flex-col gap-2">
@@ -199,7 +201,7 @@ export default function Inbox() {
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className="text-xs text-muted-foreground">
-                          From: <span className="font-medium">{msg.from_name ?? "Unknown"}</span>
+                          {t("inbox.from")}: <span className="font-medium">{msg.from_name ?? "Unknown"}</span>
                           {msg.team_name && (
                             <span className="ml-1 text-muted-foreground/70">· {msg.team_name}</span>
                           )}
@@ -225,7 +227,7 @@ export default function Inbox() {
                         if (!actionData) return null;
                         return (
                           <div className="mt-4 rounded-xl border border-border bg-background p-4 space-y-3">
-                            <div className="text-sm font-semibold">Reset password for {actionData.userName}</div>
+                            <div className="text-sm font-semibold">{t("inbox.resetPasswordFor", { name: actionData.userName })}</div>
                             <div className="text-xs text-muted-foreground">{actionData.userEmail}</div>
                             {!resetDone || resetTarget?.userId !== actionData.userId ? (
                               <>
@@ -235,12 +237,12 @@ export default function Inbox() {
                                     value={resetTarget?.userId === actionData.userId ? newPassword : ""}
                                     onChange={(e) => { setResetTarget(actionData!); setNewPassword(e.target.value); setResetDone(null); }}
                                     onFocus={() => setResetTarget(actionData!)}
-                                    placeholder="New temporary password"
+                                    placeholder={t("inbox.newTempPassword")}
                                     className="flex-1 rounded-lg border border-border px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-foreground/20"
                                   />
                                   <Button size="sm" variant="outline" type="button"
                                     onClick={() => { setResetTarget(actionData!); setNewPassword(generateTempPassword()); setResetDone(null); }}>
-                                    Generate
+                                    {t("common.generate")}
                                   </Button>
                                 </div>
                                 {resetError && resetTarget?.userId === actionData.userId && (
@@ -249,22 +251,22 @@ export default function Inbox() {
                                 <Button size="sm"
                                   disabled={resetting || !newPassword || resetTarget?.userId !== actionData.userId}
                                   onClick={() => { setResetTarget(actionData!); handleReset(); }}>
-                                  {resetting && resetTarget?.userId === actionData.userId ? "Resetting…" : "Reset password"}
+                                  {resetting && resetTarget?.userId === actionData.userId ? t("inbox.resetting") : t("inbox.resetPassword")}
                                 </Button>
                               </>
                             ) : (
                               <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 space-y-2">
-                                <p className="text-xs font-semibold text-green-800 dark:text-green-300">Password reset successfully</p>
-                                <p className="text-xs text-green-700 dark:text-green-400">Share this temporary password with the user:</p>
+                                <p className="text-xs font-semibold text-green-800 dark:text-green-300">{t("inbox.resetSuccess")}</p>
+                                <p className="text-xs text-green-700 dark:text-green-400">{t("inbox.resetSuccessDesc")}</p>
                                 <div className="flex items-center gap-2">
                                   <code className="flex-1 text-sm font-mono bg-white dark:bg-black/20 rounded px-2 py-1 border border-green-200 dark:border-green-700">{resetDone}</code>
-                                  <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(resetDone!); toast({ title: "Copied!" }); }}>
-                                    Copy
+                                  <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(resetDone!); toast({ title: t("common.copied") }); }}>
+                                    {t("common.copy")}
                                   </Button>
                                 </div>
-                                <p className="text-xs text-muted-foreground">Ask the user to change their password after logging in.</p>
+                                <p className="text-xs text-muted-foreground">{t("inbox.resetAskChange")}</p>
                                 <Button size="sm" variant="ghost" className="text-xs" onClick={() => { setResetDone(null); setNewPassword(""); setResetTarget(null); }}>
-                                  Reset again
+                                  {t("inbox.resetAgain")}
                                 </Button>
                               </div>
                             )}
@@ -281,7 +283,7 @@ export default function Inbox() {
                           data-testid={`button-delete-message-${msg.id}`}
                         >
                           <Trash2 className="h-4 w-4 mr-1.5" />
-                          Delete
+                          {t("inbox.delete")}
                         </Button>
                       </div>
                     </div>

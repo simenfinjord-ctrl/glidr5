@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useI18n } from "@/lib/i18n";
 import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch } from "lucide-react";
 import { generateTestPDF } from "@/lib/pdf-report";
 import * as XLSX from "xlsx";
@@ -214,6 +215,7 @@ export default function TestDetail() {
   const [, params] = useRoute("/tests/:id");
   const id = params?.id;
   const { isBlindTester, isSuperAdmin, can } = useAuth();
+  const { t } = useI18n();
   const hasWatchAccess = can("garmin_watch");
   const [hideDetailsState, setHideDetails] = useState(false);
   const hideDetails = isBlindTester || hideDetailsState;
@@ -428,7 +430,7 @@ export default function TestDetail() {
           <AppLink href="/tests">
             <Button variant="secondary" data-testid="button-back-tests">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to tests
+              {t("testDetail.backToTests")}
             </Button>
           </AppLink>
         </div>
@@ -449,7 +451,7 @@ export default function TestDetail() {
             <AppLink href={isGrind ? "/grinding" : "/tests"} testId="link-back-tests">
               <Button variant="ghost" size="sm" data-testid="button-back-tests">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                {isGrind ? "Back to grinding" : "Back to tests"}
+                {isGrind ? "Back to grinding" : t("testDetail.backToTests")}
               </Button>
             </AppLink>
             <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -503,30 +505,30 @@ export default function TestDetail() {
                 }}
               >
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit
+                {t("testDetail.editTest")}
               </Button>
               <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" data-testid="button-delete-test">
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
+                    {t("testDetail.deleteTest")}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete this test?</AlertDialogTitle>
+                    <AlertDialogTitle>{t("testDetail.deleteTest")}</AlertDialogTitle>
                     <AlertDialogDescription>
                       This will permanently delete the test "{(test as any).testName || test.location}" ({test.date}) and all its entries. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                     <AlertDialogAction
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={() => deleteMutation.mutate()}
                       data-testid="button-confirm-delete-test"
                     >
-                      {deleteMutation.isPending ? "Deleting…" : "Delete"}
+                      {deleteMutation.isPending ? t("common.deleting") : t("common.delete")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -628,7 +630,7 @@ export default function TestDetail() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50">
                   <Snowflake className="h-4 w-4 text-sky-600" />
                 </div>
-                <h2 className="text-base font-semibold">Weather Conditions</h2>
+                <h2 className="text-base font-semibold">{t("testDetail.weather")}</h2>
                 {weather.testQuality != null && (
                   <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-300 ring-1 ring-amber-200">
                     Quality {weather.testQuality}/10
@@ -730,7 +732,7 @@ export default function TestDetail() {
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50">
                 <Award className="h-4 w-4 text-emerald-600" />
               </div>
-              <h2 className="text-base font-semibold">Results</h2>
+              <h2 className="text-base font-semibold">{t("common.results")}</h2>
               <span className="rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">{sortedEntries.length} entries</span>
             </div>
             <div className="flex items-center gap-2">
@@ -1016,7 +1018,7 @@ export default function TestDetail() {
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => { setShowShareDialog(false); setSelectedTeamIds([]); }} data-testid="button-cancel-share">
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   disabled={selectedTeamIds.length === 0 || shareMutation.isPending}

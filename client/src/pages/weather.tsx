@@ -35,6 +35,24 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient, OfflineError } from "@/lib/queryClient";
 import { useOffline } from "@/lib/offline-context";
+import { useI18n } from "@/lib/i18n";
+
+function snowTypeKey(v: string) {
+  const map: Record<string, string> = { "Falling new": "snow.fallingNew", "New": "snow.new", "Irreg. dir. new": "snow.irregDirNew", "Irreg. dir. transf.": "snow.irregDirTransf", "Transformed": "snow.transformed" };
+  return map[v] ?? v;
+}
+function grainSizeKey(v: string) {
+  const map: Record<string, string> = { "Extra fine": "grain.extraFine", "Very fine": "grain.veryFine", "Fine": "grain.fine", "Average": "grain.average", "Coarse": "grain.coarse", "Very coarse": "grain.veryCoarse" };
+  return map[v] ?? v;
+}
+function snowHumidityKey(v: string) {
+  const map: Record<string, string> = { "Dry": "humidity.dry", "Moist": "humidity.moist", "Wet": "humidity.wet", "Very wet": "humidity.veryWet", "Slush": "humidity.slush" };
+  return map[v] ?? v;
+}
+function trackHardnessKey(v: string) {
+  const map: Record<string, string> = { "Very soft": "hardness.verySoft", "Soft": "hardness.soft", "Medium hard": "hardness.mediumHard", "Hard": "hardness.hard", "Very hard": "hardness.veryHard", "Ice": "hardness.ice" };
+  return map[v] ?? v;
+}
 
 const SNOW_STAGES = [
   "Falling new",
@@ -135,6 +153,7 @@ function WeatherForm({
   selectedGroup: string;
   onGroupChange: (group: string) => void;
 }) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const { queueMutation } = useOffline();
   const today = new Date().toISOString().slice(0, 10);
@@ -269,7 +288,7 @@ function WeatherForm({
               name="date"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Date</FormLabel>
+                  <FormLabel>{t("weather.date")}</FormLabel>
                   <FormControl>
                     <Input {...field} type="date" data-testid="input-weather-date" />
                   </FormControl>
@@ -282,7 +301,7 @@ function WeatherForm({
               name="time"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Time</FormLabel>
+                  <FormLabel>{t("weather.time")}</FormLabel>
                   <FormControl>
                     <Input {...field} type="time" data-testid="input-weather-time" />
                   </FormControl>
@@ -295,7 +314,7 @@ function WeatherForm({
               name="location"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location</FormLabel>
+                  <FormLabel>{t("weather.location")}</FormLabel>
                   <FormControl>
                     <Input {...field} data-testid="input-weather-location" placeholder="e.g., Park City" />
                   </FormControl>
@@ -314,7 +333,7 @@ function WeatherForm({
               name="snowTemperatureC"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Snow temp (°C)</FormLabel>
+                  <FormLabel>{t("weather.snowTemp")}</FormLabel>
                   <FormControl>
                     <Input {...field} type="number" step="0.1" data-testid="input-weather-snowtemp" />
                   </FormControl>
@@ -327,7 +346,7 @@ function WeatherForm({
               name="airTemperatureC"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Air temp (°C)</FormLabel>
+                  <FormLabel>{t("weather.airTemp")}</FormLabel>
                   <FormControl>
                     <Input {...field} type="number" step="0.1" data-testid="input-weather-airtemp" />
                   </FormControl>
@@ -340,7 +359,7 @@ function WeatherForm({
               name="snowHumidityPct"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Snow hum. (Doser)</FormLabel>
+                  <FormLabel>{t("weather.snowHumidity")}</FormLabel>
                   <FormControl>
                     <Input {...field} type="number" inputMode="numeric" data-testid="input-weather-snowhum" />
                   </FormControl>
@@ -353,7 +372,7 @@ function WeatherForm({
               name="airHumidityPct"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Air hum. (%rH)</FormLabel>
+                  <FormLabel>{t("weather.airHumidity")}</FormLabel>
                   <FormControl>
                     <Input {...field} type="number" inputMode="numeric" data-testid="input-weather-airhum" />
                   </FormControl>
@@ -372,7 +391,7 @@ function WeatherForm({
               name="clouds"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Clouds (0–8)</FormLabel>
+                  <FormLabel>{t("weather.clouds")}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -393,7 +412,7 @@ function WeatherForm({
               name="visibility"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Visibility</FormLabel>
+                  <FormLabel>{t("weather.visibility")}</FormLabel>
                   <FormControl>
                     <Input {...field} data-testid="input-weather-visibility" placeholder="e.g., Good" />
                   </FormControl>
@@ -406,7 +425,7 @@ function WeatherForm({
               name="wind"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Wind</FormLabel>
+                  <FormLabel>{t("weather.wind")}</FormLabel>
                   <FormControl>
                     <Input {...field} data-testid="input-weather-wind" placeholder="e.g., Light NW" />
                   </FormControl>
@@ -419,7 +438,7 @@ function WeatherForm({
               name="precipitation"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Precipitation</FormLabel>
+                  <FormLabel>{t("weather.precipitation")}</FormLabel>
                   <FormControl>
                     <Input {...field} data-testid="input-weather-precipitation" placeholder="e.g., Light snow" />
                   </FormControl>
@@ -438,7 +457,7 @@ function WeatherForm({
               name="artificialSnow"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Artificial snow</FormLabel>
+                  <FormLabel>{t("weather.artificialSnow")}</FormLabel>
                   <Select
                     value={field.value || NONE_VALUE}
                     onValueChange={(v) => field.onChange(v === NONE_VALUE ? "" : v)}
@@ -451,7 +470,7 @@ function WeatherForm({
                     <SelectContent>
                       <SelectItem value={NONE_VALUE}>None</SelectItem>
                       {SNOW_STAGES.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                        <SelectItem key={s} value={s}>{t(snowTypeKey(s))}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -464,7 +483,7 @@ function WeatherForm({
               name="naturalSnow"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Natural snow</FormLabel>
+                  <FormLabel>{t("weather.naturalSnow")}</FormLabel>
                   <Select
                     value={field.value || NONE_VALUE}
                     onValueChange={(v) => field.onChange(v === NONE_VALUE ? "" : v)}
@@ -477,7 +496,7 @@ function WeatherForm({
                     <SelectContent>
                       <SelectItem value={NONE_VALUE}>None</SelectItem>
                       {SNOW_STAGES.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                        <SelectItem key={s} value={s}>{t(snowTypeKey(s))}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -496,7 +515,7 @@ function WeatherForm({
               name="grainSize"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Grain size</FormLabel>
+                  <FormLabel>{t("weather.grainSize")}</FormLabel>
                   <Select
                     value={field.value || NONE_VALUE}
                     onValueChange={(v) => field.onChange(v === NONE_VALUE ? "" : v)}
@@ -509,7 +528,7 @@ function WeatherForm({
                     <SelectContent>
                       <SelectItem value={NONE_VALUE}>—</SelectItem>
                       {GRAIN_SIZES.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                        <SelectItem key={s} value={s}>{t(grainSizeKey(s))}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -522,7 +541,7 @@ function WeatherForm({
               name="snowHumidityType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Snow humidity</FormLabel>
+                  <FormLabel>{t("weather.snowHumidityType")}</FormLabel>
                   <Select
                     value={field.value || NONE_VALUE}
                     onValueChange={(v) => field.onChange(v === NONE_VALUE ? "" : v)}
@@ -535,7 +554,7 @@ function WeatherForm({
                     <SelectContent>
                       <SelectItem value={NONE_VALUE}>—</SelectItem>
                       {SNOW_HUMIDITY_TYPES.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                        <SelectItem key={s} value={s}>{t(snowHumidityKey(s))}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -548,7 +567,7 @@ function WeatherForm({
               name="trackHardness"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Track hardness</FormLabel>
+                  <FormLabel>{t("weather.trackHardness")}</FormLabel>
                   <Select
                     value={field.value || NONE_VALUE}
                     onValueChange={(v) => field.onChange(v === NONE_VALUE ? "" : v)}
@@ -561,7 +580,7 @@ function WeatherForm({
                     <SelectContent>
                       <SelectItem value={NONE_VALUE}>—</SelectItem>
                       {TRACK_HARDNESS.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                        <SelectItem key={s} value={s}>{t(trackHardnessKey(s))}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -574,7 +593,7 @@ function WeatherForm({
               name="testQuality"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Test quality (1–10)</FormLabel>
+                  <FormLabel>{t("weather.testQuality")}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -595,7 +614,7 @@ function WeatherForm({
 
         <div className="flex items-center justify-end pt-2">
           <Button type="submit" data-testid="button-save-weather">
-            Save
+            {t("common.save")}
           </Button>
         </div>
       </form>
@@ -612,6 +631,7 @@ function WeatherBadge({ label, value, colorClass }: { label: string; value: stri
 }
 
 export default function WeatherPage() {
+  const { t } = useI18n();
   const { toast } = useToast();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -662,9 +682,9 @@ export default function WeatherPage() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl">Weather</h1>
+            <h1 className="text-2xl sm:text-3xl">{t("weather.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-weather-subtitle">
-              {weather.length} weather log{weather.length !== 1 ? "s" : ""} · One entry per date and location
+              {t("weather.subtitle", { count: weather.length })}
             </p>
           </div>
 
@@ -678,12 +698,12 @@ export default function WeatherPage() {
             <DialogTrigger asChild>
               <Button data-testid="button-add-weather" className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white">
                 <Plus className="mr-2 h-4 w-4" />
-                Add weather
+                {t("weather.addEntry")}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-3xl max-h-[90vh]">
               <DialogHeader>
-                <DialogTitle>{editing ? "Edit weather" : "Add weather"}</DialogTitle>
+                <DialogTitle>{editing ? t("weather.addEntry") : t("weather.addEntry")}</DialogTitle>
               </DialogHeader>
               <WeatherForm initial={editing} onSaved={() => setOpen(false)} userGroups={userGroups} selectedGroup={effectiveGroup} onGroupChange={handleGroupChange} />
             </DialogContent>
@@ -693,7 +713,7 @@ export default function WeatherPage() {
         <div className="grid grid-cols-1 gap-3">
           {weather.length === 0 ? (
             <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-weather">
-              No weather entries yet.
+              {t("weather.noEntries")}
             </Card>
           ) : (
             weather.map((w) => (
@@ -792,7 +812,7 @@ export default function WeatherPage() {
                       }}
                     >
                       <Pencil className="mr-2 h-4 w-4" />
-                      Edit
+                      {t("common.edit")}
                     </Button>
                     <Button
                       variant="ghost"
@@ -812,14 +832,14 @@ export default function WeatherPage() {
 
         <Dialog open={!!confirmDelete} onOpenChange={(v) => { if (!v) setConfirmDelete(undefined); }}>
           <DialogContent className="sm:max-w-sm">
-            <DialogHeader><DialogTitle>Delete weather log</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t("common.delete")}</DialogTitle></DialogHeader>
             {confirmDelete && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
                   Are you sure you want to delete the weather log for <span className="font-medium text-foreground">{confirmDelete.location}</span> on <span className="font-medium text-foreground">{fmtDate(confirmDelete.date)}</span>?
                 </p>
                 <div className="flex justify-end gap-2">
-                  <Button variant="ghost" onClick={() => setConfirmDelete(undefined)}>Cancel</Button>
+                  <Button variant="ghost" onClick={() => setConfirmDelete(undefined)}>{t("common.cancel")}</Button>
                   <Button
                     variant="destructive"
                     data-testid="button-confirm-delete-weather"
@@ -827,7 +847,7 @@ export default function WeatherPage() {
                     onClick={() => deleteMutation.mutate(confirmDelete.id)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
+                    {t("common.delete")}
                   </Button>
                 </div>
               </div>

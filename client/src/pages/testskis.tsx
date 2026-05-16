@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient, OfflineError } from "@/lib/queryClient";
 import { useOffline } from "@/lib/offline-context";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 type Series = {
   id: number;
@@ -61,6 +62,7 @@ function SeriesForm({
   onSaved: () => void;
   userGroups: string[];
 }) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const { queueMutation } = useOffline();
 
@@ -178,7 +180,7 @@ function SeriesForm({
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Name</FormLabel>
+                <FormLabel>{t("testskis.seriesName")}</FormLabel>
                 <FormControl>
                   <Input {...field} data-testid="input-series-name" placeholder="e.g., Testskis Blue 1" />
                 </FormControl>
@@ -192,7 +194,7 @@ function SeriesForm({
             name="brand"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Brand</FormLabel>
+                <FormLabel>{t("testskis.brand")}</FormLabel>
                 <FormControl>
                   <Input {...field} data-testid="input-series-brand" placeholder="e.g., Fischer" />
                 </FormControl>
@@ -208,7 +210,7 @@ function SeriesForm({
             name="skiType"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Ski type</FormLabel>
+                <FormLabel>{t("testskis.skiType")}</FormLabel>
                 <FormControl>
                   <Input {...field} data-testid="input-series-skitype" placeholder="e.g., Classic, Skating" />
                 </FormControl>
@@ -222,7 +224,7 @@ function SeriesForm({
             name="type"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Type</FormLabel>
+                <FormLabel>{t("testskis.seriesType")}</FormLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger data-testid="select-series-type">
@@ -230,9 +232,9 @@ function SeriesForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="Structure">Structure</SelectItem>
-                    <SelectItem value="Glide">Glide</SelectItem>
-                    <SelectItem value="Grind">Grind</SelectItem>
+                    <SelectItem value="Structure">{t("tests.structure")}</SelectItem>
+                    <SelectItem value="Glide">{t("tests.glide")}</SelectItem>
+                    <SelectItem value="Grind">{t("tests.grind")}</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -245,7 +247,7 @@ function SeriesForm({
             name="numberOfSkis"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Number of pairs</FormLabel>
+                <FormLabel>{t("testskis.numberOfSkis")}</FormLabel>
                 <FormControl>
                   <Input {...field} type="number" inputMode="numeric" data-testid="input-series-count" />
                 </FormControl>
@@ -293,7 +295,7 @@ function SeriesForm({
             name="grind"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Grind (optional)</FormLabel>
+                <FormLabel>{t("testskis.grind")} ({t("common.optional")})</FormLabel>
                 <FormControl>
                   <Input {...field} data-testid="input-series-grind" placeholder="e.g., R3" />
                 </FormControl>
@@ -306,7 +308,7 @@ function SeriesForm({
             name="lastRegrind"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Last regrind (optional)</FormLabel>
+                <FormLabel>{t("testskis.lastRegrind")} ({t("common.optional")})</FormLabel>
                 <FormControl>
                   <Input {...field} type="date" data-testid="input-series-lastregrind" />
                 </FormControl>
@@ -322,7 +324,7 @@ function SeriesForm({
             name="groupScope"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Group</FormLabel>
+                <FormLabel>{t("common.group")}</FormLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger data-testid="select-series-group">
@@ -345,7 +347,7 @@ function SeriesForm({
 
         <div className="flex items-center justify-end gap-2">
           <Button type="submit" data-testid="button-save-series">
-            Save
+            {t("common.save")}
           </Button>
         </div>
       </form>
@@ -354,6 +356,7 @@ function SeriesForm({
 }
 
 export default function TestSkis() {
+  const { t } = useI18n();
   const { toast } = useToast();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -382,6 +385,11 @@ export default function TestSkis() {
     return result;
   }, [series, sortAZ, nameSearch]);
 
+  function seriesTypeLabel(type: string) {
+    const map: Record<string, string> = { "Glide": "tests.glide", "Grind": "tests.grind", "Structure": "tests.structure" };
+    return t(map[type] ?? type);
+  }
+
   const archiveMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("POST", `/api/series/${id}/archive`);
@@ -393,7 +401,7 @@ export default function TestSkis() {
       setConfirmArchive(undefined);
     },
     onError: (e) => {
-      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: t("common.error"), description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
     },
   });
 
@@ -407,7 +415,7 @@ export default function TestSkis() {
       toast({ title: "Series restored" });
     },
     onError: (e) => {
-      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: t("common.error"), description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
     },
   });
 
@@ -421,7 +429,7 @@ export default function TestSkis() {
       setConfirmDelete(undefined);
     },
     onError: (e) => {
-      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: t("common.error"), description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
     },
   });
 
@@ -430,7 +438,7 @@ export default function TestSkis() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl">Testskis</h1>
+            <h1 className="text-2xl sm:text-3xl">{t("testskis.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-testskis-subtitle">
               {sortedSeries.length}{sortedSeries.length !== series.length ? ` of ${series.length}` : ""} series{archived.length > 0 ? ` · ${archived.length} archived` : ""}
             </p>
@@ -453,7 +461,7 @@ export default function TestSkis() {
                 className={showArchive ? "ring-1 ring-amber-200" : ""}
               >
                 <Archive className="mr-2 h-4 w-4" />
-                Archive ({archived.length})
+                {showArchive ? t("testskis.hideArchived") : t("testskis.showArchived")} ({archived.length})
               </Button>
             )}
 
@@ -475,18 +483,18 @@ export default function TestSkis() {
               <DialogTrigger asChild>
                 <Button data-testid="button-add-series" onClick={() => setEditing(undefined)} className="bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-600 hover:to-cyan-600 text-white">
                   <Plus className="mr-2 h-4 w-4" />
-                  New series
+                  {t("testskis.newSeries")}
                 </Button>
               </DialogTrigger>
             <DialogContent className="sm:max-w-xl">
               <DialogHeader>
-                <DialogTitle>{editing ? "Edit series" : "New series"}</DialogTitle>
+                <DialogTitle>{editing ? t("testskis.editSeries") : t("testskis.newSeries")}</DialogTitle>
               </DialogHeader>
               <SeriesForm
                 initial={editing}
                 onSaved={() => {
                   setOpen(false);
-                  toast({ title: "Saved" });
+                  toast({ title: t("common.save") });
                 }}
                 userGroups={userGroups}
               />
@@ -509,12 +517,12 @@ export default function TestSkis() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", typeBadgeClass(s.type))}>
-                          {s.type}
+                          {seriesTypeLabel(s.type)}
                         </span>
                         <span className="truncate text-base font-semibold">{s.name}</span>
                       </div>
                       <div className="mt-1.5 text-sm text-muted-foreground">
-                        {[s.brand, s.skiType, `${s.numberOfSkis} skis`].filter(Boolean).join(" · ")}
+                        {[s.brand, s.skiType, `${s.numberOfSkis} ${t("testskis.skiCount").replace("{n}", String(s.numberOfSkis))}`].filter(Boolean).join(" · ")}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground/60">
                         Archived {s.archivedAt ? new Date(s.archivedAt).toLocaleDateString() : ""}
@@ -530,7 +538,7 @@ export default function TestSkis() {
                         onClick={() => restoreMutation.mutate(s.id)}
                       >
                         <RotateCcw className="mr-2 h-4 w-4" />
-                        Restore
+                        {t("common.restore")}
                       </Button>
                       <Button
                         variant="ghost"
@@ -552,7 +560,7 @@ export default function TestSkis() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {sortedSeries.length === 0 ? (
             <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground sm:col-span-2" data-testid="empty-series">
-              No test series yet.
+              {t("testskis.noSeries")}
             </Card>
           ) : (
             sortedSeries.map((s) => (
@@ -565,7 +573,7 @@ export default function TestSkis() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", typeBadgeClass(s.type))}>
-                        {s.type}
+                        {seriesTypeLabel(s.type)}
                       </span>
                       <span className="truncate text-base font-semibold">{s.name}</span>
                     </div>
@@ -573,7 +581,7 @@ export default function TestSkis() {
                       {[
                         s.brand,
                         s.skiType,
-                        `${s.numberOfSkis} skis`,
+                        `${s.numberOfSkis} ${t("testskis.skiCount").replace("{n}", String(s.numberOfSkis))}`,
                         s.grind ? `Grind ${s.grind}` : null,
                         s.lastRegrind ? `Regrind ${s.lastRegrind}` : null,
                       ].filter(Boolean).join(" · ")}
@@ -587,7 +595,7 @@ export default function TestSkis() {
                     <AppLink href={`/testskis/${s.id}`} testId={`link-series-tests-${s.id}`}>
                       <Button variant="secondary" size="sm" data-testid={`button-view-series-${s.id}`}>
                         <Table className="mr-2 h-4 w-4" />
-                        Tests
+                        {t("testskis.viewTests")}
                       </Button>
                     </AppLink>
                     <Button
@@ -619,21 +627,21 @@ export default function TestSkis() {
 
         <Dialog open={!!confirmArchive} onOpenChange={(v) => { if (!v) setConfirmArchive(undefined); }}>
           <DialogContent className="sm:max-w-sm">
-            <DialogHeader><DialogTitle>Archive series</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t("common.archive")} series</DialogTitle></DialogHeader>
             {confirmArchive && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
                   Are you sure you want to archive <span className="font-medium text-foreground">{confirmArchive.name}</span>? You can restore it later from the archive.
                 </p>
                 <div className="flex justify-end gap-2">
-                  <Button variant="ghost" onClick={() => setConfirmArchive(undefined)}>Cancel</Button>
+                  <Button variant="ghost" onClick={() => setConfirmArchive(undefined)}>{t("common.cancel")}</Button>
                   <Button
                     data-testid="button-confirm-archive"
                     disabled={archiveMutation.isPending}
                     onClick={() => archiveMutation.mutate(confirmArchive.id)}
                   >
                     <Archive className="mr-2 h-4 w-4" />
-                    Archive
+                    {t("common.archive")}
                   </Button>
                 </div>
               </div>
@@ -643,14 +651,14 @@ export default function TestSkis() {
 
         <Dialog open={!!confirmDelete} onOpenChange={(v) => { if (!v) setConfirmDelete(undefined); }}>
           <DialogContent className="sm:max-w-sm">
-            <DialogHeader><DialogTitle>Delete permanently</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t("common.delete")} permanently</DialogTitle></DialogHeader>
             {confirmDelete && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
                   Are you sure you want to permanently delete <span className="font-medium text-foreground">{confirmDelete.name}</span>? This cannot be undone.
                 </p>
                 <div className="flex justify-end gap-2">
-                  <Button variant="ghost" onClick={() => setConfirmDelete(undefined)}>Cancel</Button>
+                  <Button variant="ghost" onClick={() => setConfirmDelete(undefined)}>{t("common.cancel")}</Button>
                   <Button
                     variant="destructive"
                     data-testid="button-confirm-delete-series"
@@ -658,7 +666,7 @@ export default function TestSkis() {
                     onClick={() => deleteMutation.mutate(confirmDelete.id)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Delete permanently
+                    {t("common.delete")} permanently
                   </Button>
                 </div>
               </div>

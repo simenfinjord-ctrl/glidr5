@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn, fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 
 type Test = {
   id: number;
@@ -605,6 +606,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
 export default function Tests() {
   const [, navigate] = useLocation();
+  const { t } = useI18n();
   const { isBlindTester, can } = useAuth();
   const canViewGrinding = can("grinding", "view");
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
@@ -780,9 +782,9 @@ export default function Tests() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl">Tests</h1>
+            <h1 className="text-2xl sm:text-3xl">{t("tests.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-tests-subtitle">
-              {filtered.length} test{filtered.length !== 1 ? "s" : ""}{hasFilters ? " matching filters" : " total"}
+              {t("tests.subtitle", { count: filtered.length, hasFilters })}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -791,15 +793,15 @@ export default function Tests() {
               size="sm"
               className="text-muted-foreground hover:text-foreground gap-1.5"
               onClick={() => setFromPictureOpen(true)}
-              title="Add test from picture"
+              title={t("tests.addImage")}
             >
               <Camera className="h-4 w-4" />
-              <span className="hidden sm:inline text-xs">Add from picture</span>
+              <span className="hidden sm:inline text-xs">{t("tests.addImage")}</span>
             </Button>
             <AppLink href="/tests/new">
               <Button data-testid="button-new-test" className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
                 <Plus className="mr-2 h-4 w-4" />
-                New test
+                {t("tests.newTest")}
               </Button>
             </AppLink>
           </div>
@@ -848,7 +850,7 @@ export default function Tests() {
                     <SelectValue placeholder="Test type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="All">All types</SelectItem>
+                    <SelectItem value="All">{t("tests.filterByType")}</SelectItem>
                     <SelectItem value="Glide">Glide</SelectItem>
                     <SelectItem value="Structure">Structure</SelectItem>
                     <SelectItem value="Classic">Classic</SelectItem>
@@ -1007,7 +1009,7 @@ export default function Tests() {
                   data-testid="button-toggle-day-details"
                 >
                   {hideDayDetails ? <Eye className="mr-1.5 h-3.5 w-3.5" /> : <EyeOff className="mr-1.5 h-3.5 w-3.5" />}
-                  {hideDayDetails ? "Show" : "Hide"}
+                  {hideDayDetails ? t("tests.showBlind") : t("tests.hideBlind")}
                 </Button>
               )}
               <Button
@@ -1022,7 +1024,7 @@ export default function Tests() {
             </div>
             {filtered.length === 0 ? (
               <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-day-tests">
-                No tests on this date.
+                {t("tests.noTests")}
               </Card>
             ) : viewMode === "table" ? (
               <Card className="fs-card rounded-2xl overflow-hidden">
@@ -1032,13 +1034,13 @@ export default function Tests() {
                       <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                         <th className="px-4 py-3 font-semibold">Time</th>
                         <th className="px-4 py-3 font-semibold">Name</th>
-                        <th className="px-4 py-3 font-semibold">Location</th>
-                        <th className="px-4 py-3 font-semibold">Type</th>
-                        <th className="px-4 py-3 font-semibold">Series</th>
+                        <th className="px-4 py-3 font-semibold">{t("common.location")}</th>
+                        <th className="px-4 py-3 font-semibold">{t("common.type")}</th>
+                        <th className="px-4 py-3 font-semibold">{t("tests.series")}</th>
                         <th className="px-4 py-3 font-semibold">Air temp</th>
                         <th className="px-4 py-3 font-semibold">Snow temp</th>
                         <th className="px-4 py-3 font-semibold">Created by</th>
-                        {!isBlindTester && <th className="px-4 py-3 font-semibold">Winner</th>}
+                        {!isBlindTester && <th className="px-4 py-3 font-semibold">{t("tests.winner")}</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -1128,7 +1130,7 @@ export default function Tests() {
                             {winner.productName}
                           </span>
                         )}
-                        <span className="text-xs text-muted-foreground">{sortedEntries.length} entries</span>
+                        <span className="text-xs text-muted-foreground">{sortedEntries.length} {t("tests.entries")}</span>
                       </div>
                     </div>
 
@@ -1242,22 +1244,22 @@ export default function Tests() {
           <Card className="fs-card rounded-2xl overflow-hidden">
             {filtered.length === 0 ? (
               <div className="p-6 text-sm text-muted-foreground" data-testid="empty-tests">
-                {hasFilters ? "No tests match your filters." : "No tests yet."}
+                {t("tests.noTests")}
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm" data-testid="table-tests-overview">
                   <thead>
                     <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                      <th className="px-4 py-3 font-semibold">Date</th>
+                      <th className="px-4 py-3 font-semibold">{t("common.date")}</th>
                       <th className="px-4 py-3 font-semibold">Name</th>
-                      <th className="px-4 py-3 font-semibold">Location</th>
-                      <th className="px-4 py-3 font-semibold">Type</th>
-                      <th className="px-4 py-3 font-semibold">Series</th>
+                      <th className="px-4 py-3 font-semibold">{t("common.location")}</th>
+                      <th className="px-4 py-3 font-semibold">{t("common.type")}</th>
+                      <th className="px-4 py-3 font-semibold">{t("tests.series")}</th>
                       <th className="px-4 py-3 font-semibold">Air temp</th>
                       <th className="px-4 py-3 font-semibold">Snow temp</th>
                       <th className="px-4 py-3 font-semibold">Created by</th>
-                      {!isBlindTester && <th className="px-4 py-3 font-semibold">Winner</th>}
+                      {!isBlindTester && <th className="px-4 py-3 font-semibold">{t("tests.winner")}</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -1317,7 +1319,7 @@ export default function Tests() {
           <div className={cn("grid gap-3", twoColLayout ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1")}>
             {filtered.length === 0 ? (
               <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-tests">
-                {hasFilters ? "No tests match your filters." : "No tests yet."}
+                {t("tests.noTests")}
               </Card>
             ) : (
               filtered.map((t) => {

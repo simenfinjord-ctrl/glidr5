@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { OfflineProvider } from "@/lib/offline-context";
 import { ThemeProvider } from "@/lib/theme";
 import { LanguageProvider } from "@/lib/language";
+import { I18nProvider } from "@/lib/i18n";
 import { useState, useEffect } from "react";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
@@ -172,14 +173,16 @@ export default function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <QueryClientProvider client={queryClient}>
-          <OfflineProvider>
-            <TooltipProvider>
-              <Toaster />
-              <AuthGuard />
-            </TooltipProvider>
-          </OfflineProvider>
-        </QueryClientProvider>
+        <I18nProvider>
+          <QueryClientProvider client={queryClient}>
+            <OfflineProvider>
+              <TooltipProvider>
+                <Toaster />
+                <AuthGuard />
+              </TooltipProvider>
+            </OfflineProvider>
+          </QueryClientProvider>
+        </I18nProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

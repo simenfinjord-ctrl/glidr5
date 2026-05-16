@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Watch, Trash2, RotateCcw, RefreshCw, Eye, Archive, List, Copy, Check } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +79,7 @@ function SessionCode({ item, isAdmin }: { item: QueueItem; isAdmin: boolean }) {
 
 export default function WatchQueue() {
   const { toast } = useToast();
+  const { t } = useI18n();
   const { user } = useAuth();
   const isAdmin = !!(user?.isAdmin || user?.isTeamAdmin);
   const [tab, setTab] = useState<"active" | "archive">("active");
@@ -131,8 +133,8 @@ export default function WatchQueue() {
             <Watch className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Watch Queue</h1>
-            <p className="text-sm text-muted-foreground">Tests queued for the Garmin app</p>
+            <h1 className="text-2xl font-bold">{t("watchQueue.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("watchQueue.subtitle")}</p>
           </div>
         </div>
 
@@ -204,22 +206,18 @@ export default function WatchQueue() {
 
         {/* Items */}
         {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">Loading...</div>
+          <div className="text-center py-12 text-muted-foreground text-sm">{t("common.loading")}</div>
         ) : items.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             {tab === "active" ? (
               <>
                 <Watch className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No tests in queue</p>
-                <p className="text-sm mt-1">
-                  Open a test and click <strong>Add to Watch</strong> to queue it for the Garmin app.
-                </p>
+                <p className="font-medium">{t("watchQueue.noItems")}</p>
               </>
             ) : (
               <>
                 <Archive className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No archived tests</p>
-                <p className="text-sm mt-1">Completed tests will appear here.</p>
+                <p className="font-medium">{t("watchQueue.noItems")}</p>
               </>
             )}
           </div>
@@ -232,7 +230,7 @@ export default function WatchQueue() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold truncate">{displayName(item)}</p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-muted-foreground">
-                        <span>Added by {item.added_by_name}</span>
+                        <span>{t("watchQueue.addedBy")} {item.added_by_name}</span>
                         <span>·</span>
                         <span>{new Date(item.added_at).toLocaleDateString()}</span>
                         {item.completed_at && (

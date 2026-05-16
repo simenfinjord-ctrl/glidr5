@@ -8,6 +8,7 @@ import { ChevronLeft, Save, Sparkles, ClipboardList } from "lucide-react";
 import { useOffline } from "@/lib/offline-context";
 import { OfflineError } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -111,6 +112,7 @@ export default function NewTest() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, can } = useAuth();
+  const { t } = useI18n();
 
   const urlParams = new URLSearchParams(window.location.search);
   const duplicateId = urlParams.get("duplicate");
@@ -381,7 +383,7 @@ export default function NewTest() {
               </Button>
             </a>
             <div>
-              <h1 className="text-2xl sm:text-3xl">{duplicateId ? "Duplicate test" : initialType === "Grind" ? "New grind test" : "New test"}</h1>
+              <h1 className="text-2xl sm:text-3xl">{duplicateId ? "Duplicate test" : initialType === "Grind" ? "New grind test" : t("newTest.title")}</h1>
               <p
                 className="mt-1 text-sm text-muted-foreground"
                 data-testid="text-newtest-subtitle"
@@ -411,7 +413,7 @@ export default function NewTest() {
               }
             >
               <Sparkles className="mr-2 h-4 w-4" />
-              Add ski
+              {t("newTest.addEntry")}
             </Button>
             {rows.length >= 2 && (
               <Button
@@ -429,7 +431,7 @@ export default function NewTest() {
               data-testid="button-save-test"
             >
               <Save className="mr-2 h-4 w-4" />
-              Save
+              {t("common.save")}
             </Button>
           </div>
         </div>
@@ -521,14 +523,14 @@ export default function NewTest() {
                     name="seriesId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Series</FormLabel>
+                        <FormLabel>{t("newTest.series")}</FormLabel>
                         <Select
                           value={field.value}
                           onValueChange={field.onChange}
                         >
                           <FormControl>
                             <SelectTrigger data-testid="select-test-series">
-                              <SelectValue placeholder="Select series" />
+                              <SelectValue placeholder={t("newTest.selectSeries")} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -556,7 +558,7 @@ export default function NewTest() {
                     name="testType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Test type</FormLabel>
+                        <FormLabel>{t("newTest.type")}</FormLabel>
                         <Select
                           value={field.value}
                           onValueChange={(v) => {
@@ -603,7 +605,7 @@ export default function NewTest() {
                     name="date"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Date</FormLabel>
+                        <FormLabel>{t("newTest.date")}</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -623,7 +625,7 @@ export default function NewTest() {
                     name="startTime"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Start time</FormLabel>
+                        <FormLabel>{t("newTest.time")}</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -643,7 +645,7 @@ export default function NewTest() {
                     name="location"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Location</FormLabel>
+                        <FormLabel>{t("newTest.location")}</FormLabel>
                         <FormControl>
                           <LocationAutocomplete
                             value={field.value}
@@ -664,7 +666,7 @@ export default function NewTest() {
                     name="testName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Test name</FormLabel>
+                        <FormLabel>{t("newTest.name")}</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -684,7 +686,7 @@ export default function NewTest() {
                     name="weatherId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Weather</FormLabel>
+                        <FormLabel>{t("newTest.weather")}</FormLabel>
                         <Select
                           value={field.value ?? "__auto__"}
                           onValueChange={(v) => {
@@ -697,7 +699,7 @@ export default function NewTest() {
                                 placeholder={
                                   autoWeather
                                     ? `Auto: ${autoWeather.location} ${autoWeather.time}`
-                                    : "Select weather"
+                                    : t("newTest.selectWeather")
                                 }
                               />
                             </SelectTrigger>
@@ -733,11 +735,11 @@ export default function NewTest() {
                       name="groupScope"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Group</FormLabel>
+                          <FormLabel>{t("newTest.group")}</FormLabel>
                           <Select value={field.value} onValueChange={field.onChange}>
                             <FormControl>
                               <SelectTrigger data-testid="select-test-group">
-                                <SelectValue placeholder="Select group" />
+                                <SelectValue placeholder={t("newTest.selectGroup")} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -761,7 +763,7 @@ export default function NewTest() {
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Notes</FormLabel>
+                        <FormLabel>{t("common.notes")}</FormLabel>
                         <FormControl>
                           <Textarea
                             {...field}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Users, LayoutGrid, List } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ type Athlete = {
 export default function RaceSkis() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [team, setTeam] = useState("");
@@ -80,10 +82,10 @@ export default function RaceSkis() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl" data-testid="text-raceskis-title">
-              Raceskis
+              {t("raceskis.title")}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-raceskis-subtitle">
-              Manage athlete profiles and race ski inventory
+              {t("raceskis.subtitle")}
             </p>
           </div>
 
@@ -128,12 +130,12 @@ export default function RaceSkis() {
                 className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Add Athlete
+                {t("raceskis.addAthlete")}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Add Athlete</DialogTitle>
+                <DialogTitle>{t("raceskis.addAthlete")}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
@@ -176,7 +178,7 @@ export default function RaceSkis() {
             className="fs-card rounded-2xl p-6 text-sm text-muted-foreground"
             data-testid="empty-athletes"
           >
-            No athletes yet. Add your first athlete to get started.
+            {t("raceskis.noAthletes")}
           </Card>
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

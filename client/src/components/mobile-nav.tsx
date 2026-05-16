@@ -8,6 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 import { AppLink } from "@/components/app-link";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 
 export function useMobileNav() {
   const key = "glidr_mobile_nav";
@@ -42,6 +43,25 @@ export function MobileNav({ watchQueueCount }: { watchQueueCount?: number }) {
   const [location] = useLocation();
   const [showMore, setShowMore] = useState(false);
   const { can, canManage } = useAuth();
+  const { t } = useI18n();
+
+  const navLabel = (href: string) => {
+    const map: Record<string, string> = {
+      "/dashboard": "nav.dashboard",
+      "/tests": "nav.tests",
+      "/testskis": "nav.testskis",
+      "/products": "nav.products",
+      "/weather": "nav.weather",
+      "/analytics": "nav.analytics",
+      "/grinding": "nav.grinding",
+      "/raceskis": "nav.raceskis",
+      "/suggestions": "nav.suggestions",
+      "/live-runsheets": "nav.liveRunsheets",
+      "/watch-queue": "nav.watchQueue",
+      "/admin": "nav.admin",
+    };
+    return t(map[href] ?? "nav.dashboard");
+  };
 
   const visible = ALL_NAV.filter((item) => {
     if (item.adminOnly) return canManage;
@@ -82,7 +102,7 @@ export function MobileNav({ watchQueueCount }: { watchQueueCount?: number }) {
                     </span>
                   ) : null}
                 </div>
-                <span>{item.label}</span>
+                <span>{navLabel(item.href)}</span>
               </AppLink>
             );
           })}
@@ -97,7 +117,7 @@ export function MobileNav({ watchQueueCount }: { watchQueueCount?: number }) {
               )}
             >
               {showMore ? <X className="h-5 w-5" /> : <MoreHorizontal className="h-5 w-5" />}
-              <span>{showMore ? "Close" : "More"}</span>
+              <span>{showMore ? t("nav.close") : t("nav.more")}</span>
             </button>
           )}
         </div>
@@ -124,7 +144,7 @@ export function MobileNav({ watchQueueCount }: { watchQueueCount?: number }) {
                     )}
                   >
                     <Icon className="h-5 w-5" />
-                    <span className="text-center leading-tight">{item.label}</span>
+                    <span className="text-center leading-tight">{navLabel(item.href)}</span>
                   </AppLink>
                 );
               })}

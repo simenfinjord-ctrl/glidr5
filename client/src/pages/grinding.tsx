@@ -15,6 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn, fmtDate } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 type Test = {
   id: number;
@@ -182,6 +183,7 @@ function GrindProfileForm({
   editProfile?: GrindProfile;
   allProfileParamKeys?: string[];
 }) {
+  const { t } = useI18n();
   const { toast } = useToast();
 
   // Build initial param rows from stored order; all params are equal
@@ -304,7 +306,7 @@ function GrindProfileForm({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Profile Name</FormLabel>
+              <FormLabel>{t("grinding.profileName")}</FormLabel>
               <FormControl>
                 <Input {...field} placeholder="e.g. Classic warm, Skate heavy" data-testid="input-grind-profile-name" />
               </FormControl>
@@ -318,7 +320,7 @@ function GrindProfileForm({
           name="grindType"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Grind Type</FormLabel>
+              <FormLabel>{t("grinding.grindType")}</FormLabel>
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger data-testid="select-grind-profile-type">
@@ -400,7 +402,7 @@ function GrindProfileForm({
 
         <div className="flex justify-end pt-2">
           <Button type="submit" disabled={!canSave} data-testid="button-save-grind-profile">
-            {editProfile ? "Save" : "Add Grind"}
+            {editProfile ? t("common.save") : "Add Grind"}
           </Button>
         </div>
       </form>
@@ -923,6 +925,7 @@ const GRIND_COMPARE_COLORS = [
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Grinding() {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [tab, setTab] = useState<"tests" | "grinds">("tests");
 
@@ -988,7 +991,7 @@ export default function Grinding() {
       toast({ title: "Grind profile deleted" });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -999,10 +1002,10 @@ export default function Grinding() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/grind-profiles"] });
-      toast({ title: "Grind profile duplicated" });
+      toast({ title: t("grinding.duplicated") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -1084,7 +1087,7 @@ export default function Grinding() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-grinding-title">
               <Disc3 className="inline-block mr-2 h-7 w-7 text-indigo-600" />
-              Grinding
+              {t("grinding.title")}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">{getTabSubtitle()}</p>
           </div>
@@ -1112,7 +1115,7 @@ export default function Grinding() {
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>{editProfile ? "Edit Grind Profile" : "Add Grind Profile"}</DialogTitle>
+                    <DialogTitle>{editProfile ? t("grinding.editProfile") : t("grinding.newProfile")}</DialogTitle>
                   </DialogHeader>
                   <GrindProfileForm
                     key={editProfile ? `edit-${editProfile.id}` : "create"}
@@ -1341,7 +1344,7 @@ export default function Grinding() {
               <Card className="fs-card rounded-2xl p-8 text-center">
                 <Disc3 className="mx-auto h-10 w-10 text-muted-foreground/50 mb-3" />
                 <div className="text-sm text-muted-foreground">
-                  {hasFilters ? "No grind tests match your filters." : "No grind tests yet. Create your first one above."}
+                  {hasFilters ? "No grind tests match your filters." : t("grinding.noProfiles")}
                 </div>
               </Card>
             ) : isGrindFilterActive ? (
@@ -1458,7 +1461,7 @@ export default function Grinding() {
             {grindProfiles.length === 0 ? (
               <Card className="fs-card rounded-2xl p-8 text-center">
                 <Trophy className="mx-auto h-10 w-10 text-muted-foreground/50 mb-3" />
-                <div className="text-sm text-muted-foreground">No grind profiles yet. Click "Add Grind" to create your first profile.</div>
+                <div className="text-sm text-muted-foreground">{t("grinding.noProfiles")}</div>
               </Card>
             ) : filteredProfiles.length === 0 ? (
               <Card className="fs-card rounded-2xl p-6 text-center">

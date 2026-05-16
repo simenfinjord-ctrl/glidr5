@@ -42,6 +42,7 @@ import { AppLink } from "@/components/app-link";
 import { MobileNav, useMobileNav } from "@/components/mobile-nav";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useI18n } from "@/lib/i18n";
 
 type NavItem = {
   href: string;
@@ -181,6 +182,7 @@ const nav: NavItem[] = [
 
 function ReportProblemDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
@@ -188,13 +190,13 @@ function ReportProblemDialog({ open, onClose }: { open: boolean; onClose: () => 
     mutationFn: () =>
       apiRequest("POST", "/api/report-problem", { subject, body }),
     onSuccess: () => {
-      toast({ title: "Report sent", description: "Thank you — your report has been forwarded to the support team." });
+      toast({ title: t("report.successTitle"), description: t("report.successDesc") });
       setSubject("");
       setBody("");
       onClose();
     },
     onError: (err: any) => {
-      toast({ title: "Failed to send report", description: err?.message ?? "Please try again.", variant: "destructive" });
+      toast({ title: t("report.errorTitle"), description: err?.message ?? "Please try again.", variant: "destructive" });
     },
   });
 
@@ -208,16 +210,16 @@ function ReportProblemDialog({ open, onClose }: { open: boolean; onClose: () => 
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Report a Problem</DialogTitle>
+          <DialogTitle>{t("report.title")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="mt-2 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="rp-subject">Subject</Label>
+            <Label htmlFor="rp-subject">{t("report.subject")}</Label>
             <Input
               id="rp-subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Brief description of the issue"
+              placeholder={t("report.subjectPlaceholder")}
               maxLength={200}
               required
               data-testid="input-report-subject"
@@ -225,12 +227,12 @@ function ReportProblemDialog({ open, onClose }: { open: boolean; onClose: () => 
             <span className="text-right text-[11px] text-muted-foreground">{subject.length}/200</span>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="rp-body">Details</Label>
+            <Label htmlFor="rp-body">{t("report.details")}</Label>
             <Textarea
               id="rp-body"
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Describe what happened, what you expected, and any steps to reproduce…"
+              placeholder={t("report.detailsPlaceholder")}
               maxLength={2000}
               rows={6}
               required
@@ -243,7 +245,7 @@ function ReportProblemDialog({ open, onClose }: { open: boolean; onClose: () => 
             disabled={mutation.isPending || !subject.trim() || !body.trim()}
             data-testid="button-report-submit"
           >
-            {mutation.isPending ? "Sending…" : "Submit Report"}
+            {mutation.isPending ? t("report.sending") : t("report.submit")}
           </Button>
         </form>
       </DialogContent>
@@ -256,6 +258,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout, can, isSuperAdmin, isTeamAdmin, canManage, switchTeam, toggleIncognito, toggleStealth, isViewingOtherTeam, isStealthActive, userTeams, userTeamsLoading } = useAuth();
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
   const { theme, toggle: toggleTheme } = useTheme();
+  const { t } = useI18n();
   const [reportOpen, setReportOpen] = useState(false);
 
   const [adminMode, setAdminMode] = useState<boolean>(() => {
@@ -351,6 +354,25 @@ export function AppShell({ children }: { children: ReactNode }) {
     ? [overviewNavItem, ...sortedNav]
     : sortedNav;
 
+  const navLabel = (href: string) => {
+    const map: Record<string, string> = {
+      "/dashboard": "nav.dashboard",
+      "/tests": "nav.tests",
+      "/testskis": "nav.testskis",
+      "/products": "nav.products",
+      "/weather": "nav.weather",
+      "/analytics": "nav.analytics",
+      "/grinding": "nav.grinding",
+      "/raceskis": "nav.raceskis",
+      "/suggestions": "nav.suggestions",
+      "/live-runsheets": "nav.liveRunsheets",
+      "/watch-queue": "nav.watchQueue",
+      "/admin": "nav.admin",
+      "/overview": "nav.overview",
+    };
+    return t(map[href] ?? "nav.dashboard");
+  };
+
   return (
     <div className="min-h-screen fs-grid">
       <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
@@ -370,7 +392,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   className="h-8 w-auto min-w-[140px] border-border bg-muted/50 text-xs font-medium"
                   data-testid="select-team"
                 >
-                  <SelectValue placeholder="Select team" />
+                  <SelectValue placeholder={t("shell.selectTeam")} />
                 </SelectTrigger>
                 <SelectContent>
                   {teams.map((team: any) => (
@@ -390,7 +412,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   className="h-8 w-auto min-w-[140px] border-border bg-muted/50 text-xs font-medium"
                   data-testid="select-user-team"
                 >
-                  <SelectValue placeholder="Select team" />
+                  <SelectValue placeholder={t("shell.selectTeam")} />
                 </SelectTrigger>
                 <SelectContent>
                   {userTeams.map((team) => (
@@ -407,7 +429,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {!isOnline && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200" data-testid="badge-offline">
                 <WifiOff className="h-3 w-3" />
-                Offline
+                {t("shell.offline")}
               </span>
             )}
             {pendingCount > 0 && (
@@ -424,7 +446,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ) : (
                   <CloudUpload className="mr-1.5 h-4 w-4" />
                 )}
-                {pendingCount} pending
+                {`${pendingCount} ${t("shell.pending")}`}
               </Button>
             )}
             {isSuperAdmin && isViewingOtherTeam && (
@@ -437,7 +459,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   "text-muted-foreground hover:text-foreground hover:bg-muted",
                   isStealthActive && "text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400"
                 )}
-                title={isStealthActive ? "Stealth mode ON (read-only)" : "Stealth mode"}
+                title={isStealthActive ? t("shell.stealthOn") : t("shell.stealth")}
               >
                 {isStealthActive ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
               </Button>
@@ -452,7 +474,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   "text-muted-foreground hover:text-foreground hover:bg-muted",
                   user?.incognito && "text-purple-600 bg-purple-50 dark:bg-purple-900/30 dark:text-purple-400"
                 )}
-                title={user?.incognito ? "Incognito mode ON" : "Incognito mode"}
+                title={user?.incognito ? t("shell.incognitoOn") : t("shell.incognito")}
               >
                 {user?.incognito ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
@@ -465,7 +487,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 data-testid="button-mail"
                 onClick={() => navigate("/inbox")}
                 className="relative text-muted-foreground hover:text-foreground hover:bg-muted"
-                title="SA Inbox"
+                title={t("shell.inbox")}
               >
                 <Mail className="h-4 w-4" />
                 {unreadCount > 0 && (
@@ -526,7 +548,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                       active ? item.activeColor : item.color,
                     )}
                   />
-                  <span>{item.label}</span>
+                  <span>{navLabel(item.href)}</span>
                   {item.href === "/watch-queue" && watchQueueCount > 0 && (
                     <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-white">
                       {watchQueueCount}
@@ -555,23 +577,23 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="font-medium">Glidr</span>
           <div className="flex items-center gap-3">
             <AppLink href="/my-account" testId="link-my-account" className="underline hover:text-foreground transition-colors">
-              My Account
+              {t("shell.myAccount")}
             </AppLink>
             <span className="text-border">|</span>
             <AppLink href="/what-is-glidr" testId="link-what-is-glidr" className="underline hover:text-foreground transition-colors">
-              What is Glidr?
+              {t("shell.whatIsGlidr")}
             </AppLink>
             <span className="text-border">|</span>
             <AppLink href="/pricing" testId="link-pricing" className="underline hover:text-foreground transition-colors">
-              Pricing
+              {t("shell.pricing")}
             </AppLink>
             <span className="text-border">|</span>
             <AppLink href="/legal" testId="link-legal" className="underline hover:text-foreground transition-colors">
-              Legal
+              {t("shell.legal")}
             </AppLink>
             <span className="text-border">|</span>
             <AppLink href="/contact" testId="link-contact" className="underline hover:text-foreground transition-colors">
-              Contact
+              {t("shell.contact")}
             </AppLink>
             <span className="text-border">|</span>
             <button
@@ -580,7 +602,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               data-testid="link-report-problem"
             >
               <Mail className="h-3 w-3" />
-              Report a Problem
+              {t("shell.reportProblem")}
             </button>
           </div>
         </div>

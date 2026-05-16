@@ -1,139 +1,111 @@
-import { Mail, Phone, MapPin, ArrowRight } from "lucide-react";
-import { AppLink } from "@/components/app-link";
+import { Mail, Phone } from "lucide-react";
 import { useSearch } from "wouter";
+import { PublicNav } from "@/components/public-nav";
+import { useLanguage } from "@/lib/language";
 
-const PLAN_LABELS: Record<string, { name: string; price: string; color: string }> = {
-  starter: { name: "Starter", price: "€25/mnd", color: "bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300" },
-  team:    { name: "Team",    price: "€79/mnd", color: "bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/20 dark:border-emerald-700 dark:text-emerald-300" },
-  pro:     { name: "Pro",     price: "€149/mnd", color: "bg-violet-50 border-violet-200 text-violet-800 dark:bg-violet-900/20 dark:border-violet-700 dark:text-violet-300" },
-  federation: { name: "Federation", price: "Tilpasset pris", color: "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300" },
+const CONTENT = {
+  en: {
+    title: "Contact us",
+    sub: "Send us an email or call, and we'll set up your account and send an invoice.",
+    emailLabel: "Email",
+    phoneLabel: "Phone",
+    manualNote: "We set up all accounts manually and will get back to you within 1–2 business days.",
+    orForm: "Prefer a form?",
+    orFormLink: "Fill out the registration form",
+    planBadge: "Enquiring about",
+    planSubject: (name: string) => `Glidr ${name} subscription`,
+    planBody: (name: string, price: string) => `Hi,\n\nI'm interested in the Glidr ${name} plan (${price}).\n\nOrganisation / team:\nNumber of users:\nContact person:\n\nBest regards`,
+    defaultSubject: "Question about Glidr",
+    defaultBody: "Hi,\n\nI have a question about Glidr.\n\nBest regards",
+    emailCta: "Send email",
+  },
+  no: {
+    title: "Kontakt oss",
+    sub: "Send oss en e-post eller ring, så setter vi opp kontoen din og sender faktura.",
+    emailLabel: "E-post",
+    phoneLabel: "Telefon",
+    manualNote: "Vi setter opp alle kontoer manuelt og tar kontakt innen 1–2 virkedager.",
+    orForm: "Foretrekker du et skjema?",
+    orFormLink: "Fyll ut registreringsskjemaet",
+    planBadge: "Interessert i",
+    planSubject: (name: string) => `Glidr ${name}-abonnement`,
+    planBody: (name: string, price: string) => `Hei,\n\nJeg er interessert i Glidr ${name}-planen (${price}).\n\nOrganisasjon/lag:\nAntall brukere:\nKontaktperson:\n\nMvh`,
+    defaultSubject: "Spørsmål om Glidr",
+    defaultBody: "Hei,\n\nJeg har et spørsmål om Glidr.\n\nMvh",
+    emailCta: "Send e-post",
+  },
+};
+
+const PLAN_LABELS: Record<string, { name: string; price: string; priceNo: string }> = {
+  starter:    { name: "Starter",    price: "€25/mo",   priceNo: "€25/mnd" },
+  team:       { name: "Team",       price: "€79/mo",   priceNo: "€79/mnd" },
+  pro:        { name: "Pro",        price: "€149/mo",  priceNo: "€149/mnd" },
+  enterprise: { name: "Enterprise", price: "Custom",   priceNo: "Tilpasset" },
 };
 
 export default function Contact() {
+  const { lang } = useLanguage();
+  const t = CONTENT[lang];
   const search = useSearch();
   const params = new URLSearchParams(search);
   const planId = params.get("plan");
   const plan = planId ? PLAN_LABELS[planId] : null;
 
-  const emailSubject = plan
-    ? `Glidr ${plan.name}-abonnement`
-    : "Spørsmål om Glidr";
-
-  const emailBody = plan
-    ? `Hei,\n\nJeg er interessert i Glidr ${plan.name}-planen (${plan.price}).\n\nOrganisasjon/lag:\nAntall brukere:\nKontaktperson:\n\nMvh`
-    : `Hei,\n\nJeg har et spørsmål om Glidr.\n\nMvh`;
-
-  const mailtoHref = `mailto:Simen.finjord@hotmail.com?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+  const price = plan ? (lang === "no" ? plan.priceNo : plan.price) : "";
+  const subject = plan ? t.planSubject(plan.name) : t.defaultSubject;
+  const body = plan ? t.planBody(plan.name, price) : t.defaultBody;
+  const mailtoHref = `mailto:hei@glidr.no?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 py-12">
-
+      <PublicNav />
+      <div className="mx-auto max-w-2xl px-4 sm:px-6 py-16">
         <div className="text-center mb-10">
-          <h1
-            className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground mb-4"
-            data-testid="heading-contact"
-          >
-            Kontakt oss
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground mb-4" data-testid="heading-contact">
+            {t.title}
           </h1>
-          <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-            Send oss en e-post eller ring, så setter vi opp kontoen din og sender faktura.
-          </p>
+          <p className="text-lg text-muted-foreground max-w-xl mx-auto">{t.sub}</p>
         </div>
 
-        {/* Plan badge — vises når de kommer fra prissiden */}
         {plan && (
-          <div className={`mb-8 rounded-2xl border p-5 flex items-center gap-4 ${plan.color}`}>
-            <div className="flex-1">
-              <div className="text-xs font-semibold uppercase tracking-wide opacity-70 mb-1">Valgt plan</div>
-              <div className="text-xl font-bold">{plan.name} — {plan.price}</div>
-              <div className="text-sm opacity-80 mt-1">
-                Vi setter opp laget ditt og sender faktura. Ingen binding de første 14 dagene.
-              </div>
-            </div>
-            <ArrowRight className="h-6 w-6 opacity-40 shrink-0" />
+          <div className="mb-8 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-5 py-3 text-sm text-green-800 dark:text-green-300 text-center">
+            {t.planBadge}: <strong>{plan.name}</strong> — {price}
           </div>
         )}
 
-        {/* Kontaktmetoder */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
-          <a
-            href={mailtoHref}
-            className="flex items-start gap-4 rounded-2xl border bg-card p-6 shadow-sm hover:border-emerald-300 hover:ring-1 hover:ring-emerald-300/30 transition-all group"
-            data-testid="link-contact-email"
-          >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 group-hover:scale-105 transition-transform">
-              <Mail className="h-5 w-5" />
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-border p-6 flex items-center gap-4">
+            <div className="h-11 w-11 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+              <Mail className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-muted-foreground mb-0.5">{t.emailLabel}</div>
+              <a href={mailtoHref} className="font-semibold text-foreground hover:underline break-all">
+                hei@glidr.no
+              </a>
+            </div>
+            <a href={mailtoHref}
+              className="flex-shrink-0 rounded-lg bg-foreground text-background px-4 py-2 text-sm font-semibold hover:opacity-90 transition-opacity">
+              {t.emailCta}
+            </a>
+          </div>
+
+          <div className="rounded-2xl border border-border p-6 flex items-center gap-4">
+            <div className="h-11 w-11 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+              <Phone className="h-5 w-5 text-muted-foreground" />
             </div>
             <div>
-              <div className="text-sm font-semibold text-foreground mb-1">E-post</div>
-              <div className="text-sm text-muted-foreground break-all">Simen.finjord@hotmail.com</div>
-              {plan && (
-                <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-2">
-                  Klikk for ferdigutfylt e-post →
-                </div>
-              )}
+              <div className="text-xs text-muted-foreground mb-0.5">{t.phoneLabel}</div>
+              <a href="tel:+4700000000" className="font-semibold text-foreground hover:underline">+47 000 00 000</a>
             </div>
-          </a>
-
-          <a
-            href="tel:+4797540178"
-            className="flex items-start gap-4 rounded-2xl border bg-card p-6 shadow-sm hover:border-blue-300 hover:ring-1 hover:ring-blue-300/30 transition-all group"
-            data-testid="link-contact-phone"
-          >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 group-hover:scale-105 transition-transform">
-              <Phone className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-foreground mb-1">Telefon</div>
-              <div className="text-sm text-muted-foreground">+47 975 40 178</div>
-              <div className="text-xs text-muted-foreground/60 mt-1">Man–fre, 08–20</div>
-            </div>
-          </a>
-        </div>
-
-        {/* Slik fungerer det */}
-        <div className="rounded-2xl border bg-card p-6 mb-10">
-          <h2 className="font-semibold text-foreground mb-4">Slik fungerer det</h2>
-          <ol className="space-y-3">
-            {[
-              { n: "1", text: "Send oss en e-post eller ring med lagnavn og ønsket plan" },
-              { n: "2", text: "Vi setter opp laget og sender deg innloggingsdetaljer" },
-              { n: "3", text: "Du bruker Glidr gratis i 14 dager" },
-              { n: "4", text: "Vi sender faktura med 30 dagers betalingsfrist" },
-              { n: "5", text: "Vil du oppgradere eller endre planen? Send oss en melding" },
-            ].map((s) => (
-              <li key={s.n} className="flex items-start gap-3 text-sm">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-foreground text-background text-xs font-bold mt-0.5">
-                  {s.n}
-                </span>
-                <span className="text-foreground/80 leading-relaxed">{s.text}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        <div className="rounded-2xl border bg-muted/30 p-5 text-center mb-10">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground mx-auto mb-3">
-            <MapPin className="h-5 w-5" />
-          </div>
-          <div className="text-sm font-semibold text-foreground">Simen Finjord</div>
-          <div className="text-sm text-muted-foreground">Norge</div>
-        </div>
-
-        <div className="text-center border-t border-border pt-8">
-          <div className="flex justify-center gap-6 text-xs text-muted-foreground">
-            <AppLink href="/what-is-glidr" testId="link-features-from-contact" className="underline hover:text-foreground">
-              Hva er Glidr?
-            </AppLink>
-            <AppLink href="/pricing" testId="link-pricing-from-contact" className="underline hover:text-foreground">
-              Priser
-            </AppLink>
-            <AppLink href="/legal" testId="link-legal-from-contact" className="underline hover:text-foreground">
-              Vilkår og personvern
-            </AppLink>
           </div>
         </div>
+
+        <p className="mt-6 text-sm text-muted-foreground text-center">{t.manualNote}</p>
+        <p className="mt-2 text-sm text-center text-muted-foreground">
+          {t.orForm}{" "}
+          <a href="/get-started" className="underline font-medium text-foreground hover:opacity-70">{t.orFormLink}</a>.
+        </p>
       </div>
     </div>
   );

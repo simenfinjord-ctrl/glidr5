@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
+import { useLanguage } from "@/lib/language";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMobileNav } from "@/components/mobile-nav";
@@ -26,10 +27,10 @@ function PlanChangeSection() {
 
   const PLANS = [
     { value: "free", label: "Free — €0" },
-    { value: "starter", label: "Starter — €25/mnd" },
-    { value: "team", label: "Team — €79/mnd" },
-    { value: "pro", label: "Pro — €149/mnd" },
-    { value: "enterprise", label: "Forbund / Enterprise" },
+    { value: "starter", label: "Starter — €25/mo" },
+    { value: "team", label: "Team — €79/mo" },
+    { value: "pro", label: "Pro — €149/mo" },
+    { value: "enterprise", label: "Federation / Enterprise" },
   ];
 
   async function submit() {
@@ -37,11 +38,11 @@ function PlanChangeSection() {
     try {
       const res = await apiRequest("POST", "/api/account/plan-change-request", { requestedPlan, billingPeriod, notes });
       if (!res.ok) throw new Error();
-      toast({ title: "Forespørsel sendt", description: "Vi tar kontakt innen 1–2 virkedager." });
+      toast({ title: "Request sent", description: "We'll get back to you within 1–2 business days." });
       setOpen(false);
       setNotes("");
     } catch {
-      toast({ title: "Feil", description: "Noe gikk galt. Kontakt oss på hei@glidr.no", variant: "destructive" });
+      toast({ title: "Error", description: "Something went wrong. Contact us at hei@glidr.no", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -51,22 +52,22 @@ function PlanChangeSection() {
     <Card className="rounded-2xl p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold">Abonnement</h3>
+          <h3 className="font-semibold">Subscription</h3>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Nåværende plan: <strong className="text-foreground capitalize">{currentPlan}</strong>
+            Current plan: <strong className="text-foreground capitalize">{currentPlan}</strong>
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-          Be om planendring
+          Request plan change
         </Button>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Be om planendring</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Request plan change</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Ønsket plan</label>
+              <label className="text-sm font-medium">Desired plan</label>
               <Select value={requestedPlan} onValueChange={setRequestedPlan}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -75,9 +76,9 @@ function PlanChangeSection() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Fakturering</label>
+              <label className="text-sm font-medium">Billing</label>
               <div className="flex gap-4">
-                {[{ value: "monthly", label: "Månedlig" }, { value: "annual", label: "Årlig (2 mnd gratis)" }].map(o => (
+                {[{ value: "monthly", label: "Monthly" }, { value: "annual", label: "Annual (2 months free)" }].map(o => (
                   <label key={o.value} className="flex items-center gap-2 text-sm cursor-pointer">
                     <input type="radio" name="bp" value={o.value} checked={billingPeriod === o.value} onChange={() => setBillingPeriod(o.value)} className="accent-foreground" />
                     {o.label}
@@ -86,14 +87,14 @@ function PlanChangeSection() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Merknad (valgfritt)</label>
+              <label className="text-sm font-medium">Note (optional)</label>
               <textarea className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background resize-none focus:outline-none"
-                rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Noe vi bør vite?" />
+                rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Anything we should know?" />
             </div>
-            <p className="text-xs text-muted-foreground">Forespørselen sendes til Glidr-admin som tar kontakt innen 1–2 virkedager.</p>
+            <p className="text-xs text-muted-foreground">Your request is sent to Glidr admin, who will get back to you within 1–2 business days.</p>
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setOpen(false)}>Avbryt</Button>
-              <Button onClick={submit} disabled={submitting}>{submitting ? "Sender..." : "Send forespørsel"}</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button onClick={submit} disabled={submitting}>{submitting ? "Sending..." : "Send request"}</Button>
             </div>
           </div>
         </DialogContent>
@@ -106,6 +107,7 @@ export default function MyAccount() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { lang, setLang } = useLanguage();
 
   // Watch code
   const [copied, setCopied] = useState(false);
@@ -523,6 +525,26 @@ export default function MyAccount() {
           <p className="text-xs text-muted-foreground/60">
             Keep this code private. If it's compromised, regenerate it.
           </p>
+        </Card>
+
+        {/* Language preference */}
+        <Card className="rounded-2xl p-6 space-y-3">
+          <h3 className="font-semibold">Language / Språk</h3>
+          <p className="text-sm text-muted-foreground">Choose your preferred language for the Glidr interface.</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setLang("en")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${lang === "en" ? "bg-foreground text-background border-foreground" : "border-border hover:bg-muted"}`}
+            >
+              English
+            </button>
+            <button
+              onClick={() => setLang("no")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${lang === "no" ? "bg-foreground text-background border-foreground" : "border-border hover:bg-muted"}`}
+            >
+              Norsk
+            </button>
+          </div>
         </Card>
 
         {/* Plan change request - team admins only */}

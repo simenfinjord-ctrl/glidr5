@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { Spinner } from "@/components/ui/spinner";
 import { OfflineProvider } from "@/lib/offline-context";
 import { ThemeProvider } from "@/lib/theme";
+import { LanguageProvider } from "@/lib/language";
 import { useState, useEffect } from "react";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
@@ -166,14 +167,16 @@ function AuthGuard() {
 export default function App() {
   return (
     <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <OfflineProvider>
-          <TooltipProvider>
-            <Toaster />
-            <AuthGuard />
-          </TooltipProvider>
-        </OfflineProvider>
-      </QueryClientProvider>
+      <LanguageProvider>
+        <QueryClientProvider client={queryClient}>
+          <OfflineProvider>
+            <TooltipProvider>
+              <Toaster />
+              <AuthGuard />
+            </TooltipProvider>
+          </OfflineProvider>
+        </QueryClientProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

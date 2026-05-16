@@ -2,6 +2,7 @@ import { Check, Watch, Zap, Users, Trophy, Building2, ArrowRight, X } from "luci
 import { Link } from "wouter";
 import { useState } from "react";
 import { PublicNav } from "@/components/public-nav";
+import { useLanguage } from "@/lib/language";
 
 const PLANS = [
   {
@@ -187,7 +188,57 @@ const FAQS = [
   },
 ];
 
-function PlanCard({ plan }: { plan: typeof PLANS[0] }) {
+const PLAN_TEXT: Record<string, Record<string, { tagline: string; cta: string }>> = {
+  en: {
+    free:       { tagline: "For the enthusiastic home wax technician.", cta: "Get started free" },
+    starter:    { tagline: "For a club team getting started with structured testing.", cta: "Get in touch" },
+    team:       { tagline: "For serious race service teams.", cta: "Get in touch" },
+    pro:        { tagline: "For professional national-level teams.", cta: "Get in touch" },
+    enterprise: { tagline: "For ski federations and multi-team organisations.", cta: "Contact us" },
+  },
+  no: {
+    free:       { tagline: "For den ivrige hjemmesmøreren.", cta: "Kom i gang gratis" },
+    starter:    { tagline: "For et klubblag som starter med strukturert testing.", cta: "Ta kontakt" },
+    team:       { tagline: "For seriøse servicelag.", cta: "Ta kontakt" },
+    pro:        { tagline: "For profesjonelle lag på nasjonalt nivå.", cta: "Ta kontakt" },
+    enterprise: { tagline: "For skiforbund og fler-lags-organisasjoner.", cta: "Kontakt oss" },
+  },
+};
+
+const PAGE_TEXT = {
+  en: {
+    hero: "Simple, transparent pricing",
+    heroSub: "From free for enthusiasts to federation-grade for the pros. No hidden fees.",
+    toggle: ["Monthly", "Annual"],
+    annualSave: "Save 2 months",
+    popular: "Most popular",
+    everything: "Everything in",
+    compare: "Compare all plans",
+    compareSub: "Full feature comparison across all tiers.",
+    faqTitle: "Frequently asked questions",
+    bottomTitle: "Ready to get started?",
+    bottomSub: "Join teams from club level to national federations already using Glidr.",
+    bottomCta1: "Start for free",
+    bottomCta2: "View demo",
+  },
+  no: {
+    hero: "Enkel, transparent prising",
+    heroSub: "Fra gratis for entusiaster til forbundsnivå for proffene. Ingen skjulte avgifter.",
+    toggle: ["Månedlig", "Årlig"],
+    annualSave: "Spar 2 måneder",
+    popular: "Mest populær",
+    everything: "Alt i",
+    compare: "Sammenlign alle planer",
+    compareSub: "Full funksjonssammenligning på tvers av alle nivåer.",
+    faqTitle: "Ofte stilte spørsmål",
+    bottomTitle: "Klar til å komme i gang?",
+    bottomSub: "Bli med team fra klubbnivå til nasjonalforbund som allerede bruker Glidr.",
+    bottomCta1: "Start gratis",
+    bottomCta2: "Se demo",
+  },
+};
+
+function PlanCard({ plan, lang }: { plan: typeof PLANS[0]; lang: "en" | "no" }) {
   const href = plan.id === "free"
     ? "/get-started"
     : `/contact?plan=${plan.id}`;
@@ -212,7 +263,7 @@ function PlanCard({ plan }: { plan: typeof PLANS[0] }) {
           <span className="text-3xl font-bold text-foreground">{plan.price}</span>
           {plan.period && <span className="text-sm text-muted-foreground">{plan.period}</span>}
         </div>
-        <p className="text-xs text-muted-foreground leading-relaxed">{plan.tagline}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">{PLAN_TEXT[lang][plan.id]?.tagline ?? plan.tagline}</p>
       </div>
 
       <ul className="flex-1 space-y-2 mb-6 text-sm">
@@ -235,7 +286,7 @@ function PlanCard({ plan }: { plan: typeof PLANS[0] }) {
         className={`w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-center transition-all flex items-center justify-center gap-2 ${plan.ctaStyle}`}
         data-testid={`button-${plan.id}-cta`}
       >
-        {plan.cta}
+        {PLAN_TEXT[lang][plan.id]?.cta ?? plan.cta}
         <ArrowRight className="h-4 w-4" />
       </Link>
     </div>
@@ -243,6 +294,8 @@ function PlanCard({ plan }: { plan: typeof PLANS[0] }) {
 }
 
 export default function Pricing() {
+  const { lang } = useLanguage();
+  const p = PAGE_TEXT[lang];
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
@@ -257,11 +310,10 @@ export default function Pricing() {
             Free forever for individuals
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground mb-4" data-testid="heading-pricing">
-            Pricing for everyone
+            {p.hero}
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            From a parent waxing their kid's skis to a national federation managing dozens of teams.
-            Start free, scale when you're ready.
+            {p.heroSub}
           </p>
         </div>
 
@@ -291,16 +343,16 @@ export default function Pricing() {
         {/* Plan cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-20">
           {PLANS.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} />
+            <PlanCard key={plan.id} plan={plan} lang={lang} />
           ))}
         </div>
 
         {/* Comparison table */}
         <div className="mb-20">
           <h2 className="text-2xl font-bold text-foreground text-center mb-2" data-testid="heading-comparison">
-            Plan comparison
+            {p.compare}
           </h2>
-          <p className="text-sm text-muted-foreground text-center mb-8">All the details at a glance</p>
+          <p className="text-sm text-muted-foreground text-center mb-8">{p.compareSub}</p>
           <div className="overflow-x-auto rounded-2xl border">
             <table className="w-full text-sm">
               <thead>
@@ -335,7 +387,7 @@ export default function Pricing() {
 
         {/* FAQ */}
         <div className="max-w-2xl mx-auto mb-20">
-          <h2 className="text-2xl font-bold text-foreground text-center mb-8">Frequently asked questions</h2>
+          <h2 className="text-2xl font-bold text-foreground text-center mb-8">{p.faqTitle}</h2>
           <div className="space-y-2">
             {FAQS.map((faq, i) => (
               <div key={i} className="rounded-xl border bg-card overflow-hidden">
@@ -358,9 +410,9 @@ export default function Pricing() {
 
         {/* Bottom CTA */}
         <div className="rounded-2xl bg-foreground text-background p-8 sm:p-12 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-3">Ready to get started?</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-3">{p.bottomTitle}</h2>
           <p className="text-background/70 mb-8 max-w-md mx-auto text-sm">
-            Free forever for individuals. No credit card required.
+            {p.bottomSub}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
@@ -368,13 +420,13 @@ export default function Pricing() {
               className="rounded-xl bg-background text-foreground px-8 py-3 font-semibold text-sm hover:bg-background/90 transition-colors flex items-center justify-center gap-2"
             >
               <Zap className="h-4 w-4" />
-              Start for free
+              {p.bottomCta1}
             </Link>
             <Link
               href="/demo"
               className="rounded-xl border border-background/30 text-background px-8 py-3 font-semibold text-sm hover:bg-background/10 transition-colors flex items-center justify-center gap-2"
             >
-              Watch the demo
+              {p.bottomCta2}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>

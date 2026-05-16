@@ -1475,7 +1475,7 @@ const ALL_TABS: { id: TabId; label: string; superAdminOnly?: boolean }[] = [
   { id: "data", label: "Data Management" },
   { id: "danger", label: "Danger Zone" },
   { id: "security", label: "Security", superAdminOnly: true },
-  { id: "registrations", label: "Registreringer", superAdminOnly: true },
+  { id: "registrations", label: "Registrations", superAdminOnly: true },
 ];
 
 function BackupStatusCard() {
@@ -1730,7 +1730,7 @@ function RegistrationsTab() {
       credentials: "include",
       body: JSON.stringify({ status: editStatus, adminNotes: editNotes }),
     });
-    toast({ title: "Lagret" });
+    toast({ title: "Saved" });
     setEditing(null);
     refetch();
   }
@@ -1742,21 +1742,21 @@ function RegistrationsTab() {
     rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
   };
   const STATUS_LABELS: Record<string, string> = {
-    new: "Ny",
-    contacted: "Kontaktet",
-    active: "Aktiv",
-    rejected: "Avvist",
+    new: "New",
+    contacted: "Contacted",
+    active: "Active",
+    rejected: "Rejected",
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Registreringer ({registrations.length})</h2>
-        <span className="text-xs text-muted-foreground">Fra /get-started og planendringer</span>
+        <h2 className="text-lg font-semibold">Registrations ({registrations.length})</h2>
+        <span className="text-xs text-muted-foreground">From /get-started and plan change requests</span>
       </div>
 
       {registrations.length === 0 && (
-        <Card className="rounded-2xl p-8 text-center text-muted-foreground text-sm">Ingen registreringer ennå.</Card>
+        <Card className="rounded-2xl p-8 text-center text-muted-foreground text-sm">No registrations yet.</Card>
       )}
 
       <div className="space-y-3">
@@ -1774,23 +1774,23 @@ function RegistrationsTab() {
                 </span>
                 <Button size="sm" variant="outline" className="h-7 text-xs"
                   onClick={() => { setEditing(r); setEditStatus(r.status); setEditNotes(r.admin_notes ?? r.adminNotes ?? ""); }}>
-                  Rediger
+                  Edit
                 </Button>
               </div>
             </div>
             <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
               <span>Plan: <strong className="text-foreground">{r.plan_name ?? r.planName}</strong></span>
-              {(r.user_count ?? r.userCount) && <span>Brukere: {r.user_count ?? r.userCount}</span>}
-              {(r.group_count ?? r.groupCount) && <span>Grupper: {r.group_count ?? r.groupCount}</span>}
-              <span>Fakturering: {(r.billing_period ?? r.billingPeriod) === "annual" ? "Årlig" : "Månedlig"}</span>
+              {(r.user_count ?? r.userCount) && <span>Users: {r.user_count ?? r.userCount}</span>}
+              {(r.group_count ?? r.groupCount) && <span>Groups: {r.group_count ?? r.groupCount}</span>}
+              <span>Billing: {(r.billing_period ?? r.billingPeriod) === "annual" ? "Annual" : "Monthly"}</span>
               <span>{new Date(r.created_at ?? r.createdAt).toLocaleDateString("no-NO")}</span>
             </div>
             {(r.invoice_address ?? r.invoiceAddress) && (
-              <div className="text-xs text-muted-foreground">Fakturaadresse: {r.invoice_address ?? r.invoiceAddress}</div>
+              <div className="text-xs text-muted-foreground">Invoice address: {r.invoice_address ?? r.invoiceAddress}</div>
             )}
             {(r.notes) && <div className="text-xs text-muted-foreground italic">«{r.notes}»</div>}
             {(r.admin_notes ?? r.adminNotes) && (
-              <div className="text-xs bg-muted rounded px-2 py-1">Admin: {r.admin_notes ?? r.adminNotes}</div>
+              <div className="text-xs bg-muted rounded px-2 py-1">Admin note: {r.admin_notes ?? r.adminNotes}</div>
             )}
           </Card>
         ))}
@@ -1800,28 +1800,28 @@ function RegistrationsTab() {
       {editing && (
         <Dialog open={!!editing} onOpenChange={o => !o && setEditing(null)}>
           <DialogContent>
-            <DialogHeader><DialogTitle>Rediger registrering — {editing.team_name ?? editing.teamName}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>Edit registration — {editing.team_name ?? editing.teamName}</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Status</label>
                 <Select value={editStatus} onValueChange={setEditStatus}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="new">Ny</SelectItem>
-                    <SelectItem value="contacted">Kontaktet</SelectItem>
-                    <SelectItem value="active">Aktiv</SelectItem>
-                    <SelectItem value="rejected">Avvist</SelectItem>
+                    <SelectItem value="new">New</SelectItem>
+                    <SelectItem value="contacted">Contacted</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Adminnotat</label>
+                <label className="text-sm font-medium">Admin note</label>
                 <textarea className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20"
-                  rows={3} value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Intern notat..." />
+                  rows={3} value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Internal note..." />
               </div>
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setEditing(null)}>Avbryt</Button>
-                <Button onClick={saveEdit}>Lagre</Button>
+                <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+                <Button onClick={saveEdit}>Save</Button>
               </div>
             </div>
           </DialogContent>

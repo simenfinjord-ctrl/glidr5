@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { PublicNav } from "@/components/public-nav";
+import { useLanguage } from "@/lib/language";
 import {
   ClipboardList, BarChart3, Thermometer, Package, Watch, Camera,
   ChevronRight, Play, Pause, ArrowRight, Check, Zap,
@@ -266,8 +267,39 @@ function GarminMockup() {
 /* ── Main component ──────────────────────────────────────────────────────────── */
 
 export default function Demo() {
+  const { lang } = useLanguage();
   const [current, setCurrent] = useState(0);
   const [playing, setPlaying] = useState(true);
+
+  const T = {
+    en: {
+      badge: "Interactive demo — no sign-up needed",
+      title: "See Glidr in action",
+      sub: "From logging a test on the hill to understanding which wax wins in which conditions — Glidr does it all.",
+      cta1: "Get started",
+      cta2: "View pricing",
+      featureTitle: "Everything you need",
+      featureSub: "Glidr is built for ski teams — from club level to elite national programs.",
+      bottomTitle: "Ready to try it yourself?",
+      bottomSub: "Join teams already using Glidr to make faster, smarter wax decisions.",
+      bottomCta1: "Get started",
+      bottomCta2: "View pricing",
+    },
+    no: {
+      badge: "Interaktiv demo — ingen registrering nødvendig",
+      title: "Se Glidr i aksjon",
+      sub: "Fra å logge en test i løypa til å forstå hvilken voks som vinner i hvilke forhold — Glidr gjør alt.",
+      cta1: "Kom i gang",
+      cta2: "Se priser",
+      featureTitle: "Alt du trenger",
+      featureSub: "Glidr er laget for skilag — fra klubbnivå til elite nasjonale program.",
+      bottomTitle: "Klar til å prøve selv?",
+      bottomSub: "Bli med lag som allerede bruker Glidr for å ta raskere, smartere smørebeslutninger.",
+      bottomCta1: "Kom i gang",
+      bottomCta2: "Se priser",
+    },
+  };
+  const t = T[lang];
   const intervalRef = useRef<ReturnType<typeof setInterval>>(null);
 
   useEffect(() => {
@@ -287,19 +319,17 @@ export default function Demo() {
         <div className="mx-auto max-w-3xl">
           <div className="inline-flex items-center gap-2 rounded-full bg-background/10 border border-background/20 px-4 py-1.5 text-xs font-medium mb-5">
             <Play className="h-3.5 w-3.5" />
-            Interactive demo — no sign-up needed
+            {t.badge}
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4">See Glidr in action</h1>
-          <p className="text-background/70 text-lg max-w-xl mx-auto mb-8">
-            From logging a test on the hill to understanding which wax wins in which conditions — Glidr does it all.
-          </p>
+          <h1 className="text-4xl sm:text-5xl font-bold mb-4">{t.title}</h1>
+          <p className="text-background/70 text-lg max-w-xl mx-auto mb-8">{t.sub}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/get-started" className="rounded-xl bg-background text-foreground px-8 py-3 font-semibold text-sm hover:bg-background/90 flex items-center justify-center gap-2">
               <Zap className="h-4 w-4" />
-              Start for free
+              {t.cta1}
             </Link>
             <Link href="/pricing" className="rounded-xl border border-background/30 text-background px-8 py-3 font-semibold text-sm hover:bg-background/10 flex items-center justify-center gap-2">
-              View pricing
+              {t.cta2}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -375,7 +405,7 @@ export default function Demo() {
       {/* ── Feature grid ── */}
       <div className="bg-muted/30 py-16 px-4 border-y">
         <div className="mx-auto max-w-5xl">
-          <h2 className="text-2xl font-bold text-foreground text-center mb-10">Everything in one place</h2>
+          <h2 className="text-2xl font-bold text-foreground text-center mb-10">{t.featureTitle}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {[
               { icon: "🎿", title: "Test ski series", desc: "Manage series of test skis with regrind history" },
@@ -398,15 +428,15 @@ export default function Demo() {
       {/* ── CTA ── */}
       <div className="py-20 px-4 text-center">
         <div className="mx-auto max-w-xl">
-          <h2 className="text-3xl font-bold text-foreground mb-4">Ready to get started?</h2>
-          <p className="text-muted-foreground mb-8">Free forever for individuals. No credit card required.</p>
+          <h2 className="text-3xl font-bold text-foreground mb-4">{t.bottomTitle}</h2>
+          <p className="text-muted-foreground mb-8">{t.bottomSub}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/login" className="rounded-xl bg-foreground text-background px-8 py-3 font-semibold text-sm hover:opacity-90 flex items-center justify-center gap-2">
+            <Link href="/get-started" className="rounded-xl bg-foreground text-background px-8 py-3 font-semibold text-sm hover:opacity-90 flex items-center justify-center gap-2">
               <Zap className="h-4 w-4" />
-              Create free account
+              {t.bottomCta1}
             </Link>
             <Link href="/pricing" className="rounded-xl border px-8 py-3 font-semibold text-sm hover:bg-muted flex items-center justify-center gap-2 text-foreground">
-              See pricing
+              {t.bottomCta2}
               <ChevronRight className="h-4 w-4" />
             </Link>
           </div>

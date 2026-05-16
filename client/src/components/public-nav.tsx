@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, Zap } from "lucide-react";
+import { useLanguage, type Lang } from "@/lib/language";
 
 export function PublicNav() {
   const [open, setOpen] = useState(false);
   const [location] = useLocation();
+  const { lang, setLang } = useLanguage();
 
   const links = [
     { href: "/demo", label: "Demo" },
-    { href: "/pricing", label: "Priser" },
-    { href: "/contact", label: "Kontakt" },
-    { href: "/legal", label: "Vilkår" },
+    { href: "/pricing", label: "Pricing" },
+    { href: "/contact", label: "Contact" },
+    { href: "/legal", label: "Legal" },
   ];
 
   return (
@@ -35,11 +37,17 @@ export function PublicNav() {
         {/* Desktop CTAs */}
         <div className="hidden md:flex items-center gap-2">
           <Link href="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground px-3 py-1.5">
-            Logg inn
+            Log in
           </Link>
           <Link href="/get-started" className="text-sm font-semibold bg-foreground text-background px-4 py-1.5 rounded-lg hover:opacity-90 transition-opacity">
-            Kom i gang
+            Get started
           </Link>
+          <button
+            onClick={() => setLang(lang === "en" ? "no" : "en")}
+            className="text-xs font-semibold px-2 py-1 rounded border border-border hover:bg-muted transition-colors text-muted-foreground"
+          >
+            {lang === "en" ? "NO" : "EN"}
+          </button>
         </div>
 
         {/* Mobile hamburger */}
@@ -59,11 +67,17 @@ export function PublicNav() {
             </Link>
           ))}
           <div className="flex gap-2 pt-2 border-t border-border/40">
+            <button
+              onClick={() => setLang(lang === "en" ? "no" : "en")}
+              className="text-xs font-semibold px-3 py-2 rounded-lg border border-border hover:bg-muted"
+            >
+              {lang === "en" ? "Norsk" : "English"}
+            </button>
             <Link href="/login" className="flex-1 text-center text-sm font-medium border border-border rounded-lg py-2 hover:bg-muted" onClick={() => setOpen(false)}>
-              Logg inn
+              Log in
             </Link>
             <Link href="/get-started" className="flex-1 text-center text-sm font-semibold bg-foreground text-background rounded-lg py-2 hover:opacity-90" onClick={() => setOpen(false)}>
-              Kom i gang
+              Get started
             </Link>
           </div>
         </div>

@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { Link } from "wouter";
 import { PublicNav } from "@/components/public-nav";
+import { useLanguage } from "@/lib/language";
 
 const sections = [
   { id: "bruksvilkar", label: "Bruksvilkår" },
@@ -12,7 +12,7 @@ const sections = [
 ];
 
 export default function Legal() {
-  const [lang, setLang] = useState<"no" | "en">("no");
+  const { lang } = useLanguage();
 
   return (
     <div className="min-h-screen bg-background">
@@ -21,21 +21,10 @@ export default function Legal() {
 
         {/* Header */}
         <div className="mb-10">
-          <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="mb-4">
             <h1 className="text-3xl font-bold text-foreground" data-testid="heading-legal">
               {lang === "no" ? "Vilkår og personvern" : "Terms & Privacy"}
             </h1>
-            <div className="flex gap-1 rounded-lg border p-0.5 bg-muted/40">
-              {(["no", "en"] as const).map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setLang(l)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${lang === l ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  {l === "no" ? "Norsk" : "English"}
-                </button>
-              ))}
-            </div>
           </div>
           <p className="text-sm text-muted-foreground">
             {lang === "no"

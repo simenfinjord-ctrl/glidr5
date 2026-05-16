@@ -7,6 +7,7 @@ import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn, fmtDate } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 type Series = {
   id: number;
@@ -107,6 +108,7 @@ function RankBadge({ rank }: { rank: number | null }) {
 export default function SeriesDetail() {
   const [, params] = useRoute("/testskis/:id");
   const seriesId = params?.id ? parseInt(params.id) : null;
+  const { t } = useI18n();
 
   const { data: allSeries = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
@@ -143,7 +145,7 @@ export default function SeriesDetail() {
           <AppLink href="/testskis">
             <Button variant="secondary" data-testid="button-back-testskis">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Testskis
+              {t("seriesDetail.back")}
             </Button>
           </AppLink>
         </div>
@@ -158,7 +160,7 @@ export default function SeriesDetail() {
           <AppLink href="/testskis" testId="link-back-testskis">
             <Button variant="ghost" size="sm" data-testid="button-back-testskis">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Testskis
+              {t("seriesDetail.back")}
             </Button>
           </AppLink>
           <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -181,7 +183,7 @@ export default function SeriesDetail() {
 
         {seriesTests.length === 0 ? (
           <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-series-tests">
-            No tests recorded for this series yet.
+            {t("seriesDetail.noTests")}
           </Card>
         ) : (
           seriesTests.map((test) => {

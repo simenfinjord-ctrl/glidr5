@@ -2197,7 +2197,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Stone</label>
+              <label className="mb-1 block text-sm font-medium">{t("raceskis.stone")}</label>
               <Input
                 value={regrindForm.stone}
                 onChange={(e) => setRegrindForm((f) => ({ ...f, stone: e.target.value }))}
@@ -2205,7 +2205,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Pattern</label>
+              <label className="mb-1 block text-sm font-medium">{t("raceskis.pattern")}</label>
               <Input
                 value={regrindForm.pattern}
                 onChange={(e) => setRegrindForm((f) => ({ ...f, pattern: e.target.value }))}
@@ -2687,6 +2687,7 @@ function SkiCard({
   onRestore?: () => void;
   onDelete?: () => void;
 }) {
+  const { t } = useI18n();
   const { data: regrinds = [] } = useQuery<RaceSkiRegrind[]>({
     queryKey: [`/api/race-skis/${ski.id}/regrinds`],
     enabled: expanded,
@@ -2722,7 +2723,7 @@ function SkiCard({
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
               {ski.grind && (
                 <span data-testid={`text-ski-grind-${ski.id}`}>
-                  <strong className="text-foreground">Current Grind:</strong> {ski.grind}
+                  <strong className="text-foreground">{t("raceskis.currentGrind")}:</strong> {ski.grind}
                 </span>
               )}
               {ski.construction && <span>Construction: {ski.construction}</span>}
@@ -2837,11 +2838,11 @@ function SkiCard({
           {/* Regrind history */}
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Regrind History
+              {t("raceskis.regrindHistory")}
             </h3>
             {regrinds.length === 0 ? (
               <p className="text-xs text-muted-foreground" data-testid={`text-no-regrinds-${ski.id}`}>
-                No regrind history
+                {t("raceskis.noRegrinds")}
               </p>
             ) : (
               <div className="space-y-2">

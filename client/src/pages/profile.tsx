@@ -153,21 +153,21 @@ export default function Profile() {
             <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
               <FormField control={form.control} name="currentPassword" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Current Password</FormLabel>
+                  <FormLabel>{t("profile.currentPassword")}</FormLabel>
                   <FormControl><Input {...field} type={showPassword ? "text" : "password"} data-testid="input-current-password" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="newPassword" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>New Password</FormLabel>
+                  <FormLabel>{t("profile.newPassword")}</FormLabel>
                   <FormControl><Input {...field} type={showPassword ? "text" : "password"} data-testid="input-new-password" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="confirmPassword" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm New Password</FormLabel>
+                  <FormLabel>{t("profile.confirmPassword")}</FormLabel>
                   <FormControl><Input {...field} type={showPassword ? "text" : "password"} data-testid="input-confirm-password" /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -175,10 +175,10 @@ export default function Profile() {
               <div className="flex items-center justify-between pt-2">
                 <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
                   <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} className="rounded" />
-                  Show passwords
+                  {t("profile.showPasswords")}
                 </label>
                 <Button type="submit" data-testid="button-change-password" disabled={mutation.isPending}>
-                  Change Password
+                  {t("common.save")}
                 </Button>
               </div>
             </form>

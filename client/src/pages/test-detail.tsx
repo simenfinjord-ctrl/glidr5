@@ -857,20 +857,20 @@ export default function TestDetail() {
               <table className="w-full text-sm" data-testid="table-results">
                 <thead>
                   <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    <th className="pb-3 pr-3">Ski</th>
-                    {!isGrind && <th className="pb-3 pr-3">Product</th>}
-                    {!isGrind && <th className="pb-3 pr-3">Method</th>}
+                    <th className="pb-3 pr-3">{t("tests.skiNumber")}</th>
+                    {!isGrind && <th className="pb-3 pr-3">{t("tests.product")}</th>}
+                    {!isGrind && <th className="pb-3 pr-3">{t("tests.methodology")}</th>}
                     {isGrind && visibleGrindCols.map((col) => (
                       <th key={col} className="pb-3 pr-3">{formatGrindColLabel(col)}</th>
                     ))}
                     {distLabels.map((label, i) => (
                       <th key={i} className="pb-3 pr-3">
-                        {(label?.trim() || `Round ${i + 1}`)} (cm)
+                        {(label?.trim() || `Round ${i + 1}`)} ({t("tests.cmBehind")})
                       </th>
                     ))}
-                    <th className="pb-3 pr-3">Rank</th>
-                    <th className="pb-3">Feeling</th>
-                    {isClassic && <th className="pb-3 pl-3">Kick</th>}
+                    <th className="pb-3 pr-3">{t("common.rank")}</th>
+                    <th className="pb-3">{t("newTest.feeling")}</th>
+                    {isClassic && <th className="pb-3 pl-3">{t("newTest.kick")}</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -937,7 +937,7 @@ export default function TestDetail() {
                                 className="rounded-full bg-gradient-to-r from-emerald-500/20 to-emerald-400/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 ring-1 ring-emerald-500/30"
                                 data-testid={`badge-winner-${entry.id}`}
                               >
-                                Winner
+                                {t("common.winner")}
                               </span>
                             )}
                           </div>

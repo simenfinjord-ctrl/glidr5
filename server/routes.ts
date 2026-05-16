@@ -317,6 +317,22 @@ export async function registerRoutes(
         created_at TEXT NOT NULL,
         team_name TEXT
       );
+      CREATE TABLE IF NOT EXISTS interest_registrations (
+        id SERIAL PRIMARY KEY,
+        created_at TEXT NOT NULL,
+        contact_name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        phone TEXT,
+        team_name TEXT NOT NULL,
+        plan_name TEXT NOT NULL DEFAULT 'team',
+        user_count INTEGER,
+        group_count INTEGER,
+        billing_period TEXT DEFAULT 'monthly',
+        invoice_address TEXT,
+        notes TEXT,
+        status TEXT NOT NULL DEFAULT 'new',
+        admin_notes TEXT
+      );
     `);
   }
 
@@ -5200,6 +5216,76 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
   app.patch("/api/account/onboarding", requireAuth, async (req, res) => {
     const u = req.user as any;
     await db.update(users).set({ onboardingCompleted: 1 } as any).where(eq(users.id, u.id));
+    res.json({ ok: true });
+  });
+
+  // --- Interest registrations (public sign-up form) ---
+  app.post("/api/interest", async (req, res) => {
+    const { contactName, email, phone, teamName, planName, userCount, groupCount, billingPeriod, invoiceAddress, notes } = req.body;
+    if (!contactName || !email || !teamName) return res.status(400).json({ message: "contactName, email, and teamName are required" });
+    const now = new Date().toISOString();
+    await db.execute(sql`
+      INSERT INTO interest_registrations (created_at, contact_name, email, phone, team_name, plan_name, user_count, group_count, billing_period, invoice_address, notes, status)
+      VALUES (${now}, ${contactName}, ${email}, ${phone ?? null}, ${teamName}, ${planName ?? "team"}, ${userCount ?? null}, ${groupCount ?? null}, ${billingPeriod ?? "monthly"}, ${invoiceAddress ?? null}, ${notes ?? null}, 'new')
+    `);
+    // Notify all super admins via inbox
+    try {
+      const saUsers = await db.execute(sql`SELECT id FROM users WHERE is_admin = 1`);
+      const rows = (saUsers as any).rows ?? saUsers;
+      const inboxNow = new Date().toISOString();
+      for (const sa of rows) {
+        await db.execute(sql`
+          INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at)
+          VALUES (${sa.id}, 'Glidr System', ${'Ny registrering: ' + teamName},
+            ${'Ny interesseregistrering fra ' + contactName + ' (' + email + ') for teamet «' + teamName + '». Plan: ' + (planName ?? 'team') + '. Se Admin → Registreringer for detaljer.'},
+            0, ${inboxNow})
+        `);
+      }
+    } catch (e) { /* inbox notification best-effort */ }
+    res.json({ ok: true });
+  });
+
+  app.get("/api/admin/registrations", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const rows = await db.execute(sql`SELECT * FROM interest_registrations ORDER BY created_at DESC`);
+    res.json((rows as any).rows ?? rows);
+  });
+
+  app.patch("/api/admin/registrations/:id", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const id = parseInt(req.params.id);
+    const { status, adminNotes } = req.body;
+    await db.execute(sql`
+      UPDATE interest_registrations SET status = ${status ?? null}, admin_notes = ${adminNotes ?? null} WHERE id = ${id}
+    `);
+    res.json({ ok: true });
+  });
+
+  // --- Plan change request (team admin) ---
+  app.post("/api/account/plan-change-request", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const isTeamAdmin = (u as any).isTeamAdmin === 1;
+    if (u.isAdmin !== 1 && !isTeamAdmin) return res.status(403).json({ message: "Team admin only" });
+    const { requestedPlan, billingPeriod, notes } = req.body;
+    if (!requestedPlan) return res.status(400).json({ message: "requestedPlan is required" });
+    const team = await storage.getTeam(u.teamId);
+    if (!team) return res.status(404).json({ message: "Team not found" });
+    // Notify all super admins
+    try {
+      const saUsers = await db.execute(sql`SELECT id FROM users WHERE is_admin = 1`);
+      const rows = (saUsers as any).rows ?? saUsers;
+      const now = new Date().toISOString();
+      for (const sa of rows) {
+        await db.execute(sql`
+          INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at, team_name)
+          VALUES (${sa.id}, ${u.name ?? u.email}, ${'Planendring: ' + team.name},
+            ${'Team «' + team.name + '» (admin: ' + (u.name ?? u.email) + ') ønsker å bytte til plan «' + requestedPlan + '».' + (billingPeriod ? ' Fakturering: ' + billingPeriod + '.' : '') + (notes ? ' Merknad: ' + notes : '')},
+            0, ${now}, ${team.name})
+        `);
+      }
+    } catch(e) { /* best-effort */ }
     res.json({ ok: true });
   });
 

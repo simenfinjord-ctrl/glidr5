@@ -1,9 +1,7 @@
-import { useState } from "react";
 import { Check, Watch, Zap, Users, Trophy, Building2, ArrowRight, X } from "lucide-react";
-import { useAuth } from "@/lib/auth";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
+import { useState } from "react";
+import { PublicNav } from "@/components/public-nav";
 
 const PLANS = [
   {
@@ -189,11 +187,11 @@ const FAQS = [
   },
 ];
 
-function PlanCard({ plan, onCheckout, loading }: {
-  plan: typeof PLANS[0];
-  onCheckout: (planId: string) => void;
-  loading: string | null;
-}) {
+function PlanCard({ plan }: { plan: typeof PLANS[0] }) {
+  const href = plan.id === "free"
+    ? "/get-started"
+    : `/contact?plan=${plan.id}`;
+
   return (
     <div
       className={`relative flex flex-col rounded-2xl border bg-card p-6 shadow-sm ${plan.color}`}
@@ -232,70 +230,24 @@ function PlanCard({ plan, onCheckout, loading }: {
         ))}
       </ul>
 
-      <button
-        onClick={() => onCheckout(plan.id)}
-        disabled={loading === plan.id}
-        className={`w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-center transition-all flex items-center justify-center gap-2 disabled:opacity-60 ${plan.ctaStyle}`}
+      <Link
+        href={href}
+        className={`w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-center transition-all flex items-center justify-center gap-2 ${plan.ctaStyle}`}
         data-testid={`button-${plan.id}-cta`}
       >
-        {loading === plan.id ? (
-          <span className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-        ) : (
-          <>
-            {plan.cta}
-            <ArrowRight className="h-4 w-4" />
-          </>
-        )}
-      </button>
+        {plan.cta}
+        <ArrowRight className="h-4 w-4" />
+      </Link>
     </div>
   );
 }
 
 export default function Pricing() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [loading, setLoading] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-
-  async function handleCta(planId: string) {
-    if (planId === "free") {
-      if (user) {
-        window.location.href = "/dashboard";
-      } else {
-        window.location.href = "/login";
-      }
-      return;
-    }
-    if (planId === "federation") {
-      window.location.href = "/contact";
-      return;
-    }
-    if (!user) {
-      window.location.href = `/login?next=/pricing&plan=${planId}`;
-      return;
-    }
-
-    // Attempt Stripe checkout
-    setLoading(planId);
-    try {
-      const data = await apiRequest("POST", "/api/billing/checkout", { plan: planId }) as { url: string };
-      if (data?.url) {
-        window.location.href = data.url;
-      }
-    } catch (err: any) {
-      // Stripe not configured — fall back to contact
-      if (err?.status === 503) {
-        window.location.href = `/contact?plan=${planId}`;
-      } else {
-        toast({ title: "Something went wrong", description: "Please try again or contact us.", variant: "destructive" });
-      }
-    } finally {
-      setLoading(null);
-    }
-  }
 
   return (
     <div className="min-h-screen bg-background">
+      <PublicNav />
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-20">
 
         {/* Header */}
@@ -339,7 +291,7 @@ export default function Pricing() {
         {/* Plan cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-20">
           {PLANS.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} onCheckout={handleCta} loading={loading} />
+            <PlanCard key={plan.id} plan={plan} />
           ))}
         </div>
 
@@ -411,13 +363,13 @@ export default function Pricing() {
             Free forever for individuals. No credit card required.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => handleCta("free")}
+            <Link
+              href="/get-started"
               className="rounded-xl bg-background text-foreground px-8 py-3 font-semibold text-sm hover:bg-background/90 transition-colors flex items-center justify-center gap-2"
             >
               <Zap className="h-4 w-4" />
               Start for free
-            </button>
+            </Link>
             <Link
               href="/demo"
               className="rounded-xl border border-background/30 text-background px-8 py-3 font-semibold text-sm hover:bg-background/10 transition-colors flex items-center justify-center gap-2"

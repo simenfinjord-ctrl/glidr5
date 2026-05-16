@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { PublicNav } from "@/components/public-nav";
 
 const sections = [
   { id: "bruksvilkar", label: "Bruksvilkår" },
@@ -15,6 +16,7 @@ export default function Legal() {
 
   return (
     <div className="min-h-screen bg-background">
+      <PublicNav />
       <div className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
 
         {/* Header */}

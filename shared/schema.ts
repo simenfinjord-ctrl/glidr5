@@ -623,3 +623,22 @@ export const inboxMessages = pgTable("inbox_messages", {
   teamName: text("team_name"),                      // sender's team name for context
 });
 
+export const interestRegistrations = pgTable("interest_registrations", {
+  id: serial("id").primaryKey(),
+  createdAt: text("created_at").notNull(),
+  contactName: text("contact_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  teamName: text("team_name").notNull(),
+  planName: text("plan_name").notNull().default("team"),
+  userCount: integer("user_count"),
+  groupCount: integer("group_count"),
+  billingPeriod: text("billing_period").default("monthly"),
+  invoiceAddress: text("invoice_address"),
+  notes: text("notes"),
+  status: text("status").notNull().default("new"),
+  adminNotes: text("admin_notes"),
+});
+export type InterestRegistration = typeof interestRegistrations.$inferSelect;
+export type InsertInterestRegistration = typeof interestRegistrations.$inferInsert;
+

@@ -209,7 +209,7 @@ type ActivityEntry = {
   groupScope: string;
 };
 
-type TabId = "overview" | "users" | "groups" | "teams" | "security" | "backup" | "activity" | "logins" | "data" | "danger";
+type TabId = "overview" | "users" | "groups" | "teams" | "security" | "backup" | "activity" | "logins" | "data" | "danger" | "registrations";
 
 function parseGroups(groupScope: string): string[] {
   return groupScope.split(",").map((s) => s.trim()).filter(Boolean);
@@ -1475,7 +1475,7 @@ const ALL_TABS: { id: TabId; label: string; superAdminOnly?: boolean }[] = [
   { id: "data", label: "Data Management" },
   { id: "danger", label: "Danger Zone" },
   { id: "security", label: "Security", superAdminOnly: true },
-
+  { id: "registrations", label: "Registreringer", superAdminOnly: true },
 ];
 
 function BackupStatusCard() {
@@ -1705,6 +1705,129 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function RegistrationsTab() {
+  const { data: registrations = [], refetch } = useQuery<any[]>({
+    queryKey: ["/api/admin/registrations"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/registrations", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+  const [editing, setEditing] = useState<any | null>(null);
+  const [editStatus, setEditStatus] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const { toast } = useToast();
+
+  async function saveEdit() {
+    if (!editing) return;
+    await fetch(`/api/admin/registrations/${editing.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ status: editStatus, adminNotes: editNotes }),
+    });
+    toast({ title: "Lagret" });
+    setEditing(null);
+    refetch();
+  }
+
+  const STATUS_COLORS: Record<string, string> = {
+    new: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+    contacted: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+    active: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+    rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+  };
+  const STATUS_LABELS: Record<string, string> = {
+    new: "Ny",
+    contacted: "Kontaktet",
+    active: "Aktiv",
+    rejected: "Avvist",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Registreringer ({registrations.length})</h2>
+        <span className="text-xs text-muted-foreground">Fra /get-started og planendringer</span>
+      </div>
+
+      {registrations.length === 0 && (
+        <Card className="rounded-2xl p-8 text-center text-muted-foreground text-sm">Ingen registreringer ennå.</Card>
+      )}
+
+      <div className="space-y-3">
+        {registrations.map((r: any) => (
+          <Card key={r.id} className="rounded-2xl p-4 space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="font-semibold text-sm">{r.team_name ?? r.teamName}</div>
+                <div className="text-xs text-muted-foreground">{r.contact_name ?? r.contactName} · {r.email}</div>
+                {(r.phone) && <div className="text-xs text-muted-foreground">{r.phone}</div>}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[r.status] ?? "bg-muted text-muted-foreground"}`}>
+                  {STATUS_LABELS[r.status] ?? r.status}
+                </span>
+                <Button size="sm" variant="outline" className="h-7 text-xs"
+                  onClick={() => { setEditing(r); setEditStatus(r.status); setEditNotes(r.admin_notes ?? r.adminNotes ?? ""); }}>
+                  Rediger
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+              <span>Plan: <strong className="text-foreground">{r.plan_name ?? r.planName}</strong></span>
+              {(r.user_count ?? r.userCount) && <span>Brukere: {r.user_count ?? r.userCount}</span>}
+              {(r.group_count ?? r.groupCount) && <span>Grupper: {r.group_count ?? r.groupCount}</span>}
+              <span>Fakturering: {(r.billing_period ?? r.billingPeriod) === "annual" ? "Årlig" : "Månedlig"}</span>
+              <span>{new Date(r.created_at ?? r.createdAt).toLocaleDateString("no-NO")}</span>
+            </div>
+            {(r.invoice_address ?? r.invoiceAddress) && (
+              <div className="text-xs text-muted-foreground">Fakturaadresse: {r.invoice_address ?? r.invoiceAddress}</div>
+            )}
+            {(r.notes) && <div className="text-xs text-muted-foreground italic">«{r.notes}»</div>}
+            {(r.admin_notes ?? r.adminNotes) && (
+              <div className="text-xs bg-muted rounded px-2 py-1">Admin: {r.admin_notes ?? r.adminNotes}</div>
+            )}
+          </Card>
+        ))}
+      </div>
+
+      {/* Edit dialog */}
+      {editing && (
+        <Dialog open={!!editing} onOpenChange={o => !o && setEditing(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Rediger registrering — {editing.team_name ?? editing.teamName}</DialogTitle></DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Status</label>
+                <Select value={editStatus} onValueChange={setEditStatus}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">Ny</SelectItem>
+                    <SelectItem value="contacted">Kontaktet</SelectItem>
+                    <SelectItem value="active">Aktiv</SelectItem>
+                    <SelectItem value="rejected">Avvist</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Adminnotat</label>
+                <textarea className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                  rows={3} value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Intern notat..." />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setEditing(null)}>Avbryt</Button>
+                <Button onClick={saveEdit}>Lagre</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
   );
 }
 
@@ -3208,6 +3331,10 @@ export default function Admin() {
         {activeTab === "data" && <DataManagementTab teamScopeParam={teamScopeParam} downloadFullPdf={downloadFullPdf} pdfLoading={pdfLoading} isSuperAdmin={isSuperAdmin} teams={teams} />}
 
         {activeTab === "danger" && <DangerZoneTab />}
+
+        {activeTab === "registrations" && (
+          <RegistrationsTab />
+        )}
       </div>
     </AppShell>
   );

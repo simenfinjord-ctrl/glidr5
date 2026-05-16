@@ -35,6 +35,7 @@ import Pricing from "@/pages/pricing";
 import Contact from "@/pages/contact";
 import Inbox from "@/pages/inbox";
 import Demo from "@/pages/demo";
+import GetStarted from "@/pages/get-started";
 import OnboardingWizard from "@/components/onboarding-wizard";
 
 import Login from "@/pages/login";
@@ -72,6 +73,7 @@ function Router() {
       <Route path="/contact" component={Contact} />
       <Route path="/inbox" component={Inbox} />
       <Route path="/demo" component={Demo} />
+      <Route path="/get-started" component={GetStarted} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -127,7 +129,7 @@ function AuthGuard() {
     );
   }
 
-  const publicPaths = ["/login", "/what-is-glidr", "/legal", "/pricing", "/contact", "/demo"];
+  const publicPaths = ["/login", "/what-is-glidr", "/legal", "/pricing", "/contact", "/demo", "/get-started"];
   if (!user && !publicPaths.includes(location)) {
     return <Redirect to="/login" />;
   }

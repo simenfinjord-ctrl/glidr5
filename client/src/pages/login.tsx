@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -185,6 +185,13 @@ export default function Login() {
                     <LogIn className="mr-2 h-4 w-4" />
                     {isSubmitting ? "Signing in..." : "Sign in"}
                   </Button>
+
+                  <div className="text-center pt-2">
+                    <span className="text-sm text-muted-foreground">Ny bruker? </span>
+                    <Link href="/get-started" className="text-sm font-medium text-foreground underline underline-offset-4 hover:opacity-70">
+                      Kom i gang
+                    </Link>
+                  </div>
                 </form>
               </Form>
             )}
@@ -197,6 +204,10 @@ export default function Login() {
             <a href="/what-is-glidr" className="underline hover:text-foreground transition-colors" data-testid="link-login-features">What is Glidr?</a>
             <span className="mx-2">|</span>
             <a href="/pricing" className="underline hover:text-foreground transition-colors" data-testid="link-login-pricing">Pricing</a>
+            <span className="mx-2">|</span>
+            <Link href="/demo" className="text-sm text-muted-foreground hover:text-foreground">
+              Se demo
+            </Link>
             <span className="mx-2">|</span>
             <a href="/legal" className="underline hover:text-foreground transition-colors" data-testid="link-login-legal">Legal</a>
             <span className="mx-2">|</span>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import { PublicNav } from "@/components/public-nav";
 import {
   ClipboardList, BarChart3, Thermometer, Package, Watch, Camera,
   ChevronRight, Play, Pause, ArrowRight, Check, Zap,
@@ -279,6 +280,7 @@ export default function Demo() {
 
   return (
     <div className="min-h-screen bg-background">
+      <PublicNav />
 
       {/* ── Hero ── */}
       <div className="bg-foreground text-background py-16 px-4 text-center">
@@ -292,7 +294,7 @@ export default function Demo() {
             From logging a test on the hill to understanding which wax wins in which conditions — Glidr does it all.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/login" className="rounded-xl bg-background text-foreground px-8 py-3 font-semibold text-sm hover:bg-background/90 flex items-center justify-center gap-2">
+            <Link href="/get-started" className="rounded-xl bg-background text-foreground px-8 py-3 font-semibold text-sm hover:bg-background/90 flex items-center justify-center gap-2">
               <Zap className="h-4 w-4" />
               Start for free
             </Link>

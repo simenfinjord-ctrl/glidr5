@@ -5,11 +5,102 @@ import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMobileNav } from "@/components/mobile-nav";
 import { cn } from "@/lib/utils";
+
+function PlanChangeSection() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [requestedPlan, setRequestedPlan] = useState("team");
+  const [billingPeriod, setBillingPeriod] = useState("monthly");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const currentPlan = (user as any)?.team?.planName ?? (user as any)?.planName ?? "free";
+
+  const PLANS = [
+    { value: "free", label: "Free — €0" },
+    { value: "starter", label: "Starter — €25/mnd" },
+    { value: "team", label: "Team — €79/mnd" },
+    { value: "pro", label: "Pro — €149/mnd" },
+    { value: "enterprise", label: "Forbund / Enterprise" },
+  ];
+
+  async function submit() {
+    setSubmitting(true);
+    try {
+      const res = await apiRequest("POST", "/api/account/plan-change-request", { requestedPlan, billingPeriod, notes });
+      if (!res.ok) throw new Error();
+      toast({ title: "Forespørsel sendt", description: "Vi tar kontakt innen 1–2 virkedager." });
+      setOpen(false);
+      setNotes("");
+    } catch {
+      toast({ title: "Feil", description: "Noe gikk galt. Kontakt oss på hei@glidr.no", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Card className="rounded-2xl p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold">Abonnement</h3>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Nåværende plan: <strong className="text-foreground capitalize">{currentPlan}</strong>
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+          Be om planendring
+        </Button>
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Be om planendring</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Ønsket plan</label>
+              <Select value={requestedPlan} onValueChange={setRequestedPlan}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PLANS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Fakturering</label>
+              <div className="flex gap-4">
+                {[{ value: "monthly", label: "Månedlig" }, { value: "annual", label: "Årlig (2 mnd gratis)" }].map(o => (
+                  <label key={o.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="radio" name="bp" value={o.value} checked={billingPeriod === o.value} onChange={() => setBillingPeriod(o.value)} className="accent-foreground" />
+                    {o.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Merknad (valgfritt)</label>
+              <textarea className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background resize-none focus:outline-none"
+                rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Noe vi bør vite?" />
+            </div>
+            <p className="text-xs text-muted-foreground">Forespørselen sendes til Glidr-admin som tar kontakt innen 1–2 virkedager.</p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setOpen(false)}>Avbryt</Button>
+              <Button onClick={submit} disabled={submitting}>{submitting ? "Sender..." : "Send forespørsel"}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
 
 export default function MyAccount() {
   const { user } = useAuth();
@@ -134,6 +225,7 @@ export default function MyAccount() {
   if (!user) return null;
 
   const groups = user.groupScope?.split(",").map((s: string) => s.trim()).filter(Boolean) || [];
+  const isTeamAdmin = !!(user as any).isTeamAdmin;
   const roleLabel = user.isAdmin ? "Super Admin" : user.isTeamAdmin ? "Team Admin" : "Member";
 
   return (
@@ -432,6 +524,11 @@ export default function MyAccount() {
             Keep this code private. If it's compromised, regenerate it.
           </p>
         </Card>
+
+        {/* Plan change request - team admins only */}
+        {isTeamAdmin && !user?.isAdmin && (
+          <PlanChangeSection />
+        )}
 
         {/* Danger zone */}
         <Card className="rounded-2xl p-5 sm:p-6 border-red-200 dark:border-red-900/50">

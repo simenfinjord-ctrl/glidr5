@@ -272,12 +272,12 @@ export default function AthleteDetail() {
 
   const builtInTestParams: { key: string; label: string }[] = [
     { key: "brand", label: "Brand" },
-    { key: "base", label: "Base" },
-    { key: "grind", label: "Grind" },
-    { key: "heights", label: "Heights" },
-    { key: "construction", label: "Construction" },
-    { key: "mold", label: "Mold" },
-    { key: "serialNumber", label: "Serial" },
+    { key: "base", label: t("raceskis.base") },
+    { key: "grind", label: t("raceskis.grind") },
+    { key: "heights", label: t("raceskis.heights") },
+    { key: "construction", label: t("raceskis.construction") },
+    { key: "mold", label: t("raceskis.mold") },
+    { key: "serialNumber", label: t("raceskis.serialNumber") },
     { key: "year", label: "Year" },
   ];
   const allSkiParams = [...builtInTestParams, ...customFieldDefs];
@@ -338,14 +338,14 @@ export default function AthleteDetail() {
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
   const builtInSkiFields: { key: string; label: string }[] = [
-    { key: "serialNumber", label: "Serial Number" },
+    { key: "serialNumber", label: t("raceskis.serialNumber") },
     { key: "brand", label: "Brand" },
-    { key: "discipline", label: "Discipline" },
-    { key: "construction", label: "Construction" },
-    { key: "mold", label: "Mold" },
-    { key: "base", label: "Base" },
-    { key: "grind", label: "Grind" },
-    { key: "heights", label: "Heights" },
+    { key: "discipline", label: t("raceskis.discipline") },
+    { key: "construction", label: t("raceskis.construction") },
+    { key: "mold", label: t("raceskis.mold") },
+    { key: "base", label: t("raceskis.base") },
+    { key: "grind", label: t("raceskis.grind") },
+    { key: "heights", label: t("raceskis.heights") },
     { key: "year", label: "Year" },
   ];
   const builtInKeys = builtInSkiFields.map((f) => f.key);

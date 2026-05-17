@@ -222,6 +222,7 @@ export const users = pgTable("users", {
   totpSecret: text("totp_secret"),
   totpEnabled: integer("totp_enabled").notNull().default(0),
   totpBackupCodes: text("totp_backup_codes"),
+  language: text("language").notNull().default("no"),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });

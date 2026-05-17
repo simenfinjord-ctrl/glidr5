@@ -4,7 +4,7 @@ import { storage, parseGroupScopes } from "./storage";
 import { parsePermissions, hashPassword, verifyPassword } from "./auth";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
-import { sendPasswordResetEmail } from "./email";
+import { sendPasswordResetEmail, sendWelcomeEmail } from "./email";
 import { generateTotpSecret, getTotpUri, generateQrDataUrl, generateBackupCodes, verifyTotp, verifyBackupCode } from "./totp";
 
 /** Shared password validation: ≥7 chars, ≥1 digit, ≥1 special character */
@@ -350,6 +350,7 @@ export async function registerRoutes(
       );
       ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS action_type TEXT;
       ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS action_data TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'no';
     `);
   }
 
@@ -2069,9 +2070,12 @@ export async function registerRoutes(
       permissions: JSON.stringify(sanitizedPerms),
       teamId,
       isBlindTester: req.body.isBlindTester ? 1 : 0,
+      language: req.body.language || "no",
     } as any);
     const { password, ...safe } = created;
     res.json(safe);
+    // Send welcome email (fire-and-forget)
+    sendWelcomeEmail(created.email, created.name, created.language ?? "no").catch((e) => console.error("[welcome-email]", e));
   });
 
   app.put("/api/users/:id", requireAuth, async (req, res) => {
@@ -5383,7 +5387,7 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
           VALUES (${user.id}, ${tokenHash}, ${expiresAt}, 0, ${now})
         `);
         const appUrl = process.env.APP_URL || "https://glidr.onrender.com";
-        await sendPasswordResetEmail(user.email, user.name, `${appUrl}/reset-password?token=${rawToken}`);
+        await sendPasswordResetEmail(user.email, user.name, `${appUrl}/reset-password?token=${rawToken}`, user.language ?? "no");
       }
     } catch (e) {
       console.error("[forgot-password]", e);

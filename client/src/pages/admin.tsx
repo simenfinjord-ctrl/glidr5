@@ -279,6 +279,7 @@ const userSchema = z.object({
   permissions: z.string(),
   isActive: z.boolean(),
   teamId: z.number().optional(),
+  language: z.string().default("no"),
 });
 
 const editSchema = z.object({
@@ -327,7 +328,7 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
   const groupNames = effectiveGroups.filter((g) => g.teamId === selectedTeamId).map((g) => g.name);
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
-    defaultValues: { name: "", email: "", username: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, isTeamAdmin: false, isBlindTester: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true, teamId: defaultTeamId },
+    defaultValues: { name: "", email: "", username: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, isTeamAdmin: false, isBlindTester: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true, teamId: defaultTeamId, language: "no" },
   });
 
   const selectedGroups = parseGroups(form.watch("groupScope"));
@@ -444,6 +445,19 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
                 <span className="text-[10px] text-muted-foreground">Products & methodology hidden from this user</span>
               )}
             </div>
+          </FormItem>
+        )} />
+        <FormField control={form.control} name="language" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Language</FormLabel>
+            <Select value={field.value} onValueChange={field.onChange}>
+              <FormControl><SelectTrigger data-testid="select-user-language"><SelectValue /></SelectTrigger></FormControl>
+              <SelectContent>
+                <SelectItem value="no">Norsk</SelectItem>
+                <SelectItem value="en">English</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
           </FormItem>
         )} />
         <FormField control={form.control} name="isActive" render={({ field }) => (

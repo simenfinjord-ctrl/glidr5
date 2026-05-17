@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Users, FlaskConical, Package, Building2, Activity, LogIn, Eye, Clock } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { cn, fmtDate } from "@/lib/utils";
-import { getQueryFn } from "@/lib/queryClient";
+import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import { Redirect } from "wouter";
 import { Spinner } from "@/components/ui/spinner";
@@ -102,6 +104,20 @@ export default function Overview() {
     enabled: isSuperAdmin,
   });
 
+  const { data: settings } = useQuery<{ commercializationEnabled: boolean }>({
+    queryKey: ["/api/settings/public"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+  });
+
+  const toggleCommMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      await apiRequest("PATCH", "/api/admin/settings", { commercializationEnabled: enabled });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/public"] });
+    },
+  });
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -122,6 +138,20 @@ export default function Overview() {
           <p className="mt-1 text-sm text-muted-foreground">
             Cross-team activity and platform health. Refreshes every 30 s.
           </p>
+        </div>
+
+        <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div>
+            <div className="text-sm font-semibold text-foreground">Commercialization</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {settings?.commercializationEnabled ? "Pricing pages and upgrade prompts are visible" : "All pricing content is hidden"}
+            </div>
+          </div>
+          <Switch
+            checked={settings?.commercializationEnabled ?? true}
+            onCheckedChange={(v) => toggleCommMutation.mutate(v)}
+            disabled={toggleCommMutation.isPending}
+          />
         </div>
 
         {isLoading || !data ? (

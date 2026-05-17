@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useMobileNav } from "@/components/mobile-nav";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { useAppSettings } from "@/lib/app-settings";
 
 function PlanChangeSection() {
   const { t } = useI18n();
@@ -307,6 +308,8 @@ export default function MyAccount() {
   const [showUsernameForm, setShowUsernameForm] = useState(false);
   const [newUsername, setNewUsername] = useState("");
   const [usernameError, setUsernameError] = useState("");
+
+  const { commercializationEnabled } = useAppSettings();
 
   const changeUsernameMutation = useMutation({
     mutationFn: async () => {
@@ -742,7 +745,7 @@ export default function MyAccount() {
         </Card>
 
         {/* Plan change request - team admins only */}
-        {isTeamAdmin && !user?.isAdmin && (
+        {commercializationEnabled && isTeamAdmin && !user?.isAdmin && (
           <PlanChangeSection />
         )}
 

@@ -351,6 +351,8 @@ export async function registerRoutes(
       ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS action_type TEXT;
       ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS action_data TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'no';
+      CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      INSERT INTO app_settings (key, value) VALUES ('commercialization_enabled', 'true') ON CONFLICT (key) DO NOTHING;
     `);
   }
 
@@ -376,6 +378,28 @@ export async function registerRoutes(
 
   // --- Health check (used by keep-alive ping) ---
   app.get("/api/health", (_req, res) => res.json({ ok: true, ts: Date.now() }));
+
+  // --- Public app settings (no auth required) ---
+  app.get("/api/settings/public", async (_req, res) => {
+    try {
+      const rows = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'commercialization_enabled'`);
+      const row = ((rows as any).rows ?? rows)[0];
+      res.json({ commercializationEnabled: row?.value !== 'false' });
+    } catch {
+      res.json({ commercializationEnabled: true });
+    }
+  });
+
+  // --- SA settings update ---
+  app.patch("/api/admin/settings", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const { commercializationEnabled } = req.body;
+    if (typeof commercializationEnabled === 'boolean') {
+      await db.execute(sql`UPDATE app_settings SET value = ${commercializationEnabled ? 'true' : 'false'} WHERE key = 'commercialization_enabled'`);
+    }
+    res.json({ ok: true });
+  });
 
   // --- Teams CRUD ---
   app.get("/api/teams", requireAuth, async (req, res) => {

@@ -43,6 +43,7 @@ import { MobileNav, useMobileNav } from "@/components/mobile-nav";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useI18n } from "@/lib/i18n";
+import { useAppSettings } from "@/lib/app-settings";
 
 type NavItem = {
   href: string;
@@ -260,6 +261,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { theme, toggle: toggleTheme } = useTheme();
   const { t } = useI18n();
   const [reportOpen, setReportOpen] = useState(false);
+  const { commercializationEnabled } = useAppSettings();
 
   const [adminMode, setAdminMode] = useState<boolean>(() => {
     try { return localStorage.getItem("glidr-sa-admin-mode") === "true"; } catch { return false; }
@@ -579,14 +581,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             <AppLink href="/my-account" testId="link-my-account" className="underline hover:text-foreground transition-colors">
               {t("shell.myAccount")}
             </AppLink>
-            <span className="text-border">|</span>
-            <AppLink href="/what-is-glidr" testId="link-what-is-glidr" className="underline hover:text-foreground transition-colors">
-              {t("shell.whatIsGlidr")}
-            </AppLink>
-            <span className="text-border">|</span>
-            <AppLink href="/pricing" testId="link-pricing" className="underline hover:text-foreground transition-colors">
-              {t("shell.pricing")}
-            </AppLink>
+            {commercializationEnabled && (
+              <>
+                <span className="text-border">|</span>
+                <AppLink href="/what-is-glidr" testId="link-what-is-glidr" className="underline hover:text-foreground transition-colors">
+                  {t("shell.whatIsGlidr")}
+                </AppLink>
+                <span className="text-border">|</span>
+                <AppLink href="/pricing" testId="link-pricing" className="underline hover:text-foreground transition-colors">
+                  {t("shell.pricing")}
+                </AppLink>
+              </>
+            )}
             <span className="text-border">|</span>
             <AppLink href="/legal" testId="link-legal" className="underline hover:text-foreground transition-colors">
               {t("shell.legal")}

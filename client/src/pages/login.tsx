@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import { useAppSettings } from "@/lib/app-settings";
 
 const schema = z.object({
   username: z.string().min(1, "Enter your username"),
@@ -23,6 +24,7 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login } = useAuth();
+  const { commercializationEnabled } = useAppSettings();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const { theme, toggle: toggleTheme } = useTheme();
@@ -259,8 +261,12 @@ export default function Login() {
           <p>Glidr &middot; A glide and performance database</p>
           <p>
             <a href="/what-is-glidr" className="underline hover:text-foreground transition-colors" data-testid="link-login-features">What is Glidr?</a>
-            <span className="mx-2">|</span>
-            <a href="/pricing" className="underline hover:text-foreground transition-colors" data-testid="link-login-pricing">Pricing</a>
+            {commercializationEnabled && (
+              <>
+                <span className="mx-2">|</span>
+                <a href="/pricing" className="underline hover:text-foreground transition-colors" data-testid="link-login-pricing">Pricing</a>
+              </>
+            )}
             <span className="mx-2">|</span>
             <Link href="/demo" className="text-sm text-muted-foreground hover:text-foreground">
               View demo

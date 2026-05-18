@@ -7,26 +7,26 @@ import { Mail, ArrowLeft, Check, ShieldCheck } from "lucide-react";
 const T = {
   en: {
     title: "Forgot your password?",
-    sub: "Enter your email address. Your administrator will receive a notification and reset your password.",
+    sub: "Enter your email address and we'll send you a link to reset your password.",
     label: "Email address",
     placeholder: "your@email.com",
-    cta: "Request password reset",
+    cta: "Send reset link",
     sending: "Sending...",
-    successTitle: "Request sent",
-    successSub: "Your administrator has been notified. They will contact you with a new temporary password.",
-    note: "This usually takes a few minutes during working hours.",
+    successTitle: "Check your inbox",
+    successSub: "If an account with that email exists, we've sent a password reset link. Check your inbox (and spam folder).",
+    note: "The link expires after 1 hour.",
     back: "Back to login",
   },
   no: {
     title: "Glemt passordet?",
-    sub: "Skriv inn e-postadressen din. Administratoren din vil få et varsel og tilbakestille passordet ditt.",
+    sub: "Skriv inn e-postadressen din, så sender vi deg en lenke for å tilbakestille passordet.",
     label: "E-postadresse",
     placeholder: "din@epost.no",
-    cta: "Be om tilbakestilling",
+    cta: "Send tilbakestillingslenke",
     sending: "Sender...",
-    successTitle: "Forespørsel sendt",
-    successSub: "Administratoren din er varslet. De vil ta kontakt med et nytt midlertidig passord.",
-    note: "Dette tar vanligvis noen minutter i arbeidstiden.",
+    successTitle: "Sjekk innboksen din",
+    successSub: "Hvis en konto med den e-postadressen finnes, har vi sendt en lenke for tilbakestilling. Sjekk innboksen (og søppelpost).",
+    note: "Lenken utløper etter 1 time.",
     back: "Tilbake til innlogging",
   },
 };
@@ -42,7 +42,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await fetch("/api/auth/request-password-reset", {
+      await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

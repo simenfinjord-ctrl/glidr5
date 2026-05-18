@@ -227,6 +227,7 @@ function OverviewStats({
   testsById: Map<number, Test>;
   weatherById: Map<number, Weather>;
 }) {
+  const { t } = useI18n();
   const stats = useMemo(() => {
     const weatherLinked = tests.filter((t) => t.weatherId != null).length;
     const weatherPct = tests.length > 0 ? Math.round((weatherLinked / tests.length) * 100) : 0;
@@ -316,10 +317,10 @@ function OverviewStats({
       {/* Summary row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { icon: <Hash className="h-4 w-4 text-blue-500" />, value: tests.length, label: "Total tests" },
-          { icon: <Layers className="h-4 w-4 text-violet-500" />, value: totalEntries, label: "Ski appearances" },
-          { icon: <Activity className="h-4 w-4 text-emerald-500" />, value: uniqueProductsUsed, label: "Products tested" },
-          { icon: <Snowflake className="h-4 w-4 text-sky-500" />, value: `${stats.weatherPct}%`, label: "Tests with weather" },
+          { icon: <Hash className="h-4 w-4 text-blue-500" />, value: tests.length, label: t("analytics.totalTests") },
+          { icon: <Layers className="h-4 w-4 text-violet-500" />, value: totalEntries, label: t("analytics.skiAppearances") },
+          { icon: <Activity className="h-4 w-4 text-emerald-500" />, value: uniqueProductsUsed, label: t("analytics.productsTested") },
+          { icon: <Snowflake className="h-4 w-4 text-sky-500" />, value: `${stats.weatherPct}%`, label: t("analytics.testsWithWeather") },
         ].map((c) => (
           <Card key={c.label} className="fs-card rounded-xl p-3 text-center">
             <div className="flex justify-center mb-1">{c.icon}</div>
@@ -334,8 +335,8 @@ function OverviewStats({
         <Card className="fs-card rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <Trophy className="h-4 w-4 text-amber-500" />
-            <h3 className="text-sm font-semibold">Top products by win rate</h3>
-            <span className="text-xs text-muted-foreground">(min 3 tests)</span>
+            <h3 className="text-sm font-semibold">{t("analytics.topProductsByWinRate")}</h3>
+            <span className="text-xs text-muted-foreground">({t("analytics.minTests", { n: 3 })})</span>
           </div>
           {stats.topByWinRate.length === 0 ? (
             <p className="text-xs text-muted-foreground">Not enough data yet.</p>
@@ -345,11 +346,11 @@ function OverviewStats({
                 <thead className="bg-muted/60">
                   <tr>
                     <th className="text-left px-3 py-2 font-medium">#</th>
-                    <th className="text-left px-3 py-2 font-medium">Product</th>
-                    <th className="text-center px-3 py-2 font-medium">Tests</th>
-                    <th className="text-center px-3 py-2 font-medium">Avg rank</th>
-                    <th className="text-center px-3 py-2 font-medium">Win rate</th>
-                    <th className="text-center px-3 py-2 font-medium">Wins</th>
+                    <th className="text-left px-3 py-2 font-medium">{t("analytics.product")}</th>
+                    <th className="text-center px-3 py-2 font-medium">{t("analytics.testCount")}</th>
+                    <th className="text-center px-3 py-2 font-medium">{t("analytics.avgRank")}</th>
+                    <th className="text-center px-3 py-2 font-medium">{t("analytics.winRate")}</th>
+                    <th className="text-center px-3 py-2 font-medium">{t("analytics.wins")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -373,10 +374,10 @@ function OverviewStats({
         <Card className="fs-card rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <AlignLeft className="h-4 w-4 text-blue-500" />
-            <h3 className="text-sm font-semibold">Most tested products</h3>
+            <h3 className="text-sm font-semibold">{t("analytics.mostTestedProducts")}</h3>
           </div>
           {stats.mostUsed.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No data yet.</p>
+            <p className="text-xs text-muted-foreground">{t("analytics.noData")}</p>
           ) : (
             <div className="flex flex-col gap-1.5">
               {stats.mostUsed.map((p, i) => {
@@ -407,18 +408,18 @@ function OverviewStats({
         <Card className="fs-card rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <MapPin className="h-4 w-4 text-rose-500" />
-            <h3 className="text-sm font-semibold">Test locations</h3>
+            <h3 className="text-sm font-semibold">{t("analytics.testLocations")}</h3>
           </div>
           {stats.topLocations.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No data yet.</p>
+            <p className="text-xs text-muted-foreground">{t("analytics.noData")}</p>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <table className="w-full text-xs">
                 <thead className="bg-muted/60">
                   <tr>
-                    <th className="text-left px-3 py-2 font-medium">Location</th>
-                    <th className="text-center px-3 py-2 font-medium">Tests</th>
-                    <th className="text-center px-3 py-2 font-medium">Weather coverage</th>
+                    <th className="text-left px-3 py-2 font-medium">{t("common.location")}</th>
+                    <th className="text-center px-3 py-2 font-medium">{t("analytics.testCount")}</th>
+                    <th className="text-center px-3 py-2 font-medium">{t("analytics.weatherCoverage")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -441,15 +442,15 @@ function OverviewStats({
         <Card className="fs-card rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <Snowflake className="h-4 w-4 text-sky-500" />
-            <h3 className="text-sm font-semibold">Tested conditions overview</h3>
+            <h3 className="text-sm font-semibold">{t("analytics.testedConditionsOverview")}</h3>
           </div>
           {stats.weatherLinked === 0 ? (
             <p className="text-xs text-muted-foreground">No weather-linked tests yet.</p>
           ) : (
             <div className="flex flex-col gap-3">
               {[
-                { label: "Snow temp", dist: stats.snowTempDist },
-                { label: "Air temp", dist: stats.airTempDist },
+                { label: t("analytics.snowTemp"), dist: stats.snowTempDist },
+                { label: t("analytics.airTemp"), dist: stats.airTempDist },
               ].map(({ label, dist }) => {
                 const total = Array.from(dist.values()).reduce((a, b) => a + b, 0);
                 return total > 0 ? (
@@ -487,7 +488,7 @@ function OverviewStats({
               )}
               {stats.byType.size > 0 && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Test types</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t("analytics.testTypes")}</p>
                   <div className="flex flex-wrap gap-1">
                     {Array.from(stats.byType.entries()).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
                       <span key={k} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border">{k}: {v}</span>
@@ -1885,10 +1886,10 @@ export default function Analytics() {
   const hasData = tests.length > 0;
 
   const TABS = [
-    { id: "overview" as const, label: "Overview", icon: <BarChart3 className="h-4 w-4" /> },
-    { id: "products" as const, label: "Products", icon: <Search className="h-4 w-4" /> },
-    { id: "compare" as const, label: "Compare", icon: <TrendingUp className="h-4 w-4" /> },
-    { id: "conditions" as const, label: "Conditions", icon: <Snowflake className="h-4 w-4" /> },
+    { id: "overview" as const, label: t("analytics.overview"), icon: <BarChart3 className="h-4 w-4" /> },
+    { id: "products" as const, label: t("analytics.products"), icon: <Search className="h-4 w-4" /> },
+    { id: "compare" as const, label: t("analytics.compare"), icon: <TrendingUp className="h-4 w-4" /> },
+    { id: "conditions" as const, label: t("analytics.conditions"), icon: <Snowflake className="h-4 w-4" /> },
   ];
 
   return (
@@ -1913,7 +1914,7 @@ export default function Analytics() {
                 onClick={() => setTestTypeFilter(type)}
                 data-testid={`button-filter-${type.toLowerCase()}`}
               >
-                {type}
+                {type === "All" ? t("analytics.all") : type === "Glide" ? t("tests.glide") : t("tests.structure")}
               </Button>
             ))}
           </div>

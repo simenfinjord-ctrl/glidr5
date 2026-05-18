@@ -402,7 +402,7 @@ function GrindProfileForm({
 
         <div className="flex justify-end pt-2">
           <Button type="submit" disabled={!canSave} data-testid="button-save-grind-profile">
-            {editProfile ? t("common.save") : "Add Grind"}
+            {editProfile ? t("common.save") : t("grinding.addGrind")}
           </Button>
         </div>
       </form>
@@ -425,6 +425,7 @@ function GrindProfilesTable({
   onDuplicate: (p: GrindProfile) => void;
   onDelete: (p: GrindProfile) => void;
 }) {
+  const { t } = useI18n();
   // Discover all extra param keys across all profiles (excluding stone/pattern already shown)
   const allExtraKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -451,7 +452,7 @@ function GrindProfilesTable({
               {allExtraKeys.map((k) => (
                 <th key={k} className="px-3 py-2.5">{k === "ra_value" ? "RA-value" : k}</th>
               ))}
-              <th className="px-3 py-2.5">Added by</th>
+              <th className="px-3 py-2.5">{t("grinding.addedBy")}</th>
               <th className="px-3 py-2.5">Date</th>
               <th className="px-3 py-2.5 text-right">Actions</th>
             </tr>
@@ -525,6 +526,7 @@ function GrindProfileCard({
   onDelete: () => void;
   onViewResults: () => void;
 }) {
+  const { t } = useI18n();
   // Build ordered param list from extraParams (user-defined order), with legacy fallback
   const extra = parseExtraParams(profile.extraParams);
   const extraKeys = new Set(Object.keys(extra));
@@ -561,7 +563,7 @@ function GrindProfileCard({
             ))}
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-            <span>Added by {profile.createdByName}</span>
+            <span>{t("grinding.addedBy")} {profile.createdByName}</span>
             <span>·</span>
             <span>{formatDate(profile.createdAt)}</span>
           </div>
@@ -1110,7 +1112,7 @@ export default function Grinding() {
                     onClick={() => { setEditProfile(undefined); setGrindDialogOpen(true); }}
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    Add Grind
+                    {t("grinding.addGrind")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
@@ -1137,7 +1139,7 @@ export default function Grinding() {
             data-testid="tab-grinding-tests"
           >
             <Disc3 className="inline-block mr-1.5 h-4 w-4" />
-            Tests
+            {t("grinding.testsTab")}
             {grindTests.length > 0 && (
               <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-700">{grindTests.length}</span>
             )}
@@ -1148,7 +1150,7 @@ export default function Grinding() {
             data-testid="tab-grinding-grinds"
           >
             <Trophy className="inline-block mr-1.5 h-4 w-4" />
-            Grinds
+            {t("grinding.grindsTab")}
             {grindProfiles.length > 0 && (
               <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-violet-100 px-1.5 py-0.5 text-xs font-medium text-violet-700">{grindProfiles.length}</span>
             )}
@@ -1198,7 +1200,7 @@ export default function Grinding() {
                       <Input
                         value={filterLocation}
                         onChange={(e) => setFilterLocation(e.target.value)}
-                        placeholder="Location…"
+                        placeholder={`${t("common.location")}…`}
                         data-testid="input-grind-filter-location"
                       />
                     </div>
@@ -1334,7 +1336,7 @@ export default function Grinding() {
                 </div>
                 {filtered.length === 0 ? (
                   <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-grind-day">
-                    No grind tests on this date.
+                    {t("grinding.noGrindTests")}
                   </Card>
                 ) : (
                   filtered.map((t) => <GrindTestCard key={t.id} test={t} entries={allEntries.filter((e) => e.testId === t.id)} seriesById={seriesById} weatherById={weatherById} grindProfiles={grindProfiles} grindHighlight={grindHighlight} />)
@@ -1420,7 +1422,7 @@ export default function Grinding() {
                 <Input
                   value={grindSearch}
                   onChange={(e) => setGrindSearch(e.target.value)}
-                  placeholder="Search grinds…"
+                  placeholder={t("grinding.searchGrinds")}
                   className="pl-9"
                   data-testid="input-grind-profile-search"
                 />

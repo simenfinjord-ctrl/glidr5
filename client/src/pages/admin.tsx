@@ -26,6 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 
@@ -1478,18 +1479,18 @@ function TeamFeaturesDialog({
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ALL_TABS: { id: TabId; label: string; superAdminOnly?: boolean }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "users", label: "Users" },
-  { id: "groups", label: "Groups" },
-  { id: "teams", label: "Teams", superAdminOnly: true },
-  { id: "backup", label: "Backup" },
-  { id: "activity", label: "Activity Log" },
-  { id: "logins", label: "Login History" },
-  { id: "data", label: "Data Management" },
-  { id: "danger", label: "Danger Zone" },
-  { id: "security", label: "Security", superAdminOnly: true },
-  { id: "registrations", label: "Registrations", superAdminOnly: true },
+const ALL_TABS: { id: TabId; labelKey: string; superAdminOnly?: boolean }[] = [
+  { id: "overview", labelKey: "admin.tabOverview" },
+  { id: "users", labelKey: "admin.tabUsers" },
+  { id: "groups", labelKey: "admin.tabGroups" },
+  { id: "teams", labelKey: "admin.tabTeams", superAdminOnly: true },
+  { id: "backup", labelKey: "admin.tabBackup" },
+  { id: "activity", labelKey: "admin.tabActivityLog" },
+  { id: "logins", labelKey: "admin.tabLoginHistory" },
+  { id: "data", labelKey: "admin.tabDataManagement" },
+  { id: "danger", labelKey: "admin.tabDangerZone" },
+  { id: "security", labelKey: "admin.tabSecurity", superAdminOnly: true },
+  { id: "registrations", labelKey: "admin.tabRegistrations", superAdminOnly: true },
 ];
 
 function BackupStatusCard() {
@@ -1846,6 +1847,7 @@ function RegistrationsTab() {
 }
 
 export default function Admin() {
+  const { t } = useI18n();
   const { user, isSuperAdmin, canManage } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
@@ -2586,9 +2588,9 @@ export default function Admin() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Admin</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("admin.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-admin-subtitle">
-              Manage users, groups, and access.{scopeLabel ? ` — ${scopeLabel}` : ""}
+              {t("admin.manageDesc")}{scopeLabel ? ` — ${scopeLabel}` : ""}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -2599,7 +2601,7 @@ export default function Admin() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="current" data-testid="scope-current">Current team</SelectItem>
+                  <SelectItem value="current" data-testid="scope-current">{t("admin.currentTeam")}</SelectItem>
                   <SelectItem value="all" data-testid="scope-all">All teams</SelectItem>
                   {teams.map((t) => (
                     <SelectItem key={t.id} value={String(t.id)} data-testid={`scope-team-${t.id}`}>
@@ -2616,7 +2618,7 @@ export default function Admin() {
               disabled={pdfLoading}
             >
               {pdfLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-              {pdfLoading ? "Exporting…" : "Download PDF"}
+              {pdfLoading ? "Exporting…" : t("admin.downloadPdf")}
             </Button>
           </div>
         </div>
@@ -2634,7 +2636,7 @@ export default function Admin() {
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           ))}
         </div>
@@ -2642,14 +2644,14 @@ export default function Admin() {
         {activeTab === "overview" && (
           <div className="flex flex-col gap-5" data-testid="tab-content-overview">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <StatCard label="Users" value={stats.userCount} icon={Users} color="blue" testId="stat-users" />
-              <StatCard label="Tests" value={stats.testCount} icon={FlaskConical} color="emerald" testId="stat-tests" />
-              <StatCard label="Products" value={stats.productCount} icon={Package} color="amber" testId="stat-products" />
-              <StatCard label="Series" value={stats.seriesCount} icon={Layers} color="violet" testId="stat-series" />
-              <StatCard label="Weather" value={stats.weatherCount} icon={CloudSun} color="sky" testId="stat-weather" />
-              <StatCard label="Grinding" value={stats.grindingCount} icon={Disc3} color="rose" testId="stat-grinding" />
-              <StatCard label="Logins" value={stats.loginCount} icon={LogIn} color="indigo" testId="stat-logins" />
-              <StatCard label="Activities" value={stats.activityCount} icon={Activity} color="teal" testId="stat-activities" />
+              <StatCard label={t("admin.statUsers")} value={stats.userCount} icon={Users} color="blue" testId="stat-users" />
+              <StatCard label={t("admin.statTests")} value={stats.testCount} icon={FlaskConical} color="emerald" testId="stat-tests" />
+              <StatCard label={t("admin.statProducts")} value={stats.productCount} icon={Package} color="amber" testId="stat-products" />
+              <StatCard label={t("admin.statSeries")} value={stats.seriesCount} icon={Layers} color="violet" testId="stat-series" />
+              <StatCard label={t("admin.statWeather")} value={stats.weatherCount} icon={CloudSun} color="sky" testId="stat-weather" />
+              <StatCard label={t("admin.statGrinding")} value={stats.grindingCount} icon={Disc3} color="rose" testId="stat-grinding" />
+              <StatCard label={t("admin.statLogins")} value={stats.loginCount} icon={LogIn} color="indigo" testId="stat-logins" />
+              <StatCard label={t("admin.statActivities")} value={stats.activityCount} icon={Activity} color="teal" testId="stat-activities" />
             </div>
 
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-recent-activity">
@@ -2657,7 +2659,7 @@ export default function Admin() {
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-green-50">
                   <Activity className="h-4 w-4 text-green-600" />
                 </div>
-                <h2 className="text-sm font-semibold text-foreground">Recent Activity</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t("admin.recentActivity")}</h2>
               </div>
               {activities.length === 0 ? (
                 <p className="text-sm text-muted-foreground" data-testid="empty-activity">No activity recorded yet.</p>

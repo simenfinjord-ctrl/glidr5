@@ -5412,8 +5412,12 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
     const { email } = req.body;
     if (!email) return res.json({ ok: true });
     try {
+      console.log(`[forgot-password] Request for email: ${email}`);
       const user = await storage.getUserByEmail(email);
-      if (user) {
+      if (!user) {
+        console.log(`[forgot-password] No user found for email: ${email}`);
+      } else {
+        console.log(`[forgot-password] Found user: ${user.id}, sending reset email...`);
         const rawToken = crypto.randomBytes(32).toString("hex");
         const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
         const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
@@ -5424,11 +5428,12 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
           INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, used, created_at)
           VALUES (${user.id}, ${tokenHash}, ${expiresAt}, 0, ${now})
         `);
-        const appUrl = process.env.APP_URL || "https://glidr.onrender.com";
+        const appUrl = process.env.APP_URL || "https://glidr.no";
         await sendPasswordResetEmail(user.email, user.name, `${appUrl}/reset-password?token=${rawToken}`, user.language ?? "no");
+        console.log(`[forgot-password] Email sent to ${user.email}`);
       }
     } catch (e) {
-      console.error("[forgot-password]", e);
+      console.error("[forgot-password] ERROR:", e);
     }
     return res.json({ ok: true });
   });

@@ -144,6 +144,7 @@ function toBase64(file: File): Promise<string> {
 function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
+  const { t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
@@ -187,7 +188,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   async function processFile(file: File) {
     const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      setErrorMsg("Only JPEG, PNG, GIF or WebP images are supported.");
+      setErrorMsg(t("tests.imageError"));
       setStep("error");
       return;
     }
@@ -202,7 +203,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
       });
       const data = await res.json();
       if (!res.ok) {
-        setErrorMsg(data.message || "Failed to analyze image");
+        setErrorMsg(data.message || t("tests.analyzeError"));
         setStep("error");
         return;
       }
@@ -227,7 +228,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
       })));
       setStep("review");
     } catch (e: any) {
-      setErrorMsg(e.message || "Unknown error");
+      setErrorMsg(e.message || t("tests.unknownError"));
       setStep("error");
     }
   }
@@ -266,7 +267,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
       });
       const data = await res.json();
       if (!res.ok) {
-        setErrorMsg(data.message || "Failed to create test");
+        setErrorMsg(data.message || t("tests.createError"));
         setStep("error");
         return;
       }
@@ -276,7 +277,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
       queryClient.invalidateQueries({ queryKey: ["/api/series"] });
       setStep("done");
     } catch (e: any) {
-      setErrorMsg(e.message || "Unknown error");
+      setErrorMsg(e.message || t("tests.unknownError"));
       setStep("error");
     }
   }
@@ -409,18 +410,18 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             <div className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Products ({editProducts.length})
+                  {t("tests.products", { n: editProducts.length })}
                 </p>
                 <button
                   type="button"
                   className="text-xs text-primary hover:underline"
                   onClick={() => setEditProducts((prev) => [...prev, { skiNumber: 0, brand: "", name: "", category: "" }])}
                 >
-                  + Add product
+                  + {t("tests.addProduct")}
                 </button>
               </div>
               {editProducts.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">No products</p>
+                <p className="text-xs text-muted-foreground italic">{t("tests.noProducts")}</p>
               ) : (
                 <div className="flex flex-col gap-1.5">
                   {(() => {
@@ -459,14 +460,14 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                               type="text"
                               value={p.brand}
                               onChange={(e) => setEditProducts((prev) => prev.map((r, j) => j === p._i ? { ...r, brand: e.target.value } : r))}
-                              placeholder="Brand"
+                              placeholder={t("tests.brandPlaceholder")}
                               className="h-7 w-20 rounded border border-input bg-background px-1.5 text-xs flex-shrink-0"
                             />
                             <input
                               type="text"
                               value={p.name}
                               onChange={(e) => setEditProducts((prev) => prev.map((r, j) => j === p._i ? { ...r, name: e.target.value } : r))}
-                              placeholder="Name"
+                              placeholder={t("tests.namePlaceholder")}
                               className="h-7 w-24 rounded border border-input bg-background px-1.5 text-xs flex-shrink-0"
                             />
                             <button
@@ -504,7 +505,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               ) : (
                 <div className="flex flex-col gap-1.5">
                   <div className="grid gap-1 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold" style={{ gridTemplateColumns: "2rem 3rem 3rem 3rem 1fr 1.5rem" }}>
-                    <span>Ski</span><span>Result</span><span>Rank</span><span>Feel</span><span>Method</span><span></span>
+                    <span>{t("tests.skiCol")}</span><span>{t("tests.resultCol")}</span><span>{t("common.rank")}</span><span>{t("tests.feelCol")}</span><span>{t("tests.methodCol")}</span><span></span>
                   </div>
                   {editEntries.map((e, i) => (
                     <div key={i} className="grid gap-1 items-center" style={{ gridTemplateColumns: "2rem 3rem 3rem 3rem 1fr 1.5rem" }}>
@@ -813,13 +814,13 @@ export default function Tests() {
               <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10">
                 <Filter className="h-3.5 w-3.5 text-primary" />
               </div>
-              Filters
+              {t("common.filter")}
             </div>
             <div className="flex flex-1 flex-wrap items-center gap-3">
               <div className="min-w-[140px]">
                 <Select value={filterSeason} onValueChange={setFilterSeason}>
                   <SelectTrigger data-testid="select-filter-season">
-                    <SelectValue placeholder="Season" />
+                    <SelectValue placeholder={t("tests.filterSeason")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="All">All seasons</SelectItem>
@@ -832,7 +833,7 @@ export default function Tests() {
               <div className="min-w-[170px]">
                 <Select value={filterDate || "all"} onValueChange={(v) => { setFilterDate(v === "all" ? "" : v); setHideDayDetails(false); }}>
                   <SelectTrigger data-testid="select-filter-date">
-                    <SelectValue placeholder="Date" />
+                    <SelectValue placeholder={t("tests.filterDate")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All dates</SelectItem>
@@ -847,7 +848,7 @@ export default function Tests() {
               <div className="min-w-[140px]">
                 <Select value={filterType} onValueChange={setFilterType}>
                   <SelectTrigger data-testid="select-filter-test-type">
-                    <SelectValue placeholder="Test type" />
+                    <SelectValue placeholder={t("tests.testType")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="All">{t("tests.filterByType")}</SelectItem>
@@ -863,7 +864,7 @@ export default function Tests() {
               {!isBlindTester && <div className="min-w-[200px]">
                 <Select value={filterProduct} onValueChange={setFilterProduct}>
                   <SelectTrigger data-testid="select-filter-product">
-                    <SelectValue placeholder="Product" />
+                    <SelectValue placeholder={t("tests.filterProduct")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="All">All products</SelectItem>
@@ -879,7 +880,7 @@ export default function Tests() {
                 <Input
                   value={filterSnowType}
                   onChange={(e) => setFilterSnowType(e.target.value)}
-                  placeholder="Snow type…"
+                  placeholder={t("tests.filterSnowType")}
                   data-testid="input-filter-snow-type"
                 />
               </div>
@@ -887,20 +888,20 @@ export default function Tests() {
                 <LocationAutocomplete
                   value={filterLocation}
                   onChange={setFilterLocation}
-                  placeholder="Location…"
+                  placeholder={t("common.location")}
                   data-testid="input-filter-location"
                 />
               </div>
               <div className="min-w-[150px]">
                 <Select value={sortOrder} onValueChange={setSortOrder}>
                   <SelectTrigger data-testid="select-sort-order">
-                    <SelectValue placeholder="Sort" />
+                    <SelectValue placeholder={t("tests.filterSort")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="date-desc">Date ↓</SelectItem>
-                    <SelectItem value="date-asc">Date ↑</SelectItem>
-                    <SelectItem value="location-az">Location A-Z</SelectItem>
-                    <SelectItem value="location-za">Location Z-A</SelectItem>
+                    <SelectItem value="date-desc">{t("tests.sortNewest")}</SelectItem>
+                    <SelectItem value="date-asc">{t("tests.sortOldest")}</SelectItem>
+                    <SelectItem value="location-az">{t("tests.sortLocation")} A-Z</SelectItem>
+                    <SelectItem value="location-za">{t("tests.sortLocation")} Z-A</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -910,7 +911,7 @@ export default function Tests() {
                 className="h-9 w-9 shrink-0"
                 onClick={cycleViewMode}
                 data-testid="button-toggle-layout-list"
-                title={viewMode === "cards" ? "Single column" : viewMode === "cards2" ? "Two columns" : "Table view"}
+                title={viewMode === "cards" ? t("tests.singleColumn") : viewMode === "cards2" ? t("tests.twoColumns") : t("tests.tableView")}
               >
                 {viewMode === "table" ? <Table2 className="h-4 w-4" /> : viewMode === "cards2" ? <LayoutGrid className="h-4 w-4" /> : <LayoutList className="h-4 w-4" />}
               </Button>
@@ -936,7 +937,7 @@ export default function Tests() {
                   setFilterSnowHumMax("");
                 }}
               >
-                Clear
+                {t("tests.clearFilters")}
               </Button>
             )}
           </div>
@@ -944,13 +945,13 @@ export default function Tests() {
           <div className="mt-3 border-t border-border pt-3">
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               <Thermometer className="h-3 w-3" />
-              Weather conditions
+              {t("testDetail.weather")}
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />
-                  Air temp (°C)
+                  {t("testDetail.airTemp")} (°C)
                 </label>
                 <div className="flex items-center gap-1.5">
                   <Input type="number" value={filterAirTempMin} onChange={(e) => setFilterAirTempMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-air-temp-min" />
@@ -961,7 +962,7 @@ export default function Tests() {
               <div>
                 <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Snow temp (°C)
+                  {t("testDetail.snowTemp")} (°C)
                 </label>
                 <div className="flex items-center gap-1.5">
                   <Input type="number" value={filterSnowTempMin} onChange={(e) => setFilterSnowTempMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-snow-temp-min" />
@@ -972,7 +973,7 @@ export default function Tests() {
               <div>
                 <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400" />
-                  Air humidity (%)
+                  {t("weather.airHumidity")}
                 </label>
                 <div className="flex items-center gap-1.5">
                   <Input type="number" value={filterAirHumMin} onChange={(e) => setFilterAirHumMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-air-hum-min" />
@@ -983,7 +984,7 @@ export default function Tests() {
               <div>
                 <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
-                  Snow humidity (%)
+                  {t("weather.snowHumidity")}
                 </label>
                 <div className="flex items-center gap-1.5">
                   <Input type="number" value={filterSnowHumMin} onChange={(e) => setFilterSnowHumMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-snow-hum-min" />
@@ -1017,7 +1018,7 @@ export default function Tests() {
                 size="sm"
                 onClick={cycleViewMode}
                 data-testid="button-toggle-layout"
-                title={viewMode === "cards" ? "Single column" : viewMode === "cards2" ? "Two columns" : "Table view"}
+                title={viewMode === "cards" ? t("tests.singleColumn") : viewMode === "cards2" ? t("tests.twoColumns") : t("tests.tableView")}
               >
                 {viewMode === "table" ? <Table2 className="h-3.5 w-3.5" /> : viewMode === "cards2" ? <LayoutGrid className="h-3.5 w-3.5" /> : <LayoutList className="h-3.5 w-3.5" />}
               </Button>
@@ -1032,14 +1033,14 @@ export default function Tests() {
                   <table className="w-full text-sm" data-testid="table-day-tests-overview">
                     <thead>
                       <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                        <th className="px-4 py-3 font-semibold">Time</th>
-                        <th className="px-4 py-3 font-semibold">Name</th>
+                        <th className="px-4 py-3 font-semibold">{t("tests.startTime")}</th>
+                        <th className="px-4 py-3 font-semibold">{t("common.name")}</th>
                         <th className="px-4 py-3 font-semibold">{t("common.location")}</th>
                         <th className="px-4 py-3 font-semibold">{t("common.type")}</th>
                         <th className="px-4 py-3 font-semibold">{t("tests.series")}</th>
-                        <th className="px-4 py-3 font-semibold">Air temp</th>
-                        <th className="px-4 py-3 font-semibold">Snow temp</th>
-                        <th className="px-4 py-3 font-semibold">Created by</th>
+                        <th className="px-4 py-3 font-semibold">{t("testDetail.airTemp")}</th>
+                        <th className="px-4 py-3 font-semibold">{t("testDetail.snowTemp")}</th>
+                        <th className="px-4 py-3 font-semibold">{t("common.created")} {t("common.by")}</th>
                         {!isBlindTester && <th className="px-4 py-3 font-semibold">{t("tests.winner")}</th>}
                       </tr>
                     </thead>
@@ -1150,17 +1151,17 @@ export default function Tests() {
                           </colgroup>
                           <thead>
                             <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                              <th className="pb-2 pr-3">Ski</th>
-                              {!hideDayDetails && <th className="pb-2 pr-3">Product</th>}
-                              {!hideDayDetails && <th className="pb-2 pr-3">Method</th>}
+                              <th className="pb-2 pr-3">{t("tests.skiCol")}</th>
+                              {!hideDayDetails && <th className="pb-2 pr-3">{t("tests.product")}</th>}
+                              {!hideDayDetails && <th className="pb-2 pr-3">{t("tests.methodCol")}</th>}
                               {distLabels.map((label, i) => (
                                 <th key={i} className="pb-2 pr-3">
                                   {label?.trim() || `R${i + 1}`}
                                 </th>
                               ))}
-                              <th className="pb-2 pr-3">Rank</th>
-                              <th className="pb-2">Feel</th>
-                              {t.testType === "Classic" && <th className="pb-2 pl-2">Kick</th>}
+                              <th className="pb-2 pr-3">{t("tests.rank")}</th>
+                              <th className="pb-2">{t("tests.feelCol")}</th>
+                              {t.testType === "Classic" && <th className="pb-2 pl-2">{t("newTest.kick")}</th>}
                             </tr>
                           </thead>
                           <tbody>
@@ -1252,13 +1253,13 @@ export default function Tests() {
                   <thead>
                     <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                       <th className="px-4 py-3 font-semibold">{t("common.date")}</th>
-                      <th className="px-4 py-3 font-semibold">Name</th>
+                      <th className="px-4 py-3 font-semibold">{t("common.name")}</th>
                       <th className="px-4 py-3 font-semibold">{t("common.location")}</th>
                       <th className="px-4 py-3 font-semibold">{t("common.type")}</th>
                       <th className="px-4 py-3 font-semibold">{t("tests.series")}</th>
-                      <th className="px-4 py-3 font-semibold">Air temp</th>
-                      <th className="px-4 py-3 font-semibold">Snow temp</th>
-                      <th className="px-4 py-3 font-semibold">Created by</th>
+                      <th className="px-4 py-3 font-semibold">{t("testDetail.airTemp")}</th>
+                      <th className="px-4 py-3 font-semibold">{t("testDetail.snowTemp")}</th>
+                      <th className="px-4 py-3 font-semibold">{t("common.created")} {t("common.by")}</th>
                       {!isBlindTester && <th className="px-4 py-3 font-semibold">{t("tests.winner")}</th>}
                     </tr>
                   </thead>

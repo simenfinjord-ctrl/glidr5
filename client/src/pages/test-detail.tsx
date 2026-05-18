@@ -175,6 +175,7 @@ function RankBadge({ rank, size = "sm" }: { rank: number | null; size?: "sm" | "
 
 function AddToWatchButton({ testId, testName, seriesId, hasAccess }: { testId: number; testName: string; seriesId: number; hasAccess: boolean }) {
   const { toast } = useToast();
+  const { t } = useI18n();
   const { data: queue = [] } = useQuery<any[]>({
     queryKey: ["/api/watch/queue"],
     enabled: hasAccess,
@@ -185,14 +186,14 @@ function AddToWatchButton({ testId, testName, seriesId, hasAccess }: { testId: n
     mutationFn: () => apiRequest("POST", "/api/watch/queue", { testId, seriesId, testName }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/watch/queue"] });
-      toast({ title: "Added to watch queue", description: "Open the Garmin app and select «From list»." });
+      toast({ title: t("watchQueue.addToQueue"), description: "Open the Garmin app and select «From list»." });
     },
     onError: (err: any) => {
       const msg = err?.message || "";
       if (msg.includes("409") || msg.includes("Already")) {
-        toast({ title: "Already in queue", description: "This test is already in the watch queue.", variant: "destructive" });
+        toast({ title: t("watchQueue.active"), description: "This test is already in the watch queue.", variant: "destructive" });
       } else {
-        toast({ title: "Error", description: "Could not add to watch queue.", variant: "destructive" });
+        toast({ title: t("common.error"), description: "Could not add to watch queue.", variant: "destructive" });
       }
     },
   });
@@ -206,7 +207,7 @@ function AddToWatchButton({ testId, testName, seriesId, hasAccess }: { testId: n
       data-testid="button-add-to-watch"
     >
       <Watch className="mr-2 h-4 w-4" />
-      {inQueue ? "On Watch" : "Add to Watch"}
+      {inQueue ? t("watchQueue.active") : t("watchQueue.addToQueue")}
     </Button>
   );
 }
@@ -237,13 +238,13 @@ export default function TestDetail() {
       queryClient.invalidateQueries({ queryKey: [`/api/tests/${id}/entries`] });
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
       queryClient.invalidateQueries({ queryKey: [`/api/tests/${id}`] });
-      toast({ title: "Runsheet results applied" });
+      toast({ title: t("newTest.runsheetApplied") });
       setShowRunsheet(false);
     },
     onError: (e) => {
       toast({
-        title: "Could not apply runsheet results",
-        description: e instanceof Error ? e.message : "Unknown error",
+        title: t("runsheets.couldNotApply"),
+        description: e instanceof Error ? e.message : t("tests.unknownError"),
         variant: "destructive",
       });
     },
@@ -255,13 +256,13 @@ export default function TestDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
-      toast({ title: "Test deleted" });
+      toast({ title: t("testDetail.deleteTest") });
       setLocation(test?.testType === "Grind" ? "/grinding" : "/tests");
     },
     onError: (e) => {
       toast({
-        title: "Could not delete test",
-        description: e instanceof Error ? e.message : "Unknown error",
+        title: t("newTest.errorSave"),
+        description: e instanceof Error ? e.message : t("tests.unknownError"),
         variant: "destructive",
       });
     },
@@ -281,12 +282,12 @@ export default function TestDetail() {
     onSuccess: (data: { sharedTeams: string[] }) => {
       setShowShareDialog(false);
       setSelectedTeamIds([]);
-      toast({ title: `Test shared with: ${data.sharedTeams.join(", ")}` });
+      toast({ title: `${t("testDetail.shareLink")}: ${data.sharedTeams.join(", ")}` });
     },
     onError: (e) => {
       toast({
-        title: "Could not share test",
-        description: e instanceof Error ? e.message : "Unknown error",
+        title: t("common.error"),
+        description: e instanceof Error ? e.message : t("tests.unknownError"),
         variant: "destructive",
       });
     },
@@ -416,7 +417,7 @@ export default function TestDetail() {
     return (
       <AppShell>
         <div className="flex items-center justify-center py-20 text-muted-foreground" data-testid="loading-test">
-          Loading…
+          {t("common.loading")}
         </div>
       </AppShell>
     );
@@ -426,7 +427,7 @@ export default function TestDetail() {
     return (
       <AppShell>
         <div className="flex flex-col items-center gap-4 py-20" data-testid="not-found-test">
-          <p className="text-muted-foreground">Test not found.</p>
+          <p className="text-muted-foreground">{t("common.noData")}</p>
           <AppLink href="/tests">
             <Button variant="secondary" data-testid="button-back-tests">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -451,32 +452,32 @@ export default function TestDetail() {
             <AppLink href={isGrind ? "/grinding" : "/tests"} testId="link-back-tests">
               <Button variant="ghost" size="sm" data-testid="button-back-tests">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                {isGrind ? "Back to grinding" : t("testDetail.backToTests")}
+                {isGrind ? `${t("testDetail.back")} — ${t("grinding.title")}` : t("testDetail.backToTests")}
               </Button>
             </AppLink>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               {sortedEntries.length >= 2 && (
                 <Button variant="outline" size="sm" onClick={() => setShowRunsheet(true)} data-testid="button-complete-runsheet">
                   <Trophy className="mr-2 h-4 w-4" />
-                  Complete Runsheet
+                  {t("testDetail.runsheet")}
                 </Button>
               )}
               {(test as any)?.runsheetBracket && (
                 <Button variant="outline" size="sm" onClick={() => setShowReviewRunsheet(true)} data-testid="button-review-runsheet">
                   <ClipboardList className="mr-2 h-4 w-4" />
-                  Review runsheet
+                  {t("testDetail.runsheet")}
                 </Button>
               )}
               {isSuperAdmin && (
                 <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} data-testid="button-share-test">
                   <Share2 className="mr-2 h-4 w-4" />
-                  Share with
+                  {t("testDetail.shareLink")}
                 </Button>
               )}
               <AppLink href={`/tests/new?duplicate=${id}`} testId="link-duplicate-test">
                 <Button variant="outline" size="sm" data-testid="button-duplicate-test">
                   <Copy className="mr-2 h-4 w-4" />
-                  Duplicate
+                  {t("newTest.duplicateTest")}
                 </Button>
               </AppLink>
               <Button
@@ -518,7 +519,7 @@ export default function TestDetail() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>{t("testDetail.deleteTest")}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will permanently delete the test "{(test as any).testName || test.location}" ({test.date}) and all its entries. This action cannot be undone.
+                      {t("testDetail.confirmDelete")} "{(test as any).testName || test.location}" ({test.date})
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -553,13 +554,13 @@ export default function TestDetail() {
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
                 <FlaskConical className="h-4 w-4 text-primary" />
               </div>
-              <h2 className="text-base font-semibold">Test Details</h2>
+              <h2 className="text-base font-semibold">{t("testDetail.title")}</h2>
             </div>
             <div className="space-y-3">
               <div className="flex items-center gap-3 rounded-xl bg-background/40 px-3 py-2.5">
                 <Calendar className="h-4 w-4 text-primary/70" />
                 <div>
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Date</div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("common.date")}</div>
                   <div className="text-sm font-medium" data-testid="text-test-date">
                     {fmtDate(test.date)}
                     {(test as any).startTime && (
@@ -573,23 +574,23 @@ export default function TestDetail() {
               <div className="flex items-center gap-3 rounded-xl bg-background/40 px-3 py-2.5">
                 <MapPin className="h-4 w-4 text-emerald-600/70" />
                 <div>
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Location</div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("common.location")}</div>
                   <div className="text-sm font-medium" data-testid="text-test-location">{test.location}</div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-background/40 px-3 py-2.5">
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Series</div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("tests.series")}</div>
                   <div className="text-sm font-medium" data-testid="text-test-series">{seriesById.get(test.seriesId) ?? "—"}</div>
                 </div>
                 <div className="rounded-xl bg-background/40 px-3 py-2.5">
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Created By</div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("common.created")} {t("common.by")}</div>
                   <div className="text-sm font-medium" data-testid="text-test-created-by">{test.createdByName}</div>
                 </div>
               </div>
               {distLabels.length > 0 && (
                 <div className="rounded-xl bg-background/40 px-3 py-2.5">
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Rounds</div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("testDetail.distance")}</div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {distLabels.map((label, i) => (
                       <span key={i} className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
@@ -601,13 +602,13 @@ export default function TestDetail() {
               )}
               {test.notes && (
                 <div className="rounded-xl bg-background/40 px-3 py-2.5">
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Notes</div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("common.notes")}</div>
                   <div className="text-sm" data-testid="text-test-notes">{test.notes}</div>
                 </div>
               )}
               {isGrind && (grindParams.grindType || grindParams.stone || grindParams.pattern) && (
                 <div className="rounded-xl bg-indigo-50/50 px-3 py-2.5 ring-1 ring-indigo-100">
-                  <div className="text-[11px] uppercase tracking-wider text-indigo-600/70 mb-1">Grind Parameters</div>
+                  <div className="text-[11px] uppercase tracking-wider text-indigo-600/70 mb-1">{t("testDetail.grindParams")}</div>
                   <div className="flex flex-wrap gap-2">
                     {grindParams.grindType && (
                       <span className="inline-flex rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700" data-testid="text-grind-type">{grindParams.grindType}</span>
@@ -633,32 +634,32 @@ export default function TestDetail() {
                 <h2 className="text-base font-semibold">{t("testDetail.weather")}</h2>
                 {weather.testQuality != null && (
                   <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-300 ring-1 ring-amber-200">
-                    Quality {weather.testQuality}/10
+                    {t("weather.testQuality")} {weather.testQuality}/10
                   </span>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-xl fs-gradient-emerald px-3 py-3 ring-1 ring-emerald-500/10" data-testid="text-weather-snow-temp">
                   <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-emerald-700/70">
-                    <Thermometer className="h-3 w-3" /> Snow Temp
+                    <Thermometer className="h-3 w-3" /> {t("testDetail.snowTemp")}
                   </div>
                   <div className="mt-1 text-lg font-bold text-emerald-700">{weather.snowTemperatureC}°C</div>
                 </div>
                 <div className="rounded-xl fs-gradient-blue px-3 py-3 ring-1 ring-sky-500/10" data-testid="text-weather-air-temp">
                   <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-sky-700/70">
-                    <Thermometer className="h-3 w-3" /> Air Temp
+                    <Thermometer className="h-3 w-3" /> {t("testDetail.airTemp")}
                   </div>
                   <div className="mt-1 text-lg font-bold text-sky-700">{weather.airTemperatureC}°C</div>
                 </div>
                 <div className="rounded-xl fs-gradient-amber px-3 py-3 ring-1 ring-amber-500/10" data-testid="text-weather-snow-humidity">
                   <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-amber-300/70">
-                    <Droplets className="h-3 w-3" /> Snow Hum (Doser)
+                    <Droplets className="h-3 w-3" /> {t("testDetail.humidity")}
                   </div>
                   <div className="mt-1 text-lg font-bold text-amber-300">{weather.snowHumidityPct}%</div>
                 </div>
                 <div className="rounded-xl fs-gradient-violet px-3 py-3 ring-1 ring-violet-500/10" data-testid="text-weather-air-humidity">
                   <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-violet-700/70">
-                    <Droplets className="h-3 w-3" /> Air Hum
+                    <Droplets className="h-3 w-3" /> {t("testDetail.humidity")}
                   </div>
                   <div className="mt-1 text-lg font-bold text-violet-700">{weather.airHumidityPct}%rH</div>
                 </div>
@@ -668,25 +669,25 @@ export default function TestDetail() {
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {weather.clouds != null && (
                     <div className="rounded-lg bg-background/40 px-3 py-2">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Clouds</div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("weather.clouds").replace(" (%)", "")}</div>
                       <div className="text-sm font-medium">{weather.clouds}/8</div>
                     </div>
                   )}
                   {weather.visibility && (
                     <div className="rounded-lg bg-background/40 px-3 py-2">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Visibility</div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("weather.visibility")}</div>
                       <div className="text-sm font-medium">{weather.visibility}</div>
                     </div>
                   )}
                   {weather.wind && (
                     <div className="rounded-lg bg-background/40 px-3 py-2">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Wind</div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("weather.wind")}</div>
                       <div className="text-sm font-medium">{weather.wind}</div>
                     </div>
                   )}
                   {weather.precipitation && (
                     <div className="rounded-lg bg-background/40 px-3 py-2">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Precipitation</div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("weather.precipitation")}</div>
                       <div className="text-sm font-medium">{weather.precipitation}</div>
                     </div>
                   )}
@@ -697,27 +698,27 @@ export default function TestDetail() {
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {weather.artificialSnow && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-2.5 py-1 text-xs font-medium text-pink-700 ring-1 ring-pink-200">
-                      Art. snow: {weather.artificialSnow}
+                      {t("weather.artificialSnow")}: {weather.artificialSnow}
                     </span>
                   )}
                   {weather.naturalSnow && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-200">
-                      Nat. snow: {weather.naturalSnow}
+                      {t("weather.naturalSnow")}: {weather.naturalSnow}
                     </span>
                   )}
                   {weather.grainSize && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-medium text-orange-300 ring-1 ring-orange-500/20">
-                      Grain: {weather.grainSize}
+                      {t("weather.grainSize")}: {weather.grainSize}
                     </span>
                   )}
                   {weather.snowHumidityType && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 ring-1 ring-indigo-500/20">
-                      Snow hum: {weather.snowHumidityType}
+                      {t("weather.snowHumidityType")}: {weather.snowHumidityType}
                     </span>
                   )}
                   {weather.trackHardness && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-300 ring-1 ring-rose-200">
-                      Track: {weather.trackHardness}
+                      {t("testDetail.trackHardness")}: {weather.trackHardness}
                     </span>
                   )}
                 </div>
@@ -733,7 +734,7 @@ export default function TestDetail() {
                 <Award className="h-4 w-4 text-emerald-600" />
               </div>
               <h2 className="text-base font-semibold">{t("common.results")}</h2>
-              <span className="rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">{sortedEntries.length} entries</span>
+              <span className="rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">{sortedEntries.length} {t("testDetail.entries")}</span>
             </div>
             <div className="flex items-center gap-2">
               {!isBlindTester && <>
@@ -816,7 +817,7 @@ export default function TestDetail() {
                   onClick={() => setHideDetails((v) => !v)}
                 >
                   {hideDetails ? <Eye className="mr-2 h-4 w-4" /> : <EyeOff className="mr-2 h-4 w-4" />}
-                  {hideDetails ? "Show" : "Hide"}
+                  {hideDetails ? t("tests.showBlind") : t("tests.hideBlind")}
                 </Button>
               )}
             </div>
@@ -824,7 +825,7 @@ export default function TestDetail() {
           {/* Grind column chooser */}
           {isGrind && allGrindCols.length > 0 && (
             <div className="mb-4 flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mr-1">Vis per ski:</span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mr-1">{t("testDetail.skiNo")}:</span>
               {allGrindCols.map((col) => {
                 const active = visibleGrindCols.includes(col);
                 const label = formatGrindColLabel(col);
@@ -850,7 +851,7 @@ export default function TestDetail() {
 
           {sortedEntries.length === 0 ? (
             <p className="text-sm text-muted-foreground" data-testid="empty-entries">
-              No entries recorded.
+              {t("testDetail.noEntries")}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -992,7 +993,7 @@ export default function TestDetail() {
           <Dialog open={showShareDialog} onOpenChange={(open) => { setShowShareDialog(open); if (!open) setSelectedTeamIds([]); }}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Share test with other teams</DialogTitle>
+                <DialogTitle>{t("testDetail.shareLink")}</DialogTitle>
               </DialogHeader>
               <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto py-2">
                 {allTeams
@@ -1013,7 +1014,7 @@ export default function TestDetail() {
                     </div>
                   ))}
                 {allTeams.filter((t: TeamItem) => t.id !== test?.teamId).length === 0 && (
-                  <p className="text-sm text-muted-foreground">No other teams available.</p>
+                  <p className="text-sm text-muted-foreground">{t("common.noData")}</p>
                 )}
               </div>
               <div className="flex justify-end gap-2 pt-2">
@@ -1025,7 +1026,7 @@ export default function TestDetail() {
                   onClick={() => shareMutation.mutate(selectedTeamIds)}
                   data-testid="button-confirm-share"
                 >
-                  {shareMutation.isPending ? "Sharing..." : `Share with ${selectedTeamIds.length} team${selectedTeamIds.length !== 1 ? "s" : ""}`}
+                  {shareMutation.isPending ? t("common.sending") : `${t("testDetail.shareLink")} (${selectedTeamIds.length})`}
                 </Button>
               </div>
             </DialogContent>

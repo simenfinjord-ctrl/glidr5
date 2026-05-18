@@ -58,8 +58,8 @@ export default function RaceSkis() {
     },
     onError: (e) => {
       toast({
-        title: "Could not add athlete",
-        description: e instanceof Error ? e.message : "Unknown error",
+        title: t("raceskis.couldNotAdd"),
+        description: e instanceof Error ? e.message : t("raceskis.unknownError"),
         variant: "destructive",
       });
     },

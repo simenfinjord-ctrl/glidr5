@@ -656,17 +656,17 @@ export default function EditTest() {
                                 Radix UI can match the stored value even before auth loads */}
                             {testSkiSource !== "raceskis" && (
                               <>
-                                <SelectItem value="Glide">Glide</SelectItem>
-                                <SelectItem value="Structure">Structure</SelectItem>
-                                <SelectItem value="Classic">Classic</SelectItem>
-                                <SelectItem value="Grind">Grind</SelectItem>
+                                <SelectItem value="Glide">{t("tests.glide")}</SelectItem>
+                                <SelectItem value="Structure">{t("tests.structure")}</SelectItem>
+                                <SelectItem value="Classic">{t("tests.classic")}</SelectItem>
+                                <SelectItem value="Grind">{t("tests.grind")}</SelectItem>
                               </>
                             )}
                             {testSkiSource === "raceskis" && (
                               <>
-                                <SelectItem value="Classic">Classic</SelectItem>
-                                <SelectItem value="Skating">Skating</SelectItem>
-                                <SelectItem value="Double Poling">Double Poling</SelectItem>
+                                <SelectItem value="Classic">{t("tests.classic")}</SelectItem>
+                                <SelectItem value="Skating">{t("tests.skating")}</SelectItem>
+                                <SelectItem value="Double Poling">{t("tests.doublePole")}</SelectItem>
                               </>
                             )}
                           </SelectContent>

@@ -131,8 +131,8 @@ export default function Suggestions() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Glide">Glide</SelectItem>
-                  <SelectItem value="Structure">Structure</SelectItem>
+                  <SelectItem value="Glide">{t("tests.glide")}</SelectItem>
+                  <SelectItem value="Structure">{t("tests.structure")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -366,11 +366,11 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Glide">Glide</SelectItem>
-                      <SelectItem value="Structure">Structure</SelectItem>
-                      <SelectItem value="Classic">Classic</SelectItem>
-                      <SelectItem value="Skating">Skating</SelectItem>
-                      <SelectItem value="Double Poling">Double Poling</SelectItem>
+                      <SelectItem value="Glide">{t("tests.glide")}</SelectItem>
+                      <SelectItem value="Structure">{t("tests.structure")}</SelectItem>
+                      <SelectItem value="Classic">{t("tests.classic")}</SelectItem>
+                      <SelectItem value="Skating">{t("tests.skating")}</SelectItem>
+                      <SelectItem value="Double Poling">{t("tests.doublePole")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -851,12 +851,12 @@ export default function Tests() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="All">{t("tests.filterByType")}</SelectItem>
-                    <SelectItem value="Glide">Glide</SelectItem>
-                    <SelectItem value="Structure">Structure</SelectItem>
-                    <SelectItem value="Classic">Classic</SelectItem>
-                    <SelectItem value="Skating">Skating</SelectItem>
-                    <SelectItem value="Double Poling">Double Poling</SelectItem>
-                    {canViewGrinding && <SelectItem value="Grind">Grind</SelectItem>}
+                    <SelectItem value="Glide">{t("tests.glide")}</SelectItem>
+                    <SelectItem value="Structure">{t("tests.structure")}</SelectItem>
+                    <SelectItem value="Classic">{t("tests.classic")}</SelectItem>
+                    <SelectItem value="Skating">{t("tests.skating")}</SelectItem>
+                    <SelectItem value="Double Poling">{t("tests.doublePole")}</SelectItem>
+                    {canViewGrinding && <SelectItem value="Grind">{t("tests.grind")}</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>

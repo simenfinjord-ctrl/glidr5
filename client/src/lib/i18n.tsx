@@ -187,6 +187,7 @@ const translations: Record<string, Record<string, string>> = {
     "tests.structure": "Structure",
     "tests.classic": "Classic",
     "tests.skating": "Skating",
+    "tests.doublePole": "Double Poling",
     "tests.blindTest": "Blind test",
     "tests.groupScope": "Group",
     "tests.deleteTest": "Delete test",
@@ -238,6 +239,23 @@ const translations: Record<string, Record<string, string>> = {
     "newTest.grindType": "Grind type",
     "newTest.stone": "Stone",
     "newTest.pattern": "Pattern",
+    "newTest.duplicateTest": "Duplicate test",
+    "newTest.newGrindTest": "New grind test",
+    "newTest.savedOffline": "Saved offline",
+    "newTest.savedOfflineDesc": "Test will sync when you reconnect.",
+    "newTest.couldNotSave": "Could not save test",
+    "newTest.runsheetApplied": "Runsheet applied",
+    "newTest.runsheetAppliedDesc": "Results and rankings have been applied to the test entries.",
+
+    // ── Runsheets ─────────────────────────────────────────────────────────────
+    "runsheets.resultsApplied": "Results applied to test",
+    "runsheets.couldNotApply": "Could not apply results",
+    "runsheets.unknownError": "Unknown error",
+    "runsheets.removed": "Removed from runsheets",
+
+    // ── Race skis errors ──────────────────────────────────────────────────────
+    "raceskis.couldNotAdd": "Could not add athlete",
+    "raceskis.unknownError": "Unknown error",
 
     // ── Test detail ────────────────────────────────────────────────────────────
     "testDetail.title": "Test detail",
@@ -926,6 +944,7 @@ const translations: Record<string, Record<string, string>> = {
     "tests.structure": "Struktur",
     "tests.classic": "Klassisk",
     "tests.skating": "Skøyting",
+    "tests.doublePole": "Dobbelttak",
     "tests.blindTest": "Blindtest",
     "tests.groupScope": "Gruppe",
     "tests.deleteTest": "Slett test",
@@ -977,6 +996,23 @@ const translations: Record<string, Record<string, string>> = {
     "newTest.grindType": "Sliptype",
     "newTest.stone": "Stein",
     "newTest.pattern": "Mønster",
+    "newTest.duplicateTest": "Dupliser test",
+    "newTest.newGrindTest": "Ny slipetest",
+    "newTest.savedOffline": "Lagret offline",
+    "newTest.savedOfflineDesc": "Testen synkroniseres når du kobler til igjen.",
+    "newTest.couldNotSave": "Kunne ikke lagre test",
+    "newTest.runsheetApplied": "Løpsliste brukt",
+    "newTest.runsheetAppliedDesc": "Resultater og rangeringer er lagt inn i testoppføringene.",
+
+    // ── Løpslister ────────────────────────────────────────────────────────────
+    "runsheets.resultsApplied": "Resultater lagt til i test",
+    "runsheets.couldNotApply": "Kunne ikke legge til resultater",
+    "runsheets.unknownError": "Ukjent feil",
+    "runsheets.removed": "Fjernet fra løpslister",
+
+    // ── Løperski-feil ─────────────────────────────────────────────────────────
+    "raceskis.couldNotAdd": "Kunne ikke legge til utøver",
+    "raceskis.unknownError": "Ukjent feil",
 
     // ── Testdetalj ────────────────────────────────────────────────────────────
     "testDetail.title": "Testdetaljer",

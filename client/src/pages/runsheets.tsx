@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { RunsheetDialog, type BracketResult } from "@/components/runsheet-dialog";
 import {
@@ -42,6 +43,7 @@ type TestEntry = {
 
 export default function Runsheets() {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [activeRunsheet, setActiveRunsheet] = useState<RunsheetItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<RunsheetItem | null>(null);
   const [applyingForTestId, setApplyingForTestId] = useState<number | null>(null);
@@ -70,14 +72,14 @@ export default function Runsheets() {
     onSuccess: ({ testId }) => {
       queryClient.invalidateQueries({ queryKey: [`/api/tests/${testId}/entries`] });
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
-      toast({ title: "Results applied to test" });
+      toast({ title: t("runsheets.resultsApplied") });
       setActiveRunsheet(null);
       setApplyingForTestId(null);
     },
     onError: (e) => {
       toast({
-        title: "Could not apply results",
-        description: e instanceof Error ? e.message : "Unknown error",
+        title: t("runsheets.couldNotApply"),
+        description: e instanceof Error ? e.message : t("runsheets.unknownError"),
         variant: "destructive",
       });
       setApplyingForTestId(null);
@@ -90,7 +92,7 @@ export default function Runsheets() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/runsheets"] });
-      toast({ title: "Removed from runsheets" });
+      toast({ title: t("runsheets.removed") });
       setDeleteTarget(null);
     },
   });

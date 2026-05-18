@@ -349,8 +349,8 @@ export default function NewTest() {
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
       if (result?.offline) {
         toast({
-          title: "Saved offline",
-          description: "Test will sync when you reconnect.",
+          title: t("newTest.savedOffline"),
+          description: t("newTest.savedOfflineDesc"),
         });
       } else {
         toast({
@@ -362,7 +362,7 @@ export default function NewTest() {
     },
     onError: (e) => {
       toast({
-        title: "Could not save test",
+        title: t("newTest.couldNotSave"),
         description: e instanceof Error ? e.message : "Unknown error",
         variant: "destructive",
       });
@@ -378,12 +378,12 @@ export default function NewTest() {
               <Button asChild variant="secondary" size="sm">
                 <span className="inline-flex items-center">
                   <ChevronLeft className="mr-1 h-4 w-4" />
-                  {initialType === "Grind" ? "Grinding" : "Tests"}
+                  {initialType === "Grind" ? t("nav.grinding") : t("nav.tests")}
                 </span>
               </Button>
             </a>
             <div>
-              <h1 className="text-2xl sm:text-3xl">{duplicateId ? "Duplicate test" : initialType === "Grind" ? "New grind test" : t("newTest.title")}</h1>
+              <h1 className="text-2xl sm:text-3xl">{duplicateId ? t("newTest.duplicateTest") : initialType === "Grind" ? t("newTest.newGrindTest") : t("newTest.title")}</h1>
               <p
                 className="mt-1 text-sm text-muted-foreground"
                 data-testid="text-newtest-subtitle"
@@ -577,19 +577,19 @@ export default function NewTest() {
                           <SelectContent>
                             {testSkiSource !== "raceskis" && (
                               <>
-                                <SelectItem value="Glide">Glide</SelectItem>
-                                <SelectItem value="Structure">Structure</SelectItem>
+                                <SelectItem value="Glide">{t("tests.glide")}</SelectItem>
+                                <SelectItem value="Structure">{t("tests.structure")}</SelectItem>
                               </>
                             )}
                             {testSkiSource === "raceskis" && (
                               <>
-                                <SelectItem value="Classic">Classic</SelectItem>
-                                <SelectItem value="Skating">Skating</SelectItem>
-                                <SelectItem value="Double Poling">Double Poling</SelectItem>
+                                <SelectItem value="Classic">{t("tests.classic")}</SelectItem>
+                                <SelectItem value="Skating">{t("tests.skating")}</SelectItem>
+                                <SelectItem value="Double Poling">{t("tests.doublePole")}</SelectItem>
                               </>
                             )}
                             {can("grinding") && testSkiSource !== "raceskis" && (
-                              <SelectItem value="Grind">Grind</SelectItem>
+                              <SelectItem value="Grind">{t("tests.grind")}</SelectItem>
                             )}
                           </SelectContent>
                         </Select>
@@ -854,8 +854,8 @@ export default function NewTest() {
             }),
           );
           toast({
-            title: "Runsheet applied",
-            description: "Results and rankings have been applied to the test entries.",
+            title: t("newTest.runsheetApplied"),
+            description: t("newTest.runsheetAppliedDesc"),
           });
         }}
       />

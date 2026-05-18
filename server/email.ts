@@ -1,16 +1,50 @@
-import { Resend } from "resend";
+// Uses Resend REST API via native fetch — no extra package needed.
 
-function getClient(): Resend | null {
-  const apiKey = process.env.RESEND_API_KEY || process.env.SMTP_PASS;
-  if (!apiKey) {
-    console.warn("[email] No API key — set RESEND_API_KEY or SMTP_PASS in env.");
-    return null;
-  }
-  return new Resend(apiKey);
+function getApiKey(): string | null {
+  return process.env.RESEND_API_KEY || process.env.SMTP_PASS || null;
 }
 
 const fromAddress = () =>
   process.env.SMTP_FROM || "noreply@glidr.no";
+
+async function sendEmail(payload: {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}): Promise<void> {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    console.warn("[email] No API key — set RESEND_API_KEY or SMTP_PASS.");
+    console.log(`[email] Would have sent "${payload.subject}" to ${payload.to}`);
+    return;
+  }
+
+  const body = JSON.stringify({
+    from: fromAddress(),
+    to: [payload.to],
+    subject: payload.subject,
+    text: payload.text,
+    html: payload.html,
+  });
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body,
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error(`[email] Resend API error ${res.status}: ${err}`);
+    throw new Error(`Resend API error ${res.status}: ${err}`);
+  }
+
+  console.log(`[email] Sent "${payload.subject}" to ${payload.to}`);
+}
 
 // ── Password reset ─────────────────────────────────────────────────────────────
 
@@ -47,14 +81,7 @@ export async function sendPasswordResetEmail(
   lang: string = "no",
 ): Promise<void> {
   const c = resetCopy[lang] ?? resetCopy.no;
-  const client = getClient();
-  if (!client) {
-    console.log(`[email] Password reset for ${to}: ${resetLink}`);
-    return;
-  }
-
-  const { error } = await client.emails.send({
-    from: fromAddress(),
+  await sendEmail({
     to,
     subject: c.subject,
     text: [
@@ -83,13 +110,6 @@ export async function sendPasswordResetEmail(
       </div>
     `,
   });
-
-  if (error) {
-    console.error("[email] sendPasswordResetEmail failed:", error);
-    throw new Error(error.message);
-  }
-
-  console.log(`[email] Password reset sent to ${to}`);
 }
 
 // ── Welcome email ──────────────────────────────────────────────────────────────
@@ -124,14 +144,7 @@ export async function sendWelcomeEmail(
 ): Promise<void> {
   const c = welcomeCopy[lang] ?? welcomeCopy.no;
   const appUrl = process.env.APP_URL || "https://glidr.no";
-  const client = getClient();
-  if (!client) {
-    console.log(`[email] Welcome email for ${to} (${lang}) — no API key configured`);
-    return;
-  }
-
-  const { error } = await client.emails.send({
-    from: fromAddress(),
+  await sendEmail({
     to,
     subject: c.subject,
     text: [c.greeting(name), "", c.body, "", appUrl, "", c.footer, "", "— The Glidr team"].join("\n"),
@@ -151,11 +164,4 @@ export async function sendWelcomeEmail(
       </div>
     `,
   });
-
-  if (error) {
-    console.error("[email] sendWelcomeEmail failed:", error);
-    throw new Error(error.message);
-  }
-
-  console.log(`[email] Welcome email sent to ${to}`);
 }

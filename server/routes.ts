@@ -380,6 +380,20 @@ export async function registerRoutes(
   app.get("/api/health", (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
   // --- Public app settings (no auth required) ---
+  // SA-only: send a test email to verify Resend is working
+  app.post("/api/admin/test-email", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const to = req.body.to || u.email;
+    try {
+      const { sendPasswordResetEmail } = await import("./email");
+      await sendPasswordResetEmail(to, u.name || "Test", "https://glidr.no/reset-password?token=testtoken123", "no");
+      res.json({ ok: true, message: `Test email sent to ${to}` });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   app.get("/api/settings/public", async (_req, res) => {
     try {
       const rows = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'commercialization_enabled'`);

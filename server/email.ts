@@ -144,10 +144,10 @@ const welcomeCopy: Record<string, {
       "Du administrerer abonnementet ditt under <strong>Min konto → Abonnement</strong>.",
       "Du kan når som helst oppgradere, nedgradere eller si opp abonnementet.",
       "Endringer trer i kraft ved neste faktureringsperiode.",
-      "Har du spørsmål om fakturering eller abonnement? Send oss en e-post på <a href='mailto:hei@glidr.no' style='color:#111;'>hei@glidr.no</a>.",
+      "Har du spørsmål om fakturering eller abonnement? Send oss en e-post på <a href='mailto:simen.finjord@hotmail.com' style='color:#111;'>simen.finjord@hotmail.com</a>.",
     ],
     subNote: "Gratis prøveperiode gjelder i 14 dager — ingen kredittkort nødvendig for å komme i gang.",
-    footer: "Har du spørsmål? Svar på denne e-posten eller skriv til hei@glidr.no, så hjelper vi deg.",
+    footer: "Har du spørsmål? Svar på denne e-posten eller skriv til simen.finjord@hotmail.com, så hjelper vi deg.",
   },
   en: {
     subject: "Welcome to Glidr!",
@@ -167,10 +167,10 @@ const welcomeCopy: Record<string, {
       "Manage your subscription under <strong>My Account → Subscription</strong>.",
       "You can upgrade, downgrade or cancel your subscription at any time.",
       "Changes take effect at the next billing period.",
-      "Questions about billing or your subscription? Email us at <a href='mailto:hello@glidr.no' style='color:#111;'>hello@glidr.no</a>.",
+      "Questions about billing or your subscription? Email us at <a href='mailto:simen.finjord@hotmail.com' style='color:#111;'>simen.finjord@hotmail.com</a>.",
     ],
     subNote: "Free trial lasts 14 days — no credit card required to get started.",
-    footer: "Got questions? Reply to this email or write to hello@glidr.no and we'll help you out.",
+    footer: "Got questions? Reply to this email or write to simen.finjord@hotmail.com and we'll help you out.",
   },
 };
 

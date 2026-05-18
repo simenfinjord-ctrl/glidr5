@@ -50,7 +50,7 @@ const CONTENT = {
       emailPlaceholder: "your@email.com",
       teamPlaceholder: "e.g. Oslo Ski Club",
       errorRequired: "Please fill in name, email, and team name.",
-      errorServer: "Something went wrong. Try again or email us at hei@glidr.no",
+      errorServer: "Something went wrong. Try again or email us at simen.finjord@hotmail.com",
       submitting: "Sending...",
       submit: "Submit registration",
       privacy: "We'll get back to you within 1–2 business days. See our",
@@ -109,7 +109,7 @@ const CONTENT = {
       emailPlaceholder: "din@epost.no",
       teamPlaceholder: "f.eks. Oslo Skiklubb",
       errorRequired: "Fyll inn navn, e-post og teamnavn.",
-      errorServer: "Noe gikk galt. Prøv igjen eller kontakt oss på hei@glidr.no",
+      errorServer: "Noe gikk galt. Prøv igjen eller kontakt oss på simen.finjord@hotmail.com",
       submitting: "Sender...",
       submit: "Send registrering",
       privacy: "Vi tar kontakt innen 1–2 virkedager. Se",
@@ -212,7 +212,7 @@ export default function GetStarted() {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">{t.contact.emailLabel}</div>
-                  <a href="mailto:hei@glidr.no" className="font-medium hover:underline">hei@glidr.no</a>
+                  <a href="mailto:simen.finjord@hotmail.com" className="font-medium hover:underline">simen.finjord@hotmail.com</a>
                 </div>
               </div>
               <div className="flex items-center gap-3">

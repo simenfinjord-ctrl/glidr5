@@ -965,8 +965,8 @@ export default function MyAccount() {
           <InviteMembersSection />
         )}
 
-        {/* Plan change request - team admins only */}
-        {commercializationEnabled && isTeamAdmin && !user?.isAdmin && (
+        {/* Plan change request - team admins and SA */}
+        {(isTeamAdmin || user?.isAdmin === 1) && (
           <PlanChangeSection />
         )}
 

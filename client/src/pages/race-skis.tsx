@@ -51,7 +51,7 @@ export default function RaceSkis() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/athletes"] });
-      toast({ title: "Athlete added" });
+      toast({ title: t("raceskis.athleteAdded") });
       setOpen(false);
       setName("");
       setTeam("");

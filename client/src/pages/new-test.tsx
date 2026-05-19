@@ -388,7 +388,7 @@ export default function NewTest() {
                 className="mt-1 text-sm text-muted-foreground"
                 data-testid="text-newtest-subtitle"
               >
-                Fast, table-first logging with live ranking.
+                {t("newTest.subtitle")}
               </p>
             </div>
           </div>
@@ -422,7 +422,7 @@ export default function NewTest() {
                 onClick={() => setRunsheetOpen(true)}
               >
                 <ClipboardList className="mr-2 h-4 w-4" />
-                Complete Runsheet
+                {t("newTest.completeRunsheet")}
               </Button>
             )}
             <Button
@@ -491,7 +491,7 @@ export default function NewTest() {
                 {can("raceskis") && (
                   <div className="lg:col-span-2">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium leading-none">Ski source</label>
+                      <label className="text-sm font-medium leading-none">{t("newTest.skiSource")}</label>
                       <Select
                         value={testSkiSource}
                         onValueChange={(v) => {
@@ -509,8 +509,8 @@ export default function NewTest() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="series">Testskis</SelectItem>
-                          <SelectItem value="raceskis">Raceskis</SelectItem>
+                          <SelectItem value="series">{t("nav.testskis")}</SelectItem>
+                          <SelectItem value="raceskis">{t("nav.raceskis")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -530,7 +530,7 @@ export default function NewTest() {
                         >
                           <FormControl>
                             <SelectTrigger data-testid="select-test-series">
-                              <SelectValue placeholder={t("newTest.selectSeries")} />
+                              <SelectValue placeholder={t("newTest.selectSeriesPlaceholder")} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -651,7 +651,7 @@ export default function NewTest() {
                             value={field.value}
                             onChange={field.onChange}
                             data-testid="input-test-location"
-                            placeholder="e.g., Park City"
+                            placeholder={t("newTest.locationPlaceholder")}
                           />
                         </FormControl>
                         <FormMessage />
@@ -709,7 +709,7 @@ export default function NewTest() {
                               value="__auto__"
                               data-testid="option-weather-auto"
                             >
-                              Auto
+                              {t("newTest.auto")}
                             </SelectItem>
                             {weather.map((w) => (
                               <SelectItem
@@ -786,9 +786,9 @@ export default function NewTest() {
         {/* Grind column chooser */}
         {watchTestType === "Grind" && allGrindParamKeys.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/30 px-4 py-2.5 text-sm">
-            <span className="font-medium text-foreground mr-1">Visible columns:</span>
+            <span className="font-medium text-foreground mr-1">{t("newTest.visibleColumns")}</span>
             {allGrindParamKeys.map((col) => {
-              const label = col === "stone" ? "Stone" : col === "pattern" ? "Pattern" : col === "ra_value" ? "RA-value" : col;
+              const label = col === "stone" ? t("testskis.stone") : col === "pattern" ? t("testskis.pattern") : col === "ra_value" ? t("newTest.raValue") : col;
               const checked = visibleGrindCols.includes(col);
               return (
                 <label key={col} className="inline-flex items-center gap-1.5 cursor-pointer select-none">
@@ -829,7 +829,7 @@ export default function NewTest() {
             className="mt-2 text-xs text-muted-foreground"
             data-testid="text-ranking-hint"
           >
-            Ranking uses dense ranking: same result = same rank. Click "+ Round" to add more distance tests.
+            {t("newTest.rankingHint")}
           </div>
         </div>
       </div>

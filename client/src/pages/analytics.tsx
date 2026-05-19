@@ -880,7 +880,7 @@ function ProductSearchStats({
           </PopoverTrigger>
           <PopoverContent className="w-[min(380px,calc(100vw-2rem))] p-0" align="start">
             <Command>
-              <CommandInput data-testid="input-product-search" placeholder="Search products…" />
+              <CommandInput data-testid="input-product-search" placeholder={t("analytics.searchProducts")} />
               <CommandList>
                 <CommandEmpty>No matches.</CommandEmpty>
                 <CommandGroup heading="Products">
@@ -1253,7 +1253,7 @@ function CombinationSearch({
         </PopoverTrigger>
         <PopoverContent className="w-[min(380px,calc(100vw-2rem))] p-0" align="start">
           <Command>
-            <CommandInput placeholder="Search products…" />
+            <CommandInput placeholder={t("analytics.searchProducts")} />
             <CommandList>
               <CommandEmpty>No matches.</CommandEmpty>
               <CommandGroup>
@@ -1567,7 +1567,7 @@ function ProductCompare({
           </PopoverTrigger>
           <PopoverContent className="w-[min(380px,calc(100vw-2rem))] p-0" align="start">
             <Command>
-              <CommandInput placeholder="Search products…" data-testid="input-compare-search" />
+              <CommandInput placeholder={t("analytics.searchProducts")} data-testid="input-compare-search" />
               <CommandList>
                 <CommandEmpty>No matches.</CommandEmpty>
                 <CommandGroup heading="Products">

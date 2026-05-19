@@ -58,12 +58,6 @@ type ApiTeam = {
   isPaused?: number;
 };
 
-const AREA_LABELS: Record<string, string> = {
-  dashboard: "Dashboard", tests: "Tests", testskis: "Test Skis", products: "Products",
-  weather: "Weather", analytics: "Analytics", grinding: "Grinding", raceskis: "Race Skis",
-  suggestions: "Suggestions", liverunsheets: "Live Runsheet"
-};
-
 function parsePermissions(permStr: string): UserPermissions {
   try {
     const parsed = JSON.parse(permStr);
@@ -89,6 +83,19 @@ function PermissionsMatrix({
   onPresetApplied?: (blindTester: boolean) => void;
   disabledAreas?: string[];
 }) {
+  const { t } = useI18n();
+  const areaLabels: Record<string, string> = {
+    dashboard: t("nav.dashboard"),
+    tests: t("nav.tests"),
+    testskis: t("nav.testskis"),
+    products: t("nav.products"),
+    weather: t("nav.weather"),
+    analytics: t("nav.analytics"),
+    grinding: t("nav.grinding"),
+    raceskis: t("nav.raceskis"),
+    suggestions: t("nav.suggestions"),
+    liverunsheets: t("nav.liveRunsheets"),
+  };
   const levels: PermissionLevel[] = ["none", "edit"];
   const levelStyles: Record<PermissionLevel, { active: string; inactive: string }> = {
     none: { active: "bg-gray-500 text-white", inactive: "text-muted-foreground hover:bg-muted" },
@@ -111,9 +118,9 @@ function PermissionsMatrix({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <span className="text-sm font-medium">Permissions</span>
+        <span className="text-sm font-medium">{t("admin.permissions")}</span>
         <div className="flex items-center gap-1 flex-wrap">
-          <span className="text-[10px] text-muted-foreground mr-1">Presets:</span>
+          <span className="text-[10px] text-muted-foreground mr-1">{t("admin.presets")}</span>
           {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
             <button
               key={key}
@@ -125,7 +132,7 @@ function PermissionsMatrix({
               {preset.label}
             </button>
           ))}
-          <span className="text-[10px] text-muted-foreground ml-1 mr-1">Set all:</span>
+          <span className="text-[10px] text-muted-foreground ml-1 mr-1">{t("admin.setAll")}</span>
           {levels.map((l) => (
             <button
               key={l}
@@ -144,7 +151,7 @@ function PermissionsMatrix({
           const isDisabled = disabledAreas?.includes(area);
           return (
           <div key={area} className={cn("flex items-center justify-between px-3 h-8", isDisabled && "opacity-40")}>
-            <span className="text-xs text-foreground/80">{AREA_LABELS[area] || area}{isDisabled ? " (not available)" : ""}</span>
+            <span className="text-xs text-foreground/80">{areaLabels[area] || area}{isDisabled ? " (not available)" : ""}</span>
             <div className="flex items-center gap-0.5">
               {levels.map((l) => {
                 const selected = isDisabled ? l === "none" : (value[area] || "none") === l;

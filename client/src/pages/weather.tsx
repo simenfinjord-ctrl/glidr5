@@ -267,7 +267,7 @@ function WeatherForm({
               onValueChange={(v) => onGroupChange(v)}
             >
               <SelectTrigger data-testid="select-weather-group">
-                <SelectValue placeholder="Select group" />
+                <SelectValue placeholder={t("weather.selectGroup")} />
               </SelectTrigger>
               <SelectContent>
                 {userGroups.map((g) => (
@@ -316,7 +316,7 @@ function WeatherForm({
                 <FormItem>
                   <FormLabel>{t("weather.location")}</FormLabel>
                   <FormControl>
-                    <Input {...field} data-testid="input-weather-location" placeholder="e.g., Park City" />
+                    <Input {...field} data-testid="input-weather-location" placeholder={t("weather.locationPlaceholder")} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -414,7 +414,7 @@ function WeatherForm({
                 <FormItem>
                   <FormLabel>{t("weather.visibility")}</FormLabel>
                   <FormControl>
-                    <Input {...field} data-testid="input-weather-visibility" placeholder="e.g., Good" />
+                    <Input {...field} data-testid="input-weather-visibility" placeholder={t("weather.visibilityPlaceholder")} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -427,7 +427,7 @@ function WeatherForm({
                 <FormItem>
                   <FormLabel>{t("weather.wind")}</FormLabel>
                   <FormControl>
-                    <Input {...field} data-testid="input-weather-wind" placeholder="e.g., Light NW" />
+                    <Input {...field} data-testid="input-weather-wind" placeholder={t("weather.windPlaceholder")} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -440,7 +440,7 @@ function WeatherForm({
                 <FormItem>
                   <FormLabel>{t("weather.precipitation")}</FormLabel>
                   <FormControl>
-                    <Input {...field} data-testid="input-weather-precipitation" placeholder="e.g., Light snow" />
+                    <Input {...field} data-testid="input-weather-precipitation" placeholder={t("weather.precipPlaceholder")} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -464,11 +464,11 @@ function WeatherForm({
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-weather-artificial-snow">
-                        <SelectValue placeholder="None" />
+                        <SelectValue placeholder={t("weather.noneOption")} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value={NONE_VALUE}>None</SelectItem>
+                      <SelectItem value={NONE_VALUE}>{t("weather.noneOption")}</SelectItem>
                       {SNOW_STAGES.map((s) => (
                         <SelectItem key={s} value={s}>{t(snowTypeKey(s))}</SelectItem>
                       ))}
@@ -490,11 +490,11 @@ function WeatherForm({
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-weather-natural-snow">
-                        <SelectValue placeholder="None" />
+                        <SelectValue placeholder={t("weather.noneOption")} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value={NONE_VALUE}>None</SelectItem>
+                      <SelectItem value={NONE_VALUE}>{t("weather.noneOption")}</SelectItem>
                       {SNOW_STAGES.map((s) => (
                         <SelectItem key={s} value={s}>{t(snowTypeKey(s))}</SelectItem>
                       ))}
@@ -522,7 +522,7 @@ function WeatherForm({
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-weather-grain-size">
-                        <SelectValue placeholder="Select" />
+                        <SelectValue placeholder={t("weather.selectOption")} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -548,7 +548,7 @@ function WeatherForm({
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-weather-snow-humidity-type">
-                        <SelectValue placeholder="Select" />
+                        <SelectValue placeholder={t("weather.selectOption")} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -574,7 +574,7 @@ function WeatherForm({
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-weather-track-hardness">
-                        <SelectValue placeholder="Select" />
+                        <SelectValue placeholder={t("weather.selectOption")} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

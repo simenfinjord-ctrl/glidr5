@@ -115,18 +115,18 @@ function SeriesForm({
     },
     onSuccess: (result) => {
       if (result?.offline) {
-        toast({ title: "Saved offline", description: "Will sync when you reconnect." });
+        toast({ title: t("testskis.savedOffline"), description: t("testskis.savedOfflineDesc") });
         onSaved();
         return;
       }
       queryClient.invalidateQueries({ queryKey: ["/api/series"] });
-      toast({ title: "Series created" });
+      toast({ title: t("testskis.seriesCreated") });
       onSaved();
     },
     onError: (e) => {
       toast({
-        title: "Could not save series",
-        description: e instanceof Error ? e.message : "Unknown error",
+        title: t("testskis.saveError"),
+        description: e instanceof Error ? e.message : t("common.error"),
         variant: "destructive",
       });
     },
@@ -150,13 +150,13 @@ function SeriesForm({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/series"] });
-      toast({ title: "Series updated" });
+      toast({ title: t("testskis.seriesUpdated") });
       onSaved();
     },
     onError: (e) => {
       toast({
-        title: "Could not save series",
-        description: e instanceof Error ? e.message : "Unknown error",
+        title: t("testskis.saveError"),
+        description: e instanceof Error ? e.message : t("common.error"),
         variant: "destructive",
       });
     },
@@ -259,8 +259,8 @@ function SeriesForm({
 
         {Number(watchNumberOfSkis) > 0 && (
           <div className="space-y-2">
-            <label className="text-sm font-medium leading-none">Pair labels</label>
-            <p className="text-xs text-muted-foreground">Name or number each pair. Leave blank to use default numbers (1, 2, 3…)</p>
+            <label className="text-sm font-medium leading-none">{t("testskis.pairLabels")}</label>
+            <p className="text-xs text-muted-foreground">{t("testskis.pairLabelsDesc")}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {Array.from({ length: Math.min(Number(watchNumberOfSkis) || 0, 32) }).map((_, i) => {
                 const pairNum = i + 1;
@@ -397,7 +397,7 @@ export default function TestSkis() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/series"] });
       queryClient.invalidateQueries({ queryKey: ["/api/series/archived"] });
-      toast({ title: "Series archived" });
+      toast({ title: t("testskis.seriesArchived") });
       setConfirmArchive(undefined);
     },
     onError: (e) => {

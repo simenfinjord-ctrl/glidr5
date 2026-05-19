@@ -112,25 +112,25 @@ export default function Runsheets() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50">
               <ClipboardList className="h-5 w-5 text-teal-600" />
             </div>
-            Runsheets
+            {t("runsheets.title")}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Quick access to test runsheets. Tap a card to start the bracket.
+            {t("runsheets.subtitle")}
           </p>
         </div>
 
         {isLoading && (
           <div className="flex items-center justify-center py-20 text-muted-foreground" data-testid="loading-runsheets">
-            Loading…
+            {t("common.loading")}
           </div>
         )}
 
         {!isLoading && items.length === 0 && (
           <Card className="fs-card rounded-2xl p-8 text-center" data-testid="empty-runsheets">
             <ClipboardList className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground">No runsheets yet.</p>
+            <p className="text-muted-foreground">{t("runsheets.empty")}</p>
             <p className="text-sm text-muted-foreground/70 mt-1">
-              Go to a test and tap "Add to Runsheets" to add one here.
+              {t("runsheets.emptyHint")}
             </p>
           </Card>
         )}
@@ -161,7 +161,7 @@ export default function Runsheets() {
                       {item.label}
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Added {new Date(item.createdAt).toLocaleDateString()}
+                      {t("runsheets.added")} {new Date(item.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                 </div>
@@ -200,18 +200,18 @@ export default function Runsheets() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove from runsheets?</AlertDialogTitle>
+            <AlertDialogTitle>{t("runsheets.removeTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes "{deleteTarget?.label}" from your runsheets list. The test data is not affected.
+              {t("runsheets.removeDesc").replace("{label}", deleteTarget?.label ?? "")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
             >
-              Remove
+              {t("runsheets.remove")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

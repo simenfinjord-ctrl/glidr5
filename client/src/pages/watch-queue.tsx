@@ -30,15 +30,16 @@ function displayName(item: QueueItem): string {
 
 function SessionCode({ item, isAdmin }: { item: QueueItem; isAdmin: boolean }) {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   const refreshMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/watch/queue/${item.id}/refresh-code`).then(r => r.json()),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/watch/queue"] });
-      toast({ title: "New code generated", description: `New code: ${data.code}` });
+      toast({ title: t("watchQueue.codeGenerated"), description: t("watchQueue.codeGeneratedDesc").replace("{code}", data.code) });
     },
-    onError: () => toast({ title: "Error", description: "Could not refresh code.", variant: "destructive" }),
+    onError: () => toast({ title: t("common.error"), description: t("watchQueue.couldNotRefresh"), variant: "destructive" }),
   });
 
   const copy = async (code: string) => {
@@ -53,7 +54,7 @@ function SessionCode({ item, isAdmin }: { item: QueueItem; isAdmin: boolean }) {
       <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5"
         onClick={() => refreshMutation.mutate()} disabled={refreshMutation.isPending}>
         <RefreshCw className={cn("h-3 w-3", refreshMutation.isPending && "animate-spin")} />
-        Get code
+        {t("watchQueue.getCode")}
       </Button>
     );
   }
@@ -183,7 +184,7 @@ export default function WatchQueue() {
             )}
           >
             <List className="h-4 w-4" />
-            Queue
+            {t("watchQueue.queueTab")}
             {queue.length > 0 && (
               <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
                 {queue.length}
@@ -200,7 +201,7 @@ export default function WatchQueue() {
             )}
           >
             <Archive className="h-4 w-4" />
-            Archive
+            {t("watchQueue.archiveTab")}
           </button>
         </div>
 

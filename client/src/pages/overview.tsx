@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn, fmtDate } from "@/lib/utils";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { Redirect } from "wouter";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -80,12 +81,12 @@ function StatCard({
   );
 }
 
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return "Never";
+function timeAgo(dateStr: string | null, never: string, justNow: string): string {
+  if (!dateStr) return never;
   const date = new Date(dateStr);
   const diff = Date.now() - date.getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
+  if (mins < 1) return justNow;
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
@@ -96,6 +97,7 @@ function timeAgo(dateStr: string | null): string {
 
 export default function Overview() {
   const { isSuperAdmin, isLoading: authLoading } = useAuth();
+  const { t } = useI18n();
 
   const { data, isLoading } = useQuery<OverviewData>({
     queryKey: ["/api/admin/overview"],
@@ -134,17 +136,17 @@ export default function Overview() {
     <AppShell>
       <div className="flex flex-col gap-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">SA Overview</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("overview.saTitle")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Cross-team activity and platform health. Refreshes every 30 s.
+            {t("overview.subtitle2")}
           </p>
         </div>
 
         <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div>
-            <div className="text-sm font-semibold text-foreground">Commercialization</div>
+            <div className="text-sm font-semibold text-foreground">{t("overview.commercialization")}</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              {settings?.commercializationEnabled ? "Pricing pages and upgrade prompts are visible" : "All pricing content is hidden"}
+              {settings?.commercializationEnabled ? t("overview.commEnabled") : t("overview.commDisabled")}
             </div>
           </div>
           <Switch
@@ -162,26 +164,26 @@ export default function Overview() {
           <>
             {/* Stats row */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <StatCard label="Total Teams" value={data.stats.totalTeams} icon={Building2} color="blue" />
-              <StatCard label="Total Users" value={data.stats.totalUsers} icon={Users} color="emerald" />
-              <StatCard label="Total Tests" value={data.stats.totalTests} icon={FlaskConical} color="amber" />
-              <StatCard label="Total Products" value={data.stats.totalProducts} icon={Package} color="violet" />
+              <StatCard label={t("overview.totalTeams")} value={data.stats.totalTeams} icon={Building2} color="blue" />
+              <StatCard label={t("overview.totalUsers")} value={data.stats.totalUsers} icon={Users} color="emerald" />
+              <StatCard label={t("overview.totalTests")} value={data.stats.totalTests} icon={FlaskConical} color="amber" />
+              <StatCard label={t("overview.totalProducts")} value={data.stats.totalProducts} icon={Package} color="violet" />
             </div>
 
             {/* Teams table */}
             <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
               <div className="flex items-center gap-2 p-5 pb-3">
                 <Building2 className="h-4 w-4 text-blue-500" />
-                <span className="font-semibold text-foreground">Teams ({data.teams.length})</span>
+                <span className="font-semibold text-foreground">{t("overview.teamsCount", { n: String(data.teams.length) })}</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted/40 border-y border-border">
-                      <th className="text-left px-5 py-2.5 font-medium text-foreground/80 text-xs">Team</th>
-                      <th className="text-right px-5 py-2.5 font-medium text-foreground/80 text-xs">Users</th>
-                      <th className="text-right px-5 py-2.5 font-medium text-foreground/80 text-xs">Tests</th>
-                      <th className="text-left px-5 py-2.5 font-medium text-foreground/80 text-xs">Last Activity</th>
+                      <th className="text-left px-5 py-2.5 font-medium text-foreground/80 text-xs">{t("overview.colTeam")}</th>
+                      <th className="text-right px-5 py-2.5 font-medium text-foreground/80 text-xs">{t("overview.colUsers")}</th>
+                      <th className="text-right px-5 py-2.5 font-medium text-foreground/80 text-xs">{t("overview.colTests")}</th>
+                      <th className="text-left px-5 py-2.5 font-medium text-foreground/80 text-xs">{t("overview.colLastActivity")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
@@ -198,7 +200,7 @@ export default function Overview() {
                             <span className="font-medium text-foreground">{team.name}</span>
                             {team.isPaused && (
                               <span className="rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">
-                                Suspended
+                                {t("overview.suspended")}
                               </span>
                             )}
                           </div>
@@ -208,7 +210,7 @@ export default function Overview() {
                         <td className="px-5 py-3 text-muted-foreground text-xs">
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {timeAgo(team.lastActivity)}
+                            {timeAgo(team.lastActivity, t("overview.never"), t("overview.justNow"))}
                           </div>
                         </td>
                       </tr>
@@ -223,22 +225,22 @@ export default function Overview() {
               <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
                 <div className="flex items-center gap-2 p-5 pb-3">
                   <FlaskConical className="h-4 w-4 text-amber-500" />
-                  <span className="font-semibold text-foreground">Recent Tests</span>
+                  <span className="font-semibold text-foreground">{t("overview.recentTests")}</span>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground ml-auto">
-                    last 20
+                    {t("overview.last20")}
                   </span>
                 </div>
                 {data.recentTests.length === 0 ? (
-                  <p className="px-5 pb-4 text-sm text-muted-foreground">No tests found.</p>
+                  <p className="px-5 pb-4 text-sm text-muted-foreground">{t("overview.noTestsFound")}</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-muted/40 border-y border-border">
-                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">Date</th>
-                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">Team</th>
-                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">Location</th>
-                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">By</th>
+                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">{t("overview.colDate")}</th>
+                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">{t("overview.colTeam")}</th>
+                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">{t("overview.colLocation")}</th>
+                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">{t("overview.colBy")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/50">
@@ -260,21 +262,21 @@ export default function Overview() {
               <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
                 <div className="flex items-center gap-2 p-5 pb-3">
                   <Eye className="h-4 w-4 text-violet-500" />
-                  <span className="font-semibold text-foreground">Current Sessions</span>
+                  <span className="font-semibold text-foreground">{t("overview.currentSessions")}</span>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground ml-auto">
-                    {(data.activeSessions ?? []).length} active
+                    {t("overview.active", { n: String((data.activeSessions ?? []).length) })}
                   </span>
                 </div>
                 {(data.activeSessions ?? []).length === 0 ? (
-                  <p className="px-5 pb-4 text-sm text-muted-foreground">No active sessions.</p>
+                  <p className="px-5 pb-4 text-sm text-muted-foreground">{t("overview.noActiveSessions")}</p>
                 ) : (
                   <div className="overflow-x-auto" style={{ maxHeight: 400, overflowY: "auto" }}>
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-muted/40 border-y border-border">
-                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">User</th>
-                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">Team</th>
-                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">Expires</th>
+                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">{t("overview.colUser")}</th>
+                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">{t("overview.colTeam")}</th>
+                          <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">{t("overview.colExpires")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/50">
@@ -282,7 +284,7 @@ export default function Overview() {
                           <tr key={i} className="hover:bg-muted/30 transition-colors">
                             <td className="px-4 py-2.5 font-medium text-foreground text-xs">{s.name}</td>
                             <td className="px-4 py-2.5 text-xs text-muted-foreground">{s.teamName}</td>
-                            <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{timeAgo(s.lastActive)}</td>
+                            <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{timeAgo(s.lastActive, t("overview.never"), t("overview.justNow"))}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -296,29 +298,29 @@ export default function Overview() {
             <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
               <div className="flex items-center gap-2 p-5 pb-3">
                 <LogIn className="h-4 w-4 text-emerald-500" />
-                <span className="font-semibold text-foreground">Recent Logins</span>
+                <span className="font-semibold text-foreground">{t("overview.recentLogins")}</span>
                 <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground ml-auto">
-                  last {data.recentLogins.length}
+                  {t("overview.last20")}
                 </span>
               </div>
               {data.recentLogins.length === 0 ? (
-                <p className="px-5 pb-4 text-sm text-muted-foreground">No logins found.</p>
+                <p className="px-5 pb-4 text-sm text-muted-foreground">{t("overview.noLoginsFound")}</p>
               ) : (
                 <div className="overflow-x-auto" style={{ maxHeight: 400, overflowY: "auto" }}>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-muted/40 border-y border-border">
-                        <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">User</th>
-                        <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">Team</th>
-                        <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">When</th>
+                        <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">{t("overview.colUser")}</th>
+                        <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">{t("overview.colTeam")}</th>
+                        <th className="text-left px-4 py-2 font-medium text-foreground/80 text-xs">{t("overview.colWhen")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
                       {data.recentLogins.map((login, i) => (
                         <tr key={i} className="hover:bg-muted/30 transition-colors">
-                          <td className="px-4 py-2.5 font-medium text-foreground text-xs">{login.name || "Unknown"}</td>
+                          <td className="px-4 py-2.5 font-medium text-foreground text-xs">{login.name || t("common.unknown")}</td>
                           <td className="px-4 py-2.5 text-xs text-muted-foreground">{login.teamName || "—"}</td>
-                          <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{timeAgo(login.loggedInAt)}</td>
+                          <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{timeAgo(login.loggedInAt, t("overview.never"), t("overview.justNow"))}</td>
                         </tr>
                       ))}
                     </tbody>

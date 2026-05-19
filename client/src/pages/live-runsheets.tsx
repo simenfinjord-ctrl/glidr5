@@ -35,12 +35,12 @@ type LiveRunsheet = {
   isWatchSession?: boolean;
 };
 
-function getRoundName(roundIndex: number, totalRounds: number): string {
+function getRoundName(roundIndex: number, totalRounds: number, t: (key: string) => string): string {
   const fromEnd = totalRounds - 1 - roundIndex;
-  if (fromEnd === 0) return "Final";
-  if (fromEnd === 1) return "Semi-final";
-  if (fromEnd === 2) return "Quarter-final";
-  return `Round ${roundIndex + 1}`;
+  if (fromEnd === 0) return t("liveRunsheets.final");
+  if (fromEnd === 1) return t("liveRunsheets.semiFinal");
+  if (fromEnd === 2) return t("liveRunsheets.quarterFinal");
+  return t("liveRunsheets.round").replace("{n}", String(roundIndex + 1));
 }
 
 function getWinner(heat: Heat): number | null {
@@ -139,7 +139,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
             {isCompleted && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
                 <Trophy className="h-3 w-3" />
-                Finished
+                {t("liveRunsheets.finished")}
               </span>
             )}
             {!isCompleted && (
@@ -183,7 +183,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <div className="text-right">
-            <div className="text-xs text-muted-foreground">Heats</div>
+            <div className="text-xs text-muted-foreground">{t("liveRunsheets.heats")}</div>
             <div className="text-sm font-bold tabular-nums">{progress.completed}/{progress.total}</div>
           </div>
           <div className="w-16 h-2 rounded-full bg-muted overflow-hidden">
@@ -208,7 +208,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
           return (
             <div className="shrink-0 flex flex-col">
               <div className="text-[10px] font-semibold mb-1.5 text-center uppercase tracking-wider text-muted-foreground">
-                Results
+                {t("liveRunsheets.resultsCol")}
               </div>
               <div className={cn("flex flex-col justify-around flex-1", roundSpacing)}>
                 {firstRound.map((heat, hIdx) => (
@@ -259,7 +259,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
           return (
             <div key={rIdx} className="shrink-0 flex flex-col">
               <div className="text-[10px] font-semibold mb-1.5 text-center uppercase tracking-wider text-muted-foreground">
-                {getRoundName(rIdx, totalRounds)}
+                {getRoundName(rIdx, totalRounds, t)}
               </div>
               <div className={cn("flex flex-col justify-around flex-1", roundSpacing)}>
                 {round.map((heat, hIdx) => {
@@ -382,7 +382,7 @@ export default function LiveRunsheets() {
               {twoCol ? <LayoutList className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
             </Button>
             <span className="text-sm text-muted-foreground">
-              Auto-updates every 3s
+              {t("liveRunsheets.autoUpdates")}
             </span>
           </div>
         </div>
@@ -390,7 +390,7 @@ export default function LiveRunsheets() {
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Filter className="h-4 w-4" />
-            Filters
+            {t("liveRunsheets.filters")}
             {activeFilters > 0 && (
               <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white text-[10px] font-bold">{activeFilters}</span>
             )}
@@ -400,7 +400,7 @@ export default function LiveRunsheets() {
               <SelectValue placeholder="Test type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value="all">{t("liveRunsheets.allTypes")}</SelectItem>
               {testTypes.map(t => (
                 <SelectItem key={t} value={t}>{t}</SelectItem>
               ))}
@@ -411,14 +411,14 @@ export default function LiveRunsheets() {
               <SelectValue placeholder="Source" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All sources</SelectItem>
-              <SelectItem value="series">Test skis</SelectItem>
-              <SelectItem value="raceskis">Race skis</SelectItem>
+              <SelectItem value="all">{t("liveRunsheets.allSources")}</SelectItem>
+              <SelectItem value="series">{t("nav.testskis")}</SelectItem>
+              <SelectItem value="raceskis">{t("nav.raceskis")}</SelectItem>
             </SelectContent>
           </Select>
           {activeFilters > 0 && (
             <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={() => { setTypeFilter("all"); setSourceFilter("all"); }} data-testid="button-clear-live-filters">
-              Clear filters
+              {t("tests.clearFilters")}
             </Button>
           )}
         </div>

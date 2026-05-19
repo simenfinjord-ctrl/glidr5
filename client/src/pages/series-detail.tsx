@@ -141,7 +141,7 @@ export default function SeriesDetail() {
     return (
       <AppShell>
         <div className="flex flex-col items-center gap-4 py-20" data-testid="not-found-series">
-          <p className="text-muted-foreground">Series not found.</p>
+          <p className="text-muted-foreground">{t("seriesDetail.notFound")}</p>
           <AppLink href="/testskis">
             <Button variant="secondary" data-testid="button-back-testskis">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -177,7 +177,7 @@ export default function SeriesDetail() {
             )}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {seriesTests.length} test{seriesTests.length !== 1 ? "s" : ""} · {series.numberOfSkis} skis{series.grind ? ` · Grind ${series.grind}` : ""}
+            {t("seriesDetail.testCount").replace("{n}", String(seriesTests.length))}{seriesTests.length !== 1 ? "s" : ""} · {t("testskis.skiCount").replace("{n}", String(series.numberOfSkis))}{series.grind ? ` · Grind ${series.grind}` : ""}
           </p>
         </div>
 
@@ -205,7 +205,7 @@ export default function SeriesDetail() {
                     </span>
                     <span className="text-xs text-muted-foreground">{fmtDate(test.date)}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">{sortedEntries.length} entries</span>
+                  <span className="text-xs text-muted-foreground">{t("seriesDetail.entryCount").replace("{n}", String(sortedEntries.length))}</span>
                 </div>
 
                 {sortedEntries.length > 0 && (

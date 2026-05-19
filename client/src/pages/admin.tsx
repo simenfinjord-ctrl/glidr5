@@ -336,7 +336,7 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
   const groupNames = effectiveGroups.filter((g) => g.teamId === selectedTeamId).map((g) => g.name);
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
-    defaultValues: { name: "", email: "", username: "", password: "password", groupScope: groupNames[0] || "", isAdmin: false, isTeamAdmin: false, isBlindTester: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true, teamId: defaultTeamId, language: "no" },
+    defaultValues: { name: "", email: "", username: "", password: "Password123!", groupScope: groupNames[0] || "", isAdmin: false, isTeamAdmin: false, isBlindTester: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true, teamId: defaultTeamId, language: "no" },
   });
 
   const selectedGroups = parseGroups(form.watch("groupScope"));
@@ -942,7 +942,7 @@ function ResetPasswordForm({ user, onDone }: { user: ApiUser; onDone: () => void
   const { toast } = useToast();
   const form = useForm<z.infer<typeof resetSchema>>({
     resolver: zodResolver(resetSchema),
-    defaultValues: { password: "password" },
+    defaultValues: { password: "Password123!" },
   });
 
   const mutation = useMutation({

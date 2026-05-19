@@ -203,6 +203,7 @@ export const teams = pgTable("teams", {
   maxGroups: integer("max_groups"),
   maxTests: integer("max_tests"),
   maxProducts: integer("max_products"),
+  notes: text("notes"),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });

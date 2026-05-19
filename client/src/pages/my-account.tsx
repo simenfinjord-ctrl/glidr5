@@ -142,10 +142,10 @@ function PlanChangeSection() {
   });
 
   const PLANS = [
-    { value: "free", label: `Free — ${(planPrices?.free ?? 0).toLocaleString("no-NO")} NOK inkl. mva` },
-    { value: "starter", label: `Starter — ${planPrices?.starter != null ? planPrices.starter.toLocaleString("no-NO") + " NOK/mnd inkl. mva" : "—"}` },
-    { value: "team", label: `Team — ${planPrices?.team != null ? planPrices.team.toLocaleString("no-NO") + " NOK/mnd inkl. mva" : "—"}` },
-    { value: "pro", label: `Pro — ${planPrices?.pro != null ? planPrices.pro.toLocaleString("no-NO") + " NOK/mnd inkl. mva" : "—"}` },
+    { value: "free", label: `Free — ${(planPrices?.free ?? 0).toLocaleString("no-NO")} ${t("account.planPriceUnit")}` },
+    { value: "starter", label: `Starter — ${planPrices?.starter != null ? planPrices.starter.toLocaleString("no-NO") + " " + t("account.planPriceMonthly") : "—"}` },
+    { value: "team", label: `Team — ${planPrices?.team != null ? planPrices.team.toLocaleString("no-NO") + " " + t("account.planPriceMonthly") : "—"}` },
+    { value: "pro", label: `Pro — ${planPrices?.pro != null ? planPrices.pro.toLocaleString("no-NO") + " " + t("account.planPriceMonthly") : "—"}` },
     { value: "enterprise", label: "Enterprise / Federation" },
   ];
 
@@ -302,11 +302,11 @@ function TwoFactorSection() {
           <p className="text-sm text-muted-foreground mt-0.5">
             {status?.enabled
               ? t("account.twoFactorEnabled")
-              : "Add an extra layer of security to your Super Admin account."}
+              : t("account.twoFactorSecurityDesc")}
           </p>
         </div>
         <div className={`text-xs font-semibold px-2.5 py-1 rounded-full ${status?.enabled ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : "bg-muted text-muted-foreground"}`}>
-          {status?.enabled ? "Enabled" : "Disabled"}
+          {status?.enabled ? t("account.twoFactorStatus") : t("account.twoFactorStatusDisabled")}
         </div>
       </div>
 
@@ -361,15 +361,15 @@ function TwoFactorSection() {
           ) : (
             <div className="space-y-4 pt-2">
               <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-4 text-sm text-amber-800 dark:text-amber-300">
-                <strong>Save these backup codes now.</strong> Each code can only be used once. Store them somewhere safe — you'll need them if you lose access to your authenticator app.
+                <strong>{t("account.twoFactorBackupSave")}</strong> {t("account.twoFactorBackupDesc")}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {backupCodes.map((code) => (
                   <div key={code} className="rounded-lg bg-muted px-3 py-2 text-sm font-mono text-center">{code}</div>
                 ))}
               </div>
-              <Button className="w-full" onClick={() => { setSetupOpen(false); setBackupCodes(null); toast({ title: t("account.twoFactorEnabled2"), description: "Your account is now protected with two-factor authentication." }); }}>
-                I've saved my backup codes
+              <Button className="w-full" onClick={() => { setSetupOpen(false); setBackupCodes(null); toast({ title: t("account.twoFactorEnabled2"), description: t("account.twoFactorEnabledDesc") }); }}>
+                {t("account.twoFactorBackupSaved")}
               </Button>
             </div>
           )}
@@ -397,7 +397,7 @@ function TwoFactorSection() {
             <div className="flex gap-2 justify-end">
               <Button type="button" variant="outline" onClick={() => setDisableOpen(false)}>{t("common.cancel")}</Button>
               <Button type="submit" variant="destructive" disabled={disableSubmitting}>
-                {disableSubmitting ? "Disabling…" : t("account.twoFactorDisable")}
+                {disableSubmitting ? t("account.twoFactorDisabling") : t("account.twoFactorDisable")}
               </Button>
             </div>
           </form>
@@ -539,7 +539,7 @@ export default function MyAccount() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Username updated" }); // no dedicated i18n key; keep as-is
+      toast({ title: t("account.usernameUpdated") });
       setShowUsernameForm(false);
       setNewUsername("");
       setUsernameError("");
@@ -587,9 +587,9 @@ export default function MyAccount() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/my-watch-code"] });
-      toast({ title: "Watch code regenerated" });
+      toast({ title: t("account.watchCodeRegenerated") });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   const changePasswordMutation = useMutation({
@@ -680,14 +680,14 @@ export default function MyAccount() {
               <div className="flex items-center gap-3">
                 <AtSign className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div>
-                  <div className="text-xs text-muted-foreground">Username</div>
-                  <div className="text-sm font-medium" data-testid="text-profile-username">{user.username || <span className="text-muted-foreground italic">not set</span>}</div>
+                  <div className="text-xs text-muted-foreground">{t("account.username")}</div>
+                  <div className="text-sm font-medium" data-testid="text-profile-username">{user.username || <span className="text-muted-foreground italic">{t("account.usernameNotSet")}</span>}</div>
                 </div>
               </div>
               {!showUsernameForm && (
                 <Button variant="ghost" size="sm" onClick={() => { setNewUsername(user.username || ""); setShowUsernameForm(true); }}>
                   <Pencil className="h-3.5 w-3.5 mr-1" />
-                  Change
+                  {t("account.usernameChange")}
                 </Button>
               )}
             </div>
@@ -701,7 +701,7 @@ export default function MyAccount() {
                   data-testid="input-new-username"
                 />
                 {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
-                <p className="text-xs text-muted-foreground">Letters, numbers, dots, underscores and dashes only.</p>
+                <p className="text-xs text-muted-foreground">{t("account.usernameHint")}</p>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => { setShowUsernameForm(false); setUsernameError(""); }}>{t("common.cancel")}</Button>
                   <Button size="sm" onClick={() => changeUsernameMutation.mutate()} disabled={changeUsernameMutation.isPending || !newUsername.trim()}>
@@ -741,7 +741,7 @@ export default function MyAccount() {
         <Card className="p-5 space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
             <Smartphone className="h-4 w-4" />
-            Display preferences
+            {t("account.displayPreferences")}
           </h2>
           <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-3">
             <div>
@@ -764,12 +764,12 @@ export default function MyAccount() {
           <Card className="p-5 space-y-3">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
               <Shield className="h-4 w-4 text-purple-500" />
-              Admin Settings
+              {t("account.adminSettings")}
             </h2>
             <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-3">
               <div>
-                <div className="text-sm font-medium">Admin Mode</div>
-                <div className="text-xs text-muted-foreground">Show the Overview nav item and admin-only UI</div>
+                <div className="text-sm font-medium">{t("account.adminMode")}</div>
+                <div className="text-xs text-muted-foreground">{t("account.adminModeDesc")}</div>
               </div>
               <button
                 type="button"
@@ -778,7 +778,7 @@ export default function MyAccount() {
                   const next = !adminMode;
                   setAdminMode(next);
                   try { localStorage.setItem("glidr-sa-admin-mode", String(next)); } catch {}
-                  toast({ title: next ? "Admin Mode ON" : "Admin Mode OFF", description: next ? "Overview nav item is now visible." : "Overview nav item hidden." });
+                  toast({ title: next ? t("account.adminModeOnToast") : t("account.adminModeOffToast"), description: next ? t("account.adminModeOnDesc") : t("account.adminModeOffDesc") });
                 }}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
@@ -790,7 +790,7 @@ export default function MyAccount() {
                 {adminMode
                   ? <ToggleRight className="h-3.5 w-3.5 text-purple-600" />
                   : <ToggleLeft className="h-3.5 w-3.5 text-muted-foreground" />}
-                {adminMode ? "Admin Mode ON" : "Admin Mode"}
+                {adminMode ? t("account.adminModeOn") : t("account.adminModeOff")}
               </button>
             </div>
           </Card>
@@ -903,10 +903,10 @@ export default function MyAccount() {
         <Card className="p-5 space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
             <Watch className="h-4 w-4 text-sky-500" />
-            My Watch Code
+            {t("account.watchCode")}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Enter this 4-digit code on your Garmin watch to identify yourself. Your name will then appear in Live Runsheet and runsheet history.
+            {t("account.watchCodeDesc")}
           </p>
 
           {watchCodeLoading ? (
@@ -918,19 +918,19 @@ export default function MyAccount() {
               </div>
               <button
                 onClick={handleCopy}
-                title="Copy"
+                title={t("common.copy")}
                 className="p-2 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground"
               >
                 {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
               </button>
               <button
                 onClick={() => {
-                  if (confirm("Generate a new watch code? Your old code will stop working.")) {
+                  if (confirm(t("account.watchCodeRegenConfirm"))) {
                     regenerateMutation.mutate();
                   }
                 }}
                 disabled={regenerateMutation.isPending}
-                title="Regenerate code"
+                title={t("common.generate")}
                 className="p-2 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground disabled:opacity-50"
               >
                 <RefreshCw className={`h-4 w-4 ${regenerateMutation.isPending ? "animate-spin" : ""}`} />
@@ -939,7 +939,7 @@ export default function MyAccount() {
           )}
 
           <p className="text-xs text-muted-foreground/60">
-            Keep this code private. If it's compromised, regenerate it.
+            {t("account.watchCodePrivate")}
           </p>
         </Card>
 
@@ -983,10 +983,10 @@ export default function MyAccount() {
         <Card className="rounded-2xl p-5 sm:p-6 border-red-200 dark:border-red-900/50">
           <div className="flex items-center gap-2 mb-4">
             <Shield className="h-4 w-4 text-red-500" />
-            <h2 className="text-base font-semibold">Danger zone</h2>
+            <h2 className="text-base font-semibold">{t("account.dangerZone")}</h2>
           </div>
           <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-            Deleting your account anonymises all your personal data in accordance with GDPR. Test data entered by your account remains (attributed to "Deleted User") to preserve your team's records. This cannot be undone.
+            {t("account.dangerZoneDesc")}
           </p>
           <DeleteAccountButton />
         </Card>
@@ -996,6 +996,7 @@ export default function MyAccount() {
 }
 
 function DeleteAccountButton() {
+  const { t } = useI18n();
   const [confirming, setConfirming] = useState(false);
   const [inputVal, setInputVal] = useState("");
   const { toast } = useToast();
@@ -1006,7 +1007,7 @@ function DeleteAccountButton() {
       await apiRequest("POST", "/api/account/delete", {});
       window.location.href = "/login";
     } catch {
-      toast({ title: "Error", description: "Could not delete account. Contact support.", variant: "destructive" });
+      toast({ title: t("common.error"), description: "Could not delete account. Contact support.", variant: "destructive" });
     }
   }
 
@@ -1016,14 +1017,14 @@ function DeleteAccountButton() {
         onClick={() => setConfirming(true)}
         className="rounded-lg border border-red-300 dark:border-red-800 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
       >
-        Delete my account
+        {t("account.deleteAccount")}
       </button>
     );
   }
 
   return (
     <div className="rounded-xl border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/10 p-4 space-y-3">
-      <p className="text-sm font-medium text-red-700 dark:text-red-400">Type <strong>DELETE</strong> to confirm:</p>
+      <p className="text-sm font-medium text-red-700 dark:text-red-400">{t("account.deleteConfirmLabel")} <strong>DELETE</strong></p>
       <Input
         value={inputVal}
         onChange={(e) => setInputVal(e.target.value)}
@@ -1036,10 +1037,10 @@ function DeleteAccountButton() {
           disabled={inputVal !== "DELETE"}
           className="rounded-lg bg-red-600 text-white px-4 py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-40 transition-colors"
         >
-          Permanently delete
+          {t("account.deleteConfirmPermanent")}
         </button>
         <button onClick={() => { setConfirming(false); setInputVal(""); }} className="rounded-lg border px-4 py-2 text-sm hover:bg-muted transition-colors">
-          Cancel
+          {t("common.cancel")}
         </button>
       </div>
     </div>

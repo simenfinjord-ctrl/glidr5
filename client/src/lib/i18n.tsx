@@ -1056,6 +1056,9 @@ const translations: Record<string, Record<string, string>> = {
     "admin.accountingMonthly": "mnd",
     "admin.accountingAnnual": "år",
     "admin.accountingNext": "Next",
+    "admin.accountingPlanPrices": "Plan prices",
+    "admin.accountingPricesSaved": "Prices saved",
+    "admin.accountingCustomLabel": "Custom",
   },
 
   no: {
@@ -2110,6 +2113,9 @@ const translations: Record<string, Record<string, string>> = {
     "admin.accountingMonthly": "mnd",
     "admin.accountingAnnual": "år",
     "admin.accountingNext": "Neste",
+    "admin.accountingPlanPrices": "Abonnementspriser",
+    "admin.accountingPricesSaved": "Priser lagret",
+    "admin.accountingCustomLabel": "Egendefinert",
   },
 };
 

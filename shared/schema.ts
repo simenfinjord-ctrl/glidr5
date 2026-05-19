@@ -195,6 +195,14 @@ export const teams = pgTable("teams", {
   stripeSubscriptionId: text("stripe_subscription_id"),
   currentPeriodEnd: text("current_period_end"),
   trialEndsAt: text("trial_ends_at"),
+  // Custom billing fields (set by SA)
+  customPrice: real("custom_price"),
+  billingPeriod: text("billing_period").default("monthly"),
+  nextBillingDate: text("next_billing_date"),
+  maxUsers: integer("max_users"),
+  maxGroups: integer("max_groups"),
+  maxTests: integer("max_tests"),
+  maxProducts: integer("max_products"),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });

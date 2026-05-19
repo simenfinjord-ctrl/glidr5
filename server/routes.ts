@@ -455,6 +455,43 @@ export async function registerRoutes(
     }
   });
 
+  // GET /api/settings/plan-prices — public, returns prices for all plans in NOK
+  app.get("/api/settings/plan-prices", async (_req, res) => {
+    try {
+      const rows = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'plan_prices'`);
+      const row = ((rows as any).rows ?? rows)[0];
+      const defaults = { free: 0, starter: 490, team: 790, pro: 1490, enterprise: null };
+      if (!row?.value) return res.json(defaults);
+      try { return res.json({ ...defaults, ...JSON.parse(row.value) }); }
+      catch { return res.json(defaults); }
+    } catch {
+      res.json({ free: 0, starter: 490, team: 790, pro: 1490, enterprise: null });
+    }
+  });
+
+  // PATCH /api/admin/plan-prices — SA only, update global plan prices
+  app.patch("/api/admin/plan-prices", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    const { free, starter, team, pro, enterprise } = req.body;
+    const prices: Record<string, number | null> = {};
+    if (free !== undefined) prices.free = free === null ? 0 : Number(free);
+    if (starter !== undefined) prices.starter = starter === null ? null : Number(starter);
+    if (team !== undefined) prices.team = team === null ? null : Number(team);
+    if (pro !== undefined) prices.pro = pro === null ? null : Number(pro);
+    if (enterprise !== undefined) prices.enterprise = enterprise === null ? null : Number(enterprise);
+    // Read existing, merge, write back
+    const rows = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'plan_prices'`);
+    const existing = ((rows as any).rows ?? rows)[0];
+    const current = existing?.value ? JSON.parse(existing.value) : {};
+    const merged = { ...current, ...prices };
+    await db.execute(sql`
+      INSERT INTO app_settings (key, value) VALUES ('plan_prices', ${JSON.stringify(merged)})
+      ON CONFLICT (key) DO UPDATE SET value = ${JSON.stringify(merged)}
+    `);
+    res.json(merged);
+  });
+
   // --- SA settings update ---
   app.patch("/api/admin/settings", requireAuth, async (req, res) => {
     const u = req.user!;

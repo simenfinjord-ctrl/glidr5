@@ -7,7 +7,7 @@ import {
   Plus, Pencil, Trash2, KeyRound, Check, X, Clock, Download, EyeOff,
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle,
-  HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole,
+  HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash,
 } from "lucide-react";
 import {
   PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS,
@@ -56,6 +56,25 @@ type ApiTeam = {
   backupSheetUrl: string | null;
   lastBackupAt: string | null;
   isPaused?: number;
+  // Billing fields (camelCase from Drizzle)
+  planName?: string;
+  subscriptionStatus?: string;
+  customPrice?: number | null;
+  billingPeriod?: string | null;
+  nextBillingDate?: string | null;
+  maxUsers?: number | null;
+  maxGroups?: number | null;
+  maxTests?: number | null;
+  maxProducts?: number | null;
+  // Also snake_case for raw queries
+  plan_name?: string;
+  custom_price?: number | null;
+  billing_period?: string | null;
+  next_billing_date?: string | null;
+  max_users?: number | null;
+  max_groups?: number | null;
+  max_tests?: number | null;
+  max_products?: number | null;
 };
 
 function parsePermissions(permStr: string): UserPermissions {
@@ -1854,6 +1873,111 @@ function RegistrationsTab() {
   );
 }
 
+function PlanPriceEditor() {
+  const { t } = useI18n();
+  const { toast } = useToast();
+
+  const { data: prices } = useQuery<Record<string, number | null>>({
+    queryKey: ["/api/settings/plan-prices"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings/plan-prices");
+      return res.ok ? res.json() : {};
+    },
+  });
+
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (prices && !editing) {
+      setForm({
+        free: String(prices.free ?? 0),
+        starter: String(prices.starter ?? ""),
+        team: String(prices.team ?? ""),
+        pro: String(prices.pro ?? ""),
+        enterprise: String(prices.enterprise ?? ""),
+      });
+    }
+  }, [prices, editing]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: Record<string, number | null>) => {
+      const res = await fetch("/api/admin/plan-prices", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/plan-prices"] });
+      setEditing(false);
+      toast({ title: t("admin.accountingPricesSaved") });
+    },
+    onError: () => toast({ title: t("common.error"), variant: "destructive" }),
+  });
+
+  const PLAN_LABELS: Record<string, string> = {
+    free: "Free",
+    starter: "Starter",
+    team: "Team",
+    pro: "Pro",
+    enterprise: "Enterprise",
+  };
+
+  function handleSave() {
+    const data: Record<string, number | null> = {};
+    for (const [k, v] of Object.entries(form)) {
+      data[k] = v === "" || v === "null" ? null : parseFloat(v);
+    }
+    saveMutation.mutate(data);
+  }
+
+  return (
+    <Card className="rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-sm">{t("admin.accountingPlanPrices")}</h3>
+        {!editing ? (
+          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>{t("common.edit")}</Button>
+        ) : (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setEditing(false)}>{t("common.cancel")}</Button>
+            <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>{t("common.save")}</Button>
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        {["free", "starter", "team", "pro", "enterprise"].map((plan) => (
+          <div key={plan} className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">{PLAN_LABELS[plan]}</label>
+            {editing ? (
+              <div className="relative">
+                <Input
+                  type="number"
+                  value={form[plan] ?? ""}
+                  onChange={(e) => setForm((f) => ({ ...f, [plan]: e.target.value }))}
+                  placeholder={plan === "enterprise" ? t("admin.accountingCustomLabel") : "0"}
+                  className="pr-14 text-sm"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">NOK</span>
+              </div>
+            ) : (
+              <div className="text-sm font-semibold">
+                {prices?.[plan] == null
+                  ? <span className="text-muted-foreground">{t("admin.accountingCustomLabel")}</span>
+                  : <>{Number(prices[plan]).toLocaleString("no-NO")} <span className="font-normal text-muted-foreground text-xs">NOK/mnd</span></>
+                }
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 function AccountingOverview({ teams }: { teams: ApiTeam[] }) {
   const { t } = useI18n();
   const { data: records = [] } = useQuery<any[]>({
@@ -1974,34 +2098,30 @@ function AccountingBillingTable({ teams }: { teams: ApiTeam[] }) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium">{team.name}</span>
-                  <span className="text-xs text-muted-foreground capitalize px-1.5 py-0.5 rounded-full bg-muted">{team.plan_name || "free"}</span>
-                  {team.custom_price != null && (
-                    <span className="text-xs font-semibold text-green-700 dark:text-green-300">{team.custom_price.toLocaleString("no-NO")} {team.currency || "NOK"}/{team.billing_period === "annual" ? t("admin.accountingAnnual") : t("admin.accountingMonthly")}</span>
+                  <span className="text-xs text-muted-foreground capitalize px-1.5 py-0.5 rounded-full bg-muted">{team.planName || team.plan_name || "free"}</span>
+                  {(team.customPrice ?? team.custom_price) != null && (
+                    <span className="text-xs font-semibold text-green-700 dark:text-green-300">{(team.customPrice ?? team.custom_price)!.toLocaleString("no-NO")} {team.currency || "NOK"}/{(team.billingPeriod || team.billing_period) === "annual" ? t("admin.accountingAnnual") : t("admin.accountingMonthly")}</span>
                   )}
-                  {team.next_billing_date && (
-                    <span className="text-xs text-muted-foreground">{t("admin.accountingNext")}: {new Date(team.next_billing_date).toLocaleDateString("no-NO")}</span>
+                  {(team.nextBillingDate || team.next_billing_date) && (
+                    <span className="text-xs text-muted-foreground">{t("admin.accountingNext")}: {new Date((team.nextBillingDate || team.next_billing_date)!).toLocaleDateString("no-NO")}</span>
                   )}
                 </div>
-                {(team.max_users || team.max_groups || team.max_tests || team.max_products) && (
+                {(team.maxUsers || team.max_users || team.maxGroups || team.max_groups || team.maxTests || team.max_tests || team.maxProducts || team.max_products) && (
                   <div className="text-[10px] text-muted-foreground mt-0.5 flex gap-2 flex-wrap">
-                    {team.max_users && <span>{t("admin.accountingMaxUsers")}: {team.max_users}</span>}
-                    {team.max_groups && <span>{t("admin.accountingMaxGroups")}: {team.max_groups}</span>}
-                    {team.max_tests && <span>{t("admin.accountingMaxTests")}: {team.max_tests}</span>}
-                    {team.max_products && <span>{t("admin.accountingMaxProducts")}: {team.max_products}</span>}
+                    {(team.maxUsers ?? team.max_users) && <span>{t("admin.accountingMaxUsers")}: {team.maxUsers ?? team.max_users}</span>}
+                    {(team.maxGroups ?? team.max_groups) && <span>{t("admin.accountingMaxGroups")}: {team.maxGroups ?? team.max_groups}</span>}
+                    {(team.maxTests ?? team.max_tests) && <span>{t("admin.accountingMaxTests")}: {team.maxTests ?? team.max_tests}</span>}
+                    {(team.maxProducts ?? team.max_products) && <span>{t("admin.accountingMaxProducts")}: {team.maxProducts ?? team.max_products}</span>}
                   </div>
                 )}
               </div>
               <Button variant="outline" size="sm" onClick={() => {
                 setEditingPlanTeam(team);
                 setPlanForm({
-                  planName: team.plan_name || "free",
-                  customPrice: team.custom_price ?? "",
-                  billingPeriod: team.billing_period || "monthly",
-                  nextBillingDate: team.next_billing_date || "",
-                  maxUsers: team.max_users ?? "",
-                  maxGroups: team.max_groups ?? "",
-                  maxTests: team.max_tests ?? "",
-                  maxProducts: team.max_products ?? "",
+                  planName: team.planName || team.plan_name || "free",
+                  customPrice: team.customPrice ?? team.custom_price ?? "",
+                  billingPeriod: team.billingPeriod || team.billing_period || "monthly",
+                  nextBillingDate: team.nextBillingDate || team.next_billing_date || "",
                 });
               }}>
                 {t("admin.accountingEditPlan")}
@@ -2137,9 +2257,9 @@ function AccountingBillingTable({ teams }: { teams: ApiTeam[] }) {
         </DialogContent>
       </Dialog>
 
-      {/* Edit plan dialog */}
+      {/* Edit billing dialog — pricing & billing only, no limits */}
       <Dialog open={!!editingPlanTeam} onOpenChange={(o) => { if (!o) setEditingPlanTeam(null); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>{t("admin.accountingEditPlan")}: {editingPlanTeam?.name}</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
             <div className="space-y-1">
@@ -2155,7 +2275,7 @@ function AccountingBillingTable({ teams }: { teams: ApiTeam[] }) {
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <label className="text-sm font-medium">{t("admin.accountingCustomPrice")} (NOK)</label>
-                <Input type="number" value={planForm.customPrice} onChange={(e) => setPlanForm((f: any) => ({ ...f, customPrice: e.target.value }))} placeholder="0" />
+                <Input type="number" min="0" value={planForm.customPrice} onChange={(e) => setPlanForm((f: any) => ({ ...f, customPrice: e.target.value }))} placeholder="0" />
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">{t("admin.accountingBillingPeriod")}</label>
@@ -2172,20 +2292,6 @@ function AccountingBillingTable({ teams }: { teams: ApiTeam[] }) {
               <label className="text-sm font-medium">{t("admin.accountingNextBilling")}</label>
               <Input type="date" value={planForm.nextBillingDate} onChange={(e) => setPlanForm((f: any) => ({ ...f, nextBillingDate: e.target.value }))} />
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { key: "maxUsers", label: t("admin.accountingMaxUsers") },
-                { key: "maxGroups", label: t("admin.accountingMaxGroups") },
-                { key: "maxTests", label: t("admin.accountingMaxTests") },
-                { key: "maxProducts", label: t("admin.accountingMaxProducts") },
-              ].map(({ key, label }) => (
-                <div key={key} className="space-y-1">
-                  <label className="text-sm font-medium">{label}</label>
-                  <Input type="number" value={planForm[key]} onChange={(e) => setPlanForm((f: any) => ({ ...f, [key]: e.target.value }))} placeholder={t("admin.accountingUnlimited")} />
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">{t("admin.accountingLimitsNote")}</p>
             <div className="flex gap-2 justify-end pt-1">
               <Button variant="outline" onClick={() => setEditingPlanTeam(null)}>{t("common.cancel")}</Button>
               <Button
@@ -2195,10 +2301,6 @@ function AccountingBillingTable({ teams }: { teams: ApiTeam[] }) {
                   customPrice: planForm.customPrice ? parseFloat(planForm.customPrice) : null,
                   billingPeriod: planForm.billingPeriod,
                   nextBillingDate: planForm.nextBillingDate || null,
-                  maxUsers: planForm.maxUsers ? parseInt(planForm.maxUsers) : null,
-                  maxGroups: planForm.maxGroups ? parseInt(planForm.maxGroups) : null,
-                  maxTests: planForm.maxTests ? parseInt(planForm.maxTests) : null,
-                  maxProducts: planForm.maxProducts ? parseInt(planForm.maxProducts) : null,
                 })}
                 disabled={setPlanMutation.isPending}
               >
@@ -2880,18 +2982,21 @@ export default function Admin() {
   });
 
   const setPlanMutation = useMutation({
-    mutationFn: async ({ id, planName }: { id: number; planName: string }) => {
-      const res = await apiRequest("PATCH", `/api/admin/teams/${id}/plan`, { planName });
+    mutationFn: async ({ id, ...data }: { id: number; planName?: string; maxUsers?: number | null; maxGroups?: number | null; maxTests?: number | null; maxProducts?: number | null }) => {
+      const res = await apiRequest("PATCH", `/api/admin/teams/${id}/plan`, data);
       return res.json();
     },
-    onSuccess: (_data, vars) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: `Plan set to ${vars.planName}` });
+      toast({ title: "Saved" });
     },
     onError: (e: Error) => {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     },
   });
+
+  const [limitsTeam, setLimitsTeam] = useState<ApiTeam | null>(null);
+  const [limitsForm, setLimitsForm] = useState<any>({});
 
   const pauseTeamMutation = useMutation({
     mutationFn: async ({ id, paused }: { id: number; paused: boolean }) => {
@@ -3393,6 +3498,30 @@ export default function Admin() {
               />
             )}
 
+            <Dialog open={!!limitsTeam} onOpenChange={(o) => { if (!o) setLimitsTeam(null); }}>
+              <DialogContent className="sm:max-w-xs">
+                <DialogHeader><DialogTitle>Limits: {limitsTeam?.name}</DialogTitle></DialogHeader>
+                <div className="space-y-3 pt-2">
+                  {[
+                    { key: "maxUsers", label: t("admin.accountingMaxUsers") },
+                    { key: "maxGroups", label: t("admin.accountingMaxGroups") },
+                    { key: "maxTests", label: t("admin.accountingMaxTests") },
+                    { key: "maxProducts", label: t("admin.accountingMaxProducts") },
+                  ].map(({ key, label }) => (
+                    <div key={key} className="space-y-1">
+                      <label className="text-sm font-medium">{label}</label>
+                      <Input type="number" value={limitsForm[key] ?? ""} onChange={(e) => setLimitsForm((f: any) => ({ ...f, [key]: e.target.value }))} placeholder={t("admin.accountingUnlimited")} />
+                    </div>
+                  ))}
+                  <p className="text-xs text-muted-foreground">{t("admin.accountingLimitsNote")}</p>
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => setLimitsTeam(null)}>{t("common.cancel")}</Button>
+                    <Button onClick={() => { setPlanMutation.mutate({ id: limitsTeam!.id, maxUsers: limitsForm.maxUsers ? parseInt(limitsForm.maxUsers) : null, maxGroups: limitsForm.maxGroups ? parseInt(limitsForm.maxGroups) : null, maxTests: limitsForm.maxTests ? parseInt(limitsForm.maxTests) : null, maxProducts: limitsForm.maxProducts ? parseInt(limitsForm.maxProducts) : null }); setLimitsTeam(null); }} disabled={setPlanMutation.isPending}>{t("common.save")}</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-admin-teams">
               <div className="text-sm font-semibold text-foreground mb-3">Teams ({teams.length})</div>
               <div className="grid grid-cols-1 gap-2">
@@ -3476,6 +3605,9 @@ export default function Admin() {
                           onClick={() => setConfiguringTeam(team)}
                         >
                           <Settings2 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" title="Set limits" onClick={() => { setLimitsTeam(team); setLimitsForm({ maxUsers: team.maxUsers ?? team.max_users ?? "", maxGroups: team.maxGroups ?? team.max_groups ?? "", maxTests: team.maxTests ?? team.max_tests ?? "", maxProducts: team.maxProducts ?? team.max_products ?? "" }); }}>
+                          <Hash className="h-4 w-4 text-muted-foreground" />
                         </Button>
                         {team.isDefault !== 1 && (
                           <Button
@@ -3734,6 +3866,7 @@ export default function Admin() {
 
         {activeTab === "accounting" && isSuperAdmin && (
           <div className="flex flex-col gap-5">
+            <PlanPriceEditor />
             <AccountingOverview teams={teams} />
             <AccountingBillingTable teams={teams} />
           </div>

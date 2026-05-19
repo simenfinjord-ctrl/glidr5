@@ -132,12 +132,21 @@ function PlanChangeSection() {
 
   const currentPlan = (user as any)?.team?.planName ?? (user as any)?.planName ?? "free";
 
+  const { data: planPrices } = useQuery<Record<string, number | null>>({
+    queryKey: ["/api/settings/plan-prices"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings/plan-prices");
+      return res.ok ? res.json() : {};
+    },
+    staleTime: 60_000,
+  });
+
   const PLANS = [
-    { value: "free", label: "Free — €0" },
-    { value: "starter", label: "Starter — €25/mo" },
-    { value: "team", label: "Team — €79/mo" },
-    { value: "pro", label: "Pro — €149/mo" },
-    { value: "enterprise", label: "Federation / Enterprise" },
+    { value: "free", label: `Free — ${(planPrices?.free ?? 0).toLocaleString("no-NO")} NOK` },
+    { value: "starter", label: `Starter — ${planPrices?.starter != null ? planPrices.starter.toLocaleString("no-NO") + " NOK/mnd" : "—"}` },
+    { value: "team", label: `Team — ${planPrices?.team != null ? planPrices.team.toLocaleString("no-NO") + " NOK/mnd" : "—"}` },
+    { value: "pro", label: `Pro — ${planPrices?.pro != null ? planPrices.pro.toLocaleString("no-NO") + " NOK/mnd" : "—"}` },
+    { value: "enterprise", label: "Enterprise / Federation" },
   ];
 
   async function submit() {

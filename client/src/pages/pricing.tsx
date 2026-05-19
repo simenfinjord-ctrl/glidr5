@@ -1,14 +1,26 @@
 import { Check, Watch, Zap, Users, Trophy, Building2, ArrowRight, X } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { PublicNav } from "@/components/public-nav";
 import { useLanguage } from "@/lib/language";
 
-const PLANS = [
+function usePlanPrices() {
+  const { data } = useQuery<Record<string, number | null>>({
+    queryKey: ["/api/settings/plan-prices"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings/plan-prices");
+      return res.ok ? res.json() : {};
+    },
+    staleTime: 60_000,
+  });
+  return data ?? { free: 0, starter: 490, team: 790, pro: 1490, enterprise: null };
+}
+
+const PLAN_STATIC = [
   {
     id: "free",
     name: "Free",
-    price: "€0",
     period: "",
     tagline: "For the enthusiastic home wax technician.",
     color: "border-border",
@@ -34,7 +46,6 @@ const PLANS = [
   {
     id: "starter",
     name: "Starter",
-    price: "€25",
     period: "/month",
     tagline: "For a club team getting started with structured testing.",
     color: "border-border",
@@ -60,7 +71,6 @@ const PLANS = [
   {
     id: "team",
     name: "Team",
-    price: "€79",
     period: "/month",
     tagline: "For competitive teams that need the full picture.",
     color: "border-emerald-500 ring-2 ring-emerald-500/20",
@@ -89,7 +99,6 @@ const PLANS = [
   {
     id: "pro",
     name: "Pro",
-    price: "€149",
     period: "/month",
     tagline: "For national teams and organizations with athletes.",
     color: "border-border",
@@ -114,7 +123,6 @@ const PLANS = [
   {
     id: "federation",
     name: "Federation",
-    price: "Custom",
     period: "",
     tagline: "For multi-team organizations and ski industry brands.",
     color: "border-border",
@@ -238,7 +246,9 @@ const PAGE_TEXT = {
   },
 };
 
-function PlanCard({ plan, lang }: { plan: typeof PLANS[0]; lang: "en" | "no" }) {
+type PlanWithPrice = typeof PLAN_STATIC[0] & { price: string };
+
+function PlanCard({ plan, lang }: { plan: PlanWithPrice; lang: "en" | "no" }) {
   const href = plan.id === "free"
     ? "/get-started"
     : `/contact?plan=${plan.id}`;
@@ -297,6 +307,20 @@ export default function Pricing() {
   const { lang } = useLanguage();
   const p = PAGE_TEXT[lang];
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const planPrices = usePlanPrices();
+
+  const PLANS: PlanWithPrice[] = PLAN_STATIC.map((plan) => {
+    let price: string;
+    if (plan.id === "federation") {
+      price = "Custom";
+    } else if (plan.id === "free") {
+      price = `${(planPrices.free ?? 0).toLocaleString("no-NO")} NOK`;
+    } else {
+      const planPrice = planPrices[plan.id as keyof typeof planPrices];
+      price = planPrice != null ? `${(planPrice as number).toLocaleString("no-NO")} NOK` : "—";
+    }
+    return { ...plan, price };
+  });
 
   return (
     <div className="min-h-screen bg-background">

@@ -563,6 +563,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
+      {!isOnline && (
+        <div className="sticky top-0 z-50 bg-amber-500 text-white text-xs font-medium text-center py-1.5 px-4">
+          You're offline — showing cached data. Changes will not be saved.
+        </div>
+      )}
+
       <main className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 py-6">
         <div className="fs-card rounded-2xl p-4 sm:p-6">{children}</div>
       </main>

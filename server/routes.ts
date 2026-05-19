@@ -422,6 +422,17 @@ export async function registerRoutes(
       )
     `);
     await pool.query(`ALTER TABLE interest_registrations ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'new'`).catch(() => {});
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS test_attachments (
+        id SERIAL PRIMARY KEY,
+        test_id INTEGER NOT NULL,
+        filename TEXT NOT NULL,
+        mime_type TEXT NOT NULL DEFAULT 'image/jpeg',
+        data TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        uploaded_by_id INTEGER
+      )
+    `);
   }
 
   // --- Maintenance mode gate (runs before all other /api routes) ---
@@ -2139,6 +2150,45 @@ export async function registerRoutes(
       });
     } catch (_) {}
     res.json({ ok: true });
+  });
+
+  // GET /api/tests/:id/attachments
+  app.get("/api/tests/:id/attachments", requireAuth, async (req, res) => {
+    const testId = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT id, test_id, filename, mime_type, created_at, uploaded_by_id FROM test_attachments WHERE test_id = $1 ORDER BY created_at DESC`,
+      [testId]
+    );
+    res.json(result.rows);
+  });
+
+  // POST /api/tests/:id/attachments — upload base64 image
+  app.post("/api/tests/:id/attachments", requireAuth, async (req, res) => {
+    const testId = parseInt(req.params.id);
+    const { filename, mimeType, data } = req.body;
+    if (!filename || !data) return res.status(400).json({ message: "filename and data required" });
+    const u = userInfo(req);
+    const { pool } = await import("./db");
+    const now = new Date().toISOString();
+    const result = await (pool as any).query(
+      `INSERT INTO test_attachments (test_id, filename, mime_type, data, created_at, uploaded_by_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, test_id, filename, mime_type, created_at`,
+      [testId, filename, mimeType || "image/jpeg", data, now, u.id]
+    );
+    res.json(result.rows[0]);
+  });
+
+  // GET /api/attachments/:id — serve raw image
+  app.get("/api/attachments/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(`SELECT filename, mime_type, data FROM test_attachments WHERE id = $1`, [id]);
+    if (!result.rows[0]) return res.status(404).json({ message: "Not found" });
+    const { filename, mime_type, data } = result.rows[0];
+    const buf = Buffer.from(data.replace(/^data:[^;]+;base64,/, ""), "base64");
+    res.setHeader("Content-Type", mime_type);
+    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+    res.send(buf);
   });
 
   app.get("/api/tests/:id/entries", requireAuth, async (req, res) => {
@@ -4417,6 +4467,7 @@ export async function registerRoutes(
               description: `Tested ${count} time${count > 1 ? "s" : ""} in similar conditions. No ranking data recorded yet.`,
               products: [productName],
               confidence: "Low",
+              matchCount: count,
             };
           });
         if (suggestions.length === 0) {
@@ -4448,6 +4499,7 @@ export async function registerRoutes(
           description: `Avg rank ${avgRankStr} across ${r.count} test${r.count > 1 ? "s" : ""}. Win rate: ${winPct}%. ${matchDescription}`,
           products: [productName],
           confidence: r.confidence,
+          matchCount: r.count,
         };
       });
 

@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch, ImageIcon } from "lucide-react";
 import { generateTestPDF } from "@/lib/pdf-report";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
@@ -209,6 +209,82 @@ function AddToWatchButton({ testId, testName, seriesId, hasAccess }: { testId: n
       <Watch className="mr-2 h-4 w-4" />
       {inQueue ? t("watchQueue.active") : t("watchQueue.addToQueue")}
     </Button>
+  );
+}
+
+function AttachmentsSection({ testId }: { testId: number }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [uploading, setUploading] = useState(false);
+
+  const { data: attachments = [] } = useQuery<any[]>({
+    queryKey: [`/api/tests/${testId}/attachments`],
+    queryFn: async () => {
+      const res = await fetch(`/api/tests/${testId}/attachments`, { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+  });
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Only image files are supported", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch(`/api/tests/${testId}/attachments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ filename: file.name, mimeType: file.type, data: base64 }),
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      queryClient.invalidateQueries({ queryKey: [`/api/tests/${testId}/attachments`] });
+      toast({ title: "Photo uploaded" });
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" });
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold">Photos</h3>
+        <label className={`cursor-pointer rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+          {uploading ? "Uploading..." : "Add photo"}
+          <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} disabled={uploading} />
+        </label>
+      </div>
+      {attachments.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No photos attached.</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {attachments.map((a: any) => (
+            <a
+              key={a.id}
+              href={`/api/attachments/${a.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-muted transition-colors"
+            >
+              <ImageIcon className="h-3 w-3 text-muted-foreground" />
+              <span className="max-w-[140px] truncate">{a.filename}</span>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -967,6 +1043,8 @@ export default function TestDetail() {
             </div>
           )}
         </Card>
+
+        <AttachmentsSection testId={test.id} />
 
         {sortedEntries.length >= 2 && (
           <RunsheetDialog

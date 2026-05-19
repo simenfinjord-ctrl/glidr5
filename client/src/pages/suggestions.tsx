@@ -22,6 +22,7 @@ type Suggestion = {
   description: string;
   products: string[];
   confidence: string;
+  matchCount?: number;
 };
 
 const SNOW_TYPE_OPTIONS = [
@@ -284,12 +285,23 @@ export default function Suggestions() {
 
         {!mutation.isPending && suggestions && suggestions.length > 0 && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-900/30">
-                <Lightbulb className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-900/30">
+                  <Lightbulb className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                </div>
+                <h2 className="text-base font-semibold" data-testid="text-results-heading">{t("suggestions.results")}</h2>
               </div>
-              <h2 className="text-base font-semibold" data-testid="text-results-heading">{t("suggestions.results")}</h2>
+              <button onClick={() => setSuggestions(null)} className="text-xs text-muted-foreground underline hover:text-foreground">
+                ← New search
+              </button>
             </div>
+
+            {suggestions.every((s) => s.confidence.toLowerCase() === "low") && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
+                Limited test data — results improve as you log more tests in similar conditions.
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {suggestions.map((suggestion, index) => (
@@ -309,6 +321,10 @@ export default function Suggestions() {
                   <p className="text-sm text-muted-foreground mb-3" data-testid={`text-suggestion-desc-${index}`}>
                     {suggestion.description}
                   </p>
+
+                  {suggestion.matchCount !== undefined && (
+                    <p className="text-xs text-muted-foreground mb-2">Based on {suggestion.matchCount} similar test{suggestion.matchCount !== 1 ? "s" : ""}</p>
+                  )}
 
                   {suggestion.products.length > 0 && (
                     <div>

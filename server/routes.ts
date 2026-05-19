@@ -3332,14 +3332,15 @@ export async function registerRoutes(
   app.post("/api/admin/billing", requireAuth, async (req, res) => {
     const u = userInfo(req);
     if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
-    const { teamId, teamName, amount, currency, description, periodStart, periodEnd, dueDate, notes } = req.body;
+    const { teamId, teamName, amount, currency, description, periodStart, periodEnd, dueDate, notes, invoiced } = req.body;
     if (!teamId || !amount || !dueDate || !teamName) return res.status(400).json({ message: "teamId, teamName, amount, dueDate required" });
     const { pool } = await import("./db");
     const now = new Date().toISOString();
+    const invoicedAt = invoiced ? now : null;
     const result = await (pool as any).query(
-      `INSERT INTO billing_records (team_id, team_name, amount, currency, description, period_start, period_end, due_date, notes, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [teamId, teamName, amount, currency || "NOK", description || null, periodStart || null, periodEnd || null, dueDate, notes || null, now]
+      `INSERT INTO billing_records (team_id, team_name, amount, currency, description, period_start, period_end, due_date, notes, created_at, invoiced_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      [teamId, teamName, amount, currency || "NOK", description || null, periodStart || null, periodEnd || null, dueDate, notes || null, now, invoicedAt]
     );
     res.json(result.rows[0]);
   });

@@ -1873,11 +1873,12 @@ function RegistrationsTab() {
   );
 }
 
-function BillingSchedule({ teams }: { teams: ApiTeam[] }) {
-  const { t } = useI18n();
+
+function AccountingTab({ teams }: { teams: ApiTeam[] }) {
   const { toast } = useToast();
 
-  const { data: planPrices } = useQuery<Record<string, number | null>>({
+  // ── Plan prices ──────────────────────────────────────────────────
+  const { data: planPrices = {} } = useQuery<Record<string, number | null>>({
     queryKey: ["/api/settings/plan-prices"],
     queryFn: async () => {
       const res = await fetch("/api/settings/plan-prices");
@@ -1885,191 +1886,22 @@ function BillingSchedule({ teams }: { teams: ApiTeam[] }) {
     },
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/admin/billing", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] });
-      toast({ title: "Faktureringspost opprettet" });
-    },
-    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
-  });
-
-  const DEFAULT_PRICES: Record<string, number> = {
-    free: 0, starter: 490, team: 790, pro: 1490, enterprise: 0,
-  };
-
-  function effectivePrice(team: ApiTeam): number | null {
-    const cp = team.customPrice ?? (team as any).custom_price;
-    if (cp != null) return cp;
-    const plan = (team.planName ?? (team as any).plan_name ?? "free").toLowerCase();
-    const pp = planPrices?.[plan];
-    if (pp != null) return pp;
-    return DEFAULT_PRICES[plan] ?? null;
-  }
-
-  function nextDate(team: ApiTeam): Date | null {
-    const raw = team.nextBillingDate ?? (team as any).next_billing_date;
-    if (!raw) return null;
-    return new Date(raw);
-  }
-
-  function addPeriod(d: Date, period: string): Date {
-    const next = new Date(d);
-    if (period === "annual") next.setFullYear(next.getFullYear() + 1);
-    else next.setMonth(next.getMonth() + 1);
-    return next;
-  }
-
-  // Build schedule: for each paying team, find the soonest upcoming billing date
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const schedule = teams
-    .filter((team) => {
-      const plan = (team.planName ?? (team as any).plan_name ?? "free").toLowerCase();
-      return plan !== "free" && nextDate(team) !== null;
-    })
-    .map((team) => {
-      const period = (team.billingPeriod ?? (team as any).billing_period ?? "monthly") as string;
-      let due = nextDate(team)!;
-      // Advance past dates forward to find the next upcoming date
-      while (due < today) {
-        due = addPeriod(due, period);
-      }
-      const daysUntil = Math.round((due.getTime() - today.getTime()) / 86400000);
-      const price = effectivePrice(team);
-      return { team, due, daysUntil, price, period };
-    })
-    .sort((a, b) => a.due.getTime() - b.due.getTime());
-
-  const overdue = schedule.filter((r) => r.daysUntil < 0);
-  const soon = schedule.filter((r) => r.daysUntil >= 0 && r.daysUntil <= 14);
-  const upcoming = schedule.filter((r) => r.daysUntil > 14);
-
-  function handleGenerate(item: typeof schedule[0]) {
-    const start = new Date(item.due);
-    if (item.period === "annual") start.setFullYear(start.getFullYear() - 1);
-    else start.setMonth(start.getMonth() - 1);
-    createMutation.mutate({
-      teamId: item.team.id,
-      amount: item.price,
-      currency: "NOK",
-      description: `Glidr ${item.team.planName ?? (item.team as any).plan_name ?? ""} – ${item.due.toLocaleDateString("no-NO", { month: "long", year: "numeric" })}`,
-      periodStart: start.toISOString().split("T")[0],
-      periodEnd: item.due.toISOString().split("T")[0],
-      dueDate: item.due.toISOString().split("T")[0],
-    });
-  }
-
-  function ScheduleRow({ item, highlight }: { item: typeof schedule[0]; highlight?: string }) {
-    return (
-      <div className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5", highlight ?? "border-border bg-muted/20")}>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold">{item.team.name}</span>
-            <span className="text-xs capitalize text-muted-foreground px-1.5 py-0.5 rounded-full bg-muted">
-              {item.team.planName ?? (item.team as any).plan_name ?? "free"}
-            </span>
-            <span className="text-sm font-bold">
-              {item.price != null ? `${item.price.toLocaleString("no-NO")} NOK` : "—"}
-            </span>
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5 flex gap-3 flex-wrap">
-            <span>
-              Forfaller: <strong>{item.due.toLocaleDateString("no-NO")}</strong>
-              {item.daysUntil === 0 && <span className="ml-1 text-amber-600 font-semibold">i dag</span>}
-              {item.daysUntil > 0 && <span className="ml-1 text-muted-foreground">({item.daysUntil} dager)</span>}
-              {item.daysUntil < 0 && <span className="ml-1 text-red-600 font-semibold">{Math.abs(item.daysUntil)} dager over forfalt</span>}
-            </span>
-            <span>{item.period === "annual" ? "Årlig" : "Månedlig"}</span>
-          </div>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={createMutation.isPending}
-          onClick={() => handleGenerate(item)}
-          className="flex-shrink-0 text-xs"
-        >
-          Opprett faktura
-        </Button>
-      </div>
-    );
-  }
-
-  if (schedule.length === 0) {
-    return (
-      <Card className="rounded-2xl p-5">
-        <h3 className="font-semibold text-sm mb-2">Faktureringsplan</h3>
-        <p className="text-sm text-muted-foreground">Ingen lag med betalte abonnementer og fakturadato satt. Angi neste fakturadato under «Rediger plan» i Team-fanen for å aktivere automatisk plan.</p>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="rounded-2xl p-5">
-      <h3 className="font-semibold text-sm mb-4">Faktureringsplan</h3>
-      <div className="flex flex-col gap-4">
-        {overdue.length > 0 && (
-          <div>
-            <div className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2">Forfalt</div>
-            <div className="flex flex-col gap-2">
-              {overdue.map((item) => <ScheduleRow key={item.team.id} item={item} highlight="border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-900/10" />)}
-            </div>
-          </div>
-        )}
-        {soon.length > 0 && (
-          <div>
-            <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-2">Innen 14 dager</div>
-            <div className="flex flex-col gap-2">
-              {soon.map((item) => <ScheduleRow key={item.team.id} item={item} highlight="border-amber-200 bg-amber-50/30 dark:border-amber-800 dark:bg-amber-900/10" />)}
-            </div>
-          </div>
-        )}
-        {upcoming.length > 0 && (
-          <div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Kommende</div>
-            <div className="flex flex-col gap-2">
-              {upcoming.map((item) => <ScheduleRow key={item.team.id} item={item} />)}
-            </div>
-          </div>
-        )}
-      </div>
-    </Card>
-  );
-}
-
-function PlanPriceEditor() {
-  const { t } = useI18n();
-  const { toast } = useToast();
-
-  const { data: prices } = useQuery<Record<string, number | null>>({
-    queryKey: ["/api/settings/plan-prices"],
-    queryFn: async () => {
-      const res = await fetch("/api/settings/plan-prices");
-      return res.ok ? res.json() : {};
-    },
-  });
-
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<Record<string, string>>({});
-
+  // ── Plan price editor state ───────────────────────────────────────
+  const [editingPrices, setEditingPrices] = useState(false);
+  const [priceForm, setPriceForm] = useState<Record<string, string>>({});
   useEffect(() => {
-    if (prices && !editing) {
-      setForm({
-        free: String(prices.free ?? 0),
-        starter: String(prices.starter ?? ""),
-        team: String(prices.team ?? ""),
-        pro: String(prices.pro ?? ""),
-        enterprise: String(prices.enterprise ?? ""),
+    if (planPrices && !editingPrices) {
+      setPriceForm({
+        free: String((planPrices as any).free ?? 0),
+        starter: String((planPrices as any).starter ?? ""),
+        team: String((planPrices as any).team ?? ""),
+        pro: String((planPrices as any).pro ?? ""),
+        enterprise: String((planPrices as any).enterprise ?? ""),
       });
     }
-  }, [prices, editing]);
+  }, [planPrices, editingPrices]);
 
-  const saveMutation = useMutation({
+  const savePricesMutation = useMutation({
     mutationFn: async (data: Record<string, number | null>) => {
       const res = await fetch("/api/admin/plan-prices", {
         method: "PATCH",
@@ -2077,119 +1909,18 @@ function PlanPriceEditor() {
         credentials: "include",
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to save");
+      if (!res.ok) throw new Error("Failed");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/settings/plan-prices"] });
-      setEditing(false);
-      toast({ title: t("admin.accountingPricesSaved") });
+      setEditingPrices(false);
+      toast({ title: "Priser lagret" });
     },
-    onError: () => toast({ title: t("common.error"), variant: "destructive" }),
+    onError: () => toast({ title: "Feil", variant: "destructive" }),
   });
 
-  const PLAN_LABELS: Record<string, string> = {
-    free: "Free",
-    starter: "Starter",
-    team: "Team",
-    pro: "Pro",
-    enterprise: "Enterprise",
-  };
-
-  function handleSave() {
-    const data: Record<string, number | null> = {};
-    for (const [k, v] of Object.entries(form)) {
-      data[k] = v === "" || v === "null" ? null : parseFloat(v);
-    }
-    saveMutation.mutate(data);
-  }
-
-  return (
-    <Card className="rounded-2xl p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-sm">{t("admin.accountingPlanPrices")}</h3>
-        {!editing ? (
-          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>{t("common.edit")}</Button>
-        ) : (
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setEditing(false)}>{t("common.cancel")}</Button>
-            <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>{t("common.save")}</Button>
-          </div>
-        )}
-      </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {["free", "starter", "team", "pro", "enterprise"].map((plan) => (
-          <div key={plan} className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">{PLAN_LABELS[plan]}</label>
-            {editing ? (
-              <div className="relative">
-                <Input
-                  type="number"
-                  value={form[plan] ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, [plan]: e.target.value }))}
-                  placeholder={plan === "enterprise" ? t("admin.accountingCustomLabel") : "0"}
-                  className="pr-14 text-sm"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">NOK</span>
-              </div>
-            ) : (
-              <div className="text-sm font-semibold">
-                {prices?.[plan] == null
-                  ? <span className="text-muted-foreground">{t("admin.accountingCustomLabel")}</span>
-                  : <>{Number(prices[plan]).toLocaleString("no-NO")} <span className="font-normal text-muted-foreground text-xs">NOK/mnd inkl. mva</span></>
-                }
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-function AccountingOverview({ teams }: { teams: ApiTeam[] }) {
-  const { t } = useI18n();
-  const { data: records = [] } = useQuery<any[]>({
-    queryKey: ["/api/admin/billing"],
-    queryFn: async () => {
-      const res = await fetch("/api/admin/billing", { credentials: "include" });
-      return res.ok ? res.json() : [];
-    },
-  });
-
-  const now = new Date();
-  const totalRevenue = records.filter((r) => r.paid_at).reduce((s, r) => s + r.amount, 0);
-  const pendingInvoice = records.filter((r) => !r.invoiced_at).reduce((s, r) => s + r.amount, 0);
-  const pendingPayment = records.filter((r) => r.invoiced_at && !r.paid_at).reduce((s, r) => s + r.amount, 0);
-  const overdue = records.filter((r) => !r.paid_at && new Date(r.due_date) < now).length;
-
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {[
-        { label: t("admin.accountingTotalPaid"), value: `${totalRevenue.toLocaleString("no-NO")} NOK`, color: "text-green-600" },
-        { label: t("admin.accountingPendingInvoice"), value: `${pendingInvoice.toLocaleString("no-NO")} NOK`, color: "text-amber-600" },
-        { label: t("admin.accountingPendingPayment"), value: `${pendingPayment.toLocaleString("no-NO")} NOK`, color: "text-blue-600" },
-        { label: t("admin.accountingOverdue"), value: String(overdue), color: overdue > 0 ? "text-red-600" : "text-muted-foreground" },
-      ].map((c) => (
-        <Card key={c.label} className="rounded-2xl p-4">
-          <div className="text-xs text-muted-foreground mb-1">{c.label}</div>
-          <div className={`text-xl font-bold ${c.color}`}>{c.value}</div>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-function AccountingBillingTable({ teams }: { teams: ApiTeam[] }) {
-  const { t } = useI18n();
-  const { toast } = useToast();
-  const [filter, setFilter] = useState<"all" | "upcoming" | "invoiced" | "paid" | "overdue">("all");
-  const [addOpen, setAddOpen] = useState(false);
-  const [editingPlanTeam, setEditingPlanTeam] = useState<ApiTeam | null>(null);
-
-  const [form, setForm] = useState({ teamId: "", amount: "", currency: "NOK", description: "", periodStart: "", periodEnd: "", dueDate: "", notes: "" });
-  const [planForm, setPlanForm] = useState<any>({});
-
+  // ── Billing records ───────────────────────────────────────────────
   const { data: records = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/billing"],
     queryFn: async () => {
@@ -2198,162 +1929,261 @@ function AccountingBillingTable({ teams }: { teams: ApiTeam[] }) {
     },
   });
 
-  const createMutation = useMutation({
+  const createRecord = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/admin/billing", { ...data, teamId: parseInt(data.teamId), amount: parseFloat(data.amount) });
+      const res = await apiRequest("POST", "/api/admin/billing", data);
+      if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] });
-      setAddOpen(false);
-      setForm({ teamId: "", amount: "", currency: "NOK", description: "", periodStart: "", periodEnd: "", dueDate: "", notes: "" });
-      toast({ title: t("admin.accountingRecordCreated") });
-    },
-    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] }),
+    onError: (e: Error) => toast({ title: "Feil", description: e.message, variant: "destructive" }),
   });
 
-  const patchMutation = useMutation({
+  const patchRecord = useMutation({
     mutationFn: async ({ id, ...patch }: any) => {
       const res = await apiRequest("PATCH", `/api/admin/billing/${id}`, patch);
+      if (!res.ok) throw new Error("Failed");
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] }),
-    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Feil", description: e.message, variant: "destructive" }),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiRequest("DELETE", `/api/admin/billing/${id}`, undefined);
+  const advanceDate = useMutation({
+    mutationFn: async ({ id, nextBillingDate }: { id: number; nextBillingDate: string }) => {
+      const res = await apiRequest("PATCH", `/api/admin/teams/${id}/plan`, { nextBillingDate });
+      if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] }),
-    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/teams"] }),
+    onError: (e: Error) => toast({ title: "Feil", description: e.message, variant: "destructive" }),
   });
 
-  const setPlanMutation = useMutation({
-    mutationFn: async ({ id, ...data }: any) => {
-      const res = await apiRequest("PATCH", `/api/admin/teams/${id}/plan`, data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      setEditingPlanTeam(null);
-      toast({ title: t("admin.accountingPlanUpdated") });
-    },
-    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+  // ── Helpers ───────────────────────────────────────────────────────
+  const DEFAULT_PRICES: Record<string, number> = {
+    free: 0, starter: 490, team: 790, pro: 1490, enterprise: 0,
+  };
+
+  function effectivePrice(team: ApiTeam): number | null {
+    const cp = team.customPrice ?? (team as any).custom_price;
+    if (cp != null) return cp;
+    const plan = (team.planName ?? (team as any).plan_name ?? "free").toLowerCase();
+    const pp = (planPrices as any)[plan];
+    if (pp != null) return pp;
+    return DEFAULT_PRICES[plan] ?? null;
+  }
+
+  function addPeriod(date: Date, period: string): Date {
+    const d = new Date(date);
+    if (period === "annual") d.setFullYear(d.getFullYear() + 1);
+    else d.setMonth(d.getMonth() + 1);
+    return d;
+  }
+
+  function fmt(d: Date) {
+    return d.toLocaleDateString("no-NO", { day: "numeric", month: "long", year: "numeric" });
+  }
+
+  // ── Per-team billing state ────────────────────────────────────────
+  type BillingState =
+    | { kind: "no-setup" }
+    | { kind: "scheduled"; nextDue: Date }
+    | { kind: "ready"; nextDue: Date }
+    | { kind: "sent"; record: any }
+    | { kind: "pending"; record: any };
+
+  function teamState(team: ApiTeam): BillingState {
+    const nextRaw = team.nextBillingDate ?? (team as any).next_billing_date;
+    if (!nextRaw) return { kind: "no-setup" };
+    const nextDue = new Date(nextRaw);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+
+    const unpaid = records
+      .filter((r: any) => r.team_id === team.id && !r.paid_at)
+      .sort((a: any, b: any) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime())[0];
+
+    if (unpaid) {
+      if (unpaid.invoiced_at) return { kind: "sent", record: unpaid };
+      return { kind: "pending", record: unpaid };
+    }
+    if (nextDue <= today) return { kind: "ready", nextDue };
+    return { kind: "scheduled", nextDue };
+  }
+
+  async function handleSend(team: ApiTeam) {
+    const state = teamState(team);
+    if (state.kind === "pending") {
+      await patchRecord.mutateAsync({ id: state.record.id, invoiced: true });
+    } else if (state.kind === "ready") {
+      const amount = effectivePrice(team);
+      if (!amount) return;
+      const period = (team.billingPeriod ?? (team as any).billing_period ?? "monthly") as string;
+      const dueDate = state.nextDue;
+      const periodStart = addPeriod(dueDate, period === "annual" ? "annual-back" : "monthly-back");
+      // calculate period start
+      const ps = new Date(dueDate);
+      if (period === "annual") ps.setFullYear(ps.getFullYear() - 1);
+      else ps.setMonth(ps.getMonth() - 1);
+      await createRecord.mutateAsync({
+        teamId: team.id,
+        teamName: team.name,
+        amount,
+        currency: "NOK",
+        description: `Glidr ${team.planName ?? (team as any).plan_name ?? ""} – ${dueDate.toLocaleDateString("no-NO", { month: "long", year: "numeric" })}`,
+        periodStart: ps.toISOString().split("T")[0],
+        periodEnd: dueDate.toISOString().split("T")[0],
+        dueDate: dueDate.toISOString().split("T")[0],
+        invoiced: true,
+      });
+    }
+    toast({ title: `Faktura merket som sendt – ${team.name}` });
+  }
+
+  async function handlePaid(team: ApiTeam) {
+    const state = teamState(team);
+    if (state.kind !== "sent") return;
+    const period = (team.billingPeriod ?? (team as any).billing_period ?? "monthly") as string;
+    const nextRaw = team.nextBillingDate ?? (team as any).next_billing_date;
+    await patchRecord.mutateAsync({ id: state.record.id, paid: true });
+    if (nextRaw) {
+      const next = addPeriod(new Date(nextRaw), period);
+      await advanceDate.mutateAsync({ id: team.id, nextBillingDate: next.toISOString().split("T")[0] });
+    }
+    toast({ title: `Betaling registrert – ${team.name}` });
+  }
+
+  // ── Stats ─────────────────────────────────────────────────────────
+  const currentYear = new Date().getFullYear();
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const yearEnd = new Date(currentYear, 11, 31);
+
+  const paidThisYear = records
+    .filter((r: any) => r.paid_at && new Date(r.paid_at).getFullYear() === currentYear)
+    .reduce((s: number, r: any) => s + r.amount, 0);
+
+  const outstanding = records
+    .filter((r: any) => r.invoiced_at && !r.paid_at)
+    .reduce((s: number, r: any) => s + r.amount, 0);
+
+  const payingTeams = teams.filter((t) => {
+    const plan = (t.planName ?? (t as any).plan_name ?? "free").toLowerCase();
+    return plan !== "free";
   });
 
-  const now = new Date();
-  const filtered = records.filter((r) => {
-    if (filter === "upcoming") return !r.invoiced_at && new Date(r.due_date) >= now;
-    if (filter === "invoiced") return r.invoiced_at && !r.paid_at;
-    if (filter === "paid") return !!r.paid_at;
-    if (filter === "overdue") return !r.paid_at && new Date(r.due_date) < now;
-    return true;
-  });
+  function estimateRestOfYear(team: ApiTeam): number {
+    const amount = effectivePrice(team) ?? 0;
+    if (!amount) return 0;
+    const period = (team.billingPeriod ?? (team as any).billing_period ?? "monthly") as string;
+    const nextRaw = team.nextBillingDate ?? (team as any).next_billing_date;
+    if (!nextRaw) return 0;
+    let d = new Date(nextRaw);
+    let count = 0;
+    while (d <= yearEnd) {
+      count++;
+      d = addPeriod(d, period);
+    }
+    return count * amount;
+  }
 
-  const PLANS = ["free", "starter", "team", "pro", "enterprise"];
+  const estimatedRest = payingTeams.reduce((s, t) => s + estimateRestOfYear(t), 0);
 
+  // Paid history (most recent first)
+  const paidRecords = [...records]
+    .filter((r: any) => r.paid_at)
+    .sort((a: any, b: any) => new Date(b.paid_at).getTime() - new Date(a.paid_at).getTime());
+
+  // ── Render ────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-4">
-      {/* Team subscription overview */}
+    <div className="flex flex-col gap-5">
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {[
+          { label: "Betalt i år", value: `${paidThisYear.toLocaleString("no-NO")} NOK`, color: "text-green-600" },
+          { label: "Utestående", value: `${outstanding.toLocaleString("no-NO")} NOK`, color: outstanding > 0 ? "text-amber-600" : "text-muted-foreground" },
+          { label: "Estimert resten av året", value: `${estimatedRest.toLocaleString("no-NO")} NOK`, color: "text-blue-600" },
+        ].map((c) => (
+          <Card key={c.label} className="rounded-2xl p-4">
+            <div className="text-xs text-muted-foreground mb-1">{c.label}</div>
+            <div className={`text-xl font-bold ${c.color}`}>{c.value}</div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Billing schedule */}
       <Card className="rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-sm">{t("admin.accountingTeamPlans")}</h3>
-        </div>
-        <div className="grid grid-cols-1 gap-2">
-          {teams.map((team: any) => (
-            <div key={team.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium">{team.name}</span>
-                  <span className="text-xs text-muted-foreground capitalize px-1.5 py-0.5 rounded-full bg-muted">{team.planName || team.plan_name || "free"}</span>
-                  {(team.customPrice ?? team.custom_price) != null && (
-                    <span className="text-xs font-semibold text-green-700 dark:text-green-300">{(team.customPrice ?? team.custom_price)!.toLocaleString("no-NO")} {team.currency || "NOK"}/{(team.billingPeriod || team.billing_period) === "annual" ? t("admin.accountingAnnual") : t("admin.accountingMonthly")} inkl. mva</span>
-                  )}
-                  {(team.nextBillingDate || team.next_billing_date) && (
-                    <span className="text-xs text-muted-foreground">{t("admin.accountingNext")}: {new Date((team.nextBillingDate || team.next_billing_date)!).toLocaleDateString("no-NO")}</span>
-                  )}
-                </div>
-                {(team.maxUsers || team.max_users || team.maxGroups || team.max_groups || team.maxTests || team.max_tests || team.maxProducts || team.max_products) && (
-                  <div className="text-[10px] text-muted-foreground mt-0.5 flex gap-2 flex-wrap">
-                    {(team.maxUsers ?? team.max_users) && <span>{t("admin.accountingMaxUsers")}: {team.maxUsers ?? team.max_users}</span>}
-                    {(team.maxGroups ?? team.max_groups) && <span>{t("admin.accountingMaxGroups")}: {team.maxGroups ?? team.max_groups}</span>}
-                    {(team.maxTests ?? team.max_tests) && <span>{t("admin.accountingMaxTests")}: {team.maxTests ?? team.max_tests}</span>}
-                    {(team.maxProducts ?? team.max_products) && <span>{t("admin.accountingMaxProducts")}: {team.maxProducts ?? team.max_products}</span>}
-                  </div>
-                )}
-              </div>
-              <Button variant="outline" size="sm" onClick={() => {
-                setEditingPlanTeam(team);
-                setPlanForm({
-                  planName: team.planName || team.plan_name || "free",
-                  customPrice: team.customPrice ?? team.custom_price ?? "",
-                  billingPeriod: team.billingPeriod || team.billing_period || "monthly",
-                  nextBillingDate: team.nextBillingDate || team.next_billing_date || "",
-                });
-              }}>
-                {t("admin.accountingEditPlan")}
-              </Button>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Billing records */}
-      <Card className="rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-sm">{t("admin.accountingBillingRecords")}</h3>
-          <Button size="sm" onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" />
-            {t("admin.accountingNewRecord")}
-          </Button>
-        </div>
-
-        {/* Filter tabs */}
-        <div className="flex gap-1.5 flex-wrap mb-4">
-          {(["all", "upcoming", "invoiced", "paid", "overdue"] as const).map((f) => (
-            <button key={f} onClick={() => setFilter(f)} className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition-colors", filter === f ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground")}>
-              {t(`admin.accountingFilter_${f}`)}
-            </button>
-          ))}
-        </div>
-
+        <h3 className="font-semibold text-sm mb-4">Fakturering</h3>
         {isLoading ? (
-          <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-12 bg-muted/40 rounded-xl animate-pulse" />)}</div>
-        ) : filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">{t("admin.accountingNoRecords")}</p>
+          <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 rounded-xl bg-muted/40 animate-pulse" />)}</div>
+        ) : payingTeams.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Ingen lag med betalte abonnementer.</p>
         ) : (
-          <div className="space-y-2">
-            {filtered.map((r) => {
-              const isOverdue = !r.paid_at && new Date(r.due_date) < now;
+          <div className="flex flex-col gap-2">
+            {payingTeams.map((team) => {
+              const state = teamState(team);
+              const amount = effectivePrice(team);
+              const period = (team.billingPeriod ?? (team as any).billing_period ?? "monthly") as string;
+
               return (
-                <div key={r.id} className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5", isOverdue && !r.paid_at ? "border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-900/10" : "border-border bg-muted/20")}>
-                  <div className="min-w-0 flex-1">
+                <div key={team.id} className={cn(
+                  "flex items-center gap-3 rounded-xl border px-3 py-3",
+                  state.kind === "sent"    ? "border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-900/10"
+                  : state.kind === "ready" ? "border-amber-200 bg-amber-50/30 dark:border-amber-800 dark:bg-amber-900/10"
+                  : state.kind === "pending" ? "border-amber-200 bg-amber-50/30 dark:border-amber-800 dark:bg-amber-900/10"
+                  : "border-border bg-muted/20"
+                )}>
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold">{r.team_name}</span>
-                      <span className="text-sm font-bold text-foreground">{r.amount.toLocaleString("no-NO")} {r.currency}</span>
-                      {r.description && <span className="text-xs text-muted-foreground">{r.description}</span>}
+                      <span className="text-sm font-semibold">{team.name}</span>
+                      <span className="text-xs capitalize text-muted-foreground px-1.5 py-0.5 rounded-full bg-muted">
+                        {team.planName ?? (team as any).plan_name ?? "free"}
+                      </span>
+                      {amount != null && (
+                        <span className="text-sm font-bold">
+                          {amount.toLocaleString("no-NO")} NOK/{period === "annual" ? "år" : "mnd"} inkl. mva
+                        </span>
+                      )}
                     </div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5 flex gap-3 flex-wrap">
-                      <span>{t("admin.accountingDue")}: <strong className={isOverdue && !r.paid_at ? "text-red-600" : ""}>{new Date(r.due_date).toLocaleDateString("no-NO")}</strong></span>
-                      {r.period_start && r.period_end && <span>{new Date(r.period_start).toLocaleDateString("no-NO")} – {new Date(r.period_end).toLocaleDateString("no-NO")}</span>}
-                      {r.invoiced_at && <span className="text-blue-600">{t("admin.accountingInvoicedOn")}: {new Date(r.invoiced_at).toLocaleDateString("no-NO")}</span>}
-                      {r.paid_at && <span className="text-green-600">{t("admin.accountingPaidOn")}: {new Date(r.paid_at).toLocaleDateString("no-NO")}</span>}
+                    <div className="text-[11px] mt-1">
+                      {state.kind === "no-setup" && (
+                        <span className="text-muted-foreground">Ingen fakturadato satt — sett i Teams-fanen via Rediger plan</span>
+                      )}
+                      {state.kind === "scheduled" && (
+                        <span className="text-muted-foreground">Neste faktura: <strong>{fmt(state.nextDue)}</strong></span>
+                      )}
+                      {(state.kind === "ready" || state.kind === "pending") && (
+                        <span className="text-amber-700 dark:text-amber-400 font-medium">
+                          Klar til å sende — {fmt(state.kind === "ready" ? state.nextDue : new Date(state.record.due_date))}
+                        </span>
+                      )}
+                      {state.kind === "sent" && (
+                        <span className="text-blue-700 dark:text-blue-400">
+                          Sendt {new Date(state.record.invoiced_at).toLocaleDateString("no-NO")} — venter betaling
+                          &nbsp;·&nbsp;{state.record.amount.toLocaleString("no-NO")} {state.record.currency}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <label className="flex items-center gap-1 text-xs cursor-pointer select-none" title={t("admin.accountingMarkInvoiced")}>
-                      <input type="checkbox" checked={!!r.invoiced_at} onChange={(e) => patchMutation.mutate({ id: r.id, invoiced: e.target.checked })} className="accent-blue-600 h-3.5 w-3.5" />
-                      <span className="text-muted-foreground hidden sm:inline">{t("admin.accountingInvoiced")}</span>
-                    </label>
-                    <label className="flex items-center gap-1 text-xs cursor-pointer select-none" title={t("admin.accountingMarkPaid")}>
-                      <input type="checkbox" checked={!!r.paid_at} onChange={(e) => patchMutation.mutate({ id: r.id, paid: e.target.checked })} className="accent-green-600 h-3.5 w-3.5" />
-                      <span className="text-muted-foreground hidden sm:inline">{t("admin.accountingPaid")}</span>
-                    </label>
-                    <button onClick={() => { if (confirm("Delete this record?")) deleteMutation.mutate(r.id); }} className="p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                  <div className="flex gap-2 flex-shrink-0">
+                    {(state.kind === "ready" || state.kind === "pending") && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleSend(team)}
+                        disabled={createRecord.isPending || patchRecord.isPending}
+                      >
+                        Sendt
+                      </Button>
+                    )}
+                    {state.kind === "sent" && (
+                      <Button
+                        size="sm"
+                        onClick={() => handlePaid(team)}
+                        disabled={patchRecord.isPending || advanceDate.isPending}
+                      >
+                        Betalt
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
@@ -2362,126 +2192,77 @@ function AccountingBillingTable({ teams }: { teams: ApiTeam[] }) {
         )}
       </Card>
 
-      {/* New record dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>{t("admin.accountingNewRecord")}</DialogTitle></DialogHeader>
-          <div className="space-y-3 pt-2">
-            <div className="space-y-1">
-              <label className="text-sm font-medium">{t("admin.accountingTeam")}</label>
-              <Select value={form.teamId} onValueChange={(v) => setForm(f => ({ ...f, teamId: v }))}>
-                <SelectTrigger><SelectValue placeholder={t("admin.accountingSelectTeam")} /></SelectTrigger>
-                <SelectContent>{teams.map((team: any) => <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>)}</SelectContent>
-              </Select>
+      {/* Plan price editor */}
+      <Card className="rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-sm">Abonnementspriser</h3>
+          {!editingPrices ? (
+            <Button variant="outline" size="sm" onClick={() => setEditingPrices(true)}>Rediger</Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEditingPrices(false)}>Avbryt</Button>
+              <Button size="sm" disabled={savePricesMutation.isPending} onClick={() => {
+                const data: Record<string, number | null> = {};
+                for (const [k, v] of Object.entries(priceForm)) {
+                  data[k] = v === "" ? null : parseFloat(v);
+                }
+                savePricesMutation.mutate(data);
+              }}>Lagre</Button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <label className="text-sm font-medium">{t("admin.accountingAmount")}</label>
-                <Input type="number" value={form.amount} onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium">{t("admin.accountingCurrency")}</label>
-                <Select value={form.currency} onValueChange={(v) => setForm(f => ({ ...f, currency: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NOK">NOK</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          {(["free","starter","team","pro","enterprise"] as const).map((plan) => (
+            <div key={plan} className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground capitalize">{plan}</label>
+              {editingPrices ? (
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={priceForm[plan] ?? ""}
+                    onChange={(e) => setPriceForm((f) => ({ ...f, [plan]: e.target.value }))}
+                    placeholder={plan === "enterprise" ? "Tilpasset" : "0"}
+                    className="pr-14 text-sm"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">NOK</span>
+                </div>
+              ) : (
+                <div className="text-sm font-semibold">
+                  {(planPrices as any)[plan] == null
+                    ? <span className="text-muted-foreground">Tilpasset</span>
+                    : <>{Number((planPrices as any)[plan]).toLocaleString("no-NO")} <span className="font-normal text-muted-foreground text-xs">NOK/mnd inkl. mva</span></>
+                  }
+                </div>
+              )}
             </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium">{t("admin.accountingDescription")}</label>
-              <Input value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Glidr Team – Juni 2025" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <label className="text-sm font-medium">{t("admin.accountingPeriodStart")}</label>
-                <Input type="date" value={form.periodStart} onChange={(e) => setForm(f => ({ ...f, periodStart: e.target.value }))} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium">{t("admin.accountingPeriodEnd")}</label>
-                <Input type="date" value={form.periodEnd} onChange={(e) => setForm(f => ({ ...f, periodEnd: e.target.value }))} />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium">{t("admin.accountingDueDate")}</label>
-              <Input type="date" value={form.dueDate} onChange={(e) => setForm(f => ({ ...f, dueDate: e.target.value }))} />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium">{t("admin.accountingNotes")}</label>
-              <Input value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))} placeholder={t("admin.accountingNotesPlaceholder")} />
-            </div>
-            <div className="flex gap-2 justify-end pt-1">
-              <Button variant="outline" onClick={() => setAddOpen(false)}>{t("common.cancel")}</Button>
-              <Button
-                onClick={() => createMutation.mutate({ ...form, teamName: teams.find((t: any) => String(t.id) === form.teamId)?.name || "" })}
-                disabled={!form.teamId || !form.amount || !form.dueDate || createMutation.isPending}
-              >
-                {t("common.save")}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          ))}
+        </div>
+      </Card>
 
-      {/* Edit billing dialog — pricing & billing only, no limits */}
-      <Dialog open={!!editingPlanTeam} onOpenChange={(o) => { if (!o) setEditingPlanTeam(null); }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>{t("admin.accountingEditPlan")}: {editingPlanTeam?.name}</DialogTitle></DialogHeader>
-          <div className="space-y-3 pt-2">
-            <div className="space-y-1">
-              <label className="text-sm font-medium">{t("admin.accountingPlan")}</label>
-              <Select value={planForm.planName} onValueChange={(v) => setPlanForm((f: any) => ({ ...f, planName: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PLANS.map(p => <SelectItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</SelectItem>)}
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <label className="text-sm font-medium">{t("admin.accountingCustomPrice")} (NOK)</label>
-                <Input type="number" min="0" value={planForm.customPrice} onChange={(e) => setPlanForm((f: any) => ({ ...f, customPrice: e.target.value }))} placeholder="0" />
+      {/* Paid history */}
+      {paidRecords.length > 0 && (
+        <Card className="rounded-2xl p-5">
+          <h3 className="font-semibold text-sm mb-4">Historikk</h3>
+          <div className="flex flex-col gap-2">
+            {paidRecords.map((r: any) => (
+              <div key={r.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/10 px-3 py-2.5 text-sm">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <span className="font-medium">{r.team_name}</span>
+                  <span className="font-bold">{r.amount.toLocaleString("no-NO")} {r.currency}</span>
+                  {r.description && <span className="text-xs text-muted-foreground truncate">{r.description}</span>}
+                </div>
+                <span className="text-xs text-green-600 flex-shrink-0 whitespace-nowrap">
+                  Betalt {new Date(r.paid_at).toLocaleDateString("no-NO")}
+                </span>
               </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium">{t("admin.accountingBillingPeriod")}</label>
-                <Select value={planForm.billingPeriod} onValueChange={(v) => setPlanForm((f: any) => ({ ...f, billingPeriod: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="monthly">{t("account.monthly")}</SelectItem>
-                    <SelectItem value="annual">{t("account.annual")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium">{t("admin.accountingNextBilling")}</label>
-              <Input type="date" value={planForm.nextBillingDate} onChange={(e) => setPlanForm((f: any) => ({ ...f, nextBillingDate: e.target.value }))} />
-            </div>
-            <div className="flex gap-2 justify-end pt-1">
-              <Button variant="outline" onClick={() => setEditingPlanTeam(null)}>{t("common.cancel")}</Button>
-              <Button
-                onClick={() => setPlanMutation.mutate({
-                  id: editingPlanTeam!.id,
-                  planName: planForm.planName,
-                  customPrice: planForm.customPrice ? parseFloat(planForm.customPrice) : null,
-                  billingPeriod: planForm.billingPeriod,
-                  nextBillingDate: planForm.nextBillingDate || null,
-                })}
-                disabled={setPlanMutation.isPending}
-              >
-                {t("common.save")}
-              </Button>
-            </div>
+            ))}
           </div>
-        </DialogContent>
-      </Dialog>
+        </Card>
+      )}
     </div>
   );
 }
+
 
 export default function Admin() {
   const { t } = useI18n();
@@ -4035,10 +3816,7 @@ export default function Admin() {
 
         {activeTab === "accounting" && isSuperAdmin && (
           <div className="flex flex-col gap-5">
-            <BillingSchedule teams={teams} />
-            <PlanPriceEditor />
-            <AccountingOverview teams={teams} />
-            <AccountingBillingTable teams={teams} />
+            <AccountingTab teams={teams} />
           </div>
         )}
       </div>

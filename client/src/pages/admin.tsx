@@ -2948,6 +2948,9 @@ export default function Admin() {
   const [limitsTeam, setLimitsTeam] = useState<ApiTeam | null>(null);
   const [limitsForm, setLimitsForm] = useState<any>({});
 
+  const [editPlanTeam, setEditPlanTeam] = useState<ApiTeam | null>(null);
+  const [editPlanForm, setEditPlanForm] = useState<any>({});
+
   const pauseTeamMutation = useMutation({
     mutationFn: async ({ id, paused }: { id: number; paused: boolean }) => {
       const res = await apiRequest("PUT", `/api/admin/teams/${id}/pause`, { paused });
@@ -3472,6 +3475,60 @@ export default function Admin() {
               </DialogContent>
             </Dialog>
 
+            {/* Edit Plan dialog */}
+            <Dialog open={!!editPlanTeam} onOpenChange={(o) => { if (!o) setEditPlanTeam(null); }}>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Rediger plan – {editPlanTeam?.name}</DialogTitle></DialogHeader>
+                <div className="flex flex-col gap-3 pt-1">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Abonnementstype</label>
+                    <Select value={editPlanForm.planName} onValueChange={(v) => setEditPlanForm((f: any) => ({ ...f, planName: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["free","starter","team","pro","enterprise"].map((p) => (
+                          <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Egendefinert pris (NOK inkl. mva, tomt = bruk standardpris)</label>
+                    <Input type="number" value={editPlanForm.customPrice} onChange={(e) => setEditPlanForm((f: any) => ({ ...f, customPrice: e.target.value }))} placeholder="0" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Faktureringsperiode</label>
+                    <Select value={editPlanForm.billingPeriod} onValueChange={(v) => setEditPlanForm((f: any) => ({ ...f, billingPeriod: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Månedlig</SelectItem>
+                        <SelectItem value="annual">Årlig</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Neste fakturadato</label>
+                    <Input type="date" value={editPlanForm.nextBillingDate} onChange={(e) => setEditPlanForm((f: any) => ({ ...f, nextBillingDate: e.target.value }))} />
+                  </div>
+                  <div className="flex gap-2 justify-end pt-1">
+                    <Button variant="outline" onClick={() => setEditPlanTeam(null)}>{t("common.cancel")}</Button>
+                    <Button
+                      disabled={setPlanMutation.isPending}
+                      onClick={() => {
+                        setPlanMutation.mutate({
+                          id: editPlanTeam!.id,
+                          planName: editPlanForm.planName,
+                          customPrice: editPlanForm.customPrice !== "" ? parseFloat(editPlanForm.customPrice) : null,
+                          billingPeriod: editPlanForm.billingPeriod,
+                          nextBillingDate: editPlanForm.nextBillingDate || null,
+                        } as any);
+                        setEditPlanTeam(null);
+                      }}
+                    >{t("common.save")}</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-admin-teams">
               <div className="text-sm font-semibold text-foreground mb-3">Teams ({teams.length})</div>
               <div className="grid grid-cols-1 gap-2">
@@ -3558,6 +3615,9 @@ export default function Admin() {
                         </Button>
                         <Button variant="ghost" size="sm" title="Set limits" onClick={() => { setLimitsTeam(team); setLimitsForm({ maxUsers: team.maxUsers ?? team.max_users ?? "", maxGroups: team.maxGroups ?? team.max_groups ?? "", maxTests: team.maxTests ?? team.max_tests ?? "", maxProducts: team.maxProducts ?? team.max_products ?? "" }); }}>
                           <Hash className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button variant="ghost" size="sm" title="Rediger plan / fakturering" onClick={() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "" }); }}>
+                          <Pencil className="h-4 w-4 text-muted-foreground" />
                         </Button>
                         {team.isDefault !== 1 && (
                           <Button

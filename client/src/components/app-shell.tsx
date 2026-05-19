@@ -377,7 +377,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen fs-grid">
-      <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
+      <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg" style={{ paddingTop: "env(safe-area-inset-top)" }}>
         <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-6 py-3">
           <div className="flex items-center gap-2">
             <span className="text-xl font-bold tracking-tight text-foreground">Glidr</span>

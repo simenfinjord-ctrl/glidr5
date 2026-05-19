@@ -192,6 +192,12 @@ const welcomeCopy: Record<string, {
   button: string;
   howTitle: string;
   howItems: string[];
+  pwaTitle: string;
+  pwaIntro: string;
+  pwaIos: string[];
+  pwaAndroid: string[];
+  tipsTitle: string;
+  tipsItems: string[];
   subTitle: string;
   subItems: string[];
   subNote: string;
@@ -209,6 +215,30 @@ const welcomeCopy: Record<string, {
       "💡 <strong>AI-anbefalinger</strong> — Få forslag til produkter basert på dine egne testdata og de aktuelle forholdene.",
       "🎿 <strong>Ski-oversikt</strong> — Hold styr på alt utstyr i teamet ditt med skiregisteret.",
       "👥 <strong>Team-samarbeid</strong> — Inviter kollegaer og del testdata på tvers av teamet.",
+    ],
+    pwaTitle: "📱 Installer Glidr på telefonen din",
+    pwaIntro: "Glidr kan installeres direkte på telefonen din — uten App Store. Du får en ikon på hjemskjermen og full skjerm, akkurat som en vanlig app.",
+    pwaIos: [
+      "<strong>iPhone / iPad (Safari):</strong>",
+      "1. Åpne glidr.no i Safari",
+      "2. Trykk på Del-ikonet nederst (firkant med pil opp)",
+      "3. Velg «Legg til på hjemskjerm»",
+      "4. Trykk «Legg til» — ferdig!",
+    ],
+    pwaAndroid: [
+      "<strong>Android (Chrome):</strong>",
+      "1. Åpne glidr.no i Chrome",
+      "2. Trykk på menyikonet (⋮) øverst til høyre",
+      "3. Velg «Legg til på startskjermen»",
+      "4. Bekreft — ferdig!",
+    ],
+    tipsTitle: "💡 Tips for å komme i gang",
+    tipsItems: [
+      "🌐 <strong>Velg språk</strong> — Bytt mellom norsk og engelsk under <strong>Min konto</strong>.",
+      "🔐 <strong>To-faktor-autentisering</strong> — Aktiver 2FA under Min konto for ekstra sikkerhet (anbefales for administratorer).",
+      "👥 <strong>Inviter teammedlemmer</strong> — Send invitasjoner direkte fra <strong>Min konto → Inviter teammedlemmer</strong>.",
+      "🌙 <strong>Mørk modus</strong> — Bytt tema med ikonet øverst til høyre i appen.",
+      "📴 <strong>Offline</strong> — Appen fungerer uten internett — data synkroniseres automatisk når du er tilkoblet igjen.",
     ],
     subTitle: "Abonnement og endringer",
     subItems: [
@@ -233,6 +263,30 @@ const welcomeCopy: Record<string, {
       "🎿 <strong>Equipment overview</strong> — Keep track of all equipment in your team with the ski register.",
       "👥 <strong>Team collaboration</strong> — Invite colleagues and share test data across the team.",
     ],
+    pwaTitle: "📱 Install Glidr on your phone",
+    pwaIntro: "Glidr can be installed directly on your phone — no App Store needed. You'll get a home screen icon and full-screen experience, just like a native app.",
+    pwaIos: [
+      "<strong>iPhone / iPad (Safari):</strong>",
+      "1. Open glidr.no in Safari",
+      "2. Tap the Share icon at the bottom (square with arrow)",
+      "3. Select «Add to Home Screen»",
+      "4. Tap «Add» — done!",
+    ],
+    pwaAndroid: [
+      "<strong>Android (Chrome):</strong>",
+      "1. Open glidr.no in Chrome",
+      "2. Tap the menu icon (⋮) top right",
+      "3. Select «Add to Home screen»",
+      "4. Confirm — done!",
+    ],
+    tipsTitle: "💡 Tips to get started",
+    tipsItems: [
+      "🌐 <strong>Choose language</strong> — Switch between Norwegian and English under <strong>My Account</strong>.",
+      "🔐 <strong>Two-factor authentication</strong> — Enable 2FA under My Account for extra security (recommended for admins).",
+      "👥 <strong>Invite team members</strong> — Send invitations directly from <strong>My Account → Invite team members</strong>.",
+      "🌙 <strong>Dark mode</strong> — Toggle theme with the icon in the top right of the app.",
+      "📴 <strong>Offline</strong> — The app works without internet — data syncs automatically when you reconnect.",
+    ],
     subTitle: "Subscription & changes",
     subItems: [
       "Manage your subscription under <strong>My Account → Subscription</strong>.",
@@ -253,13 +307,21 @@ export async function sendWelcomeEmail(
   const c = welcomeCopy[lang] ?? welcomeCopy.no;
   const appUrl = process.env.APP_URL || "https://glidr.no";
 
+  const strip = (s: string) => s.replace(/<[^>]+>/g, "");
+
   const textLines = [
     c.greeting(name), "",
     c.intro, "",
     `--- ${c.howTitle} ---`, "",
-    ...c.howItems.map(i => i.replace(/<[^>]+>/g, "")), "",
+    ...c.howItems.map(strip), "",
+    `--- ${c.pwaTitle} ---`, "",
+    strip(c.pwaIntro), "",
+    ...c.pwaIos.map(strip), "",
+    ...c.pwaAndroid.map(strip), "",
+    `--- ${c.tipsTitle} ---`, "",
+    ...c.tipsItems.map(strip), "",
     `--- ${c.subTitle} ---`, "",
-    ...c.subItems.map(i => i.replace(/<[^>]+>/g, "")), "",
+    ...c.subItems.map(strip), "",
     c.subNote, "",
     appUrl, "",
     c.footer, "",
@@ -268,6 +330,9 @@ export async function sendWelcomeEmail(
 
   const listItem = (html: string) =>
     `<li style="margin-bottom:10px;line-height:1.6;color:#444;">${html}</li>`;
+
+  const stepItem = (html: string) =>
+    `<li style="margin-bottom:6px;line-height:1.6;color:#444;">${html}</li>`;
 
   await sendEmail({
     to,
@@ -292,6 +357,32 @@ export async function sendWelcomeEmail(
           <div style="font-size:15px;font-weight:700;margin-bottom:14px;">${c.howTitle}</div>
           <ul style="margin:0;padding-left:4px;list-style:none;">
             ${c.howItems.map(listItem).join("")}
+          </ul>
+        </div>
+
+        <!-- Install as app (PWA) -->
+        <div style="background:#f0fff4;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
+          <div style="font-size:15px;font-weight:700;margin-bottom:10px;">${c.pwaTitle}</div>
+          <p style="margin:0 0 16px;color:#444;line-height:1.6;font-size:14px;">${c.pwaIntro}</p>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;background:#fff;border-radius:8px;padding:12px 16px;">
+              <ul style="margin:0;padding-left:4px;list-style:none;">
+                ${c.pwaIos.map(stepItem).join("")}
+              </ul>
+            </div>
+            <div style="flex:1;min-width:200px;background:#fff;border-radius:8px;padding:12px 16px;">
+              <ul style="margin:0;padding-left:4px;list-style:none;">
+                ${c.pwaAndroid.map(stepItem).join("")}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tips -->
+        <div style="background:#fffbeb;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
+          <div style="font-size:15px;font-weight:700;margin-bottom:14px;">${c.tipsTitle}</div>
+          <ul style="margin:0;padding-left:4px;list-style:none;">
+            ${c.tipsItems.map(listItem).join("")}
           </ul>
         </div>
 

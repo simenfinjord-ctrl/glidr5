@@ -142,10 +142,10 @@ function PlanChangeSection() {
   });
 
   const PLANS = [
-    { value: "free", label: `Free — ${(planPrices?.free ?? 0).toLocaleString("no-NO")} NOK` },
-    { value: "starter", label: `Starter — ${planPrices?.starter != null ? planPrices.starter.toLocaleString("no-NO") + " NOK/mnd" : "—"}` },
-    { value: "team", label: `Team — ${planPrices?.team != null ? planPrices.team.toLocaleString("no-NO") + " NOK/mnd" : "—"}` },
-    { value: "pro", label: `Pro — ${planPrices?.pro != null ? planPrices.pro.toLocaleString("no-NO") + " NOK/mnd" : "—"}` },
+    { value: "free", label: `Free — ${(planPrices?.free ?? 0).toLocaleString("no-NO")} NOK inkl. mva` },
+    { value: "starter", label: `Starter — ${planPrices?.starter != null ? planPrices.starter.toLocaleString("no-NO") + " NOK/mnd inkl. mva" : "—"}` },
+    { value: "team", label: `Team — ${planPrices?.team != null ? planPrices.team.toLocaleString("no-NO") + " NOK/mnd inkl. mva" : "—"}` },
+    { value: "pro", label: `Pro — ${planPrices?.pro != null ? planPrices.pro.toLocaleString("no-NO") + " NOK/mnd inkl. mva" : "—"}` },
     { value: "enterprise", label: "Enterprise / Federation" },
   ];
 

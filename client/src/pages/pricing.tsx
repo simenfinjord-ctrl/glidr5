@@ -273,6 +273,9 @@ function PlanCard({ plan, lang }: { plan: PlanWithPrice; lang: "en" | "no" }) {
           <span className="text-3xl font-bold text-foreground">{plan.price}</span>
           {plan.period && <span className="text-sm text-muted-foreground">{plan.period}</span>}
         </div>
+        {plan.id !== "federation" && (
+          <p className="text-xs text-muted-foreground mb-1">inkl. mva</p>
+        )}
         <p className="text-xs text-muted-foreground leading-relaxed">{PLAN_TEXT[lang][plan.id]?.tagline ?? plan.tagline}</p>
       </div>
 

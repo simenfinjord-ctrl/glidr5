@@ -1967,7 +1967,7 @@ function PlanPriceEditor() {
               <div className="text-sm font-semibold">
                 {prices?.[plan] == null
                   ? <span className="text-muted-foreground">{t("admin.accountingCustomLabel")}</span>
-                  : <>{Number(prices[plan]).toLocaleString("no-NO")} <span className="font-normal text-muted-foreground text-xs">NOK/mnd</span></>
+                  : <>{Number(prices[plan]).toLocaleString("no-NO")} <span className="font-normal text-muted-foreground text-xs">NOK/mnd inkl. mva</span></>
                 }
               </div>
             )}
@@ -2100,7 +2100,7 @@ function AccountingBillingTable({ teams }: { teams: ApiTeam[] }) {
                   <span className="text-sm font-medium">{team.name}</span>
                   <span className="text-xs text-muted-foreground capitalize px-1.5 py-0.5 rounded-full bg-muted">{team.planName || team.plan_name || "free"}</span>
                   {(team.customPrice ?? team.custom_price) != null && (
-                    <span className="text-xs font-semibold text-green-700 dark:text-green-300">{(team.customPrice ?? team.custom_price)!.toLocaleString("no-NO")} {team.currency || "NOK"}/{(team.billingPeriod || team.billing_period) === "annual" ? t("admin.accountingAnnual") : t("admin.accountingMonthly")}</span>
+                    <span className="text-xs font-semibold text-green-700 dark:text-green-300">{(team.customPrice ?? team.custom_price)!.toLocaleString("no-NO")} {team.currency || "NOK"}/{(team.billingPeriod || team.billing_period) === "annual" ? t("admin.accountingAnnual") : t("admin.accountingMonthly")} inkl. mva</span>
                   )}
                   {(team.nextBillingDate || team.next_billing_date) && (
                     <span className="text-xs text-muted-foreground">{t("admin.accountingNext")}: {new Date((team.nextBillingDate || team.next_billing_date)!).toLocaleDateString("no-NO")}</span>

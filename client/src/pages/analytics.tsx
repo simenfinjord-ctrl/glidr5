@@ -722,6 +722,7 @@ function ProductSearchStats({
   testsById: Map<number, Test>;
   weatherById?: Map<number, Weather>;
 }) {
+  const { t } = useI18n();
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -1172,6 +1173,7 @@ function CombinationSearch({
   testsById: Map<number, Test>;
   weatherById: Map<number, Weather>;
 }) {
+  const { t } = useI18n();
   const [p1Id, setP1Id] = useState<number | null>(null);
   const [p2Id, setP2Id] = useState<number | null>(null);
   const [open1, setOpen1] = useState(false);
@@ -1479,6 +1481,7 @@ function ProductCompare({
   testsById: Map<number, Test>;
   filteredTestIds: Set<number>;
 }) {
+  const { t } = useI18n();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [open, setOpen] = useState(false);
 
@@ -1490,10 +1493,12 @@ function ProductCompare({
 
   const compareStats = useMemo(() => {
     if (selectedIds.length < 2) return null;
-    return selectedIds.map((id) => {
-      const product = productsById.get(id)!;
-      return getProductStats(id, product, allEntries, testsById, filteredTestIds);
+    const results = selectedIds.flatMap((id) => {
+      const product = productsById.get(id);
+      if (!product) return [];
+      return [getProductStats(id, product, allEntries, testsById, filteredTestIds)];
     });
+    return results.length >= 2 ? results : null;
   }, [selectedIds, allEntries, productsById, testsById, filteredTestIds]);
 
   const chartData = useMemo(() => {
@@ -1524,10 +1529,11 @@ function ProductCompare({
       }
     }
     return Array.from(sharedTestIds)
-      .map((testId) => {
-        const test = testsById.get(testId)!;
+      .flatMap((testId) => {
+        const test = testsById.get(testId);
+        if (!test) return [];
         const ranks = compareStats.map((s) => ({ product: s.product, rank: s.testRanks.get(testId) ?? null }));
-        return { test, ranks };
+        return [{ test, ranks }];
       })
       .sort((a, b) => b.test.date.localeCompare(a.test.date));
   }, [compareStats, testsById]);

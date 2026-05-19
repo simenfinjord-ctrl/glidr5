@@ -29,10 +29,10 @@ const CONTENT = {
       teamName: "Team / organisation *",
       plan: "Desired plan",
       planOptions: [
-        { value: "free", label: "Free — €0" },
-        { value: "starter", label: "Starter — €25/mo" },
-        { value: "team", label: "Team — €79/mo" },
-        { value: "pro", label: "Pro — €149/mo" },
+        { value: "free", label: "Free — 0 NOK" },
+        { value: "starter", label: "Starter — 490 NOK/mo incl. VAT" },
+        { value: "team", label: "Team — 790 NOK/mo incl. VAT" },
+        { value: "pro", label: "Pro — 1 490 NOK/mo incl. VAT" },
         { value: "enterprise", label: "Federation / Enterprise — contact us" },
       ],
       users: "Number of users",
@@ -88,10 +88,10 @@ const CONTENT = {
       teamName: "Teamnavn / organisasjon *",
       plan: "Ønsket plan",
       planOptions: [
-        { value: "free", label: "Free — €0" },
-        { value: "starter", label: "Starter — €25/mnd" },
-        { value: "team", label: "Team — €79/mnd" },
-        { value: "pro", label: "Pro — €149/mnd" },
+        { value: "free", label: "Free — 0 NOK" },
+        { value: "starter", label: "Starter — 490 NOK/mnd inkl. mva" },
+        { value: "team", label: "Team — 790 NOK/mnd inkl. mva" },
+        { value: "pro", label: "Pro — 1 490 NOK/mnd inkl. mva" },
         { value: "enterprise", label: "Forbund / Enterprise — kontakt oss" },
       ],
       users: "Antall brukere",
@@ -221,7 +221,7 @@ export default function GetStarted() {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">{t.contact.phoneLabel}</div>
-                  <a href="tel:+4700000000" className="font-medium hover:underline">+47 000 00 000</a>
+                  <a href="tel:+4797540178" className="font-medium hover:underline">+47 975 40 178</a>
                 </div>
               </div>
             </div>
@@ -254,7 +254,7 @@ export default function GetStarted() {
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">{t.form.phone}</label>
                 <input type="tel" className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-foreground/20"
-                  value={fields.phone} onChange={e => set("phone", e.target.value)} placeholder="+47 000 00 000" />
+                  value={fields.phone} onChange={e => set("phone", e.target.value)} placeholder="+47 975 40 178" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">{t.form.teamName}</label>

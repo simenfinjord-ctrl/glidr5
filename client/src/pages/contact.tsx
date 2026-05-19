@@ -37,10 +37,10 @@ const CONTENT = {
 };
 
 const PLAN_LABELS: Record<string, { name: string; price: string; priceNo: string }> = {
-  starter:    { name: "Starter",    price: "€25/mo",   priceNo: "€25/mnd" },
-  team:       { name: "Team",       price: "€79/mo",   priceNo: "€79/mnd" },
-  pro:        { name: "Pro",        price: "€149/mo",  priceNo: "€149/mnd" },
-  enterprise: { name: "Enterprise", price: "Custom",   priceNo: "Tilpasset" },
+  starter:    { name: "Starter",    price: "490 NOK/mnd",    priceNo: "490 NOK/mnd" },
+  team:       { name: "Team",       price: "790 NOK/mnd",    priceNo: "790 NOK/mnd" },
+  pro:        { name: "Pro",        price: "1 490 NOK/mnd",  priceNo: "1 490 NOK/mnd" },
+  enterprise: { name: "Enterprise", price: "Custom",         priceNo: "Tilpasset" },
 };
 
 export default function Contact() {
@@ -96,7 +96,7 @@ export default function Contact() {
             </div>
             <div>
               <div className="text-xs text-muted-foreground mb-0.5">{t.phoneLabel}</div>
-              <a href="tel:+4700000000" className="font-semibold text-foreground hover:underline">+47 000 00 000</a>
+              <a href="tel:+4797540178" className="font-semibold text-foreground hover:underline">+47 975 40 178</a>
             </div>
           </div>
         </div>

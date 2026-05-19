@@ -14,6 +14,20 @@ export function validatePassword(pw: string): string | null {
   if (!/[^A-Za-z0-9]/.test(pw)) return "Password must contain at least one special character.";
   return null;
 }
+
+async function checkTeamLimit(teamId: number, resource: "users" | "groups" | "tests" | "products"): Promise<{ allowed: boolean; limit: number | null; current: number }> {
+  const { pool } = await import("./db");
+  const teamRes = await (pool as any).query(`SELECT max_users, max_groups, max_tests, max_products FROM teams WHERE id = $1`, [teamId]);
+  const team = teamRes.rows[0];
+  if (!team) return { allowed: true, limit: null, current: 0 };
+  const colMap = { users: "max_users", groups: "max_groups", tests: "max_tests", products: "max_products" } as const;
+  const tableMap = { users: "users", groups: "groups", tests: "tests", products: "products" } as const;
+  const limit: number | null = team[colMap[resource]] ?? null;
+  if (limit === null) return { allowed: true, limit: null, current: 0 };
+  const countRes = await (pool as any).query(`SELECT COUNT(*) as cnt FROM ${tableMap[resource]} WHERE team_id = $1`, [teamId]);
+  const current = parseInt(countRes.rows[0]?.cnt || "0");
+  return { allowed: current < limit, limit, current };
+}
 import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, watchSessions, watchQueue, teams, tests, testEntries, users, testSkiSeries, products, dailyWeather, raceSkis } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql, inArray } from "drizzle-orm";
@@ -367,6 +381,30 @@ export async function registerRoutes(
         created_at TEXT NOT NULL
       )
     `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS billing_records (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER NOT NULL,
+        team_name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        currency TEXT NOT NULL DEFAULT 'NOK',
+        description TEXT,
+        period_start TEXT,
+        period_end TEXT,
+        due_date TEXT NOT NULL,
+        invoiced_at TEXT,
+        paid_at TEXT,
+        notes TEXT,
+        created_at TEXT NOT NULL
+      )
+    `);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS custom_price REAL`);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS billing_period TEXT DEFAULT 'monthly'`);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS next_billing_date TEXT`);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS max_users INTEGER`);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS max_groups INTEGER`);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS max_tests INTEGER`);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS max_products INTEGER`);
   }
 
   // --- Maintenance mode gate (runs before all other /api routes) ---
@@ -668,6 +706,8 @@ export async function registerRoutes(
     const teamId = u.isAdmin === 1 && req.body.teamId ? req.body.teamId : getActiveTeamId(req);
     const name = req.body.name?.trim();
     if (!name) return res.status(400).json({ message: "Name is required" });
+    const groupLimit = await checkTeamLimit(teamId, "groups");
+    if (!groupLimit.allowed) return res.status(403).json({ message: `Team has reached the group limit (${groupLimit.limit}).` });
     try {
       const created = await storage.createGroup({ name, teamId });
       res.json(created);
@@ -821,6 +861,8 @@ export async function registerRoutes(
   app.post("/api/products", requirePermission("products", "edit"), async (req, res) => {
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
+    const productLimit = await checkTeamLimit(teamId, "products");
+    if (!productLimit.allowed) return res.status(403).json({ message: `Team has reached the product limit (${productLimit.limit}).` });
     const now = new Date().toISOString();
     const groupScope = resolveCreateGroupScope(req);
     const result = await storage.createProduct({
@@ -1249,6 +1291,8 @@ export async function registerRoutes(
     if (req.body.testType === "Grind" && u.permissions.grinding === "none") {
       return res.status(403).json({ message: "Grinding access required" });
     }
+    const testLimit = await checkTeamLimit(teamId, "tests");
+    if (!testLimit.allowed) return res.status(403).json({ message: `Team has reached the test limit (${testLimit.limit}).` });
     const now = new Date().toISOString();
     const groupScope = resolveCreateGroupScope(req);
     const testSkiSource = req.body.testSkiSource === "raceskis" ? "raceskis" : "series";
@@ -2091,6 +2135,8 @@ export async function registerRoutes(
     if (pwError) return res.status(400).json({ message: pwError });
     let sanitizedPerms = sanitizePermissions(req.body.permissions);
     const teamId = u.isAdmin === 1 ? (req.body.teamId || getActiveTeamId(req)) : u.teamId;
+    const userLimit = await checkTeamLimit(teamId, "users");
+    if (!userLimit.allowed) return res.status(403).json({ message: `Team has reached the user limit (${userLimit.limit}).` });
     const isSuperAdmin = u.isAdmin === 1;
     if (!isSuperAdmin) {
       sanitizedPerms = await enforceTeamAreas(sanitizedPerms, teamId);
@@ -3191,6 +3237,110 @@ export async function registerRoutes(
       [teamUserIds, String(u.id)]
     );
     res.json({ loggedOut: result.rowCount || 0 });
+  });
+
+  // SA: set plan directly
+  app.patch("/api/admin/teams/:id/plan", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const teamId = parseInt(req.params.id);
+    const { planName, customPrice, billingPeriod, nextBillingDate, maxUsers, maxGroups, maxTests, maxProducts } = req.body;
+    const { PLAN_FEATURE_PRESETS } = await import("@shared/schema");
+    const { pool } = await import("./db");
+
+    if (planName && planName !== "custom") {
+      const preset = PLAN_FEATURE_PRESETS[planName];
+      if (!preset) return res.status(400).json({ message: "Unknown plan" });
+      await (pool as any).query(
+        `UPDATE teams SET plan_name = $1, enabled_areas = $2,
+          custom_price = COALESCE($3, custom_price),
+          billing_period = COALESCE($4, billing_period),
+          next_billing_date = COALESCE($5, next_billing_date),
+          max_users = $6, max_groups = $7, max_tests = $8, max_products = $9
+         WHERE id = $10`,
+        [planName, JSON.stringify([...preset.features]),
+         customPrice ?? null, billingPeriod ?? null, nextBillingDate ?? null,
+         maxUsers ?? null, maxGroups ?? null, maxTests ?? null, maxProducts ?? null,
+         teamId]
+      );
+    } else {
+      await (pool as any).query(
+        `UPDATE teams SET plan_name = COALESCE($1, plan_name),
+          custom_price = $2, billing_period = COALESCE($3, billing_period),
+          next_billing_date = $4, max_users = $5, max_groups = $6,
+          max_tests = $7, max_products = $8
+         WHERE id = $9`,
+        [planName ?? null, customPrice ?? null, billingPeriod ?? null,
+         nextBillingDate ?? null, maxUsers ?? null, maxGroups ?? null,
+         maxTests ?? null, maxProducts ?? null, teamId]
+      );
+    }
+    const result = await (pool as any).query(`SELECT * FROM teams WHERE id = $1`, [teamId]);
+    if (!result.rows[0]) return res.status(404).json({ message: "Team not found" });
+    res.json(result.rows[0]);
+  });
+
+  // GET /api/admin/billing — all records, ordered by due date
+  app.get("/api/admin/billing", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT * FROM billing_records ORDER BY due_date ASC, created_at DESC`
+    );
+    res.json(result.rows);
+  });
+
+  // POST /api/admin/billing — create a billing record
+  app.post("/api/admin/billing", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const { teamId, teamName, amount, currency, description, periodStart, periodEnd, dueDate, notes } = req.body;
+    if (!teamId || !amount || !dueDate || !teamName) return res.status(400).json({ message: "teamId, teamName, amount, dueDate required" });
+    const { pool } = await import("./db");
+    const now = new Date().toISOString();
+    const result = await (pool as any).query(
+      `INSERT INTO billing_records (team_id, team_name, amount, currency, description, period_start, period_end, due_date, notes, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      [teamId, teamName, amount, currency || "NOK", description || null, periodStart || null, periodEnd || null, dueDate, notes || null, now]
+    );
+    res.json(result.rows[0]);
+  });
+
+  // PATCH /api/admin/billing/:id — mark invoiced or paid (or update notes)
+  app.patch("/api/admin/billing/:id", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const id = parseInt(req.params.id);
+    const { invoiced, paid, notes } = req.body;
+    const { pool } = await import("./db");
+    const now = new Date().toISOString();
+    const setClauses: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+    if (invoiced === true)  { setClauses.push(`invoiced_at = $${idx++}`); values.push(now); }
+    if (invoiced === false) { setClauses.push(`invoiced_at = $${idx++}`); values.push(null); }
+    if (paid === true)      { setClauses.push(`paid_at = $${idx++}`);     values.push(now); }
+    if (paid === false)     { setClauses.push(`paid_at = $${idx++}`);     values.push(null); }
+    if (notes !== undefined){ setClauses.push(`notes = $${idx++}`);       values.push(notes); }
+    if (!setClauses.length) return res.status(400).json({ message: "Nothing to update" });
+    values.push(id);
+    const result = await (pool as any).query(
+      `UPDATE billing_records SET ${setClauses.join(", ")} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+    if (!result.rows[0]) return res.status(404).json({ message: "Not found" });
+    res.json(result.rows[0]);
+  });
+
+  // DELETE /api/admin/billing/:id
+  app.delete("/api/admin/billing/:id", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    await (pool as any).query(`DELETE FROM billing_records WHERE id = $1`, [id]);
+    res.json({ ok: true });
   });
 
   // Team pause

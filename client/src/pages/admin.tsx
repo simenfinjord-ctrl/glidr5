@@ -217,7 +217,7 @@ type ActivityEntry = {
   groupScope: string;
 };
 
-type TabId = "overview" | "users" | "groups" | "teams" | "security" | "backup" | "activity" | "logins" | "data" | "danger" | "registrations";
+type TabId = "overview" | "users" | "groups" | "teams" | "security" | "backup" | "activity" | "logins" | "data" | "danger" | "registrations" | "accounting";
 
 function parseGroups(groupScope: string): string[] {
   return groupScope.split(",").map((s) => s.trim()).filter(Boolean);
@@ -1498,6 +1498,7 @@ const ALL_TABS: { id: TabId; labelKey: string; superAdminOnly?: boolean }[] = [
   { id: "danger", labelKey: "admin.tabDangerZone" },
   { id: "security", labelKey: "admin.tabSecurity", superAdminOnly: true },
   { id: "registrations", labelKey: "admin.tabRegistrations", superAdminOnly: true },
+  { id: "accounting" as TabId, labelKey: "admin.tabAccounting", superAdminOnly: true },
 ];
 
 function BackupStatusCard() {
@@ -1849,6 +1850,364 @@ function RegistrationsTab() {
           </DialogContent>
         </Dialog>
       )}
+    </div>
+  );
+}
+
+function AccountingOverview({ teams }: { teams: ApiTeam[] }) {
+  const { t } = useI18n();
+  const { data: records = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/billing"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/billing", { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+  });
+
+  const now = new Date();
+  const totalRevenue = records.filter((r) => r.paid_at).reduce((s, r) => s + r.amount, 0);
+  const pendingInvoice = records.filter((r) => !r.invoiced_at).reduce((s, r) => s + r.amount, 0);
+  const pendingPayment = records.filter((r) => r.invoiced_at && !r.paid_at).reduce((s, r) => s + r.amount, 0);
+  const overdue = records.filter((r) => !r.paid_at && new Date(r.due_date) < now).length;
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {[
+        { label: t("admin.accountingTotalPaid"), value: `${totalRevenue.toLocaleString("no-NO")} NOK`, color: "text-green-600" },
+        { label: t("admin.accountingPendingInvoice"), value: `${pendingInvoice.toLocaleString("no-NO")} NOK`, color: "text-amber-600" },
+        { label: t("admin.accountingPendingPayment"), value: `${pendingPayment.toLocaleString("no-NO")} NOK`, color: "text-blue-600" },
+        { label: t("admin.accountingOverdue"), value: String(overdue), color: overdue > 0 ? "text-red-600" : "text-muted-foreground" },
+      ].map((c) => (
+        <Card key={c.label} className="rounded-2xl p-4">
+          <div className="text-xs text-muted-foreground mb-1">{c.label}</div>
+          <div className={`text-xl font-bold ${c.color}`}>{c.value}</div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function AccountingBillingTable({ teams }: { teams: ApiTeam[] }) {
+  const { t } = useI18n();
+  const { toast } = useToast();
+  const [filter, setFilter] = useState<"all" | "upcoming" | "invoiced" | "paid" | "overdue">("all");
+  const [addOpen, setAddOpen] = useState(false);
+  const [editingPlanTeam, setEditingPlanTeam] = useState<ApiTeam | null>(null);
+
+  const [form, setForm] = useState({ teamId: "", amount: "", currency: "NOK", description: "", periodStart: "", periodEnd: "", dueDate: "", notes: "" });
+  const [planForm, setPlanForm] = useState<any>({});
+
+  const { data: records = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/billing"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/billing", { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/admin/billing", { ...data, teamId: parseInt(data.teamId), amount: parseFloat(data.amount) });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] });
+      setAddOpen(false);
+      setForm({ teamId: "", amount: "", currency: "NOK", description: "", periodStart: "", periodEnd: "", dueDate: "", notes: "" });
+      toast({ title: t("admin.accountingRecordCreated") });
+    },
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+  });
+
+  const patchMutation = useMutation({
+    mutationFn: async ({ id, ...patch }: any) => {
+      const res = await apiRequest("PATCH", `/api/admin/billing/${id}`, patch);
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/admin/billing/${id}`, undefined);
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+  });
+
+  const setPlanMutation = useMutation({
+    mutationFn: async ({ id, ...data }: any) => {
+      const res = await apiRequest("PATCH", `/api/admin/teams/${id}/plan`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      setEditingPlanTeam(null);
+      toast({ title: t("admin.accountingPlanUpdated") });
+    },
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+  });
+
+  const now = new Date();
+  const filtered = records.filter((r) => {
+    if (filter === "upcoming") return !r.invoiced_at && new Date(r.due_date) >= now;
+    if (filter === "invoiced") return r.invoiced_at && !r.paid_at;
+    if (filter === "paid") return !!r.paid_at;
+    if (filter === "overdue") return !r.paid_at && new Date(r.due_date) < now;
+    return true;
+  });
+
+  const PLANS = ["free", "starter", "team", "pro", "enterprise"];
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Team subscription overview */}
+      <Card className="rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-sm">{t("admin.accountingTeamPlans")}</h3>
+        </div>
+        <div className="grid grid-cols-1 gap-2">
+          {teams.map((team: any) => (
+            <div key={team.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium">{team.name}</span>
+                  <span className="text-xs text-muted-foreground capitalize px-1.5 py-0.5 rounded-full bg-muted">{team.plan_name || "free"}</span>
+                  {team.custom_price != null && (
+                    <span className="text-xs font-semibold text-green-700 dark:text-green-300">{team.custom_price.toLocaleString("no-NO")} {team.currency || "NOK"}/{team.billing_period === "annual" ? t("admin.accountingAnnual") : t("admin.accountingMonthly")}</span>
+                  )}
+                  {team.next_billing_date && (
+                    <span className="text-xs text-muted-foreground">{t("admin.accountingNext")}: {new Date(team.next_billing_date).toLocaleDateString("no-NO")}</span>
+                  )}
+                </div>
+                {(team.max_users || team.max_groups || team.max_tests || team.max_products) && (
+                  <div className="text-[10px] text-muted-foreground mt-0.5 flex gap-2 flex-wrap">
+                    {team.max_users && <span>{t("admin.accountingMaxUsers")}: {team.max_users}</span>}
+                    {team.max_groups && <span>{t("admin.accountingMaxGroups")}: {team.max_groups}</span>}
+                    {team.max_tests && <span>{t("admin.accountingMaxTests")}: {team.max_tests}</span>}
+                    {team.max_products && <span>{t("admin.accountingMaxProducts")}: {team.max_products}</span>}
+                  </div>
+                )}
+              </div>
+              <Button variant="outline" size="sm" onClick={() => {
+                setEditingPlanTeam(team);
+                setPlanForm({
+                  planName: team.plan_name || "free",
+                  customPrice: team.custom_price ?? "",
+                  billingPeriod: team.billing_period || "monthly",
+                  nextBillingDate: team.next_billing_date || "",
+                  maxUsers: team.max_users ?? "",
+                  maxGroups: team.max_groups ?? "",
+                  maxTests: team.max_tests ?? "",
+                  maxProducts: team.max_products ?? "",
+                });
+              }}>
+                {t("admin.accountingEditPlan")}
+              </Button>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Billing records */}
+      <Card className="rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-sm">{t("admin.accountingBillingRecords")}</h3>
+          <Button size="sm" onClick={() => setAddOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            {t("admin.accountingNewRecord")}
+          </Button>
+        </div>
+
+        {/* Filter tabs */}
+        <div className="flex gap-1.5 flex-wrap mb-4">
+          {(["all", "upcoming", "invoiced", "paid", "overdue"] as const).map((f) => (
+            <button key={f} onClick={() => setFilter(f)} className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition-colors", filter === f ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground")}>
+              {t(`admin.accountingFilter_${f}`)}
+            </button>
+          ))}
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-12 bg-muted/40 rounded-xl animate-pulse" />)}</div>
+        ) : filtered.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">{t("admin.accountingNoRecords")}</p>
+        ) : (
+          <div className="space-y-2">
+            {filtered.map((r) => {
+              const isOverdue = !r.paid_at && new Date(r.due_date) < now;
+              return (
+                <div key={r.id} className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5", isOverdue && !r.paid_at ? "border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-900/10" : "border-border bg-muted/20")}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold">{r.team_name}</span>
+                      <span className="text-sm font-bold text-foreground">{r.amount.toLocaleString("no-NO")} {r.currency}</span>
+                      {r.description && <span className="text-xs text-muted-foreground">{r.description}</span>}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5 flex gap-3 flex-wrap">
+                      <span>{t("admin.accountingDue")}: <strong className={isOverdue && !r.paid_at ? "text-red-600" : ""}>{new Date(r.due_date).toLocaleDateString("no-NO")}</strong></span>
+                      {r.period_start && r.period_end && <span>{new Date(r.period_start).toLocaleDateString("no-NO")} – {new Date(r.period_end).toLocaleDateString("no-NO")}</span>}
+                      {r.invoiced_at && <span className="text-blue-600">{t("admin.accountingInvoicedOn")}: {new Date(r.invoiced_at).toLocaleDateString("no-NO")}</span>}
+                      {r.paid_at && <span className="text-green-600">{t("admin.accountingPaidOn")}: {new Date(r.paid_at).toLocaleDateString("no-NO")}</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <label className="flex items-center gap-1 text-xs cursor-pointer select-none" title={t("admin.accountingMarkInvoiced")}>
+                      <input type="checkbox" checked={!!r.invoiced_at} onChange={(e) => patchMutation.mutate({ id: r.id, invoiced: e.target.checked })} className="accent-blue-600 h-3.5 w-3.5" />
+                      <span className="text-muted-foreground hidden sm:inline">{t("admin.accountingInvoiced")}</span>
+                    </label>
+                    <label className="flex items-center gap-1 text-xs cursor-pointer select-none" title={t("admin.accountingMarkPaid")}>
+                      <input type="checkbox" checked={!!r.paid_at} onChange={(e) => patchMutation.mutate({ id: r.id, paid: e.target.checked })} className="accent-green-600 h-3.5 w-3.5" />
+                      <span className="text-muted-foreground hidden sm:inline">{t("admin.accountingPaid")}</span>
+                    </label>
+                    <button onClick={() => { if (confirm("Delete this record?")) deleteMutation.mutate(r.id); }} className="p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      {/* New record dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>{t("admin.accountingNewRecord")}</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">{t("admin.accountingTeam")}</label>
+              <Select value={form.teamId} onValueChange={(v) => setForm(f => ({ ...f, teamId: v }))}>
+                <SelectTrigger><SelectValue placeholder={t("admin.accountingSelectTeam")} /></SelectTrigger>
+                <SelectContent>{teams.map((team: any) => <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">{t("admin.accountingAmount")}</label>
+                <Input type="number" value={form.amount} onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">{t("admin.accountingCurrency")}</label>
+                <Select value={form.currency} onValueChange={(v) => setForm(f => ({ ...f, currency: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NOK">NOK</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">{t("admin.accountingDescription")}</label>
+              <Input value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Glidr Team – Juni 2025" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">{t("admin.accountingPeriodStart")}</label>
+                <Input type="date" value={form.periodStart} onChange={(e) => setForm(f => ({ ...f, periodStart: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">{t("admin.accountingPeriodEnd")}</label>
+                <Input type="date" value={form.periodEnd} onChange={(e) => setForm(f => ({ ...f, periodEnd: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">{t("admin.accountingDueDate")}</label>
+              <Input type="date" value={form.dueDate} onChange={(e) => setForm(f => ({ ...f, dueDate: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">{t("admin.accountingNotes")}</label>
+              <Input value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))} placeholder={t("admin.accountingNotesPlaceholder")} />
+            </div>
+            <div className="flex gap-2 justify-end pt-1">
+              <Button variant="outline" onClick={() => setAddOpen(false)}>{t("common.cancel")}</Button>
+              <Button
+                onClick={() => createMutation.mutate({ ...form, teamName: teams.find((t: any) => String(t.id) === form.teamId)?.name || "" })}
+                disabled={!form.teamId || !form.amount || !form.dueDate || createMutation.isPending}
+              >
+                {t("common.save")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit plan dialog */}
+      <Dialog open={!!editingPlanTeam} onOpenChange={(o) => { if (!o) setEditingPlanTeam(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>{t("admin.accountingEditPlan")}: {editingPlanTeam?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">{t("admin.accountingPlan")}</label>
+              <Select value={planForm.planName} onValueChange={(v) => setPlanForm((f: any) => ({ ...f, planName: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PLANS.map(p => <SelectItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</SelectItem>)}
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">{t("admin.accountingCustomPrice")} (NOK)</label>
+                <Input type="number" value={planForm.customPrice} onChange={(e) => setPlanForm((f: any) => ({ ...f, customPrice: e.target.value }))} placeholder="0" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">{t("admin.accountingBillingPeriod")}</label>
+                <Select value={planForm.billingPeriod} onValueChange={(v) => setPlanForm((f: any) => ({ ...f, billingPeriod: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">{t("account.monthly")}</SelectItem>
+                    <SelectItem value="annual">{t("account.annual")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">{t("admin.accountingNextBilling")}</label>
+              <Input type="date" value={planForm.nextBillingDate} onChange={(e) => setPlanForm((f: any) => ({ ...f, nextBillingDate: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { key: "maxUsers", label: t("admin.accountingMaxUsers") },
+                { key: "maxGroups", label: t("admin.accountingMaxGroups") },
+                { key: "maxTests", label: t("admin.accountingMaxTests") },
+                { key: "maxProducts", label: t("admin.accountingMaxProducts") },
+              ].map(({ key, label }) => (
+                <div key={key} className="space-y-1">
+                  <label className="text-sm font-medium">{label}</label>
+                  <Input type="number" value={planForm[key]} onChange={(e) => setPlanForm((f: any) => ({ ...f, [key]: e.target.value }))} placeholder={t("admin.accountingUnlimited")} />
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">{t("admin.accountingLimitsNote")}</p>
+            <div className="flex gap-2 justify-end pt-1">
+              <Button variant="outline" onClick={() => setEditingPlanTeam(null)}>{t("common.cancel")}</Button>
+              <Button
+                onClick={() => setPlanMutation.mutate({
+                  id: editingPlanTeam!.id,
+                  planName: planForm.planName,
+                  customPrice: planForm.customPrice ? parseFloat(planForm.customPrice) : null,
+                  billingPeriod: planForm.billingPeriod,
+                  nextBillingDate: planForm.nextBillingDate || null,
+                  maxUsers: planForm.maxUsers ? parseInt(planForm.maxUsers) : null,
+                  maxGroups: planForm.maxGroups ? parseInt(planForm.maxGroups) : null,
+                  maxTests: planForm.maxTests ? parseInt(planForm.maxTests) : null,
+                  maxProducts: planForm.maxProducts ? parseInt(planForm.maxProducts) : null,
+                })}
+                disabled={setPlanMutation.isPending}
+              >
+                {t("common.save")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -2514,6 +2873,20 @@ export default function Admin() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       toast({ title: "Default team updated" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const setPlanMutation = useMutation({
+    mutationFn: async ({ id, planName }: { id: number; planName: string }) => {
+      const res = await apiRequest("PATCH", `/api/admin/teams/${id}/plan`, { planName });
+      return res.json();
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      toast({ title: `Plan set to ${vars.planName}` });
     },
     onError: (e: Error) => {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -3357,6 +3730,13 @@ export default function Admin() {
 
         {activeTab === "registrations" && (
           <RegistrationsTab />
+        )}
+
+        {activeTab === "accounting" && isSuperAdmin && (
+          <div className="flex flex-col gap-5">
+            <AccountingOverview teams={teams} />
+            <AccountingBillingTable teams={teams} />
+          </div>
         )}
       </div>
     </AppShell>

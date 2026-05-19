@@ -668,3 +668,20 @@ export const invitations = pgTable("invitations", {
 });
 export type Invitation = typeof invitations.$inferSelect;
 
+export const billingRecords = pgTable("billing_records", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull(),
+  teamName: text("team_name").notNull(),
+  amount: real("amount").notNull(),
+  currency: text("currency").notNull().default("NOK"),
+  description: text("description"),
+  periodStart: text("period_start"),
+  periodEnd: text("period_end"),
+  dueDate: text("due_date").notNull(),
+  invoicedAt: text("invoiced_at"),
+  paidAt: text("paid_at"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+});
+export type BillingRecord = typeof billingRecords.$inferSelect;
+

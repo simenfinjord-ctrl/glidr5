@@ -1995,6 +1995,7 @@ function RegistrationsTab() {
 
 
 function AccountingTab({ teams }: { teams: ApiTeam[] }) {
+  const { t } = useI18n();
   const { toast } = useToast();
 
   // ── Plan prices ──────────────────────────────────────────────────
@@ -2035,9 +2036,9 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/settings/plan-prices"] });
       setEditingPrices(false);
-      toast({ title: "Priser lagret" });
+      toast({ title: t("admin.billingPricesSaved") });
     },
-    onError: () => toast({ title: "Feil", variant: "destructive" }),
+    onError: () => toast({ title: t("common.error"), variant: "destructive" }),
   });
 
   // ── Billing records ───────────────────────────────────────────────
@@ -2056,7 +2057,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] }),
-    onError: (e: Error) => toast({ title: "Feil", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   const patchRecord = useMutation({
@@ -2066,7 +2067,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] }),
-    onError: (e: Error) => toast({ title: "Feil", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   const advanceDate = useMutation({
@@ -2076,7 +2077,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/teams"] }),
-    onError: (e: Error) => toast({ title: "Feil", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   const deleteRecord = useMutation({
@@ -2086,13 +2087,13 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] }),
-    onError: (e: Error) => toast({ title: "Feil", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   // Undo "Sendt" — just unmark invoiced_at
   async function handleUndoSend(record: any) {
     await patchRecord.mutateAsync({ id: record.id, invoiced: false });
-    toast({ title: "Faktura angret — ikke lenger merket som sendt" });
+    toast({ title: t("admin.billingToastUndoSent") });
   }
 
   // Undo "Betalt" — unmark paid_at AND revert nextBillingDate one period back
@@ -2108,7 +2109,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
       else reverted.setMonth(reverted.getMonth() - 1);
       await advanceDate.mutateAsync({ id: team.id, nextBillingDate: reverted.toISOString().split("T")[0] });
     }
-    toast({ title: "Betaling angret" });
+    toast({ title: t("admin.billingToastUndoPaid") });
   }
 
   // ── Helpers ───────────────────────────────────────────────────────
@@ -2194,7 +2195,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
         invoiced: true,
       });
     }
-    toast({ title: `Faktura merket som sendt – ${team.name}` });
+    toast({ title: `${t("admin.billingToastSent")} – ${team.name}` });
   }
 
   async function handlePaid(team: ApiTeam) {
@@ -2207,7 +2208,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
       const next = addPeriod(new Date(nextRaw), period);
       await advanceDate.mutateAsync({ id: team.id, nextBillingDate: next.toISOString().split("T")[0] });
     }
-    toast({ title: `Betaling registrert – ${team.name}` });
+    toast({ title: `${t("admin.billingToastPaid")} – ${team.name}` });
   }
 
   // ── Stats ─────────────────────────────────────────────────────────
@@ -2257,9 +2258,9 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {[
-          { label: "Betalt i år", value: `${paidThisYear.toLocaleString("no-NO")} NOK`, color: "text-green-600" },
-          { label: "Utestående", value: `${outstanding.toLocaleString("no-NO")} NOK`, color: outstanding > 0 ? "text-amber-600" : "text-muted-foreground" },
-          { label: "Estimert resten av året", value: `${estimatedRest.toLocaleString("no-NO")} NOK`, color: "text-blue-600" },
+          { label: t("admin.billingPaidThisYear"), value: `${paidThisYear.toLocaleString("no-NO")} NOK`, color: "text-green-600" },
+          { label: t("admin.billingOutstanding"), value: `${outstanding.toLocaleString("no-NO")} NOK`, color: outstanding > 0 ? "text-amber-600" : "text-muted-foreground" },
+          { label: t("admin.billingEstimatedRest"), value: `${estimatedRest.toLocaleString("no-NO")} NOK`, color: "text-blue-600" },
         ].map((c) => (
           <Card key={c.label} className="rounded-2xl p-4">
             <div className="text-xs text-muted-foreground mb-1">{c.label}</div>
@@ -2270,11 +2271,11 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
 
       {/* Billing schedule */}
       <Card className="rounded-2xl p-5">
-        <h3 className="font-semibold text-sm mb-4">Fakturering</h3>
+        <h3 className="font-semibold text-sm mb-4">{t("admin.billingScheduleTitle")}</h3>
         {isLoading ? (
           <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 rounded-xl bg-muted/40 animate-pulse" />)}</div>
         ) : payingTeams.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Ingen lag med betalte abonnementer.</p>
+          <p className="text-sm text-muted-foreground">{t("admin.billingNoPayingTeams")}</p>
         ) : (
           <div className="flex flex-col gap-2">
             {payingTeams.map((team) => {
@@ -2304,19 +2305,19 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                     </div>
                     <div className="text-[11px] mt-1">
                       {state.kind === "no-setup" && (
-                        <span className="text-muted-foreground">Ingen fakturadato satt — sett i Teams-fanen via Rediger plan</span>
+                        <span className="text-muted-foreground">{t("admin.billingNoDateSet")}</span>
                       )}
                       {state.kind === "scheduled" && (
-                        <span className="text-muted-foreground">Neste faktura: <strong>{fmt(state.nextDue)}</strong></span>
+                        <span className="text-muted-foreground">{t("admin.billingNextInvoice")} <strong>{fmt(state.nextDue)}</strong></span>
                       )}
                       {(state.kind === "ready" || state.kind === "pending") && (
                         <span className="text-amber-700 dark:text-amber-400 font-medium">
-                          Klar til å sende — {fmt(state.kind === "ready" ? state.nextDue : new Date(state.record.due_date))}
+                          {t("admin.billingReadyToSend")} {fmt(state.kind === "ready" ? state.nextDue : new Date(state.record.due_date))}
                         </span>
                       )}
                       {state.kind === "sent" && (
                         <span className="text-blue-700 dark:text-blue-400">
-                          Sendt {new Date(state.record.invoiced_at).toLocaleDateString("no-NO")} — venter betaling
+                          {t("admin.billingMarkSent")} {new Date(state.record.invoiced_at).toLocaleDateString("no-NO")} — {t("admin.billingAwaitingPayment")}
                           &nbsp;·&nbsp;{state.record.amount.toLocaleString("no-NO")} {state.record.currency}
                         </span>
                       )}
@@ -2330,7 +2331,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                         onClick={() => handleSend(team)}
                         disabled={createRecord.isPending || patchRecord.isPending}
                       >
-                        Sendt
+                        {t("admin.billingMarkSent")}
                       </Button>
                     )}
                     {state.kind === "sent" && (<>
@@ -2339,10 +2340,10 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                         onClick={() => handlePaid(team)}
                         disabled={patchRecord.isPending || advanceDate.isPending}
                       >
-                        Betalt
+                        {t("admin.billingMarkPaid")}
                       </Button>
                       <button
-                        title="Angre — ikke sendt likevel"
+                        title={t("admin.billingUndoSend")}
                         onClick={() => handleUndoSend(state.record)}
                         disabled={patchRecord.isPending}
                         className="p-1.5 rounded text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
@@ -2350,8 +2351,8 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                         <RotateCcw className="h-3.5 w-3.5" />
                       </button>
                       <button
-                        title="Slett bokføring"
-                        onClick={() => { if (confirm("Slette denne fakturaposten permanent?")) deleteRecord.mutate(state.record.id); }}
+                        title={t("admin.billingDeleteRecord")}
+                        onClick={() => { if (confirm(t("admin.billingConfirmDelete"))) deleteRecord.mutate(state.record.id); }}
                         disabled={deleteRecord.isPending}
                         className="p-1.5 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       >
@@ -2369,7 +2370,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
       {/* Plan price editor */}
       <Card className="rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-sm">Abonnementspriser</h3>
+          <h3 className="font-semibold text-sm">{t("admin.billingPricesTitle")}</h3>
           {!editingPrices ? (
             <Button variant="outline" size="sm" onClick={() => setEditingPrices(true)}>Rediger</Button>
           ) : (
@@ -2395,7 +2396,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                     type="number"
                     value={priceForm[plan] ?? ""}
                     onChange={(e) => setPriceForm((f) => ({ ...f, [plan]: e.target.value }))}
-                    placeholder={plan === "enterprise" ? "Tilpasset" : "0"}
+                    placeholder={plan === "enterprise" ? t("admin.billingCustom") : "0"}
                     className="pr-14 text-sm"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">NOK</span>
@@ -2403,7 +2404,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
               ) : (
                 <div className="text-sm font-semibold">
                   {(planPrices as any)[plan] == null
-                    ? <span className="text-muted-foreground">Tilpasset</span>
+                    ? <span className="text-muted-foreground">{t("admin.billingCustom")}</span>
                     : <>{Number((planPrices as any)[plan]).toLocaleString("no-NO")} <span className="font-normal text-muted-foreground text-xs">NOK/mnd inkl. mva</span></>
                   }
                 </div>
@@ -2416,7 +2417,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
       {/* Paid history */}
       {paidRecords.length > 0 && (
         <Card className="rounded-2xl p-5">
-          <h3 className="font-semibold text-sm mb-4">Historikk</h3>
+          <h3 className="font-semibold text-sm mb-4">{t("admin.billingHistory")}</h3>
           <div className="flex flex-col gap-2">
             {paidRecords.map((r: any) => {
               const team = teams.find((t) => t.id === r.team_id);
@@ -2428,13 +2429,13 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                     {r.description && <span className="text-xs text-muted-foreground truncate">{r.description}</span>}
                   </div>
                   <span className="text-xs text-green-600 flex-shrink-0 whitespace-nowrap">
-                    Betalt {new Date(r.paid_at).toLocaleDateString("no-NO")}
+                    {t("admin.billingPaidOn")} {new Date(r.paid_at).toLocaleDateString("no-NO")}
                   </span>
                   <div className="flex gap-1 flex-shrink-0">
                     {team && (
                       <button
-                        title="Angre betaling"
-                        onClick={() => { if (confirm("Angre betaling og flytte tilbake til utestående?")) handleUndoPaid(team, r); }}
+                        title={t("admin.billingUndoPayment")}
+                        onClick={() => { if (confirm(t("admin.billingConfirmUndoPaid"))) handleUndoPaid(team, r); }}
                         disabled={patchRecord.isPending || advanceDate.isPending}
                         className="p-1.5 rounded text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
                       >
@@ -2442,8 +2443,8 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                       </button>
                     )}
                     <button
-                      title="Slett bokføring"
-                      onClick={() => { if (confirm("Slette denne fakturaposten permanent?")) deleteRecord.mutate(r.id); }}
+                      title={t("admin.billingDeleteRecord")}
+                      onClick={() => { if (confirm(t("admin.billingConfirmDelete"))) deleteRecord.mutate(r.id); }}
                       disabled={deleteRecord.isPending}
                       className="p-1.5 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                     >
@@ -3693,10 +3694,10 @@ export default function Admin() {
             {/* Edit Plan dialog */}
             <Dialog open={!!editPlanTeam} onOpenChange={(o) => { if (!o) setEditPlanTeam(null); }}>
               <DialogContent>
-                <DialogHeader><DialogTitle>Edit plan — {editPlanTeam?.name}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{t("admin.editPlanTitle")} — {editPlanTeam?.name}</DialogTitle></DialogHeader>
                 <div className="flex flex-col gap-3 pt-1">
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">Subscription plan</label>
+                    <label className="text-sm font-medium">{t("admin.editPlanType")}</label>
                     <Select value={editPlanForm.planName} onValueChange={(v) => setEditPlanForm((f: any) => ({ ...f, planName: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -3707,21 +3708,21 @@ export default function Admin() {
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">Custom price (NOK incl. VAT, leave blank to use standard price)</label>
+                    <label className="text-sm font-medium">{t("admin.editPlanCustomPrice")}</label>
                     <Input type="number" value={editPlanForm.customPrice} onChange={(e) => setEditPlanForm((f: any) => ({ ...f, customPrice: e.target.value }))} placeholder="0" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">Billing period</label>
+                    <label className="text-sm font-medium">{t("admin.editPlanBillingPeriod")}</label>
                     <Select value={editPlanForm.billingPeriod} onValueChange={(v) => setEditPlanForm((f: any) => ({ ...f, billingPeriod: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="annual">Annual</SelectItem>
+                        <SelectItem value="monthly">{t("admin.editPlanMonthly")}</SelectItem>
+                        <SelectItem value="annual">{t("admin.editPlanAnnual")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">Next billing date</label>
+                    <label className="text-sm font-medium">{t("admin.editPlanNextDate")}</label>
                     <Input type="date" value={editPlanForm.nextBillingDate} onChange={(e) => setEditPlanForm((f: any) => ({ ...f, nextBillingDate: e.target.value }))} />
                   </div>
                   <div className="flex gap-2 justify-end pt-1">
@@ -3747,18 +3748,18 @@ export default function Admin() {
             {/* Notes dialog */}
             <Dialog open={!!notesTeam} onOpenChange={(o) => { if (!o) setNotesTeam(null); }}>
               <DialogContent className="sm:max-w-md">
-                <DialogHeader><DialogTitle>Notes — {notesTeam?.name}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{t("admin.teamNotesTitle")} — {notesTeam?.name}</DialogTitle></DialogHeader>
                 <div className="space-y-3 pt-2">
                   <textarea
                     className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20"
                     rows={5}
                     value={notesValue}
                     onChange={(e) => setNotesValue(e.target.value)}
-                    placeholder="Internal notes about this team..."
+                    placeholder={t("admin.teamNotesPlaceholder")}
                   />
                   <div className="flex gap-2 justify-end">
-                    <Button variant="outline" onClick={() => setNotesTeam(null)}>Cancel</Button>
-                    <Button onClick={() => saveNotesMutation.mutate({ id: notesTeam!.id, notes: notesValue })} disabled={saveNotesMutation.isPending}>Save</Button>
+                    <Button variant="outline" onClick={() => setNotesTeam(null)}>{t("common.cancel")}</Button>
+                    <Button onClick={() => saveNotesMutation.mutate({ id: notesTeam!.id, notes: notesValue })} disabled={saveNotesMutation.isPending}>{t("common.save")}</Button>
                   </div>
                 </div>
               </DialogContent>
@@ -3767,7 +3768,7 @@ export default function Admin() {
             {/* Plan history dialog */}
             <Dialog open={!!historyTeam} onOpenChange={(o) => { if (!o) setHistoryTeam(null); }}>
               <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>Plan history — {historyTeam?.name}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{t("admin.planHistoryTitle")} — {historyTeam?.name}</DialogTitle></DialogHeader>
                 {historyTeam && <PlanHistoryContent teamId={historyTeam.id} />}
               </DialogContent>
             </Dialog>

@@ -366,7 +366,7 @@ export async function registerRoutes(
       ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS action_data TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'no';
       CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-      INSERT INTO app_settings (key, value) VALUES ('commercialization_enabled', 'true') ON CONFLICT (key) DO NOTHING;
+      INSERT INTO app_settings (key, value) VALUES ('commercialization_enabled', 'false') ON CONFLICT (key) DO NOTHING;
     `);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS invitations (
@@ -405,6 +405,23 @@ export async function registerRoutes(
     await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS max_groups INTEGER`);
     await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS max_tests INTEGER`);
     await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS max_products INTEGER`);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS notes TEXT`);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS plan_change_log (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER NOT NULL,
+        team_name TEXT NOT NULL,
+        changed_at TEXT NOT NULL,
+        changed_by TEXT,
+        old_plan TEXT,
+        new_plan TEXT,
+        old_price REAL,
+        new_price REAL,
+        billing_period TEXT,
+        notes TEXT
+      )
+    `);
+    await pool.query(`ALTER TABLE interest_registrations ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'new'`).catch(() => {});
   }
 
   // --- Maintenance mode gate (runs before all other /api routes) ---
@@ -3281,9 +3298,13 @@ export async function registerRoutes(
     const u = userInfo(req);
     if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
     const teamId = parseInt(req.params.id);
-    const { planName, customPrice, billingPeriod, nextBillingDate, maxUsers, maxGroups, maxTests, maxProducts } = req.body;
+    const { planName, customPrice, billingPeriod, nextBillingDate, maxUsers, maxGroups, maxTests, maxProducts, notes } = req.body;
     const { PLAN_FEATURE_PRESETS } = await import("@shared/schema");
     const { pool } = await import("./db");
+
+    // Fetch current team state for change log
+    const currentResult = await (pool as any).query(`SELECT * FROM teams WHERE id = $1`, [teamId]);
+    const currentTeam = currentResult.rows[0];
 
     if (planName && planName !== "custom") {
       const preset = PLAN_FEATURE_PRESETS[planName];
@@ -3294,11 +3315,12 @@ export async function registerRoutes(
           billing_period = COALESCE($4, billing_period),
           next_billing_date = COALESCE($5, next_billing_date),
           max_users = $6, max_groups = $7, max_tests = $8, max_products = $9
+          ${notes !== undefined ? ", notes = $11" : ""}
          WHERE id = $10`,
         [planName, JSON.stringify([...preset.features]),
          customPrice ?? null, billingPeriod ?? null, nextBillingDate ?? null,
          maxUsers ?? null, maxGroups ?? null, maxTests ?? null, maxProducts ?? null,
-         teamId]
+         teamId, ...(notes !== undefined ? [notes] : [])]
       );
     } else {
       await (pool as any).query(
@@ -3306,15 +3328,52 @@ export async function registerRoutes(
           custom_price = $2, billing_period = COALESCE($3, billing_period),
           next_billing_date = $4, max_users = $5, max_groups = $6,
           max_tests = $7, max_products = $8
+          ${notes !== undefined ? ", notes = $10" : ""}
          WHERE id = $9`,
         [planName ?? null, customPrice ?? null, billingPeriod ?? null,
          nextBillingDate ?? null, maxUsers ?? null, maxGroups ?? null,
-         maxTests ?? null, maxProducts ?? null, teamId]
+         maxTests ?? null, maxProducts ?? null, teamId, ...(notes !== undefined ? [notes] : [])]
       );
     }
+
+    // Log plan change if plan or price changed
+    if (currentTeam && (planName !== undefined || customPrice !== undefined)) {
+      const changedAt = new Date().toISOString();
+      const changedBy = u.name || u.email || null;
+      await (pool as any).query(
+        `INSERT INTO plan_change_log (team_id, team_name, changed_at, changed_by, old_plan, new_plan, old_price, new_price, billing_period, notes)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [
+          teamId,
+          currentTeam.name,
+          changedAt,
+          changedBy,
+          currentTeam.plan_name ?? null,
+          planName ?? currentTeam.plan_name ?? null,
+          currentTeam.custom_price ?? null,
+          customPrice !== undefined ? customPrice : (currentTeam.custom_price ?? null),
+          billingPeriod ?? currentTeam.billing_period ?? null,
+          notes ?? null,
+        ]
+      );
+    }
+
     const result = await (pool as any).query(`SELECT * FROM teams WHERE id = $1`, [teamId]);
     if (!result.rows[0]) return res.status(404).json({ message: "Team not found" });
     res.json(result.rows[0]);
+  });
+
+  // GET /api/admin/teams/:id/plan-history
+  app.get("/api/admin/teams/:id/plan-history", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const teamId = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT * FROM plan_change_log WHERE team_id = $1 ORDER BY changed_at DESC`,
+      [teamId]
+    );
+    res.json(result.rows);
   });
 
   // GET /api/admin/billing — all records, ordered by due date
@@ -5519,6 +5578,10 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
     if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
     const id = parseInt(req.params.id);
     const { status, adminNotes } = req.body;
+    const validStatuses = ["new", "contacted", "active", "rejected", "converted"];
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
     await db.execute(sql`
       UPDATE interest_registrations SET status = ${status ?? null}, admin_notes = ${adminNotes ?? null} WHERE id = ${id}
     `);

@@ -4,10 +4,11 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {
-  Plus, Pencil, Trash2, KeyRound, Check, X, Clock, Download, EyeOff,
+  Plus, Pencil, DollarSign, Trash2, KeyRound, Check, X, Clock, Download, EyeOff,
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle,
   HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash, RotateCcw,
+  MessageSquare, UserPlus,
 } from "lucide-react";
 import {
   PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS,
@@ -75,6 +76,7 @@ type ApiTeam = {
   max_groups?: number | null;
   max_tests?: number | null;
   max_products?: number | null;
+  notes?: string | null;
 };
 
 function parsePermissions(permStr: string): UserPermissions {
@@ -1750,6 +1752,43 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
   );
 }
 
+function PlanHistoryContent({ teamId }: { teamId: number }) {
+  const { data: history = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/teams", teamId, "plan-history"],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/teams/${teamId}/plan-history`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  if (isLoading) return <div className="py-4 text-sm text-muted-foreground">Loading...</div>;
+  if (history.length === 0) return <div className="py-4 text-sm text-muted-foreground">No plan changes recorded yet.</div>;
+
+  return (
+    <div className="space-y-2 pt-2">
+      {history.map((row: any) => (
+        <div key={row.id} className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="font-medium text-foreground">
+              {row.old_plan ?? "—"} → {row.new_plan ?? "—"}
+            </span>
+            <span className="text-xs text-muted-foreground">{new Date(row.changed_at).toLocaleString()}</span>
+          </div>
+          <div className="mt-0.5 text-xs text-muted-foreground flex gap-3 flex-wrap">
+            {(row.old_price != null || row.new_price != null) && (
+              <span>Price: {row.old_price ?? "—"} → {row.new_price ?? "—"} NOK</span>
+            )}
+            {row.billing_period && <span>Billing: {row.billing_period}</span>}
+            {row.changed_by && <span>By: {row.changed_by}</span>}
+          </div>
+          {row.notes && <div className="mt-0.5 text-xs text-muted-foreground italic">{row.notes}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function RegistrationsTab() {
   const { data: registrations = [], refetch } = useQuery<any[]>({
     queryKey: ["/api/admin/registrations"],
@@ -1762,6 +1801,9 @@ function RegistrationsTab() {
   const [editing, setEditing] = useState<any | null>(null);
   const [editStatus, setEditStatus] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [convertReg, setConvertReg] = useState<any | null>(null);
+  const [convertTeamName, setConvertTeamName] = useState("");
+  const [convertPlan, setConvertPlan] = useState("");
   const { toast } = useToast();
 
   async function saveEdit() {
@@ -1777,17 +1819,47 @@ function RegistrationsTab() {
     refetch();
   }
 
+  async function handleConvert() {
+    if (!convertReg) return;
+    try {
+      // 1. Create the team
+      const teamRes = await apiRequest("POST", "/api/teams", {
+        name: convertTeamName,
+        enabledAreas: PLAN_FEATURE_PRESETS[convertPlan]?.features ?? [],
+      });
+      if (!teamRes.ok) {
+        const data = await teamRes.json();
+        toast({ title: "Error", description: data.message || "Failed to create team", variant: "destructive" });
+        return;
+      }
+      // 2. Mark registration as converted
+      await fetch(`/api/admin/registrations/${convertReg.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: "converted" }),
+      });
+      toast({ title: "Team created!", description: `Team "${convertTeamName}" has been created and registration marked as converted.` });
+      setConvertReg(null);
+      refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Something went wrong", variant: "destructive" });
+    }
+  }
+
   const STATUS_COLORS: Record<string, string> = {
     new: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
     contacted: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
     active: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
     rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+    converted: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
   };
   const STATUS_LABELS: Record<string, string> = {
     new: "New",
     contacted: "Contacted",
     active: "Active",
     rejected: "Rejected",
+    converted: "Converted",
   };
 
   return (
@@ -1818,6 +1890,22 @@ function RegistrationsTab() {
                   onClick={() => { setEditing(r); setEditStatus(r.status); setEditNotes(r.admin_notes ?? r.adminNotes ?? ""); }}>
                   Edit
                 </Button>
+                {r.status !== "converted" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    title="Convert to team"
+                    onClick={() => {
+                      setConvertReg(r);
+                      setConvertTeamName(r.team_name ?? r.teamName ?? "");
+                      setConvertPlan(r.plan_name ?? r.planName ?? "team");
+                    }}
+                  >
+                    <UserPlus className="h-3.5 w-3.5 mr-1" />
+                    Lag team
+                  </Button>
+                )}
               </div>
             </div>
             <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
@@ -1853,6 +1941,7 @@ function RegistrationsTab() {
                     <SelectItem value="contacted">Contacted</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="converted">Converted</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1864,6 +1953,37 @@ function RegistrationsTab() {
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
                 <Button onClick={saveEdit}>Save</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Convert to team dialog */}
+      {convertReg && (
+        <Dialog open={!!convertReg} onOpenChange={o => !o && setConvertReg(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader><DialogTitle>Create team from registration</DialogTitle></DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Team name</label>
+                <Input value={convertTeamName} onChange={e => setConvertTeamName(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Plan</label>
+                <Select value={convertPlan} onValueChange={setConvertPlan}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {["free","starter","team","pro","enterprise"].map(p => (
+                      <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-xs text-muted-foreground">This will create a new team and mark the registration as "converted".</p>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setConvertReg(null)}>Cancel</Button>
+                <Button onClick={handleConvert} disabled={!convertTeamName.trim()}>Create team</Button>
               </div>
             </div>
           </DialogContent>
@@ -3028,6 +3148,24 @@ export default function Admin() {
   const [editPlanTeam, setEditPlanTeam] = useState<ApiTeam | null>(null);
   const [editPlanForm, setEditPlanForm] = useState<any>({});
 
+  const [notesTeam, setNotesTeam] = useState<ApiTeam | null>(null);
+  const [notesValue, setNotesValue] = useState("");
+
+  const [historyTeam, setHistoryTeam] = useState<ApiTeam | null>(null);
+
+  const saveNotesMutation = useMutation({
+    mutationFn: async ({ id, notes }: { id: number; notes: string }) => {
+      const res = await apiRequest("PATCH", `/api/admin/teams/${id}/plan`, { notes });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      setNotesTeam(null);
+      toast({ title: "Notes saved" });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   const pauseTeamMutation = useMutation({
     mutationFn: async ({ id, paused }: { id: number; paused: boolean }) => {
       const res = await apiRequest("PUT", `/api/admin/teams/${id}/pause`, { paused });
@@ -3555,10 +3693,10 @@ export default function Admin() {
             {/* Edit Plan dialog */}
             <Dialog open={!!editPlanTeam} onOpenChange={(o) => { if (!o) setEditPlanTeam(null); }}>
               <DialogContent>
-                <DialogHeader><DialogTitle>Rediger plan – {editPlanTeam?.name}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>Edit plan — {editPlanTeam?.name}</DialogTitle></DialogHeader>
                 <div className="flex flex-col gap-3 pt-1">
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">Abonnementstype</label>
+                    <label className="text-sm font-medium">Subscription plan</label>
                     <Select value={editPlanForm.planName} onValueChange={(v) => setEditPlanForm((f: any) => ({ ...f, planName: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -3569,21 +3707,21 @@ export default function Admin() {
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">Egendefinert pris (NOK inkl. mva, tomt = bruk standardpris)</label>
+                    <label className="text-sm font-medium">Custom price (NOK incl. VAT, leave blank to use standard price)</label>
                     <Input type="number" value={editPlanForm.customPrice} onChange={(e) => setEditPlanForm((f: any) => ({ ...f, customPrice: e.target.value }))} placeholder="0" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">Faktureringsperiode</label>
+                    <label className="text-sm font-medium">Billing period</label>
                     <Select value={editPlanForm.billingPeriod} onValueChange={(v) => setEditPlanForm((f: any) => ({ ...f, billingPeriod: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="monthly">Månedlig</SelectItem>
-                        <SelectItem value="annual">Årlig</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="annual">Annual</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">Neste fakturadato</label>
+                    <label className="text-sm font-medium">Next billing date</label>
                     <Input type="date" value={editPlanForm.nextBillingDate} onChange={(e) => setEditPlanForm((f: any) => ({ ...f, nextBillingDate: e.target.value }))} />
                   </div>
                   <div className="flex gap-2 justify-end pt-1">
@@ -3606,6 +3744,34 @@ export default function Admin() {
               </DialogContent>
             </Dialog>
 
+            {/* Notes dialog */}
+            <Dialog open={!!notesTeam} onOpenChange={(o) => { if (!o) setNotesTeam(null); }}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader><DialogTitle>Notes — {notesTeam?.name}</DialogTitle></DialogHeader>
+                <div className="space-y-3 pt-2">
+                  <textarea
+                    className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                    rows={5}
+                    value={notesValue}
+                    onChange={(e) => setNotesValue(e.target.value)}
+                    placeholder="Internal notes about this team..."
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => setNotesTeam(null)}>Cancel</Button>
+                    <Button onClick={() => saveNotesMutation.mutate({ id: notesTeam!.id, notes: notesValue })} disabled={saveNotesMutation.isPending}>Save</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Plan history dialog */}
+            <Dialog open={!!historyTeam} onOpenChange={(o) => { if (!o) setHistoryTeam(null); }}>
+              <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>Plan history — {historyTeam?.name}</DialogTitle></DialogHeader>
+                {historyTeam && <PlanHistoryContent teamId={historyTeam.id} />}
+              </DialogContent>
+            </Dialog>
+
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-admin-teams">
               <div className="text-sm font-semibold text-foreground mb-3">Teams ({teams.length})</div>
               <div className="grid grid-cols-1 gap-2">
@@ -3622,11 +3788,12 @@ export default function Admin() {
                     <div
                       key={team.id}
                       className={cn(
-                        "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5",
+                        "flex flex-col gap-1 rounded-xl border px-3 py-2.5",
                         team.isPaused ? "border-red-300 bg-red-50/60 dark:bg-red-900/10 dark:border-red-800" : "border-border bg-muted/30"
                       )}
                       data-testid={`row-team-${team.id}`}
                     >
+                      <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-sm font-medium text-foreground">{team.name}</span>
@@ -3693,8 +3860,14 @@ export default function Admin() {
                         <Button variant="ghost" size="sm" title="Set limits" onClick={() => { setLimitsTeam(team); setLimitsForm({ maxUsers: team.maxUsers ?? team.max_users ?? "", maxGroups: team.maxGroups ?? team.max_groups ?? "", maxTests: team.maxTests ?? team.max_tests ?? "", maxProducts: team.maxProducts ?? team.max_products ?? "" }); }}>
                           <Hash className="h-4 w-4 text-muted-foreground" />
                         </Button>
-                        <Button variant="ghost" size="sm" title="Rediger plan / fakturering" onClick={() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "" }); }}>
-                          <Pencil className="h-4 w-4 text-muted-foreground" />
+                        <Button variant="ghost" size="sm" title="Edit plan / billing" onClick={() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "" }); }}>
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button variant="ghost" size="sm" title="Plan history" onClick={() => setHistoryTeam(team)}>
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button variant="ghost" size="sm" title="Edit notes" onClick={() => { setNotesTeam(team); setNotesValue(team.notes ?? ""); }}>
+                          <MessageSquare className={cn("h-4 w-4", team.notes ? "text-blue-500" : "text-muted-foreground")} />
                         </Button>
                         {team.isDefault !== 1 && (
                           <Button
@@ -3711,6 +3884,10 @@ export default function Admin() {
                           </Button>
                         )}
                       </div>
+                      </div>
+                      {team.notes && (
+                        <div className="text-[11px] text-muted-foreground truncate max-w-full px-0.5">{team.notes}</div>
+                      )}
                     </div>
                   );
                 })}

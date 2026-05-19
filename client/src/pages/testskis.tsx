@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Snowflake, Hash, Table, ArrowUpDown, Archive, RotateCcw, Trash2 } from "lucide-react";
+import { Plus, Pencil, Snowflake, Hash, Table, ArrowUpDown, Archive, RotateCcw, Trash2, Filter, ChevronDown } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -364,6 +364,7 @@ export default function TestSkis() {
   const [sortAZ, setSortAZ] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
   const [nameSearch, setNameSearch] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState<Series | undefined>();
   const [confirmDelete, setConfirmDelete] = useState<Series | undefined>();
 
@@ -444,14 +445,43 @@ export default function TestSkis() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Filter toggle — mobile only */}
+            <div className="sm:hidden flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFiltersOpen(v => !v)}
+                className="gap-1.5"
+              >
+                <Filter className="h-4 w-4" />
+                Filters
+                {nameSearch.trim() && (
+                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1">
+                    1
+                  </span>
+                )}
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", filtersOpen && "rotate-180")} />
+              </Button>
+              {nameSearch.trim() && (
+                <button
+                  onClick={() => setNameSearch("")}
+                  className="text-xs text-muted-foreground underline hover:text-foreground"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Name search — always visible on desktop, togglable on mobile */}
             <Input
               value={nameSearch}
               onChange={(e) => setNameSearch(e.target.value)}
               placeholder="Search name…"
-              className="h-9 w-[180px]"
+              className={cn("h-9 w-[180px]", !filtersOpen && "hidden sm:block")}
               data-testid="input-search-series"
             />
+
             {archived.length > 0 && (
               <Button
                 variant={showArchive ? "secondary" : "outline"}

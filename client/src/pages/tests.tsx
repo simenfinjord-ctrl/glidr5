@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, useRef, useCallback } from "react";
-import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus } from "lucide-react";
+import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus, ChevronDown } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { AppShell } from "@/components/app-shell";
@@ -647,6 +647,7 @@ export default function Tests() {
   const [filterAirHumMax, setFilterAirHumMax] = useState("");
   const [filterSnowHumMin, setFilterSnowHumMin] = useState("");
   const [filterSnowHumMax, setFilterSnowHumMax] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const seriesById = new Map(series.map((s) => [s.id, s.name] as const));
   const productsById = new Map(products.map((p) => [p.id, p] as const));
@@ -759,6 +760,40 @@ export default function Tests() {
 
   const hasFilters = filterSeason !== "All" || filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || filterDate || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax;
 
+  const activeFilterCount = [
+    filterSeason !== "All",
+    filterType !== "All",
+    filterProduct !== "All",
+    !!filterSnowType,
+    !!filterLocation,
+    !!filterDate,
+    !!filterAirTempMin,
+    !!filterAirTempMax,
+    !!filterSnowTempMin,
+    !!filterSnowTempMax,
+    !!filterAirHumMin,
+    !!filterAirHumMax,
+    !!filterSnowHumMin,
+    !!filterSnowHumMax,
+  ].filter(Boolean).length;
+
+  function clearFilters() {
+    setFilterSeason("All");
+    setFilterType("All");
+    setFilterProduct("All");
+    setFilterSnowType("");
+    setFilterLocation("");
+    setFilterDate("");
+    setFilterAirTempMin("");
+    setFilterAirTempMax("");
+    setFilterSnowTempMin("");
+    setFilterSnowTempMax("");
+    setFilterAirHumMin("");
+    setFilterAirHumMax("");
+    setFilterSnowHumMin("");
+    setFilterSnowHumMax("");
+  }
+
   const [hideDayDetailsState, setHideDayDetails] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "cards2" | "table">(() => {
     const saved = localStorage.getItem("glidr-tests-viewmode");
@@ -809,7 +844,62 @@ export default function Tests() {
         </div>
 
         <Card className="fs-card rounded-2xl p-4">
-          <div className="flex flex-wrap items-center gap-3">
+          {/* Filter toggle — mobile only */}
+          <div className="sm:hidden flex items-center gap-2 mb-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFiltersOpen(v => !v)}
+              className="gap-1.5"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1">
+                  {activeFilterCount}
+                </span>
+              )}
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", filtersOpen && "rotate-180")} />
+            </Button>
+            {activeFilterCount > 0 && (
+              <button
+                onClick={clearFilters}
+                className="text-xs text-muted-foreground underline hover:text-foreground"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Sort + view toggle — always visible */}
+          <div className="flex flex-wrap items-center gap-3 mb-3">
+            <div className="min-w-[150px]">
+              <Select value={sortOrder} onValueChange={setSortOrder}>
+                <SelectTrigger data-testid="select-sort-order">
+                  <SelectValue placeholder={t("tests.filterSort")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date-desc">{t("tests.sortNewest")}</SelectItem>
+                  <SelectItem value="date-asc">{t("tests.sortOldest")}</SelectItem>
+                  <SelectItem value="location-az">{t("tests.sortLocation")} A-Z</SelectItem>
+                  <SelectItem value="location-za">{t("tests.sortLocation")} Z-A</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              onClick={cycleViewMode}
+              data-testid="button-toggle-layout-list"
+              title={viewMode === "cards" ? t("tests.singleColumn") : viewMode === "cards2" ? t("tests.twoColumns") : t("tests.tableView")}
+            >
+              {viewMode === "table" ? <Table2 className="h-4 w-4" /> : viewMode === "cards2" ? <LayoutGrid className="h-4 w-4" /> : <LayoutList className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          {/* Filters — always visible on desktop, togglable on mobile */}
+          <div className={cn("flex flex-wrap items-center gap-3", !filtersOpen && "hidden sm:flex")}>
             <div className="inline-flex items-center gap-2 text-sm font-semibold">
               <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10">
                 <Filter className="h-3.5 w-3.5 text-primary" />
@@ -892,57 +982,19 @@ export default function Tests() {
                   data-testid="input-filter-location"
                 />
               </div>
-              <div className="min-w-[150px]">
-                <Select value={sortOrder} onValueChange={setSortOrder}>
-                  <SelectTrigger data-testid="select-sort-order">
-                    <SelectValue placeholder={t("tests.filterSort")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="date-desc">{t("tests.sortNewest")}</SelectItem>
-                    <SelectItem value="date-asc">{t("tests.sortOldest")}</SelectItem>
-                    <SelectItem value="location-az">{t("tests.sortLocation")} A-Z</SelectItem>
-                    <SelectItem value="location-za">{t("tests.sortLocation")} Z-A</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9 shrink-0"
-                onClick={cycleViewMode}
-                data-testid="button-toggle-layout-list"
-                title={viewMode === "cards" ? t("tests.singleColumn") : viewMode === "cards2" ? t("tests.twoColumns") : t("tests.tableView")}
-              >
-                {viewMode === "table" ? <Table2 className="h-4 w-4" /> : viewMode === "cards2" ? <LayoutGrid className="h-4 w-4" /> : <LayoutList className="h-4 w-4" />}
-              </Button>
             </div>
             {hasFilters && (
               <Button
                 variant="secondary"
                 data-testid="button-clear-test-filters"
-                onClick={() => {
-                  setFilterSeason("All");
-                  setFilterType("All");
-                  setFilterProduct("All");
-                  setFilterSnowType("");
-                  setFilterLocation("");
-                  setFilterDate("");
-                  setFilterAirTempMin("");
-                  setFilterAirTempMax("");
-                  setFilterSnowTempMin("");
-                  setFilterSnowTempMax("");
-                  setFilterAirHumMin("");
-                  setFilterAirHumMax("");
-                  setFilterSnowHumMin("");
-                  setFilterSnowHumMax("");
-                }}
+                onClick={clearFilters}
               >
                 {t("tests.clearFilters")}
               </Button>
             )}
           </div>
 
-          <div className="mt-3 border-t border-border pt-3">
+          <div className={cn("mt-3 border-t border-border pt-3", !filtersOpen && "hidden sm:block")}>
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               <Thermometer className="h-3 w-3" />
               {t("testDetail.weather")}

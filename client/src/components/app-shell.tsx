@@ -511,10 +511,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <AppLink
               href="/my-account"
               testId="link-profile"
-              className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mr-1 transition-colors"
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mr-1 transition-colors"
             >
               <UserCircle className="h-4 w-4" />
-              <span>{user?.name}</span>
+              <span className="hidden sm:inline">{user?.name}</span>
             </AppLink>
             <Button
               variant="ghost"

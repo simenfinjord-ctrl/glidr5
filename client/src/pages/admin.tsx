@@ -2733,7 +2733,7 @@ export default function Admin() {
                     ? "No permissions"
                     : `${totalActive} area${totalActive > 1 ? "s" : ""}`;
                   const permDetail = [
-                    ...(activeAreas.length ? [activeAreas.map((a) => AREA_LABELS[a]).join(", ")] : []),
+                    ...(activeAreas.length ? [activeAreas.map((a) => t(`nav.${a}`)).join(", ")] : []),
                   ].join(" · ");
 
                   return (

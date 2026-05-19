@@ -7,7 +7,7 @@ import {
   Plus, Pencil, Trash2, KeyRound, Check, X, Clock, Download, EyeOff,
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle,
-  HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash,
+  HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash, RotateCcw,
 } from "lucide-react";
 import {
   PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS,
@@ -1959,6 +1959,38 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
     onError: (e: Error) => toast({ title: "Feil", description: e.message, variant: "destructive" }),
   });
 
+  const deleteRecord = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/admin/billing/${id}`, undefined);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] }),
+    onError: (e: Error) => toast({ title: "Feil", description: e.message, variant: "destructive" }),
+  });
+
+  // Undo "Sendt" — just unmark invoiced_at
+  async function handleUndoSend(record: any) {
+    await patchRecord.mutateAsync({ id: record.id, invoiced: false });
+    toast({ title: "Faktura angret — ikke lenger merket som sendt" });
+  }
+
+  // Undo "Betalt" — unmark paid_at AND revert nextBillingDate one period back
+  async function handleUndoPaid(team: ApiTeam, record: any) {
+    const period = (team.billingPeriod ?? (team as any).billing_period ?? "monthly") as string;
+    await patchRecord.mutateAsync({ id: record.id, paid: false });
+    // Revert the nextBillingDate by one period
+    const nextRaw = team.nextBillingDate ?? (team as any).next_billing_date;
+    if (nextRaw) {
+      const current = parseLocalDate(nextRaw);
+      const reverted = new Date(current);
+      if (period === "annual") reverted.setFullYear(reverted.getFullYear() - 1);
+      else reverted.setMonth(reverted.getMonth() - 1);
+      await advanceDate.mutateAsync({ id: team.id, nextBillingDate: reverted.toISOString().split("T")[0] });
+    }
+    toast({ title: "Betaling angret" });
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────
   const DEFAULT_PRICES: Record<string, number> = {
     free: 0, starter: 490, team: 790, pro: 1490, enterprise: 0,
@@ -2170,7 +2202,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-shrink-0">
+                  <div className="flex gap-2 flex-shrink-0 items-center">
                     {(state.kind === "ready" || state.kind === "pending") && (
                       <Button
                         size="sm"
@@ -2181,7 +2213,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                         Sendt
                       </Button>
                     )}
-                    {state.kind === "sent" && (
+                    {state.kind === "sent" && (<>
                       <Button
                         size="sm"
                         onClick={() => handlePaid(team)}
@@ -2189,7 +2221,23 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                       >
                         Betalt
                       </Button>
-                    )}
+                      <button
+                        title="Angre — ikke sendt likevel"
+                        onClick={() => handleUndoSend(state.record)}
+                        disabled={patchRecord.isPending}
+                        className="p-1.5 rounded text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        title="Slett bokføring"
+                        onClick={() => { if (confirm("Slette denne fakturaposten permanent?")) deleteRecord.mutate(state.record.id); }}
+                        disabled={deleteRecord.isPending}
+                        className="p-1.5 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </>)}
                   </div>
                 </div>
               );
@@ -2250,18 +2298,41 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
         <Card className="rounded-2xl p-5">
           <h3 className="font-semibold text-sm mb-4">Historikk</h3>
           <div className="flex flex-col gap-2">
-            {paidRecords.map((r: any) => (
-              <div key={r.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/10 px-3 py-2.5 text-sm">
-                <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  <span className="font-medium">{r.team_name}</span>
-                  <span className="font-bold">{r.amount.toLocaleString("no-NO")} {r.currency}</span>
-                  {r.description && <span className="text-xs text-muted-foreground truncate">{r.description}</span>}
+            {paidRecords.map((r: any) => {
+              const team = teams.find((t) => t.id === r.team_id);
+              return (
+                <div key={r.id} className="flex items-center gap-3 rounded-xl border border-border bg-muted/10 px-3 py-2.5 text-sm">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
+                    <span className="font-medium">{r.team_name}</span>
+                    <span className="font-bold">{r.amount.toLocaleString("no-NO")} {r.currency}</span>
+                    {r.description && <span className="text-xs text-muted-foreground truncate">{r.description}</span>}
+                  </div>
+                  <span className="text-xs text-green-600 flex-shrink-0 whitespace-nowrap">
+                    Betalt {new Date(r.paid_at).toLocaleDateString("no-NO")}
+                  </span>
+                  <div className="flex gap-1 flex-shrink-0">
+                    {team && (
+                      <button
+                        title="Angre betaling"
+                        onClick={() => { if (confirm("Angre betaling og flytte tilbake til utestående?")) handleUndoPaid(team, r); }}
+                        disabled={patchRecord.isPending || advanceDate.isPending}
+                        className="p-1.5 rounded text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    <button
+                      title="Slett bokføring"
+                      onClick={() => { if (confirm("Slette denne fakturaposten permanent?")) deleteRecord.mutate(r.id); }}
+                      disabled={deleteRecord.isPending}
+                      className="p-1.5 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
-                <span className="text-xs text-green-600 flex-shrink-0 whitespace-nowrap">
-                  Betalt {new Date(r.paid_at).toLocaleDateString("no-NO")}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       )}

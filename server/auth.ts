@@ -196,6 +196,11 @@ export async function setupAuth(app: Express) {
           if (req.body.rememberMe && req.session) {
             req.session.cookie.maxAge = REMEMBER_ME_MAX_AGE;
           }
+          (req.session as any).ipAddress = req.headers["x-forwarded-for"]
+            ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
+            : req.socket.remoteAddress || "unknown";
+          (req.session as any).userAgent = req.headers["user-agent"] || "unknown";
+          (req.session as any).loginAt = new Date().toISOString();
           const isIncognito = !!(req.session as any)?.incognito;
           if (!isIncognito) {
             try {
@@ -303,5 +308,41 @@ export async function setupAuth(app: Express) {
     req.session.save(() => {
       res.json({ stealth: !!enabled, incognito: !!(req.session as any).incognito });
     });
+  });
+
+  app.get("/api/auth/my-sessions", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user) return res.status(401).json({ message: "Not authenticated" });
+    const { pool: pg } = await import("./db");
+    const currentSid = req.sessionID;
+    const result = await (pg as any).query(
+      `SELECT sid, sess, expire FROM user_sessions
+       WHERE expire > NOW()
+         AND sess::json->'passport'->>'user' = $1
+       ORDER BY expire DESC`,
+      [String(req.user.id)]
+    );
+    const sessions = result.rows.map((row: any) => ({
+      sid: row.sid,
+      isCurrent: row.sid === currentSid,
+      ipAddress: row.sess?.ipAddress || "unknown",
+      userAgent: row.sess?.userAgent || "unknown",
+      loginAt: row.sess?.loginAt || null,
+      expiresAt: row.expire,
+    }));
+    res.json(sessions);
+  });
+
+  app.delete("/api/auth/sessions/:sid", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user) return res.status(401).json({ message: "Not authenticated" });
+    const { pool: pg } = await import("./db");
+    const sid = req.params.sid;
+    // Verify session belongs to this user before deleting
+    const check = await (pg as any).query(
+      `SELECT sid FROM user_sessions WHERE sid = $1 AND sess::json->'passport'->>'user' = $2`,
+      [sid, String(req.user.id)]
+    );
+    if (!check.rows.length) return res.status(404).json({ message: "Session not found" });
+    await (pg as any).query(`DELETE FROM user_sessions WHERE sid = $1`, [sid]);
+    res.json({ ok: true });
   });
 }

@@ -112,6 +112,77 @@ export async function sendPasswordResetEmail(
   });
 }
 
+// ── Invitation email ───────────────────────────────────────────────────────────
+
+const inviteCopy: Record<string, {
+  subject: (teamName: string) => string;
+  greeting: string;
+  body: (teamName: string, invitedByName: string) => string;
+  button: string;
+  expire: string;
+  footer: string;
+}> = {
+  no: {
+    subject: (teamName) => `Du er invitert til ${teamName} på Glidr`,
+    greeting: "Hei!",
+    body: (teamName, invitedByName) => `Du har blitt invitert til å bli med i teamet <strong>${teamName}</strong> på Glidr av ${invitedByName}. Klikk knappen nedenfor for å godta invitasjonen.`,
+    button: "Godta invitasjon",
+    expire: "Invitasjonen utløper om <strong>48 timer</strong>.",
+    footer: "Har du spørsmål? Kontakt simen.finjord@hotmail.com",
+  },
+  en: {
+    subject: (teamName) => `You've been invited to ${teamName} on Glidr`,
+    greeting: "Hi!",
+    body: (teamName, invitedByName) => `You have been invited to join the team <strong>${teamName}</strong> on Glidr by ${invitedByName}. Click the button below to accept.`,
+    button: "Accept invitation",
+    expire: "This invitation expires in <strong>48 hours</strong>.",
+    footer: "Got questions? Contact simen.finjord@hotmail.com",
+  },
+};
+
+export async function sendInvitationEmail(
+  to: string,
+  teamName: string,
+  invitedByName: string,
+  inviteLink: string,
+  lang: string = "no",
+): Promise<void> {
+  const c = inviteCopy[lang] ?? inviteCopy.no;
+  const subject = c.subject(teamName);
+  const bodyHtml = c.body(teamName, invitedByName);
+  const bodyText = bodyHtml.replace(/<[^>]+>/g, "");
+
+  await sendEmail({
+    to,
+    subject,
+    text: [
+      c.greeting, "",
+      bodyText, "",
+      inviteLink, "",
+      c.expire.replace(/<[^>]+>/g, ""), "",
+      c.footer, "",
+      "— The Glidr team",
+    ].join("\n"),
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:40px 24px;color:#111;">
+        <div style="font-size:22px;font-weight:700;margin-bottom:24px;">${subject}</div>
+        <p style="color:#444;line-height:1.6;margin-bottom:28px;">
+          ${c.greeting}<br><br>${bodyHtml}
+        </p>
+        <a href="${inviteLink}"
+          style="display:inline-block;background:#111;color:#fff;padding:13px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:28px;">
+          ${c.button}
+        </a>
+        <p style="color:#888;font-size:13px;line-height:1.6;">
+          ${c.expire}
+        </p>
+        <hr style="border:none;border-top:1px solid #eee;margin:28px 0;">
+        <p style="color:#bbb;font-size:12px;">${c.footer}<br>— The Glidr team</p>
+      </div>
+    `,
+  });
+}
+
 // ── Welcome email ──────────────────────────────────────────────────────────────
 
 const welcomeCopy: Record<string, {

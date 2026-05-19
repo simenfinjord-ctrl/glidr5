@@ -655,3 +655,16 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: text("created_at").notNull(),
 });
 
+export const invitations = pgTable("invitations", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull(),
+  email: text("email").notNull(),
+  token: text("token").notNull().unique(),
+  invitedById: integer("invited_by_id").notNull(),
+  invitedByName: text("invited_by_name").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  acceptedAt: text("accepted_at"),
+  createdAt: text("created_at").notNull(),
+});
+export type Invitation = typeof invitations.$inferSelect;
+

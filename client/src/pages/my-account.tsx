@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, Watch, RefreshCw, Copy, Check, KeyRound, Mail, Users, Shield, Smartphone, Eye, EyeOff, ToggleLeft, ToggleRight, AtSign, Pencil } from "lucide-react";
+import { User, Watch, RefreshCw, Copy, Check, KeyRound, Mail, Users, Shield, Smartphone, Eye, EyeOff, ToggleLeft, ToggleRight, AtSign, Pencil, Trash2, UserPlus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,110 @@ import { useMobileNav } from "@/components/mobile-nav";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { useAppSettings } from "@/lib/app-settings";
+
+function InviteMembersSection() {
+  const { t } = useI18n();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const { data: invitations = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/invitations"],
+    queryFn: async () => {
+      const res = await fetch("/api/invitations", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
+    setSending(true);
+    setSent(false);
+    try {
+      const res = await apiRequest("POST", "/api/invitations", { email });
+      if (!res.ok) {
+        const data = await res.json();
+        toast({ title: t("common.error"), description: data.message || "Failed to send invitation.", variant: "destructive" });
+        return;
+      }
+      setSent(true);
+      setEmail("");
+      queryClient.invalidateQueries({ queryKey: ["/api/invitations"] });
+      toast({ title: t("account.inviteSent") });
+    } catch {
+      toast({ title: t("common.error"), description: "Failed to send invitation.", variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function handleRevoke(id: number) {
+    try {
+      const res = await apiRequest("DELETE", `/api/invitations/${id}`, undefined);
+      if (!res.ok) throw new Error();
+      queryClient.invalidateQueries({ queryKey: ["/api/invitations"] });
+    } catch {
+      toast({ title: t("common.error"), description: "Failed to revoke invitation.", variant: "destructive" });
+    }
+  }
+
+  return (
+    <Card className="rounded-2xl p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <UserPlus className="h-4 w-4 text-muted-foreground" />
+        <h3 className="font-semibold">{t("account.inviteMembers")}</h3>
+      </div>
+
+      <form onSubmit={handleInvite} className="flex gap-2">
+        <Input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder={t("account.inviteEmail")}
+          className="flex-1"
+        />
+        <Button type="submit" disabled={sending} size="sm">
+          {sending ? t("account.inviteSending") : t("account.inviteSend")}
+        </Button>
+      </form>
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-muted-foreground">{t("account.invitePending")}</p>
+        {isLoading ? (
+          <div className="h-8 bg-muted/40 rounded animate-pulse" />
+        ) : invitations.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("account.inviteNone")}</p>
+        ) : (
+          <ul className="space-y-2">
+            {invitations.map((inv: any) => (
+              <li key={inv.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
+                <div className="flex flex-col min-w-0">
+                  <span className="font-medium truncate">{inv.email}</span>
+                  <span className={`text-xs mt-0.5 ${inv.accepted_at ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+                    {inv.accepted_at ? t("account.inviteStatusAccepted") : t("account.inviteStatusPending")}
+                  </span>
+                </div>
+                {!inv.accepted_at && (
+                  <button
+                    onClick={() => handleRevoke(inv.id)}
+                    className="ml-2 p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+                    title={t("account.inviteRevoke")}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Card>
+  );
+}
 
 function PlanChangeSection() {
   const { t } = useI18n();
@@ -290,6 +394,115 @@ function TwoFactorSection() {
           </form>
         </DialogContent>
       </Dialog>
+    </Card>
+  );
+}
+
+interface SessionInfo {
+  sid: string;
+  isCurrent: boolean;
+  ipAddress: string;
+  userAgent: string;
+  loginAt: string | null;
+  expiresAt: string;
+}
+
+function parseBrowserName(ua: string): string {
+  if (!ua || ua === "unknown") return "Unknown device";
+  if (/Mobile|Android|iPhone|iPad/i.test(ua)) return "Mobile";
+  if (/Edg\//i.test(ua)) return "Edge";
+  if (/Firefox\//i.test(ua)) return "Firefox";
+  if (/Chrome\//i.test(ua)) return "Chrome";
+  if (/Safari\//i.test(ua)) return "Safari";
+  return "Desktop";
+}
+
+function ActiveSessionsSection() {
+  const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: sessions, isLoading } = useQuery<SessionInfo[]>({
+    queryKey: ["/api/auth/my-sessions"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/my-sessions", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch sessions");
+      return res.json();
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: async (sid: string) => {
+      const res = await fetch(`/api/auth/sessions/${encodeURIComponent(sid)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to revoke session");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/my-sessions"] });
+      toast({ title: t("account.revokeSession") });
+    },
+    onError: (e: Error) => {
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Card className="rounded-2xl p-6 space-y-4">
+      <h3 className="font-semibold">{t("account.activeSessions")}</h3>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-14 bg-muted/50 rounded-xl animate-pulse" />
+          ))}
+        </div>
+      ) : !sessions || sessions.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("account.sessionNoInfo")}</p>
+      ) : (
+        <div className="space-y-2">
+          {sessions.map((session) => (
+            <div
+              key={session.sid}
+              className="flex items-center justify-between gap-3 rounded-xl bg-muted/50 px-4 py-3"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium">
+                    {parseBrowserName(session.userAgent)}
+                  </span>
+                  {session.isCurrent && (
+                    <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                      {t("account.thisDevice")}
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                  {session.ipAddress !== "unknown" ? session.ipAddress : "—"}
+                  {session.loginAt && (
+                    <> &middot; {new Date(session.loginAt).toLocaleString()}</>
+                  )}
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={session.isCurrent || revokeMutation.isPending}
+                title={session.isCurrent ? t("account.sessionsCurrent") : t("account.revokeSession")}
+                onClick={() => revokeMutation.mutate(session.sid)}
+                className={session.isCurrent ? "opacity-40 cursor-not-allowed" : ""}
+              >
+                {t("account.revokeSession")}
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
@@ -724,6 +937,9 @@ export default function MyAccount() {
         {/* Two-factor authentication (super admin only) */}
         {user?.isAdmin === 1 && <TwoFactorSection />}
 
+        {/* Active sessions (all users) */}
+        <ActiveSessionsSection />
+
         {/* Language preference */}
         <Card className="rounded-2xl p-6 space-y-3">
           <h3 className="font-semibold">{t("account.language")}</h3>
@@ -743,6 +959,11 @@ export default function MyAccount() {
             </button>
           </div>
         </Card>
+
+        {/* Invite team members - team admins and SA only */}
+        {(user?.isTeamAdmin === 1 || user?.isAdmin === 1) && (
+          <InviteMembersSection />
+        )}
 
         {/* Plan change request - team admins only */}
         {commercializationEnabled && isTeamAdmin && !user?.isAdmin && (

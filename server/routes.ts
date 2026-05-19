@@ -4,7 +4,7 @@ import { storage, parseGroupScopes } from "./storage";
 import { parsePermissions, hashPassword, verifyPassword } from "./auth";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
-import { sendPasswordResetEmail, sendWelcomeEmail } from "./email";
+import { sendPasswordResetEmail, sendWelcomeEmail, sendInvitationEmail } from "./email";
 import { generateTotpSecret, getTotpUri, generateQrDataUrl, generateBackupCodes, verifyTotp, verifyBackupCode } from "./totp";
 
 /** Shared password validation: ≥7 chars, ≥1 digit, ≥1 special character */
@@ -353,6 +353,19 @@ export async function registerRoutes(
       ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'no';
       CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       INSERT INTO app_settings (key, value) VALUES ('commercialization_enabled', 'true') ON CONFLICT (key) DO NOTHING;
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS invitations (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER NOT NULL,
+        email TEXT NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        invited_by_id INTEGER NOT NULL,
+        invited_by_name TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        accepted_at TEXT,
+        created_at TEXT NOT NULL
+      )
     `);
   }
 
@@ -5583,6 +5596,11 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
       req.logIn(user as any, async (loginErr) => {
         if (loginErr) { reject(loginErr); return; }
         if (rememberMe) req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+        (req.session as any).ipAddress = req.headers["x-forwarded-for"]
+          ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
+          : req.socket.remoteAddress || "unknown";
+        (req.session as any).userAgent = req.headers["user-agent"] || "unknown";
+        (req.session as any).loginAt = new Date().toISOString();
         try {
           const ip = req.headers["x-forwarded-for"]
             ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
@@ -5596,6 +5614,193 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
     const { password, ...safe } = user;
     const perms = parsePermissions(safe.permissions, !!safe.isAdmin, safe.isTeamAdmin === 1);
     return res.json({ ...safe, parsedPermissions: perms });
+  });
+
+  // ── Team Invitations ──────────────────────────────────────────────────────────
+
+  // POST /api/invitations — send an invitation (team admin or SA only)
+  app.post("/api/invitations", requireAuth, async (req: Request, res: Response) => {
+    const u = req.user as any;
+    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) {
+      return res.status(403).json({ message: "Team admin access required." });
+    }
+    const { email } = req.body;
+    if (!email || typeof email !== "string" || !email.includes("@")) {
+      return res.status(400).json({ message: "Valid email required." });
+    }
+    const teamId: number = u.activeTeamId || u.teamId;
+    try {
+      const { pool } = await import("./db");
+      // Check for existing un-accepted, non-expired invite
+      const existing = await pool.query(
+        `SELECT id FROM invitations WHERE team_id = $1 AND email = $2 AND accepted_at IS NULL AND expires_at > $3`,
+        [teamId, email.toLowerCase(), new Date().toISOString()]
+      );
+      if (existing.rows.length > 0) {
+        return res.status(409).json({ message: "An active invitation for this email already exists." });
+      }
+      const token = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+      const createdAt = new Date().toISOString();
+      await pool.query(
+        `INSERT INTO invitations (team_id, email, token, invited_by_id, invited_by_name, expires_at, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [teamId, email.toLowerCase(), token, u.id, u.name, expiresAt, createdAt]
+      );
+      const team = await storage.getTeam(teamId);
+      const teamName = team?.name || "your team";
+      const lang = req.body.lang || u.language || "no";
+      const appUrl = process.env.APP_URL || "https://glidr.no";
+      await sendInvitationEmail(email.toLowerCase(), teamName, u.name, `${appUrl}/invite/${token}`, lang);
+      return res.json({ ok: true });
+    } catch (e: any) {
+      console.error("[invitations] POST error:", e);
+      return res.status(500).json({ message: "Failed to send invitation." });
+    }
+  });
+
+  // GET /api/invitations/verify/:token — public, no auth required
+  app.get("/api/invitations/verify/:token", async (req: Request, res: Response) => {
+    const { token } = req.params;
+    try {
+      const { pool } = await import("./db");
+      const result = await pool.query(
+        `SELECT i.*, t.name AS team_name FROM invitations i
+         LEFT JOIN teams t ON t.id = i.team_id
+         WHERE i.token = $1`,
+        [token]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Invitation not found" });
+      }
+      const inv = result.rows[0];
+      if (inv.accepted_at) {
+        return res.status(409).json({ message: "Invitation already used" });
+      }
+      if (new Date(inv.expires_at) < new Date()) {
+        return res.status(410).json({ message: "Invitation expired" });
+      }
+      return res.json({
+        email: inv.email,
+        teamId: inv.team_id,
+        teamName: inv.team_name,
+        invitedByName: inv.invited_by_name,
+      });
+    } catch (e: any) {
+      console.error("[invitations] verify error:", e);
+      return res.status(500).json({ message: "Server error." });
+    }
+  });
+
+  // POST /api/invitations/accept/:token — accept invitation and create account
+  app.post("/api/invitations/accept/:token", async (req: Request, res: Response) => {
+    const { token } = req.params;
+    const { name, password } = req.body;
+    if (!name || !password) {
+      return res.status(400).json({ message: "Name and password are required." });
+    }
+    try {
+      const { pool } = await import("./db");
+      const result = await pool.query(
+        `SELECT i.*, t.name AS team_name FROM invitations i
+         LEFT JOIN teams t ON t.id = i.team_id
+         WHERE i.token = $1`,
+        [token]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Invitation not found" });
+      }
+      const inv = result.rows[0];
+      if (inv.accepted_at) {
+        return res.status(409).json({ message: "Invitation already used" });
+      }
+      if (new Date(inv.expires_at) < new Date()) {
+        return res.status(410).json({ message: "Invitation expired" });
+      }
+      // Check no existing user with that email
+      const existingUser = await storage.getUserByEmail(inv.email);
+      if (existingUser) {
+        return res.status(409).json({ message: "An account with this email already exists." });
+      }
+      const hashed = await hashPassword(password);
+      const { DEFAULT_PERMISSIONS } = await import("@shared/schema");
+      const newUser = await storage.createUser({
+        email: inv.email,
+        name,
+        password: hashed,
+        teamId: inv.team_id,
+        isAdmin: 0,
+        isTeamAdmin: 0,
+        isActive: 1,
+        groupScope: "",
+        permissions: JSON.stringify(DEFAULT_PERMISSIONS),
+        isBlindTester: 0,
+        garminWatch: 0,
+        failedAttempts: 0,
+        loginLocked: 0,
+        onboardingCompleted: 0,
+        totpEnabled: 0,
+        language: "no",
+      });
+      await pool.query(
+        `UPDATE invitations SET accepted_at = $1 WHERE token = $2`,
+        [new Date().toISOString(), token]
+      );
+      await sendWelcomeEmail(inv.email, name, "no");
+      await new Promise<void>((resolve, reject) => {
+        req.logIn(newUser as any, (err) => {
+          if (err) { reject(err); return; }
+          resolve();
+        });
+      });
+      const { password: _pw, ...safe } = newUser as any;
+      return res.json(safe);
+    } catch (e: any) {
+      console.error("[invitations] accept error:", e);
+      return res.status(500).json({ message: "Failed to create account." });
+    }
+  });
+
+  // GET /api/invitations — list invitations for team admin
+  app.get("/api/invitations", requireAuth, async (req: Request, res: Response) => {
+    const u = req.user as any;
+    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) {
+      return res.status(403).json({ message: "Team admin access required." });
+    }
+    const teamId: number = u.activeTeamId || u.teamId;
+    try {
+      const { pool } = await import("./db");
+      const result = await pool.query(
+        `SELECT * FROM invitations WHERE team_id = $1 ORDER BY created_at DESC`,
+        [teamId]
+      );
+      return res.json(result.rows);
+    } catch (e: any) {
+      console.error("[invitations] GET error:", e);
+      return res.status(500).json({ message: "Failed to fetch invitations." });
+    }
+  });
+
+  // DELETE /api/invitations/:id — revoke invitation
+  app.delete("/api/invitations/:id", requireAuth, async (req: Request, res: Response) => {
+    const u = req.user as any;
+    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) {
+      return res.status(403).json({ message: "Team admin access required." });
+    }
+    const teamId: number = u.activeTeamId || u.teamId;
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid id." });
+    try {
+      const { pool } = await import("./db");
+      await pool.query(
+        `DELETE FROM invitations WHERE id = $1 AND team_id = $2`,
+        [id, teamId]
+      );
+      return res.json({ ok: true });
+    } catch (e: any) {
+      console.error("[invitations] DELETE error:", e);
+      return res.status(500).json({ message: "Failed to delete invitation." });
+    }
   });
 
   return httpServer;

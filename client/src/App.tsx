@@ -43,6 +43,7 @@ import OnboardingWizard from "@/components/onboarding-wizard";
 import Login from "@/pages/login";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
+import AcceptInvite from "@/pages/accept-invite";
 
 function Router() {
   return (
@@ -50,6 +51,7 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/invite/:token" component={AcceptInvite} />
       <Route path="/" component={() => <Redirect to="/dashboard" />} />
       <Route path="/live-runsheets" component={LiveRunsheets} />
       <Route path="/dashboard" component={Dashboard} />
@@ -136,7 +138,7 @@ function AuthGuard() {
   }
 
   const publicPaths = ["/login", "/forgot-password", "/reset-password", "/what-is-glidr", "/legal", "/pricing", "/contact", "/demo", "/get-started"];
-  if (!user && !publicPaths.includes(location)) {
+  if (!user && !publicPaths.includes(location) && !location.startsWith("/invite/")) {
     return <Redirect to="/login" />;
   }
 

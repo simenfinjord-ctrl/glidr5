@@ -1873,6 +1873,175 @@ function RegistrationsTab() {
   );
 }
 
+function BillingSchedule({ teams }: { teams: ApiTeam[] }) {
+  const { t } = useI18n();
+  const { toast } = useToast();
+
+  const { data: planPrices } = useQuery<Record<string, number | null>>({
+    queryKey: ["/api/settings/plan-prices"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings/plan-prices");
+      return res.ok ? res.json() : {};
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/admin/billing", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] });
+      toast({ title: "Faktureringspost opprettet" });
+    },
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+  });
+
+  const DEFAULT_PRICES: Record<string, number> = {
+    free: 0, starter: 490, team: 790, pro: 1490, enterprise: 0,
+  };
+
+  function effectivePrice(team: ApiTeam): number | null {
+    const cp = team.customPrice ?? (team as any).custom_price;
+    if (cp != null) return cp;
+    const plan = (team.planName ?? (team as any).plan_name ?? "free").toLowerCase();
+    const pp = planPrices?.[plan];
+    if (pp != null) return pp;
+    return DEFAULT_PRICES[plan] ?? null;
+  }
+
+  function nextDate(team: ApiTeam): Date | null {
+    const raw = team.nextBillingDate ?? (team as any).next_billing_date;
+    if (!raw) return null;
+    return new Date(raw);
+  }
+
+  function addPeriod(d: Date, period: string): Date {
+    const next = new Date(d);
+    if (period === "annual") next.setFullYear(next.getFullYear() + 1);
+    else next.setMonth(next.getMonth() + 1);
+    return next;
+  }
+
+  // Build schedule: for each paying team, find the soonest upcoming billing date
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const schedule = teams
+    .filter((team) => {
+      const plan = (team.planName ?? (team as any).plan_name ?? "free").toLowerCase();
+      return plan !== "free" && nextDate(team) !== null;
+    })
+    .map((team) => {
+      const period = (team.billingPeriod ?? (team as any).billing_period ?? "monthly") as string;
+      let due = nextDate(team)!;
+      // Advance past dates forward to find the next upcoming date
+      while (due < today) {
+        due = addPeriod(due, period);
+      }
+      const daysUntil = Math.round((due.getTime() - today.getTime()) / 86400000);
+      const price = effectivePrice(team);
+      return { team, due, daysUntil, price, period };
+    })
+    .sort((a, b) => a.due.getTime() - b.due.getTime());
+
+  const overdue = schedule.filter((r) => r.daysUntil < 0);
+  const soon = schedule.filter((r) => r.daysUntil >= 0 && r.daysUntil <= 14);
+  const upcoming = schedule.filter((r) => r.daysUntil > 14);
+
+  function handleGenerate(item: typeof schedule[0]) {
+    const start = new Date(item.due);
+    if (item.period === "annual") start.setFullYear(start.getFullYear() - 1);
+    else start.setMonth(start.getMonth() - 1);
+    createMutation.mutate({
+      teamId: item.team.id,
+      amount: item.price,
+      currency: "NOK",
+      description: `Glidr ${item.team.planName ?? (item.team as any).plan_name ?? ""} – ${item.due.toLocaleDateString("no-NO", { month: "long", year: "numeric" })}`,
+      periodStart: start.toISOString().split("T")[0],
+      periodEnd: item.due.toISOString().split("T")[0],
+      dueDate: item.due.toISOString().split("T")[0],
+    });
+  }
+
+  function ScheduleRow({ item, highlight }: { item: typeof schedule[0]; highlight?: string }) {
+    return (
+      <div className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5", highlight ?? "border-border bg-muted/20")}>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-semibold">{item.team.name}</span>
+            <span className="text-xs capitalize text-muted-foreground px-1.5 py-0.5 rounded-full bg-muted">
+              {item.team.planName ?? (item.team as any).plan_name ?? "free"}
+            </span>
+            <span className="text-sm font-bold">
+              {item.price != null ? `${item.price.toLocaleString("no-NO")} NOK` : "—"}
+            </span>
+          </div>
+          <div className="text-[11px] text-muted-foreground mt-0.5 flex gap-3 flex-wrap">
+            <span>
+              Forfaller: <strong>{item.due.toLocaleDateString("no-NO")}</strong>
+              {item.daysUntil === 0 && <span className="ml-1 text-amber-600 font-semibold">i dag</span>}
+              {item.daysUntil > 0 && <span className="ml-1 text-muted-foreground">({item.daysUntil} dager)</span>}
+              {item.daysUntil < 0 && <span className="ml-1 text-red-600 font-semibold">{Math.abs(item.daysUntil)} dager over forfalt</span>}
+            </span>
+            <span>{item.period === "annual" ? "Årlig" : "Månedlig"}</span>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={createMutation.isPending}
+          onClick={() => handleGenerate(item)}
+          className="flex-shrink-0 text-xs"
+        >
+          Opprett faktura
+        </Button>
+      </div>
+    );
+  }
+
+  if (schedule.length === 0) {
+    return (
+      <Card className="rounded-2xl p-5">
+        <h3 className="font-semibold text-sm mb-2">Faktureringsplan</h3>
+        <p className="text-sm text-muted-foreground">Ingen lag med betalte abonnementer og fakturadato satt. Angi neste fakturadato under «Rediger plan» i Team-fanen for å aktivere automatisk plan.</p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="rounded-2xl p-5">
+      <h3 className="font-semibold text-sm mb-4">Faktureringsplan</h3>
+      <div className="flex flex-col gap-4">
+        {overdue.length > 0 && (
+          <div>
+            <div className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2">Forfalt</div>
+            <div className="flex flex-col gap-2">
+              {overdue.map((item) => <ScheduleRow key={item.team.id} item={item} highlight="border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-900/10" />)}
+            </div>
+          </div>
+        )}
+        {soon.length > 0 && (
+          <div>
+            <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-2">Innen 14 dager</div>
+            <div className="flex flex-col gap-2">
+              {soon.map((item) => <ScheduleRow key={item.team.id} item={item} highlight="border-amber-200 bg-amber-50/30 dark:border-amber-800 dark:bg-amber-900/10" />)}
+            </div>
+          </div>
+        )}
+        {upcoming.length > 0 && (
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Kommende</div>
+            <div className="flex flex-col gap-2">
+              {upcoming.map((item) => <ScheduleRow key={item.team.id} item={item} />)}
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 function PlanPriceEditor() {
   const { t } = useI18n();
   const { toast } = useToast();
@@ -3866,6 +4035,7 @@ export default function Admin() {
 
         {activeTab === "accounting" && isSuperAdmin && (
           <div className="flex flex-col gap-5">
+            <BillingSchedule teams={teams} />
             <PlanPriceEditor />
             <AccountingOverview teams={teams} />
             <AccountingBillingTable teams={teams} />

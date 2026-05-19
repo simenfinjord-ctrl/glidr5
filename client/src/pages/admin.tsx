@@ -1992,10 +1992,16 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
     | { kind: "sent"; record: any }
     | { kind: "pending"; record: any };
 
+  // Parse "YYYY-MM-DD" as local date (avoids UTC-midnight timezone shift)
+  function parseLocalDate(raw: string): Date {
+    const [y, m, d] = raw.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+
   function teamState(team: ApiTeam): BillingState {
     const nextRaw = team.nextBillingDate ?? (team as any).next_billing_date;
     if (!nextRaw) return { kind: "no-setup" };
-    const nextDue = new Date(nextRaw);
+    const nextDue = parseLocalDate(nextRaw);
     const today = new Date(); today.setHours(0, 0, 0, 0);
 
     const unpaid = records
@@ -2076,7 +2082,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
     const period = (team.billingPeriod ?? (team as any).billing_period ?? "monthly") as string;
     const nextRaw = team.nextBillingDate ?? (team as any).next_billing_date;
     if (!nextRaw) return 0;
-    let d = new Date(nextRaw);
+    let d = parseLocalDate(nextRaw);
     let count = 0;
     while (d <= yearEnd) {
       count++;

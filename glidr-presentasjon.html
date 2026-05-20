@@ -19,22 +19,38 @@
     /* ── Print / PDF layout ── */
     @media print {
       @page { size: A4 portrait; margin: 0; }
-      html, body { width: 210mm; margin: 0; padding: 0; background: white !important; }
+      html { width: 210mm; }
+      body { width: 210mm; margin: 0; padding: 0; background: white !important; }
       .no-print { display: none !important; }
       .page {
-        width: 210mm;
-        height: 297mm;
-        min-height: unset;
-        overflow: hidden;
+        /* Exact A4 box — nothing can escape it */
+        width: 210mm !important;
+        height: 297mm !important;
+        max-height: 297mm !important;
+        min-height: unset !important;
+        /* contain:strict tells Chrome the element is fully self-contained:
+           overflow can never leak into the next printed page */
+        contain: strict;
+        overflow: hidden !important;
+        /* Page breaks */
         page-break-after: always;
         break-after: page;
         page-break-inside: avoid;
         break-inside: avoid;
-        padding: 40px !important;
+        /* Layout — force flex regardless of Tailwind classes */
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        /* Tight but readable padding — gives ~263mm of content height */
+        padding: 30px !important;
+        /* Scale text down slightly so dense pages fit */
+        font-size: 91%;
       }
-      .page:last-child { page-break-after: auto; break-after: auto; }
-      /* Prevent auto-scaling from squashing pages */
-      body { zoom: 1; }
+      /* Last page: no trailing blank page */
+      .page:last-of-type {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+      }
     }
     .accent { color: #10b981; }
     .bg-accent { background-color: #10b981; }

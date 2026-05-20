@@ -2349,41 +2349,53 @@ export async function registerRoutes(
 
   // GET PDF data for a test
   app.get("/api/tests/:id/pdf", requireAuth, async (req, res) => {
-    const testId = parseInt(req.params.id);
-    const u = req.user!;
-    const { pool } = await import("./db");
+    try {
+      const testId = parseInt(req.params.id);
+      if (isNaN(testId)) return res.status(400).json({ message: "Invalid test id" });
+      const u = req.user!;
+      const { pool } = await import("./db");
 
-    const [testRes, entriesRes, weatherRes, commentsRes] = await Promise.all([
-      (pool as any).query(
-        `SELECT t.*, s.name as series_name FROM tests t
-         LEFT JOIN test_ski_series s ON s.id = t.series_id
-         WHERE t.id = $1 AND t.team_id = $2`,
-        [testId, u.activeTeamId || u.teamId]
-      ),
-      (pool as any).query(
-        `SELECT te.*, p.brand, p.name as product_name FROM test_entries te
-         LEFT JOIN products p ON p.id = te.product_id
-         WHERE te.test_id = $1 ORDER BY COALESCE(te.rank0km, 999)`,
-        [testId]
-      ),
-      (pool as any).query(
-        `SELECT * FROM daily_weather WHERE id = (SELECT weather_id FROM tests WHERE id = $1)`,
-        [testId]
-      ),
-      (pool as any).query(
-        `SELECT user_name, content, created_at FROM test_comments WHERE test_id = $1 ORDER BY created_at ASC`,
-        [testId]
-      ),
-    ]);
+      const [testRes, entriesRes, weatherRes] = await Promise.all([
+        (pool as any).query(
+          `SELECT t.*, s.name as series_name FROM tests t
+           LEFT JOIN test_ski_series s ON s.id = t.series_id
+           WHERE t.id = $1 AND t.team_id = $2`,
+          [testId, u.activeTeamId || u.teamId]
+        ),
+        (pool as any).query(
+          `SELECT te.*, p.brand, p.name as product_name FROM test_entries te
+           LEFT JOIN products p ON p.id = te.product_id
+           WHERE te.test_id = $1 ORDER BY COALESCE(te.rank0km, 999)`,
+          [testId]
+        ),
+        (pool as any).query(
+          `SELECT * FROM daily_weather WHERE id = (SELECT weather_id FROM tests WHERE id = $1)`,
+          [testId]
+        ),
+      ]);
 
-    if (!testRes.rows.length) return res.status(404).json({ message: "Not found" });
-    const test = testRes.rows[0];
-    const entries = entriesRes.rows;
-    const weather = weatherRes.rows[0] ?? null;
-    const comments = commentsRes.rows;
+      if (!testRes.rows.length) return res.status(404).json({ message: "Not found" });
 
-    // Build HTML and return as JSON for client-side PDF generation
-    return res.json({ test, entries, weather, comments });
+      // Comments are optional — table may not exist yet on older deployments
+      let comments: any[] = [];
+      try {
+        const commentsRes = await (pool as any).query(
+          `SELECT user_name, content, created_at FROM test_comments WHERE test_id = $1 ORDER BY created_at ASC`,
+          [testId]
+        );
+        comments = commentsRes.rows;
+      } catch { /* table doesn't exist yet — skip */ }
+
+      return res.json({
+        test: testRes.rows[0],
+        entries: entriesRes.rows,
+        weather: weatherRes.rows[0] ?? null,
+        comments,
+      });
+    } catch (err: any) {
+      console.error("[/api/tests/:id/pdf]", err);
+      return res.status(500).json({ message: err?.message ?? "Internal server error" });
+    }
   });
 
   // DELETE own comment (or admin)

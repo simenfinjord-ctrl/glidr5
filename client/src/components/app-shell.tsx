@@ -46,6 +46,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useI18n } from "@/lib/i18n";
 import { useAppSettings } from "@/lib/app-settings";
+import { GlidrLogo } from "@/components/glidr-logo";
 
 type NavItem = {
   href: string;
@@ -414,7 +415,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             {/* Left: logo + online dot + optional team selector */}
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xl font-bold tracking-tight text-foreground">Glidr</span>
+              <GlidrLogo variant="dark" iconSize={28} className="h-7" />
               <div className={cn("h-1.5 w-1.5 rounded-full", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
               {isSuperAdmin && teams.length > 1 && (
                 <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>

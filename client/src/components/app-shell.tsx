@@ -46,7 +46,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useI18n } from "@/lib/i18n";
 import { useAppSettings } from "@/lib/app-settings";
-import { GlidrIcon } from "@/components/glidr-logo";
+import { GlidrIcon, GlidrLogo } from "@/components/glidr-logo";
 
 type NavItem = {
   href: string;
@@ -414,10 +414,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-2 sm:gap-3 py-2.5 min-w-0">
 
             {/* Left: logo + online dot + optional team selector */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              {/* Icon always visible; wordmark hidden on xs to save space */}
-              <GlidrIcon className="h-6 w-6 shrink-0" />
-              <span className="hidden sm:inline font-extrabold text-sm tracking-tight text-foreground" style={{ letterSpacing: "-0.02em" }}>Glidr</span>
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Full lockup on sm+, icon-only on xs */}
+              <GlidrLogo variant="dark" size={26} className="hidden sm:block dark:hidden" />
+              <GlidrLogo variant="white" size={26} className="hidden dark:sm:block" />
+              <GlidrIcon size={24} className="sm:hidden" />
               <div className={cn("h-1.5 w-1.5 rounded-full shrink-0", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
               {isSuperAdmin && teams.length > 1 && (
                 <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
@@ -585,7 +586,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <footer className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 pb-8">
         <div className="mb-3 h-px bg-border" />
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span className="font-medium">Glidr</span>
+          <GlidrLogo variant="dark" size={18} className="dark:hidden opacity-60" />
+          <GlidrLogo variant="white" size={18} className="hidden dark:block opacity-60" />
           <div className="flex items-center gap-3">
             <AppLink href="/my-account" testId="link-my-account" className="underline hover:text-foreground transition-colors">
               {t("shell.myAccount")}

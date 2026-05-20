@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { useAppSettings } from "@/lib/app-settings";
 import { useI18n } from "@/lib/i18n";
+import { GlidrLogo } from "@/components/glidr-logo";
 
 const schema = z.object({
   username: z.string().min(1),
@@ -79,15 +80,12 @@ export default function Login() {
         {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
       </button>
       <div className="w-full max-w-[400px]">
-        <div className="flex flex-col items-center gap-2 mb-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">
-              {t("auth.welcomeTitle")}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("auth.welcomeSubtitle")}
-            </p>
-          </div>
+        <div className="flex flex-col items-center gap-4 mb-8">
+          <GlidrLogo variant="dark" size={44} className="dark:hidden" />
+          <GlidrLogo variant="white" size={44} className="hidden dark:block" />
+          <p className="text-sm text-muted-foreground">
+            {t("auth.welcomeSubtitle")}
+          </p>
         </div>
 
         <Card className="bg-card shadow-xl shadow-foreground/5 border-border rounded-2xl">

@@ -169,11 +169,11 @@ export function TestEntryTable({
   const extraGrindCols = visibleGrindCols.filter((k) => !["profile"].includes(k));
 
   return (
-    <div className="overflow-x-auto rounded-2xl border bg-card/50">
+    <div className="overflow-x-auto rounded-2xl border bg-card">
       <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${(isGrind ? 300 + extraGrindCols.length * 120 : 560) + distanceLabels.length * 200 + (isClassic ? 80 : 0)}px` }}>
         <thead>
           <tr className="text-left text-xs text-muted-foreground">
-            <th className="sticky left-0 z-10 bg-card/80 px-3 py-3">Ski No.</th>
+            <th className="sticky left-0 z-10 bg-card px-3 py-3">Ski No.</th>
             {!isGrind && <th className="px-3 py-3">{isRaceSki ? "Raceski" : "Product(s)"}</th>}
             {!isGrind && <th className="px-3 py-3">Method</th>}
             {isGrind && <th className="px-3 py-3">Grind Profile</th>}
@@ -190,7 +190,7 @@ export function TestEntryTable({
                       next[roundIdx] = e.target.value;
                       onDistanceLabelsChange(next);
                     }}
-                    className="h-7 w-24 text-xs bg-background/70"
+                    className="h-7 w-24 text-xs bg-background"
                     placeholder={`Round ${roundIdx + 1}`}
                     data-testid={`input-distance-label-${roundIdx}`}
                   />
@@ -224,7 +224,7 @@ export function TestEntryTable({
             </th>
           </tr>
           <tr className="text-left text-[10px] text-muted-foreground/70 uppercase tracking-wider">
-            <th className="sticky left-0 z-10 bg-card/80"></th>
+            <th className="sticky left-0 z-10 bg-card"></th>
             {!isGrind && <th></th>}
             {!isGrind && <th></th>}
             {isGrind && <th></th>}
@@ -266,7 +266,7 @@ export function TestEntryTable({
                 key={row.id}
                 className={cn(
                   "border-t",
-                  idx % 2 === 0 ? "bg-background/30" : "bg-background/10",
+                  idx % 2 === 0 ? "bg-card" : "bg-muted/30",
                 )}
               >
                 <td className="sticky left-0 z-10 bg-inherit px-3 py-2">
@@ -306,7 +306,7 @@ export function TestEntryTable({
                       </button>
                     </div>
                     <div
-                      className="inline-flex h-9 w-14 items-center justify-center rounded-xl border bg-background/70 text-sm font-semibold"
+                      className="inline-flex h-9 w-14 items-center justify-center rounded-xl border bg-background text-sm font-semibold"
                       data-testid={`text-ski-number-${row.id}`}
                     >
                       {skiLabels?.[row.skiNumber] ?? row.skiNumber}
@@ -401,7 +401,7 @@ export function TestEntryTable({
                       const next = rows.map((r) => (r.id === row.id ? { ...r, methodology: e.target.value } : r));
                       setRows(next);
                     }}
-                    className="h-9 bg-background/70"
+                    className="h-9 bg-background"
                     placeholder="e.g., 200°C"
                     data-testid={`input-method-${row.id}`}
                   />
@@ -439,7 +439,7 @@ export function TestEntryTable({
                           setRows(next);
                         }
                       }}
-                      className="h-9 w-full rounded-md border bg-background/70 px-2 text-sm"
+                      className="h-9 w-full rounded-md border bg-background px-2 text-sm"
                       data-testid={`select-grind-profile-${row.id}`}
                     >
                       <option value="">— Select grind —</option>
@@ -457,7 +457,7 @@ export function TestEntryTable({
                             const next = rows.map((r) => (r.id === row.id ? { ...r, grindStone: e.target.value || undefined } : r));
                             setRows(next);
                           }}
-                          className="h-9 bg-background/70"
+                          className="h-9 bg-background"
                           placeholder="e.g., SG12"
                           data-testid={`input-grind-stone-${row.id}`}
                         />
@@ -468,7 +468,7 @@ export function TestEntryTable({
                             const next = rows.map((r) => (r.id === row.id ? { ...r, grindPattern: e.target.value || undefined } : r));
                             setRows(next);
                           }}
-                          className="h-9 bg-background/70"
+                          className="h-9 bg-background"
                           placeholder="e.g., 0.5mm"
                           data-testid={`input-grind-pattern-${row.id}`}
                         />
@@ -483,7 +483,7 @@ export function TestEntryTable({
                             );
                             setRows(next);
                           }}
-                          className="h-9 bg-background/70"
+                          className="h-9 bg-background"
                           placeholder="—"
                           data-testid={`input-grind-extra-${col}-${row.id}`}
                         />
@@ -510,7 +510,7 @@ export function TestEntryTable({
                           });
                           setRows(next);
                         }}
-                        className="h-9 w-20 bg-background/70"
+                        className="h-9 w-20 bg-background"
                         placeholder="0"
                         data-testid={`input-result-${roundIdx}-${row.id}`}
                       />
@@ -530,7 +530,7 @@ export function TestEntryTable({
                       const next = rows.map((r) => (r.id === row.id ? { ...r, feelingRank: Number.isNaN(num) ? null : num } : r));
                       setRows(next);
                     }}
-                    className="h-9 w-16 bg-background/70"
+                    className="h-9 w-16 bg-background"
                     placeholder="—"
                     data-testid={`input-feeling-${row.id}`}
                   />
@@ -548,7 +548,7 @@ export function TestEntryTable({
                       const next = rows.map((r) => (r.id === row.id ? { ...r, kickRank: Number.isNaN(num) ? null : num } : r));
                       setRows(next);
                     }}
-                    className="h-9 w-16 bg-background/70"
+                    className="h-9 w-16 bg-background"
                     placeholder="—"
                     data-testid={`input-kick-${row.id}`}
                   />

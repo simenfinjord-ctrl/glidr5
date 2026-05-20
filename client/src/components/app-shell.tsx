@@ -46,7 +46,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useI18n } from "@/lib/i18n";
 import { useAppSettings } from "@/lib/app-settings";
-import { GlidrLogo } from "@/components/glidr-logo";
+import { GlidrIcon } from "@/components/glidr-logo";
 
 type NavItem = {
   href: string;
@@ -407,16 +407,18 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen fs-grid">
-      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-lg" style={{ paddingTop: "env(safe-area-inset-top)" }}>
-        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6">
+      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-lg overflow-x-hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+        <div className="mx-auto w-full max-w-[1600px] px-3 sm:px-6">
 
           {/* Single row: [logo] [nav — xl+ only] [controls] */}
-          <div className="flex items-center gap-3 py-2.5">
+          <div className="flex items-center gap-2 sm:gap-3 py-2.5 min-w-0">
 
             {/* Left: logo + online dot + optional team selector */}
-            <div className="flex items-center gap-2 shrink-0">
-              <GlidrLogo variant="dark" iconSize={28} className="h-7" />
-              <div className={cn("h-1.5 w-1.5 rounded-full", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Icon always visible; wordmark hidden on xs to save space */}
+              <GlidrIcon className="h-6 w-6 shrink-0" />
+              <span className="hidden sm:inline font-extrabold text-sm tracking-tight text-foreground" style={{ letterSpacing: "-0.02em" }}>Glidr</span>
+              <div className={cn("h-1.5 w-1.5 rounded-full shrink-0", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
               {isSuperAdmin && teams.length > 1 && (
                 <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
                   <SelectTrigger className="h-8 w-auto min-w-[140px] border-border bg-muted/50 text-xs font-medium" data-testid="select-team">
@@ -454,8 +456,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             {/* Spacer on < xl so controls push right */}
             <div className="flex-1 xl:hidden" />
 
-            {/* Right: status indicators + controls (all preserved) */}
-            <div className="flex items-center gap-1.5 shrink-0">
+            {/* Right: status indicators + controls */}
+            <div className="flex items-center gap-0.5 sm:gap-1.5 shrink-0">
               {!isOnline && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200" data-testid="badge-offline">
                   <WifiOff className="h-3 w-3" />

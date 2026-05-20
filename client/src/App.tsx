@@ -34,6 +34,7 @@ import WatchQueue from "@/pages/watch-queue";
 import MyAccount from "@/pages/my-account";
 import Overview from "@/pages/overview";
 import WhatIsGlidr from "@/pages/what-is-glidr";
+import LogoPreview from "@/pages/logo-preview";
 import Legal from "@/pages/legal";
 import Pricing from "@/pages/pricing";
 import Contact from "@/pages/contact";
@@ -79,6 +80,7 @@ function Router() {
       <Route path="/admin" component={Admin} />
       <Route path="/overview" component={Overview} />
       <Route path="/what-is-glidr" component={WhatIsGlidr} />
+      <Route path="/logo-preview" component={LogoPreview} />
       <Route path="/legal" component={Legal} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/contact" component={Contact} />

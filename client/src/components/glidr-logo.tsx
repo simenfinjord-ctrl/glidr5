@@ -1,142 +1,127 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { cn } from "@/lib/utils";
 
-/**
- * GlidrIcon — the standalone G mark in a rounded square.
- * Use for favicons, app-icon badges, compact contexts.
- */
+// ─── Shared G-mark paths (all use a 100×100 coordinate space) ───────────────
+// Circle center (50,50) radius 20.
+// Arc endpoints at ±40° → upper≈(65,37) lower≈(65,63) — 280° CCW arc.
+const G_ARC   = "M65 37 A20 20 0 1 0 65 63";
+const G_BAR   = { x1: 50, y1: 50, x2: 70, y2: 50 };
+const G_TAIL  = { x1: 70, y1: 50, x2: 79, y2: 36 };
+
+// ─── Variant A: Rounded-square badge (current, "app icon" style) ─────────────
 export function GlidrIcon({ className }: { className?: string }) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 100 100"
-      aria-label="Glidr"
-      className={cn("shrink-0", className)}
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"
+      aria-label="Glidr" className={cn("shrink-0", className)}>
       <defs>
-        <linearGradient id="glidr-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="gi-bg" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#10b981" />
           <stop offset="100%" stopColor="#047857" />
         </linearGradient>
-        <linearGradient id="glidr-shine" x1="0%" y1="0%" x2="60%" y2="100%">
-          <stop offset="0%" stopColor="white" stopOpacity="0.13" />
+        <linearGradient id="gi-shine" x1="0%" y1="0%" x2="60%" y2="100%">
+          <stop offset="0%" stopColor="white" stopOpacity="0.14" />
           <stop offset="100%" stopColor="white" stopOpacity="0" />
         </linearGradient>
       </defs>
-
-      {/* Background */}
-      <rect width="100" height="100" rx="22" fill="url(#glidr-bg)" />
-      <rect width="100" height="100" rx="22" fill="url(#glidr-shine)" />
-
-      {/*
-        G lettermark
-        Circle center (50,50) radius 20.
-        Arc endpoints at ±40° from horizontal:
-          upper = (50+20·cos40°, 50−20·sin40°) ≈ (65, 37)
-          lower = (65, 63)
-        280° arc, CCW (large-arc=1, sweep=0)
-      */}
-      <path
-        d="M65 37 A20 20 0 1 0 65 63"
-        stroke="white"
-        strokeWidth="9.5"
-        fill="none"
-        strokeLinecap="round"
-      />
-      {/* Crossbar: center → rightmost point */}
-      <line
-        x1="50" y1="50" x2="70" y2="50"
-        stroke="white" strokeWidth="9.5" strokeLinecap="round"
-      />
-      {/* Speed tail — the Glidr signature mark */}
-      <line
-        x1="70" y1="50" x2="79" y2="36"
-        stroke="white" strokeWidth="5"
-        strokeLinecap="round"
-        opacity={0.55}
-      />
+      <rect width="100" height="100" rx="22" fill="url(#gi-bg)" />
+      <rect width="100" height="100" rx="22" fill="url(#gi-shine)" />
+      <path d={G_ARC} stroke="white" strokeWidth="9.5" fill="none" strokeLinecap="round" />
+      <line {...G_BAR} stroke="white" strokeWidth="9.5" strokeLinecap="round" />
+      <line {...G_TAIL} stroke="white" strokeWidth="5" strokeLinecap="round" opacity={0.55} />
     </svg>
   );
 }
 
-/**
- * GlidrLogo — icon + wordmark side by side.
- * variant="dark"  → dark wordmark (use on light backgrounds)
- * variant="white" → white wordmark (use on dark backgrounds)
- */
+// ─── Variant B: Circle badge ─────────────────────────────────────────────────
+// Softer, rounder feel — same G mark inside a circle instead of a square.
+export function GlidrIconCircle({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"
+      aria-label="Glidr" className={cn("shrink-0", className)}>
+      <defs>
+        <linearGradient id="gc-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#10b981" />
+          <stop offset="100%" stopColor="#047857" />
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="50" r="50" fill="url(#gc-bg)" />
+      <path d={G_ARC} stroke="white" strokeWidth="9.5" fill="none" strokeLinecap="round" />
+      <line {...G_BAR} stroke="white" strokeWidth="9.5" strokeLinecap="round" />
+      <line {...G_TAIL} stroke="white" strokeWidth="5" strokeLinecap="round" opacity={0.55} />
+    </svg>
+  );
+}
+
+// ─── Variant C: Bare mark (no background) ────────────────────────────────────
+// Just the G letterform in emerald — no container.
+// Most flexible: works on any background, fits tight into layouts.
+export function GlidrMark({ className, color = "#10b981" }: { className?: string; color?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"
+      aria-label="Glidr" className={cn("shrink-0", className)}>
+      <path d={G_ARC} stroke={color} strokeWidth="11" fill="none" strokeLinecap="round" />
+      <line {...G_BAR} stroke={color} strokeWidth="11" strokeLinecap="round" />
+      <line {...G_TAIL} stroke={color} strokeWidth="6" strokeLinecap="round" opacity={0.5} />
+    </svg>
+  );
+}
+
+// ─── Variant D: Text-only wordmark ───────────────────────────────────────────
+// No icon — just "Glidr" in Inter ExtraBold with an emerald accent dot
+// sitting above the i. Minimal, works in tight horizontal spaces.
+export function GlidrWordmark({
+  className,
+  color = "#18181b",
+}: { className?: string; color?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 40"
+      aria-label="Glidr" className={cn("shrink-0", className)}>
+      <text x="0" y="30"
+        fontFamily="'Inter', system-ui, -apple-system, sans-serif"
+        fontWeight="800" fontSize="32" letterSpacing="-0.6" fill={color}>
+        Glidr
+      </text>
+      {/* Emerald accent dot on the "i" (replaces the default serif dot) */}
+      <circle cx="67.5" cy="7" r="3.5" fill="#10b981" />
+    </svg>
+  );
+}
+
+// ─── Combined lockup (icon + wordmark) ───────────────────────────────────────
+// icon prop: "square" | "circle" | "mark" — controls which badge variant to use
 export function GlidrLogo({
   variant = "dark",
+  icon = "square",
   className,
-  iconSize = 32,
+  iconSize = 28,
 }: {
   variant?: "dark" | "white";
+  icon?: "square" | "circle" | "mark";
   className?: string;
   iconSize?: number;
 }) {
   const textColor = variant === "white" ? "white" : "#18181b";
-  const gap = Math.round(iconSize * 0.45);
-  const fontSize = Math.round(iconSize * 0.56);
-  const totalWidth = iconSize + gap + fontSize * 3.3; // approx "Glidr" width
-  const height = iconSize;
+  const iconEl = icon === "circle"
+    ? <GlidrIconCircle className={`h-[${iconSize}px] w-[${iconSize}px]`} />
+    : icon === "mark"
+    ? <GlidrMark className={`h-[${iconSize}px] w-[${iconSize}px]`} color={variant === "white" ? "white" : "#10b981"} />
+    : <GlidrIcon className={`h-[${iconSize}px] w-[${iconSize}px]`} />;
 
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox={`0 0 ${Math.round(totalWidth)} ${height}`}
-      aria-label="Glidr"
-      className={cn("shrink-0", className)}
-    >
-      <defs>
-        <linearGradient id="glidr-logo-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#10b981" />
-          <stop offset="100%" stopColor="#047857" />
-        </linearGradient>
-        <linearGradient id="glidr-logo-shine" x1="0%" y1="0%" x2="60%" y2="100%">
-          <stop offset="0%" stopColor="white" stopOpacity="0.13" />
-          <stop offset="100%" stopColor="white" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-
-      {/* Icon */}
-      <rect width={iconSize} height={iconSize} rx={iconSize * 0.22} fill="url(#glidr-logo-bg)" />
-      <rect width={iconSize} height={iconSize} rx={iconSize * 0.22} fill="url(#glidr-logo-shine)" />
-
-      {/* G arc scaled to icon size (base: 100×100 box) */}
-      {(() => {
-        const s = iconSize / 100;
-        const cx = 50 * s, cy = 50 * s, r = 20 * s;
-        const ax = (50 + 20 * Math.cos((40 * Math.PI) / 180)) * s;
-        const ayTop = (50 - 20 * Math.sin((40 * Math.PI) / 180)) * s;
-        const ayBot = (50 + 20 * Math.sin((40 * Math.PI) / 180)) * s;
-        const rightX = (50 + 20) * s;
-        const sw = 9.5 * s;
-        const tailX = 79 * s, tailY = 36 * s;
-        return (
-          <>
-            <path
-              d={`M${ax} ${ayTop} A${r} ${r} 0 1 0 ${ax} ${ayBot}`}
-              stroke="white" strokeWidth={sw} fill="none" strokeLinecap="round"
-            />
-            <line x1={cx} y1={cy} x2={rightX} y2={cy}
-              stroke="white" strokeWidth={sw} strokeLinecap="round" />
-            <line x1={rightX} y1={cy} x2={tailX} y2={tailY}
-              stroke="white" strokeWidth={5 * s} strokeLinecap="round" opacity={0.55} />
-          </>
-        );
-      })()}
-
-      {/* Wordmark */}
-      <text
-        x={iconSize + gap}
-        y={iconSize * 0.69}
-        fontFamily="'Inter', system-ui, -apple-system, sans-serif"
-        fontWeight="800"
-        fontSize={fontSize}
-        letterSpacing={-fontSize * 0.025}
-        fill={textColor}
+    <div className={cn("flex items-center gap-2 shrink-0", className)}>
+      {iconEl}
+      <span
+        style={{
+          fontFamily: "'Inter', system-ui, sans-serif",
+          fontWeight: 800,
+          fontSize: `${Math.round(iconSize * 0.57)}px`,
+          letterSpacing: "-0.02em",
+          color: textColor,
+          lineHeight: 1,
+        }}
       >
         Glidr
-      </text>
-    </svg>
+      </span>
+    </div>
   );
 }

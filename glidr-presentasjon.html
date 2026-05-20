@@ -7,15 +7,44 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-    * { font-family: 'Inter', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    @media print {
-      .page { page-break-after: always; page-break-inside: avoid; }
-      .no-print { display: none !important; }
-      body { background: white !important; }
+    * { font-family: 'Inter', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }
+    /* ── Screen layout ── */
+    .page {
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
-    .page { min-height: 100vh; }
+    /* ── Print / PDF layout ── */
+    @media print {
+      @page { size: A4 portrait; margin: 0; }
+      html, body { width: 210mm; margin: 0; padding: 0; background: white !important; }
+      .no-print { display: none !important; }
+      .page {
+        width: 210mm;
+        height: 297mm;
+        min-height: unset;
+        overflow: hidden;
+        page-break-after: always;
+        break-after: page;
+        page-break-inside: avoid;
+        break-inside: avoid;
+        padding: 40px !important;
+      }
+      .page:last-child { page-break-after: auto; break-after: auto; }
+      /* Prevent auto-scaling from squashing pages */
+      body { zoom: 1; }
+    }
     .accent { color: #10b981; }
     .bg-accent { background-color: #10b981; }
+    /* Subtle grid background for cover */
+    .cover-grid {
+      background-image:
+        linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
   </style>
 </head>
 <body class="bg-gray-100">
@@ -34,31 +63,138 @@
 <!-- ═══════════════════════════════════════════════════════════ -->
 <!-- SIDE 1: FORSIDE                                            -->
 <!-- ═══════════════════════════════════════════════════════════ -->
-<div class="page bg-zinc-900 flex flex-col justify-between p-16 print:p-12">
-  <div class="flex items-center gap-3">
-    <span class="text-2xl font-bold text-white tracking-tight">Glidr</span>
-    <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+<div class="page cover-grid bg-zinc-950 p-14 print:p-10" style="justify-content:space-between;">
+
+  <!-- Top bar -->
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      </div>
+      <span class="text-xl font-bold text-white tracking-tight">Glidr</span>
+    </div>
+    <span class="text-xs text-zinc-600 font-medium uppercase tracking-widest" data-no="Konfidensielt" data-en="Confidential">Konfidensielt</span>
   </div>
 
-  <div>
-    <div class="inline-block bg-emerald-500/20 border border-emerald-500/30 rounded-full px-4 py-1.5 text-sm font-medium text-emerald-400 mb-8">
-      <span data-no="Profesjonelt testsystem for skismøring" data-en="Professional ski wax testing platform">Profesjonelt testsystem for skismøring</span>
+  <!-- Main content: text left + mockup right -->
+  <div class="flex items-center gap-10 flex-1 py-10">
+
+    <!-- Left: headline -->
+    <div class="flex-1 min-w-0">
+      <div class="inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-500/25 rounded-full px-3.5 py-1.5 mb-7">
+        <div class="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
+        <span class="text-xs font-semibold text-emerald-400 uppercase tracking-wider" data-no="Smørelagets digitale plattform" data-en="The wax crew's digital platform">Smørelagets digitale plattform</span>
+      </div>
+
+      <h1 class="text-6xl font-extrabold text-white leading-[1.05] mb-6 tracking-tight">
+        <span data-no="Testdata.<br/>Ikke<br/>notater." data-en="Test data.<br/>Not<br/>notes.">Testdata.<br/>Ikke<br/>notater.</span>
+      </h1>
+      <p class="text-lg text-zinc-400 leading-relaxed mb-10 max-w-sm" data-no="Alt smørelaget tester, registreres, analyseres og gjenfinnes — fra løypa til neste renn." data-en="Everything the wax crew tests is logged, analysed and found again — from the track to the next race.">
+        Alt smørelaget tester, registreres, analyseres og gjenfinnes — fra løypa til neste renn.
+      </p>
+
+      <!-- 3 stat pills -->
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          </div>
+          <span class="text-sm text-zinc-300" data-no="Registrer glide-, struktur- og grindetester direkte i løypa" data-en="Log glide, structure and grinding tests trackside">Registrer glide-, struktur- og grindetester direkte i løypa</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </div>
+          <span class="text-sm text-zinc-300" data-no="Sammenlign produkter på tvers av sesonger og værforhold" data-en="Compare products across seasons and weather conditions">Sammenlign produkter på tvers av sesonger og værforhold</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <span class="text-sm text-zinc-300" data-no="Send testkøen til Garmin-klokken med ett trykk" data-en="Push the test queue to a Garmin watch in one tap">Send testkøen til Garmin-klokken med ett trykk</span>
+        </div>
+      </div>
     </div>
-    <h1 class="text-5xl font-bold text-white leading-tight mb-6">
-      <span data-no="Slutt å ta<br/>notater på papir." data-en="Stop taking<br/>notes on paper.">Slutt å ta<br/>notater på papir.</span>
-    </h1>
-    <p class="text-xl text-zinc-400 max-w-xl leading-relaxed" data-no="Glidr er den komplette digitale plattformen for smørelag og ski-team — fra testregistrering i løypa til dyp analyse på kontoret." data-en="Glidr is the complete digital platform for wax crews and ski teams — from trackside test entry to deep analysis back at the office.">
-      Glidr er den komplette digitale plattformen for smørelag og ski-team — fra testregistrering i løypa til dyp analyse på kontoret.
-    </p>
+
+    <!-- Right: app mockup -->
+    <div class="flex-shrink-0 w-80" style="width:340px;">
+      <div class="bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden shadow-2xl">
+        <!-- Mockup top bar -->
+        <div class="bg-zinc-800 px-4 py-3 flex items-center gap-2 border-b border-zinc-700">
+          <div class="flex gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-zinc-600"></div><div class="w-2.5 h-2.5 rounded-full bg-zinc-600"></div><div class="w-2.5 h-2.5 rounded-full bg-zinc-600"></div></div>
+          <span class="text-zinc-400 text-xs ml-2 font-medium">Holmenkollen 15. jan · Glide</span>
+        </div>
+        <!-- Weather strip -->
+        <div class="bg-zinc-800/60 px-4 py-2.5 flex items-center gap-4 border-b border-zinc-700/50 text-xs text-zinc-400">
+          <span>❄️ Snø: −4°C</span><span>🌡 Luft: −2°C</span><span>💧 60%</span><span class="ml-auto text-emerald-400 font-medium">Finkorn nysnø</span>
+        </div>
+        <!-- Results table -->
+        <div class="px-4 pt-3 pb-1">
+          <div class="flex items-center justify-between mb-2.5">
+            <span class="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Resultater</span>
+            <span class="text-xs text-emerald-400">8 ski</span>
+          </div>
+          <!-- Header row -->
+          <div class="grid text-xs text-zinc-500 font-medium mb-1.5" style="grid-template-columns:28px 1fr 40px;">
+            <span>#</span><span>Produkt</span><span class="text-right">Rank</span>
+          </div>
+          <!-- Rows -->
+          <div class="space-y-1">
+            <div class="grid items-center bg-emerald-500/10 rounded-lg px-2 py-2" style="grid-template-columns:28px 1fr 40px;">
+              <span class="text-emerald-400 font-bold text-xs">3</span>
+              <div><p class="text-white text-xs font-semibold">Swix HF10</p><p class="text-zinc-500 text-[10px]">Glider · ski 3</p></div>
+              <span class="text-emerald-400 font-bold text-xs text-right">1</span>
+            </div>
+            <div class="grid items-center rounded-lg px-2 py-2" style="grid-template-columns:28px 1fr 40px;">
+              <span class="text-zinc-400 text-xs">7</span>
+              <div><p class="text-zinc-200 text-xs font-medium">Rode Cera F</p><p class="text-zinc-500 text-[10px]">Glider · ski 7</p></div>
+              <span class="text-zinc-300 text-xs text-right">2</span>
+            </div>
+            <div class="grid items-center rounded-lg px-2 py-2" style="grid-template-columns:28px 1fr 40px;">
+              <span class="text-zinc-400 text-xs">1</span>
+              <div><p class="text-zinc-200 text-xs font-medium">Toko NF Powder</p><p class="text-zinc-500 text-[10px]">Glider · ski 1</p></div>
+              <span class="text-zinc-300 text-xs text-right">3</span>
+            </div>
+            <div class="grid items-center rounded-lg px-2 py-2" style="grid-template-columns:28px 1fr 40px;">
+              <span class="text-zinc-400 text-xs">5</span>
+              <div><p class="text-zinc-200 text-xs font-medium">Swix LF8</p><p class="text-zinc-500 text-[10px]">Glider · ski 5</p></div>
+              <span class="text-zinc-300 text-xs text-right">4</span>
+            </div>
+            <div class="grid items-center rounded-lg px-2 py-2 opacity-50" style="grid-template-columns:28px 1fr 40px;">
+              <span class="text-zinc-400 text-xs">2</span>
+              <div><p class="text-zinc-200 text-xs font-medium">Rex HF Pro</p><p class="text-zinc-500 text-[10px]">Glider · ski 2</p></div>
+              <span class="text-zinc-300 text-xs text-right">5</span>
+            </div>
+          </div>
+        </div>
+        <!-- Garmin pill at bottom -->
+        <div class="mx-4 my-3 bg-zinc-800 rounded-xl p-3 flex items-center gap-3">
+          <div class="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+            <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs text-white font-medium">Garmin</p>
+            <p class="text-[10px] text-zinc-400">Kø synkronisert til klokken</p>
+          </div>
+          <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="flex items-end justify-between">
-    <div class="space-y-1">
-      <p class="text-zinc-500 text-sm" data-no="Kontakt" data-en="Contact">Kontakt</p>
-      <p class="text-white font-medium">simen@glidr.no</p>
-      <p class="text-zinc-400 text-sm">glidr.no</p>
+  <!-- Bottom bar -->
+  <div class="flex items-center justify-between pt-4 border-t border-zinc-800">
+    <div class="flex items-center gap-6">
+      <div>
+        <p class="text-zinc-500 text-xs mb-0.5" data-no="Kontakt" data-en="Contact">Kontakt</p>
+        <p class="text-white text-sm font-medium">simen@glidr.no</p>
+      </div>
+      <div>
+        <p class="text-zinc-500 text-xs mb-0.5">Web</p>
+        <p class="text-white text-sm font-medium">glidr.no</p>
+      </div>
     </div>
-    <p class="text-zinc-600 text-xs" data-no="© 2025 Glidr. Konfidensielt." data-en="© 2025 Glidr. Confidential.">© 2025 Glidr. Konfidensielt.</p>
+    <p class="text-zinc-700 text-xs">© 2025 Glidr</p>
   </div>
 </div>
 

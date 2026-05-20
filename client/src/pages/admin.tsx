@@ -8,7 +8,7 @@ import {
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle,
   HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash, RotateCcw,
-  MessageSquare, UserPlus,
+  MessageSquare, UserPlus, FileText, ExternalLink,
 } from "lucide-react";
 import {
   PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS,
@@ -3307,6 +3307,31 @@ export default function Admin() {
               <StatCard label={t("admin.statLogins")} value={stats.loginCount} icon={LogIn} color="indigo" testId="stat-logins" />
               <StatCard label={t("admin.statActivities")} value={stats.activityCount} icon={Activity} color="teal" testId="stat-activities" />
             </div>
+
+            {isSuperAdmin && (
+              <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50">
+                      <FileText className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-semibold text-foreground">Kundepresentasjon</h2>
+                      <p className="text-xs text-muted-foreground">Kun synlig for Super Admin</p>
+                    </div>
+                  </div>
+                  <a
+                    href="/api/admin/presentation"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors cursor-pointer"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Åpne presentasjon
+                  </a>
+                </div>
+              </Card>
+            )}
 
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-recent-activity">
               <div className="flex items-center gap-2 mb-4">

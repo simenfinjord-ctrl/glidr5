@@ -3131,6 +3131,22 @@ export async function registerRoutes(
     res.json({ userCount, testCount, productCount, seriesCount, weatherCount, grindingCount, loginCount, activityCount });
   });
 
+  // SA only: serve the Glidr pitch deck
+  app.get("/api/admin/presentation", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    try {
+      const html = readFileSync(join(process.cwd(), "glidr-presentasjon.html"), "utf-8");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      res.send(html);
+    } catch {
+      res.status(404).json({ message: "Presentation file not found" });
+    }
+  });
+
   app.get("/api/admin/full-export", requireAuth, async (req, res) => {
     const u = userInfo(req);
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });

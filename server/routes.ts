@@ -3159,6 +3159,21 @@ export async function registerRoutes(
     }
   });
 
+  // Public shareable link — no login required, token acts as the secret
+  const PRESENTATION_TOKEN = process.env.PRESENTATION_TOKEN ?? "diEoqG6D9VqLLnEeoaBi7MgHe7ANvBk5";
+  app.get(`/p/${PRESENTATION_TOKEN}`, async (_req, res) => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    try {
+      const html = readFileSync(join(process.cwd(), "glidr-presentasjon.html"), "utf-8");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      res.send(html);
+    } catch {
+      res.status(404).send("Not found");
+    }
+  });
+
   app.get("/api/admin/full-export", requireAuth, async (req, res) => {
     const u = userInfo(req);
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });

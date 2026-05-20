@@ -28,8 +28,9 @@
         height: 297mm !important;
         max-height: 297mm !important;
         min-height: unset !important;
-        /* contain:strict tells Chrome the element is fully self-contained:
-           overflow can never leak into the next printed page */
+        /* position:relative lets .page-footer sit at absolute bottom */
+        position: relative !important;
+        /* contain:strict tells Chrome the element is fully self-contained */
         contain: strict;
         overflow: hidden !important;
         /* Page breaks */
@@ -37,14 +38,20 @@
         break-after: page;
         page-break-inside: avoid;
         break-inside: avoid;
-        /* Layout — force flex regardless of Tailwind classes */
+        /* Layout */
         display: flex !important;
         flex-direction: column !important;
-        justify-content: space-between !important;
-        /* Tight but readable padding — gives ~263mm of content height */
+        justify-content: flex-start !important;
         padding: 30px !important;
-        /* Scale text down slightly so dense pages fit */
+        padding-bottom: 64px !important;
         font-size: 91%;
+      }
+      /* Footer is always anchored to the bottom of the A4 page */
+      .page-footer {
+        position: absolute !important;
+        bottom: 30px !important;
+        left: 30px !important;
+        right: 30px !important;
       }
       /* Last page: no trailing blank page */
       .page:last-of-type {
@@ -214,7 +221,7 @@
   </div>
 
   <!-- Bottom bar -->
-  <div class="flex items-center justify-between pt-4 border-t border-zinc-800">
+  <div class="page-footer flex items-center justify-between pt-4 border-t border-zinc-800">
     <div class="flex items-center gap-6">
       <div>
         <p class="text-zinc-500 text-xs mb-0.5" data-no="Kontakt" data-en="Contact">Kontakt</p>

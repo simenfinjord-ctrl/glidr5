@@ -3316,8 +3316,8 @@ export default function Admin() {
                       <FileText className="h-4 w-4 text-amber-600" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-semibold text-foreground">Kundepresentasjon</h2>
-                      <p className="text-xs text-muted-foreground">Kun synlig for Super Admin</p>
+                      <h2 className="text-sm font-semibold text-foreground">Customer Presentation</h2>
+                      <p className="text-xs text-muted-foreground">Super Admin only</p>
                     </div>
                   </div>
                   <a
@@ -3327,7 +3327,7 @@ export default function Admin() {
                     className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors cursor-pointer"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
-                    Åpne presentasjon
+                    Open presentation
                   </a>
                 </div>
               </Card>

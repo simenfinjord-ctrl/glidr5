@@ -376,191 +376,188 @@ export function AppShell({ children }: { children: ReactNode }) {
     return t(map[href] ?? "nav.dashboard");
   };
 
+  // Nav items built once, reused in both header rows to avoid duplication
+  const navItems = visibleNav.map((item) => {
+    const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
+    const Icon = item.icon;
+    return (
+      <AppLink
+        key={item.href}
+        href={item.href}
+        testId={item.testId}
+        className={cn(
+          "group inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150",
+          active
+            ? `${item.activeBg} ${item.activeColor} shadow-sm dark:bg-opacity-20`
+            : "text-muted-foreground hover:text-foreground hover:bg-muted",
+        )}
+      >
+        <Icon className={cn("h-4 w-4 transition-colors", active ? item.activeColor : item.color)} />
+        <span>{navLabel(item.href)}</span>
+        {item.href === "/watch-queue" && watchQueueCount > 0 && (
+          <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-white">
+            {watchQueueCount}
+          </span>
+        )}
+      </AppLink>
+    );
+  });
+
   return (
     <div className="min-h-screen fs-grid">
-      <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg" style={{ paddingTop: "env(safe-area-inset-top)" }}>
-        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-6 py-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-bold tracking-tight text-foreground">Glidr</span>
-            <div className={cn(
-              "h-2 w-2 rounded-full",
-              isOnline ? "bg-emerald-500" : "bg-amber-500"
-            )} />
-            {isSuperAdmin && teams.length > 1 && (
-              <Select
-                value={String(activeTeamId)}
-                onValueChange={(val) => switchTeam(parseInt(val))}
-              >
-                <SelectTrigger
-                  className="h-8 w-auto min-w-[140px] border-border bg-muted/50 text-xs font-medium"
-                  data-testid="select-team"
-                >
-                  <SelectValue placeholder={t("shell.selectTeam")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {teams.map((team: any) => (
-                    <SelectItem key={team.id} value={String(team.id)}>
-                      {team.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            {!isSuperAdmin && userTeams.length > 1 && (
-              <Select
-                value={String(activeTeamId)}
-                onValueChange={(val) => switchTeam(parseInt(val))}
-              >
-                <SelectTrigger
-                  className="h-8 w-auto min-w-[140px] border-border bg-muted/50 text-xs font-medium"
-                  data-testid="select-user-team"
-                >
-                  <SelectValue placeholder={t("shell.selectTeam")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {userTeams.map((team) => (
-                    <SelectItem key={team.id} value={String(team.id)}>
-                      {team.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-lg" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6">
 
-          <div className="flex items-center gap-2">
-            {!isOnline && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200" data-testid="badge-offline">
-                <WifiOff className="h-3 w-3" />
-                {t("shell.offline")}
-              </span>
-            )}
-            {pendingCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                data-testid="button-sync"
-                onClick={() => syncNow()}
-                disabled={isSyncing || !isOnline}
-                className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-              >
-                {isSyncing ? (
-                  <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" />
-                ) : (
-                  <CloudUpload className="mr-1.5 h-4 w-4" />
-                )}
-                {`${pendingCount} ${t("shell.pending")}`}
-              </Button>
-            )}
-            {isSuperAdmin && isViewingOtherTeam && (
-              <Button
-                variant="ghost"
-                size="sm"
-                data-testid="button-stealth-toggle"
-                onClick={() => toggleStealth(!user?.stealth)}
-                className={cn(
-                  "text-muted-foreground hover:text-foreground hover:bg-muted",
-                  isStealthActive && "text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400"
-                )}
-                title={isStealthActive ? t("shell.stealthOn") : t("shell.stealth")}
-              >
-                {isStealthActive ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-              </Button>
-            )}
-            {isSuperAdmin && (
-              <Button
-                variant="ghost"
-                size="sm"
-                data-testid="button-incognito-toggle"
-                onClick={() => toggleIncognito(!user?.incognito)}
-                className={cn(
-                  "text-muted-foreground hover:text-foreground hover:bg-muted",
-                  user?.incognito && "text-purple-600 bg-purple-50 dark:bg-purple-900/30 dark:text-purple-400"
-                )}
-                title={user?.incognito ? t("shell.incognitoOn") : t("shell.incognito")}
-              >
-                {user?.incognito ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            )}
-            {/* Mail/Inbox button — SA only */}
-            {(isSuperAdmin || isTeamAdmin) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                data-testid="button-mail"
-                onClick={() => navigate("/inbox")}
-                className="relative text-muted-foreground hover:text-foreground hover:bg-muted"
-                title={t("shell.inbox")}
-              >
-                <Mail className="h-4 w-4" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              data-testid="button-theme-toggle"
-              onClick={toggleTheme}
-              className="text-muted-foreground hover:text-foreground hover:bg-muted"
+          {/* Single row: [logo] [nav — xl+ only] [controls] */}
+          <div className="flex items-center gap-3 py-2.5">
+
+            {/* Left: logo + online dot + optional team selector */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xl font-bold tracking-tight text-foreground">Glidr</span>
+              <div className={cn("h-1.5 w-1.5 rounded-full", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
+              {isSuperAdmin && teams.length > 1 && (
+                <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
+                  <SelectTrigger className="h-8 w-auto min-w-[140px] border-border bg-muted/50 text-xs font-medium" data-testid="select-team">
+                    <SelectValue placeholder={t("shell.selectTeam")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teams.map((team: any) => (
+                      <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {!isSuperAdmin && userTeams.length > 1 && (
+                <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
+                  <SelectTrigger className="h-8 w-auto min-w-[140px] border-border bg-muted/50 text-xs font-medium" data-testid="select-user-team">
+                    <SelectValue placeholder={t("shell.selectTeam")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {userTeams.map((team) => (
+                      <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Center nav — xl+ screens only, hidden when mobileNav is active */}
+            <nav
+              className={cn("hidden xl:flex flex-1 items-center justify-center gap-0.5", mobileNavEnabled && "!hidden")}
+              data-testid="nav-primary"
             >
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-            <AppLink
-              href="/my-account"
-              testId="link-profile"
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mr-1 transition-colors"
-            >
-              <UserCircle className="h-4 w-4" />
-              <span className="hidden sm:inline">{user?.name}</span>
-            </AppLink>
-            <Button
-              variant="ghost"
-              size="sm"
-              data-testid="button-logout"
-              onClick={() => logout()}
-              className="text-muted-foreground hover:text-foreground hover:bg-muted"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        <div className={cn("mx-auto w-full max-w-[1600px] px-4 sm:px-6 pb-3", mobileNavEnabled && "hidden sm:block")}>
-          <nav className="flex flex-wrap items-center gap-1" data-testid="nav-primary">
-            {visibleNav.map((item) => {
-              const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
-              const Icon = item.icon;
-              return (
-                <AppLink
-                  key={item.href}
-                  href={item.href}
-                  testId={item.testId}
-                  className={cn(
-                    "group inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150",
-                    active
-                      ? `${item.activeBg} ${item.activeColor} shadow-sm dark:bg-opacity-20`
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
-                  )}
+              {navItems}
+            </nav>
+
+            {/* Spacer on < xl so controls push right */}
+            <div className="flex-1 xl:hidden" />
+
+            {/* Right: status indicators + controls (all preserved) */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {!isOnline && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200" data-testid="badge-offline">
+                  <WifiOff className="h-3 w-3" />
+                  <span className="hidden sm:inline">{t("shell.offline")}</span>
+                </span>
+              )}
+              {pendingCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="button-sync"
+                  onClick={() => syncNow()}
+                  disabled={isSyncing || !isOnline}
+                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
                 >
-                  <Icon
-                    className={cn(
-                      "h-4 w-4 transition-colors",
-                      active ? item.activeColor : item.color,
-                    )}
-                  />
-                  <span>{navLabel(item.href)}</span>
-                  {item.href === "/watch-queue" && watchQueueCount > 0 && (
-                    <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-white">
-                      {watchQueueCount}
+                  {isSyncing ? <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" /> : <CloudUpload className="mr-1.5 h-4 w-4" />}
+                  <span className="hidden sm:inline">{`${pendingCount} ${t("shell.pending")}`}</span>
+                  <span className="sm:hidden">{pendingCount}</span>
+                </Button>
+              )}
+              {isSuperAdmin && isViewingOtherTeam && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="button-stealth-toggle"
+                  onClick={() => toggleStealth(!user?.stealth)}
+                  className={cn(
+                    "text-muted-foreground hover:text-foreground hover:bg-muted",
+                    isStealthActive && "text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400"
+                  )}
+                  title={isStealthActive ? t("shell.stealthOn") : t("shell.stealth")}
+                >
+                  {isStealthActive ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                </Button>
+              )}
+              {isSuperAdmin && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="button-incognito-toggle"
+                  onClick={() => toggleIncognito(!user?.incognito)}
+                  className={cn(
+                    "text-muted-foreground hover:text-foreground hover:bg-muted",
+                    user?.incognito && "text-purple-600 bg-purple-50 dark:bg-purple-900/30 dark:text-purple-400"
+                  )}
+                  title={user?.incognito ? t("shell.incognitoOn") : t("shell.incognito")}
+                >
+                  {user?.incognito ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              )}
+              {(isSuperAdmin || isTeamAdmin) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="button-mail"
+                  onClick={() => navigate("/inbox")}
+                  className="relative text-muted-foreground hover:text-foreground hover:bg-muted"
+                  title={t("shell.inbox")}
+                >
+                  <Mail className="h-4 w-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                      {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
                   )}
-                </AppLink>
-              );
-            })}
-          </nav>
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="button-theme-toggle"
+                onClick={toggleTheme}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted"
+              >
+                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+              <AppLink
+                href="/my-account"
+                testId="link-profile"
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <UserCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">{user?.name}</span>
+              </AppLink>
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="button-logout"
+                onClick={() => logout()}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Nav row — visible below xl, hidden at xl+ (where it lives inline above) */}
+          {/* Also hidden on mobile when bottom-nav is active, shown on sm+ */}
+          <div className={cn("xl:hidden pb-2.5", mobileNavEnabled && "hidden sm:block")}>
+            <nav className="flex flex-wrap items-center gap-1" data-testid="nav-primary-compact">
+              {navItems}
+            </nav>
+          </div>
+
         </div>
       </header>
 
@@ -570,10 +567,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
 
+      {/* No outer card wrapper — pages float their own cards on the fs-grid background */}
       <main className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 py-6">
-        <div className="fs-card rounded-2xl p-4 sm:p-6">
-          <ErrorBoundary>{children}</ErrorBoundary>
-        </div>
+        <ErrorBoundary>{children}</ErrorBoundary>
       </main>
 
       {mobileNavEnabled && (

@@ -1380,21 +1380,35 @@ export default function Tests() {
                 const w = t.weatherId ? weatherById.get(t.weatherId) : null;
                 return (
                   <AppLink key={t.id} href={`/tests/${t.id}`} testId={`link-test-${t.id}`}>
-                    <Card className="fs-card rounded-2xl p-4 transition-all duration-200 hover:bg-card/90 hover:shadow-lg hover:shadow-primary/5 cursor-pointer" data-testid={`card-test-${t.id}`}>
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
+                    <Card className="fs-card rounded-2xl p-4 transition-all duration-200 hover:shadow-md hover:shadow-black/[0.07] cursor-pointer group" data-testid={`card-test-${t.id}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          {/* Title row: type badge + test name */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold shrink-0", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
                               {t.testType}
                             </span>
-                            <span className="text-base font-semibold">{t.testName || t.location}</span>
+                            <span className="text-sm font-semibold group-hover:text-primary transition-colors truncate">
+                              {t.testName || t.location}
+                            </span>
                           </div>
-                          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          {/* Meta: date · series */}
+                          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                             <span>{fmtDate(t.date)}</span>
                             {t.startTime && <span className="font-mono tabular-nums">{t.startTime}</span>}
+                            {((t as any).seriesName || seriesById.get(t.seriesId)) && (
+                              <>
+                                <span className="text-border">·</span>
+                                <span className="font-medium text-foreground/60">{(t as any).seriesName || seriesById.get(t.seriesId)}</span>
+                              </>
+                            )}
                             <span className="text-border">·</span>
-                            <span>{(t as any).seriesName || seriesById.get(t.seriesId) || ""}</span>
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              {t.location}
+                            </span>
                           </div>
+                          {/* Weather chips */}
                           {w && (
                             <div className="mt-2 flex flex-wrap gap-1.5">
                               <span className="inline-flex items-center gap-1 rounded-full fs-gradient-blue px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-500/10">
@@ -1420,26 +1434,22 @@ export default function Tests() {
                               )}
                             </div>
                           )}
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            <span className="text-foreground/70">{t.createdByName}</span>
-                            <span className="text-border"> · </span>
-                            <span>{t.groupScope}</span>
+                          {/* Created by + winner on same bottom row */}
+                          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span className="text-xs text-muted-foreground">{t.createdByName}</span>
+                            {!hideDayDetails && winner && (
+                              <div
+                                className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500/15 to-emerald-400/5 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-200"
+                                data-testid={`badge-winner-${t.id}`}
+                              >
+                                <Trophy className="h-3 w-3" />
+                                {winner.productName}
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <div className="inline-flex rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground">
-                            {new Date(t.createdAt).toLocaleDateString()}
-                          </div>
-                          {!hideDayDetails && winner && (
-                            <div
-                              className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500/15 to-emerald-400/5 px-3 py-1 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-200"
-                              data-testid={`badge-winner-${t.id}`}
-                            >
-                              <Trophy className="h-3 w-3" />
-                              {winner.productName}
-                            </div>
-                          )}
-                        </div>
+                        {/* Right arrow — indicates clickable */}
+                        <ChevronDown className="h-4 w-4 -rotate-90 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors shrink-0 mt-0.5" />
                       </div>
                     </Card>
                   </AppLink>

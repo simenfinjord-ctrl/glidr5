@@ -39,8 +39,8 @@ export function GlidrIcon({ className, size = 32 }: { className?: string; size?:
       <BadgeDefs idSuffix="icon" />
       <rect width="100" height="100" rx="22" fill="url(#g-bg-icon)" />
       <rect width="100" height="100" rx="22" fill="url(#g-shine-icon)" />
-      <polyline
-        points={G}
+      <path
+        d={G}
         stroke="white"
         strokeWidth="9.5"
         fill="none"
@@ -83,8 +83,8 @@ export function GlidrLogo({
         <BadgeDefs idSuffix="logo" />
         <rect width="100" height="100" rx="22" fill="url(#g-bg-logo)" />
         <rect width="100" height="100" rx="22" fill="url(#g-shine-logo)" />
-        <polyline
-          points={G}
+        <path
+          d={G}
           stroke="white"
           strokeWidth="9.5"
           fill="none"

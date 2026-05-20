@@ -2365,7 +2365,7 @@ export async function registerRoutes(
         (pool as any).query(
           `SELECT te.*, p.brand, p.name as product_name FROM test_entries te
            LEFT JOIN products p ON p.id = te.product_id
-           WHERE te.test_id = $1 ORDER BY COALESCE(te.rank0km, 999)`,
+           WHERE te.test_id = $1 ORDER BY COALESCE(te.rank_0km, 999)`,
           [testId]
         ),
         (pool as any).query(

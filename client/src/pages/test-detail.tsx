@@ -611,7 +611,9 @@ export default function TestDetail() {
     try {
     const res = await fetch(`/api/tests/${id}/pdf`, { credentials: "include" });
     if (!res.ok) {
-      toast({ title: "PDF failed", description: `Server returned ${res.status}`, variant: "destructive" });
+      let errMsg = `Server returned ${res.status}`;
+      try { const body = await res.json(); if (body?.message) errMsg = body.message; } catch {}
+      toast({ title: "PDF failed", description: errMsg, variant: "destructive" });
       return;
     }
     const { test: pdfTest, entries: pdfEntries, weather: pdfWeather, comments: pdfComments } = await res.json();

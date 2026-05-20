@@ -40,6 +40,7 @@ import { useAuth, type UserPermissions } from "@/lib/auth";
 import { useOffline } from "@/lib/offline-context";
 import { useTheme } from "@/lib/theme";
 import { AppLink } from "@/components/app-link";
+import { CommandSearch } from "@/components/command-search";
 import { MobileNav, useMobileNav } from "@/components/mobile-nav";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -454,6 +455,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             {/* Right: status indicators + controls (all preserved) */}
             <div className="flex items-center gap-1.5 shrink-0">
+              <CommandSearch />
               {!isOnline && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200" data-testid="badge-offline">
                   <WifiOff className="h-3 w-3" />

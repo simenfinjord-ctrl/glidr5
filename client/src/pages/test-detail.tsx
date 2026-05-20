@@ -1,9 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch, ImageIcon } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch, ImageIcon, MessageSquare, Send } from "lucide-react";
 import { generateTestPDF } from "@/lib/pdf-report";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -288,6 +290,122 @@ function AttachmentsSection({ testId }: { testId: number }) {
   );
 }
 
+function CommentsSection({ testId }: { testId: number }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [content, setContent] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const { data: comments = [], isLoading } = useQuery<any[]>({
+    queryKey: [`/api/tests/${testId}/comments`],
+    queryFn: async () => {
+      const res = await fetch(`/api/tests/${testId}/comments`, { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!content.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/tests/${testId}/comments`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: content.trim() }),
+      });
+      if (!res.ok) throw new Error();
+      setContent("");
+      queryClient.invalidateQueries({ queryKey: [`/api/tests/${testId}/comments`] });
+    } catch {
+      toast({ title: "Error", description: "Could not post comment.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function deleteComment(id: number) {
+    await fetch(`/api/comments/${id}`, { method: "DELETE", credentials: "include" });
+    queryClient.invalidateQueries({ queryKey: [`/api/tests/${testId}/comments`] });
+  }
+
+  function formatTime(ts: string) {
+    const d = new Date(ts);
+    return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  return (
+    <div className="fs-card rounded-2xl p-4 sm:p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50">
+          <MessageSquare className="h-4 w-4 text-blue-600" />
+        </div>
+        <h2 className="text-base font-semibold">Comments</h2>
+        {comments.length > 0 && (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{comments.length}</span>
+        )}
+      </div>
+
+      {/* Comment list */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1,2].map(i => <div key={i} className="h-14 rounded-xl bg-muted/40 animate-pulse" />)}
+        </div>
+      ) : comments.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No comments yet. Be the first!</p>
+      ) : (
+        <div className="space-y-3">
+          {comments.map((c: any) => (
+            <div key={c.id} className="flex items-start gap-3 group">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
+                {c.user_name?.[0]?.toUpperCase() ?? "?"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm font-semibold">{c.user_name}</span>
+                  <span className="text-xs text-muted-foreground">{formatTime(c.created_at)}</span>
+                </div>
+                <p className="mt-0.5 text-sm text-foreground/90 whitespace-pre-wrap break-words">{c.content}</p>
+              </div>
+              {(user?.id === c.user_id || (user as any)?.isAdmin) && (
+                <button
+                  onClick={() => deleteComment(c.id)}
+                  className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all shrink-0"
+                  title="Delete"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Input */}
+      <form onSubmit={submit} className="flex items-end gap-2">
+        <textarea
+          ref={inputRef}
+          value={content}
+          onChange={e => setContent(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(e as any); } }}
+          placeholder="Write a comment… (use @name to mention someone)"
+          className="flex-1 min-h-[60px] max-h-[160px] resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          maxLength={2000}
+          data-testid="input-comment"
+        />
+        <Button type="submit" size="sm" disabled={submitting || !content.trim()} className="h-9 gap-1.5">
+          <Send className="h-3.5 w-3.5" />
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 export default function TestDetail() {
   const [, params] = useRoute("/tests/:id");
   const id = params?.id;
@@ -489,6 +607,100 @@ export default function TestDetail() {
   }
   // ────────────────────────────────────────────────────────────────────────────
 
+  async function generatePDF() {
+    const res = await fetch(`/api/tests/${id}/pdf`, { credentials: "include" });
+    if (!res.ok) return;
+    const { test: pdfTest, entries: pdfEntries, weather: pdfWeather, comments: pdfComments } = await res.json();
+
+    const doc = new jsPDF();
+    const pageW = doc.internal.pageSize.getWidth();
+
+    // Header
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text(pdfTest.test_name || pdfTest.location, 14, 20);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100);
+    doc.text(`${pdfTest.date}  ·  ${pdfTest.test_type}  ·  ${pdfTest.location}`, 14, 28);
+    if (pdfTest.series_name) doc.text(`Series: ${pdfTest.series_name}`, 14, 34);
+
+    let y = pdfTest.series_name ? 44 : 38;
+
+    // Weather
+    if (pdfWeather) {
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0);
+      doc.text("Weather conditions", 14, y);
+      y += 6;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(80);
+      const wx = [
+        pdfWeather.air_temperature_c != null ? `Air: ${pdfWeather.air_temperature_c}°C` : null,
+        pdfWeather.snow_temperature_c != null ? `Snow: ${pdfWeather.snow_temperature_c}°C` : null,
+        pdfWeather.air_humidity_pct != null ? `Air humidity: ${pdfWeather.air_humidity_pct}%` : null,
+        pdfWeather.snow_humidity_pct != null ? `Snow humidity: ${pdfWeather.snow_humidity_pct}%` : null,
+        pdfWeather.snow_type ? `Snow type: ${pdfWeather.snow_type}` : null,
+      ].filter(Boolean).join("   ");
+      doc.text(wx, 14, y);
+      y += 10;
+    }
+
+    // Results table
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0);
+    doc.text("Results", 14, y);
+    y += 4;
+
+    autoTable(doc, {
+      startY: y,
+      head: [["Rank", "Ski #", "Product", "Methodology", "Result"]],
+      body: pdfEntries.map((e: any) => [
+        e.rank0km ?? "—",
+        e.ski_number,
+        e.brand ? `${e.brand} ${e.product_name}` : "—",
+        e.methodology || "—",
+        e.result0km_cm_behind != null ? `${e.result0km_cm_behind} cm` : "—",
+      ]),
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [24, 24, 27], textColor: 255 },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+      margin: { left: 14, right: 14 },
+    });
+
+    // Comments
+    if (pdfComments.length > 0) {
+      const finalY = (doc as any).lastAutoTable?.finalY ?? 200;
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0);
+      doc.text("Comments", 14, finalY + 10);
+      let cy = finalY + 18;
+      for (const c of pdfComments) {
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${c.user_name}`, 14, cy);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(80);
+        const lines = doc.splitTextToSize(c.content, pageW - 28);
+        doc.text(lines, 14, cy + 5);
+        cy += 5 + lines.length * 5 + 4;
+        doc.setTextColor(0);
+      }
+    }
+
+    // Footer
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text(`Generated by Glidr · ${new Date().toLocaleDateString()}`, 14, doc.internal.pageSize.getHeight() - 10);
+
+    doc.save(`${pdfTest.test_name || pdfTest.location}-${pdfTest.date}.pdf`);
+  }
+
   if (testLoading) {
     return (
       <AppShell>
@@ -556,6 +768,10 @@ export default function TestDetail() {
                   {t("newTest.duplicateTest")}
                 </Button>
               </AppLink>
+              <Button variant="outline" size="sm" onClick={generatePDF} className="gap-1.5" data-testid="button-download-pdf">
+                <FileText className="h-4 w-4" />
+                PDF
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -1045,6 +1261,8 @@ export default function TestDetail() {
         </Card>
 
         <AttachmentsSection testId={test.id} />
+
+        <CommentsSection testId={test.id} />
 
         {sortedEntries.length >= 2 && (
           <RunsheetDialog

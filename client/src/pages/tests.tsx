@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, useRef, useCallback } from "react";
-import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus, ChevronDown } from "lucide-react";
+import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus, ChevronDown, Calendar } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { AppShell } from "@/components/app-shell";
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { cn, fmtDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { SkeletonCards } from "@/components/skeleton-card";
 
 type Test = {
   id: number;
@@ -605,12 +606,139 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   );
 }
 
+function CalendarView({
+  tests,
+  seriesById,
+  winnersByTest,
+  isBlindTester,
+}: {
+  tests: Test[];
+  seriesById: Map<number, string>;
+  winnersByTest: Map<number, { productName: string; skiNumber: number } | null>;
+  isBlindTester: boolean;
+}) {
+  const [, navigate] = useLocation();
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth()); // 0-indexed
+
+  const testsByDate = useMemo(() => {
+    const map = new Map<string, Test[]>();
+    for (const t of tests) {
+      if (!map.has(t.date)) map.set(t.date, []);
+      map.get(t.date)!.push(t);
+    }
+    return map;
+  }, [tests]);
+
+  // Build days grid for the current month
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  // Start on Monday (1), not Sunday (0)
+  const startOffset = (firstDay.getDay() + 6) % 7;
+  const totalCells = startOffset + lastDay.getDate();
+  const weeks = Math.ceil(totalCells / 7);
+  const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  const TYPE_COLOR: Record<string, string> = {
+    Glide: "bg-emerald-500",
+    Structure: "bg-sky-500",
+    Classic: "bg-violet-500",
+    Skating: "bg-orange-500",
+    Grind: "bg-indigo-500",
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Month navigation */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); }}
+          className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
+        >
+          ‹
+        </button>
+        <span className="font-semibold">{MONTH_NAMES[month]} {year}</span>
+        <button
+          onClick={() => { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); }}
+          className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
+        >
+          ›
+        </button>
+      </div>
+
+      {/* Grid */}
+      <div className="fs-card rounded-2xl overflow-hidden">
+        {/* Day labels */}
+        <div className="grid grid-cols-7 border-b border-border">
+          {DAY_LABELS.map(d => (
+            <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-muted-foreground">{d}</div>
+          ))}
+        </div>
+        {/* Weeks */}
+        {Array.from({ length: weeks }).map((_, weekIdx) => (
+          <div key={weekIdx} className="grid grid-cols-7 border-b border-border last:border-b-0">
+            {Array.from({ length: 7 }).map((_, dayIdx) => {
+              const cellIdx = weekIdx * 7 + dayIdx;
+              const dayNum = cellIdx - startOffset + 1;
+              if (dayNum < 1 || dayNum > lastDay.getDate()) {
+                return <div key={dayIdx} className="min-h-[70px] border-r border-border last:border-r-0 bg-muted/20" />;
+              }
+              const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+              const dayTests = testsByDate.get(dateStr) ?? [];
+              const isToday = dateStr === today.toISOString().slice(0, 10);
+              return (
+                <div key={dayIdx} className="min-h-[70px] border-r border-border last:border-r-0 p-1.5">
+                  <div className={cn(
+                    "mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium",
+                    isToday ? "bg-primary text-primary-foreground" : "text-foreground"
+                  )}>
+                    {dayNum}
+                  </div>
+                  <div className="space-y-0.5">
+                    {dayTests.slice(0, 3).map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => navigate(`/tests/${t.id}`)}
+                        className="w-full text-left truncate rounded px-1.5 py-0.5 text-[10px] font-medium hover:opacity-80 transition-opacity flex items-center gap-1"
+                        style={{ backgroundColor: `hsl(var(--muted))` }}
+                        data-testid={`calendar-test-${t.id}`}
+                      >
+                        <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", TYPE_COLOR[t.testType] ?? "bg-gray-400")} />
+                        <span className="truncate">{t.testName || t.location}</span>
+                      </button>
+                    ))}
+                    {dayTests.length > 3 && (
+                      <div className="text-[9px] text-muted-foreground pl-1">+{dayTests.length - 3} more</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+        {Object.entries(TYPE_COLOR).map(([type, color]) => (
+          <span key={type} className="flex items-center gap-1.5">
+            <span className={cn("h-2 w-2 rounded-full", color)} />
+            {type}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Tests() {
   const [, navigate] = useLocation();
   const { t } = useI18n();
   const { isBlindTester, can } = useAuth();
   const canViewGrinding = can("grinding", "view");
-  const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
+  const { data: tests = [], isLoading: testsLoading } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
@@ -795,9 +923,9 @@ export default function Tests() {
   }
 
   const [hideDayDetailsState, setHideDayDetails] = useState(false);
-  const [viewMode, setViewMode] = useState<"cards" | "cards2" | "table">(() => {
+  const [viewMode, setViewMode] = useState<"cards" | "cards2" | "table" | "calendar">(() => {
     const saved = localStorage.getItem("glidr-tests-viewmode");
-    if (saved === "table" || saved === "cards2") return saved;
+    if (saved === "table" || saved === "cards2" || saved === "calendar") return saved;
     if (localStorage.getItem("glidr-tests-twocol") === "true") return "cards2";
     return "cards";
   });
@@ -806,7 +934,7 @@ export default function Tests() {
   const isDayView = !!filterDate;
 
   function cycleViewMode() {
-    const next = viewMode === "cards" ? "cards2" : viewMode === "cards2" ? "table" : "cards";
+    const next = viewMode === "cards" ? "cards2" : viewMode === "cards2" ? "table" : viewMode === "table" ? "calendar" : "cards";
     setViewMode(next);
     localStorage.setItem("glidr-tests-viewmode", next);
     localStorage.setItem("glidr-tests-twocol", String(next === "cards2"));
@@ -892,9 +1020,9 @@ export default function Tests() {
               className="h-9 w-9 shrink-0"
               onClick={cycleViewMode}
               data-testid="button-toggle-layout-list"
-              title={viewMode === "cards" ? t("tests.singleColumn") : viewMode === "cards2" ? t("tests.twoColumns") : t("tests.tableView")}
+              title={viewMode === "cards" ? t("tests.singleColumn") : viewMode === "cards2" ? t("tests.twoColumns") : viewMode === "table" ? t("tests.tableView") : "Calendar"}
             >
-              {viewMode === "table" ? <Table2 className="h-4 w-4" /> : viewMode === "cards2" ? <LayoutGrid className="h-4 w-4" /> : <LayoutList className="h-4 w-4" />}
+              {viewMode === "table" ? <Table2 className="h-4 w-4" /> : viewMode === "cards2" ? <LayoutGrid className="h-4 w-4" /> : viewMode === "calendar" ? <Calendar className="h-4 w-4" /> : <LayoutList className="h-4 w-4" />}
             </Button>
           </div>
 
@@ -1048,6 +1176,8 @@ export default function Tests() {
           </div>
         </Card>
 
+        {testsLoading && <SkeletonCards count={5} />}
+
         {isDayView ? (
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2 flex-wrap">
@@ -1070,9 +1200,9 @@ export default function Tests() {
                 size="sm"
                 onClick={cycleViewMode}
                 data-testid="button-toggle-layout"
-                title={viewMode === "cards" ? t("tests.singleColumn") : viewMode === "cards2" ? t("tests.twoColumns") : t("tests.tableView")}
+                title={viewMode === "cards" ? t("tests.singleColumn") : viewMode === "cards2" ? t("tests.twoColumns") : viewMode === "table" ? t("tests.tableView") : "Calendar"}
               >
-                {viewMode === "table" ? <Table2 className="h-3.5 w-3.5" /> : viewMode === "cards2" ? <LayoutGrid className="h-3.5 w-3.5" /> : <LayoutList className="h-3.5 w-3.5" />}
+                {viewMode === "table" ? <Table2 className="h-3.5 w-3.5" /> : viewMode === "cards2" ? <LayoutGrid className="h-3.5 w-3.5" /> : viewMode === "calendar" ? <Calendar className="h-3.5 w-3.5" /> : <LayoutList className="h-3.5 w-3.5" />}
               </Button>
             </div>
             {filtered.length === 0 ? (
@@ -1368,6 +1498,8 @@ export default function Tests() {
               </div>
             )}
           </Card>
+        ) : viewMode === "calendar" ? (
+          <CalendarView tests={filtered} seriesById={seriesById} winnersByTest={winnersByTest} isBlindTester={isBlindTester} />
         ) : (
           <div className={cn("grid gap-3", twoColLayout ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1")}>
             {filtered.length === 0 ? (

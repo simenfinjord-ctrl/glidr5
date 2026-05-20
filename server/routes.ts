@@ -433,6 +433,28 @@ export async function registerRoutes(
         uploaded_by_id INTEGER
       )
     `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS client_errors (
+        id SERIAL PRIMARY KEY,
+        message TEXT,
+        stack TEXT,
+        component_stack TEXT,
+        label TEXT,
+        href TEXT,
+        user_agent TEXT,
+        user_id INTEGER,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS test_comments (
+        id SERIAL PRIMARY KEY,
+        test_id INTEGER NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL,
+        user_name TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS test_comments_test_id_idx ON test_comments(test_id);
+    `);
   }
 
   // --- Maintenance mode gate (runs before all other /api routes) ---
@@ -457,6 +479,28 @@ export async function registerRoutes(
 
   // --- Health check (used by keep-alive ping) ---
   app.get("/api/health", (_req, res) => res.json({ ok: true, ts: Date.now() }));
+
+  // --- Client error logging (no auth required, never crashes) ---
+  app.post("/api/client-errors", async (req, res) => {
+    const { message, stack, componentStack, label, href, ua } = req.body;
+    try {
+      const { pool } = await import("./db");
+      await (pool as any).query(
+        `INSERT INTO client_errors (message, stack, component_stack, label, href, user_agent, user_id, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())`,
+        [
+          String(message ?? "").slice(0, 500),
+          String(stack ?? "").slice(0, 2000),
+          String(componentStack ?? "").slice(0, 2000),
+          String(label ?? "").slice(0, 100),
+          String(href ?? "").slice(0, 200),
+          String(ua ?? "").slice(0, 300),
+          (req as any).user?.id ?? null,
+        ]
+      );
+    } catch {} // Never crash on error logging
+    return res.json({ ok: true });
+  });
 
   // --- Public app settings (no auth required) ---
   // SA-only: send a test email to verify Resend is working
@@ -529,6 +573,63 @@ export async function registerRoutes(
       await db.execute(sql`UPDATE app_settings SET value = ${commercializationEnabled ? 'true' : 'false'} WHERE key = 'commercialization_enabled'`);
     }
     res.json({ ok: true });
+  });
+
+  // --- Global search ---
+  app.get("/api/search", requireAuth, async (req, res) => {
+    const q = String(req.query.q ?? "").trim();
+    if (q.length < 2) return res.json([]);
+    const u = req.user!;
+    const teamId = u.activeTeamId || u.teamId;
+    const like = `%${q.toLowerCase()}%`;
+    const { pool } = await import("./db");
+
+    const [testsRes, productsRes, skisRes] = await Promise.all([
+      (pool as any).query(
+        `SELECT id, test_name, location, date, test_type FROM tests
+         WHERE team_id = $1 AND (LOWER(test_name) LIKE $2 OR LOWER(location) LIKE $2)
+         ORDER BY date DESC LIMIT 8`,
+        [teamId, like]
+      ),
+      (pool as any).query(
+        `SELECT id, brand, name, category FROM products
+         WHERE team_id = $1 AND (LOWER(brand) LIKE $2 OR LOWER(name) LIKE $2)
+         ORDER BY brand, name LIMIT 8`,
+        [teamId, like]
+      ),
+      (pool as any).query(
+        `SELECT tss.id, tss.name FROM test_ski_series tss
+         WHERE tss.team_id = $1 AND LOWER(tss.name) LIKE $2
+         ORDER BY tss.name LIMIT 5`,
+        [teamId, like]
+      ),
+    ]);
+
+    const results = [
+      ...testsRes.rows.map((r: any) => ({
+        type: "test" as const,
+        id: r.id,
+        title: r.test_name || r.location,
+        subtitle: `${r.date} · ${r.test_type} · ${r.location}`,
+        href: `/tests/${r.id}`,
+      })),
+      ...productsRes.rows.map((r: any) => ({
+        type: "product" as const,
+        id: r.id,
+        title: `${r.brand} ${r.name}`,
+        subtitle: r.category,
+        href: `/products`,
+      })),
+      ...skisRes.rows.map((r: any) => ({
+        type: "series" as const,
+        id: r.id,
+        title: r.name,
+        subtitle: "Test ski series",
+        href: `/testskis`,
+      })),
+    ];
+
+    return res.json(results);
   });
 
   // --- Teams CRUD ---
@@ -2189,6 +2290,111 @@ export async function registerRoutes(
     res.setHeader("Content-Type", mime_type);
     res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
     res.send(buf);
+  });
+
+  // GET comments for a test
+  app.get("/api/tests/:id/comments", requireAuth, async (req, res) => {
+    const testId = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT id, test_id, user_id, user_name, content, created_at FROM test_comments WHERE test_id = $1 ORDER BY created_at ASC`,
+      [testId]
+    );
+    return res.json(result.rows);
+  });
+
+  // POST a new comment
+  app.post("/api/tests/:id/comments", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const testId = parseInt(req.params.id);
+    const content = String(req.body.content ?? "").trim();
+    if (!content || content.length > 2000) return res.status(400).json({ message: "Invalid comment" });
+
+    const { pool } = await import("./db");
+
+    const result = await (pool as any).query(
+      `INSERT INTO test_comments (test_id, user_id, user_name, content) VALUES ($1,$2,$3,$4) RETURNING *`,
+      [testId, u.id, u.name, content]
+    );
+    const comment = result.rows[0];
+
+    // Parse @username mentions and send inbox messages
+    const mentions = [...content.matchAll(/@([a-zA-Z0-9._-]+)/g)].map(m => m[1].toLowerCase());
+    if (mentions.length > 0) {
+      const teamId = u.activeTeamId || u.teamId;
+      const mentionedUsers = await (pool as any).query(
+        `SELECT id, name FROM users WHERE team_id = $1 AND LOWER(name) LIKE ANY($2) AND id != $3`,
+        [teamId, mentions.map((m: string) => `%${m}%`), u.id]
+      );
+      const testRow = await (pool as any).query(`SELECT test_name, location, date FROM tests WHERE id = $1`, [testId]);
+      const testLabel = testRow.rows[0]?.test_name || testRow.rows[0]?.location || `Test #${testId}`;
+      for (const mentioned of mentionedUsers.rows) {
+        await (pool as any).query(
+          `INSERT INTO inbox_messages (team_id, to_user_id, from_user_id, subject, body, created_at)
+           VALUES ($1,$2,$3,$4,$5,NOW())`,
+          [
+            teamId,
+            mentioned.id,
+            u.id,
+            `${u.name} mentioned you in ${testLabel}`,
+            content,
+          ]
+        );
+      }
+    }
+
+    return res.status(201).json(comment);
+  });
+
+  // GET PDF data for a test
+  app.get("/api/tests/:id/pdf", requireAuth, async (req, res) => {
+    const testId = parseInt(req.params.id);
+    const u = req.user!;
+    const { pool } = await import("./db");
+
+    const [testRes, entriesRes, weatherRes, commentsRes] = await Promise.all([
+      (pool as any).query(
+        `SELECT t.*, s.name as series_name FROM tests t
+         LEFT JOIN test_ski_series s ON s.id = t.series_id
+         WHERE t.id = $1 AND t.team_id = $2`,
+        [testId, u.activeTeamId || u.teamId]
+      ),
+      (pool as any).query(
+        `SELECT te.*, p.brand, p.name as product_name FROM test_entries te
+         LEFT JOIN products p ON p.id = te.product_id
+         WHERE te.test_id = $1 ORDER BY COALESCE(te.rank0km, 999)`,
+        [testId]
+      ),
+      (pool as any).query(
+        `SELECT * FROM daily_weather WHERE id = (SELECT weather_id FROM tests WHERE id = $1)`,
+        [testId]
+      ),
+      (pool as any).query(
+        `SELECT user_name, content, created_at FROM test_comments WHERE test_id = $1 ORDER BY created_at ASC`,
+        [testId]
+      ),
+    ]);
+
+    if (!testRes.rows.length) return res.status(404).json({ message: "Not found" });
+    const test = testRes.rows[0];
+    const entries = entriesRes.rows;
+    const weather = weatherRes.rows[0] ?? null;
+    const comments = commentsRes.rows;
+
+    // Build HTML and return as JSON for client-side PDF generation
+    return res.json({ test, entries, weather, comments });
+  });
+
+  // DELETE own comment (or admin)
+  app.delete("/api/comments/:id", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const commentId = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const existing = await (pool as any).query(`SELECT user_id FROM test_comments WHERE id = $1`, [commentId]);
+    if (!existing.rows.length) return res.status(404).json({ message: "Not found" });
+    if (existing.rows[0].user_id !== u.id && !u.isAdmin) return res.status(403).json({ message: "Forbidden" });
+    await (pool as any).query(`DELETE FROM test_comments WHERE id = $1`, [commentId]);
+    return res.json({ ok: true });
   });
 
   app.get("/api/tests/:id/entries", requireAuth, async (req, res) => {

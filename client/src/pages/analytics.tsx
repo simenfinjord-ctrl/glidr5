@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft } from "lucide-react";
 import React from "react";
+import { ErrorBoundary } from "@/components/error-boundary";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter, Cell,
 } from "recharts";
@@ -2046,33 +2047,39 @@ export default function Analytics() {
 
         {/* Products tab */}
         {activeTab === "products" && (
-          <ProductSearchStats
-            products={products}
-            tests={tests}
-            allEntries={allEntries}
-            productsById={productsById}
-            testsById={testsById}
-            weatherById={weatherById}
-          />
-        )}
-
-        {/* Compare tab */}
-        {activeTab === "compare" && (
-          <>
-            <ProductCompare
+          <ErrorBoundary label="Products">
+            <ProductSearchStats
               products={products}
-              allEntries={allEntries}
-              productsById={productsById}
-              testsById={testsById}
-              filteredTestIds={filteredTestIds}
-            />
-            <CombinationSearch
-              products={products}
+              tests={tests}
               allEntries={allEntries}
               productsById={productsById}
               testsById={testsById}
               weatherById={weatherById}
             />
+          </ErrorBoundary>
+        )}
+
+        {/* Compare tab */}
+        {activeTab === "compare" && (
+          <>
+            <ErrorBoundary label="Compare">
+              <ProductCompare
+                products={products}
+                allEntries={allEntries}
+                productsById={productsById}
+                testsById={testsById}
+                filteredTestIds={filteredTestIds}
+              />
+            </ErrorBoundary>
+            <ErrorBoundary label="Combination search">
+              <CombinationSearch
+                products={products}
+                allEntries={allEntries}
+                productsById={productsById}
+                testsById={testsById}
+                weatherById={weatherById}
+              />
+            </ErrorBoundary>
           </>
         )}
 

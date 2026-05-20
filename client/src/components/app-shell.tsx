@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect } from "react";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -570,7 +571,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <main className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 py-6">
-        <div className="fs-card rounded-2xl p-4 sm:p-6">{children}</div>
+        <div className="fs-card rounded-2xl p-4 sm:p-6">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </div>
       </main>
 
       {mobileNavEnabled && (

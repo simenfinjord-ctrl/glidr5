@@ -2,11 +2,9 @@ import { useState, useMemo, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, EyeOff, Eye, Download, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch, ImageIcon, MessageSquare, Send } from "lucide-react";
-import { generateTestPDF } from "@/lib/pdf-report";
+import { ArrowLeft, EyeOff, Eye, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch, ImageIcon, MessageSquare, Send } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -1030,75 +1028,6 @@ export default function TestDetail() {
             </div>
             <div className="flex items-center gap-2">
               {!isBlindTester && <>
-              <Button
-                variant="outline"
-                size="sm"
-                data-testid="button-export-pdf"
-                onClick={async () => {
-                  const seriesMap = new Map(series.map((s) => [s.id, s]));
-                  generateTestPDF(test, entries, productsById, seriesMap, weather ?? null, user?.name ?? "Unknown");
-                  try {
-                    const s = seriesMap.get(test.seriesId);
-                    await apiRequest("POST", "/api/action-log", {
-                      action: "pdf_download",
-                      details: `Test ${test.date} — ${s?.name || ""}`,
-                    });
-                  } catch (_) {}
-                }}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                PDF
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                data-testid="button-export-xlsx"
-                onClick={() => {
-                  const wb = XLSX.utils.book_new();
-                  const rows = sortedEntries.map((entry) => {
-                    const prod = entry.productId ? productsById.get(entry.productId) : null;
-                    const additionalIds = entry.additionalProductIds
-                      ? entry.additionalProductIds.split(",").map(Number).filter((n) => !isNaN(n) && n > 0)
-                      : [];
-                    const allProducts = [
-                      prod ? `${prod.brand} ${prod.name}` : null,
-                      ...additionalIds.map((aid: number) => {
-                        const p = productsById.get(aid);
-                        return p ? `${p.brand} ${p.name}` : null;
-                      }),
-                    ].filter(Boolean).join(" + ");
-                    const rounds = getEntryRounds(entry, distLabels.length);
-                    const row: Record<string, string | number> = {
-                      Rank: rounds[0]?.rank ?? "",
-                      "Ski No.": entry.skiNumber,
-                      Product: allProducts,
-                      Method: entry.methodology,
-                    };
-                    distLabels.forEach((label, i) => {
-                      const lbl = label?.trim() || `Round ${i + 1}`;
-                      row[`Result ${lbl}`] = rounds[i]?.result ?? "";
-                      row[`Rank ${lbl}`] = rounds[i]?.rank ?? "";
-                    });
-                    row["Feeling"] = entry.feelingRank ?? "";
-                    if (isClassic) row["Kick"] = entry.kickRank ?? "";
-                    return row;
-                  });
-                  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Results");
-                  // Confidential metadata sheet
-                  const metaWs = XLSX.utils.aoa_to_sheet([
-                    ["CONFIDENTIAL — Glidr Ski Testing Platform"],
-                    [`Exported by: ${user?.name ?? "Unknown"}`],
-                    [`Test: ${test.location} · ${test.date}`],
-                    [`Exported at: ${new Date().toLocaleString()}`],
-                    ["This file contains confidential ski testing data. Do not distribute."],
-                  ]);
-                  XLSX.utils.book_append_sheet(wb, metaWs, "Export Info");
-                  XLSX.writeFile(wb, `test-${test.location}-${test.date}.xlsx`);
-                }}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Excel
-              </Button>
               {hasWatchAccess && <AddToWatchButton testId={test.id} testName={test.testName || `${test.location} · ${test.date}`} seriesId={test.seriesId} />}
               </>}
               {!isBlindTester && (

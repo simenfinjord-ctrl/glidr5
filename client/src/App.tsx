@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";

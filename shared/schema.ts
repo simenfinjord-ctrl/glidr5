@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { pgTable, text, varchar, integer, real, serial, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";

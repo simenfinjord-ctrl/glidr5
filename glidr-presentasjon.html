@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Glidr — Profesjonelt testsystem for skismøring</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    * { font-family: 'Inter', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    @media print {
+      .page { page-break-after: always; page-break-inside: avoid; }
+      .no-print { display: none; }
+      body { background: white !important; }
+    }
+
+    .page { min-height: 100vh; }
+    .accent { color: #10b981; }
+    .bg-accent { background-color: #10b981; }
+    .bg-accent-light { background-color: #ecfdf5; }
+    .border-accent { border-color: #10b981; }
+    .text-dark { color: #18181b; }
+
+    .feature-dot::before {
+      content: '';
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      margin-right: 8px;
+      flex-shrink: 0;
+      margin-top: 6px;
+    }
+
+    .page-number {
+      position: fixed;
+      bottom: 20px;
+      right: 32px;
+      font-size: 11px;
+      color: #a1a1aa;
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+
+<!-- PRINT BUTTON -->
+<div class="no-print fixed top-4 right-4 z-50 flex gap-2">
+  <button onclick="window.print()" class="bg-zinc-900 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-zinc-700 transition-colors shadow-lg">
+    Skriv ut / Lagre som PDF
+  </button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SIDE 1: FORSIDE                                            -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page bg-zinc-900 flex flex-col justify-between p-16 print:p-12">
+
+  <div class="flex items-center gap-3">
+    <span class="text-2xl font-bold text-white tracking-tight">Glidr</span>
+    <div class="w-2 h-2 rounded-full bg-accent"></div>
+  </div>
+
+  <div>
+    <div class="inline-block bg-accent/20 border border-accent/30 rounded-full px-4 py-1.5 text-sm font-medium text-emerald-400 mb-8">
+      Profesjonelt testsystem for skismøring
+    </div>
+    <h1 class="text-5xl font-bold text-white leading-tight mb-6">
+      Slutt å ta<br/>
+      notater på papir.
+    </h1>
+    <p class="text-xl text-zinc-400 max-w-xl leading-relaxed">
+      Glidr er den komplette digitale plattformen for smørelag og ski-team — fra testregistrering i løypa til dyp analyse på kontoret.
+    </p>
+  </div>
+
+  <div class="flex items-end justify-between">
+    <div class="space-y-1">
+      <p class="text-zinc-500 text-sm">Kontakt</p>
+      <p class="text-white font-medium">simen@glidr.no</p>
+      <p class="text-zinc-400 text-sm">glidr.no</p>
+    </div>
+    <div class="text-right">
+      <p class="text-zinc-600 text-xs">© 2025 Glidr. Konfidensielt.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SIDE 2: PROBLEMET                                         -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page bg-white flex flex-col justify-between p-16 print:p-12">
+
+  <div>
+    <p class="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">Situasjonen i dag</p>
+    <h2 class="text-4xl font-bold text-dark mb-12">Slik ser hverdagen<br/>ut for de fleste lag.</h2>
+
+    <div class="grid grid-cols-2 gap-6 mb-12">
+
+      <div class="bg-red-50 border border-red-100 rounded-2xl p-6">
+        <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        </div>
+        <h3 class="font-semibold text-dark mb-2">Papirskjemaer og Excel</h3>
+        <p class="text-sm text-zinc-500 leading-relaxed">Testresultater skrives for hånd, føres inn manuelt og havner i ulike mapper. Historikk fra forrige sesong er nesten umulig å finne igjen.</p>
+      </div>
+
+      <div class="bg-red-50 border border-red-100 rounded-2xl p-6">
+        <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
+        </div>
+        <h3 class="font-semibold text-dark mb-2">Ingen kobling til vær</h3>
+        <p class="text-sm text-zinc-500 leading-relaxed">Testresultater lagres uten værkontekst. To uker senere husker ingen hva temperatur eller snøtype var — og da er dataene nesten verdiløse.</p>
+      </div>
+
+      <div class="bg-red-50 border border-red-100 rounded-2xl p-6">
+        <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <h3 class="font-semibold text-dark mb-2">Kunnskap forsvinner</h3>
+        <p class="text-sm text-zinc-500 leading-relaxed">Når en smører slutter eller bytter lag, tar de all erfaring med seg. Teamets samlede kunnskap fra år med testing forsvinner ut døren.</p>
+      </div>
+
+      <div class="bg-red-50 border border-red-100 rounded-2xl p-6">
+        <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <h3 class="font-semibold text-dark mb-2">Ingen analyse</h3>
+        <p class="text-sm text-zinc-500 leading-relaxed">Med data spredt i excel-ark og notater er det umulig å se mønstre — hvilke produkter vinner i kald snø? Hva fungerer best ved høy luftfuktighet?</p>
+      </div>
+    </div>
+
+    <div class="bg-zinc-900 rounded-2xl p-6 flex items-center gap-5">
+      <div class="w-12 h-12 bg-accent rounded-xl flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      </div>
+      <p class="text-white text-sm leading-relaxed"><strong class="text-emerald-400">Glidr løser alt dette.</strong> Én plattform samler testing, produktbibliotek, vær og analyse — tilgjengelig fra telefon, nettbrett og PC.</p>
+    </div>
+  </div>
+
+  <p class="text-zinc-300 text-xs text-right">© 2025 Glidr · Konfidensielt</p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SIDE 3: LØSNINGEN / FUNKSJONER                            -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page bg-white flex flex-col justify-between p-16 print:p-12">
+
+  <div>
+    <p class="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">Hva du får</p>
+    <h2 class="text-4xl font-bold text-dark mb-10">Alt du trenger,<br/>ingenting du ikke trenger.</h2>
+
+    <div class="grid grid-cols-3 gap-5 mb-8">
+
+      <div class="border border-zinc-100 rounded-2xl p-5 hover:border-emerald-200 transition-colors">
+        <div class="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-4.5 h-4.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        </div>
+        <h3 class="font-semibold text-sm text-dark mb-1.5">Testregistrering</h3>
+        <p class="text-xs text-zinc-500 leading-relaxed">Registrer glide-, struktur- og grindetester direkte i løypa. Støtte for flere runder, metodikk og rangeringer.</p>
+      </div>
+
+      <div class="border border-zinc-100 rounded-2xl p-5">
+        <div class="w-9 h-9 bg-sky-50 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-4.5 h-4.5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
+        </div>
+        <h3 class="font-semibold text-sm text-dark mb-1.5">Automatisk vær</h3>
+        <p class="text-xs text-zinc-500 leading-relaxed">Loggfører luft- og snøtemperatur, fuktighet, snøtype og sporforhold automatisk. Alltid koblet til riktig test.</p>
+      </div>
+
+      <div class="border border-zinc-100 rounded-2xl p-5">
+        <div class="w-9 h-9 bg-amber-50 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-4.5 h-4.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <h3 class="font-semibold text-sm text-dark mb-1.5">Dyp analyse</h3>
+        <p class="text-xs text-zinc-500 leading-relaxed">Sammenlign produkter på tvers av tester, sesonger og værforhold. Finn mønstre du aldri ville sett i Excel.</p>
+      </div>
+
+      <div class="border border-zinc-100 rounded-2xl p-5">
+        <div class="w-9 h-9 bg-violet-50 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-4.5 h-4.5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <h3 class="font-semibold text-sm text-dark mb-1.5">Garmin-klokke</h3>
+        <p class="text-xs text-zinc-500 leading-relaxed">Send testkøen direkte til Garmin-klokken. Testskiene presenteres én og én — smøreren slipper å se på telefon i løypa.</p>
+      </div>
+
+      <div class="border border-zinc-100 rounded-2xl p-5">
+        <div class="w-9 h-9 bg-rose-50 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-4.5 h-4.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        </div>
+        <h3 class="font-semibold text-sm text-dark mb-1.5">Blind tester-modus</h3>
+        <p class="text-xs text-zinc-5 00 leading-relaxed">Testere ser ski-nummer men ikke produktnavn. Eliminerer bias og gir mer pålitelige resultater.</p>
+      </div>
+
+      <div class="border border-zinc-100 rounded-2xl p-5">
+        <div class="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-4.5 h-4.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        </div>
+        <h3 class="font-semibold text-sm text-dark mb-1.5">PDF og Excel-eksport</h3>
+        <p class="text-xs text-zinc-500 leading-relaxed">Eksporter enhver test som profesjonell PDF-rapport eller Excel-fil. Klar til å sende til utøvere og forbund.</p>
+      </div>
+
+      <div class="border border-zinc-100 rounded-2xl p-5">
+        <div class="w-9 h-9 bg-zinc-100 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-4.5 h-4.5 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+        <h3 class="font-semibold text-sm text-dark mb-1.5">Rollestyring</h3>
+        <p class="text-xs text-zinc-500 leading-relaxed">Inviter smørere, trenere og utøvere med ulike tilgangsnivåer. Full kontroll over hvem som ser hva.</p>
+      </div>
+
+      <div class="border border-zinc-100 rounded-2xl p-5">
+        <div class="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+        </div>
+        <h3 class="font-semibold text-sm text-dark mb-1.5">Produktbibliotek</h3>
+        <p class="text-xs text-zinc-500 leading-relaxed">Komplett lagerstyring av smøremidler, strukturverktøy og toppinger med loggføring av lager og endringer.</p>
+      </div>
+
+      <div class="border border-zinc-100 rounded-2xl p-5">
+        <div class="w-9 h-9 bg-amber-50 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-4.5 h-4.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <h3 class="font-semibold text-sm text-dark mb-1.5">Offline-støtte</h3>
+        <p class="text-xs text-zinc-500 leading-relaxed">Fungerer uten internett. Dataene synkroniseres automatisk når du er tilbake på nett — perfekt for løyper uten dekning.</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="text-zinc-300 text-xs text-right">© 2025 Glidr · Konfidensielt</p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SIDE 4: SLIK FUNGERER DET                                 -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page bg-zinc-50 flex flex-col justify-between p-16 print:p-12">
+
+  <div>
+    <p class="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">Arbeidsflyten</p>
+    <h2 class="text-4xl font-bold text-dark mb-12">Fra løype til innsikt<br/>på under 5 minutter.</h2>
+
+    <div class="space-y-4 mb-10">
+
+      <div class="flex gap-5 bg-white rounded-2xl border border-zinc-100 p-5">
+        <div class="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">1</div>
+        <div>
+          <h3 class="font-semibold text-dark mb-1">Forbered testen hjemme</h3>
+          <p class="text-sm text-zinc-500 leading-relaxed">Legg inn testskiene, velg produkter og sett opp testkøen i Glidr. Send køen til Garmin-klokken med ett trykk — eller bruk mobilappen direkte i løypa.</p>
+        </div>
+      </div>
+
+      <div class="flex gap-5 bg-white rounded-2xl border border-zinc-100 p-5">
+        <div class="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">2</div>
+        <div>
+          <h3 class="font-semibold text-dark mb-1">Registrer resultater i løypa</h3>
+          <p class="text-sm text-zinc-500 leading-relaxed">Tast inn rangeringer og cm-avstand for hver ski direkte på mobil eller nettbrett. Glidr rangerer automatisk etter dense ranking. Fungerer også helt uten internett.</p>
+        </div>
+      </div>
+
+      <div class="flex gap-5 bg-white rounded-2xl border border-zinc-100 p-5">
+        <div class="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">3</div>
+        <div>
+          <h3 class="font-semibold text-dark mb-1">Vær kobles inn automatisk</h3>
+          <p class="text-sm text-zinc-500 leading-relaxed">Basert på sted og dato henter Glidr inn temperatur, fuktighet, snøtype og sporforhold — eller du legger det inn manuelt. Alt lagres sammen med testen for alltid.</p>
+        </div>
+      </div>
+
+      <div class="flex gap-5 bg-white rounded-2xl border border-zinc-100 p-5">
+        <div class="w-10 h-10 bg-accent rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">4</div>
+        <div>
+          <h3 class="font-semibold text-dark mb-1">Analyser og del resultater</h3>
+          <p class="text-sm text-zinc-500 leading-relaxed">Se historikk, sammenlign produkter på tvers av sesonger og last ned profesjonelle PDF-rapporter. Del med trenere og utøvere med rollebasert tilgang.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Highlight stat -->
+    <div class="grid grid-cols-3 gap-4">
+      <div class="text-center bg-white rounded-2xl border border-zinc-100 p-5">
+        <p class="text-3xl font-bold text-dark mb-1">∞</p>
+        <p class="text-xs text-zinc-500">Tester og produkter</p>
+      </div>
+      <div class="text-center bg-white rounded-2xl border border-zinc-100 p-5">
+        <p class="text-3xl font-bold text-dark mb-1">100%</p>
+        <p class="text-xs text-zinc-500">Offline-kompatibel</p>
+      </div>
+      <div class="text-center bg-white rounded-2xl border border-zinc-100 p-5">
+        <p class="text-3xl font-bold accent mb-1">1 min</p>
+        <p class="text-xs text-zinc-500">Å registrere en test</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="text-zinc-300 text-xs text-right">© 2025 Glidr · Konfidensielt</p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SIDE 5: SIKKERHET OG DATABEHANDLING                      -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page bg-white flex flex-col justify-between p-16 print:p-12">
+
+  <div>
+    <p class="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">Trygghet og kontroll</p>
+    <h2 class="text-4xl font-bold text-dark mb-4">Dataene dine er dine.<br/>Ingen deler dem.</h2>
+    <p class="text-zinc-500 mb-10 max-w-xl">For profesjonelle ski-team er testdata en konkurransefordel. Glidr er bygget fra grunnen av med dette i tankene.</p>
+
+    <div class="grid grid-cols-2 gap-5 mb-8">
+
+      <div class="flex gap-4">
+        <div class="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        </div>
+        <div>
+          <h3 class="font-semibold text-dark text-sm mb-1">Full dataisolasjon per team</h3>
+          <p class="text-xs text-zinc-500 leading-relaxed">Hvert team ser kun sine egne data. Ingen kan se dine tester, produkter eller resultater — ikke engang andre Glidr-brukere.</p>
+        </div>
+      </div>
+
+      <div class="flex gap-4">
+        <div class="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        </div>
+        <div>
+          <h3 class="font-semibold text-dark text-sm mb-1">Kryptert overføring (HTTPS)</h3>
+          <p class="text-xs text-zinc-500 leading-relaxed">All kommunikasjon mellom deg og Glidr er kryptert med TLS. Data i hvile er kryptert i databasen.</p>
+        </div>
+      </div>
+
+      <div class="flex gap-4">
+        <div class="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+        <div>
+          <h3 class="font-semibold text-dark text-sm mb-1">Granulær tilgangskontroll</h3>
+          <p class="text-xs text-zinc-500 leading-relaxed">Bestem nøyaktig hvem som kan se, redigere eller laste ned data. Trenere, smørere og utøvere får kun tilgang til det de trenger.</p>
+        </div>
+      </div>
+
+      <div class="flex gap-4">
+        <div class="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+        </div>
+        <div>
+          <h3 class="font-semibold text-dark text-sm mb-1">Google Sheets-backup</h3>
+          <p class="text-xs text-zinc-500 leading-relaxed">Automatisk eksport til ditt eget Google Sheets-dokument. Dataene dine er aldri låst inne — du eier dem alltid.</p>
+        </div>
+      </div>
+
+      <div class="flex gap-4">
+        <div class="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        </div>
+        <div>
+          <h3 class="font-semibold text-dark text-sm mb-1">Aktivitetslogg og revisjonsspor</h3>
+          <p class="text-xs text-zinc-500 leading-relaxed">Full historikk over hvem som endret hva og når. Viktig for team med krav til sporbarhet og dokumentasjon.</p>
+        </div>
+      </div>
+
+      <div class="flex gap-4">
+        <div class="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/></svg>
+        </div>
+        <div>
+          <h3 class="font-semibold text-dark text-sm mb-1">Norsk personvernlov (GDPR)</h3>
+          <p class="text-xs text-zinc-500 leading-relaxed">Glidr er utviklet og driftet i Norge. All behandling av persondata skjer i henhold til GDPR og norsk personvernlovgivning.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="bg-zinc-50 border border-zinc-200 rounded-2xl p-5">
+      <p class="text-sm text-zinc-600 leading-relaxed">
+        <strong class="text-dark">Dine testdata er en konkurransefordel.</strong> Glidr selger aldri data til tredjeparter, bruker dem ikke til produktforbedring uten samtykke, og deler dem aldri på tvers av team. Du kan eksportere og slette alle dine data når som helst.
+      </p>
+    </div>
+  </div>
+
+  <p class="text-zinc-300 text-xs text-right">© 2025 Glidr · Konfidensielt</p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SIDE 6: PRISER                                            -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page bg-zinc-50 flex flex-col justify-between p-16 print:p-12">
+
+  <div>
+    <p class="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-3">Abonnementer</p>
+    <h2 class="text-4xl font-bold text-dark mb-3">Enkel prising.<br/>Ingen overraskelser.</h2>
+    <p class="text-zinc-500 mb-10">14 dagers gratis prøveperiode på alle planer. Ingen kredittkort påkrevd.</p>
+
+    <div class="grid grid-cols-4 gap-4 mb-8">
+
+      <div class="bg-white border border-zinc-200 rounded-2xl p-5">
+        <p class="text-xs font-medium text-zinc-400 mb-1">Starter</p>
+        <div class="flex items-end gap-1 mb-1">
+          <span class="text-2xl font-bold text-dark">490</span>
+          <span class="text-sm text-zinc-400 mb-0.5">kr/mnd</span>
+        </div>
+        <p class="text-xs text-zinc-500 mb-4">For klubblag i gang med strukturert testing.</p>
+        <div class="space-y-1.5 text-xs text-zinc-600">
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0"></div>Opptil 3 brukere</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0"></div>Ubegrenset tester</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0"></div>Produktkatalog og lager</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0"></div>Værlogging</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0"></div>PDF-eksport</div>
+        </div>
+      </div>
+
+      <div class="bg-zinc-900 border-2 border-emerald-500 rounded-2xl p-5 relative">
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full">MEST POPULÆR</div>
+        <p class="text-xs font-medium text-zinc-400 mb-1">Team</p>
+        <div class="flex items-end gap-1 mb-1">
+          <span class="text-2xl font-bold text-white">790</span>
+          <span class="text-sm text-zinc-400 mb-0.5">kr/mnd</span>
+        </div>
+        <p class="text-xs text-zinc-400 mb-4">For konkurranselag som trenger hele bildet.</p>
+        <div class="space-y-1.5 text-xs text-zinc-300">
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></div>Opptil 10 brukere</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></div>Full analyse og produktsammenligning</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></div>Garmin-klokkeintegrasjon</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></div>Grindelogg</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></div>Blind tester-modus</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></div>PDF + Excel-eksport</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></div>Offline-modus</div>
+        </div>
+      </div>
+
+      <div class="bg-white border border-zinc-200 rounded-2xl p-5">
+        <p class="text-xs font-medium text-zinc-400 mb-1">Pro</p>
+        <div class="flex items-end gap-1 mb-1">
+          <span class="text-2xl font-bold text-dark">1490</span>
+          <span class="text-sm text-zinc-400 mb-0.5">kr/mnd</span>
+        </div>
+        <p class="text-xs text-zinc-500 mb-4">For nasjonale lag og organisasjoner med utøvere.</p>
+        <div class="space-y-1.5 text-xs text-zinc-600">
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0"></div>Opptil 25 brukere</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0"></div>Race ski og utøverstyring</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0"></div>Live runsheet-monitor</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0"></div>Aktivitetslogg og revisjonsspor</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0"></div>Prioritert support</div>
+        </div>
+      </div>
+
+      <div class="bg-white border border-zinc-200 rounded-2xl p-5">
+        <p class="text-xs font-medium text-zinc-400 mb-1">Federation</p>
+        <div class="flex items-end gap-1 mb-1">
+          <span class="text-2xl font-bold text-dark">Pris</span>
+        </div>
+        <p class="text-sm text-zinc-400 mb-1">etter avtale</p>
+        <p class="text-xs text-zinc-500 mb-4">For forbund og organisasjoner med flere lag.</p>
+        <div class="space-y-1.5 text-xs text-zinc-600">
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0"></div>Ubegrenset brukere og lag</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0"></div>Dataisolasjon per lag</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0"></div>Dedikert onboarding</div>
+          <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-zinc-300 flex-shrink-0"></div>Tilpasset SLA og support</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white border border-zinc-200 rounded-2xl p-4 flex items-center gap-3">
+      <svg class="w-5 h-5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <p class="text-sm text-zinc-600">Alle priser er eks. mva. Ingen bindingstid — avslutt når som helst. Data kan eksporteres og slettes ved oppsigelse.</p>
+    </div>
+  </div>
+
+  <p class="text-zinc-300 text-xs text-right">© 2025 Glidr · Konfidensielt</p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SIDE 7: KONTAKT / CTA                                     -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page bg-zinc-900 flex flex-col justify-between p-16 print:p-12">
+
+  <div class="flex items-center gap-3">
+    <span class="text-2xl font-bold text-white tracking-tight">Glidr</span>
+    <div class="w-2 h-2 rounded-full bg-accent"></div>
+  </div>
+
+  <div>
+    <p class="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-6">Kom i gang</p>
+    <h2 class="text-5xl font-bold text-white mb-6 leading-tight">
+      Klar til å ta<br/>
+      testingen til<br/>
+      neste nivå?
+    </h2>
+    <p class="text-xl text-zinc-400 mb-12 max-w-lg leading-relaxed">
+      14 dager gratis. Ingen kredittkort. Full tilgang til alle funksjoner fra dag én.
+    </p>
+
+    <div class="flex flex-col gap-4 max-w-sm">
+      <div class="flex items-center gap-4 bg-zinc-800 rounded-2xl p-5">
+        <div class="w-10 h-10 bg-accent/20 rounded-xl flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        </div>
+        <div>
+          <p class="text-xs text-zinc-500 mb-0.5">E-post</p>
+          <p class="text-white font-medium">simen@glidr.no</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4 bg-zinc-800 rounded-2xl p-5">
+        <div class="w-10 h-10 bg-accent/20 rounded-xl flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+        </div>
+        <div>
+          <p class="text-xs text-zinc-500 mb-0.5">Nettside</p>
+          <p class="text-white font-medium">glidr.no</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex items-end justify-between">
+    <div>
+      <p class="text-zinc-600 text-xs">Dette dokumentet er konfidensielt og kun ment for mottakeren.</p>
+      <p class="text-zinc-600 text-xs">© 2025 Glidr · Simen Finjord · Alle rettigheter forbeholdt.</p>
+    </div>
+    <div class="text-right">
+      <p class="text-zinc-600 text-xs">glidr.no</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage, parseGroupScopes } from "./storage";
@@ -3525,7 +3526,8 @@ export async function registerRoutes(
       });
       res.json(sessions);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error("Active sessions error:", err);
+      res.status(500).json({ message: "Internal server error" });
     }
   });
 
@@ -4712,7 +4714,7 @@ export async function registerRoutes(
       res.json({ suggestions });
     } catch (err: any) {
       console.error("Suggestion error:", err);
-      res.status(500).json({ message: "Failed to generate suggestions", error: err.message });
+      res.status(500).json({ message: "Internal server error" });
     }
   });
 

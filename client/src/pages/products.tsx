@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer, Droplets, Snowflake, ChevronDown } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -1345,7 +1346,7 @@ function ProductCard({
                 {p.category}
               </span>
             </div>
-            <div className="mt-2 truncate text-base font-semibold">{p.brand} {p.name}</div>
+            <AppLink href={`/products/${p.id}`} className="mt-2 block truncate text-base font-semibold hover:text-amber-600 transition-colors">{p.brand} {p.name}</AppLink>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {groups.map((g) => (
                 <span key={g} className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">

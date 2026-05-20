@@ -13,6 +13,7 @@ import { useState, useEffect } from "react";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
+import ProductDetail from "@/pages/product-detail";
 import TestSkis from "@/pages/testskis";
 import SeriesDetail from "@/pages/series-detail";
 import Weather from "@/pages/weather";
@@ -57,6 +58,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/testskis" component={TestSkis} />
       <Route path="/testskis/:id" component={SeriesDetail} />
+      <Route path="/products/:id" component={ProductDetail} />
       <Route path="/products" component={Products} />
       <Route path="/weather" component={Weather} />
       <Route path="/tests" component={Tests} />

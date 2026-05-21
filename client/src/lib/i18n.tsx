@@ -20,6 +20,9 @@ const translations: Record<string, Record<string, string>> = {
     "nav.admin": "Admin",
     "nav.overview": "Overview",
     "nav.more": "More",
+    "nav.sectionData": "Data",
+    "nav.sectionEquipment": "Equipment",
+    "nav.sectionSystem": "System",
     "nav.close": "Close",
 
     // ── App shell ────────────────────────────────────────────────────────────
@@ -1161,6 +1164,9 @@ const translations: Record<string, Record<string, string>> = {
     "nav.watchQueue": "Klokkekø",
     "nav.admin": "Administrasjon",
     "nav.overview": "Oversikt",
+    "nav.sectionData": "Data",
+    "nav.sectionEquipment": "Utstyr",
+    "nav.sectionSystem": "System",
     "nav.more": "Mer",
     "nav.close": "Lukk",
 

@@ -61,6 +61,7 @@ type NavItem = {
   permArea?: keyof UserPermissions;
   featureArea?: string;
   adminOnly?: boolean;
+  section?: string; // i18n key for sidebar section heading
 };
 
 const nav: NavItem[] = [
@@ -74,6 +75,7 @@ const nav: NavItem[] = [
     activeBg: "bg-green-50 dark:bg-green-900/20",
     permArea: "dashboard",
   },
+  // ── Data ──────────────────────────────────────────
   {
     href: "/tests",
     label: "Tests",
@@ -83,26 +85,27 @@ const nav: NavItem[] = [
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
     permArea: "tests",
+    section: "nav.sectionData",
   },
   {
-    href: "/testskis",
-    label: "Testskis",
-    icon: Snowflake,
-    testId: "link-testskis",
+    href: "/analytics",
+    label: "Analytics",
+    icon: BarChart3,
+    testId: "link-analytics",
     color: "text-muted-foreground",
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
-    permArea: "testskis",
+    permArea: "analytics",
   },
   {
-    href: "/products",
-    label: "Products",
-    icon: Package,
-    testId: "link-products",
+    href: "/suggestions",
+    label: "Suggestions",
+    icon: Sparkles,
+    testId: "link-suggestions",
     color: "text-muted-foreground",
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
-    permArea: "products",
+    permArea: "suggestions",
   },
   {
     href: "/weather",
@@ -114,15 +117,27 @@ const nav: NavItem[] = [
     activeBg: "bg-green-50 dark:bg-green-900/20",
     permArea: "weather",
   },
+  // ── Equipment ─────────────────────────────────────
   {
-    href: "/analytics",
-    label: "Analytics",
-    icon: BarChart3,
-    testId: "link-analytics",
+    href: "/testskis",
+    label: "Testskis",
+    icon: Snowflake,
+    testId: "link-testskis",
     color: "text-muted-foreground",
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
-    permArea: "analytics",
+    permArea: "testskis",
+    section: "nav.sectionEquipment",
+  },
+  {
+    href: "/products",
+    label: "Products",
+    icon: Package,
+    testId: "link-products",
+    color: "text-muted-foreground",
+    activeColor: "text-green-700",
+    activeBg: "bg-green-50 dark:bg-green-900/20",
+    permArea: "products",
   },
   {
     href: "/grinding",
@@ -144,16 +159,7 @@ const nav: NavItem[] = [
     activeBg: "bg-green-50 dark:bg-green-900/20",
     permArea: "raceskis",
   },
-  {
-    href: "/suggestions",
-    label: "Suggestions",
-    icon: Sparkles,
-    testId: "link-suggestions",
-    color: "text-muted-foreground",
-    activeColor: "text-green-700",
-    activeBg: "bg-green-50 dark:bg-green-900/20",
-    permArea: "suggestions",
-  },
+  // ── System ────────────────────────────────────────
   {
     href: "/live-runsheets",
     label: "Live Runsheets",
@@ -163,6 +169,7 @@ const nav: NavItem[] = [
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
     permArea: "liverunsheets",
+    section: "nav.sectionSystem",
   },
   {
     href: "/watch-queue",
@@ -434,39 +441,51 @@ export function AppShell({ children }: { children: ReactNode }) {
   const userRole = isSuperAdmin ? "Super Admin" : isTeamAdmin ? "Team Admin" : "Member";
 
   // Sidebar nav list (shared between desktop sidebar and mobile drawer)
-  const SidebarNav = () => (
-    <nav className="flex-1 overflow-y-auto py-2" data-testid="nav-primary">
-      {visibleNav.map((item) => {
-        const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
-        const Icon = item.icon;
-        return (
-          <AppLink
-            key={item.href}
-            href={item.href}
-            testId={item.testId}
-            className={cn(
-              "relative flex items-center gap-2 px-3.5 py-[5px] mx-1 rounded-md text-[12.5px] font-[450] transition-colors duration-100",
-              active
-                ? `${item.activeBg} ${item.activeColor} font-medium`
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
-            )}
-          >
-            {/* Active indicator bar */}
-            {active && (
-              <span className="absolute left-0 top-1 bottom-1 w-[2.5px] bg-green-600 rounded-r-sm" />
-            )}
-            <Icon className={cn("h-3.5 w-3.5 shrink-0", active ? item.activeColor : "opacity-55")} />
-            <span className="flex-1 truncate">{navLabel(item.href)}</span>
-            {item.href === "/watch-queue" && watchQueueCount > 0 && (
-              <span className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-white">
-                {watchQueueCount}
-              </span>
-            )}
-          </AppLink>
-        );
-      })}
-    </nav>
-  );
+  const SidebarNav = () => {
+    let lastSection: string | undefined = undefined;
+    return (
+      <nav className="flex-1 overflow-y-auto py-2" data-testid="nav-primary">
+        {visibleNav.map((item) => {
+          const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
+          const Icon = item.icon;
+          // Render a section label when the section changes
+          const showSection = item.section && item.section !== lastSection;
+          if (item.section) lastSection = item.section;
+          return (
+            <div key={item.href}>
+              {showSection && (
+                <div className="px-3.5 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-muted-foreground/60 select-none">
+                  {t(item.section!)}
+                </div>
+              )}
+              <AppLink
+                href={item.href}
+                testId={item.testId}
+                className={cn(
+                  "relative flex items-center gap-2 px-3.5 py-[5px] mx-1 rounded-md text-[12.5px] font-[450] transition-colors duration-100",
+                  active
+                    ? `${item.activeBg} ${item.activeColor} font-medium`
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                {/* Active indicator bar */}
+                {active && (
+                  <span className="absolute left-0 top-1 bottom-1 w-[2.5px] bg-green-600 rounded-r-sm" />
+                )}
+                <Icon className={cn("h-3.5 w-3.5 shrink-0", active ? item.activeColor : "opacity-55")} />
+                <span className="flex-1 truncate">{navLabel(item.href)}</span>
+                {item.href === "/watch-queue" && watchQueueCount > 0 && (
+                  <span className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-white">
+                    {watchQueueCount}
+                  </span>
+                )}
+              </AppLink>
+            </div>
+          );
+        })}
+      </nav>
+    );
+  };
 
   // Sidebar footer: user info
   const SidebarFooter = () => (

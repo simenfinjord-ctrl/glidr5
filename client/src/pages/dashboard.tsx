@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package, Watch } from "lucide-react";
+import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package, Watch, MapPin } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { AppShell } from "@/components/app-shell";
@@ -28,6 +28,40 @@ type RecentResult = {
   winnerProduct: { id: number; brand: string; name: string } | null;
   winnerSkiNumber: number | null;
 };
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  iconColor,
+  delta,
+  barColor,
+  barPct,
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor: string;
+  delta?: string;
+  barColor?: string;
+  barPct?: number;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col gap-1 transition-all hover:border-border/80 hover:shadow-md">
+      <div className={cn("flex items-center gap-1.5 text-[10.5px] font-medium uppercase tracking-[0.05em] text-muted-foreground", iconColor)}>
+        <Icon className="h-[11px] w-[11px]" />
+        {label}
+      </div>
+      <div className="text-[23px] font-bold text-foreground tracking-[-0.5px] leading-tight mt-0.5">{value}</div>
+      {delta && <div className="text-[11px] font-medium text-muted-foreground">{delta}</div>}
+      {barPct !== undefined && barColor && (
+        <div className="mt-2 h-[2px] rounded-full bg-border overflow-hidden">
+          <div className={cn("h-full rounded-full", barColor)} style={{ width: `${Math.min(100, barPct)}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 function QuickCard({
   title,
@@ -145,6 +179,48 @@ export default function Dashboard() {
             </AppLink>
           </div>
         </div>
+
+        {/* Stats row — 4 summary cards */}
+        {!isBlindTester && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatCard
+              label={t("dashboard.statsTests")}
+              value={tests.length}
+              icon={ListChecks}
+              iconColor="text-emerald-600"
+              delta={todayTests.length > 0 ? `${todayTests.length} today` : undefined}
+              barColor="bg-green-500"
+              barPct={Math.min(100, (tests.length / Math.max(tests.length, 50)) * 100)}
+            />
+            <StatCard
+              label={t("dashboard.statsProducts")}
+              value={products.length}
+              icon={Package}
+              iconColor="text-blue-600"
+              delta={products.length > 0 ? `${[...new Set(products.map((p) => p.brand))].length} brands` : undefined}
+              barColor="bg-blue-500"
+              barPct={Math.min(100, (products.length / Math.max(products.length, 40)) * 100)}
+            />
+            <StatCard
+              label={t("dashboard.statsWatchQueue")}
+              value={activeQueue.length}
+              icon={Watch}
+              iconColor="text-sky-600"
+              delta={activeQueue.length > 0 ? "Active" : "No items"}
+              barColor="bg-sky-500"
+              barPct={activeQueue.length > 0 ? 100 : 0}
+            />
+            <StatCard
+              label={t("dashboard.statsVenues")}
+              value={[...new Set(tests.map((t) => t.location))].length}
+              icon={MapPin}
+              iconColor="text-amber-600"
+              delta={weather.length > 0 ? `${weather.length} weather logs` : undefined}
+              barColor="bg-amber-500"
+              barPct={Math.min(100, ([...new Set(tests.map((t) => t.location))].length / Math.max([...new Set(tests.map((t) => t.location))].length, 10)) * 100)}
+            />
+          </div>
+        )}
 
         {todayTests.length > 0 && (
           <Card className="fs-card rounded-2xl border-emerald-200 p-4" data-testid="card-today-tests">

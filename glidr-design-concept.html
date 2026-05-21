@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Glidr — Design Concept (Light)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #f4f4f6;
+      --surface:    #ffffff;
+      --surface2:   #f7f7f9;
+      --border:     #e4e4e9;
+      --border2:    #ccccd6;
+      --text:       #111118;
+      --muted:      #78788a;
+      --subtle:     #c4c4d0;
+      --green:      #059669;
+      --green-dim:  rgba(5,150,105,0.08);
+      --green-text: #047857;
+      --amber:      #d97706;
+      --amber-dim:  rgba(217,119,6,0.09);
+      --blue:       #2563eb;
+      --blue-dim:   rgba(37,99,235,0.09);
+      --purple:     #7c3aed;
+      --purple-dim: rgba(124,58,237,0.09);
+      --red:        #dc2626;
+      --sky:        #0284c7;
+      --sky-dim:    rgba(2,132,199,0.09);
+      --shadow-sm:  0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md:  0 4px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; }
+
+    .shell { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 220px; flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 9px;
+      padding: 14px 14px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo-badge {
+      width: 26px; height: 26px;
+      background: linear-gradient(135deg, #10b981, #047857);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 1px 4px rgba(5,150,105,0.3); flex-shrink: 0;
+    }
+    .logo-name { font-weight: 700; font-size: 14px; letter-spacing: -0.3px; }
+
+    .nav-section { padding: 12px 0 4px; }
+    .nav-label {
+      font-size: 10px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 0 14px 5px; display: block;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 14px;
+      color: var(--muted); cursor: pointer;
+      transition: color 0.1s, background 0.1s;
+      font-size: 12.5px; font-weight: 450;
+      position: relative; user-select: none;
+    }
+    .nav-item:hover { color: var(--text); background: var(--surface2); }
+    .nav-item.active { color: var(--green-text); background: var(--green-dim); font-weight: 500; }
+    .nav-item.active::before {
+      content: ''; position: absolute;
+      left: 0; top: 4px; bottom: 4px;
+      width: 2.5px; background: var(--green); border-radius: 0 2px 2px 0;
+    }
+    .nav-icon { width: 14px; height: 14px; flex-shrink: 0; opacity: 0.55; }
+    .nav-item.active .nav-icon { opacity: 1; }
+    .nav-chip {
+      margin-left: auto; font-size: 10px; font-weight: 600;
+      padding: 1px 6px; border-radius: 99px;
+    }
+    .chip-green { background: var(--green-dim); color: var(--green-text); }
+    .chip-sky { background: var(--sky-dim); color: var(--sky); }
+    .chip-dot {
+      margin-left: auto; width: 6px; height: 6px;
+      border-radius: 50%; background: var(--green);
+    }
+
+    .sidebar-footer {
+      margin-top: auto; border-top: 1px solid var(--border); padding: 10px 14px;
+    }
+    .user-row {
+      display: flex; align-items: center; gap: 8px;
+      cursor: pointer; border-radius: 7px; padding: 5px;
+      transition: background 0.1s;
+    }
+    .user-row:hover { background: var(--surface2); }
+    .avatar {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: linear-gradient(135deg, #1d4ed8, #7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; color: white; flex-shrink: 0;
+    }
+    .user-name { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.3; }
+    .user-role { font-size: 10px; color: var(--muted); }
+
+    /* ── Main ── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+
+    /* ── Topbar ── */
+    .topbar {
+      height: 48px; background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 18px; gap: 6px; flex-shrink: 0;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+    .online-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+    .team-chip {
+      display: flex; align-items: center; gap: 5px;
+      padding: 3px 8px 3px 6px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; font-size: 11px; font-weight: 500; color: var(--text);
+      cursor: pointer; transition: border-color 0.1s;
+    }
+    .team-chip:hover { border-color: var(--border2); }
+    .team-chip svg { width: 10px; height: 10px; color: var(--muted); }
+    .topbar-right { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+
+    .icon-btn {
+      width: 32px; height: 32px;
+      border-radius: 7px; border: none;
+      background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); transition: color 0.1s, background 0.1s;
+      position: relative; font-family: inherit;
+    }
+    .icon-btn:hover { color: var(--text); background: var(--surface2); }
+    .icon-btn svg { width: 15px; height: 15px; }
+    .icon-btn-badge {
+      position: absolute; top: 2px; right: 2px;
+      min-width: 14px; height: 14px;
+      background: var(--red); color: white;
+      font-size: 9px; font-weight: 700;
+      border-radius: 99px; padding: 0 3px;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid var(--surface);
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 11px; border-radius: 7px;
+      font-size: 12px; font-weight: 500;
+      cursor: pointer; border: none; transition: all 0.12s; font-family: inherit;
+    }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { color: var(--text); background: var(--surface2); border-color: var(--border2); }
+    .btn-primary { background: var(--green); color: #fff; box-shadow: 0 1px 3px rgba(5,150,105,0.3); }
+    .btn-primary:hover { background: var(--green-text); }
+    .topbar-divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+
+    /* ── Sub-header / tabs ── */
+    .subheader {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 18px;
+      gap: 0; flex-shrink: 0;
+    }
+    .tab {
+      padding: 9px 12px; font-size: 12px; font-weight: 500;
+      color: var(--muted); cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.12s; margin-bottom: -1px;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--green-text); border-bottom-color: var(--green); font-weight: 600; }
+    .tab-count {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--surface2); color: var(--muted);
+      font-size: 10px; font-weight: 600;
+      padding: 1px 5px; border-radius: 99px; margin-left: 4px;
+      border: 1px solid var(--border);
+    }
+    .subheader-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .filter-btn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 6px;
+      font-size: 11px; font-weight: 500; color: var(--muted);
+      border: 1px solid var(--border); background: var(--surface2);
+      cursor: pointer; transition: all 0.1s;
+    }
+    .filter-btn:hover { color: var(--text); border-color: var(--border2); }
+    .filter-btn svg { width: 11px; height: 11px; }
+
+    /* ── Content ── */
+    .content {
+      flex: 1; overflow-y: auto; padding: 18px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .content::-webkit-scrollbar { width: 4px; }
+    .content::-webkit-scrollbar-thumb { background: var(--subtle); border-radius: 2px; }
+
+    /* ── Stats ── */
+    .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px;
+      box-shadow: var(--shadow-sm);
+      display: flex; flex-direction: column; gap: 3px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .stat-card:hover { border-color: var(--border2); box-shadow: var(--shadow-md); }
+    .stat-label {
+      font-size: 10.5px; color: var(--muted); font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .stat-label svg { width: 11px; height: 11px; }
+    .stat-value { font-size: 23px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; line-height: 1.1; margin-top: 2px; }
+    .stat-delta { font-size: 11px; font-weight: 500; display: flex; align-items: center; gap: 3px; margin-top: 3px; }
+    .delta-up { color: var(--green-text); }
+    .delta-neutral { color: var(--muted); }
+    .stat-bar { height: 2px; background: var(--border); border-radius: 1px; margin-top: 8px; overflow: hidden; }
+    .stat-bar-fill { height: 100%; border-radius: 1px; }
+
+    /* ── Two col ── */
+    .two-col { display: grid; grid-template-columns: 1fr 300px; gap: 14px; }
+
+    /* ── Panel ── */
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow-sm); }
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 14px; border-bottom: 1px solid var(--border);
+    }
+    .panel-title { font-size: 12.5px; font-weight: 600; color: var(--text); }
+    .panel-meta { font-size: 11px; color: var(--muted); }
+
+    /* ── Recent tests table ── */
+    .table { width: 100%; border-collapse: collapse; }
+    .table thead th {
+      padding: 7px 14px; text-align: left;
+      font-size: 10px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.08s; cursor: pointer; }
+    .table tbody tr:last-child { border-bottom: none; }
+    .table tbody tr:hover { background: var(--surface2); }
+    .table td { padding: 9px 14px; vertical-align: middle; }
+
+    .test-name { font-weight: 500; color: var(--text); font-size: 13px; }
+    .test-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 99px;
+      font-size: 10px; font-weight: 600;
+    }
+    .status-active { background: var(--green-dim); color: var(--green-text); }
+    .status-done { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+    .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+    .tag {
+      display: inline-block; padding: 2px 7px; border-radius: 99px;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
+    }
+    .tag-glide { background: var(--blue-dim); color: var(--blue); }
+    .tag-structure { background: var(--amber-dim); color: var(--amber); }
+    .tag-grind { background: var(--purple-dim); color: var(--purple); }
+
+    .open-btn {
+      padding: 3px 9px; border-radius: 6px;
+      font-size: 11px; font-weight: 500; color: var(--muted);
+      background: var(--surface2); border: 1px solid var(--border);
+      cursor: pointer; transition: all 0.1s; font-family: inherit;
+    }
+    .open-btn:hover { color: var(--text); border-color: var(--border2); }
+
+    /* ── Garmin + conditions ── */
+    .conditions-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1px; background: var(--border);
+    }
+    .condition-cell { background: var(--surface); padding: 11px 13px; display: flex; flex-direction: column; gap: 3px; }
+    .condition-label {
+      font-size: 10px; font-weight: 500; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.05em;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .condition-label svg { width: 10px; height: 10px; }
+    .condition-value { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+    .condition-value.green { color: var(--green-text); font-size: 12px; font-weight: 600; }
+
+    .garmin-row {
+      margin: 11px 13px 8px;
+      background: var(--green-dim); border: 1px solid rgba(5,150,105,0.15);
+      border-radius: 8px; padding: 9px 11px;
+      display: flex; align-items: center; gap: 9px;
+    }
+    .garmin-icon {
+      width: 30px; height: 30px; background: white;
+      border-radius: 7px; border: 1px solid rgba(5,150,105,0.2);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .garmin-label { font-size: 11px; font-weight: 600; color: var(--green-text); }
+    .garmin-sub { font-size: 10px; color: var(--green); opacity: 0.8; margin-top: 1px; }
+    .live-dot { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-dim); flex-shrink: 0; }
+
+    .queue-list { padding: 0 13px 13px; display: flex; flex-direction: column; gap: 3px; }
+    .queue-item {
+      display: flex; align-items: center; gap: 7px;
+      padding: 6px 9px; border-radius: 7px;
+      background: var(--surface2); border: 1px solid var(--border);
+      transition: border-color 0.1s;
+    }
+    .queue-item.first { border-color: rgba(5,150,105,0.25); background: var(--green-dim); }
+    .queue-num { font-size: 10px; font-weight: 700; color: var(--muted); width: 13px; text-align: center; }
+    .queue-num.green { color: var(--green-text); }
+    .queue-name { font-size: 11.5px; font-weight: 500; color: var(--text); flex: 1; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 40px 24px; gap: 9px; text-align: center;
+    }
+    .empty-icon {
+      width: 42px; height: 42px; border-radius: 11px;
+      background: var(--surface2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center; margin-bottom: 3px;
+    }
+    .empty-title { font-size: 13.5px; font-weight: 600; color: var(--text); }
+    .empty-body { font-size: 12px; color: var(--muted); max-width: 230px; line-height: 1.6; }
+    .empty-actions { display: flex; gap: 8px; margin-top: 5px; }
+
+    * { scrollbar-width: thin; scrollbar-color: var(--subtle) transparent; }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-badge">
+        <svg viewBox="0 0 100 100" width="15" height="15" xmlns="http://www.w3.org/2000/svg">
+          <path d="M72 22 L36 22 L18 36 L18 64 L36 78 L72 78 L72 50 L50 50" stroke="white" stroke-width="11" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="logo-name">Glidr</span>
+    </div>
+
+    <div class="nav-section">
+      <span class="nav-label">Workspace</span>
+      <div class="nav-item active">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        Tests
+        <span class="nav-chip chip-green">3</span>
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1M4.22 4.22l.707.707m12.02 12.02l.707.707M1 12h1m18 0h1M4.22 19.78l.707-.707M18.95 5.05l-.707.707M9 12a3 3 0 106 0 3 3 0 00-6 0z"/></svg>
+        Testskis
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+        Products
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
+        Weather
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Analytics
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 2"/></svg>
+        Grinding
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 9-14 9V3z"/></svg>
+        Raceskis
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+        Suggestions
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        Live Runsheets
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Watch Queue
+        <span class="nav-chip chip-sky">4</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <span class="nav-label">Admin</span>
+      <div class="nav-item">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        Admin
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="avatar">SF</div>
+        <div>
+          <div class="user-name">Simen Finjord</div>
+          <div class="user-role">Super Admin</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <div class="main">
+
+    <!-- ── Topbar ── -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <!-- Online indicator -->
+        <div class="online-dot" title="Online"></div>
+        <!-- Team selector -->
+        <div class="team-chip">
+          US Cross Country
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <!-- Sync (pending changes) -->
+        <button class="icon-btn" title="2 pending changes">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+          <span class="icon-btn-badge">2</span>
+        </button>
+
+        <!-- Stealth -->
+        <button class="icon-btn" title="Stealth mode">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        </button>
+
+        <!-- Incognito -->
+        <button class="icon-btn" title="Incognito">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        </button>
+
+        <div class="topbar-divider"></div>
+
+        <!-- Inbox with unread badge -->
+        <button class="icon-btn" title="Inbox">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          <span class="icon-btn-badge">3</span>
+        </button>
+
+        <!-- Theme toggle -->
+        <button class="icon-btn" title="Toggle theme">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+        </button>
+
+        <!-- Report problem -->
+        <button class="icon-btn" title="Report a problem">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </button>
+
+        <div class="topbar-divider"></div>
+
+        <!-- My account -->
+        <button class="icon-btn" title="My account">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </button>
+
+        <!-- Log out -->
+        <button class="icon-btn" title="Log out">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Sub-header ── -->
+    <div class="subheader">
+      <div class="tab active">Overview</div>
+      <div class="tab">Recent Tests <span class="tab-count">12</span></div>
+      <div class="tab">Analytics</div>
+      <div class="tab">Watch Queue <span class="tab-count">4</span></div>
+      <div class="subheader-right">
+        <div class="filter-btn">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
+          Filter
+        </div>
+        <button class="btn btn-primary" style="font-size:11.5px;padding:4px 10px;">
+          <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          New Test
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Content ── -->
+    <div class="content">
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            Tests this season
+          </div>
+          <div class="stat-value">47</div>
+          <div class="stat-delta delta-up">↑ 12 more than last season</div>
+          <div class="stat-bar"><div class="stat-bar-fill" style="width:72%;background:var(--green)"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            Products tested
+          </div>
+          <div class="stat-value">34</div>
+          <div class="stat-delta delta-neutral">Across 6 brands</div>
+          <div class="stat-bar"><div class="stat-bar-fill" style="width:58%;background:var(--blue)"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Watch queue
+          </div>
+          <div class="stat-value">4</div>
+          <div class="stat-delta delta-up">Synced · Holmenkollen</div>
+          <div class="stat-bar"><div class="stat-bar-fill" style="width:100%;background:var(--green)"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            Venues
+          </div>
+          <div class="stat-value">6</div>
+          <div class="stat-delta delta-neutral">This season</div>
+          <div class="stat-bar"><div class="stat-bar-fill" style="width:40%;background:var(--amber)"></div></div>
+        </div>
+      </div>
+
+      <!-- Two col -->
+      <div class="two-col">
+
+        <!-- Recent tests table -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Recent Tests</span>
+            <span class="panel-meta">Last 30 days</span>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Test / Venue</th>
+                <th>Type</th>
+                <th>Entries</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="test-name">Holmenkollen — Glide</div><div class="test-meta">Oslo · Fine new snow · −4°C</div></td>
+                <td><span class="tag tag-glide">Glide</span></td>
+                <td style="font-size:12px;font-weight:600;color:var(--text)">8</td>
+                <td style="font-size:11px;color:var(--muted)">Jan 15</td>
+                <td><span class="status-badge status-active"><span class="status-dot"></span>Active</span></td>
+                <td><button class="open-btn">Open</button></td>
+              </tr>
+              <tr>
+                <td><div class="test-name">Beitostølen — Structure</div><div class="test-meta">Valdres · Packed powder · −8°C</div></td>
+                <td><span class="tag tag-structure">Structure</span></td>
+                <td style="font-size:12px;font-weight:600;color:var(--text)">12</td>
+                <td style="font-size:11px;color:var(--muted)">Jan 11</td>
+                <td><span class="status-badge status-done">Done</span></td>
+                <td><button class="open-btn">Open</button></td>
+              </tr>
+              <tr>
+                <td><div class="test-name">Davos — Glide</div><div class="test-meta">Switzerland · Compact snow · −6°C</div></td>
+                <td><span class="tag tag-glide">Glide</span></td>
+                <td style="font-size:12px;font-weight:600;color:var(--text)">10</td>
+                <td style="font-size:11px;color:var(--muted)">Jan 7</td>
+                <td><span class="status-badge status-done">Done</span></td>
+                <td><button class="open-btn">Open</button></td>
+              </tr>
+              <tr>
+                <td><div class="test-name">Ruka — Grinding</div><div class="test-meta">Finland · New snow · −12°C</div></td>
+                <td><span class="tag tag-grind">Grind</span></td>
+                <td style="font-size:12px;font-weight:600;color:var(--text)">6</td>
+                <td style="font-size:11px;color:var(--muted)">Dec 29</td>
+                <td><span class="status-badge status-done">Done</span></td>
+                <td><button class="open-btn">Open</button></td>
+              </tr>
+              <tr>
+                <td><div class="test-name">Lillehammer — Glide</div><div class="test-meta">Innlandet · Artificial · −3°C</div></td>
+                <td><span class="tag tag-glide">Glide</span></td>
+                <td style="font-size:12px;font-weight:600;color:var(--text)">9</td>
+                <td style="font-size:11px;color:var(--muted)">Dec 21</td>
+                <td><span class="status-badge status-done">Done</span></td>
+                <td><button class="open-btn">Open</button></td>
+              </tr>
+              <tr>
+                <td><div class="test-name">Beitostølen — Glide</div><div class="test-meta">Valdres · Wet new snow · 0°C</div></td>
+                <td><span class="tag tag-glide">Glide</span></td>
+                <td style="font-size:12px;font-weight:600;color:var(--text)">11</td>
+                <td style="font-size:11px;color:var(--muted)">Dec 18</td>
+                <td><span class="status-badge status-done">Done</span></td>
+                <td><button class="open-btn">Open</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Right column -->
+        <div style="display:flex;flex-direction:column;gap:12px;">
+
+          <!-- Active test conditions -->
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Active Test</span>
+              <span class="panel-meta" style="color:var(--green-text);display:flex;align-items:center;gap:4px">
+                <span style="width:5px;height:5px;background:var(--green);border-radius:50%;display:inline-block"></span>
+                Holmenkollen
+              </span>
+            </div>
+            <div class="conditions-grid">
+              <div class="condition-cell">
+                <div class="condition-label">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                  Snow
+                </div>
+                <div class="condition-value">−4°C</div>
+              </div>
+              <div class="condition-cell">
+                <div class="condition-label">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
+                  Air
+                </div>
+                <div class="condition-value">−2°C</div>
+              </div>
+              <div class="condition-cell">
+                <div class="condition-label">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+                  Humidity
+                </div>
+                <div class="condition-value">60%</div>
+              </div>
+              <div class="condition-cell">
+                <div class="condition-label">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/></svg>
+                  Snow type
+                </div>
+                <div class="condition-value green">Fine new snow</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Garmin -->
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Watch Queue</span>
+              <span class="panel-meta" style="color:var(--green-text);display:flex;align-items:center;gap:4px">
+                <span style="width:5px;height:5px;background:var(--green);border-radius:50%;display:inline-block"></span>
+                Live
+              </span>
+            </div>
+            <div class="garmin-row">
+              <div class="garmin-icon">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+              <div>
+                <div class="garmin-label">Forerunner 965</div>
+                <div class="garmin-sub">4 skis synced</div>
+              </div>
+              <div class="live-dot"></div>
+            </div>
+            <div class="queue-list">
+              <div class="queue-item first">
+                <span class="queue-num green">1</span>
+                <span class="queue-name">Swix HF10</span>
+                <span class="tag tag-glide" style="font-size:9px;padding:1px 5px;">Glide</span>
+              </div>
+              <div class="queue-item">
+                <span class="queue-num">2</span>
+                <span class="queue-name">Rode Cera F</span>
+                <span class="tag tag-glide" style="font-size:9px;padding:1px 5px;">Glide</span>
+              </div>
+              <div class="queue-item">
+                <span class="queue-num">3</span>
+                <span class="queue-name">Toko NF Powder</span>
+                <span class="tag tag-glide" style="font-size:9px;padding:1px 5px;">Glide</span>
+              </div>
+              <div class="queue-item">
+                <span class="queue-num">4</span>
+                <span class="queue-name">Swix LF8</span>
+                <span class="tag tag-structure" style="font-size:9px;padding:1px 5px;">Structure</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Empty state: no history yet -->
+      <div class="panel">
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--muted)"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </div>
+          <div class="empty-title">No season history yet</div>
+          <div class="empty-body">Complete your first test and product comparisons across conditions and venues will appear here automatically.</div>
+          <div class="empty-actions">
+            <button class="btn btn-ghost">Import from CSV</button>
+            <button class="btn btn-primary">Start first test</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</body>
+</html>

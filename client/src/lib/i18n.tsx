@@ -153,6 +153,10 @@ const translations: Record<string, Record<string, string>> = {
     "dashboard.pair": "Pair",
     "dashboard.air": "Air",
     "dashboard.snow": "Snow",
+    "dashboard.statsTests": "Tests this season",
+    "dashboard.statsProducts": "Products tested",
+    "dashboard.statsWatchQueue": "Watch queue",
+    "dashboard.statsVenues": "Venues",
 
     // ── Tests ─────────────────────────────────────────────────────────────────
     "tests.title": "Tests",
@@ -1287,6 +1291,10 @@ const translations: Record<string, Record<string, string>> = {
     "dashboard.pair": "Par",
     "dashboard.air": "Luft",
     "dashboard.snow": "Snø",
+    "dashboard.statsTests": "Tester denne sesongen",
+    "dashboard.statsProducts": "Produkter testet",
+    "dashboard.statsWatchQueue": "Klokkekø",
+    "dashboard.statsVenues": "Arenaer",
 
     // ── Tester ───────────────────────────────────────────────────────────────
     "tests.title": "Tester",

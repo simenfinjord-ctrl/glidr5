@@ -48,6 +48,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useI18n } from "@/lib/i18n";
 import { useAppSettings } from "@/lib/app-settings";
 import { GlidrIcon, GlidrLogo } from "@/components/glidr-logo";
+import { getNavLayout, setNavLayout, type NavLayout } from "@/lib/nav-layout";
 
 type NavItem = {
   href: string;
@@ -299,6 +300,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [reportOpen, setReportOpen] = useState(false);
   const { commercializationEnabled } = useAppSettings();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [navLayout, setNavLayoutState] = useState<NavLayout>(() => getNavLayout());
+
+  // Expose toggle so my-account can call it
+  useEffect(() => {
+    const handler = () => setNavLayoutState(getNavLayout());
+    window.addEventListener("glidr-nav-layout-change", handler);
+    return () => window.removeEventListener("glidr-nav-layout-change", handler);
+  }, []);
 
   const [adminMode, setAdminMode] = useState<boolean>(() => {
     try { return localStorage.getItem("glidr-sa-admin-mode") === "true"; } catch { return false; }
@@ -518,6 +527,206 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 
+  // ── Shared header controls (right side) ──
+  const HeaderControls = () => (
+    <div className="flex items-center gap-0.5 shrink-0">
+      {!isOnline && (
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-900/30 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-700"
+          data-testid="badge-offline"
+        >
+          <WifiOff className="h-3 w-3" />
+          <span className="hidden sm:inline">{t("shell.offline")}</span>
+        </span>
+      )}
+      {pendingCount > 0 && (
+        <Button variant="ghost" size="sm" data-testid="button-sync"
+          onClick={() => syncNow()} disabled={isSyncing || !isOnline}
+          className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 h-8"
+        >
+          {isSyncing ? <RefreshCw className="mr-1 h-4 w-4 animate-spin" /> : <CloudUpload className="mr-1 h-4 w-4" />}
+          <span className="hidden sm:inline text-xs">{`${pendingCount} ${t("shell.pending")}`}</span>
+          <span className="sm:hidden text-xs">{pendingCount}</span>
+        </Button>
+      )}
+      {isSuperAdmin && isViewingOtherTeam && (
+        <Button variant="ghost" size="sm" data-testid="button-stealth-toggle"
+          onClick={() => toggleStealth(!user?.stealth)}
+          className={cn("h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted",
+            isStealthActive && "text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400")}
+          title={isStealthActive ? t("shell.stealthOn") : t("shell.stealth")}
+        >
+          {isStealthActive ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+        </Button>
+      )}
+      {isSuperAdmin && (
+        <Button variant="ghost" size="sm" data-testid="button-incognito-toggle"
+          onClick={() => toggleIncognito(!user?.incognito)}
+          className={cn("h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted",
+            user?.incognito && "text-purple-600 bg-purple-50 dark:bg-purple-900/30 dark:text-purple-400")}
+          title={user?.incognito ? t("shell.incognitoOn") : t("shell.incognito")}
+        >
+          {user?.incognito ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </Button>
+      )}
+      <div className="w-px h-5 bg-border mx-1 shrink-0" />
+      {(isSuperAdmin || isTeamAdmin) && (
+        <Button variant="ghost" size="sm" data-testid="button-mail"
+          onClick={() => navigate("/inbox")}
+          className="relative h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+          title={t("shell.inbox")}
+        >
+          <Mail className="h-4 w-4" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </Button>
+      )}
+      <Button variant="ghost" size="sm" data-testid="button-theme-toggle"
+        onClick={toggleTheme}
+        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+      >
+        {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      </Button>
+      <Button variant="ghost" size="sm"
+        onClick={() => setReportOpen(true)}
+        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+        title={t("shell.reportProblem")} data-testid="link-report-problem"
+      >
+        <AlertTriangle className="h-4 w-4" />
+      </Button>
+      <div className="w-px h-5 bg-border mx-1 shrink-0" />
+      <AppLink href="/my-account" testId="link-my-account"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        title={t("shell.myAccount")}
+      >
+        <UserCircle className="h-4 w-4" />
+      </AppLink>
+      <Button variant="ghost" size="sm" data-testid="button-logout"
+        onClick={() => logout()}
+        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+      >
+        <LogOut className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+
+  // ── Shared page body (offline banner + children + footer) ──
+  const PageBody = () => (
+    <>
+      {!isOnline && (
+        <div className="shrink-0 bg-amber-500 text-white text-xs font-medium text-center py-1.5 px-4">
+          You're offline — showing cached data. Changes will not be saved.
+        </div>
+      )}
+      <main className="flex-1 overflow-y-auto flex flex-col">
+        <div className="flex-1 mx-auto w-full max-w-[1400px] px-4 sm:px-6 py-6">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </div>
+        <footer className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 pb-8 mt-auto">
+          <div className="mb-3 h-px bg-border" />
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <GlidrLogo variant="dark" size={18} className="dark:hidden opacity-60" />
+            <GlidrLogo variant="white" size={18} className="hidden dark:block opacity-60" />
+            <div className="flex items-center gap-3">
+              <AppLink href="/my-account" testId="link-footer-my-account" className="underline hover:text-foreground transition-colors">{t("shell.myAccount")}</AppLink>
+              {commercializationEnabled && (<>
+                <span className="text-border">|</span>
+                <AppLink href="/what-is-glidr" testId="link-what-is-glidr" className="underline hover:text-foreground transition-colors">{t("shell.whatIsGlidr")}</AppLink>
+                <span className="text-border">|</span>
+                <AppLink href="/pricing" testId="link-pricing" className="underline hover:text-foreground transition-colors">{t("shell.pricing")}</AppLink>
+              </>)}
+              <span className="text-border">|</span>
+              <AppLink href="/legal" testId="link-legal" className="underline hover:text-foreground transition-colors">{t("shell.legal")}</AppLink>
+              <span className="text-border">|</span>
+              <AppLink href="/contact" testId="link-contact" className="underline hover:text-foreground transition-colors">{t("shell.contact")}</AppLink>
+            </div>
+          </div>
+        </footer>
+      </main>
+      {mobileNavEnabled && <div className="sm:hidden"><MobileNav watchQueueCount={watchQueueCount} /></div>}
+    </>
+  );
+
+  // ══════════════════════════════════════════════════
+  // TOP layout (classic top navigation bar)
+  // ══════════════════════════════════════════════════
+  if (navLayout === "top") {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-lg overflow-x-hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+          <div className="mx-auto w-full max-w-[1600px] px-3 sm:px-6">
+            <div className="flex items-center gap-2 sm:gap-3 py-2.5 min-w-0">
+              {/* Logo + team */}
+              <div className="flex items-center gap-2 shrink-0">
+                <GlidrLogo variant="dark" size={26} className="hidden sm:block dark:hidden" />
+                <GlidrLogo variant="white" size={26} className="hidden dark:sm:block" />
+                <GlidrIcon size={24} className="sm:hidden" />
+                <div className={cn("h-1.5 w-1.5 rounded-full shrink-0", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
+                {isSuperAdmin && teams.length > 1 && (
+                  <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
+                    <SelectTrigger className="h-8 w-auto min-w-[140px] border-border bg-muted/50 text-xs font-medium" data-testid="select-team">
+                      <SelectValue placeholder={t("shell.selectTeam")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teams.map((team: any) => (
+                        <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {!isSuperAdmin && userTeams.length > 1 && (
+                  <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
+                    <SelectTrigger className="h-8 w-auto min-w-[140px] border-border bg-muted/50 text-xs font-medium" data-testid="select-user-team">
+                      <SelectValue placeholder={t("shell.selectTeam")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userTeams.map((team) => (
+                        <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              {/* Nav — xl+ only */}
+              <nav className={cn("hidden xl:flex flex-1 items-center justify-center gap-0.5", mobileNavEnabled && "!hidden")} data-testid="nav-primary">
+                {visibleNav.map((item) => {
+                  const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
+                  const Icon = item.icon;
+                  return (
+                    <AppLink key={item.href} href={item.href} testId={item.testId}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150",
+                        active ? `${item.activeBg} ${item.activeColor} shadow-sm dark:bg-opacity-20` : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <Icon className={cn("h-4 w-4", active ? item.activeColor : item.color)} />
+                      <span>{navLabel(item.href)}</span>
+                      {item.href === "/watch-queue" && watchQueueCount > 0 && (
+                        <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-white">{watchQueueCount}</span>
+                      )}
+                    </AppLink>
+                  );
+                })}
+              </nav>
+              <div className="flex-1 xl:hidden" />
+              <HeaderControls />
+            </div>
+          </div>
+        </header>
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <PageBody />
+        </div>
+        <ReportProblemDialog open={reportOpen} onClose={() => setReportOpen(false)} />
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════
+  // SIDEBAR layout (new design)
+  // ══════════════════════════════════════════════════
   return (
     <div className="min-h-screen flex bg-[#f4f4f6] dark:bg-zinc-950">
 
@@ -529,12 +738,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* ── Mobile Sidebar Drawer (< lg) ── */}
       {sidebarOpen && (
         <>
-          {/* Backdrop */}
-          <div
-            className="lg:hidden fixed inset-0 z-40 bg-black/40"
-            onClick={() => setSidebarOpen(false)}
-          />
-          {/* Drawer */}
+          <div className="lg:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setSidebarOpen(false)} />
           <aside className="lg:hidden fixed left-0 top-0 bottom-0 z-50 w-[220px] flex flex-col bg-card dark:bg-zinc-900 border-r border-border shadow-xl overflow-hidden">
             <SidebarContent />
           </aside>
@@ -552,8 +756,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* Left: hamburger (mobile) + page title */}
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Button
-              variant="ghost"
-              size="sm"
+              variant="ghost" size="sm"
               className="lg:hidden -ml-1 text-muted-foreground hover:text-foreground hover:bg-muted h-8 w-8 p-0"
               onClick={() => setSidebarOpen(true)}
               data-testid="button-sidebar-open"
@@ -563,179 +766,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="text-sm font-semibold text-foreground truncate">{pageTitle}</span>
           </div>
 
-          {/* Right: status indicators + action buttons */}
-          <div className="flex items-center gap-0.5 shrink-0">
-            {!isOnline && (
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-900/30 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-700"
-                data-testid="badge-offline"
-              >
-                <WifiOff className="h-3 w-3" />
-                <span className="hidden sm:inline">{t("shell.offline")}</span>
-              </span>
-            )}
-            {pendingCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                data-testid="button-sync"
-                onClick={() => syncNow()}
-                disabled={isSyncing || !isOnline}
-                className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 h-8"
-              >
-                {isSyncing ? <RefreshCw className="mr-1 h-4 w-4 animate-spin" /> : <CloudUpload className="mr-1 h-4 w-4" />}
-                <span className="hidden sm:inline text-xs">{`${pendingCount} ${t("shell.pending")}`}</span>
-                <span className="sm:hidden text-xs">{pendingCount}</span>
-              </Button>
-            )}
-            {isSuperAdmin && isViewingOtherTeam && (
-              <Button
-                variant="ghost"
-                size="sm"
-                data-testid="button-stealth-toggle"
-                onClick={() => toggleStealth(!user?.stealth)}
-                className={cn(
-                  "h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted",
-                  isStealthActive && "text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400"
-                )}
-                title={isStealthActive ? t("shell.stealthOn") : t("shell.stealth")}
-              >
-                {isStealthActive ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-              </Button>
-            )}
-            {isSuperAdmin && (
-              <Button
-                variant="ghost"
-                size="sm"
-                data-testid="button-incognito-toggle"
-                onClick={() => toggleIncognito(!user?.incognito)}
-                className={cn(
-                  "h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted",
-                  user?.incognito && "text-purple-600 bg-purple-50 dark:bg-purple-900/30 dark:text-purple-400"
-                )}
-                title={user?.incognito ? t("shell.incognitoOn") : t("shell.incognito")}
-              >
-                {user?.incognito ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            )}
-
-            {/* Divider */}
-            <div className="w-px h-5 bg-border mx-1 shrink-0" />
-
-            {(isSuperAdmin || isTeamAdmin) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                data-testid="button-mail"
-                onClick={() => navigate("/inbox")}
-                className="relative h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
-                title={t("shell.inbox")}
-              >
-                <Mail className="h-4 w-4" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              data-testid="button-theme-toggle"
-              onClick={toggleTheme}
-              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
-            >
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setReportOpen(true)}
-              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
-              title={t("shell.reportProblem")}
-              data-testid="link-report-problem"
-            >
-              <AlertTriangle className="h-4 w-4" />
-            </Button>
-
-            {/* Divider */}
-            <div className="w-px h-5 bg-border mx-1 shrink-0" />
-
-            <AppLink
-              href="/my-account"
-              testId="link-my-account"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              title={t("shell.myAccount")}
-            >
-              <UserCircle className="h-4 w-4" />
-            </AppLink>
-            <Button
-              variant="ghost"
-              size="sm"
-              data-testid="button-logout"
-              onClick={() => logout()}
-              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
+          <HeaderControls />
         </header>
 
-        {/* Offline banner */}
-        {!isOnline && (
-          <div className="shrink-0 bg-amber-500 text-white text-xs font-medium text-center py-1.5 px-4">
-            You're offline — showing cached data. Changes will not be saved.
-          </div>
-        )}
-
-        {/* ── Scrollable content ── */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 py-6">
-            <ErrorBoundary>{children}</ErrorBoundary>
-          </div>
-
-          {/* Footer */}
-          <footer className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 pb-8">
-            <div className="mb-3 h-px bg-border" />
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-              <GlidrLogo variant="dark" size={18} className="dark:hidden opacity-60" />
-              <GlidrLogo variant="white" size={18} className="hidden dark:block opacity-60" />
-              <div className="flex items-center gap-3">
-                <AppLink href="/my-account" testId="link-footer-my-account" className="underline hover:text-foreground transition-colors">
-                  {t("shell.myAccount")}
-                </AppLink>
-                {commercializationEnabled && (
-                  <>
-                    <span className="text-border">|</span>
-                    <AppLink href="/what-is-glidr" testId="link-what-is-glidr" className="underline hover:text-foreground transition-colors">
-                      {t("shell.whatIsGlidr")}
-                    </AppLink>
-                    <span className="text-border">|</span>
-                    <AppLink href="/pricing" testId="link-pricing" className="underline hover:text-foreground transition-colors">
-                      {t("shell.pricing")}
-                    </AppLink>
-                  </>
-                )}
-                <span className="text-border">|</span>
-                <AppLink href="/legal" testId="link-legal" className="underline hover:text-foreground transition-colors">
-                  {t("shell.legal")}
-                </AppLink>
-                <span className="text-border">|</span>
-                <AppLink href="/contact" testId="link-contact" className="underline hover:text-foreground transition-colors">
-                  {t("shell.contact")}
-                </AppLink>
-              </div>
-            </div>
-          </footer>
-        </main>
-
-        {/* Mobile bottom nav (when enabled) */}
-        {mobileNavEnabled && (
-          <div className="sm:hidden">
-            <MobileNav watchQueueCount={watchQueueCount} />
-          </div>
-        )}
+        <PageBody />
       </div>
 
       <ReportProblemDialog open={reportOpen} onClose={() => setReportOpen(false)} />

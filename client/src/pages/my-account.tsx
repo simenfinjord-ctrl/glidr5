@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, Watch, RefreshCw, Copy, Check, KeyRound, Mail, Users, Shield, Smartphone, Eye, EyeOff, ToggleLeft, ToggleRight, AtSign, Pencil, Trash2, UserPlus } from "lucide-react";
+import { User, Watch, RefreshCw, Copy, Check, KeyRound, Mail, Users, Shield, Smartphone, Eye, EyeOff, ToggleLeft, ToggleRight, AtSign, Pencil, Trash2, UserPlus, PanelLeft, PanelTop } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { useLanguage } from "@/lib/language";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMobileNav } from "@/components/mobile-nav";
+import { getNavLayout, setNavLayout, type NavLayout } from "@/lib/nav-layout";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { useAppSettings } from "@/lib/app-settings";
@@ -575,6 +576,14 @@ export default function MyAccount() {
     mobileNavStore.set(next);
   };
 
+  // Nav layout toggle
+  const [currentNavLayout, setCurrentNavLayout] = useState<NavLayout>(() => getNavLayout());
+  const toggleNavLayout = (layout: NavLayout) => {
+    setCurrentNavLayout(layout);
+    setNavLayout(layout);
+    window.dispatchEvent(new Event("glidr-nav-layout-change"));
+  };
+
   const { data: watchCodeData, isLoading: watchCodeLoading } = useQuery<{ watchCode: string }>({
     queryKey: ["/api/auth/my-watch-code"],
     enabled: !!user,
@@ -756,6 +765,40 @@ export default function MyAccount() {
             >
               <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${mobileNavOn ? "translate-x-6" : "translate-x-1"}`} />
             </button>
+          </div>
+
+          {/* Nav layout selector */}
+          <div className="rounded-xl bg-muted/50 px-4 py-3 space-y-2">
+            <div>
+              <div className="text-sm font-medium">{t("account.navLayout")}</div>
+              <div className="text-xs text-muted-foreground">{t("account.navLayoutDesc")}</div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => toggleNavLayout("sidebar")}
+                className={cn(
+                  "flex-1 flex flex-col items-center gap-1.5 rounded-lg border-2 px-3 py-2.5 text-xs font-medium transition-colors",
+                  currentNavLayout === "sidebar"
+                    ? "border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
+                    : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                )}
+              >
+                <PanelLeft className="h-5 w-5" />
+                {t("account.navLayoutSidebar")}
+              </button>
+              <button
+                onClick={() => toggleNavLayout("top")}
+                className={cn(
+                  "flex-1 flex flex-col items-center gap-1.5 rounded-lg border-2 px-3 py-2.5 text-xs font-medium transition-colors",
+                  currentNavLayout === "top"
+                    ? "border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
+                    : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                )}
+              >
+                <PanelTop className="h-5 w-5" />
+                {t("account.navLayoutTop")}
+              </button>
+            </div>
           </div>
         </Card>
 

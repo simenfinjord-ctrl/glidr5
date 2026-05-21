@@ -1,5 +1,6 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import session from "express-session";
 import pgSession from "connect-pg-simple";
 import { type Express, type Request } from "express";
@@ -155,6 +156,36 @@ export async function setupAuth(app: Express) {
       }
     )
   );
+
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    passport.use(
+      new GoogleStrategy(
+        {
+          clientID: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          callbackURL: `${process.env.APP_URL ?? ""}/api/auth/google/callback`,
+        },
+        async (_accessToken, _refreshToken, profile, done) => {
+          try {
+            const email = profile.emails?.[0]?.value;
+            if (!email) {
+              return done(null, false, { message: "No email returned from Google." });
+            }
+            const user = await storage.getUserByEmail(email);
+            if (!user) {
+              return done(null, false, { message: "No Glidr account for this Google address. Contact your administrator." });
+            }
+            if (user.isActive === 0) {
+              return done(null, false, { message: "Account is deactivated. Contact your administrator." });
+            }
+            return done(null, user);
+          } catch (err) {
+            return done(err as Error);
+          }
+        }
+      )
+    );
+  }
 
   passport.serializeUser((user: Express.User, done) => {
     done(null, user.id);
@@ -345,4 +376,11 @@ export async function setupAuth(app: Express) {
     await (pg as any).query(`DELETE FROM user_sessions WHERE sid = $1`, [sid]);
     res.json({ ok: true });
   });
+
+  app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+  app.get(
+    "/api/auth/google/callback",
+    passport.authenticate("google", { failureRedirect: "/login?error=google" }),
+    (_req, res) => res.redirect("/dashboard"),
+  );
 }

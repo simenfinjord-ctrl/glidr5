@@ -7,6 +7,7 @@ import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import { sendPasswordResetEmail, sendWelcomeEmail, sendInvitationEmail } from "./email";
 import { generateTotpSecret, getTotpUri, generateQrDataUrl, generateBackupCodes, verifyTotp, verifyBackupCode } from "./totp";
+import { r2Enabled, uploadToR2, getR2Url } from "./r2";
 
 /** Shared password validation: ≥7 chars, ≥1 digit, ≥1 special character */
 export function validatePassword(pw: string): string | null {
@@ -434,6 +435,7 @@ export async function registerRoutes(
         uploaded_by_id INTEGER
       )
     `);
+    await pool.query(`ALTER TABLE test_attachments ADD COLUMN IF NOT EXISTS url TEXT`).catch(() => {});
     await pool.query(`
       CREATE TABLE IF NOT EXISTS client_errors (
         id SERIAL PRIMARY KEY,
@@ -2265,7 +2267,7 @@ export async function registerRoutes(
     res.json(result.rows);
   });
 
-  // POST /api/tests/:id/attachments — upload base64 image
+  // POST /api/tests/:id/attachments — upload base64 image (R2 or legacy base64)
   app.post("/api/tests/:id/attachments", requireAuth, async (req, res) => {
     const testId = parseInt(req.params.id);
     const { filename, mimeType, data } = req.body;
@@ -2273,21 +2275,51 @@ export async function registerRoutes(
     const u = userInfo(req);
     const { pool } = await import("./db");
     const now = new Date().toISOString();
+    const mime = mimeType || "image/jpeg";
+
+    if (r2Enabled) {
+      // Decode base64 payload and upload to R2
+      const base64 = String(data).replace(/^data:[^;]+;base64,/, "");
+      const buf = Buffer.from(base64, "base64");
+      const ext = filename.includes(".") ? filename.split(".").pop() : "bin";
+      const { randomUUID } = await import("crypto");
+      const key = `attachments/${testId}/${randomUUID()}.${ext}`;
+      const uploadedKey = await uploadToR2(key, buf, mime);
+      if (!uploadedKey) {
+        return res.status(500).json({ message: "R2 upload failed" });
+      }
+      const result = await (pool as any).query(
+        `INSERT INTO test_attachments (test_id, filename, mime_type, data, url, created_at, uploaded_by_id) VALUES ($1,$2,$3,'',$4,$5,$6) RETURNING id, test_id, filename, mime_type, url, created_at`,
+        [testId, filename, mime, uploadedKey, now, u.id]
+      );
+      return res.json(result.rows[0]);
+    }
+
+    // Legacy: store base64 in the data column
     const result = await (pool as any).query(
       `INSERT INTO test_attachments (test_id, filename, mime_type, data, created_at, uploaded_by_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, test_id, filename, mime_type, created_at`,
-      [testId, filename, mimeType || "image/jpeg", data, now, u.id]
+      [testId, filename, mime, data, now, u.id]
     );
     res.json(result.rows[0]);
   });
 
-  // GET /api/attachments/:id — serve raw image
+  // GET /api/attachments/:id — serve raw image (redirect to R2 URL or stream legacy base64)
   app.get("/api/attachments/:id", requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const { pool } = await import("./db");
-    const result = await (pool as any).query(`SELECT filename, mime_type, data FROM test_attachments WHERE id = $1`, [id]);
+    const result = await (pool as any).query(`SELECT filename, mime_type, data, url FROM test_attachments WHERE id = $1`, [id]);
     if (!result.rows[0]) return res.status(404).json({ message: "Not found" });
-    const { filename, mime_type, data } = result.rows[0];
-    const buf = Buffer.from(data.replace(/^data:[^;]+;base64,/, ""), "base64");
+    const { filename, mime_type, data, url } = result.rows[0];
+
+    // R2 path: url column holds the object key; resolve to signed/public URL and redirect
+    if (url) {
+      const signedUrl = await getR2Url(url);
+      if (!signedUrl) return res.status(500).json({ message: "Could not generate download URL" });
+      return res.redirect(302, signedUrl);
+    }
+
+    // Legacy path: decode base64 and stream directly
+    const buf = Buffer.from(String(data).replace(/^data:[^;]+;base64,/, ""), "base64");
     res.setHeader("Content-Type", mime_type);
     res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
     res.send(buf);

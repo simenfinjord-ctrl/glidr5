@@ -368,6 +368,7 @@ export async function registerRoutes(
       ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS action_data TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'no';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TEXT;
       CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       INSERT INTO app_settings (key, value) VALUES ('commercialization_enabled', 'false') ON CONFLICT (key) DO NOTHING;
     `);
@@ -2645,6 +2646,7 @@ export async function registerRoutes(
       teamId,
       isBlindTester: req.body.isBlindTester ? 1 : 0,
       language: req.body.language || "no",
+      createdAt: new Date().toISOString(),
     } as any);
     const { password, ...safe } = created;
     res.json(safe);
@@ -2929,6 +2931,7 @@ export async function registerRoutes(
           groupScope: u.groupScope ?? "",
           username: u.username ?? null,
           avatarUrl: u.avatarUrl ?? null,
+          createdAt: u.createdAt ?? null,
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -6498,6 +6501,7 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
         onboardingCompleted: 0,
         totpEnabled: 0,
         language: "no",
+        createdAt: new Date().toISOString(),
       });
       await pool.query(
         `UPDATE invitations SET accepted_at = $1 WHERE token = $2`,

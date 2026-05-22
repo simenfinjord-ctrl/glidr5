@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Users, Shield, Mail, Search, X,
-  ArrowUpDown, ChevronDown,
+  ArrowUpDown, ChevronDown, List, LayoutGrid, AlignJustify, Calendar,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -30,16 +30,27 @@ interface TeamMember {
   groupScope: string;
   username: string | null;
   avatarUrl: string | null;
+  createdAt: string | null;
 }
 
 type SortKey = "name-asc" | "name-desc";
+type ViewMode = "list" | "grid" | "compact";
 
 const SORT_LABELS: Record<SortKey, string> = {
   "name-asc": "Name A → Z",
   "name-desc": "Name Z → A",
 };
 
-function MemberAvatar({ member }: { member: TeamMember }) {
+function formatMemberSince(iso: string | null): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  } catch {
+    return "—";
+  }
+}
+
+function MemberAvatar({ member, size = "sm" }: { member: TeamMember; size?: "sm" | "lg" }) {
   const initials = member.name
     .split(" ")
     .map((n) => n[0])
@@ -47,20 +58,44 @@ function MemberAvatar({ member }: { member: TeamMember }) {
     .toUpperCase()
     .slice(0, 2);
 
+  const cls = size === "lg"
+    ? "h-14 w-14 rounded-full object-cover border border-border shrink-0"
+    : "h-9 w-9 rounded-full object-cover border border-border shrink-0";
+
+  const fallbackCls = size === "lg"
+    ? "h-14 w-14 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-sm font-bold text-white shrink-0"
+    : "h-9 w-9 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0";
+
   if (member.avatarUrl) {
     return (
       <img
         src={member.avatarUrl}
         alt={member.name}
-        className="h-9 w-9 rounded-full object-cover border border-border shrink-0"
+        className={cls}
       />
     );
   }
 
   return (
-    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+    <div className={fallbackCls}>
       {initials}
     </div>
+  );
+}
+
+function RoleBadge({ isTeamAdmin }: { isTeamAdmin: boolean }) {
+  if (isTeamAdmin) {
+    return (
+      <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-300">
+        <Shield className="h-2.5 w-2.5" />
+        Admin
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+      Member
+    </span>
   );
 }
 
@@ -72,6 +107,7 @@ export default function MyTeam() {
   const [sortKey, setSortKey] = useState<SortKey>("name-asc");
   const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "member">("all");
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const { data: members = [], isLoading } = useQuery<TeamMember[]>({
     queryKey: ["/api/team/members"],
@@ -255,17 +291,59 @@ export default function MyTeam() {
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* View toggle */}
+          <div className="flex items-center gap-0.5 border border-border rounded-md p-0.5 h-9">
+            <button
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "h-7 w-7 flex items-center justify-center rounded transition-colors",
+                viewMode === "list"
+                  ? "bg-green-600 text-white"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              title="List view"
+            >
+              <List className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setViewMode("grid")}
+              className={cn(
+                "h-7 w-7 flex items-center justify-center rounded transition-colors",
+                viewMode === "grid"
+                  ? "bg-green-600 text-white"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              title="Grid view"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setViewMode("compact")}
+              className={cn(
+                "h-7 w-7 flex items-center justify-center rounded transition-colors",
+                viewMode === "compact"
+                  ? "bg-green-600 text-white"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              title="Compact view"
+            >
+              <AlignJustify className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
-        {/* Member list */}
-        <Card className="rounded-2xl overflow-hidden">
-          {isLoading ? (
+        {/* Member views */}
+        {isLoading ? (
+          <Card className="rounded-2xl overflow-hidden">
             <div className="p-6 space-y-3">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="h-14 bg-muted/50 rounded-xl animate-pulse" />
               ))}
             </div>
-          ) : filtered.length === 0 ? (
+          </Card>
+        ) : filtered.length === 0 ? (
+          <Card className="rounded-2xl overflow-hidden">
             <div className="p-8 text-center space-y-1">
               <p className="text-sm text-muted-foreground">
                 {members.length === 0 ? "No team members found." : "No members match your filters."}
@@ -279,7 +357,10 @@ export default function MyTeam() {
                 </button>
               )}
             </div>
-          ) : (
+          </Card>
+        ) : viewMode === "list" ? (
+          /* LIST VIEW */
+          <Card className="rounded-2xl overflow-hidden">
             <div className="divide-y divide-border">
               {filtered.map((member) => {
                 const groups = member.groupScope
@@ -297,23 +378,18 @@ export default function MyTeam() {
                       {/* Name + role badge */}
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-sm truncate">{member.name}</span>
-                        {member.isTeamAdmin ? (
-                          <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-300">
-                            <Shield className="h-2.5 w-2.5" />
-                            Admin
-                          </span>
-                        ) : (
-                          <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            Member
-                          </span>
-                        )}
+                        <RoleBadge isTeamAdmin={member.isTeamAdmin} />
                       </div>
 
-                      {/* Email */}
+                      {/* Email + member since */}
                       <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Mail className="h-3 w-3 shrink-0" />
                           {member.email}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Calendar className="h-3 w-3 shrink-0" />
+                          Member since: {formatMemberSince(member.createdAt)}
                         </span>
                       </div>
 
@@ -354,8 +430,106 @@ export default function MyTeam() {
                 );
               })}
             </div>
-          )}
-        </Card>
+          </Card>
+        ) : viewMode === "grid" ? (
+          /* GRID VIEW */
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {filtered.map((member) => {
+              const groups = member.groupScope
+                ? member.groupScope.split(",").map((g) => g.trim()).filter(Boolean)
+                : [];
+
+              return (
+                <Card
+                  key={member.id}
+                  className="rounded-2xl p-4 flex flex-col items-center text-center gap-2 hover:bg-muted/20 transition-colors"
+                >
+                  <MemberAvatar member={member} size="lg" />
+                  <div className="w-full">
+                    <p className="font-medium text-sm truncate">{member.name}</p>
+                    <div className="flex justify-center mt-1">
+                      <RoleBadge isTeamAdmin={member.isTeamAdmin} />
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate mt-1">{member.email}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Since: {formatMemberSince(member.createdAt)}
+                    </p>
+                  </div>
+                  {groups.length > 0 && (
+                    <div className="flex flex-wrap justify-center gap-1 w-full">
+                      {groups.map((g) => (
+                        <button
+                          key={g}
+                          onClick={() => setGroupFilter(groupFilter === g ? null : g)}
+                          className={cn(
+                            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 transition-colors",
+                            groupFilter === g
+                              ? "bg-green-500 text-white ring-green-500"
+                              : "bg-green-50 text-green-700 ring-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:ring-green-800",
+                          )}
+                        >
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {isTeamAdmin && member.id !== user?.id && (
+                    <AppLink
+                      href="/admin"
+                      className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+                    >
+                      Manage
+                    </AppLink>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          /* COMPACT VIEW */
+          <Card className="rounded-2xl overflow-hidden">
+            <div className="divide-y divide-border">
+              {filtered.map((member) => {
+                const groups = member.groupScope
+                  ? member.groupScope.split(",").map((g) => g.trim()).filter(Boolean)
+                  : [];
+
+                return (
+                  <div
+                    key={member.id}
+                    className="flex items-center gap-2 px-4 py-2 hover:bg-muted/30 transition-colors flex-wrap"
+                  >
+                    <span className="font-medium text-sm">{member.name}</span>
+                    <RoleBadge isTeamAdmin={member.isTeamAdmin} />
+                    <span className="text-xs text-muted-foreground">{member.email}</span>
+                    {groups.map((g) => (
+                      <button
+                        key={g}
+                        onClick={() => setGroupFilter(groupFilter === g ? null : g)}
+                        className={cn(
+                          "inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 transition-colors",
+                          groupFilter === g
+                            ? "bg-green-500 text-white ring-green-500"
+                            : "bg-green-50 text-green-700 ring-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:ring-green-800",
+                        )}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                    {isTeamAdmin && member.id !== user?.id && (
+                      <AppLink
+                        href="/admin"
+                        className="ml-auto text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+                      >
+                        Manage
+                      </AppLink>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
       </div>
     </AppShell>
   );

@@ -237,6 +237,7 @@ export const users = pgTable("users", {
   incognito: integer("incognito").notNull().default(0),
   stealth: integer("stealth").notNull().default(0),
   avatarUrl: text("avatar_url"),
+  createdAt: text("created_at"),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });

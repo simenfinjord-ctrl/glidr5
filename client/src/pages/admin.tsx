@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,7 +8,7 @@ import {
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle,
   HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash, RotateCcw,
-  MessageSquare, UserPlus, FileText, ExternalLink,
+  MessageSquare, UserPlus, FileText, ExternalLink, LayoutDashboard, CreditCard,
 } from "lucide-react";
 import {
   PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS,
@@ -1507,19 +1507,19 @@ function TeamFeaturesDialog({
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ALL_TABS: { id: TabId; labelKey: string; superAdminOnly?: boolean }[] = [
-  { id: "overview", labelKey: "admin.tabOverview" },
-  { id: "users", labelKey: "admin.tabUsers" },
-  { id: "groups", labelKey: "admin.tabGroups" },
-  { id: "teams", labelKey: "admin.tabTeams", superAdminOnly: true },
-  { id: "backup", labelKey: "admin.tabBackup" },
-  { id: "activity", labelKey: "admin.tabActivityLog" },
-  { id: "logins", labelKey: "admin.tabLoginHistory" },
-  { id: "data", labelKey: "admin.tabDataManagement" },
-  { id: "danger", labelKey: "admin.tabDangerZone" },
-  { id: "security", labelKey: "admin.tabSecurity", superAdminOnly: true },
-  { id: "registrations", labelKey: "admin.tabRegistrations", superAdminOnly: true },
-  { id: "accounting" as TabId, labelKey: "admin.tabAccounting", superAdminOnly: true },
+const ALL_TABS: { id: TabId; labelKey: string; superAdminOnly?: boolean; icon: React.ElementType }[] = [
+  { id: "overview", labelKey: "admin.tabOverview", icon: LayoutDashboard },
+  { id: "users", labelKey: "admin.tabUsers", icon: Users },
+  { id: "groups", labelKey: "admin.tabGroups", icon: Layers },
+  { id: "teams", labelKey: "admin.tabTeams", superAdminOnly: true, icon: Building2 },
+  { id: "backup", labelKey: "admin.tabBackup", icon: Database },
+  { id: "activity", labelKey: "admin.tabActivityLog", icon: Activity },
+  { id: "logins", labelKey: "admin.tabLoginHistory", icon: LogIn },
+  { id: "data", labelKey: "admin.tabDataManagement", icon: HardDrive },
+  { id: "danger", labelKey: "admin.tabDangerZone", icon: AlertTriangle },
+  { id: "security", labelKey: "admin.tabSecurity", superAdminOnly: true, icon: Shield },
+  { id: "registrations", labelKey: "admin.tabRegistrations", superAdminOnly: true, icon: UserPlus },
+  { id: "accounting" as TabId, labelKey: "admin.tabAccounting", superAdminOnly: true, icon: CreditCard },
 ];
 
 function BackupStatusCard() {
@@ -3277,22 +3277,25 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1 shadow-sm" data-testid="admin-tab-bar">
-          {ALL_TABS.filter((tab) => !tab.superAdminOnly || isSuperAdmin).map((tab) => (
-            <button
-              key={tab.id}
-              data-testid={`tab-${tab.id}`}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "rounded-lg px-4 py-2 text-sm font-medium transition-all",
-                activeTab === tab.id
-                  ? "bg-green-600 text-white shadow-sm"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              {t(tab.labelKey)}
-            </button>
-          ))}
+        <div className="flex gap-1 border-b border-border overflow-x-auto" data-testid="admin-tab-bar">
+          {ALL_TABS.filter((tab) => !tab.superAdminOnly || isSuperAdmin).map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                data-testid={`tab-${tab.id}`}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? "border-green-600 text-green-700 dark:text-green-400"
+                    : "border-transparent text-muted-foreground hover:text-foreground/80"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {t(tab.labelKey)}
+              </button>
+            );
+          })}
         </div>
 
         {activeTab === "overview" && (

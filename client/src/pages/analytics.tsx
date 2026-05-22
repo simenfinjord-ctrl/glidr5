@@ -1928,17 +1928,16 @@ export default function Analytics() {
         </div>
 
         {/* Tab bar */}
-        <div className="flex gap-1 rounded-xl bg-muted/50 p-1 border">
+        <div className="flex gap-1 border-b border-border overflow-x-auto">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
-                  ? "bg-background shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-              )}
+                  ? "border-green-600 text-green-700 dark:text-green-400"
+                  : "border-transparent text-muted-foreground hover:text-foreground/80"
+              }`}
             >
               {tab.icon}
               <span className="hidden sm:inline">{tab.label}</span>

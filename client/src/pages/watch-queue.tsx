@@ -5,7 +5,6 @@ import { AppShell } from "@/components/app-shell";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
@@ -173,32 +172,30 @@ export default function WatchQueue() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 border-b">
+        <div className="flex gap-1 border-b border-border overflow-x-auto">
           <button
             onClick={() => setTab("active")}
-            className={cn(
-              "flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition-colors",
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               tab === "active"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
+                ? "border-green-600 text-green-700 dark:text-green-400"
+                : "border-transparent text-muted-foreground hover:text-foreground/80"
+            }`}
           >
             <List className="h-4 w-4" />
             {t("watchQueue.queueTab")}
             {queue.length > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
                 {queue.length}
-              </Badge>
+              </span>
             )}
           </button>
           <button
             onClick={() => setTab("archive")}
-            className={cn(
-              "flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition-colors",
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               tab === "archive"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
+                ? "border-green-600 text-green-700 dark:text-green-400"
+                : "border-transparent text-muted-foreground hover:text-foreground/80"
+            }`}
           >
             <Archive className="h-4 w-4" />
             {t("watchQueue.archiveTab")}

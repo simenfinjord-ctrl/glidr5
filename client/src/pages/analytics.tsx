@@ -136,6 +136,14 @@ function stdDev(arr: number[]): number | null {
   return parseFloat(Math.sqrt(variance).toFixed(2));
 }
 
+function getSkiSeason(dateStr: string): string {
+  const d = new Date(dateStr);
+  const year = d.getFullYear();
+  const month = d.getMonth(); // 0-indexed
+  const startYear = month >= 9 ? year : year - 1;
+  return `${startYear}/${String(startYear + 1).slice(2)}`;
+}
+
 // Generic bucket-based performance breakdown table
 function BucketBreakdown({
   title,
@@ -213,6 +221,110 @@ function BucketBreakdown({
         </table>
       </div>
     </div>
+  );
+}
+
+// ── Activity Heatmap ───────────────────────────────────────────────────────────
+
+function ActivityHeatmap({ tests }: { tests: Test[] }) {
+  const today = new Date();
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - 364);
+  // Normalize to Monday of that week
+  const dayOfWeek = (startDate.getDay() + 6) % 7; // Mon=0
+  startDate.setDate(startDate.getDate() - dayOfWeek);
+
+  // Count tests per date
+  const countByDate = new Map<string, number>();
+  for (const t of tests) {
+    countByDate.set(t.date, (countByDate.get(t.date) || 0) + 1);
+  }
+
+  // Build weeks array
+  const weeks: Date[][] = [];
+  const cur = new Date(startDate);
+  while (cur <= today) {
+    const week: Date[] = [];
+    for (let d = 0; d < 7; d++) {
+      week.push(new Date(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+
+  function colorClass(count: number) {
+    if (count === 0) return "bg-muted/40 dark:bg-muted/20";
+    if (count === 1) return "bg-green-200 dark:bg-green-800";
+    if (count <= 3) return "bg-green-400 dark:bg-green-600";
+    return "bg-green-600 dark:bg-green-400";
+  }
+
+  // Month labels
+  const monthLabels: { label: string; colStart: number }[] = [];
+  let lastMonth = -1;
+  weeks.forEach((week, wi) => {
+    const month = week[0].getMonth();
+    if (month !== lastMonth) {
+      monthLabels.push({ label: week[0].toLocaleString("default", { month: "short" }), colStart: wi });
+      lastMonth = month;
+    }
+  });
+
+  const totalTests = tests.length;
+  const activeDays = countByDate.size;
+
+  return (
+    <Card className="fs-card rounded-2xl p-4 sm:p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50">
+          <CalendarDays className="h-4 w-4 text-emerald-600" />
+        </div>
+        <h2 className="text-base font-semibold">Test activity</h2>
+        <span className="text-xs text-muted-foreground">{totalTests} tests across {activeDays} days</span>
+      </div>
+      <div className="overflow-x-auto">
+        <div className="inline-block min-w-full">
+          {/* Month labels */}
+          <div className="flex mb-1" style={{ gap: "3px" }}>
+            {weeks.map((_, wi) => {
+              const lbl = monthLabels.find(m => m.colStart === wi);
+              return (
+                <div key={wi} className="w-3 shrink-0 text-[9px] text-muted-foreground" style={{ minWidth: 12 }}>
+                  {lbl?.label ?? ""}
+                </div>
+              );
+            })}
+          </div>
+          {/* Grid: 7 rows (days) x N cols (weeks) */}
+          <div className="flex" style={{ gap: "3px" }}>
+            {weeks.map((week, wi) => (
+              <div key={wi} className="flex flex-col" style={{ gap: "3px" }}>
+                {week.map((day) => {
+                  const ds = day.toISOString().slice(0, 10);
+                  const count = countByDate.get(ds) || 0;
+                  const isFuture = day > today;
+                  return (
+                    <div
+                      key={ds}
+                      title={count > 0 ? `${ds}: ${count} test${count > 1 ? "s" : ""}` : ds}
+                      className={`h-3 w-3 rounded-sm transition-colors ${isFuture ? "opacity-0" : colorClass(count)}`}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          {/* Legend */}
+          <div className="flex items-center gap-1.5 mt-2">
+            <span className="text-[10px] text-muted-foreground">Less</span>
+            {["bg-muted/40", "bg-green-200", "bg-green-400", "bg-green-600"].map((c, i) => (
+              <div key={i} className={`h-3 w-3 rounded-sm ${c}`} />
+            ))}
+            <span className="text-[10px] text-muted-foreground">More</span>
+          </div>
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -534,6 +646,76 @@ function OverviewStats({
         </Card>
       </div>
     </div>
+  );
+}
+
+// ── Form Tracker ───────────────────────────────────────────────────────────────
+
+function FormTracker({ allEntries, productsById, testsById }: {
+  allEntries: TestEntry[];
+  productsById: Map<number, Product>;
+  testsById: Map<number, Test>;
+}) {
+  const rows = useMemo(() => {
+    const pData = new Map<number, { name: string; rankedEntries: { date: string; rank: number }[] }>();
+    for (const e of allEntries) {
+      if (!e.productId) continue;
+      const rank = getRank(e);
+      if (rank === null) continue;
+      const test = testsById.get(e.testId);
+      if (!test) continue;
+      if (!pData.has(e.productId)) {
+        const p = productsById.get(e.productId);
+        pData.set(e.productId, { name: p ? `${p.brand} ${p.name}` : `#${e.productId}`, rankedEntries: [] });
+      }
+      pData.get(e.productId)!.rankedEntries.push({ date: test.date, rank });
+    }
+    return Array.from(pData.values())
+      .filter(p => p.rankedEntries.length >= 5)
+      .map(p => {
+        const sorted = [...p.rankedEntries].sort((a, b) => b.date.localeCompare(a.date));
+        const allAvg = sorted.reduce((s, e) => s + e.rank, 0) / sorted.length;
+        const recentAvg = sorted.slice(0, 5).reduce((s, e) => s + e.rank, 0) / 5;
+        const delta = allAvg - recentAvg; // positive = improving (lower rank = better)
+        return { name: p.name, allAvg: parseFloat(allAvg.toFixed(2)), recentAvg: parseFloat(recentAvg.toFixed(2)), delta, total: sorted.length };
+      })
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10);
+  }, [allEntries, productsById, testsById]);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <Card className="fs-card rounded-2xl p-4 sm:p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-50">
+          <TrendingUp className="h-4 w-4 text-orange-500" />
+        </div>
+        <h2 className="text-base font-semibold">Form tracker</h2>
+        <span className="text-xs text-muted-foreground">Recent 5 tests vs all-time</span>
+      </div>
+      <div className="space-y-2">
+        {rows.map((r) => {
+          const isHot = r.delta > 0.3;
+          const isCold = r.delta < -0.3;
+          return (
+            <div key={r.name} className="flex items-center gap-3 rounded-xl border border-border bg-muted/20 px-3 py-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold text-foreground truncate">{r.name}</div>
+                <div className="text-[11px] text-muted-foreground">All-time avg: {r.allAvg} · Recent avg: {r.recentAvg} · {r.total} tests</div>
+              </div>
+              <div className={cn(
+                "flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold shrink-0",
+                isHot ? "bg-green-100 text-green-700" : isCold ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"
+              )}>
+                {isHot ? "▲" : isCold ? "▼" : "—"}
+                {isHot ? " Hot" : isCold ? " Cold" : " Stable"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }
 
@@ -873,6 +1055,9 @@ function ProductSearchStats({
     const medianRank = median(ranks);
     const rankStdDev = stdDev(ranks);
 
+    const podiumCount = ranks.filter(r => r <= 3).length;
+    const podiumRate = ranks.length > 0 ? parseFloat(((podiumCount / ranks.length) * 100).toFixed(1)) : 0;
+
     return {
       totalTests: testsUsed.length,
       totalWins,
@@ -880,6 +1065,7 @@ function ProductSearchStats({
       winRate,
       medianRank,
       rankStdDev,
+      podiumRate,
       methodologyBreakdown,
       performanceOverTime,
       testResults,
@@ -952,7 +1138,7 @@ function ProductSearchStats({
 
       {selectedProduct && stats && (
         <div className="flex flex-col gap-5" data-testid="card-product-stats">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
             <div className="rounded-xl border p-3 text-center">
               <Hash className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
               <div className="text-2xl font-bold" data-testid="text-product-total-tests">{stats.totalTests}</div>
@@ -983,6 +1169,11 @@ function ProductSearchStats({
               <div className="text-2xl font-bold">{stats.rankStdDev ?? "—"}</div>
               <div className="text-xs text-muted-foreground">Consistency (σ)</div>
             </div>
+            <div className="rounded-xl border p-3 text-center">
+              <Award className="h-4 w-4 mx-auto text-amber-500 mb-1" />
+              <div className="text-2xl font-bold">{stats.podiumRate}%</div>
+              <div className="text-xs text-muted-foreground">Podium rate</div>
+            </div>
           </div>
 
           {stats.methodologyBreakdown.length > 0 && (
@@ -1000,6 +1191,45 @@ function ProductSearchStats({
               </div>
             </div>
           )}
+
+          {/* Ranking distribution */}
+          {stats.testResults.length > 0 && (() => {
+            const rankCounts: Record<string, number> = { "1st": 0, "2nd": 0, "3rd": 0, "4th": 0, "5th+": 0 };
+            for (const { rank } of stats.testResults) {
+              if (rank === null) continue;
+              if (rank === 1) rankCounts["1st"]++;
+              else if (rank === 2) rankCounts["2nd"]++;
+              else if (rank === 3) rankCounts["3rd"]++;
+              else if (rank === 4) rankCounts["4th"]++;
+              else rankCounts["5th+"]++;
+            }
+            const distData = Object.entries(rankCounts).map(([label, count]) => ({ label, count }));
+            const podiumRate2 = stats.testResults.filter(r => r.rank !== null && r.rank <= 3).length;
+            const ranked = stats.testResults.filter(r => r.rank !== null).length;
+            const podiumPct = ranked > 0 ? Math.round((podiumRate2 / ranked) * 100) : 0;
+            return (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Ranking distribution</span>
+                  <span className="text-xs text-muted-foreground ml-auto">Podium rate: <span className="font-bold text-amber-600">{podiumPct}%</span></span>
+                </div>
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={distData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                    <XAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                    <YAxis allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px" }} />
+                    <Bar dataKey="count" name="Times" radius={[4, 4, 0, 0]}>
+                      {distData.map((entry, i) => (
+                        <Cell key={i} fill={i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : i === 2 ? "#f97316" : CHART_COLORS[i]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            );
+          })()}
 
           {stats.performanceOverTime.length > 1 && (
             <div>
@@ -1126,6 +1356,63 @@ function ProductSearchStats({
               </div>
             </div>
           )}
+
+          {/* Location performance */}
+          {(() => {
+            const locMap = new Map<string, { ranks: number[]; wins: number }>();
+            for (const { test, rank } of stats.testResults) {
+              if (rank === null) continue;
+              if (!locMap.has(test.location)) locMap.set(test.location, { ranks: [], wins: 0 });
+              const s = locMap.get(test.location)!;
+              s.ranks.push(rank);
+              if (rank === 1) s.wins++;
+            }
+            const locRows = Array.from(locMap.entries())
+              .map(([loc, s]) => ({
+                loc,
+                tests: s.ranks.length,
+                avgRank: parseFloat((s.ranks.reduce((a, b) => a + b, 0) / s.ranks.length).toFixed(2)),
+                wins: s.wins,
+              }))
+              .sort((a, b) => a.avgRank - b.avgRank);
+            if (locRows.length === 0) return null;
+            const best = locRows[0];
+            return (
+              <div>
+                <div className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4 text-rose-500" />
+                  Performance by location
+                </div>
+                {best && (
+                  <div className="mb-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                    Best venue: <span className="font-bold">{best.loc}</span> — avg rank {best.avgRank} ({best.wins} win{best.wins !== 1 ? "s" : ""} in {best.tests} test{best.tests !== 1 ? "s" : ""})
+                  </div>
+                )}
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/60">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-medium">Location</th>
+                        <th className="text-center px-3 py-2 font-medium">Tests</th>
+                        <th className="text-center px-3 py-2 font-medium">Avg rank</th>
+                        <th className="text-center px-3 py-2 font-medium">Wins</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {locRows.map((row) => (
+                        <tr key={row.loc} className={cn("border-t hover:bg-muted/30", row.loc === best.loc && "bg-emerald-50/50 dark:bg-emerald-900/10")}>
+                          <td className="px-3 py-1.5 font-medium">{row.loc}</td>
+                          <td className="px-3 py-1.5 text-center text-muted-foreground">{row.tests}</td>
+                          <td className="px-3 py-1.5 text-center font-semibold">{row.avgRank}</td>
+                          <td className="px-3 py-1.5 text-center">{row.wins > 0 ? <span className="text-amber-600 font-bold">{row.wins}</span> : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
 
           <div>
             <div className="text-sm font-medium mb-2">Test history ({stats.testResults.length})</div>
@@ -1433,6 +1720,112 @@ function CombinationSearch({
           </div>
         </div>
       )}
+    </Card>
+  );
+}
+
+// ── Head-to-Head Matrix ────────────────────────────────────────────────────────
+
+function HeadToHeadMatrix({ allEntries, productsById, testsById }: {
+  allEntries: TestEntry[];
+  productsById: Map<number, Product>;
+  testsById: Map<number, Test>;
+}) {
+  const { topProducts, matrix } = useMemo(() => {
+    // Get top products by appearances
+    const appearances = new Map<number, number>();
+    for (const e of allEntries) {
+      if (e.productId) appearances.set(e.productId, (appearances.get(e.productId) || 0) + 1);
+    }
+    const topProducts = Array.from(appearances.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([pid]) => productsById.get(pid))
+      .filter(Boolean) as Product[];
+
+    // Build test→ranks map
+    const testRanks = new Map<number, Map<number, number>>(); // testId → productId → rank
+    for (const e of allEntries) {
+      if (!e.productId) continue;
+      const rank = getRank(e);
+      if (rank === null) continue;
+      if (!testRanks.has(e.testId)) testRanks.set(e.testId, new Map());
+      testRanks.get(e.testId)!.set(e.productId, rank);
+    }
+
+    // Build matrix
+    const matrix: Record<string, Record<string, { wins: number; total: number }>> = {};
+    for (const p1 of topProducts) {
+      matrix[p1.id] = {};
+      for (const p2 of topProducts) {
+        if (p1.id === p2.id) continue;
+        let wins = 0, total = 0;
+        for (const [, rankMap] of testRanks) {
+          const r1 = rankMap.get(p1.id);
+          const r2 = rankMap.get(p2.id);
+          if (r1 !== undefined && r2 !== undefined) {
+            total++;
+            if (r1 < r2) wins++;
+          }
+        }
+        matrix[p1.id][p2.id] = { wins, total };
+      }
+    }
+    return { topProducts, matrix };
+  }, [allEntries, productsById, testsById]);
+
+  if (topProducts.length < 2) return (
+    <Card className="fs-card rounded-2xl p-4 sm:p-6">
+      <p className="text-sm text-muted-foreground">Need at least 2 products with test data for head-to-head matrix.</p>
+    </Card>
+  );
+
+  return (
+    <Card className="fs-card rounded-2xl p-4 sm:p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50">
+          <Target className="h-4 w-4 text-indigo-600" />
+        </div>
+        <h2 className="text-base font-semibold">Head-to-head matrix</h2>
+        <span className="text-xs text-muted-foreground">Win % when both products tested together</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="text-xs border-collapse">
+          <thead>
+            <tr>
+              <th className="px-2 py-1.5 text-left font-medium text-muted-foreground min-w-[100px]">vs →</th>
+              {topProducts.map(p => (
+                <th key={p.id} className="px-2 py-1.5 text-center font-medium max-w-[80px]">
+                  <div className="truncate max-w-[70px]" title={`${p.brand} ${p.name}`}>{p.name}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {topProducts.map(p1 => (
+              <tr key={p1.id} className="border-t border-border">
+                <td className="px-2 py-1.5 font-semibold truncate max-w-[100px]" title={`${p1.brand} ${p1.name}`}>{p1.name}</td>
+                {topProducts.map(p2 => {
+                  if (p1.id === p2.id) return <td key={p2.id} className="px-2 py-1.5 text-center bg-muted/30 text-muted-foreground">—</td>;
+                  const cell = matrix[p1.id]?.[p2.id];
+                  if (!cell || cell.total === 0) return <td key={p2.id} className="px-2 py-1.5 text-center text-muted-foreground">n/a</td>;
+                  const pct = Math.round((cell.wins / cell.total) * 100);
+                  const isGood = pct >= 60;
+                  const isBad = pct <= 40;
+                  return (
+                    <td key={p2.id} className={cn("px-2 py-1.5 text-center font-semibold rounded",
+                      isGood ? "text-green-700 bg-green-50 dark:bg-green-950/30" : isBad ? "text-red-700 bg-red-50 dark:bg-red-950/30" : ""
+                    )}>
+                      {pct}%
+                      <div className="text-[9px] font-normal text-muted-foreground">{cell.wins}/{cell.total}</div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </Card>
   );
 }
@@ -1785,16 +2178,23 @@ export default function Analytics() {
   });
 
   const [testTypeFilter, setTestTypeFilter] = useState<"All" | "Glide" | "Structure">("All");
+  const [seasonFilter, setSeasonFilter] = useState<string>("All");
   const [activeTab, setActiveTab] = useState<"overview" | "products" | "compare" | "conditions">("overview");
 
   const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const testsById = useMemo(() => new Map(tests.map((t) => [t.id, t])), [tests]);
   const weatherById = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);
 
+  const seasons = useMemo(() => {
+    const s = new Set(tests.map(t => getSkiSeason(t.date)));
+    return ["All", ...Array.from(s).sort().reverse()];
+  }, [tests]);
+
   const filteredTests = useMemo(() => {
-    if (testTypeFilter === "All") return tests;
-    return tests.filter((t) => t.testType === testTypeFilter);
-  }, [tests, testTypeFilter]);
+    let result = testTypeFilter === "All" ? tests : tests.filter(t => t.testType === testTypeFilter);
+    if (seasonFilter !== "All") result = result.filter(t => getSkiSeason(t.date) === seasonFilter);
+    return result;
+  }, [tests, testTypeFilter, seasonFilter]);
 
   const filteredTestIds = useMemo(() => new Set(filteredTests.map((t) => t.id)), [filteredTests]);
   const filteredEntries = useMemo(() => allEntries.filter((e) => filteredTestIds.has(e.testId)), [allEntries, filteredTestIds]);
@@ -2057,7 +2457,7 @@ export default function Analytics() {
               {t("analytics.subtitle")}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
             {(["All", "Glide", "Structure"] as const).map((type) => (
               <Button
@@ -2070,6 +2470,22 @@ export default function Analytics() {
                 {type === "All" ? t("analytics.all") : type === "Glide" ? t("tests.glide") : t("tests.structure")}
               </Button>
             ))}
+            {seasons.length > 1 && (
+              <>
+                <span className="text-xs text-muted-foreground font-medium ml-1">Season:</span>
+                {seasons.slice(0, Math.min(5, seasons.length)).map((season) => (
+                  <Button
+                    key={season}
+                    variant={seasonFilter === season ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSeasonFilter(season)}
+                    data-testid={`button-season-${season.replace("/", "-")}`}
+                  >
+                    {season}
+                  </Button>
+                ))}
+              </>
+            )}
             <Button variant="outline" size="sm" onClick={handleExportPDF} className="gap-1.5">
               <FileDown className="h-4 w-4" />
               Export Report
@@ -2105,6 +2521,7 @@ export default function Analytics() {
               </Card>
             ) : (
               <>
+                <ActivityHeatmap tests={tests} />
                 <OverviewStats
                   tests={tests}
                   allEntries={allEntries}
@@ -2112,6 +2529,11 @@ export default function Analytics() {
                   productsById={productsById}
                   testsById={testsById}
                   weatherById={weatherById}
+                />
+                <FormTracker
+                  allEntries={allEntries}
+                  productsById={productsById}
+                  testsById={testsById}
                 />
 
                 <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-wins-trend">
@@ -2211,6 +2633,13 @@ export default function Analytics() {
         {/* Compare tab */}
         {activeTab === "compare" && (
           <>
+            <ErrorBoundary label="Head-to-head matrix">
+              <HeadToHeadMatrix
+                allEntries={filteredEntries}
+                productsById={productsById}
+                testsById={testsById}
+              />
+            </ErrorBoundary>
             <ErrorBoundary label="Compare">
               <ProductCompare
                 products={products}

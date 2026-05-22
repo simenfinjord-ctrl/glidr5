@@ -1488,18 +1488,24 @@ export default function AthleteDetail() {
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                     <span className="text-xs font-medium text-muted-foreground shrink-0">Columns:</span>
                     {allTestColumns.map((col) => (
-                      <label key={col.key} className="flex items-center gap-1.5 cursor-pointer select-none" data-testid={`col-toggle-${col.key}`}>
+                      <div
+                        key={col.key}
+                        className="flex items-center gap-1.5 cursor-pointer select-none"
+                        data-testid={`col-toggle-${col.key}`}
+                        onClick={() =>
+                          setActiveTestColumns((prev) =>
+                            prev.includes(col.key)
+                              ? prev.filter((k) => k !== col.key)
+                              : [...prev, col.key]
+                          )
+                        }
+                      >
                         <Checkbox
                           checked={activeTestColumns.includes(col.key)}
-                          onCheckedChange={(checked) => {
-                            setActiveTestColumns((prev) =>
-                              checked ? [...prev, col.key] : prev.filter((k) => k !== col.key)
-                            );
-                          }}
-                          className="h-3.5 w-3.5"
+                          className="h-3.5 w-3.5 pointer-events-none"
                         />
                         <span className="text-xs">{col.label}</span>
-                      </label>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -2328,21 +2334,24 @@ export default function AthleteDetail() {
               {allTestColumns.map((col) => {
                 const isActive = activeTestColumns.includes(col.key);
                 return (
-                  <label
+                  <div
                     key={col.key}
                     className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/50 cursor-pointer"
                     data-testid={`checkbox-test-col-${col.key}`}
+                    onClick={() =>
+                      setActiveTestColumns((prev) =>
+                        prev.includes(col.key)
+                          ? prev.filter((k) => k !== col.key)
+                          : [...prev, col.key]
+                      )
+                    }
                   >
                     <Checkbox
                       checked={isActive}
-                      onCheckedChange={(checked) => {
-                        setActiveTestColumns((prev) =>
-                          checked ? [...prev, col.key] : prev.filter((k) => k !== col.key)
-                        );
-                      }}
+                      className="pointer-events-none"
                     />
                     <span className="text-sm">{col.label}</span>
-                  </label>
+                  </div>
                 );
               })}
             </div>

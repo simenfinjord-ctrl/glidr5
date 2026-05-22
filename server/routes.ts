@@ -2353,28 +2353,49 @@ export async function registerRoutes(
     );
     const comment = result.rows[0];
 
-    // Parse @username mentions and send inbox messages
-    const mentions = [...content.matchAll(/@([a-zA-Z0-9._-]+)/g)].map(m => m[1].toLowerCase());
-    if (mentions.length > 0) {
-      const teamId = u.activeTeamId || u.teamId;
-      const mentionedUsers = await (pool as any).query(
-        `SELECT id, name FROM users WHERE team_id = $1 AND LOWER(name) LIKE ANY($2) AND id != $3`,
-        [teamId, mentions.map((m: string) => `%${m}%`), u.id]
-      );
-      const testRow = await (pool as any).query(`SELECT test_name, location, date FROM tests WHERE id = $1`, [testId]);
-      const testLabel = testRow.rows[0]?.test_name || testRow.rows[0]?.location || `Test #${testId}`;
-      for (const mentioned of mentionedUsers.rows) {
-        await (pool as any).query(
-          `INSERT INTO inbox_messages (team_id, to_user_id, from_user_id, subject, body, created_at)
-           VALUES ($1,$2,$3,$4,$5,NOW())`,
-          [
-            teamId,
-            mentioned.id,
-            u.id,
-            `${u.name} mentioned you in ${testLabel}`,
-            content,
-          ]
+    // Parse @First_Last mentions (underscores represent spaces) and notify via inbox
+    const mentionTokens = [...content.matchAll(/@([a-zA-Z0-9._-]+)/g)]
+      .map(m => m[1].replace(/_/g, " ").toLowerCase()); // "Simen_Finjord" → "simen finjord"
+    const uniqueMentions = [...new Set(mentionTokens)];
+    if (uniqueMentions.length > 0) {
+      try {
+        const teamId = (u as any).activeTeamId || u.teamId;
+        // Exact case-insensitive name match (avoids false positives from fuzzy match)
+        const mentionedUsers = await (pool as any).query(
+          `SELECT id, name FROM users
+           WHERE (team_id = $1 OR id IN (SELECT user_id FROM user_team_permissions WHERE team_id = $1))
+             AND LOWER(name) = ANY($2)
+             AND id != $3
+             AND is_active = 1`,
+          [teamId, uniqueMentions, u.id]
         );
+        if (mentionedUsers.rows.length > 0) {
+          const testRow = await (pool as any).query(
+            `SELECT test_name, location, date FROM tests WHERE id = $1`,
+            [testId]
+          );
+          const testLabel = testRow.rows[0]?.test_name || testRow.rows[0]?.location || `Test #${testId}`;
+          for (const mentioned of mentionedUsers.rows) {
+            await (pool as any).query(
+              `INSERT INTO inbox_messages
+                 (team_id, to_user_id, from_user_id, from_name, subject, body, is_read, created_at, action_type, action_data)
+               VALUES ($1,$2,$3,$4,$5,$6,0,NOW(),$7,$8)`,
+              [
+                teamId,
+                mentioned.id,
+                u.id,
+                u.name,
+                `${u.name} mentioned you in "${testLabel}"`,
+                content,
+                "test_comment",
+                JSON.stringify({ testId }),
+              ]
+            );
+          }
+        }
+      } catch (e) {
+        // Mention notifications are best-effort — don't fail the comment POST
+        console.error("Failed to send mention notifications:", e);
       }
     }
 

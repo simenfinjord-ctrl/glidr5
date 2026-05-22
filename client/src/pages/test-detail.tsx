@@ -288,14 +288,20 @@ function AttachmentsSection({ testId }: { testId: number }) {
   );
 }
 
-/** Render comment text with @mentions highlighted */
+/** Render comment text with @mentions highlighted.
+ *  Mentions are stored as @First_Last (underscores for spaces).
+ *  Display replaces underscores back to spaces. */
 function CommentText({ text }: { text: string }) {
-  const parts = text.split(/(@\S+)/g);
+  // Split on @word (with optional underscores/dots) tokens
+  const parts = text.split(/(@[a-zA-Z0-9._-]+)/g);
   return (
     <p className="mt-0.5 text-sm text-foreground/90 whitespace-pre-wrap break-words">
       {parts.map((part, i) =>
-        /^@\S+/.test(part) ? (
-          <span key={i} className="font-semibold text-blue-600 dark:text-blue-400">{part}</span>
+        /^@[a-zA-Z0-9._-]+/.test(part) ? (
+          <span key={i} className="font-semibold text-blue-600 dark:text-blue-400">
+            {/* Show @First Last (spaces back in) */}
+            @{part.slice(1).replace(/_/g, " ")}
+          </span>
         ) : (
           part
         )
@@ -369,7 +375,8 @@ function CommentsSection({ testId }: { testId: number }) {
     if (!ta) return;
     const before = content.slice(0, mentionStart);
     const after = content.slice(ta.selectionStart ?? content.length);
-    const inserted = `@${name} `;
+    // Encode spaces as underscores so the whole name is one token (@First_Last)
+    const inserted = `@${name.replace(/\s+/g, "_")} `;
     const next = before + inserted + after;
     setContent(next);
     setMentionQuery(null);

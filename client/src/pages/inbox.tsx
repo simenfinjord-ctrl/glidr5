@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Mail, MailOpen, Trash2, CheckCheck, ChevronDown, ChevronUp } from "lucide-react";
+import { Mail, MailOpen, Trash2, CheckCheck, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
@@ -270,6 +271,22 @@ export default function Inbox() {
                                 </Button>
                               </div>
                             )}
+                          </div>
+                        );
+                      })()}
+                      {msg.action_type === "test_comment" && (() => {
+                        let actionData: { testId: number } | null = null;
+                        try { actionData = JSON.parse(msg.action_data ?? ""); } catch {}
+                        if (!actionData?.testId) return null;
+                        return (
+                          <div className="mt-3">
+                            <AppLink
+                              href={`/tests/${actionData.testId}`}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              Go to test
+                            </AppLink>
                           </div>
                         );
                       })()}

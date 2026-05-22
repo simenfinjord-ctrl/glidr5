@@ -246,6 +246,14 @@ export default function AthleteDetail() {
 
   const [testsExpanded, setTestsExpanded] = useState(true);
   const [testViewMode, setTestViewMode] = useState<"card" | "list">("card");
+  const [expandedTestIds, setExpandedTestIds] = useState<Set<number>>(new Set());
+  function toggleTestExpanded(id: number) {
+    setExpandedTestIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
   const [showTestForm, setShowTestForm] = useState(false);
   const [testForm, setTestForm] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -1968,7 +1976,16 @@ export default function AthleteDetail() {
                 <TestListView tests={filteredTests} skiIds={skiIds} allSkis={skis} activeTestColumns={activeTestColumns} weather={weather} />
               ) : (
                 filteredTests.map((test) => (
-                  <RaceSkiTestCard key={test.id} test={test} skiIds={skiIds} allSkis={skis} activeTestColumns={activeTestColumns} weather={weather} />
+                  <RaceSkiTestCard
+                    key={test.id}
+                    test={test}
+                    skiIds={skiIds}
+                    allSkis={skis}
+                    activeTestColumns={activeTestColumns}
+                    weather={weather}
+                    expanded={expandedTestIds.has(test.id)}
+                    onToggle={() => toggleTestExpanded(test.id)}
+                  />
                 ))
               )}
             </div>
@@ -3017,9 +3034,8 @@ function TestListView({ tests, skiIds, allSkis, activeTestColumns, weather = [] 
   );
 }
 
-function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns, weather = [] }: { test: RaceSkiTest; skiIds: Set<number>; allSkis: RaceSki[]; activeTestColumns: string[]; weather?: WeatherItem[] }) {
+function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns, weather = [], expanded, onToggle }: { test: RaceSkiTest; skiIds: Set<number>; allSkis: RaceSki[]; activeTestColumns: string[]; weather?: WeatherItem[]; expanded: boolean; onToggle: () => void }) {
   const weatherMap = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);
-  const [expanded, setExpanded] = useState(false);
   const [, navigate] = useLocation();
 
   const { data: entries = [] } = useQuery<TestEntry[]>({
@@ -3050,7 +3066,7 @@ function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns, weather = [
       <div className="flex items-center gap-2">
         <div
           className="flex items-center gap-2 cursor-pointer select-none min-w-0 flex-1"
-          onClick={() => setExpanded(!expanded)}
+          onClick={onToggle}
           data-testid={`toggle-test-${test.id}`}
         >
           {expanded ? (

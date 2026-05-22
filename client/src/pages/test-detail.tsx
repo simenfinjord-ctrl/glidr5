@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, EyeOff, Eye, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch, ImageIcon, MessageSquare, Send, Link2 } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch, ImageIcon, MessageSquare, Send, Link2, ChevronLeft, ChevronRight } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { AppShell } from "@/components/app-shell";
@@ -547,6 +547,7 @@ function CommentsSection({ testId }: { testId: number }) {
 export default function TestDetail() {
   const [, params] = useRoute("/tests/:id");
   const id = params?.id;
+  const testId = id ? parseInt(id) : NaN;
   const { isBlindTester, isSuperAdmin, can } = useAuth();
   const { t } = useI18n();
   const hasWatchAccess = can("garmin_watch");
@@ -554,7 +555,43 @@ export default function TestDetail() {
   const [hideDetailsState, setHideDetails] = useState(false);
   const hideDetails = isBlindTester || hideDetailsState;
   const [, setLocation] = useLocation();
+  const navigate = setLocation;
   const { toast } = useToast();
+
+  // ── All-tests list for prev/next navigation ──────────────────────────────
+  const { data: allTests = [] } = useQuery<Test[], Error, { id: number; date: string; createdAt: string }[]>({
+    queryKey: ["/api/tests"],
+    select: (data) => [...data].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  });
+
+  const testIndex = allTests.findIndex((t) => t.id === testId);
+  const prevId = testIndex > 0 ? allTests[testIndex - 1].id : null;
+  const nextId = testIndex < allTests.length - 1 ? allTests[testIndex + 1].id : null;
+
+  // Keyboard navigation (ArrowLeft / ArrowRight)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "ArrowLeft" && prevId) navigate(`/tests/${prevId}`);
+      if (e.key === "ArrowRight" && nextId) navigate(`/tests/${nextId}`);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [prevId, nextId, navigate]);
+
+  // Touch swipe detection
+  const touchStartX = useRef<number | null>(null);
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 60) {
+      if (dx > 0 && prevId) navigate(`/tests/${prevId}`);
+      if (dx < 0 && nextId) navigate(`/tests/${nextId}`);
+    }
+    touchStartX.current = null;
+  };
+  // ────────────────────────────────────────────────────────────────────────
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRunsheet, setShowRunsheet] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
@@ -887,15 +924,46 @@ export default function TestDetail() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-5" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <div>
           <div className="flex items-center justify-between">
-            <AppLink href={isGrind ? "/grinding" : "/tests"} testId="link-back-tests">
-              <Button variant="ghost" size="sm" data-testid="button-back-tests">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {isGrind ? `${t("testDetail.back")} — ${t("grinding.title")}` : t("testDetail.backToTests")}
-              </Button>
-            </AppLink>
+            <div className="flex items-center gap-1">
+              <AppLink href={isGrind ? "/grinding" : "/tests"} testId="link-back-tests">
+                <Button variant="ghost" size="sm" data-testid="button-back-tests">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  {isGrind ? `${t("testDetail.back")} — ${t("grinding.title")}` : t("testDetail.backToTests")}
+                </Button>
+              </AppLink>
+              {allTests.length > 0 && (
+                <div className="flex items-center gap-1 ml-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={prevId === null}
+                    onClick={() => prevId && navigate(`/tests/${prevId}`)}
+                    data-testid="button-prev-test"
+                    className="h-8 w-8 p-0"
+                    title="Previous test"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {testIndex >= 0 ? `${testIndex + 1} / ${allTests.length}` : ""}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={nextId === null}
+                    onClick={() => nextId && navigate(`/tests/${nextId}`)}
+                    data-testid="button-next-test"
+                    className="h-8 w-8 p-0"
+                    title="Next test"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               {sortedEntries.length >= 2 && (
                 <Button variant="outline" size="sm" onClick={() => setShowRunsheet(true)} data-testid="button-complete-runsheet">

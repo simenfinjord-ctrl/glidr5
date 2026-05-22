@@ -3682,22 +3682,77 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
-  // ── User history (SA only) ──────────────────────────────────────────────────
+  // ── User history (SA or Team Admin managing the user's team) ─────────────────
   app.get("/api/admin/users/:id/history", requireAuth, async (req, res) => {
     const u = userInfo(req);
-    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    if (!u.isAdmin && !canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const targetId = parseInt(req.params.id);
+    const rawDays = parseInt(req.query.days as string) || 30;
+    const days = Math.min(Math.max(rawDays, 1), 90);
     const { pool: pg } = await import("./db");
+
+    // Team admins may only view history for users in their own team
+    if (!u.isAdmin) {
+      const targetUser = await storage.getUser(targetId);
+      if (!targetUser || targetUser.teamId !== u.teamId) {
+        return res.status(403).json({ message: "Cannot view history for users outside your team" });
+      }
+    }
 
     const [loginResult, activityResult] = await Promise.all([
       (pg as any).query(
         `SELECT id, user_id, email, name, login_at, ip_address, action, details
-         FROM login_logs WHERE user_id = $1 ORDER BY login_at DESC LIMIT 200`,
+         FROM login_logs WHERE user_id = $1 AND login_at >= NOW() - INTERVAL '${days} days' ORDER BY login_at DESC LIMIT 200`,
         [targetId]
       ),
       (pg as any).query(
         `SELECT id, user_id, user_name, action, entity_type, entity_id, details, created_at, team_id
-         FROM activity_logs WHERE user_id = $1 ORDER BY created_at DESC LIMIT 200`,
+         FROM activity_logs WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${days} days' ORDER BY created_at DESC LIMIT 200`,
+        [targetId]
+      ),
+    ]);
+
+    const loginLogs = loginResult.rows.map((r: any) => ({
+      id: r.id, userId: r.user_id, email: r.email, name: r.name,
+      loginAt: r.login_at, ipAddress: r.ip_address, action: r.action, details: r.details,
+    }));
+
+    const activityLogs = activityResult.rows.map((r: any) => ({
+      id: r.id, userId: r.user_id, userName: r.user_name, action: r.action,
+      entityType: r.entity_type, entityId: r.entity_id, details: r.details,
+      createdAt: r.created_at, teamId: r.team_id,
+    }));
+
+    const passwordChanges = activityLogs.filter((l: any) =>
+      l.action === "password_changed" || l.action === "password_reset" || l.entityType === "password"
+    );
+
+    res.json({ loginLogs, activityLogs, passwordChanges });
+  });
+
+  // ── Team member activity (any authenticated user, same-team only) ───────────
+  app.get("/api/team/members/:id/activity", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const targetId = parseInt(req.params.id);
+    const rawDays = parseInt(req.query.days as string) || 30;
+    const days = Math.min(Math.max(rawDays, 1), 90);
+    const { pool: pg } = await import("./db");
+
+    // Verify the target user belongs to the same team as the requester
+    const targetUser = await storage.getUser(targetId);
+    if (!targetUser || targetUser.teamId !== u.teamId) {
+      return res.status(403).json({ message: "Cannot view activity for users outside your team" });
+    }
+
+    const [loginResult, activityResult] = await Promise.all([
+      (pg as any).query(
+        `SELECT id, user_id, email, name, login_at, ip_address, action, details
+         FROM login_logs WHERE user_id = $1 AND login_at >= NOW() - INTERVAL '${days} days' ORDER BY login_at DESC LIMIT 200`,
+        [targetId]
+      ),
+      (pg as any).query(
+        `SELECT id, user_id, user_name, action, entity_type, entity_id, details, created_at, team_id
+         FROM activity_logs WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${days} days' ORDER BY created_at DESC LIMIT 200`,
         [targetId]
       ),
     ]);

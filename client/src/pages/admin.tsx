@@ -1611,9 +1611,9 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
   const [historyTab, setHistoryTab] = useState<"logins" | "activity" | "passwords">("logins");
 
   const { data, isLoading } = useQuery<UserHistoryData>({
-    queryKey: [`/api/admin/users/${targetUser?.id}/history`],
+    queryKey: ["/api/admin/users", targetUser?.id, "history"],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/users/${targetUser!.id}/history`, { credentials: "include" });
+      const res = await fetch(`/api/admin/users/${targetUser!.id}/history?days=30`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load");
       return res.json();
     },
@@ -3530,7 +3530,7 @@ export default function Admin() {
                         >
                           <Trash2 className="h-4.5 w-4.5" />
                         </button>
-                        {isSuperAdmin && (
+                        {canManage && (
                           <button
                             className="rounded p-1 text-violet-500 hover:bg-violet-50"
                             data-testid={`button-history-user-${u.id}`}

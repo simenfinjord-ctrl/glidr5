@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Users, Shield, Mail, Calendar, Search, X,
+  Users, Shield, Mail, Search, X,
   ArrowUpDown, ChevronDown,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -28,18 +28,15 @@ interface TeamMember {
   email: string;
   isTeamAdmin: boolean;
   groupScope: string;
-  createdAt: string;
   username: string | null;
   avatarUrl: string | null;
 }
 
-type SortKey = "name-asc" | "name-desc" | "date-newest" | "date-oldest";
+type SortKey = "name-asc" | "name-desc";
 
 const SORT_LABELS: Record<SortKey, string> = {
   "name-asc": "Name A → Z",
   "name-desc": "Name Z → A",
-  "date-newest": "Joined: newest first",
-  "date-oldest": "Joined: oldest first",
 };
 
 function MemberAvatar({ member }: { member: TeamMember }) {
@@ -130,12 +127,8 @@ export default function MyTeam() {
 
     // Sort
     list.sort((a, b) => {
-      if (sortKey === "name-asc") return a.name.localeCompare(b.name);
       if (sortKey === "name-desc") return b.name.localeCompare(a.name);
-      const da = new Date(a.createdAt || 0).getTime();
-      const db = new Date(b.createdAt || 0).getTime();
-      if (sortKey === "date-newest") return db - da;
-      return da - db; // date-oldest
+      return a.name.localeCompare(b.name); // name-asc default
     });
 
     return list;
@@ -292,11 +285,6 @@ export default function MyTeam() {
                 const groups = member.groupScope
                   ? member.groupScope.split(",").map((g) => g.trim()).filter(Boolean)
                   : [];
-                const joinDate = member.createdAt
-                  ? new Date(member.createdAt).toLocaleDateString("en-GB", {
-                      day: "numeric", month: "short", year: "numeric",
-                    })
-                  : "—";
 
                 return (
                   <div
@@ -321,15 +309,11 @@ export default function MyTeam() {
                         )}
                       </div>
 
-                      {/* Email + join date */}
+                      {/* Email */}
                       <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Mail className="h-3 w-3 shrink-0" />
                           {member.email}
-                        </span>
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Calendar className="h-3 w-3 shrink-0" />
-                          {joinDate}
                         </span>
                       </div>
 

@@ -32,6 +32,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -52,6 +53,14 @@ import { useI18n } from "@/lib/i18n";
 import { useAppSettings } from "@/lib/app-settings";
 import { GlidrIcon, GlidrLogo } from "@/components/glidr-logo";
 import { getNavLayout, setNavLayout, type NavLayout } from "@/lib/nav-layout";
+
+const PRESET_AVATARS = [
+  "https://api.dicebear.com/8.x/lorelei/svg?seed=Glidr1",
+  "https://api.dicebear.com/8.x/lorelei/svg?seed=Glidr2",
+  "https://api.dicebear.com/8.x/lorelei/svg?seed=Glidr3",
+  "https://api.dicebear.com/8.x/lorelei/svg?seed=Glidr4",
+  "https://api.dicebear.com/8.x/lorelei/svg?seed=Glidr5",
+];
 
 type NavItem = {
   href: string;
@@ -561,8 +570,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           sidebarCollapsed ? "justify-center px-1 py-2" : "px-2 py-1.5",
         )}
       >
-        <div className="h-[26px] w-[26px] shrink-0 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-[9px] font-bold text-white">
-          {userInitials}
+        <div className="h-[26px] w-[26px] shrink-0 rounded-full overflow-hidden bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-[9px] font-bold text-white">
+          {(user as any)?.avatarUrl ? (
+            <img src={(user as any).avatarUrl} alt={user?.name} className="h-full w-full object-cover" />
+          ) : (
+            userInitials
+          )}
         </div>
         {!sidebarCollapsed && (
           <div className="min-w-0">
@@ -574,6 +587,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         )}
       </AppLink>
+      {!sidebarCollapsed && (
+        <AppLink
+          href="/my-team"
+          className="flex items-center gap-2 mx-1 mb-1 px-2 py-1 rounded-md hover:bg-muted transition-colors text-[11px] text-muted-foreground hover:text-foreground"
+        >
+          <Users className="h-3 w-3 shrink-0" />
+          My Team
+        </AppLink>
+      )}
     </div>
   );
 
@@ -637,12 +659,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       {!sidebarCollapsed ? (
         <button
           onClick={() => window.dispatchEvent(new Event("glidr-open-search"))}
-          className="flex items-center gap-2 mx-2 my-1.5 px-2.5 py-[7px] rounded-md border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground text-[12px] transition-colors shrink-0"
+          className="flex items-center gap-1.5 mx-2 my-1.5 px-3 py-1.5 rounded-full border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground text-[12px] transition-colors shrink-0 w-[calc(100%-16px)]"
           data-testid="button-sidebar-search"
         >
-          <Search className="h-3.5 w-3.5 shrink-0" />
-          <span className="flex-1 text-left">{t("shell.search")}</span>
-          <kbd className="rounded bg-background px-1 py-0.5 text-[9px] font-mono border border-border leading-none">⌘K</kbd>
+          <Search className="h-3 w-3 shrink-0 opacity-60" />
+          <span className="flex-1 text-left text-[11.5px]">Search</span>
+          <span className="text-[10px] opacity-50 font-mono">Ctrl+K</span>
         </button>
       ) : (
         <button

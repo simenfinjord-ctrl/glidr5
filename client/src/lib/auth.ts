@@ -31,6 +31,7 @@ type User = {
   isBlindTester?: boolean;
   garminWatch?: boolean;
   teamEnabledAreas?: string[] | null;
+  avatarUrl?: string | null;
 };
 
 export function useAuth() {

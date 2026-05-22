@@ -367,6 +367,7 @@ export async function registerRoutes(
       ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS action_type TEXT;
       ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS action_data TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'no';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
       CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       INSERT INTO app_settings (key, value) VALUES ('commercialization_enabled', 'false') ON CONFLICT (key) DO NOTHING;
     `);
@@ -2823,6 +2824,56 @@ export async function registerRoutes(
     // Update session
     (u as any).username = clean;
     return res.json({ ok: true, username: clean });
+  });
+
+  // Update own avatar
+  app.put("/api/auth/me/avatar", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    const { avatarUrl } = req.body;
+    if (typeof avatarUrl !== "string" && avatarUrl !== null) {
+      return res.status(400).json({ message: "avatarUrl must be a string or null" });
+    }
+    // If it's a data URL, enforce 200KB limit
+    if (typeof avatarUrl === "string" && avatarUrl.startsWith("data:")) {
+      const base64 = avatarUrl.split(",")[1] ?? "";
+      const sizeBytes = Math.ceil((base64.length * 3) / 4);
+      if (sizeBytes > 200 * 1024) {
+        return res.status(400).json({ message: "Image must be smaller than 200 KB" });
+      }
+    }
+    await storage.updateUser(u.id, { avatarUrl } as any);
+    (u as any).avatarUrl = avatarUrl;
+    return res.json({ ok: true, avatarUrl });
+  });
+
+  // GET /api/team/members — members of the caller's active team
+  app.get("/api/team/members", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    const teamId = u.activeTeamId ?? u.teamId;
+    if (!teamId) return res.status(400).json({ message: "No active team" });
+    const { pool: pg } = await import("./db");
+    try {
+      const result = await (pg as any).query(
+        `SELECT id, name, email, is_team_admin, group_scope, created_at, username, avatar_url
+         FROM users
+         WHERE team_id = $1 AND is_active = 1
+         ORDER BY name`,
+        [teamId]
+      );
+      const members = result.rows.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        email: r.email,
+        isTeamAdmin: r.is_team_admin === 1,
+        groupScope: r.group_scope || "",
+        createdAt: r.created_at,
+        username: r.username,
+        avatarUrl: r.avatar_url,
+      }));
+      return res.json(members);
+    } catch (err) {
+      return res.status(500).json({ message: "Failed to fetch team members" });
+    }
   });
 
   // Alias used by My Account page

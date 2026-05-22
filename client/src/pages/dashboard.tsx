@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package, Watch, MapPin, Settings2, Award, Activity, X } from "lucide-react";
+import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package, Watch, MapPin, Settings2, Award, Activity, X, User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { AppShell } from "@/components/app-shell";
@@ -10,9 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/auth";
 import { cn, fmtDate } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
-import { loadWidgetPrefs, saveWidgetPrefs, WIDGET_REGISTRY, type WidgetId } from "@/lib/dashboard-widgets";
+import { loadWidgetPrefs, saveWidgetPrefs, WIDGET_REGISTRY, type WidgetId, type WidgetPref } from "@/lib/dashboard-widgets";
 
-type Test = { id: number; date: string; location: string; testName: string | null; testType: string; createdByName: string; groupScope: string; weatherId: number | null; seriesId: number; createdAt: string };
+type Test = { id: number; date: string; location: string; testName: string | null; testType: string; createdByName: string; groupScope: string; weatherId: number | null; seriesId: number; createdAt: string; testSkiSource?: string | null; athleteId?: number | null };
 type Product = { id: number; brand: string; name: string; category: string; groupScope: string };
 type Weather = { id: number; date: string; location: string; airTemperatureC: number; snowTemperatureC: number; time: string | null };
 type RecentResult = {
@@ -143,45 +143,66 @@ function TopProductsWidget({ recentResults }: { recentResults: RecentResult[] })
   );
 }
 
-// ── Widget: Athlete Top Ski ───────────────────────────────────────────────────
-function AthleteTopSkiWidget() {
-  const { data: athletes = [], isError } = useQuery<any[]>({
-    queryKey: ["/api/athletes"],
-    retry: false,
-  });
+// ── Widget: Athlete Recent Tests ─────────────────────────────────────────────
+type AthleteRecentTestsProps = {
+  selectedAthleteIds: number[];
+  athletes: { id: number; name: string }[];
+  tests: Test[];
+};
 
-  if (isError) {
-    return (
-      <Card className="fs-card rounded-2xl p-4">
-        <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
-            <Snowflake className="h-3.5 w-3.5 text-sky-600" />
-          </div>
-          Athlete Top Ski
-        </div>
-        <p className="text-sm text-muted-foreground italic">Coming soon</p>
-      </Card>
-    );
-  }
+function AthleteRecentTestsWidget({ selectedAthleteIds, athletes, tests }: AthleteRecentTestsProps) {
+  const raceSkiTests = tests.filter((t) => t.testSkiSource === "raceskis");
+
+  // If no athletes selected → show all raceski tests; otherwise filter
+  const filteredTests = selectedAthleteIds.length === 0
+    ? raceSkiTests
+    : raceSkiTests.filter((t) => t.athleteId != null && selectedAthleteIds.includes(t.athleteId!));
+
+  const sorted = [...filteredTests].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 8);
+
+  const athleteMap: Record<number, string> = {};
+  for (const a of athletes) athleteMap[a.id] = a.name;
 
   return (
     <Card className="fs-card rounded-2xl p-4">
       <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
         <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
-          <Snowflake className="h-3.5 w-3.5 text-sky-600" />
+          <User className="h-3.5 w-3.5 text-sky-600" />
         </div>
-        Athlete Top Ski
-        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{athletes.length}</span>
+        Athlete Recent Tests
+        {sorted.length > 0 && (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{sorted.length}</span>
+        )}
       </div>
-      {athletes.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic">No athletes registered yet.</p>
+      {sorted.length === 0 ? (
+        <p className="text-sm text-muted-foreground italic">
+          {raceSkiTests.length === 0 ? "No race-ski tests found." : "No tests for the selected athlete(s)."}
+        </p>
       ) : (
         <div className="space-y-2">
-          {athletes.slice(0, 6).map((a: any) => (
-            <div key={a.id} className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs">
-              <span className="font-medium text-foreground">{a.name || a.fullName || `Athlete #${a.id}`}</span>
-              <span className="text-muted-foreground italic">best ski data coming soon</span>
-            </div>
+          {sorted.map((t) => (
+            <AppLink key={t.id} href={`/tests/${t.id}`}>
+              <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs cursor-pointer hover:bg-card transition-colors">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={cn(
+                    "rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0",
+                    t.testType === "Glide" ? "fs-badge-glide"
+                      : t.testType === "Classic" ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200"
+                      : t.testType === "Skating" ? "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200"
+                      : "fs-badge-structure"
+                  )}>
+                    {t.testType}
+                  </span>
+                  <span className="font-medium text-foreground truncate">{t.testName || t.location}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  {t.athleteId && athleteMap[t.athleteId] && (
+                    <span className="text-sky-600 font-medium">{athleteMap[t.athleteId]}</span>
+                  )}
+                  <span className="text-muted-foreground">{fmtDate(t.date)}</span>
+                </div>
+              </div>
+            </AppLink>
           ))}
         </div>
       )}
@@ -263,6 +284,16 @@ export default function Dashboard() {
       return res.json();
     },
   });
+  const { data: athletes = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/athletes"],
+    retry: false,
+    // Returns empty array if user has no raceskis permission
+    queryFn: async () => {
+      const res = await fetch("/api/athletes", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayTests = tests.filter((test) => test.date === todayStr);
@@ -301,8 +332,19 @@ export default function Dashboard() {
 
   function resetWidgets() {
     const defaults = WIDGET_REGISTRY.map(w => ({ id: w.id, enabled: w.defaultEnabled }));
-    setWidgetPrefs(defaults);
-    saveWidgetPrefs(defaults);
+    setWidgetPrefs(defaults as WidgetPref[]);
+    saveWidgetPrefs(defaults as WidgetPref[]);
+  }
+
+  function toggleAthleteInWidget(widgetId: WidgetId, athleteId: number) {
+    const next = widgetPrefs.map((p) => {
+      if (p.id !== widgetId) return p;
+      const ids = p.athleteIds ?? [];
+      const newIds = ids.includes(athleteId) ? ids.filter((id) => id !== athleteId) : [...ids, athleteId];
+      return { ...p, athleteIds: newIds };
+    });
+    setWidgetPrefs(next);
+    saveWidgetPrefs(next);
   }
 
   // Visible widgets filtered by feature flags and admin status
@@ -388,6 +430,87 @@ export default function Dashboard() {
               {availableWidgets.map((w) => {
                 const pref = widgetPrefs.find((p) => p.id === w.id);
                 const enabled = pref ? pref.enabled : w.defaultEnabled;
+                const selectedAthleteIds = (pref as WidgetPref | undefined)?.athleteIds ?? [];
+
+                if (w.hasAthleteConfig) {
+                  // Athlete-configurable widget: render as a card with toggle + sub-checkboxes
+                  return (
+                    <div
+                      key={w.id}
+                      className={cn(
+                        "col-span-full rounded-xl border px-3 py-2.5 transition-all sm:col-span-2 lg:col-span-full",
+                        enabled
+                          ? "border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800"
+                          : "border-border bg-muted/20"
+                      )}
+                    >
+                      {/* Toggle row */}
+                      <button
+                        type="button"
+                        onClick={() => toggleWidget(w.id)}
+                        className="flex w-full items-start gap-3 text-left"
+                      >
+                        <div className={cn(
+                          "mt-0.5 h-4 w-4 shrink-0 rounded border-2 flex items-center justify-center transition-colors",
+                          enabled ? "border-green-600 bg-green-600" : "border-muted-foreground/40"
+                        )}>
+                          {enabled && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-foreground">{w.label}</div>
+                          <div className="text-[11px] text-muted-foreground">{w.description}</div>
+                        </div>
+                      </button>
+
+                      {/* Athlete sub-selector (only when enabled and athletes available) */}
+                      {enabled && athletes.length > 0 && (
+                        <div className="mt-2.5 border-t border-green-200/60 pt-2 dark:border-green-800/60">
+                          <p className="text-[11px] text-muted-foreground mb-1.5">
+                            Show tests for: <span className="italic">{selectedAthleteIds.length === 0 ? "all athletes" : `${selectedAthleteIds.length} selected`}</span>
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {athletes.map((a) => {
+                              const isSelected = selectedAthleteIds.includes(a.id);
+                              return (
+                                <button
+                                  key={a.id}
+                                  type="button"
+                                  onClick={() => toggleAthleteInWidget(w.id, a.id)}
+                                  className={cn(
+                                    "flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
+                                    isSelected
+                                      ? "bg-sky-100 text-sky-700 ring-1 ring-sky-300 dark:bg-sky-900/40 dark:text-sky-300"
+                                      : "bg-muted/50 text-muted-foreground ring-1 ring-border hover:bg-muted"
+                                  )}
+                                >
+                                  <User className="h-3 w-3" />
+                                  {a.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {selectedAthleteIds.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = widgetPrefs.map((p) => p.id === w.id ? { ...p, athleteIds: [] } : p);
+                                setWidgetPrefs(next);
+                                saveWidgetPrefs(next);
+                              }}
+                              className="mt-1.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              Clear selection (show all)
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {enabled && athletes.length === 0 && (
+                        <p className="mt-2 text-[11px] text-muted-foreground italic">No athletes accessible.</p>
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <button
                     key={w.id}
@@ -667,13 +790,17 @@ export default function Dashboard() {
         </div>
 
         {/* Optional widgets row */}
-        {(isWidgetEnabled("top-products") || isWidgetEnabled("athlete-top-ski") || isWidgetEnabled("recent-activity")) && (
+        {(isWidgetEnabled("top-products") || isWidgetEnabled("athlete-recent-tests") || isWidgetEnabled("recent-activity")) && (
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             {isWidgetEnabled("top-products") && !isBlindTester && (
               <TopProductsWidget recentResults={allRecentResults} />
             )}
-            {isWidgetEnabled("athlete-top-ski") && (
-              <AthleteTopSkiWidget />
+            {isWidgetEnabled("athlete-recent-tests") && (
+              <AthleteRecentTestsWidget
+                selectedAthleteIds={(widgetPrefs.find((p) => p.id === "athlete-recent-tests") as WidgetPref | undefined)?.athleteIds ?? []}
+                athletes={athletes}
+                tests={tests}
+              />
             )}
             {isWidgetEnabled("recent-activity") && canManage && (
               <RecentActivityWidget />

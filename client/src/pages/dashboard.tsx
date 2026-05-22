@@ -653,6 +653,13 @@ export default function Dashboard() {
                 <Trophy className="h-3.5 w-3.5 text-yellow-600" />
               </div>
               {t("dashboard.recentResults")}
+              <span className="flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-600 ring-1 ring-green-200">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                </span>
+                LIVE
+              </span>
               <span className="text-[10px] text-muted-foreground font-normal ml-1">{t("dashboard.recentResultsAuto")}</span>
               <div className="ml-auto">
                 <Select value={resultLimit} onValueChange={setResultLimit}>

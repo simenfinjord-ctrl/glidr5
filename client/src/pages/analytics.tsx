@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft } from "lucide-react";
+import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft, FileDown } from "lucide-react";
 import React from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import {
@@ -342,7 +342,22 @@ function OverviewStats({
           {stats.topByWinRate.length === 0 ? (
             <p className="text-xs text-muted-foreground">Not enough data yet.</p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border">
+            <>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={stats.topByWinRate} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} label={{ value: "Win rate (%)", position: "insideBottom", offset: -2, style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }} />
+                  <YAxis dataKey="name" type="category" width={130} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px" }}
+                    formatter={(v: any) => [`${v}%`, "Win rate"]}
+                  />
+                  <Bar dataKey="winRate" radius={[0, 6, 6, 0]}>
+                    {stats.topByWinRate.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            <div className="overflow-x-auto rounded-lg border mt-3">
               <table className="w-full text-xs">
                 <thead className="bg-muted/60">
                   <tr>
@@ -368,6 +383,7 @@ function OverviewStats({
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </Card>
 
@@ -380,7 +396,22 @@ function OverviewStats({
           {stats.mostUsed.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t("analytics.noData")}</p>
           ) : (
-            <div className="flex flex-col gap-1.5">
+            <>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={stats.mostUsed} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                  <YAxis dataKey="name" type="category" width={130} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px" }}
+                    formatter={(v: any) => [v, "Tests"]}
+                  />
+                  <Bar dataKey="appearances" radius={[0, 6, 6, 0]}>
+                    {stats.mostUsed.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            <div className="flex flex-col gap-1.5 mt-3">
               {stats.mostUsed.map((p, i) => {
                 const maxCount = stats.mostUsed[0].appearances;
                 const pct = Math.round((p.appearances / maxCount) * 100);
@@ -400,6 +431,7 @@ function OverviewStats({
                 );
               })}
             </div>
+            </>
           )}
         </Card>
       </div>
@@ -1892,6 +1924,120 @@ export default function Analytics() {
 
   const hasData = tests.length > 0;
 
+  // Compute topByWinRate for PDF export (same logic as OverviewStats, using allEntries)
+  const exportTopByWinRate = useMemo(() => {
+    const pStats = new Map<number, { appearances: number; ranks: number[]; wins: number }>();
+    for (const e of allEntries) {
+      const ids: number[] = [];
+      if (e.productId != null) ids.push(e.productId);
+      if (e.additionalProductIds) {
+        for (const s of e.additionalProductIds.split(",")) { const n = parseInt(s, 10); if (!isNaN(n)) ids.push(n); }
+      }
+      const rank = getRank(e);
+      for (const pid of ids) {
+        if (!pStats.has(pid)) pStats.set(pid, { appearances: 0, ranks: [], wins: 0 });
+        const ps = pStats.get(pid)!;
+        ps.appearances++;
+        if (rank !== null) { ps.ranks.push(rank); if (rank === 1) ps.wins++; }
+      }
+    }
+    return Array.from(pStats.entries())
+      .filter(([, s]) => s.appearances >= 3 && s.ranks.length > 0)
+      .map(([pid, s]) => {
+        const p = productsById.get(pid);
+        return {
+          name: p ? `${p.brand} ${p.name}` : `#${pid}`,
+          appearances: s.appearances,
+          avgRank: parseFloat((s.ranks.reduce((a, b) => a + b, 0) / s.ranks.length).toFixed(2)),
+          winRate: parseFloat(((s.wins / s.ranks.length) * 100).toFixed(1)),
+          wins: s.wins,
+        };
+      })
+      .sort((a, b) => b.winRate - a.winRate || a.avgRank - b.avgRank)
+      .slice(0, 10);
+  }, [allEntries, productsById]);
+
+  function handleExportPDF() {
+    const newWin = window.open("", "_blank");
+    if (!newWin) return;
+    const totalTests = tests.length;
+    const productsTested = new Set(allEntries.map((e) => e.productId).filter(Boolean)).size;
+    const uniqueLocations = new Set(tests.map((t) => t.location)).size;
+    const withWeather = tests.filter((t) => t.weatherId != null).length;
+    const weatherPct = totalTests > 0 ? Math.round((withWeather / totalTests) * 100) : 0;
+    const dateStr = new Date().toLocaleDateString();
+
+    const topRowsHtml = exportTopByWinRate
+      .map((p, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${p.name}</td>
+          <td>${p.appearances}</td>
+          <td>${p.avgRank}</td>
+          <td>${p.winRate}%</td>
+          <td>${p.wins}</td>
+        </tr>`)
+      .join("");
+
+    const monthRowsHtml = testsByMonth
+      .map((m) => `<tr><td>${m.month}</td><td>${(m.glide || 0) + (m.structure || 0)}</td></tr>`)
+      .join("");
+
+    newWin.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Glidr Analytics Report</title>
+<style>
+  body { font-family: sans-serif; margin: 32px; color: #111; background: #fff; }
+  h1 { font-size: 24px; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 14px; margin-bottom: 32px; }
+  h2 { font-size: 16px; margin-top: 32px; margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+  .summary-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; text-align: center; }
+  .summary-card .value { font-size: 28px; font-weight: 700; }
+  .summary-card .label { font-size: 12px; color: #666; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 12px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; font-weight: 600; }
+  td { padding: 6px 12px; border-bottom: 1px solid #f3f4f6; }
+  @media print {
+    body { margin: 0; }
+    .page-break { page-break-before: always; }
+  }
+</style>
+</head>
+<body>
+<h1>Glidr Analytics Report</h1>
+<div class="subtitle">Generated: ${dateStr}</div>
+
+<h2>Summary</h2>
+<div class="summary-grid">
+  <div class="summary-card"><div class="value">${totalTests}</div><div class="label">Total Tests</div></div>
+  <div class="summary-card"><div class="value">${productsTested}</div><div class="label">Products Tested</div></div>
+  <div class="summary-card"><div class="value">${uniqueLocations}</div><div class="label">Unique Locations</div></div>
+  <div class="summary-card"><div class="value">${weatherPct}%</div><div class="label">Tests with Weather</div></div>
+</div>
+
+<div class="page-break"></div>
+<h2>Top Products by Win Rate</h2>
+<table>
+  <thead><tr><th>Rank</th><th>Product</th><th>Tests</th><th>Avg Rank</th><th>Win Rate</th><th>Wins</th></tr></thead>
+  <tbody>${topRowsHtml || "<tr><td colspan='6'>No data (min 3 appearances required)</td></tr>"}</tbody>
+</table>
+
+<div class="page-break"></div>
+<h2>Tests per Month</h2>
+<table>
+  <thead><tr><th>Month</th><th>Total Tests</th></tr></thead>
+  <tbody>${monthRowsHtml || "<tr><td colspan='2'>No data</td></tr>"}</tbody>
+</table>
+</body>
+</html>`);
+    newWin.document.close();
+    newWin.print();
+    newWin.close();
+  }
+
   const TABS = [
     { id: "overview" as const, label: t("analytics.overview"), icon: <BarChart3 className="h-4 w-4" /> },
     { id: "products" as const, label: t("analytics.products"), icon: <Search className="h-4 w-4" /> },
@@ -1924,6 +2070,10 @@ export default function Analytics() {
                 {type === "All" ? t("analytics.all") : type === "Glide" ? t("tests.glide") : t("tests.structure")}
               </Button>
             ))}
+            <Button variant="outline" size="sm" onClick={handleExportPDF} className="gap-1.5">
+              <FileDown className="h-4 w-4" />
+              Export Report
+            </Button>
           </div>
         </div>
 

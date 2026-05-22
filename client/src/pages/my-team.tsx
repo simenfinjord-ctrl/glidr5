@@ -146,7 +146,7 @@ export default function MyTeam() {
 
   return (
     <AppShell>
-      <div className="max-w-3xl mx-auto space-y-5">
+      <div className="space-y-5">
         {/* Header */}
         <div className="flex items-center gap-3">
           <Users className="h-7 w-7 text-green-500 shrink-0" />

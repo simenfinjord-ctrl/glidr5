@@ -2868,43 +2868,59 @@ export async function registerRoutes(
   });
 
   // GET /api/team/members — members of the caller's active team
-  // Includes both users whose primary team_id matches AND users added via user_team_permissions
   app.get("/api/team/members", requireAuth, async (req, res) => {
-    const u = req.user as any;
-    const teamId = u.activeTeamId ?? u.teamId;
+    const teamId = getActiveTeamId(req);
     if (!teamId) return res.status(400).json({ message: "No active team" });
-    const { pool: pg } = await import("./db");
     try {
-      const result = await (pg as any).query(
-        `SELECT
-           u.id,
-           u.name,
-           u.email,
-           u.created_at,
-           u.username,
-           u.avatar_url,
-           CASE WHEN utp.is_team_admin = 1 OR u.is_team_admin = 1 THEN 1 ELSE 0 END AS is_team_admin,
-           COALESCE(NULLIF(utp.group_scope, ''), NULLIF(u.group_scope, ''), '') AS group_scope
-         FROM users u
-         LEFT JOIN user_team_permissions utp
-           ON utp.user_id = u.id AND utp.team_id = $1
-         WHERE (u.team_id = $1 OR utp.team_id = $1)
-           AND u.is_active = 1
-         ORDER BY u.name`,
+      // Use the same Drizzle-based query that Admin uses (avoids raw SQL type issues)
+      const primaryMembers = await storage.listUsers(teamId);
+
+      // Also fetch users who have permissions for this team but a different primary team
+      const { pool: pg } = await import("./db");
+      const permResult = await (pg as any).query(
+        `SELECT u.id, u.name, u.email, u.created_at, u.username, u.avatar_url,
+                u.is_team_admin, u.group_scope,
+                utp.is_team_admin AS utp_is_team_admin,
+                utp.group_scope   AS utp_group_scope
+         FROM user_team_permissions utp
+         JOIN users u ON u.id = utp.user_id
+         WHERE utp.team_id = $1 AND u.team_id != $1`,
         [teamId]
       );
-      const members = result.rows.map((r: any) => ({
-        id: r.id,
-        name: r.name,
-        email: r.email,
-        isTeamAdmin: r.is_team_admin === 1 || r.is_team_admin === true,
-        groupScope: r.group_scope || "",
-        createdAt: r.created_at,
-        username: r.username,
-        avatarUrl: r.avatar_url,
-      }));
-      // Sort alphabetically by name after deduplication
-      members.sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
+
+      // Merge: start with primary members map (keyed by id)
+      const byId = new Map<number, any>();
+      for (const u of primaryMembers) {
+        byId.set(u.id, {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          isTeamAdmin: u.isTeamAdmin === 1 || u.isTeamAdmin === true,
+          groupScope: (u as any).groupScope || "",
+          createdAt: (u as any).createdAt || null,
+          username: (u as any).username || null,
+          avatarUrl: (u as any).avatarUrl || null,
+        });
+      }
+      // Add permission-only members (cross-team users)
+      for (const r of permResult.rows) {
+        if (!byId.has(r.id)) {
+          byId.set(r.id, {
+            id: r.id,
+            name: r.name,
+            email: r.email,
+            isTeamAdmin: r.utp_is_team_admin === 1 || r.is_team_admin === 1,
+            groupScope: r.utp_group_scope || r.group_scope || "",
+            createdAt: r.created_at || null,
+            username: r.username || null,
+            avatarUrl: r.avatar_url || null,
+          });
+        }
+      }
+
+      const members = Array.from(byId.values())
+        .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
       return res.json(members);
     } catch (err) {
       console.error("Failed to fetch team members:", err);

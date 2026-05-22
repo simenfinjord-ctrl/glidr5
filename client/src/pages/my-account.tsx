@@ -19,11 +19,30 @@ import { useAppSettings } from "@/lib/app-settings";
 
 // ─── Preset avatars ────────────────────────────────────────────────────────────
 const PRESET_AVATARS = [
+  // Row 1 — original 5
   "https://api.dicebear.com/7.x/adventurer/svg?seed=alpine",
   "https://api.dicebear.com/7.x/adventurer/svg?seed=nordic",
   "https://api.dicebear.com/7.x/adventurer/svg?seed=glacier",
   "https://api.dicebear.com/7.x/adventurer/svg?seed=summit",
   "https://api.dicebear.com/7.x/adventurer/svg?seed=telemark",
+  // Row 2 — 5 more
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=slalom",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=freeride",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=mogul",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=downhill",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=biathlon",
+  // Row 3 — 5 more
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=powder",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=couloir",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=traverse",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=carving",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=skijump",
+  // Row 4 — 5 more
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=snowplow",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=schuss",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=herringbone",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=kickturn",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=langlauf",
 ];
 
 // ─── Section IDs ───────────────────────────────────────────────────────────────
@@ -1182,7 +1201,7 @@ export default function MyAccount() {
 
   return (
     <AppShell>
-      <div className="max-w-4xl mx-auto" data-testid="text-my-account-title">
+      <div data-testid="text-my-account-title">
         <h1 className="text-2xl sm:text-3xl flex items-center gap-3 mb-6">
           <User className="h-7 w-7 text-blue-500" />
           {t("account.title")}

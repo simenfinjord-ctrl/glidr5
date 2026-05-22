@@ -60,6 +60,21 @@ const PRESET_AVATARS = [
   "https://api.dicebear.com/7.x/adventurer/svg?seed=glacier",
   "https://api.dicebear.com/7.x/adventurer/svg?seed=summit",
   "https://api.dicebear.com/7.x/adventurer/svg?seed=telemark",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=slalom",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=freeride",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=mogul",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=downhill",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=biathlon",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=powder",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=couloir",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=traverse",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=carving",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=skijump",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=snowplow",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=schuss",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=herringbone",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=kickturn",
+  "https://api.dicebear.com/7.x/adventurer/svg?seed=langlauf",
 ];
 
 type NavItem = {

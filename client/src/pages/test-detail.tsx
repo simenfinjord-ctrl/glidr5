@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
@@ -288,6 +288,22 @@ function AttachmentsSection({ testId }: { testId: number }) {
   );
 }
 
+/** Render comment text with @mentions highlighted */
+function CommentText({ text }: { text: string }) {
+  const parts = text.split(/(@\S+)/g);
+  return (
+    <p className="mt-0.5 text-sm text-foreground/90 whitespace-pre-wrap break-words">
+      {parts.map((part, i) =>
+        /^@\S+/.test(part) ? (
+          <span key={i} className="font-semibold text-blue-600 dark:text-blue-400">{part}</span>
+        ) : (
+          part
+        )
+      )}
+    </p>
+  );
+}
+
 function CommentsSection({ testId }: { testId: number }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -295,6 +311,12 @@ function CommentsSection({ testId }: { testId: number }) {
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // @mention state
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionStart, setMentionStart] = useState(0);
+  const [mentionIdx, setMentionIdx] = useState(0);
 
   const { data: comments = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/tests/${testId}/comments`],
@@ -305,6 +327,84 @@ function CommentsSection({ testId }: { testId: number }) {
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
+
+  // Fetch team members for mention autocomplete
+  const { data: teamMembers = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/team/members"],
+    queryFn: async () => {
+      const res = await fetch("/api/team/members", { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const mentionMatches = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const q = mentionQuery.toLowerCase();
+    return teamMembers
+      .filter((m) => m.name.toLowerCase().includes(q))
+      .slice(0, 6);
+  }, [mentionQuery, teamMembers]);
+
+  // Detect @mention while typing
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setContent(val);
+    const pos = e.target.selectionStart ?? val.length;
+    // Find last @ before cursor that hasn't been closed by a space
+    const beforeCursor = val.slice(0, pos);
+    const match = beforeCursor.match(/@(\S*)$/);
+    if (match) {
+      setMentionQuery(match[1]);
+      setMentionStart(pos - match[0].length);
+      setMentionIdx(0);
+    } else {
+      setMentionQuery(null);
+    }
+  }, []);
+
+  // Insert mention on selection
+  const insertMention = useCallback((name: string) => {
+    const ta = inputRef.current;
+    if (!ta) return;
+    const before = content.slice(0, mentionStart);
+    const after = content.slice(ta.selectionStart ?? content.length);
+    const inserted = `@${name} `;
+    const next = before + inserted + after;
+    setContent(next);
+    setMentionQuery(null);
+    // Restore cursor after the inserted mention
+    requestAnimationFrame(() => {
+      ta.focus();
+      const pos = (before + inserted).length;
+      ta.setSelectionRange(pos, pos);
+    });
+  }, [content, mentionStart]);
+
+  // Keyboard nav in mention dropdown
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionQuery !== null && mentionMatches.length > 0) {
+      if (e.key === "ArrowDown") { e.preventDefault(); setMentionIdx(i => Math.min(i + 1, mentionMatches.length - 1)); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); setMentionIdx(i => Math.max(i - 1, 0)); return; }
+      if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); insertMention(mentionMatches[mentionIdx].name); return; }
+      if (e.key === "Escape") { setMentionQuery(null); return; }
+    }
+    if (e.key === "Enter" && !e.shiftKey && mentionQuery === null) {
+      e.preventDefault();
+      submit(e as any);
+    }
+  }, [mentionQuery, mentionMatches, mentionIdx, insertMention]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setMentionQuery(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -319,6 +419,7 @@ function CommentsSection({ testId }: { testId: number }) {
       });
       if (!res.ok) throw new Error();
       setContent("");
+      setMentionQuery(null);
       queryClient.invalidateQueries({ queryKey: [`/api/tests/${testId}/comments`] });
     } catch {
       toast({ title: "Error", description: "Could not post comment.", variant: "destructive" });
@@ -368,7 +469,7 @@ function CommentsSection({ testId }: { testId: number }) {
                   <span className="text-sm font-semibold">{c.user_name}</span>
                   <span className="text-xs text-muted-foreground">{formatTime(c.created_at)}</span>
                 </div>
-                <p className="mt-0.5 text-sm text-foreground/90 whitespace-pre-wrap break-words">{c.content}</p>
+                <CommentText text={c.content} />
               </div>
               {(user?.id === c.user_id || (user as any)?.isAdmin) && (
                 <button
@@ -384,19 +485,47 @@ function CommentsSection({ testId }: { testId: number }) {
         </div>
       )}
 
-      {/* Input */}
+      {/* Input + mention dropdown */}
       <form onSubmit={submit} className="flex items-end gap-2">
-        <textarea
-          ref={inputRef}
-          value={content}
-          onChange={e => setContent(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(e as any); } }}
-          placeholder="Write a comment… (use @name to mention someone)"
-          className="flex-1 min-h-[60px] max-h-[160px] resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          maxLength={2000}
-          data-testid="input-comment"
-        />
-        <Button type="submit" size="sm" disabled={submitting || !content.trim()} className="h-9 gap-1.5">
+        <div className="relative flex-1" ref={dropdownRef}>
+          <textarea
+            ref={inputRef}
+            value={content}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Write a comment… type @ to mention someone"
+            className="w-full min-h-[60px] max-h-[160px] resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            maxLength={2000}
+            data-testid="input-comment"
+          />
+          {/* @mention dropdown */}
+          {mentionQuery !== null && mentionMatches.length > 0 && (
+            <div className="absolute bottom-full left-0 mb-1 w-56 rounded-xl border border-border bg-card shadow-lg z-50 overflow-hidden">
+              {mentionMatches.map((m, i) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); insertMention(m.name); }}
+                  className={cn(
+                    "flex w-full items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
+                    i === mentionIdx
+                      ? "bg-blue-600 text-white"
+                      : "hover:bg-muted text-foreground",
+                  )}
+                >
+                  <div className={cn(
+                    "h-6 w-6 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold",
+                    i === mentionIdx ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                  )}>
+                    {m.name[0]?.toUpperCase()}
+                  </div>
+                  <span className="truncate">{m.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <Button type="submit" size="sm" disabled={submitting || !content.trim()} className="h-9 gap-1.5 self-end">
           <Send className="h-3.5 w-3.5" />
         </Button>
       </form>

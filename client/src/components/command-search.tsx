@@ -93,11 +93,14 @@ export function CommandSearch() {
                       value={`${type}-${item.id}`}
                       onSelect={() => select(item.href)}
                       data-testid={`search-result-${type}-${item.id}`}
+                      className="group"
                     >
-                      <Icon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
+                      <Icon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground group-data-[selected=true]:text-accent-foreground/70" />
                       <div className="min-w-0">
                         <div className="font-medium truncate">{item.title}</div>
-                        <div className="text-xs text-muted-foreground truncate">{item.subtitle}</div>
+                        <div className="text-xs truncate text-muted-foreground group-data-[selected=true]:text-accent-foreground/70">
+                          {item.subtitle}
+                        </div>
                       </div>
                     </CommandItem>
                   ))}

@@ -591,7 +591,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             title="Expand sidebar"
           >
-            <GlidrIcon size={22} />
+            <ChevronRight className="h-3.5 w-3.5" />
           </button>
         ) : (
           <>

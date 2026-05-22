@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useRef, useCallback } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -33,6 +33,7 @@ import {
   ChevronRight,
   Search,
   Users,
+  Smartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -370,6 +371,63 @@ function buildBreadcrumbs(location: string, t: (k: string) => string): Crumb[] {
   return crumbs;
 }
 
+// ── Mobile-mode prompt ──────────────────────────────────────────────────────────
+const MOBILE_PROMPT_KEY = "glidr-mobile-prompt-seen";
+
+function MobileModePrompt({ onActivate, onDismiss }: { onActivate: () => void; onDismiss: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4 sm:p-0">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50" onClick={onDismiss} />
+
+      {/* Sheet / card */}
+      <div className="relative w-full sm:max-w-sm bg-card rounded-2xl shadow-2xl overflow-hidden">
+        {/* Top accent bar */}
+        <div className="h-1 bg-gradient-to-r from-green-500 to-emerald-400" />
+
+        <div className="px-6 pt-6 pb-7 space-y-4">
+          {/* Icon + heading */}
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+              <Smartphone className="h-5 w-5 text-green-600 dark:text-green-400" />
+            </div>
+            <h2 className="text-base font-semibold text-foreground leading-snug">
+              Mobile device detected
+            </h2>
+          </div>
+
+          {/* Body */}
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            We noticed you're using a mobile device. Enable{" "}
+            <span className="font-medium text-foreground">Mobile Mode</span> for a touch-friendly
+            bottom navigation bar — optimised for smaller screens.
+          </p>
+          <p className="text-xs text-muted-foreground/70">
+            You can always change this later in{" "}
+            <span className="font-medium text-foreground">My Account → Preferences</span>.
+          </p>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={onDismiss}
+              className="flex-1 rounded-xl border border-border py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+            >
+              Later
+            </button>
+            <button
+              onClick={onActivate}
+              className="flex-1 rounded-xl bg-green-600 hover:bg-green-700 active:bg-green-800 text-white py-2 text-sm font-semibold transition-colors"
+            >
+              Enable now
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
   const { user, logout, can, isSuperAdmin, isTeamAdmin, canManage, switchTeam, toggleIncognito, toggleStealth, isViewingOtherTeam, isStealthActive, userTeams, userTeamsLoading } = useAuth();
@@ -389,6 +447,37 @@ export function AppShell({ children }: { children: ReactNode }) {
       return next;
     });
   };
+
+  // Resizable sidebar width (desktop only)
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    try { return Math.max(180, Math.min(360, parseInt(localStorage.getItem("glidr-sidebar-width") || "220"))) || 220; } catch { return 220; }
+  });
+  const sidebarWidthRef = useRef(sidebarWidth);
+  useEffect(() => { sidebarWidthRef.current = sidebarWidth; }, [sidebarWidth]);
+
+  const startSidebarDrag = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = sidebarWidthRef.current;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    const onMove = (ev: MouseEvent) => {
+      const newW = Math.max(180, Math.min(360, startW + ev.clientX - startX));
+      setSidebarWidth(newW);
+    };
+    const onUp = () => {
+      try { localStorage.setItem("glidr-sidebar-width", String(sidebarWidthRef.current)); } catch {}
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, []);
+
+  // Text scale: grows linearly as sidebar widens; clamped to [1, 1.35]
+  const sidebarScale = sidebarCollapsed ? 1 : Math.min(1.35, Math.max(1, sidebarWidth / 220));
   const [navLayout, setNavLayoutState] = useState<NavLayout>(() => getNavLayout());
 
   // Expose toggle so my-account can call it
@@ -441,6 +530,31 @@ export function AppShell({ children }: { children: ReactNode }) {
   const mobileNavStore = useMobileNav();
   const [mobileNavEnabled, setMobileNavEnabled] = useState(false);
   useEffect(() => { setMobileNavEnabled(mobileNavStore.get()); }, []);
+
+  // ── First-time mobile mode prompt ──
+  const [showMobilePrompt, setShowMobilePrompt] = useState(false);
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const alreadySeen = localStorage.getItem(MOBILE_PROMPT_KEY);
+      if (alreadySeen) return;
+      const isMobile = window.innerWidth < 1024 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile) setShowMobilePrompt(true);
+    } catch {}
+  }, [user]);
+
+  function handleMobilePromptActivate() {
+    mobileNavStore.set(true);
+    setMobileNavEnabled(true);
+    try { localStorage.setItem(MOBILE_PROMPT_KEY, "1"); } catch {}
+    setShowMobilePrompt(false);
+    window.dispatchEvent(new Event("glidr-nav-layout-change"));
+  }
+
+  function handleMobilePromptDismiss() {
+    try { localStorage.setItem(MOBILE_PROMPT_KEY, "1"); } catch {}
+    setShowMobilePrompt(false);
+  }
 
   const { data: watchQueue = [] } = useQuery<{ id: number; status: string }[]>({
     queryKey: ["/api/watch/queue"],
@@ -535,7 +649,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           return (
             <div key={item.href}>
               {showSection && (
-                <div className="px-3.5 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-muted-foreground/60 select-none">
+                <div
+                  className="px-3.5 pt-4 pb-1 font-semibold uppercase tracking-[0.07em] text-muted-foreground/60 select-none"
+                  style={{ fontSize: `${10 * sidebarScale}px` }}
+                >
                   {t(item.section!)}
                 </div>
               )}
@@ -544,12 +661,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 testId={item.testId}
                 title={sidebarCollapsed ? navLabel(item.href) : undefined}
                 className={cn(
-                  "relative flex items-center gap-2 mx-1 rounded-md text-[12.5px] font-[450] transition-colors duration-100",
+                  "relative flex items-center gap-2 mx-1 rounded-md font-[450] transition-colors duration-100",
                   sidebarCollapsed ? "justify-center px-0 py-[7px]" : "px-3.5 py-[5px]",
                   active
                     ? `${item.activeBg} ${item.activeColor} font-medium`
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
+                style={{ fontSize: `${12.5 * sidebarScale}px` }}
               >
                 {active && !sidebarCollapsed && (
                   <span className="absolute left-0 top-1 bottom-1 w-[2.5px] bg-green-600 rounded-r-sm" />
@@ -581,12 +699,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       {!sidebarCollapsed ? (
         <button
           onClick={() => window.dispatchEvent(new Event("glidr-open-search"))}
-          className="flex items-center gap-1.5 mx-2 mt-2 mb-1 px-3 py-1.5 rounded-full border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground text-[12px] transition-colors shrink-0 w-[calc(100%-16px)]"
+          className="flex items-center gap-1.5 mx-2 mt-2 mb-1 px-3 py-1.5 rounded-full border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0 w-[calc(100%-16px)]"
+          style={{ fontSize: `${12 * sidebarScale}px` }}
           data-testid="button-sidebar-search"
         >
           <Search className="h-3 w-3 shrink-0 opacity-60" />
-          <span className="flex-1 text-left text-[11.5px]">Search</span>
-          <span className="text-[10px] opacity-50 font-mono">Ctrl+K</span>
+          <span className="flex-1 text-left">Search</span>
+          <span className="opacity-50 font-mono" style={{ fontSize: `${10 * sidebarScale}px` }}>Ctrl+K</span>
         </button>
       ) : (
         <button
@@ -616,10 +735,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         {!sidebarCollapsed && (
           <div className="min-w-0">
-            <div className="text-[12px] font-semibold text-foreground leading-tight truncate">{user?.name}</div>
-            <div className="text-[10px] text-muted-foreground leading-tight">{userRole}</div>
+            <div className="font-semibold text-foreground leading-tight truncate" style={{ fontSize: `${12 * sidebarScale}px` }}>{user?.name}</div>
+            <div className="text-muted-foreground leading-tight" style={{ fontSize: `${10 * sidebarScale}px` }}>{userRole}</div>
             {activeTeam?.name && (
-              <div className="text-[10px] text-muted-foreground/60 leading-tight truncate">{activeTeam.name}</div>
+              <div className="text-muted-foreground/60 leading-tight truncate" style={{ fontSize: `${10 * sidebarScale}px` }}>{activeTeam.name}</div>
             )}
           </div>
         )}
@@ -627,7 +746,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       {!sidebarCollapsed && (
         <AppLink
           href="/my-team"
-          className="flex items-center gap-2 mx-1 mb-1 px-2 py-1 rounded-md hover:bg-muted transition-colors text-[11px] text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-2 mx-1 mb-1 px-2 py-1 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+          style={{ fontSize: `${11 * sidebarScale}px` }}
         >
           <Users className="h-3 w-3 shrink-0" />
           My Team
@@ -637,14 +757,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 
   // Sidebar content (logo + nav + footer)
-  const SidebarContent = () => (
+  const SidebarContent = ({ isMobileDrawer = false }: { isMobileDrawer?: boolean }) => (
     <div className="flex flex-col h-full">
-      {/* Logo area */}
+      {/* Logo area — exactly h-12 to align with the top header border */}
       <div className={cn(
-        "flex items-center gap-2 border-b border-border shrink-0",
-        sidebarCollapsed ? "px-2 py-3 justify-center" : "px-3.5 py-3",
+        "flex items-center gap-2 border-b border-border shrink-0 h-12",
+        sidebarCollapsed && !isMobileDrawer ? "px-2 justify-center" : "px-3.5",
       )}>
-        {sidebarCollapsed ? (
+        {sidebarCollapsed && !isMobileDrawer ? (
           <button
             onClick={toggleSidebarCollapsed}
             className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -655,7 +775,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         ) : (
           <>
             <GlidrIcon size={26} />
-            <span className="font-bold text-[14px] tracking-[-0.3px] text-foreground">Glidr</span>
+            <span
+              className="font-bold tracking-[-0.3px] text-foreground"
+              style={{ fontSize: `${14 * sidebarScale}px` }}
+            >
+              Glidr
+            </span>
             <div className={cn("h-1.5 w-1.5 rounded-full shrink-0 ml-0.5", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
             {isSuperAdmin && teams.length > 1 && (
               <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
@@ -681,13 +806,24 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </SelectContent>
               </Select>
             )}
-            <button
-              onClick={toggleSidebarCollapsed}
-              className="ml-auto h-6 w-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              title="Collapse sidebar"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
+            {/* On mobile drawer: X to close; on desktop: collapse chevron */}
+            {isMobileDrawer ? (
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="ml-auto h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                title="Close sidebar"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                onClick={toggleSidebarCollapsed}
+                className="ml-auto h-6 w-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                title="Collapse sidebar"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+            )}
           </>
         )}
       </div>
@@ -890,6 +1026,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <PageBody />
         </div>
         <ReportProblemDialog open={reportOpen} onClose={() => setReportOpen(false)} />
+        {showMobilePrompt && (
+          <MobileModePrompt onActivate={handleMobilePromptActivate} onDismiss={handleMobilePromptDismiss} />
+        )}
       </div>
     );
   }
@@ -901,19 +1040,28 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex bg-[#f4f4f6] dark:bg-zinc-950">
 
       {/* ── Desktop Sidebar (lg+) ── */}
-      <aside className={cn(
-        "hidden lg:flex flex-col shrink-0 h-screen sticky top-0 bg-card dark:bg-zinc-900 border-r border-border overflow-hidden transition-[width] duration-200",
-        sidebarCollapsed ? "w-[52px]" : "w-[220px]",
-      )}>
+      <aside
+        style={{ width: sidebarCollapsed ? "52px" : `${sidebarWidth}px` }}
+        className="hidden lg:flex flex-col relative shrink-0 h-screen sticky top-0 bg-card dark:bg-zinc-900 border-r border-border overflow-hidden"
+      >
         <SidebarContent />
+        {/* Drag-to-resize handle */}
+        {!sidebarCollapsed && (
+          <div
+            className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-10 group hover:bg-primary/20 transition-colors"
+            onMouseDown={startSidebarDrag}
+          >
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-10 bg-border rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        )}
       </aside>
 
       {/* ── Mobile Sidebar Drawer (< lg) ── */}
       {sidebarOpen && (
         <>
           <div className="lg:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setSidebarOpen(false)} />
-          <aside className="lg:hidden fixed left-0 top-0 bottom-0 z-50 w-[220px] flex flex-col bg-card dark:bg-zinc-900 border-r border-border shadow-xl overflow-hidden">
-            <SidebarContent />
+          <aside className="lg:hidden fixed left-0 top-0 bottom-0 z-50 w-[240px] max-w-[82vw] flex flex-col bg-card dark:bg-zinc-900 border-r border-border shadow-xl overflow-hidden">
+            <SidebarContent isMobileDrawer />
           </aside>
         </>
       )}
@@ -947,6 +1095,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <CommandSearch />
       <ReportProblemDialog open={reportOpen} onClose={() => setReportOpen(false)} />
+      {showMobilePrompt && (
+        <MobileModePrompt onActivate={handleMobilePromptActivate} onDismiss={handleMobilePromptDismiss} />
+      )}
     </div>
   );
 }

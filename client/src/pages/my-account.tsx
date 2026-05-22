@@ -1207,7 +1207,7 @@ export default function MyAccount() {
           {t("account.title")}
         </h1>
 
-        <div className="flex gap-6 items-start">
+        <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start">
           {/* ── Left nav (desktop) ─────────────────────────────────────── */}
           <aside className="hidden md:block w-[220px] shrink-0 sticky top-4">
             <nav className="space-y-0.5">
@@ -1234,7 +1234,7 @@ export default function MyAccount() {
           </aside>
 
           {/* ── Mobile tab bar ─────────────────────────────────────────── */}
-          <div className="md:hidden w-full mb-4">
+          <div className="md:hidden w-full">
             <div className="flex overflow-x-auto gap-1 pb-1 scrollbar-none">
               {navItems.map((item) => {
                 const active = activeSection === item.id;

@@ -2855,22 +2855,21 @@ export async function registerRoutes(
     const { pool: pg } = await import("./db");
     try {
       const result = await (pg as any).query(
-        `SELECT DISTINCT ON (u.id)
+        `SELECT
            u.id,
            u.name,
            u.email,
            u.created_at,
            u.username,
            u.avatar_url,
-           COALESCE(utp.is_team_admin, u.is_team_admin, 0) AS is_team_admin,
-           COALESCE(utp.group_scope, u.group_scope, '')    AS group_scope
+           CASE WHEN utp.is_team_admin = 1 OR u.is_team_admin = 1 THEN 1 ELSE 0 END AS is_team_admin,
+           COALESCE(NULLIF(utp.group_scope, ''), NULLIF(u.group_scope, ''), '') AS group_scope
          FROM users u
          LEFT JOIN user_team_permissions utp
            ON utp.user_id = u.id AND utp.team_id = $1
-         WHERE
-           (u.team_id = $1 OR utp.team_id = $1)
+         WHERE (u.team_id = $1 OR utp.team_id = $1)
            AND u.is_active = 1
-         ORDER BY u.id, u.name`,
+         ORDER BY u.name`,
         [teamId]
       );
       const members = result.rows.map((r: any) => ({

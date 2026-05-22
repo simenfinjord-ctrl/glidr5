@@ -68,17 +68,6 @@ export function CommandSearch() {
 
   return (
     <>
-      {/* Trigger button shown in header */}
-      <button
-        onClick={() => setOpen(true)}
-        className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        data-testid="button-global-search"
-      >
-        <Search className="h-3.5 w-3.5" />
-        Search…
-        <kbd className="ml-1 rounded bg-background px-1.5 py-0.5 text-[10px] font-mono border border-border">⌘K</kbd>
-      </button>
-
       <CommandDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setQuery(""); }}>
         <Command shouldFilter={false}>
           <CommandInput

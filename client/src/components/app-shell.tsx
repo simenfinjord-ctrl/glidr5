@@ -296,6 +296,7 @@ function usePageTitle(location: string, visibleNav: NavItem[], t: (k: string) =>
     "/overview": "nav.overview",
     "/inbox": "shell.inbox",
     "/my-account": "shell.myAccount",
+    "/my-team": "team.title",
   };
 
   // Exact match first

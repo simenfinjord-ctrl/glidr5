@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect, Fragment } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -866,7 +866,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="h-12 shrink-0 flex items-center gap-2 px-4 bg-card dark:bg-zinc-900 border-b border-border"
           style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
-          {/* Left: hamburger (mobile) + breadcrumb */}
+          {/* Left: hamburger (mobile) + page title */}
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Button
               variant="ghost" size="sm"
@@ -876,31 +876,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <Menu className="h-4 w-4" />
             </Button>
-            {/* Breadcrumb */}
-            <nav className="flex items-center gap-0.5 min-w-0 overflow-hidden">
-              {buildBreadcrumbs(location, t).map((crumb, i, arr) => (
-                <Fragment key={i}>
-                  {i > 0 && (
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
-                  )}
-                  {crumb.href ? (
-                    <AppLink
-                      href={crumb.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors truncate shrink-0"
-                    >
-                      {crumb.label}
-                    </AppLink>
-                  ) : (
-                    <span className={cn(
-                      "text-sm truncate",
-                      arr.length === 1 ? "font-semibold text-foreground" : "font-medium text-foreground",
-                    )}>
-                      {crumb.label}
-                    </span>
-                  )}
-                </Fragment>
-              ))}
-            </nav>
+            <span className="text-sm font-semibold text-foreground truncate">{pageTitle}</span>
           </div>
 
           <HeaderControls />

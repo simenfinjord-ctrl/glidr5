@@ -2847,6 +2847,7 @@ export async function registerRoutes(
   });
 
   // GET /api/team/members — members of the caller's active team
+  // Includes both users whose primary team_id matches AND users added via user_team_permissions
   app.get("/api/team/members", requireAuth, async (req, res) => {
     const u = req.user as any;
     const teamId = u.activeTeamId ?? u.teamId;
@@ -2854,24 +2855,39 @@ export async function registerRoutes(
     const { pool: pg } = await import("./db");
     try {
       const result = await (pg as any).query(
-        `SELECT id, name, email, is_team_admin, group_scope, created_at, username, avatar_url
-         FROM users
-         WHERE team_id = $1 AND is_active = 1
-         ORDER BY name`,
+        `SELECT DISTINCT ON (u.id)
+           u.id,
+           u.name,
+           u.email,
+           u.created_at,
+           u.username,
+           u.avatar_url,
+           COALESCE(utp.is_team_admin, u.is_team_admin, 0) AS is_team_admin,
+           COALESCE(utp.group_scope, u.group_scope, '')    AS group_scope
+         FROM users u
+         LEFT JOIN user_team_permissions utp
+           ON utp.user_id = u.id AND utp.team_id = $1
+         WHERE
+           (u.team_id = $1 OR utp.team_id = $1)
+           AND u.is_active = 1
+         ORDER BY u.id, u.name`,
         [teamId]
       );
       const members = result.rows.map((r: any) => ({
         id: r.id,
         name: r.name,
         email: r.email,
-        isTeamAdmin: r.is_team_admin === 1,
+        isTeamAdmin: r.is_team_admin === 1 || r.is_team_admin === true,
         groupScope: r.group_scope || "",
         createdAt: r.created_at,
         username: r.username,
         avatarUrl: r.avatar_url,
       }));
+      // Sort alphabetically by name after deduplication
+      members.sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
       return res.json(members);
     } catch (err) {
+      console.error("Failed to fetch team members:", err);
       return res.status(500).json({ message: "Failed to fetch team members" });
     }
   });

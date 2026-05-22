@@ -1,9 +1,26 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Shield, Mail, Calendar } from "lucide-react";
+import {
+  Users, Shield, Mail, Calendar, Search, X,
+  ArrowUpDown, ChevronDown,
+} from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth";
-import { useI18n } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 interface TeamMember {
   id: number;
@@ -15,6 +32,15 @@ interface TeamMember {
   username: string | null;
   avatarUrl: string | null;
 }
+
+type SortKey = "name-asc" | "name-desc" | "date-newest" | "date-oldest";
+
+const SORT_LABELS: Record<SortKey, string> = {
+  "name-asc": "Name A → Z",
+  "name-desc": "Name Z → A",
+  "date-newest": "Joined: newest first",
+  "date-oldest": "Joined: oldest first",
+};
 
 function MemberAvatar({ member }: { member: TeamMember }) {
   const initials = member.name
@@ -42,9 +68,13 @@ function MemberAvatar({ member }: { member: TeamMember }) {
 }
 
 export default function MyTeam() {
-  const { t } = useI18n();
   const { user } = useAuth();
   const isTeamAdmin = !!(user as any)?.isTeamAdmin || !!(user as any)?.isAdmin;
+
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("name-asc");
+  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "member">("all");
+  const [groupFilter, setGroupFilter] = useState<string | null>(null);
 
   const { data: members = [], isLoading } = useQuery<TeamMember[]>({
     queryKey: ["/api/team/members"],
@@ -56,14 +86,185 @@ export default function MyTeam() {
     enabled: !!user,
   });
 
+  // Collect all unique group names across all members
+  const allGroups = useMemo(() => {
+    const set = new Set<string>();
+    members.forEach((m) => {
+      m.groupScope
+        ?.split(",")
+        .map((g) => g.trim())
+        .filter(Boolean)
+        .forEach((g) => set.add(g));
+    });
+    return Array.from(set).sort();
+  }, [members]);
+
+  const filtered = useMemo(() => {
+    let list = [...members];
+
+    // Search
+    const q = search.toLowerCase();
+    if (q) {
+      list = list.filter(
+        (m) =>
+          m.name.toLowerCase().includes(q) ||
+          m.email.toLowerCase().includes(q) ||
+          (m.username ?? "").toLowerCase().includes(q) ||
+          (m.groupScope ?? "").toLowerCase().includes(q),
+      );
+    }
+
+    // Role filter
+    if (roleFilter === "admin") list = list.filter((m) => m.isTeamAdmin);
+    if (roleFilter === "member") list = list.filter((m) => !m.isTeamAdmin);
+
+    // Group filter
+    if (groupFilter) {
+      list = list.filter((m) =>
+        m.groupScope
+          ?.split(",")
+          .map((g) => g.trim())
+          .includes(groupFilter),
+      );
+    }
+
+    // Sort
+    list.sort((a, b) => {
+      if (sortKey === "name-asc") return a.name.localeCompare(b.name);
+      if (sortKey === "name-desc") return b.name.localeCompare(a.name);
+      const da = new Date(a.createdAt || 0).getTime();
+      const db = new Date(b.createdAt || 0).getTime();
+      if (sortKey === "date-newest") return db - da;
+      return da - db; // date-oldest
+    });
+
+    return list;
+  }, [members, search, roleFilter, groupFilter, sortKey]);
+
+  const activeFilters =
+    (roleFilter !== "all" ? 1 : 0) + (groupFilter ? 1 : 0);
+
   return (
     <AppShell>
-      <div className="max-w-3xl mx-auto space-y-6">
-        <h1 className="text-2xl sm:text-3xl flex items-center gap-3">
-          <Users className="h-7 w-7 text-green-500" />
-          {t("team.title")}
-        </h1>
+      <div className="max-w-3xl mx-auto space-y-5">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <Users className="h-7 w-7 text-green-500 shrink-0" />
+          <h1 className="text-2xl sm:text-3xl font-semibold">My Team</h1>
+          {!isLoading && (
+            <span className="ml-1 text-sm text-muted-foreground">
+              {filtered.length}/{members.length}
+            </span>
+          )}
+        </div>
 
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search members…"
+              className="pl-8 pr-8 h-9 text-sm"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Filter dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn("h-9 gap-1.5 text-sm", activeFilters > 0 && "border-green-500 text-green-600 dark:text-green-400")}
+              >
+                Filter
+                {activeFilters > 0 && (
+                  <span className="ml-0.5 rounded-full bg-green-500 text-white text-[10px] font-bold h-4 w-4 flex items-center justify-center">
+                    {activeFilters}
+                  </span>
+                )}
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel className="text-xs text-muted-foreground font-normal uppercase tracking-wide pb-1">
+                Role
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
+                <DropdownMenuRadioItem value="all">All roles</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="admin">Admin only</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="member">Members only</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+
+              {allGroups.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs text-muted-foreground font-normal uppercase tracking-wide pb-1">
+                    Group
+                  </DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={groupFilter ?? ""}
+                    onValueChange={(v) => setGroupFilter(v || null)}
+                  >
+                    <DropdownMenuRadioItem value="">All groups</DropdownMenuRadioItem>
+                    {allGroups.map((g) => (
+                      <DropdownMenuRadioItem key={g} value={g}>
+                        {g}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </>
+              )}
+
+              {activeFilters > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <button
+                    onClick={() => { setRoleFilter("all"); setGroupFilter(null); }}
+                    className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Clear filters
+                  </button>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Sort dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 gap-1.5 text-sm">
+                <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
+                {SORT_LABELS[sortKey].split(":")[0].split("→")[0].trim().replace("Name ", "").replace("Joined", "Date") || "Sort"}
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel className="text-xs text-muted-foreground font-normal uppercase tracking-wide pb-1">
+                Sort by
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+                {(Object.entries(SORT_LABELS) as [SortKey, string][]).map(([key, label]) => (
+                  <DropdownMenuRadioItem key={key} value={key}>
+                    {label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Member list */}
         <Card className="rounded-2xl overflow-hidden">
           {isLoading ? (
             <div className="p-6 space-y-3">
@@ -71,18 +272,30 @@ export default function MyTeam() {
                 <div key={i} className="h-14 bg-muted/50 rounded-xl animate-pulse" />
               ))}
             </div>
-          ) : members.length === 0 ? (
-            <div className="p-6 text-center text-muted-foreground text-sm">
-              {t("team.noMembers")}
+          ) : filtered.length === 0 ? (
+            <div className="p-8 text-center space-y-1">
+              <p className="text-sm text-muted-foreground">
+                {members.length === 0 ? "No team members found." : "No members match your filters."}
+              </p>
+              {(search || activeFilters > 0) && (
+                <button
+                  onClick={() => { setSearch(""); setRoleFilter("all"); setGroupFilter(null); }}
+                  className="text-xs text-green-600 hover:underline"
+                >
+                  Clear all filters
+                </button>
+              )}
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {members.map((member) => {
+              {filtered.map((member) => {
                 const groups = member.groupScope
                   ? member.groupScope.split(",").map((g) => g.trim()).filter(Boolean)
                   : [];
                 const joinDate = member.createdAt
-                  ? new Date(member.createdAt).toLocaleDateString()
+                  ? new Date(member.createdAt).toLocaleDateString("en-GB", {
+                      day: "numeric", month: "short", year: "numeric",
+                    })
                   : "—";
 
                 return (
@@ -93,48 +306,65 @@ export default function MyTeam() {
                     <MemberAvatar member={member} />
 
                     <div className="flex-1 min-w-0">
+                      {/* Name + role badge */}
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-sm truncate">{member.name}</span>
-                        {member.isTeamAdmin && (
+                        {member.isTeamAdmin ? (
                           <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-300">
                             <Shield className="h-2.5 w-2.5" />
-                            {t("team.admin")}
+                            Admin
+                          </span>
+                        ) : (
+                          <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            Member
                           </span>
                         )}
                       </div>
 
+                      {/* Email + join date */}
                       <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Mail className="h-3 w-3" />
+                          <Mail className="h-3 w-3 shrink-0" />
                           {member.email}
                         </span>
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
+                          <Calendar className="h-3 w-3 shrink-0" />
                           {joinDate}
                         </span>
                       </div>
 
-                      {groups.length > 0 && (
+                      {/* Groups */}
+                      {groups.length > 0 ? (
                         <div className="flex flex-wrap gap-1 mt-1.5">
                           {groups.map((g) => (
-                            <span
+                            <button
                               key={g}
-                              className="inline-flex rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700 ring-1 ring-green-200 dark:bg-green-900/20 dark:text-green-400 dark:ring-green-800"
+                              onClick={() => setGroupFilter(groupFilter === g ? null : g)}
+                              className={cn(
+                                "inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 transition-colors",
+                                groupFilter === g
+                                  ? "bg-green-500 text-white ring-green-500"
+                                  : "bg-green-50 text-green-700 ring-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:ring-green-800",
+                              )}
                             >
                               {g}
-                            </span>
+                            </button>
                           ))}
+                        </div>
+                      ) : (
+                        <div className="mt-1.5">
+                          <span className="text-[10px] text-muted-foreground/50 italic">No group assigned</span>
                         </div>
                       )}
                     </div>
 
                     {isTeamAdmin && member.id !== user?.id && (
-                      <a
-                        href={`/admin`}
+                      <AppLink
+                        href="/admin"
                         className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
                       >
-                        {t("team.manage")}
-                      </a>
+                        Manage
+                      </AppLink>
                     )}
                   </div>
                 );

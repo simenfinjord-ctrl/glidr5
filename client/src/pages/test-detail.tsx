@@ -334,23 +334,27 @@ function CommentsSection({ testId }: { testId: number }) {
     refetchInterval: 60_000,
   });
 
-  // Fetch team members for mention autocomplete
-  const { data: teamMembers = [] } = useQuery<{ id: number; name: string }[]>({
-    queryKey: ["/api/team/members"],
+  // Fetch members who have access to this test's group (for @mention dropdown)
+  const { data: mentionableUsers = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: [`/api/tests/${testId}/mentionable-users`],
     queryFn: async () => {
-      const res = await fetch("/api/team/members", { credentials: "include" });
-      return res.ok ? res.json() : [];
+      const res = await fetch(`/api/tests/${testId}/mentionable-users`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
     },
     staleTime: 5 * 60_000,
+    enabled: !!user,
   });
 
   const mentionMatches = useMemo(() => {
     if (mentionQuery === null) return [];
-    const q = mentionQuery.toLowerCase();
-    return teamMembers
+    const q = mentionQuery.toLowerCase().trim();
+    // When q is empty (just "@" typed), show first 6 members
+    if (!q) return mentionableUsers.slice(0, 6);
+    return mentionableUsers
       .filter((m) => m.name.toLowerCase().includes(q))
       .slice(0, 6);
-  }, [mentionQuery, teamMembers]);
+  }, [mentionQuery, mentionableUsers]);
 
   // Detect @mention while typing
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {

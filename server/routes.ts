@@ -2327,6 +2327,49 @@ export async function registerRoutes(
     res.send(buf);
   });
 
+  // GET users who can be @mentioned in a test's comments
+  // Filtered to members who have access to the test's group
+  app.get("/api/tests/:id/mentionable-users", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    const testId = parseInt(req.params.id);
+    if (isNaN(testId)) return res.status(400).json({ message: "Invalid test id" });
+    const teamId = (u.activeTeamId || u.teamId) as number;
+    if (!teamId) return res.status(400).json({ message: "No active team" });
+    const { pool } = await import("./db");
+    try {
+      // Fetch the test's group_scope so we can filter members
+      const testRow = await (pool as any).query(
+        `SELECT group_scope FROM tests WHERE id = $1 AND team_id = $2`,
+        [testId, teamId]
+      );
+      const testGroup: string = testRow.rows[0]?.group_scope ?? "";
+
+      // A user can be mentioned if:
+      //   - they are active on this team (primary team_id or via user_team_permissions)
+      //   - their group_scope is empty (no restriction) OR contains the test's group
+      const result = await (pool as any).query(
+        `SELECT DISTINCT u.id, u.name
+         FROM users u
+         LEFT JOIN user_team_permissions utp
+           ON utp.user_id = u.id AND utp.team_id = $1
+         WHERE (u.team_id = $1 OR utp.team_id = $1)
+           AND u.is_active = 1
+           AND u.id != $2
+           AND (
+             $3 = ''
+             OR COALESCE(utp.group_scope, u.group_scope, '') = ''
+             OR COALESCE(utp.group_scope, u.group_scope, '') LIKE $4
+           )
+         ORDER BY u.name`,
+        [teamId, u.id, testGroup, `%${testGroup}%`]
+      );
+      return res.json(result.rows.map((r: any) => ({ id: r.id, name: r.name })));
+    } catch (err) {
+      console.error("mentionable-users error:", err);
+      return res.status(500).json({ message: "Failed to fetch mentionable users" });
+    }
+  });
+
   // GET comments for a test
   app.get("/api/tests/:id/comments", requireAuth, async (req, res) => {
     const testId = parseInt(req.params.id);

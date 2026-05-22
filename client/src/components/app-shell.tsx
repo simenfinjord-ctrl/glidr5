@@ -29,6 +29,8 @@ import {
   Mail,
   Menu,
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -307,6 +309,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [reportOpen, setReportOpen] = useState(false);
   const { commercializationEnabled } = useAppSettings();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem("glidr-sidebar-collapsed") === "true"; } catch { return false; }
+  });
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem("glidr-sidebar-collapsed", String(next)); } catch {}
+      return next;
+    });
+  };
   const [navLayout, setNavLayoutState] = useState<NavLayout>(() => getNavLayout());
 
   // Expose toggle so my-account can call it
@@ -440,7 +452,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // User role label
   const userRole = isSuperAdmin ? "Super Admin" : isTeamAdmin ? "Team Admin" : "Member";
 
-  // Sidebar nav list (shared between desktop sidebar and mobile drawer)
+  // Sidebar nav list
   const SidebarNav = () => {
     let lastSection: string | undefined = undefined;
     return (
@@ -448,8 +460,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {visibleNav.map((item) => {
           const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
           const Icon = item.icon;
-          // Render a section label when the section changes
-          const showSection = item.section && item.section !== lastSection;
+          const showSection = !sidebarCollapsed && item.section && item.section !== lastSection;
           if (item.section) lastSection = item.section;
           return (
             <div key={item.href}>
@@ -461,21 +472,27 @@ export function AppShell({ children }: { children: ReactNode }) {
               <AppLink
                 href={item.href}
                 testId={item.testId}
+                title={sidebarCollapsed ? navLabel(item.href) : undefined}
                 className={cn(
-                  "relative flex items-center gap-2 px-3.5 py-[5px] mx-1 rounded-md text-[12.5px] font-[450] transition-colors duration-100",
+                  "relative flex items-center gap-2 mx-1 rounded-md text-[12.5px] font-[450] transition-colors duration-100",
+                  sidebarCollapsed ? "justify-center px-0 py-[7px]" : "px-3.5 py-[5px]",
                   active
                     ? `${item.activeBg} ${item.activeColor} font-medium`
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
-                {/* Active indicator bar */}
-                {active && (
+                {active && !sidebarCollapsed && (
                   <span className="absolute left-0 top-1 bottom-1 w-[2.5px] bg-green-600 rounded-r-sm" />
                 )}
-                <Icon className={cn("h-3.5 w-3.5 shrink-0", active ? item.activeColor : "opacity-55")} />
-                <span className="flex-1 truncate">{navLabel(item.href)}</span>
-                {item.href === "/watch-queue" && watchQueueCount > 0 && (
+                <Icon className={cn("shrink-0", sidebarCollapsed ? "h-[15px] w-[15px]" : "h-3.5 w-3.5", active ? item.activeColor : "opacity-55")} />
+                {!sidebarCollapsed && <span className="flex-1 truncate">{navLabel(item.href)}</span>}
+                {!sidebarCollapsed && item.href === "/watch-queue" && watchQueueCount > 0 && (
                   <span className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-white">
+                    {watchQueueCount}
+                  </span>
+                )}
+                {sidebarCollapsed && item.href === "/watch-queue" && watchQueueCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-sky-500 text-[9px] font-bold text-white leading-none px-0.5">
                     {watchQueueCount}
                   </span>
                 )}
@@ -487,21 +504,30 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   };
 
-  // Sidebar footer: user info
+  // Sidebar footer: user info + team name
   const SidebarFooter = () => (
     <div className="border-t border-border mt-auto">
       <AppLink
         href="/my-account"
         testId="link-profile"
-        className="flex items-center gap-2 mx-1 my-1.5 px-2 py-1.5 rounded-md hover:bg-muted transition-colors"
+        title={sidebarCollapsed ? user?.name : undefined}
+        className={cn(
+          "flex items-center gap-2 mx-1 my-1.5 rounded-md hover:bg-muted transition-colors",
+          sidebarCollapsed ? "justify-center px-1 py-2" : "px-2 py-1.5",
+        )}
       >
         <div className="h-[26px] w-[26px] shrink-0 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-[9px] font-bold text-white">
           {userInitials}
         </div>
-        <div className="min-w-0">
-          <div className="text-[12px] font-semibold text-foreground leading-tight truncate">{user?.name}</div>
-          <div className="text-[10px] text-muted-foreground">{userRole}</div>
-        </div>
+        {!sidebarCollapsed && (
+          <div className="min-w-0">
+            <div className="text-[12px] font-semibold text-foreground leading-tight truncate">{user?.name}</div>
+            <div className="text-[10px] text-muted-foreground leading-tight">{userRole}</div>
+            {activeTeam?.name && (
+              <div className="text-[10px] text-muted-foreground/60 leading-tight truncate">{activeTeam.name}</div>
+            )}
+          </div>
+        )}
       </AppLink>
     </div>
   );
@@ -510,34 +536,55 @@ export function AppShell({ children }: { children: ReactNode }) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo area */}
-      <div className="flex items-center gap-2 px-3.5 py-3 border-b border-border shrink-0">
-        <GlidrIcon size={26} />
-        <span className="font-bold text-[14px] tracking-[-0.3px] text-foreground">Glidr</span>
-        <div className={cn("h-1.5 w-1.5 rounded-full shrink-0 ml-0.5", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
-        {/* Team selector for super admin or multi-team */}
-        {isSuperAdmin && teams.length > 1 && (
-          <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
-            <SelectTrigger className="h-6 ml-auto w-auto min-w-0 max-w-[90px] border-border bg-muted/50 text-[10px] font-medium px-2" data-testid="select-team">
-              <SelectValue placeholder={t("shell.selectTeam")} />
-            </SelectTrigger>
-            <SelectContent>
-              {teams.map((team: any) => (
-                <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {!isSuperAdmin && userTeams.length > 1 && (
-          <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
-            <SelectTrigger className="h-6 ml-auto w-auto min-w-0 max-w-[90px] border-border bg-muted/50 text-[10px] font-medium px-2" data-testid="select-user-team">
-              <SelectValue placeholder={t("shell.selectTeam")} />
-            </SelectTrigger>
-            <SelectContent>
-              {userTeams.map((team) => (
-                <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className={cn(
+        "flex items-center gap-2 border-b border-border shrink-0",
+        sidebarCollapsed ? "px-2 py-3 justify-center" : "px-3.5 py-3",
+      )}>
+        {sidebarCollapsed ? (
+          <button
+            onClick={toggleSidebarCollapsed}
+            className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            title="Expand sidebar"
+          >
+            <GlidrIcon size={22} />
+          </button>
+        ) : (
+          <>
+            <GlidrIcon size={26} />
+            <span className="font-bold text-[14px] tracking-[-0.3px] text-foreground">Glidr</span>
+            <div className={cn("h-1.5 w-1.5 rounded-full shrink-0 ml-0.5", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
+            {isSuperAdmin && teams.length > 1 && (
+              <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
+                <SelectTrigger className="h-6 ml-auto w-auto min-w-0 max-w-[80px] border-border bg-muted/50 text-[10px] font-medium px-2" data-testid="select-team">
+                  <SelectValue placeholder={t("shell.selectTeam")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {teams.map((team: any) => (
+                    <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!isSuperAdmin && userTeams.length > 1 && (
+              <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
+                <SelectTrigger className="h-6 ml-auto w-auto min-w-0 max-w-[80px] border-border bg-muted/50 text-[10px] font-medium px-2" data-testid="select-user-team">
+                  <SelectValue placeholder={t("shell.selectTeam")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {userTeams.map((team) => (
+                    <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <button
+              onClick={toggleSidebarCollapsed}
+              className="ml-auto h-6 w-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              title="Collapse sidebar"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+          </>
         )}
       </div>
 
@@ -750,7 +797,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex bg-[#f4f4f6] dark:bg-zinc-950">
 
       {/* ── Desktop Sidebar (lg+) ── */}
-      <aside className="hidden lg:flex flex-col w-[220px] shrink-0 h-screen sticky top-0 bg-card dark:bg-zinc-900 border-r border-border overflow-hidden">
+      <aside className={cn(
+        "hidden lg:flex flex-col shrink-0 h-screen sticky top-0 bg-card dark:bg-zinc-900 border-r border-border overflow-hidden transition-[width] duration-200",
+        sidebarCollapsed ? "w-[52px]" : "w-[220px]",
+      )}>
         <SidebarContent />
       </aside>
 

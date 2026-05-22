@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Glidr — Logo Pack</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #f4f4f6; color: #111; padding: 40px; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    p.sub { font-size: 13px; color: #666; margin-bottom: 36px; }
+    .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 14px; margin-top: 36px; }
+    .grid { display: flex; flex-wrap: wrap; gap: 16px; }
+    .card {
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      padding: 28px 24px 18px;
+      border-radius: 12px; border: 1px solid #e0e0e6;
+      min-width: 180px;
+    }
+    .card.light { background: #ffffff; }
+    .card.dark  { background: #111118; border-color: #2a2a35; }
+    .card.green { background: linear-gradient(135deg, #10b981, #047857); border-color: transparent; }
+    .card-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.07em; color: #999;
+    }
+    .card.dark .card-label, .card.green .card-label { color: rgba(255,255,255,0.45); }
+    .dl-btn {
+      font-family: inherit; font-size: 11px; font-weight: 600;
+      padding: 5px 14px; border-radius: 6px; cursor: pointer; border: none;
+      background: #111; color: #fff; transition: opacity 0.15s;
+    }
+    .dl-btn:hover { opacity: 0.8; }
+    .card.dark .dl-btn { background: #fff; color: #111; }
+    .card.green .dl-btn { background: rgba(255,255,255,0.9); color: #047857; }
+    hr { border: none; border-top: 1px solid #e0e0e6; margin: 40px 0 0; }
+    footer { font-size: 11px; color: #aaa; margin-top: 16px; }
+  </style>
+</head>
+<body>
+
+<h1>Glidr — Logo Pack</h1>
+<p class="sub">SVG-filer klare for print. Klikk "Download" på hver variant.</p>
+
+<!-- ── Full logo ── -->
+<div class="section-title">Full logo — badge + wordmark</div>
+<div class="grid" id="full-logos"></div>
+
+<!-- ── Badge only ── -->
+<div class="section-title">Badge only — ikon uten tekst</div>
+<div class="grid" id="badge-logos"></div>
+
+<!-- ── Wordmark only ── -->
+<div class="section-title">Wordmark only — tekst uten badge</div>
+<div class="grid" id="wordmark-logos"></div>
+
+<hr/>
+<footer>Alle filer er SVG og kan skaleres til hvilken som helst størrelse uten kvalitetstap.</footer>
+
+<script>
+// ── G path (100×100 coordinate space) ──
+const G = "M72 22 L36 22 L18 36 L18 64 L36 78 L72 78 L72 50 L50 50";
+
+// ── SVG generators ──
+
+function badgeSVG({ size = 100, badgeFill, gStroke, rx = 22 }) {
+  const sw = size * 0.095;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+  <rect width="${size}" height="${size}" rx="${size*rx/100}" fill="${badgeFill}"/>
+  <svg x="0" y="0" width="${size}" height="${size}" viewBox="0 0 100 100">
+    <path d="${G}" stroke="${gStroke}" stroke-width="${sw}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</svg>`;
+}
+
+function fullLogoSVG({ badgeFill, gStroke, textFill, size = 48 }) {
+  const fontSize = Math.round(size * 0.6);
+  const gap = Math.round(size * 0.38);
+  const totalW = size + gap + Math.round(fontSize * 3.15);
+  const sw = 9.5;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalW} ${size}" width="${totalW}" height="${size}" aria-label="Glidr">
+  <defs>
+    <linearGradient id="g-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${badgeFill[0]}"/>
+      <stop offset="100%" stop-color="${badgeFill[1]}"/>
+    </linearGradient>
+  </defs>
+  <svg x="0" y="0" width="${size}" height="${size}" viewBox="0 0 100 100">
+    <rect width="100" height="100" rx="22" fill="url(#g-bg)"/>
+    <path d="${G}" stroke="${gStroke}" stroke-width="${sw}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <text x="${size + gap}" y="${Math.round(size * 0.715)}"
+    font-family="'Inter',system-ui,sans-serif"
+    font-weight="800" font-size="${fontSize}"
+    letter-spacing="${-fontSize * 0.025}"
+    fill="${textFill}">Glidr</text>
+</svg>`;
+}
+
+function fullLogoOnBgSVG({ bgFill, badgeFill, gStroke, textFill, size = 48, pad = 32 }) {
+  const fontSize = Math.round(size * 0.6);
+  const gap = Math.round(size * 0.38);
+  const logoW = size + gap + Math.round(fontSize * 3.15);
+  const totalW = logoW + pad * 2;
+  const totalH = size + pad * 2;
+  const sw = 9.5;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalW} ${totalH}" width="${totalW}" height="${totalH}">
+  <defs>
+    <linearGradient id="g-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${badgeFill[0]}"/>
+      <stop offset="100%" stop-color="${badgeFill[1]}"/>
+    </linearGradient>
+  </defs>
+  <rect width="${totalW}" height="${totalH}" rx="16" fill="${bgFill}"/>
+  <svg x="${pad}" y="${pad}" width="${size}" height="${size}" viewBox="0 0 100 100">
+    <rect width="100" height="100" rx="22" fill="url(#g-bg)"/>
+    <path d="${G}" stroke="${gStroke}" stroke-width="${sw}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <text x="${pad + size + gap}" y="${pad + Math.round(size * 0.715)}"
+    font-family="'Inter',system-ui,sans-serif"
+    font-weight="800" font-size="${fontSize}"
+    letter-spacing="${-fontSize * 0.025}"
+    fill="${textFill}">Glidr</text>
+</svg>`;
+}
+
+function wordmarkSVG({ textFill, size = 48 }) {
+  const fontSize = Math.round(size * 0.6);
+  const totalW = Math.round(fontSize * 3.15);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalW} ${size}" width="${totalW}" height="${size}">
+  <text x="0" y="${Math.round(size * 0.715)}"
+    font-family="'Inter',system-ui,sans-serif"
+    font-weight="800" font-size="${fontSize}"
+    letter-spacing="${-fontSize * 0.025}"
+    fill="${textFill}">Glidr</text>
+</svg>`;
+}
+
+function wordmarkOnBgSVG({ bgFill, textFill, size = 48, padX = 32, padY = 20 }) {
+  const fontSize = Math.round(size * 0.6);
+  const textW = Math.round(fontSize * 3.15);
+  const totalW = textW + padX * 2;
+  const totalH = size + padY * 2;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalW} ${totalH}" width="${totalW}" height="${totalH}">
+  <rect width="${totalW}" height="${totalH}" rx="12" fill="${bgFill}"/>
+  <text x="${padX}" y="${padY + Math.round(size * 0.715)}"
+    font-family="'Inter',system-ui,sans-serif"
+    font-weight="800" font-size="${fontSize}"
+    letter-spacing="${-fontSize * 0.025}"
+    fill="${textFill}">Glidr</text>
+</svg>`;
+}
+
+function badgeOnBgSVG({ bgFill, badgeFill, gStroke, size = 100, pad = 24, rx = 22 }) {
+  const totalSize = size + pad * 2;
+  const outerRx = Math.round(totalSize * 0.18);
+  const sw = 9.5;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalSize} ${totalSize}" width="${totalSize}" height="${totalSize}">
+  <defs>
+    <linearGradient id="g-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${badgeFill[0]}"/>
+      <stop offset="100%" stop-color="${badgeFill[1]}"/>
+    </linearGradient>
+  </defs>
+  <rect width="${totalSize}" height="${totalSize}" rx="${outerRx}" fill="${bgFill}"/>
+  <svg x="${pad}" y="${pad}" width="${size}" height="${size}" viewBox="0 0 100 100">
+    <rect width="100" height="100" rx="${rx}" fill="url(#g-bg)"/>
+    <path d="${G}" stroke="${gStroke}" stroke-width="${sw}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</svg>`;
+}
+
+// ── Download helper ──
+function download(svg, filename) {
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Card builder ──
+function makeCard({ theme, label, svgString, filename }) {
+  const card = document.createElement('div');
+  card.className = `card ${theme}`;
+  card.innerHTML = svgString;
+  const lbl = document.createElement('div');
+  lbl.className = 'card-label'; lbl.textContent = label;
+  const btn = document.createElement('button');
+  btn.className = 'dl-btn'; btn.textContent = 'Download SVG';
+  btn.onclick = () => download(svgString, filename);
+  card.append(lbl, btn);
+  return card;
+}
+
+// ── Full logo variants ──
+const fullContainer = document.getElementById('full-logos');
+
+const fullVariants = [
+  {
+    theme: 'light', label: 'White background',
+    svg: fullLogoOnBgSVG({ bgFill:'#ffffff', badgeFill:['#10b981','#047857'], gStroke:'#ffffff', textFill:'#111118' }),
+    file: 'glidr-logo-white-bg.svg'
+  },
+  {
+    theme: 'dark', label: 'Black background',
+    svg: fullLogoOnBgSVG({ bgFill:'#111118', badgeFill:['#10b981','#047857'], gStroke:'#ffffff', textFill:'#ffffff' }),
+    file: 'glidr-logo-black-bg.svg'
+  },
+  {
+    theme: 'light', label: 'Transparent — dark text',
+    svg: fullLogoSVG({ badgeFill:['#10b981','#047857'], gStroke:'#ffffff', textFill:'#111118' }),
+    file: 'glidr-logo-transparent-dark.svg'
+  },
+  {
+    theme: 'dark', label: 'Transparent — white text',
+    svg: fullLogoSVG({ badgeFill:['#10b981','#047857'], gStroke:'#ffffff', textFill:'#ffffff' }),
+    file: 'glidr-logo-transparent-white.svg'
+  },
+  {
+    theme: 'green', label: 'Green background',
+    svg: fullLogoOnBgSVG({ bgFill:'#059669', badgeFill:['#ffffff','#e0e0e0'], gStroke:'#059669', textFill:'#ffffff' }),
+    file: 'glidr-logo-green-bg.svg'
+  },
+];
+
+fullVariants.forEach(v => fullContainer.appendChild(makeCard({ theme: v.theme, label: v.label, svgString: v.svg, filename: v.file })));
+
+// ── Badge variants ──
+const badgeContainer = document.getElementById('badge-logos');
+
+const badgeVariants = [
+  {
+    theme: 'light', label: 'White background',
+    svg: badgeOnBgSVG({ bgFill:'#ffffff', badgeFill:['#10b981','#047857'], gStroke:'#ffffff' }),
+    file: 'glidr-badge-white-bg.svg'
+  },
+  {
+    theme: 'dark', label: 'Black background',
+    svg: badgeOnBgSVG({ bgFill:'#111118', badgeFill:['#10b981','#047857'], gStroke:'#ffffff' }),
+    file: 'glidr-badge-black-bg.svg'
+  },
+  {
+    theme: 'light', label: 'Transparent',
+    svg: badgeSVG({ badgeFill:'url(#g)', gStroke:'#ffffff' }).replace(
+      '<rect',
+      `<defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#047857"/></linearGradient></defs><rect`
+    ),
+    file: 'glidr-badge-transparent.svg'
+  },
+  {
+    theme: 'green', label: 'Green background',
+    svg: badgeOnBgSVG({ bgFill:'#059669', badgeFill:['rgba(255,255,255,0.25)','rgba(255,255,255,0.1)'], gStroke:'#ffffff' }),
+    file: 'glidr-badge-green-bg.svg'
+  },
+  {
+    theme: 'light', label: 'White badge on white',
+    svg: badgeOnBgSVG({ bgFill:'#ffffff', badgeFill:['#ffffff','#f0f0f2'], gStroke:'#10b981' }),
+    file: 'glidr-badge-outline.svg'
+  },
+  {
+    theme: 'dark', label: 'Dark badge on dark',
+    svg: badgeOnBgSVG({ bgFill:'#111118', badgeFill:['#1e1e28','#16161e'], gStroke:'#10b981' }),
+    file: 'glidr-badge-dark-outline.svg'
+  },
+];
+
+// Simple badge transparent fix
+const transparentBadge = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="g-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="22" fill="url(#g-bg)"/>
+  <path d="${G}" stroke="white" stroke-width="9.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+badgeVariants[2].svg = transparentBadge;
+
+badgeVariants.forEach(v => badgeContainer.appendChild(makeCard({ theme: v.theme, label: v.label, svgString: v.svg, filename: v.file })));
+
+// ── Wordmark variants ──
+const wordmarkContainer = document.getElementById('wordmark-logos');
+
+const wordmarkVariants = [
+  {
+    theme: 'light', label: 'White background',
+    svg: wordmarkOnBgSVG({ bgFill:'#ffffff', textFill:'#111118' }),
+    file: 'glidr-wordmark-white-bg.svg'
+  },
+  {
+    theme: 'dark', label: 'Black background',
+    svg: wordmarkOnBgSVG({ bgFill:'#111118', textFill:'#ffffff' }),
+    file: 'glidr-wordmark-black-bg.svg'
+  },
+  {
+    theme: 'light', label: 'Transparent — dark',
+    svg: wordmarkSVG({ textFill:'#111118' }),
+    file: 'glidr-wordmark-dark.svg'
+  },
+  {
+    theme: 'dark', label: 'Transparent — white',
+    svg: wordmarkSVG({ textFill:'#ffffff' }),
+    file: 'glidr-wordmark-white.svg'
+  },
+  {
+    theme: 'green', label: 'Green background',
+    svg: wordmarkOnBgSVG({ bgFill:'#059669', textFill:'#ffffff' }),
+    file: 'glidr-wordmark-green-bg.svg'
+  },
+];
+
+wordmarkVariants.forEach(v => wordmarkContainer.appendChild(makeCard({ theme: v.theme, label: v.label, svgString: v.svg, filename: v.file })));
+</script>
+</body>
+</html>

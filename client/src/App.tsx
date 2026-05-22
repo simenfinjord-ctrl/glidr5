@@ -47,6 +47,7 @@ import Login from "@/pages/login";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import AcceptInvite from "@/pages/accept-invite";
+import SharedTest from "@/pages/shared-test";
 
 function Router() {
   return (
@@ -55,6 +56,7 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/invite/:token" component={AcceptInvite} />
+      <Route path="/share/test/:token" component={SharedTest} />
       <Route path="/" component={() => <Redirect to="/dashboard" />} />
       <Route path="/live-runsheets" component={LiveRunsheets} />
       <Route path="/dashboard" component={Dashboard} />
@@ -143,7 +145,7 @@ function AuthGuard() {
   }
 
   const publicPaths = ["/login", "/forgot-password", "/reset-password", "/what-is-glidr", "/legal", "/pricing", "/contact", "/demo", "/get-started"];
-  if (!user && !publicPaths.includes(location) && !location.startsWith("/invite/")) {
+  if (!user && !publicPaths.includes(location) && !location.startsWith("/invite/") && !location.startsWith("/share/")) {
     return <Redirect to="/login" />;
   }
 

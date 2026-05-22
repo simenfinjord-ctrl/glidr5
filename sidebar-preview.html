@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Glidr — Sidebar preview</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #f2f3f5;
+    --sidebar:   #ffffff;
+    --card:      #ffffff;
+    --border:    #e5e7eb;
+    --fg:        #111827;
+    --muted:     #6b7280;
+    --green:     #059669;
+    --green-bg:  #ecfdf5;
+    --green-txt: #065f46;
+    --pill-bg:   #059669;
+    --pill-fg:   #ffffff;
+    --hover-bg:  #f3f4f6;
+    --section:   #9ca3af;
+    --avatar-from: #2563eb;
+    --avatar-to:   #7c3aed;
+    --shadow-sidebar: 4px 0 24px rgba(0,0,0,0.06);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    font-size: 13px;
+    color: var(--fg);
+  }
+
+  .dark {
+    --bg:        #0f1117;
+    --sidebar:   #17181c;
+    --card:      #1c1d23;
+    --border:    #2a2b31;
+    --fg:        #f1f1f3;
+    --muted:     #8b8d97;
+    --green:     #34d399;
+    --green-bg:  rgba(52,211,153,0.08);
+    --green-txt: #34d399;
+    --pill-bg:   #059669;
+    --pill-fg:   #ffffff;
+    --hover-bg:  rgba(255,255,255,0.04);
+    --section:   #555762;
+    --shadow-sidebar: 4px 0 24px rgba(0,0,0,0.25);
+  }
+
+  body {
+    background: var(--bg);
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ─────────────────────────────────────── */
+  .sidebar {
+    width: 224px;
+    min-width: 224px;
+    height: 100vh;
+    background: var(--sidebar);
+    box-shadow: var(--shadow-sidebar);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    z-index: 10;
+    /* No border-right — shadow does the separation */
+  }
+
+  /* Logo row */
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 14px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo-badge {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, #059669, #047857);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 3px rgba(5,150,105,0.4);
+  }
+  .logo-badge svg { display: block; }
+  .logo-name {
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: -0.3px;
+    color: var(--fg);
+    flex: 1;
+  }
+  .online-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 0 2px rgba(16,185,129,0.2);
+  }
+
+  /* Nav area */
+  .nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  /* Section label */
+  .nav-section {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--section);
+    padding: 10px 10px 4px;
+  }
+  .nav-section:first-child {
+    padding-top: 2px;
+  }
+
+  /* Nav item */
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+    color: var(--muted);
+    font-size: 12.5px;
+    font-weight: 450;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    position: relative;
+  }
+  .nav-item:hover { background: var(--hover-bg); color: var(--fg); }
+  .nav-item svg { flex-shrink: 0; opacity: 0.6; }
+  .nav-item:hover svg { opacity: 0.9; }
+
+  /* ACTIVE — full green pill */
+  .nav-item.active {
+    background: var(--pill-bg);
+    color: var(--pill-fg);
+    font-weight: 600;
+  }
+  .nav-item.active svg { opacity: 1; }
+
+  /* Badge (e.g. watch queue count) */
+  .nav-badge {
+    margin-left: auto;
+    background: #0ea5e9;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 999px;
+    min-width: 18px;
+    text-align: center;
+    line-height: 16px;
+    height: 16px;
+  }
+
+  /* Sidebar bottom area */
+  .sidebar-bottom {
+    border-top: 1px solid var(--border);
+    padding: 8px 6px;
+  }
+  .user-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .user-row:hover { background: var(--hover-bg); }
+  .avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--avatar-from), var(--avatar-to));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; color: white;
+    flex-shrink: 0;
+  }
+  .user-name { font-size: 12px; font-weight: 600; color: var(--fg); line-height: 1.3; }
+  .user-role { font-size: 10px; color: var(--muted); }
+
+  /* ── MAIN AREA ────────────────────────────────────── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  /* Top header */
+  .topbar {
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 20px;
+    background: var(--bg);
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .page-title {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg);
+  }
+  .header-btn {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+  }
+  .header-btn:hover { background: var(--hover-bg); color: var(--fg); }
+  .header-divider { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
+
+  /* Content area */
+  .content-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 24px 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .content-inner { flex: 1; }
+
+  /* Sample page content */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 16px 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .stat-label { font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 6px; }
+  .stat-value { font-size: 22px; font-weight: 700; color: var(--fg); line-height: 1; }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  .section-heading {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .table-card {
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    margin-bottom: 20px;
+  }
+  .table-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12.5px;
+  }
+  .table-row:last-child { border-bottom: none; }
+  .table-row:hover { background: var(--hover-bg); }
+  .cell-name { flex: 2; font-weight: 500; color: var(--fg); }
+  .cell-date { flex: 1; color: var(--muted); }
+  .cell-skier { flex: 1.5; color: var(--muted); }
+  .status-pill {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 600;
+  }
+  .status-green { background: var(--green-bg); color: var(--green-txt); }
+  .status-blue  { background: #eff6ff; color: #1d4ed8; }
+  .status-gray  { background: #f3f4f6; color: #6b7280; }
+
+  .table-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    gap: 12px;
+    background: var(--hover-bg);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: auto;
+    padding: 16px 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  .footer a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+  .footer a:hover { color: var(--fg); }
+  .footer-links { display: flex; gap: 12px; }
+
+  /* ── TOGGLE ───────────────────────────────────────── */
+  .toggle-wrapper {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--muted);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    z-index: 100;
+  }
+  .toggle-wrapper button {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    transition: background 0.15s, color 0.15s;
+    background: none;
+    color: var(--muted);
+  }
+  .toggle-wrapper button.active-btn {
+    background: var(--fg);
+    color: var(--bg);
+  }
+</style>
+</head>
+<body>
+
+<!-- Toggle -->
+<div class="toggle-wrapper">
+  <span>Theme:</span>
+  <button class="active-btn" id="btn-light" onclick="setTheme('light')">Light</button>
+  <button id="btn-dark" onclick="setTheme('dark')">Dark</button>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <!-- Logo -->
+  <div class="logo-row">
+    <div class="logo-badge">
+      <svg width="16" height="16" viewBox="0 0 96 96" fill="none">
+        <rect width="96" height="96" rx="22" fill="#059669"/>
+        <path d="M72 22 L36 22 L18 36 L18 64 L36 78 L72 78 L72 50 L50 50" stroke="white" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+    </div>
+    <span class="logo-name">Glidr</span>
+    <div class="online-dot"></div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <!-- No section label for top item -->
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+
+    <div class="nav-section">Analyse</div>
+
+    <a class="nav-item active" href="#">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Tests
+    </a>
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Analytics
+    </a>
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Suggestions
+    </a>
+
+    <div class="nav-section">Utstyr</div>
+
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 12h20M12 2l4 4-4 4M12 22l4-4-4-4"/></svg>
+      Testskis
+    </a>
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+      Products
+    </a>
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+      Grinding
+    </a>
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/></svg>
+      Raceskis
+    </a>
+
+    <div class="nav-section">Renn</div>
+
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 117-7v1"/><polyline points="21 15 17.5 19 14 15"/></svg>
+      Weather
+    </a>
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 010 8.49m-8.48-.01a6 6 0 010-8.49m11.31-2.82a10 10 0 010 14.14m-14.14 0a10 10 0 010-14.14"/></svg>
+      Live Runsheets
+    </a>
+    <a class="nav-item" href="#">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Watch Queue
+      <span class="nav-badge" style="margin-left:auto">3</span>
+    </a>
+  </nav>
+
+  <!-- Bottom: user profile -->
+  <div class="sidebar-bottom">
+    <div class="user-row">
+      <div class="avatar">SF</div>
+      <div>
+        <div class="user-name">Simen Finjord</div>
+        <div class="user-role">Team Admin</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- Topbar -->
+  <header class="topbar">
+    <span class="page-title">Tests</span>
+    <button class="header-btn" title="Inbox">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+    </button>
+    <button class="header-btn" title="Theme" onclick="toggleTheme()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+    <button class="header-btn" title="Report problem">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </button>
+    <div class="header-divider"></div>
+    <button class="header-btn" title="My account">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </button>
+    <button class="header-btn" title="Log out">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+  </header>
+
+  <!-- Scrollable content -->
+  <div class="content-scroll">
+    <div class="content-inner">
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Tests this season</div>
+          <div class="stat-value">24</div>
+          <div class="stat-sub">+3 this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Products tested</div>
+          <div class="stat-value">47</div>
+          <div class="stat-sub">Across 6 categories</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Watch queue</div>
+          <div class="stat-value">3</div>
+          <div class="stat-sub">Active syncs</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Venues</div>
+          <div class="stat-value">5</div>
+          <div class="stat-sub">Locations logged</div>
+        </div>
+      </div>
+
+      <!-- Recent tests table -->
+      <div class="section-heading">Recent tests</div>
+      <div class="table-card">
+        <div class="table-header">
+          <span class="cell-name">Test name</span>
+          <span class="cell-date">Date</span>
+          <span class="cell-skier">Skier</span>
+          <span style="width:80px">Status</span>
+        </div>
+        <div class="table-row">
+          <span class="cell-name">Sognefjell — Klister A</span>
+          <span class="cell-date">15. jun 2025</span>
+          <span class="cell-skier">Simen Finjord</span>
+          <span class="status-pill status-green">Completed</span>
+        </div>
+        <div class="table-row">
+          <span class="cell-name">Holmenkollen — Glide wax</span>
+          <span class="cell-date">12. jun 2025</span>
+          <span class="cell-skier">Magnus Berg</span>
+          <span class="status-pill status-blue">In progress</span>
+        </div>
+        <div class="table-row">
+          <span class="cell-name">Beitostølen — Fluorcarbon</span>
+          <span class="cell-date">08. jun 2025</span>
+          <span class="cell-skier">Kari Nilsen</span>
+          <span class="status-pill status-green">Completed</span>
+        </div>
+        <div class="table-row">
+          <span class="cell-name">Trondheim — Skin test</span>
+          <span class="cell-date">03. jun 2025</span>
+          <span class="cell-skier">Simen Finjord</span>
+          <span class="status-pill status-gray">Draft</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <svg width="48" height="14" viewBox="0 0 96 28" fill="none" style="opacity:0.35">
+        <rect width="28" height="28" rx="7" fill="currentColor"/>
+        <path d="M21 6 L10 6 L5 10 L5 18 L10 22 L21 22 L21 14 L14 14" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <text x="34" y="20" font-family="system-ui,sans-serif" font-weight="700" font-size="14" fill="currentColor">Glidr</text>
+      </svg>
+      <div class="footer-links">
+        <a href="#">My account</a>
+        <a href="#">Legal</a>
+        <a href="#">Contact</a>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<script>
+  let dark = false;
+
+  function setTheme(t) {
+    dark = t === 'dark';
+    document.body.classList.toggle('dark', dark);
+    document.getElementById('btn-light').classList.toggle('active-btn', !dark);
+    document.getElementById('btn-dark').classList.toggle('active-btn', dark);
+  }
+
+  function toggleTheme() {
+    setTheme(dark ? 'light' : 'dark');
+  }
+</script>
+</body>
+</html>

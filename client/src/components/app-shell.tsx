@@ -31,6 +31,7 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -632,6 +633,28 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       </div>
 
+      {/* Search button */}
+      {!sidebarCollapsed ? (
+        <button
+          onClick={() => window.dispatchEvent(new Event("glidr-open-search"))}
+          className="flex items-center gap-2 mx-2 my-1.5 px-2.5 py-[7px] rounded-md border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground text-[12px] transition-colors shrink-0"
+          data-testid="button-sidebar-search"
+        >
+          <Search className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1 text-left">{t("shell.search")}</span>
+          <kbd className="rounded bg-background px-1 py-0.5 text-[9px] font-mono border border-border leading-none">⌘K</kbd>
+        </button>
+      ) : (
+        <button
+          onClick={() => window.dispatchEvent(new Event("glidr-open-search"))}
+          className="flex items-center justify-center w-8 h-8 mx-auto my-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          title={t("shell.search")}
+          data-testid="button-sidebar-search"
+        >
+          <Search className="h-[15px] w-[15px]" />
+        </button>
+      )}
+
       <SidebarNav />
       <SidebarFooter />
     </div>
@@ -885,6 +908,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <PageBody />
       </div>
 
+      <CommandSearch />
       <ReportProblemDialog open={reportOpen} onClose={() => setReportOpen(false)} />
     </div>
   );

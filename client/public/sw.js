@@ -1,7 +1,6 @@
-const CACHE_NAME = "glidr-v4";
+const CACHE_NAME = "glidr-v5";
 const STATIC_EXTENSIONS = [".js", ".css", ".png", ".jpg", ".svg", ".ico", ".woff", ".woff2"];
-const API_CACHE_NAME = "glidr-api-v4";
-// API routes to cache for offline reading
+const API_CACHE_NAME = "glidr-api-v5";
 const CACHEABLE_API = ["/api/tests", "/api/products", "/api/groups", "/api/users", "/api/weather", "/api/testskis"];
 
 self.addEventListener("install", (event) => {
@@ -24,7 +23,27 @@ self.addEventListener("fetch", (event) => {
 
   if (request.method !== "GET") return;
 
-  // API caching: network-first, fall back to cache for important endpoints
+  // Navigation requests (HTML pages) — serve app shell, fall back to cache
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() =>
+          caches.match(request)
+            .then((cached) => cached || caches.match("/"))
+            .then((r) => r || new Response("Offline", { status: 503 }))
+        )
+    );
+    return;
+  }
+
+  // API caching: network-first, fall back to cache for key endpoints
   if (url.pathname.startsWith("/api/")) {
     const isCacheable = CACHEABLE_API.some((p) => url.pathname.startsWith(p));
     if (!isCacheable) return;
@@ -37,15 +56,16 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(request, { cacheName: API_CACHE_NAME })
-          .then((cached) => cached || new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json" }, status: 200 }))
+        .catch(() =>
+          caches.match(request, { cacheName: API_CACHE_NAME })
+            .then((cached) => cached || new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json" }, status: 200 }))
         )
     );
     return;
   }
 
+  // Static assets: cache-first
   const isStaticAsset = STATIC_EXTENSIONS.some((ext) => url.pathname.endsWith(ext));
-
   if (isStaticAsset) {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -59,17 +79,23 @@ self.addEventListener("fetch", (event) => {
         });
       })
     );
-  } else {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(() => caches.match(request).then((cached) => cached || caches.match("/")).then((r) => r || new Response("Offline", { status: 503 })))
-    );
+    return;
   }
+
+  // Everything else: network-first
+  event.respondWith(
+    fetch(request)
+      .then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      })
+      .catch(() =>
+        caches.match(request)
+          .then((cached) => cached || caches.match("/"))
+          .then((r) => r || new Response("Offline", { status: 503 }))
+      )
+  );
 });

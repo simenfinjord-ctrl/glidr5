@@ -436,6 +436,7 @@ export async function registerRoutes(
       )
     `);
     await pool.query(`ALTER TABLE test_attachments ADD COLUMN IF NOT EXISTS url TEXT`).catch(() => {});
+    await pool.query(`ALTER TABLE tests ADD COLUMN IF NOT EXISTS share_token TEXT`).catch(() => {});
     await pool.query(`
       CREATE TABLE IF NOT EXISTS client_errors (
         id SERIAL PRIMARY KEY,
@@ -2426,6 +2427,62 @@ export async function registerRoutes(
       });
     } catch (err: any) {
       console.error("[/api/tests/:id/pdf]", err);
+      return res.status(500).json({ message: err?.message ?? "Internal server error" });
+    }
+  });
+
+  // POST /api/tests/:id/public-link — generate (or return existing) share token
+  app.post("/api/tests/:id/public-link", requireAuth, async (req, res) => {
+    try {
+      const testId = parseInt(req.params.id);
+      if (isNaN(testId)) return res.status(400).json({ message: "Invalid test id" });
+      // Verify ownership using Drizzle (teamId is in schema)
+      const test = await storage.getTest(testId);
+      if (!test) return res.status(404).json({ message: "Not found" });
+      if (!verifyTeamOwnership(test, req)) return res.status(403).json({ message: "Forbidden" });
+      // Use raw SQL to read/write share_token (not in Drizzle schema)
+      const { pool } = await import("./db");
+      const tokenRes = await (pool as any).query(`SELECT share_token FROM tests WHERE id = $1`, [testId]);
+      const existing = tokenRes.rows[0]?.share_token as string | null;
+      if (existing) {
+        return res.json({ token: existing, url: `${req.protocol}://${req.get("host")}/share/test/${existing}` });
+      }
+      const crypto = await import("crypto");
+      const token = crypto.randomBytes(20).toString("hex");
+      await (pool as any).query(`UPDATE tests SET share_token = $1 WHERE id = $2`, [token, testId]);
+      return res.json({ token, url: `${req.protocol}://${req.get("host")}/share/test/${token}` });
+    } catch (err: any) {
+      console.error("[/api/tests/:id/public-link]", err);
+      return res.status(500).json({ message: err?.message ?? "Internal server error" });
+    }
+  });
+
+  // GET /api/public/test/:token — public read-only test data (no auth)
+  app.get("/api/public/test/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      if (!token) return res.status(400).json({ message: "Missing token" });
+      const { pool } = await import("./db");
+      const testRes = await (pool as any).query(
+        `SELECT id, date, location, test_name, test_type, notes, distance_label_0km, distance_label_xkm, distance_labels, created_by_name, created_at
+         FROM tests WHERE share_token = $1`,
+        [token]
+      );
+      if (!testRes.rows.length) return res.status(404).json({ message: "Not found" });
+      const testRow = testRes.rows[0];
+      const entriesRes = await (pool as any).query(
+        `SELECT te.ski_number, te.rank_0km, te.rank_xkm, te.result_0km_cm_behind, te.result_xkm_cm_behind,
+                te.feeling_rank, te.kick_rank, te.methodology, te.free_text_product,
+                p.brand, p.name as product_name, p.category
+         FROM test_entries te
+         LEFT JOIN products p ON p.id = te.product_id
+         WHERE te.test_id = $1
+         ORDER BY COALESCE(te.rank_0km, 999), te.ski_number`,
+        [testRow.id]
+      );
+      return res.json({ test: testRow, entries: entriesRes.rows });
+    } catch (err: any) {
+      console.error("[/api/public/test/:token]", err);
       return res.status(500).json({ message: err?.message ?? "Internal server error" });
     }
   });

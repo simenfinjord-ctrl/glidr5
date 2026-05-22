@@ -27,16 +27,21 @@ export function CommandSearch() {
   const [query, setQuery] = useState("");
   const [, navigate] = useLocation();
 
-  // Cmd+K / Ctrl+K shortcut
+  // Cmd+K / Ctrl+K shortcut + external open event
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
+    const keyHandler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setOpen((v) => !v);
       }
     };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
+    const eventHandler = () => setOpen(true);
+    document.addEventListener("keydown", keyHandler);
+    window.addEventListener("glidr-open-search", eventHandler);
+    return () => {
+      document.removeEventListener("keydown", keyHandler);
+      window.removeEventListener("glidr-open-search", eventHandler);
+    };
   }, []);
 
   const { data: results = [] } = useQuery<SearchResult[]>({

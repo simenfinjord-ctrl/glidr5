@@ -2,7 +2,7 @@ import { useState, useMemo, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, EyeOff, Eye, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch, ImageIcon, MessageSquare, Send } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch, ImageIcon, MessageSquare, Send, Link2 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { AppShell } from "@/components/app-shell";
@@ -410,6 +410,7 @@ export default function TestDetail() {
   const { isBlindTester, isSuperAdmin, can } = useAuth();
   const { t } = useI18n();
   const hasWatchAccess = can("garmin_watch");
+  const canEditTests = can("tests", "edit");
   const [hideDetailsState, setHideDetails] = useState(false);
   const hideDetails = isBlindTester || hideDetailsState;
   const [, setLocation] = useLocation();
@@ -419,6 +420,7 @@ export default function TestDetail() {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [copyLinkLoading, setCopyLinkLoading] = useState(false);
 
   const [showReviewRunsheet, setShowReviewRunsheet] = useState(false);
   const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>(["grindType"]);
@@ -771,6 +773,34 @@ export default function TestDetail() {
                 <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} data-testid="button-share-test">
                   <Share2 className="mr-2 h-4 w-4" />
                   {t("testDetail.shareLink")}
+                </Button>
+              )}
+              {canEditTests && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={copyLinkLoading}
+                  data-testid="button-copy-link"
+                  onClick={async () => {
+                    setCopyLinkLoading(true);
+                    try {
+                      const res = await fetch(`/api/tests/${id}/public-link`, {
+                        method: "POST",
+                        credentials: "include",
+                      });
+                      if (!res.ok) throw new Error("Failed to generate link");
+                      const { url } = await res.json();
+                      await navigator.clipboard.writeText(url);
+                      toast({ title: "Link copied to clipboard" });
+                    } catch {
+                      toast({ title: "Could not copy link", variant: "destructive" });
+                    } finally {
+                      setCopyLinkLoading(false);
+                    }
+                  }}
+                >
+                  <Link2 className="mr-2 h-4 w-4" />
+                  Copy link
                 </Button>
               )}
               <AppLink href={`/tests/new?duplicate=${id}`} testId="link-duplicate-test">

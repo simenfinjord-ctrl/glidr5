@@ -13,6 +13,7 @@ export const ACCENT_COLORS: { id: AccentColor; label: string; hsl: string; darkH
 
 const KEY = "glidr-accent-color";
 const DEFAULT: AccentColor = "blue";
+const STYLE_ID = "glidr-accent-override";
 
 export function getAccentColor(): AccentColor {
   try {
@@ -27,14 +28,36 @@ export function setAccentColor(color: AccentColor) {
   applyAccentColor(color);
 }
 
+/**
+ * Injects (or updates) a <style> tag in <head> that overrides all CSS
+ * custom property values for the chosen accent colour.
+ * Using a <style> tag appended to <head> + !important is the most reliable
+ * approach — it works regardless of Tailwind's compile-time CSS specificity.
+ */
 export function applyAccentColor(color: AccentColor) {
   const entry = ACCENT_COLORS.find(c => c.id === color) ?? ACCENT_COLORS[0];
-  const root = document.documentElement;
-  const isDark = root.classList.contains("dark");
-  const hsl = isDark ? entry.darkHsl : entry.hsl;
-  root.style.setProperty("--primary", hsl);
-  root.style.setProperty("--accent", hsl);
-  root.style.setProperty("--ring", hsl);
-  root.style.setProperty("--sidebar-primary", hsl);
-  root.style.setProperty("--sidebar-ring", hsl);
+
+  let el = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
+  if (!el) {
+    el = document.createElement("style");
+    el.id = STYLE_ID;
+    document.head.appendChild(el);
+  }
+
+  el.textContent = `
+    :root {
+      --primary: ${entry.hsl} !important;
+      --accent: ${entry.hsl} !important;
+      --ring: ${entry.hsl} !important;
+      --sidebar-primary: ${entry.hsl} !important;
+      --sidebar-ring: ${entry.hsl} !important;
+    }
+    .dark {
+      --primary: ${entry.darkHsl} !important;
+      --accent: ${entry.darkHsl} !important;
+      --ring: ${entry.darkHsl} !important;
+      --sidebar-primary: ${entry.darkHsl} !important;
+      --sidebar-ring: ${entry.darkHsl} !important;
+    }
+  `;
 }

@@ -11,6 +11,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { LanguageProvider } from "@/lib/language";
 import { I18nProvider } from "@/lib/i18n";
 import { useState, useEffect } from "react";
+import { getAccentColor, applyAccentColor } from "@/lib/accent-color";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
@@ -181,6 +182,19 @@ function AuthGuard() {
 }
 
 export default function App() {
+  useEffect(() => {
+    applyAccentColor(getAccentColor());
+    function onLayoutChange() { applyAccentColor(getAccentColor()); }
+    window.addEventListener("glidr-nav-layout-change", onLayoutChange);
+    // Re-apply when dark/light mode changes (MutationObserver on <html> classList)
+    const mo = new MutationObserver(() => applyAccentColor(getAccentColor()));
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => {
+      window.removeEventListener("glidr-nav-layout-change", onLayoutChange);
+      mo.disconnect();
+    };
+  }, []);
+
   return (
     <ThemeProvider>
       <LanguageProvider>

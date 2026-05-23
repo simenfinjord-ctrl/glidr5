@@ -34,6 +34,12 @@ import {
   Search,
   Users,
   Smartphone,
+  PanelLeft,
+  PanelTop,
+  X,
+  Bell,
+  Trash2,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -373,6 +379,7 @@ function buildBreadcrumbs(location: string, t: (k: string) => string): Crumb[] {
 
 // ── Mobile-mode prompt ──────────────────────────────────────────────────────────
 const MOBILE_PROMPT_KEY = "glidr-mobile-prompt-seen";
+const DESKTOP_ONBOARDING_KEY = "glidr-desktop-onboarding-seen";
 
 function MobileModePrompt({ onActivate, onDismiss }: { onActivate: () => void; onDismiss: () => void }) {
   return (
@@ -420,6 +427,85 @@ function MobileModePrompt({ onActivate, onDismiss }: { onActivate: () => void; o
               className="flex-1 rounded-xl bg-green-600 hover:bg-green-700 active:bg-green-800 text-white py-2 text-sm font-semibold transition-colors"
             >
               Enable now
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DesktopOnboardingPrompt({ onKeepSidebar, onSwitchTop }: { onKeepSidebar: () => void; onSwitchTop: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50" />
+
+      {/* Card */}
+      <div className="relative w-full max-w-md bg-card rounded-2xl shadow-2xl overflow-hidden">
+        {/* Top accent bar */}
+        <div className="h-1 bg-gradient-to-r from-sky-500 to-indigo-500" />
+
+        <div className="px-6 pt-6 pb-7 space-y-5">
+          {/* Heading */}
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center shrink-0">
+              <PanelLeft className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-foreground leading-snug">Choose your navigation style</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">You can always change this in My Account → Preferences</p>
+            </div>
+          </div>
+
+          {/* Options */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Sidebar option */}
+            <button
+              onClick={onKeepSidebar}
+              className="group flex flex-col items-center gap-2 rounded-xl border-2 border-sky-500 bg-sky-50 dark:bg-sky-900/20 p-4 transition-colors hover:bg-sky-100 dark:hover:bg-sky-900/40"
+            >
+              <div className="flex h-14 w-full rounded-lg overflow-hidden border border-border bg-background shadow-sm">
+                <div className="w-5 bg-sky-500/20 flex flex-col gap-1 p-1 shrink-0">
+                  <div className="h-1.5 rounded bg-sky-400" />
+                  <div className="h-1.5 rounded bg-sky-300/60" />
+                  <div className="h-1.5 rounded bg-sky-300/60" />
+                </div>
+                <div className="flex-1 p-1.5">
+                  <div className="h-1.5 rounded bg-muted-foreground/20 mb-1 w-3/4" />
+                  <div className="h-1.5 rounded bg-muted-foreground/10 w-1/2" />
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="text-xs font-semibold text-sky-700 dark:text-sky-300 flex items-center gap-1 justify-center">
+                  <PanelLeft className="h-3 w-3" /> Sidebar
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Default — recommended</p>
+              </div>
+            </button>
+
+            {/* Top nav option */}
+            <button
+              onClick={onSwitchTop}
+              className="group flex flex-col items-center gap-2 rounded-xl border-2 border-border bg-muted/30 p-4 transition-colors hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+            >
+              <div className="flex flex-col h-14 w-full rounded-lg overflow-hidden border border-border bg-background shadow-sm">
+                <div className="h-4 bg-indigo-500/20 flex items-center gap-1 px-1.5 shrink-0">
+                  <div className="h-1.5 w-4 rounded bg-indigo-400" />
+                  <div className="h-1.5 w-3 rounded bg-indigo-300/60" />
+                  <div className="h-1.5 w-3 rounded bg-indigo-300/60" />
+                </div>
+                <div className="flex-1 p-1.5">
+                  <div className="h-1.5 rounded bg-muted-foreground/20 mb-1 w-3/4" />
+                  <div className="h-1.5 rounded bg-muted-foreground/10 w-1/2" />
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1 justify-center">
+                  <PanelTop className="h-3 w-3" /> Top nav
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Classic layout</p>
+              </div>
             </button>
           </div>
         </div>
@@ -519,6 +605,37 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
   const unreadCount = unreadData?.count ?? 0;
 
+  // ── Inbox drawer ──
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [expandedMsgId, setExpandedMsgId] = useState<number | null>(null);
+  const { data: inboxMessages = [], refetch: refetchInbox } = useQuery<any[]>({
+    queryKey: ["/api/inbox"],
+    enabled: !!user && inboxOpen && (isSuperAdmin || isTeamAdmin),
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    if (!inboxOpen) return;
+    const timer = setTimeout(async () => {
+      const hasUnread = inboxMessages.some((m: any) => !m.isRead);
+      if (hasUnread) {
+        try {
+          await apiRequest("PUT", "/api/inbox/read-all", {});
+          refetchInbox();
+          queryClient.invalidateQueries({ queryKey: ["/api/inbox/unread-count"] });
+        } catch {}
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [inboxOpen, inboxMessages]);
+
+  async function deleteInboxMessage(id: number) {
+    try {
+      await apiRequest("DELETE", `/api/inbox/${id}`, undefined);
+      refetchInbox();
+    } catch {}
+  }
+
   const activeTeamId = user?.activeTeamId || user?.teamId || 1;
   const activeTeam = isSuperAdmin
     ? teams.find((t: any) => t.id === activeTeamId)
@@ -554,6 +671,33 @@ export function AppShell({ children }: { children: ReactNode }) {
   function handleMobilePromptDismiss() {
     try { localStorage.setItem(MOBILE_PROMPT_KEY, "1"); } catch {}
     setShowMobilePrompt(false);
+  }
+
+  // ── First-time desktop layout onboarding ──
+  const [showDesktopOnboarding, setShowDesktopOnboarding] = useState(false);
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const alreadySeen = localStorage.getItem(DESKTOP_ONBOARDING_KEY);
+      if (alreadySeen) return;
+      const isMobile = window.innerWidth < 1024 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (!isMobile) setShowDesktopOnboarding(true);
+    } catch {}
+  }, [user]);
+
+  function handleKeepSidebar() {
+    setNavLayout("sidebar");
+    setNavLayoutState("sidebar");
+    try { localStorage.setItem(DESKTOP_ONBOARDING_KEY, "1"); } catch {}
+    setShowDesktopOnboarding(false);
+  }
+
+  function handleSwitchToTop() {
+    setNavLayout("top");
+    setNavLayoutState("top");
+    try { localStorage.setItem(DESKTOP_ONBOARDING_KEY, "1"); } catch {}
+    setShowDesktopOnboarding(false);
+    window.dispatchEvent(new Event("glidr-nav-layout-change"));
   }
 
   const { data: watchQueue = [] } = useQuery<{ id: number; status: string }[]>({
@@ -878,7 +1022,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="w-px h-5 bg-border mx-1 shrink-0" />
       {(isSuperAdmin || isTeamAdmin) && (
         <Button variant="ghost" size="sm" data-testid="button-mail"
-          onClick={() => navigate("/inbox")}
+          onClick={() => setInboxOpen(true)}
           className="relative h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
           title={t("shell.inbox")}
         >
@@ -1029,6 +1173,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         {showMobilePrompt && (
           <MobileModePrompt onActivate={handleMobilePromptActivate} onDismiss={handleMobilePromptDismiss} />
         )}
+        {showDesktopOnboarding && (
+          <DesktopOnboardingPrompt onKeepSidebar={handleKeepSidebar} onSwitchTop={handleSwitchToTop} />
+        )}
+        <InboxDrawer
+          open={inboxOpen}
+          onClose={() => setInboxOpen(false)}
+          messages={inboxMessages}
+          expandedMsgId={expandedMsgId}
+          setExpandedMsgId={setExpandedMsgId}
+          onDelete={deleteInboxMessage}
+        />
       </div>
     );
   }
@@ -1098,6 +1253,170 @@ export function AppShell({ children }: { children: ReactNode }) {
       {showMobilePrompt && (
         <MobileModePrompt onActivate={handleMobilePromptActivate} onDismiss={handleMobilePromptDismiss} />
       )}
+      {showDesktopOnboarding && (
+        <DesktopOnboardingPrompt onKeepSidebar={handleKeepSidebar} onSwitchTop={handleSwitchToTop} />
+      )}
+      <InboxDrawer
+        open={inboxOpen}
+        onClose={() => setInboxOpen(false)}
+        messages={inboxMessages}
+        expandedMsgId={expandedMsgId}
+        setExpandedMsgId={setExpandedMsgId}
+        onDelete={deleteInboxMessage}
+      />
     </div>
+  );
+}
+
+// ── Inbox drawer (slide-in panel) ───────────────────────────────────────────
+type InboxMessage = {
+  id: number;
+  toUserId: number;
+  fromUserId?: number;
+  fromName?: string;
+  subject: string;
+  body: string;
+  isRead: boolean;
+  createdAt: string;
+  teamName?: string;
+  actionType?: string;
+  actionData?: string;
+};
+
+function relTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
+
+function InboxDrawer({
+  open, onClose, messages, expandedMsgId, setExpandedMsgId, onDelete,
+}: {
+  open: boolean;
+  onClose: () => void;
+  messages: InboxMessage[];
+  expandedMsgId: number | null;
+  setExpandedMsgId: (id: number | null) => void;
+  onDelete: (id: number) => void;
+}) {
+  if (!open) return null;
+
+  const avatarColors = [
+    "bg-indigo-500", "bg-emerald-500", "bg-amber-500",
+    "bg-rose-500", "bg-sky-500", "bg-violet-500",
+  ];
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-[90] bg-black/30"
+        onClick={onClose}
+      />
+      {/* Panel */}
+      <div className="fixed inset-y-0 right-0 z-[100] w-full max-w-md bg-card shadow-2xl flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-2">
+            <Bell className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">Notifications</h2>
+            {messages.filter(m => !m.isRead).length > 0 && (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                {messages.filter(m => !m.isRead).length}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={async () => {
+                try {
+                  await apiRequest("PUT", "/api/inbox/read-all", {});
+                  queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
+                  queryClient.invalidateQueries({ queryKey: ["/api/inbox/unread-count"] });
+                } catch {}
+              }}
+            >
+              Mark all read
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Message list */}
+        <div className="flex-1 overflow-y-auto">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground py-16">
+              <Bell className="h-10 w-10 opacity-20" />
+              <p className="text-sm">No notifications</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {messages.map((msg) => {
+                const isExpanded = expandedMsgId === msg.id;
+                const initial = (msg.fromName || "?")[0].toUpperCase();
+                const colorIdx = (msg.fromUserId ?? 0) % avatarColors.length;
+
+                return (
+                  <div
+                    key={msg.id}
+                    className={cn(
+                      "px-5 py-3.5 transition-colors",
+                      !msg.isRead ? "bg-primary/5" : "bg-transparent",
+                    )}
+                  >
+                    <div
+                      className="flex items-start gap-3 cursor-pointer"
+                      onClick={() => setExpandedMsgId(isExpanded ? null : msg.id)}
+                    >
+                      {/* Avatar */}
+                      <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white mt-0.5", avatarColors[colorIdx])}>
+                        {initial}
+                      </div>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-xs font-semibold leading-snug truncate">
+                            {!msg.isRead && <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary mr-1.5 align-middle" />}
+                            {msg.subject}
+                          </p>
+                          <span className="text-[10px] text-muted-foreground shrink-0">{relTimeAgo(msg.createdAt)}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{msg.fromName ?? "System"}</p>
+                        {!isExpanded && (
+                          <p className="text-xs text-foreground/70 mt-1 line-clamp-2">{msg.body}</p>
+                        )}
+                        {isExpanded && (
+                          <p className="text-xs text-foreground mt-2 whitespace-pre-wrap leading-relaxed">{msg.body}</p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500 shrink-0 mt-0.5"
+                        onClick={(e) => { e.stopPropagation(); onDelete(msg.id); }}
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }

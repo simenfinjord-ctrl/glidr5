@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useRoute, useLocation, useSearch } from "wouter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line,
 } from "recharts";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -30,7 +31,17 @@ import {
   BarChart2,
   ChevronUp,
   Thermometer,
+  FileDown,
+  Loader2,
+  FileText,
+  WifiOff,
+  MessageSquare,
+  Link2,
+  CalendarDays,
+  Upload,
+  Clock,
 } from "lucide-react";
+import { useOffline } from "@/lib/offline-context";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -187,15 +198,37 @@ type UserItem = {
   email: string;
 };
 
+// ─── Ski color tags ──────────────────────────────────────────────────────────
+const SKI_COLORS = [
+  { id: "none",    label: "None",    bg: "bg-muted/40",                              ring: "ring-border",         dot: "" },
+  { id: "sky",     label: "Blue",    bg: "bg-sky-100 dark:bg-sky-900/30",            ring: "ring-sky-300",        dot: "bg-sky-400" },
+  { id: "emerald", label: "Green",   bg: "bg-emerald-100 dark:bg-emerald-900/30",    ring: "ring-emerald-300",    dot: "bg-emerald-400" },
+  { id: "rose",    label: "Pink",    bg: "bg-rose-100 dark:bg-rose-900/30",          ring: "ring-rose-300",       dot: "bg-rose-400" },
+  { id: "orange",  label: "Orange",  bg: "bg-orange-100 dark:bg-orange-900/30",      ring: "ring-orange-300",     dot: "bg-orange-400" },
+  { id: "yellow",  label: "Yellow",  bg: "bg-yellow-100 dark:bg-yellow-900/30",      ring: "ring-yellow-300",     dot: "bg-yellow-400" },
+  { id: "violet",  label: "Purple",  bg: "bg-violet-100 dark:bg-violet-900/30",      ring: "ring-violet-300",     dot: "bg-violet-400" },
+  { id: "red",     label: "Red",     bg: "bg-red-100 dark:bg-red-900/30",            ring: "ring-red-300",        dot: "bg-red-400" },
+  { id: "teal",    label: "Teal",    bg: "bg-teal-100 dark:bg-teal-900/30",          ring: "ring-teal-300",       dot: "bg-teal-400" },
+] as const;
+
+function getSkiColor(ski: RaceSki): string {
+  try {
+    const cp = ski.customParams ? JSON.parse(ski.customParams) : {};
+    return cp._color || "none";
+  } catch { return "none"; }
+}
+
 export default function AthleteDetail() {
   const [, params] = useRoute("/raceskis/:id");
   const [, navigate] = useLocation();
   const search = useSearch();
   const athleteId = params?.id ? parseInt(params.id) : null;
-  const { user, can } = useAuth();
+  const { user, can, canManage } = useAuth();
   const isAnalyticsView = new URLSearchParams(search).get("view") === "analytics";
+  const isAthletePortal = new URLSearchParams(search).get("view") === "athlete-portal";
   const { toast } = useToast();
   const { t } = useI18n();
+  const { isOnline, pendingCount, queueMutation } = useOffline();
 
   const [skiDialogOpen, setSkiDialogOpen] = useState(false);
   const [editingSki, setEditingSki] = useState<RaceSki | null>(null);
@@ -342,6 +375,7 @@ export default function AthleteDetail() {
     grind: "",
     heights: "",
     year: "",
+    color: "",
   });
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
@@ -538,6 +572,68 @@ export default function AthleteDetail() {
     user?.isAdmin || (athlete && user?.id === athlete.createdById);
   const hasAthleteAccess = isOwnerOrAdmin || access.some((a) => a.userId === user?.id);
 
+  // Import CSV state
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
+  const [csvPreviewRows, setCsvPreviewRows] = useState<Record<string, string>[]>([]);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [csvImportProgress, setCsvImportProgress] = useState<{ done: number; total: number } | null>(null);
+  const csvFileRef = useRef<HTMLInputElement>(null);
+
+  function parseCsv(text: string): { headers: string[]; rows: Record<string, string>[] } {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2) return { headers: [], rows: [] };
+    const sep = lines[0].includes("\t") ? "\t" : ",";
+    const headers = lines[0].split(sep).map((h) => h.trim().replace(/^"|"$/g, ""));
+    const rows = lines.slice(1).map((line) => {
+      const vals = line.split(sep).map((v) => v.trim().replace(/^"|"$/g, ""));
+      const obj: Record<string, string> = {};
+      headers.forEach((h, i) => { obj[h] = vals[i] ?? ""; });
+      return obj;
+    });
+    return { headers, rows };
+  }
+
+  async function handleCsvImport() {
+    if (csvPreviewRows.length === 0 || !athleteId) return;
+    setCsvImportProgress({ done: 0, total: csvPreviewRows.length });
+    let done = 0;
+    for (const row of csvPreviewRows) {
+      try {
+        await apiRequest("POST", `/api/athletes/${athleteId}/skis`, {
+          skiId: row.skiId || row["ski_id"] || row["Ski ID"] || "",
+          brand: row.brand || row.Brand || null,
+          discipline: row.discipline || row.Discipline || "Classic",
+          base: row.base || row.Base || null,
+          grind: row.grind || row.Grind || null,
+          construction: row.construction || row.Construction || null,
+          mold: row.mold || row.Mold || null,
+          heights: row.heights || row.Heights || null,
+          year: row.year || row.Year || null,
+          serialNumber: row.serialNumber || row.serial_number || row.SerialNumber || null,
+          customParams: null,
+        });
+      } catch {}
+      done++;
+      setCsvImportProgress({ done, total: csvPreviewRows.length });
+    }
+    queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis`] });
+    toast({ title: `Imported ${done} skis` });
+    setCsvImportOpen(false);
+    setCsvPreviewRows([]);
+    setCsvHeaders([]);
+    setCsvImportProgress(null);
+  }
+
+  // Audit log: fire-and-forget helper
+  function logAction(action: string, details: string) {
+    fetch("/api/action-log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ action, details }),
+    }).catch(() => {});
+  }
+
   const [testDateFilter, setTestDateFilter] = useState<string>("all");
   const [testTypeFilter, setTestTypeFilter] = useState<string>("all");
   const [testSortBy, setTestSortBy] = useState<string>("date-desc");
@@ -564,9 +660,12 @@ export default function AthleteDetail() {
   }, [raceSkiTests, testDateFilter, testTypeFilter, testSortBy]);
 
   function buildSkiBody(data: typeof skiForm) {
-    const cp: Record<string, string> = {};
+    const cp: Record<string, string | null> = {};
     for (const [k, v] of Object.entries(customFieldValues)) {
       if (v.trim()) cp[k] = v.trim();
+    }
+    if (data.color && data.color !== "none") {
+      cp._color = data.color;
     }
     return {
       skiId: data.skiId,
@@ -588,12 +687,13 @@ export default function AthleteDetail() {
       const res = await apiRequest("POST", `/api/athletes/${athleteId}/skis`, buildSkiBody(data));
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, data) => {
       queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis`] });
       toast({ title: "Ski added" });
       setSkiDialogOpen(false);
       resetSkiForm();
       setCustomFieldValues({});
+      logAction("create_ski", `Added ski ${data.skiId} to athlete ${athleteId}`);
     },
     onError: (e) => {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
@@ -621,10 +721,11 @@ export default function AthleteDetail() {
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/race-skis/${id}`);
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis`] });
       queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis/archived`] });
       toast({ title: "Ski permanently deleted" });
+      logAction("delete_ski", `Deleted ski ${id} from athlete ${athleteId}`);
     },
     onError: (e) => {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
@@ -776,12 +877,19 @@ export default function AthleteDetail() {
         groupScope,
         entries,
       };
+      if (!isOnline) {
+        await queueMutation("POST", "/api/tests", payload, "Create race ski test");
+        return { queued: true };
+      }
       const res = await apiRequest("POST", "/api/tests", payload);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
-      toast({ title: "Test saved" });
+    onSuccess: (data) => {
+      if (!(data as any)?.queued) {
+        queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
+        logAction("create_test", `Created test at ${testForm.location} on ${testForm.date} for athlete ${athleteId}`);
+      }
+      toast({ title: (data as any)?.queued ? "Test queued (offline)" : "Test saved" });
       setShowTestForm(false);
       setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Classic" as any, notes: "", weatherId: undefined });
       setSelectedSkiIds(new Set());
@@ -794,7 +902,7 @@ export default function AthleteDetail() {
   });
 
   function resetSkiForm() {
-    setSkiForm({ skiId: "", serialNumber: "", brand: "", discipline: "Classic", construction: "", mold: "", base: "", grind: "", heights: "", year: "" });
+    setSkiForm({ skiId: "", serialNumber: "", brand: "", discipline: "Classic", construction: "", mold: "", base: "", grind: "", heights: "", year: "", color: "" });
   }
 
   function resetRegrindForm() {
@@ -803,6 +911,16 @@ export default function AthleteDetail() {
 
   function openEditSki(ski: RaceSki) {
     setEditingSki(ski);
+    let parsedColor = "";
+    try {
+      const cp = ski.customParams ? JSON.parse(ski.customParams) : {};
+      parsedColor = cp._color || "";
+      // strip _color from custom fields shown in UI
+      const { _color: _c, ...rest } = cp;
+      setCustomFieldValues(rest);
+    } catch {
+      setCustomFieldValues({});
+    }
     setSkiForm({
       skiId: ski.skiId,
       serialNumber: ski.serialNumber || "",
@@ -814,13 +932,8 @@ export default function AthleteDetail() {
       grind: ski.grind || "",
       heights: ski.heights || "",
       year: ski.year || "",
+      color: parsedColor,
     });
-    try {
-      const cp = ski.customParams ? JSON.parse(ski.customParams) : {};
-      setCustomFieldValues(cp);
-    } catch {
-      setCustomFieldValues({});
-    }
     setSkiDialogOpen(true);
   }
 
@@ -846,6 +959,208 @@ export default function AthleteDetail() {
     if (athlete) {
       setAthleteForm({ name: athlete.name, team: athlete.team || "" });
       setEditAthleteOpen(true);
+    }
+  }
+
+  // ── PDF Export ───────────────────────────────────────────────────────────────
+  const [exportPdfOpen, setExportPdfOpen] = useState(false);
+  const [exportSections, setExportSections] = useState({
+    inventory: true,
+    tests: true,
+    grindHistory: true,
+    summary: true,
+  });
+  const [isExporting, setIsExporting] = useState(false);
+
+  function toggleExportSection(key: keyof typeof exportSections) {
+    setExportSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  async function handleExportPDF() {
+    if (!athlete) return;
+    setIsExporting(true);
+    try {
+      // Fetch regrinds for every ski in parallel
+      const regrindsBySkiId: Record<number, RaceSkiRegrind[]> = {};
+      await Promise.all(
+        skis.map(async (ski) => {
+          try {
+            const res = await fetch(`/api/race-skis/${ski.id}/regrinds`, { credentials: "include" });
+            if (res.ok) regrindsBySkiId[ski.id] = await res.json();
+          } catch {}
+        })
+      );
+
+      // Fetch entries for every test in parallel
+      const entriesByTestId: Record<number, TestEntry[]> = {};
+      await Promise.all(
+        raceSkiTests.map(async (test) => {
+          try {
+            const res = await fetch(`/api/tests/${test.id}/entries`, { credentials: "include" });
+            if (res.ok) entriesByTestId[test.id] = await res.json();
+          } catch {}
+        })
+      );
+
+      const skiMap = new Map(skis.map((s) => [s.id, s]));
+
+      // ── Build HTML ────────────────────────────────────────────────────────
+      const cell = (v: string | number | null | undefined, bold = false) =>
+        `<td style="padding:5px 10px;border:1px solid #e5e7eb;font-size:12px;${bold ? "font-weight:600;" : ""}">${v ?? "—"}</td>`;
+      const th = (v: string) =>
+        `<th style="padding:6px 10px;border:1px solid #d1d5db;background:#f9fafb;font-size:11px;font-weight:600;text-align:left;color:#374151;">${v}</th>`;
+
+      const sections: string[] = [];
+
+      // ── Performance Summary ──────────────────────────────────────────────
+      if (exportSections.summary) {
+        const totalTests = raceSkiTests.length;
+        const totalSkis = skis.length;
+        const allEntries = Object.values(entriesByTestId).flat();
+        const rankedEntries = allEntries.filter((e) => e.rank0km != null);
+        const topRanks = rankedEntries.filter((e) => (e.rank0km ?? 99) <= 3).length;
+        const avgRank = rankedEntries.length > 0
+          ? (rankedEntries.reduce((s, e) => s + (e.rank0km ?? 0), 0) / rankedEntries.length).toFixed(1)
+          : "—";
+
+        sections.push(`
+          <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 12px;">Performance Summary</h2>
+          <table style="border-collapse:collapse;width:100%;margin-bottom:28px;">
+            <tr>${th("Total Skis")}${th("Total Tests")}${th("Avg Rank")}${th("Top-3 Results")}</tr>
+            <tr>${cell(totalSkis)}${cell(totalTests)}${cell(avgRank)}${cell(topRanks)}</tr>
+          </table>
+        `);
+      }
+
+      // ── Ski Inventory ────────────────────────────────────────────────────
+      if (exportSections.inventory && skis.length > 0) {
+        const rows = skis.map((s) => `
+          <tr>
+            ${cell(s.skiId, true)}
+            ${cell(s.brand)}
+            ${cell(s.discipline)}
+            ${cell(s.base)}
+            ${cell(s.grind)}
+            ${cell(s.construction)}
+            ${cell(s.mold)}
+            ${cell(s.heights)}
+            ${cell(s.year)}
+            ${cell(s.serialNumber)}
+          </tr>`).join("");
+        sections.push(`
+          <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 12px;">Ski Inventory</h2>
+          <table style="border-collapse:collapse;width:100%;margin-bottom:28px;">
+            <thead><tr>${th("Ski ID")}${th("Brand")}${th("Discipline")}${th("Base")}${th("Grind")}${th("Construction")}${th("Mold")}${th("Heights")}${th("Year")}${th("Serial #")}</tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `);
+      }
+
+      // ── Test Results ─────────────────────────────────────────────────────
+      if (exportSections.tests && raceSkiTests.length > 0) {
+        const testBlocks = [...raceSkiTests]
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .map((test) => {
+            const entries = entriesByTestId[test.id] ?? [];
+            const weath = weather.find((w) => w.id === test.weatherId);
+            const weatherStr = weath
+              ? `Snow ${weath.snowTemperatureC ?? "?"}°C / Air ${weath.airTemperatureC ?? "?"}°C`
+              : "";
+            const entryRows = entries.map((e) => {
+              const ski = skiMap.get(e.raceSkiId ?? -1);
+              return `<tr>
+                ${cell(ski?.skiId ?? `#${e.skiNumber}`, true)}
+                ${cell(ski?.brand)}
+                ${cell(ski?.grind)}
+                ${cell(e.result0kmCmBehind != null ? `${e.result0kmCmBehind} cm` : null)}
+                ${cell(e.rank0km)}
+                ${cell(e.feelingRank)}
+                ${cell(e.methodology)}
+              </tr>`;
+            }).join("");
+
+            return `
+              <div style="margin-bottom:20px;">
+                <p style="font-size:13px;font-weight:700;color:#374151;margin:0 0 4px;">
+                  ${test.date} · ${test.location} · ${test.testType}
+                  ${weatherStr ? `<span style="font-weight:400;color:#6b7280;margin-left:8px;">${weatherStr}</span>` : ""}
+                </p>
+                ${test.notes ? `<p style="font-size:11px;color:#6b7280;margin:0 0 6px;">Notes: ${test.notes}</p>` : ""}
+                <table style="border-collapse:collapse;width:100%;">
+                  <thead><tr>${th("Ski ID")}${th("Brand")}${th("Grind")}${th("Result")}${th("Rank")}${th("Feeling")}${th("Methodology")}</tr></thead>
+                  <tbody>${entryRows || `<tr><td colspan="7" style="padding:8px;text-align:center;color:#9ca3af;font-size:12px;">No entries</td></tr>`}</tbody>
+                </table>
+              </div>`;
+          }).join("");
+
+        sections.push(`
+          <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 12px;">Test Results</h2>
+          <div style="margin-bottom:28px;">${testBlocks}</div>
+        `);
+      }
+
+      // ── Grind History ────────────────────────────────────────────────────
+      if (exportSections.grindHistory) {
+        const allRegrinds: { ski: RaceSki; regrind: RaceSkiRegrind }[] = [];
+        for (const ski of skis) {
+          for (const rg of regrindsBySkiId[ski.id] ?? []) {
+            allRegrinds.push({ ski, regrind: rg });
+          }
+        }
+        allRegrinds.sort((a, b) => b.regrind.date.localeCompare(a.regrind.date));
+
+        if (allRegrinds.length > 0) {
+          const rows = allRegrinds.map(({ ski, regrind: rg }) => `
+            <tr>
+              ${cell(ski.skiId, true)}
+              ${cell(rg.date)}
+              ${cell(rg.grindType)}
+              ${cell(rg.stone)}
+              ${cell(rg.pattern)}
+              ${cell(rg.notes)}
+            </tr>`).join("");
+          sections.push(`
+            <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 12px;">Grind History</h2>
+            <table style="border-collapse:collapse;width:100%;margin-bottom:28px;">
+              <thead><tr>${th("Ski ID")}${th("Date")}${th("Grind Type")}${th("Stone")}${th("Pattern")}${th("Notes")}</tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          `);
+        }
+      }
+
+      const html = `<!DOCTYPE html><html><head>
+        <meta charset="utf-8"/>
+        <title>${athlete.name} — Glidr Report</title>
+        <style>
+          * { box-sizing: border-box; }
+          body { font-family: system-ui, -apple-system, sans-serif; color: #111827; padding: 32px; max-width: 900px; margin: 0 auto; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head><body>
+        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #e5e7eb;padding-bottom:16px;margin-bottom:28px;">
+          <div>
+            <h1 style="font-size:24px;font-weight:800;color:#111827;margin:0;">${athlete.name}</h1>
+            ${athlete.team ? `<p style="font-size:13px;color:#6b7280;margin:4px 0 0;">${athlete.team}</p>` : ""}
+          </div>
+          <div style="text-align:right;">
+            <p style="font-size:11px;color:#9ca3af;margin:0;">Generated by Glidr</p>
+            <p style="font-size:11px;color:#9ca3af;margin:2px 0 0;">${new Date().toLocaleDateString()}</p>
+          </div>
+        </div>
+        ${sections.join("")}
+      </body></html>`;
+
+      const win = window.open("", "_blank");
+      if (win) {
+        win.document.write(html);
+        win.document.close();
+        win.focus();
+        setTimeout(() => { win.print(); }, 400);
+      }
+    } finally {
+      setIsExporting(false);
+      setExportPdfOpen(false);
     }
   }
 
@@ -1009,15 +1324,25 @@ export default function AthleteDetail() {
   return (
     <AppShell>
       <div className="flex flex-col gap-5">
+        {/* Athlete Portal read-only banner */}
+        {isAthletePortal && (
+          <div className="flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-4 py-2.5 text-sm text-amber-800 dark:text-amber-200">
+            <span className="font-medium">Read-only view</span>
+            <span className="text-amber-600 dark:text-amber-400">— contact your coach for access</span>
+          </div>
+        )}
+
         {/* Back button */}
-        <div>
-          <AppLink href="/raceskis" testId="link-back-raceskis">
-            <Button variant="ghost" size="sm" data-testid="button-back-raceskis">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              {t("athleteDetail.back")}
-            </Button>
-          </AppLink>
-        </div>
+        {!isAthletePortal && (
+          <div>
+            <AppLink href="/raceskis" testId="link-back-raceskis">
+              <Button variant="ghost" size="sm" data-testid="button-back-raceskis">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                {t("athleteDetail.back")}
+              </Button>
+            </AppLink>
+          </div>
+        )}
 
         {/* Athlete header */}
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1041,48 +1366,78 @@ export default function AthleteDetail() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              data-testid="button-athlete-analytics"
-              onClick={() => navigate(`/raceskis/${athleteId}?view=analytics`)}
-            >
-              <BarChart2 className="mr-1.5 h-3.5 w-3.5" />
-              Analytics
-            </Button>
+          <div className="flex items-center gap-2 flex-wrap">
             {isOwnerOrAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid="button-share-view"
+                onClick={() => {
+                  const url = `${window.location.origin}/raceskis/${athleteId}?view=athlete-portal`;
+                  navigator.clipboard.writeText(url).then(() => {
+                    toast({ title: "Link copied", description: "Athlete portal link copied to clipboard." });
+                  }).catch(() => {
+                    toast({ title: "Copy failed", description: url, variant: "destructive" });
+                  });
+                }}
+              >
+                <Link2 className="mr-1.5 h-3.5 w-3.5" />
+                Share View
+              </Button>
+            )}
+            {!isAthletePortal && (
               <>
                 <Button
                   variant="outline"
                   size="sm"
-                  data-testid="button-edit-athlete"
-                  onClick={openEditAthlete}
+                  onClick={() => setExportPdfOpen(true)}
                 >
-                  <Edit2 className="mr-1.5 h-3.5 w-3.5" />
-                  Edit
+                  <FileDown className="mr-1.5 h-3.5 w-3.5" />
+                  Export PDF
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  data-testid="button-delete-athlete"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
-                  onClick={() => {
-                    if (confirm("Delete this athlete and all their skis?")) {
-                      deleteAthleteMutation.mutate();
-                    }
-                  }}
+                  data-testid="button-athlete-analytics"
+                  onClick={() => navigate(`/raceskis/${athleteId}?view=analytics`)}
                 >
-                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                  Delete
+                  <BarChart2 className="mr-1.5 h-3.5 w-3.5" />
+                  Analytics
                 </Button>
+                {isOwnerOrAdmin && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      data-testid="button-edit-athlete"
+                      onClick={openEditAthlete}
+                    >
+                      <Edit2 className="mr-1.5 h-3.5 w-3.5" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      data-testid="button-delete-athlete"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                      onClick={() => {
+                        if (confirm("Delete this athlete and all their skis?")) {
+                          deleteAthleteMutation.mutate();
+                        }
+                      }}
+                    >
+                      <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                      Delete
+                    </Button>
+                  </>
+                )}
               </>
             )}
           </div>
         </div>
 
         {/* Access management */}
-        {isOwnerOrAdmin && (
+        {isOwnerOrAdmin && !isAthletePortal && (
           <Card className="fs-card rounded-2xl p-4" data-testid="card-access-management">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -1125,7 +1480,13 @@ export default function AthleteDetail() {
                 )}
               </button>
             </CollapsibleTrigger>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {!isOnline && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 text-[10px] font-medium text-yellow-700 dark:text-yellow-300 ring-1 ring-yellow-200 dark:ring-yellow-800">
+                  <WifiOff className="h-3 w-3" />
+                  Offline
+                </span>
+              )}
               {/* Garage view toggle */}
               <div className="flex items-center rounded-lg border border-border bg-background/60 p-0.5" data-testid="garage-view-toggle">
                 <button
@@ -1159,15 +1520,29 @@ export default function AthleteDetail() {
                 <Filter className="h-3 w-3 mr-1" />
                 Filter
               </Button>
-              <Button
-                data-testid="button-add-ski"
-                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
-                size="sm"
-                onClick={openAddSki}
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                {t("raceskis.addSki")}
-              </Button>
+              {!isAthletePortal && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setCsvImportOpen(true)}
+                    data-testid="button-import-csv"
+                  >
+                    <Upload className="h-3 w-3 mr-1" />
+                    Import CSV
+                  </Button>
+                  <Button
+                    data-testid="button-add-ski"
+                    className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+                    size="sm"
+                    onClick={openAddSki}
+                  >
+                    <Plus className="mr-1.5 h-3.5 w-3.5" />
+                    {t("raceskis.addSki")}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
 
@@ -1304,7 +1679,16 @@ export default function AthleteDetail() {
                               onClick={() => setExpandedSkiId(expandedSkiId === ski.id ? null : ski.id)}
                               data-testid={`row-ski-${ski.id}`}
                             >
-                              <td className="px-4 py-2.5 font-semibold">{ski.skiId}</td>
+                              <td className="px-4 py-2.5 font-semibold">
+                                <span className="flex items-center gap-1.5">
+                                  {(() => {
+                                    const cid = getSkiColor(ski);
+                                    const ce = SKI_COLORS.find(c => c.id === cid);
+                                    return cid !== "none" && ce?.dot ? <span className={cn("inline-block h-2 w-2 rounded-full shrink-0", ce.dot)} /> : null;
+                                  })()}
+                                  {ski.skiId}
+                                </span>
+                              </td>
                               <td className="px-3 py-2.5 text-muted-foreground">{ski.serialNumber || "—"}</td>
                               <td className="px-3 py-2.5">{ski.brand || "—"}</td>
                               <td className="px-3 py-2.5">
@@ -1388,6 +1772,13 @@ export default function AthleteDetail() {
 
         {/* Race Ski Tests Section */}
         <div className="border-t border-border/40 pt-4" data-testid="section-race-ski-tests">
+          {/* Offline banner */}
+          {!isOnline && (
+            <div className="mb-3 flex items-center gap-2 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 px-4 py-2.5 text-sm text-yellow-800 dark:text-yellow-200">
+              <WifiOff className="h-4 w-4 shrink-0" />
+              <span>You are offline — new tests will be queued and synced when you reconnect.</span>
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div
               className="flex items-center gap-2 cursor-pointer select-none"
@@ -1402,6 +1793,12 @@ export default function AthleteDetail() {
               <h2 className="text-lg font-semibold" data-testid="text-tests-heading">
                 Tests
               </h2>
+              {pendingCount > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-800">
+                  <RefreshCw className="h-2.5 w-2.5" />
+                  {pendingCount} pending
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {/* Tests view toggle */}
@@ -1437,7 +1834,7 @@ export default function AthleteDetail() {
                 <Settings2 className="h-3 w-3 mr-1" />
                 Columns
               </Button>
-              {(can("tests", "edit") || hasAthleteAccess) && (
+              {!isAthletePortal && (can("tests", "edit") || hasAthleteAccess) && (
                 <Button
                   data-testid="button-new-test"
                   className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
@@ -1985,13 +2382,124 @@ export default function AthleteDetail() {
                     weather={weather}
                     expanded={expandedTestIds.has(test.id)}
                     onToggle={() => toggleTestExpanded(test.id)}
+                    athleteName={athlete?.name}
+                    currentUserId={user?.id}
+                    isReadOnly={isAthletePortal}
                   />
                 ))
               )}
             </div>
           )}
         </div>
+
+        {/* Race Calendar */}
+        {hasAthleteAccess && athleteId && (
+          <RaceCalendarSection
+            athleteId={athleteId}
+            raceSkiTests={raceSkiTests}
+            isReadOnly={isAthletePortal}
+          />
+        )}
+
+        {/* Audit Log */}
+        {canManage && athleteId && (
+          <AuditLogSection athleteId={athleteId} skis={skis} />
+        )}
       </div>
+
+      {/* CSV Import Dialog */}
+      <Dialog open={csvImportOpen} onOpenChange={(v) => { setCsvImportOpen(v); if (!v) { setCsvPreviewRows([]); setCsvHeaders([]); setCsvImportProgress(null); } }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Import Skis from CSV
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg bg-muted/40 border border-border px-4 py-3 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground mb-1">Expected columns (first row = headers):</p>
+              <p className="font-mono text-xs">skiId, brand, discipline, base, grind, construction, mold, heights, year, serialNumber</p>
+              <p className="mt-1 text-xs">Comma or tab-separated. Only <code>skiId</code> is required.</p>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Select CSV file</label>
+              <input
+                ref={csvFileRef}
+                type="file"
+                accept=".csv,.tsv,.txt"
+                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground cursor-pointer"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    const text = ev.target?.result as string;
+                    const { headers, rows } = parseCsv(text);
+                    setCsvHeaders(headers);
+                    setCsvPreviewRows(rows);
+                  };
+                  reader.readAsText(file);
+                }}
+              />
+            </div>
+            {csvPreviewRows.length > 0 && (
+              <div>
+                <p className="text-sm font-medium mb-2">Preview (first 5 rows of {csvPreviewRows.length}):</p>
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <table className="w-full text-xs border-separate border-spacing-0">
+                    <thead>
+                      <tr className="bg-muted/40">
+                        {csvHeaders.map((h) => (
+                          <th key={h} className="px-3 py-2 text-left font-medium text-muted-foreground border-b border-border">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvPreviewRows.slice(0, 5).map((row, i) => (
+                        <tr key={i} className={i % 2 === 0 ? "bg-background/30" : "bg-background/10"}>
+                          {csvHeaders.map((h) => (
+                            <td key={h} className="px-3 py-1.5 border-t border-border/30">{row[h] || "—"}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {csvImportProgress && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Importing…</span>
+                  <span>{csvImportProgress.done} / {csvImportProgress.total}</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-500 transition-all duration-200"
+                    style={{ width: `${Math.round((csvImportProgress.done / csvImportProgress.total) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button variant="outline" size="sm" onClick={() => setCsvImportOpen(false)}>Cancel</Button>
+              <Button
+                size="sm"
+                disabled={csvPreviewRows.length === 0 || !!csvImportProgress}
+                onClick={handleCsvImport}
+                data-testid="button-confirm-csv-import"
+              >
+                {csvImportProgress ? (
+                  <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Importing…</>
+                ) : (
+                  <><Upload className="mr-1.5 h-3.5 w-3.5" />Import {csvPreviewRows.length} ski{csvPreviewRows.length !== 1 ? "s" : ""}</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Add/Edit Ski Dialog */}
       <Dialog
@@ -2056,6 +2564,31 @@ export default function AthleteDetail() {
                 </div>
               );
             })}
+
+            {/* Colour tag field */}
+            <div>
+              <label className="mb-2 block text-sm font-medium">Colour tag</label>
+              <div className="flex flex-wrap gap-2">
+                {SKI_COLORS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    title={c.label}
+                    onClick={() => setSkiForm((f) => ({ ...f, color: c.id === "none" ? "" : c.id }))}
+                    className={cn(
+                      "h-7 w-7 rounded-full border-2 transition-all",
+                      c.id === "none"
+                        ? "bg-muted/60 border-border"
+                        : `${c.dot} border-transparent`,
+                      (c.id === "none" ? (!skiForm.color || skiForm.color === "none") : skiForm.color === c.id)
+                        ? "ring-2 ring-offset-1 ring-foreground/40 scale-110"
+                        : "hover:scale-105"
+                    )}
+                    aria-pressed={c.id === "none" ? (!skiForm.color || skiForm.color === "none") : skiForm.color === c.id}
+                  />
+                ))}
+              </div>
+            </div>
 
             <div className="flex items-center justify-between pt-2">
               <Button
@@ -2371,6 +2904,67 @@ export default function AthleteDetail() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Export PDF Dialog ────────────────────────────────────────────────── */}
+      <Dialog open={exportPdfOpen} onOpenChange={setExportPdfOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileDown className="h-4 w-4" />
+              Export to PDF
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Select which data to include in the report. All sections are selected by default.
+            </p>
+            <div className="space-y-2">
+              {(
+                [
+                  { key: "summary", label: "Performance Summary", desc: "Totals & average rank" },
+                  { key: "inventory", label: "Ski Inventory", desc: `${skis.length} skis` },
+                  { key: "tests", label: "Test Results", desc: `${raceSkiTests.length} tests` },
+                  { key: "grindHistory", label: "Grind History", desc: "All regrind records" },
+                ] as { key: keyof typeof exportSections; label: string; desc: string }[]
+              ).map(({ key, label, desc }) => (
+                <div
+                  key={key}
+                  className="flex items-center gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/40 transition-colors"
+                  onClick={() => toggleExportSection(key)}
+                >
+                  <Checkbox checked={exportSections[key]} className="pointer-events-none shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium leading-none">{label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button variant="outline" size="sm" onClick={() => setExportPdfOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleExportPDF}
+                disabled={isExporting || !Object.values(exportSections).some(Boolean)}
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    Generating…
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="mr-1.5 h-3.5 w-3.5" />
+                    Generate PDF
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -2720,8 +3314,11 @@ function SkiCard({
     enabled: expanded,
   });
 
+  const skiColorId = getSkiColor(ski);
+  const skiColorEntry = SKI_COLORS.find((c) => c.id === skiColorId);
+
   return (
-    <Card className="fs-card rounded-2xl p-4" data-testid={`card-ski-${ski.id}`}>
+    <Card className={cn("fs-card rounded-2xl p-4", skiColorId !== "none" && skiColorEntry ? skiColorEntry.bg : "")} data-testid={`card-ski-${ski.id}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div
           className="flex items-center gap-2 cursor-pointer select-none min-w-0 flex-1"
@@ -2735,6 +3332,9 @@ function SkiCard({
           )}
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
+              {skiColorId !== "none" && skiColorEntry?.dot && (
+                <span className={cn("inline-block h-2.5 w-2.5 rounded-full shrink-0", skiColorEntry.dot)} />
+              )}
               <span className="font-semibold text-sm" data-testid={`text-ski-id-${ski.id}`}>
                 {ski.skiId}
               </span>
@@ -2763,7 +3363,7 @@ function SkiCard({
               {(() => {
                 try {
                   const cp = ski.customParams ? JSON.parse(ski.customParams) : {};
-                  return Object.entries(cp).map(([k, v]) => (
+                  return Object.entries(cp).filter(([k]) => !k.startsWith("_")).map(([k, v]) => (
                     v ? <span key={k}>{k.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}: {String(v)}</span> : null
                   ));
                 } catch { return null; }
@@ -3034,13 +3634,93 @@ function TestListView({ tests, skiIds, allSkis, activeTestColumns, weather = [] 
   );
 }
 
-function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns, weather = [], expanded, onToggle }: { test: RaceSkiTest; skiIds: Set<number>; allSkis: RaceSki[]; activeTestColumns: string[]; weather?: WeatherItem[]; expanded: boolean; onToggle: () => void }) {
+type TestComment = {
+  id: number;
+  test_id: number;
+  user_id: number;
+  user_name: string;
+  content: string;
+  created_at: string;
+};
+
+function relativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function RaceSkiTestCard({
+  test, skiIds, allSkis, activeTestColumns, weather = [], expanded, onToggle,
+  athleteName, currentUserId, isReadOnly,
+}: {
+  test: RaceSkiTest;
+  skiIds: Set<number>;
+  allSkis: RaceSki[];
+  activeTestColumns: string[];
+  weather?: WeatherItem[];
+  expanded: boolean;
+  onToggle: () => void;
+  athleteName?: string;
+  currentUserId?: number;
+  isReadOnly?: boolean;
+}) {
   const weatherMap = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);
   const [, navigate] = useLocation();
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const { toast } = useToast();
 
   const { data: entries = [] } = useQuery<TestEntry[]>({
     queryKey: [`/api/tests/${test.id}/entries`],
     enabled: expanded,
+  });
+
+  const { data: comments = [], refetch: refetchComments } = useQuery<TestComment[]>({
+    queryKey: ["/api/tests", test.id, "comments"],
+    queryFn: async () => {
+      const res = await fetch(`/api/tests/${test.id}/comments`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: expanded && commentsOpen,
+  });
+
+  const postCommentMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const res = await fetch(`/api/tests/${test.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ content }),
+      });
+      if (!res.ok) throw new Error("Failed to post comment");
+      return res.json();
+    },
+    onSuccess: () => {
+      setCommentText("");
+      refetchComments();
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to post comment", variant: "destructive" });
+    },
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: number) => {
+      const res = await fetch(`/api/comments/${commentId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete comment");
+    },
+    onSuccess: () => {
+      refetchComments();
+    },
   });
 
   const relevantEntries = useMemo(() => {
@@ -3049,6 +3729,131 @@ function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns, weather = [
   }, [entries, skiIds]);
 
   const raceSkiById = useMemo(() => new Map(allSkis.map((s) => [s.id, s])), [allSkis]);
+
+  // Reorder state
+  const hasNoResults = relevantEntries.length > 0 &&
+    relevantEntries.every((e) => e.result0kmCmBehind === null && e.feelingRank === null);
+  const [reorderMode, setReorderMode] = useState(false);
+  const [orderedEntries, setOrderedEntries] = useState<TestEntry[]>([]);
+  const [savingOrder, setSavingOrder] = useState(false);
+
+  // Sync orderedEntries from relevantEntries when not in reorder mode
+  useEffect(() => {
+    if (!reorderMode) {
+      setOrderedEntries([...relevantEntries].sort((a, b) => a.skiNumber - b.skiNumber));
+    }
+  }, [relevantEntries, reorderMode]);
+
+  function moveEntryUp(idx: number) {
+    if (idx <= 0) return;
+    setOrderedEntries((prev) => {
+      const next = [...prev];
+      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+      return next;
+    });
+  }
+
+  function moveEntryDown(idx: number) {
+    if (idx >= orderedEntries.length - 1) return;
+    setOrderedEntries((prev) => {
+      const next = [...prev];
+      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+      return next;
+    });
+  }
+
+  async function saveOrder() {
+    setSavingOrder(true);
+    try {
+      const updatedEntries = orderedEntries.map((e, i) => ({ ...e, skiNumber: i + 1 }));
+      await apiRequest("PUT", `/api/tests/${test.id}`, {
+        date: test.date,
+        location: test.location,
+        testType: test.testType,
+        notes: test.notes,
+        distanceLabels: test.distanceLabels,
+        entries: updatedEntries.map((e) => ({ ...e, skiNumber: e.skiNumber, raceSkiId: e.raceSkiId })),
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/tests/${test.id}/entries`] });
+      toast({ title: "Order saved", description: "Watch will use this order." });
+      setReorderMode(false);
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to save order.", variant: "destructive" });
+    } finally {
+      setSavingOrder(false);
+    }
+  }
+
+  function handleOpenReport() {
+    const weath = test.weatherId != null ? weatherMap.get(test.weatherId) : undefined;
+    const weatherStr = weath
+      ? `Snow ${weath.snowTemperatureC ?? "?"}°C / Air ${weath.airTemperatureC ?? "?"}°C`
+      : "No weather data";
+
+    const cell = (v: string | number | null | undefined, style = "") =>
+      `<td style="padding:5px 10px;border:1px solid #e5e7eb;font-size:12px;${style}">${v ?? "—"}</td>`;
+    const th = (v: string) =>
+      `<th style="padding:6px 10px;border:1px solid #d1d5db;background:#f9fafb;font-size:11px;font-weight:600;text-align:left;color:#374151;">${v}</th>`;
+
+    const rowsHtml = relevantEntries.map((e) => {
+      const ski = e.raceSkiId ? raceSkiById.get(e.raceSkiId) : undefined;
+      const isFirst = e.rank0km === 1;
+      const highlight = isFirst ? "background:#fef9c3;" : "";
+      return `<tr style="${highlight}">
+        ${cell(ski?.skiId ?? `#${e.skiNumber}`, "font-weight:600;")}
+        ${cell(ski?.brand)}
+        ${cell(ski?.grind)}
+        ${cell(e.result0kmCmBehind != null ? `${e.result0kmCmBehind} cm` : null)}
+        ${cell(e.rank0km != null ? (isFirst ? `🥇 #${e.rank0km}` : `#${e.rank0km}`) : null)}
+        ${cell(e.feelingRank)}
+      </tr>`;
+    }).join("");
+
+    const html = `<!DOCTYPE html><html><head>
+      <meta charset="utf-8"/>
+      <title>Test Report — ${athleteName ?? "Athlete"} — ${test.date}</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; color: #111827; padding: 32px; max-width: 800px; margin: 0 auto; }
+        @media print { body { padding: 0; } }
+      </style>
+    </head><body>
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #e5e7eb;padding-bottom:16px;margin-bottom:24px;">
+        <div>
+          <h1 style="font-size:22px;font-weight:800;color:#111827;margin:0;">Test Report</h1>
+          ${athleteName ? `<p style="font-size:13px;color:#6b7280;margin:4px 0 0;">${athleteName}</p>` : ""}
+        </div>
+        <div style="text-align:right;">
+          <p style="font-size:11px;color:#9ca3af;margin:0;">Generated by Glidr</p>
+          <p style="font-size:11px;color:#9ca3af;margin:2px 0 0;">${new Date().toLocaleDateString()}</p>
+        </div>
+      </div>
+      <table style="border-collapse:collapse;width:100%;margin-bottom:24px;">
+        <tr>
+          ${th("Date")}${th("Location")}${th("Type")}${th("Weather")}
+        </tr>
+        <tr>
+          ${cell(test.date)}${cell(test.location)}${cell(test.testType)}${cell(weatherStr)}
+        </tr>
+      </table>
+      ${test.notes ? `<p style="font-size:12px;color:#6b7280;margin-bottom:20px;"><em>Notes: ${test.notes}</em></p>` : ""}
+      <h2 style="font-size:15px;font-weight:700;color:#111827;margin:0 0 10px;">Results</h2>
+      <table style="border-collapse:collapse;width:100%;">
+        <thead><tr>${th("Ski ID")}${th("Brand")}${th("Grind")}${th("Result")}${th("Rank")}${th("Feeling")}</tr></thead>
+        <tbody>${rowsHtml || `<tr><td colspan="6" style="padding:8px;text-align:center;color:#9ca3af;font-size:12px;">No entries</td></tr>`}</tbody>
+      </table>
+    </body></html>`;
+
+    const win = window.open("", "_blank");
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      setTimeout(() => { win.print(); }, 400);
+    }
+  }
+
   const getSkiLabel = (entry: TestEntry) => {
     if (entry.raceSkiId) {
       const rs = raceSkiById.get(entry.raceSkiId);
@@ -3117,23 +3922,74 @@ function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns, weather = [
             <span className="text-xs text-muted-foreground">{test.createdByName}</span>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
-          onClick={() => navigate(`/tests/${test.id}`)}
-          data-testid={`button-view-test-${test.id}`}
-        >
-          Open
-        </Button>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+            onClick={handleOpenReport}
+            data-testid={`button-report-test-${test.id}`}
+            title="Print/export this test report"
+          >
+            <FileText className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => navigate(`/tests/${test.id}`)}
+            data-testid={`button-view-test-${test.id}`}
+          >
+            Open
+          </Button>
+        </div>
       </div>
 
       {expanded && relevantEntries.length > 0 && (
         <div className="mt-3 border-t border-border/40 pt-3" data-testid={`section-test-entries-${test.id}`}>
+          {/* Reorder toolbar */}
+          {hasNoResults && !isReadOnly && (
+            <div className="flex items-center justify-between mb-2">
+              {!reorderMode ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setReorderMode(true)}
+                  data-testid={`button-reorder-${test.id}`}
+                >
+                  <GripVertical className="h-3 w-3 mr-1" />
+                  Edit Order
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => { setReorderMode(false); setOrderedEntries([...relevantEntries].sort((a, b) => a.skiNumber - b.skiNumber)); }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-6 px-3 text-xs"
+                    onClick={saveOrder}
+                    disabled={savingOrder}
+                    data-testid={`button-save-order-${test.id}`}
+                  >
+                    {savingOrder ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                    Save Order
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
           <div className="overflow-x-auto rounded-xl border bg-card/50">
             <table className="w-full border-separate border-spacing-0 text-xs">
               <thead>
                 <tr className="text-left text-muted-foreground">
+                  {reorderMode && <th className="px-2 py-2 w-16"></th>}
                   {activeTestColumns.includes("skiId") && <th className="px-3 py-2">Ski ID</th>}
                   {!activeTestColumns.includes("skiId") && <th className="px-3 py-2">Ski</th>}
                   {activeTestColumns.includes("serialNumber") && <th className="px-3 py-2">Serial</th>}
@@ -3152,10 +4008,32 @@ function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns, weather = [
                 </tr>
               </thead>
               <tbody>
-                {relevantEntries.map((entry) => {
+                {(reorderMode ? orderedEntries : relevantEntries).map((entry, idx) => {
                   const linkedSki = entry.raceSkiId ? raceSkiById.get(entry.raceSkiId) : undefined;
                   return (
                   <tr key={entry.id} className="border-t" data-testid={`row-test-result-${entry.id}`}>
+                    {reorderMode && (
+                      <td className="px-2 py-1.5">
+                        <div className="flex flex-col gap-0.5">
+                          <button
+                            type="button"
+                            className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                            onClick={() => moveEntryUp(idx)}
+                            disabled={idx === 0}
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                            onClick={() => moveEntryDown(idx)}
+                            disabled={idx === orderedEntries.length - 1}
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                     {activeTestColumns.includes("skiId") ? (
                       <td className="px-3 py-1.5 font-medium">{linkedSki?.skiId ?? getSkiLabel(entry)}</td>
                     ) : (
@@ -3221,9 +4099,549 @@ function RaceSkiTestCard({ test, skiIds, allSkis, activeTestColumns, weather = [
               {test.notes}
             </p>
           )}
+
+          {/* Comments sub-section */}
+          <div className="mt-3 border-t border-border/30 pt-3">
+            <button
+              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setCommentsOpen((v) => !v)}
+              data-testid={`toggle-comments-${test.id}`}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              Comments ({comments.length})
+              {commentsOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </button>
+
+            {commentsOpen && (
+              <div className="mt-3 space-y-3" data-testid={`comments-section-${test.id}`}>
+                {comments.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No comments yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {comments.map((c) => {
+                      const initial = (c.user_name || "?")[0].toUpperCase();
+                      const colorIndex = c.user_id % 6;
+                      const avatarColors = [
+                        "bg-indigo-500", "bg-emerald-500", "bg-amber-500",
+                        "bg-rose-500", "bg-sky-500", "bg-violet-500",
+                      ];
+                      return (
+                        <div key={c.id} className="flex items-start gap-2" data-testid={`comment-${c.id}`}>
+                          <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${avatarColors[colorIndex]}`}>
+                            {initial}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-xs font-medium">{c.user_name}</span>
+                              <span className="text-[10px] text-muted-foreground">{relativeTime(c.created_at)}</span>
+                            </div>
+                            <p className="text-xs text-foreground/90 break-words">{c.content}</p>
+                          </div>
+                          {currentUserId === c.user_id && !isReadOnly && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500 shrink-0"
+                              onClick={() => deleteCommentMutation.mutate(c.id)}
+                              data-testid={`button-delete-comment-${c.id}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {!isReadOnly && (
+                  <div className="flex items-end gap-2 pt-1">
+                    <Textarea
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      placeholder="Add a comment…"
+                      className="min-h-[40px] h-10 resize-none text-xs flex-1"
+                      rows={2}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          if (commentText.trim()) postCommentMutation.mutate(commentText.trim());
+                        }
+                      }}
+                      data-testid={`input-comment-${test.id}`}
+                    />
+                    <Button
+                      size="sm"
+                      className="h-9 shrink-0"
+                      disabled={!commentText.trim() || postCommentMutation.isPending}
+                      onClick={() => { if (commentText.trim()) postCommentMutation.mutate(commentText.trim()); }}
+                      data-testid={`button-post-comment-${test.id}`}
+                    >
+                      {postCommentMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Post"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Checklist sub-section */}
+          <ChecklistSection testId={test.id} />
         </div>
       )}
     </Card>
+  );
+}
+
+// ─── Checklist Section ───────────────────────────────────────────────────────
+type ChecklistItem = { id: string; text: string; done: boolean };
+
+const CHECKLIST_DEFAULTS = [
+  "Apply grind",
+  "Verify ski order",
+  "Record weather",
+  "Document results",
+  "Compare with previous test",
+];
+
+function ChecklistSection({ testId }: { testId: number }) {
+  const storageKey = `glidr-test-checklist-${testId}`;
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<ChecklistItem[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return [];
+  });
+  const [newText, setNewText] = useState("");
+  const newInputRef = useRef<HTMLInputElement>(null);
+
+  // Pre-populate defaults on first open
+  useEffect(() => {
+    if (open && items.length === 0) {
+      const defaults: ChecklistItem[] = CHECKLIST_DEFAULTS.map((text) => ({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        text,
+        done: false,
+      }));
+      setItems(defaults);
+    }
+  }, [open]);
+
+  // Persist to localStorage on change
+  useEffect(() => {
+    try { localStorage.setItem(storageKey, JSON.stringify(items)); } catch {}
+  }, [items, storageKey]);
+
+  function toggleItem(id: string) {
+    setItems((prev) => prev.map((item) => item.id === id ? { ...item, done: !item.done } : item));
+  }
+
+  function deleteItem(id: string) {
+    setItems((prev) => prev.filter((item) => item.id !== id));
+  }
+
+  function addItem() {
+    const text = newText.trim();
+    if (!text) return;
+    setItems((prev) => [...prev, { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, text, done: false }]);
+    setNewText("");
+    newInputRef.current?.focus();
+  }
+
+  const doneCount = items.filter((i) => i.done).length;
+
+  return (
+    <div className="mt-3 border-t border-border/30 pt-3">
+      <button
+        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => setOpen((v) => !v)}
+        data-testid={`toggle-checklist-${testId}`}
+      >
+        <ChecklistIcon className="h-3.5 w-3.5" />
+        Checklist ({doneCount}/{items.length} done)
+        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+      </button>
+
+      {open && (
+        <div className="mt-2 space-y-1.5" data-testid={`checklist-section-${testId}`}>
+          {items.map((item) => (
+            <div key={item.id} className="flex items-center gap-2">
+              <div
+                className="cursor-pointer"
+                onClick={() => toggleItem(item.id)}
+                data-testid={`checklist-item-${item.id}`}
+              >
+                <Checkbox
+                  checked={item.done}
+                  className="pointer-events-none h-3.5 w-3.5"
+                />
+              </div>
+              <span className={cn("text-xs flex-1", item.done && "line-through text-muted-foreground")}>
+                {item.text}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5 p-0 text-muted-foreground hover:text-red-500 shrink-0"
+                onClick={() => deleteItem(item.id)}
+                data-testid={`checklist-delete-${item.id}`}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+
+          {/* Add item row */}
+          <div className="flex items-center gap-1.5 pt-1">
+            <input
+              ref={newInputRef}
+              type="text"
+              value={newText}
+              onChange={(e) => setNewText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
+              placeholder="Add item…"
+              className="flex-1 text-xs bg-transparent border-b border-border focus:outline-none focus:border-primary py-0.5 text-foreground placeholder:text-muted-foreground/50"
+              data-testid={`checklist-add-input-${testId}`}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+              onClick={addItem}
+              disabled={!newText.trim()}
+              data-testid={`checklist-add-btn-${testId}`}
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Helper icon for checklist header
+function ChecklistIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="3" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M2.5 5.5L4 7L6.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.5 5.5H14.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="1" y="10" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M8.5 12.5H14.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// ─── Race Calendar Section ─��──────────────────────────────────────────────────
+
+type PlannedRace = {
+  id: string;
+  date: string;
+  location: string;
+  discipline: string;
+  notes: string;
+};
+
+function RaceCalendarSection({
+  athleteId,
+  raceSkiTests,
+  isReadOnly,
+}: {
+  athleteId: number;
+  raceSkiTests: RaceSkiTest[];
+  isReadOnly?: boolean;
+}) {
+  const storageKey = `glidr-race-calendar-${athleteId}`;
+  const [races, setRaces] = useState<PlannedRace[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return [];
+  });
+  const [open, setOpen] = useState(false);
+  const [pastOpen, setPastOpen] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [form, setForm] = useState({ date: "", location: "", discipline: "Classic", notes: "" });
+
+  useEffect(() => {
+    try { localStorage.setItem(storageKey, JSON.stringify(races)); } catch {}
+  }, [races, storageKey]);
+
+  const today = new Date().toISOString().split("T")[0];
+  const upcoming = races.filter((r) => r.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+  const past = races.filter((r) => r.date < today).sort((a, b) => b.date.localeCompare(a.date));
+
+  function addRace() {
+    if (!form.date || !form.location.trim()) return;
+    const race: PlannedRace = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      date: form.date,
+      location: form.location.trim(),
+      discipline: form.discipline,
+      notes: form.notes.trim(),
+    };
+    setRaces((prev) => [...prev, race]);
+    setForm({ date: "", location: "", discipline: "Classic", notes: "" });
+    setShowAddForm(false);
+  }
+
+  function deleteRace(id: string) {
+    setRaces((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  function matchingTestCount(location: string): number {
+    return raceSkiTests.filter((t) => t.location.toLowerCase() === location.toLowerCase()).length;
+  }
+
+  const disciplineColors: Record<string, string> = {
+    Classic: "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-800",
+    Skating: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800",
+    Skiathlon: "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 ring-violet-200 dark:ring-violet-800",
+    Sprint: "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-800",
+  };
+
+  function RaceRow({ race }: { race: PlannedRace }) {
+    const matches = matchingTestCount(race.location);
+    return (
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-background/40 px-4 py-2.5" data-testid={`race-row-${race.id}`}>
+        <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-950/30 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800">
+          <CalendarDays className="h-3 w-3" />
+          {race.date}
+        </span>
+        <span className="font-medium text-sm">{race.location}</span>
+        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${disciplineColors[race.discipline] ?? disciplineColors["Classic"]}`}>
+          {race.discipline}
+        </span>
+        {race.notes && (
+          <span className="text-xs text-muted-foreground italic">{race.notes}</span>
+        )}
+        {matches > 0 && (
+          <span className="text-[10px] text-muted-foreground rounded-full bg-muted px-2 py-0.5">
+            {matches} matching test{matches !== 1 ? "s" : ""}
+          </span>
+        )}
+        {!isReadOnly && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto h-6 w-6 p-0 text-muted-foreground hover:text-red-500"
+            onClick={() => deleteRace(race.id)}
+            data-testid={`button-delete-race-${race.id}`}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} data-testid="section-race-calendar">
+      <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-4">
+        <CollapsibleTrigger asChild>
+          <button className="flex items-center gap-2 cursor-pointer select-none" data-testid="toggle-race-calendar">
+            {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">Race Calendar</h2>
+            <span className="text-xs text-muted-foreground">({races.length})</span>
+          </button>
+        </CollapsibleTrigger>
+        {!isReadOnly && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-xs"
+            onClick={() => { setOpen(true); setShowAddForm(true); }}
+            data-testid="button-add-race"
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            Add Race
+          </Button>
+        )}
+      </div>
+
+      <CollapsibleContent>
+        <div className="mt-3 space-y-3">
+          {/* Upcoming races */}
+          {upcoming.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No upcoming races planned.</p>
+          ) : (
+            <div className="space-y-2">
+              {upcoming.map((r) => <RaceRow key={r.id} race={r} />)}
+            </div>
+          )}
+
+          {/* Past races (collapsed) */}
+          {past.length > 0 && (
+            <Collapsible open={pastOpen} onOpenChange={setPastOpen}>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+                  {pastOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  Past races ({past.length})
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-2 space-y-2 opacity-70">
+                  {past.map((r) => <RaceRow key={r.id} race={r} />)}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
+          {/* Add Race form */}
+          {showAddForm && !isReadOnly && (
+            <Card className="fs-card rounded-2xl p-4" data-testid="form-add-race">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold">New Race</h3>
+                <Button variant="ghost" size="sm" onClick={() => setShowAddForm(false)}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Date *</label>
+                  <Input
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                    data-testid="input-race-date"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Location *</label>
+                  <Input
+                    value={form.location}
+                    onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                    placeholder="e.g. Davos"
+                    data-testid="input-race-location"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Discipline</label>
+                  <Select value={form.discipline} onValueChange={(v) => setForm((f) => ({ ...f, discipline: v }))}>
+                    <SelectTrigger data-testid="select-race-discipline"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Classic">Classic</SelectItem>
+                      <SelectItem value="Skating">Skating</SelectItem>
+                      <SelectItem value="Skiathlon">Skiathlon</SelectItem>
+                      <SelectItem value="Sprint">Sprint</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Notes</label>
+                  <Input
+                    value={form.notes}
+                    onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                    placeholder="Optional notes…"
+                    data-testid="input-race-notes"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2 mt-3">
+                <Button variant="outline" size="sm" onClick={() => setShowAddForm(false)}>Cancel</Button>
+                <Button size="sm" onClick={addRace} disabled={!form.date || !form.location.trim()} data-testid="button-save-race">
+                  Save Race
+                </Button>
+              </div>
+            </Card>
+          )}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+// ─── Audit Log Section ────────────────────────────────────────────────────────
+
+type ActivityEntry = {
+  id: number;
+  userId: number;
+  userName: string;
+  action: string;
+  entityType: string | null;
+  entityId: number | null;
+  details: string | null;
+  createdAt: string;
+};
+
+function AuditLogSection({ athleteId, skis }: { athleteId: number; skis: RaceSki[] }) {
+  const [open, setOpen] = useState(false);
+
+  const skiIds = useMemo(() => new Set(skis.map((s) => s.id)), [skis]);
+
+  const { data: allActivity = [] } = useQuery<ActivityEntry[]>({
+    queryKey: ["/api/activity", { limit: 100 }],
+    queryFn: async () => {
+      const res = await fetch("/api/activity?limit=100", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: open,
+  });
+
+  const filteredActivity = useMemo(() => {
+    return allActivity.filter((e) => {
+      if (e.details?.includes(`athlete ${athleteId}`)) return true;
+      if (e.entityType === "athlete" && e.entityId === athleteId) return true;
+      if (e.entityType === "ski" && e.entityId != null && skiIds.has(e.entityId)) return true;
+      if (e.details?.includes(`athleteId=${athleteId}`)) return true;
+      return false;
+    });
+  }, [allActivity, athleteId, skiIds]);
+
+  function actionIcon(action: string) {
+    if (action.includes("create") || action.includes("add")) return <Plus className="h-3.5 w-3.5 text-emerald-500" />;
+    if (action.includes("delete")) return <Trash2 className="h-3.5 w-3.5 text-red-500" />;
+    if (action.includes("edit") || action.includes("update")) return <Edit2 className="h-3.5 w-3.5 text-blue-500" />;
+    if (action.includes("test")) return <FileText className="h-3.5 w-3.5 text-indigo-500" />;
+    return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
+  }
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} data-testid="section-audit-log">
+      <div className="flex items-center gap-2 border-t border-border/40 pt-4">
+        <CollapsibleTrigger asChild>
+          <button className="flex items-center gap-2 cursor-pointer select-none" data-testid="toggle-audit-log">
+            {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">Activity Log</h2>
+            {filteredActivity.length > 0 && (
+              <span className="text-xs text-muted-foreground">({filteredActivity.length} events)</span>
+            )}
+          </button>
+        </CollapsibleTrigger>
+      </div>
+
+      <CollapsibleContent>
+        <div className="mt-3" data-testid="audit-log-content">
+          {filteredActivity.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No activity recorded yet.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {filteredActivity.map((e) => (
+                <div key={e.id} className="flex items-start gap-2.5 rounded-lg bg-muted/20 px-3 py-2" data-testid={`audit-entry-${e.id}`}>
+                  <div className="mt-0.5 shrink-0">{actionIcon(e.action)}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span className="text-xs font-medium">{e.userName}</span>
+                      <span className="text-xs text-muted-foreground">{e.action.replace(/_/g, " ")}</span>
+                      <span className="text-[10px] text-muted-foreground ml-auto">{relativeTime(e.createdAt)}</span>
+                    </div>
+                    {e.details && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{e.details}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -3331,6 +4749,69 @@ function AthleteAnalyticsView({
   }, [skiStats, allEntries, raceSkiTests, weatherById]);
 
   const COLORS = ["#6366f1", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b"];
+
+  // Feature 4: Ski Performance Over Time — top 6 most-tested skis
+  const top6Skis = useMemo(() =>
+    [...skiStats].sort((a, b) => b.entryCount - a.entryCount).slice(0, 6),
+  [skiStats]);
+
+  const sortedTests = useMemo(() =>
+    [...raceSkiTests].sort((a, b) => a.date.localeCompare(b.date)),
+  [raceSkiTests]);
+
+  const performanceOverTimeData = useMemo(() => {
+    return sortedTests.map((test) => {
+      const row: Record<string, string | number | null> = { date: test.date };
+      for (const { ski } of top6Skis) {
+        const entry = allEntries.find((e) => e.testId === test.id && e.raceSkiId === ski.id);
+        row[ski.skiId] = entry?.rank0km ?? null;
+      }
+      return row;
+    }).filter((row) => top6Skis.some(({ ski }) => row[ski.skiId] !== null));
+  }, [sortedTests, allEntries, top6Skis]);
+
+  // Feature 5: Weather vs Result Correlation — 2°C snow temp buckets per ski
+  const tempCorrelationData = useMemo(() => {
+    type BucketKey = string;
+    const map = new Map<number, Map<BucketKey, number[]>>();
+    for (const { ski } of skiStats) {
+      const skiEntries = allEntries.filter((e) => e.raceSkiId === ski.id && e.rank0km !== null);
+      const buckets = new Map<BucketKey, number[]>();
+      for (const e of skiEntries) {
+        const testObj = raceSkiTests.find((t) => t.id === e.testId);
+        if (!testObj?.weatherId) continue;
+        const w = weatherById.get(testObj.weatherId);
+        if (!w || w.snowTemperatureC === null) continue;
+        const bucketStart = Math.floor(w.snowTemperatureC / 2) * 2;
+        const key = `${bucketStart}`;
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key)!.push(e.rank0km!);
+      }
+      map.set(ski.id, buckets);
+    }
+    return skiStats.map(({ ski }) => {
+      const buckets = map.get(ski.id) ?? new Map();
+      let bestBucket: string | null = null;
+      let bestAvg = Infinity;
+      let bestTests = 0;
+      for (const [key, ranks] of buckets.entries()) {
+        const avg = ranks.reduce((a, b) => a + b, 0) / ranks.length;
+        if (avg < bestAvg) {
+          bestAvg = avg;
+          bestBucket = key;
+          bestTests = ranks.length;
+        }
+      }
+      const totalEntries = [...buckets.values()].flat().length;
+      return {
+        ski,
+        bestTempRange: bestBucket !== null ? `${bestBucket}°C to ${Number(bestBucket) + 2}°C` : null,
+        avgRank: bestBucket !== null ? bestAvg : null,
+        tests: bestTests,
+        totalEntries,
+      };
+    }).filter((r) => r.totalEntries > 0);
+  }, [skiStats, allEntries, raceSkiTests, weatherById]);
 
   if (skiStats.length === 0) {
     return (
@@ -3467,6 +4948,79 @@ function AthleteAnalyticsView({
           </table>
         </div>
       </Card>
+
+      {/* Feature 4: Ski Performance Over Time */}
+      {performanceOverTimeData.length > 1 && top6Skis.length > 0 && (
+        <Card className="fs-card rounded-2xl p-4" data-testid="analytics-performance-over-time">
+          <h2 className="text-base font-semibold mb-1">Ski Performance Over Time</h2>
+          <p className="text-xs text-muted-foreground mb-4">Average rank per test date (lower = better) — top 6 most-tested skis</p>
+          <ResponsiveContainer width="100%" height={320}>
+            <LineChart data={performanceOverTimeData} margin={{ top: 5, right: 20, left: 0, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={50} />
+              <YAxis reversed tick={{ fontSize: 11 }} label={{ value: "Rank", angle: -90, position: "insideLeft", style: { fontSize: 11 } }} />
+              <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number | null) => [v ?? "—", ""]} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              {top6Skis.map(({ ski }, i) => (
+                <Line
+                  key={ski.id}
+                  type="monotone"
+                  dataKey={ski.skiId}
+                  stroke={COLORS[i % COLORS.length]}
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  connectNulls={false}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
+
+      {/* Feature 5: Weather vs Result Correlation */}
+      {tempCorrelationData.length > 0 && (
+        <Card className="fs-card rounded-2xl overflow-hidden" data-testid="analytics-temp-correlation">
+          <div className="px-4 pt-4 pb-2">
+            <h2 className="text-base font-semibold">Performance by Snow Temperature</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Best 2°C snow temperature bucket per ski</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-separate border-spacing-0 text-sm">
+              <thead>
+                <tr className="text-left text-xs text-muted-foreground border-b">
+                  <th className="px-4 py-2.5 font-medium">Ski ID</th>
+                  <th className="px-3 py-2.5 font-medium">Brand</th>
+                  <th className="px-3 py-2.5 font-medium">Best Temp Range</th>
+                  <th className="px-3 py-2.5 font-medium">Avg Rank</th>
+                  <th className="px-3 py-2.5 font-medium">Tests</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tempCorrelationData.map(({ ski, bestTempRange, avgRank, tests }, idx) => (
+                  <tr
+                    key={ski.id}
+                    className={cn("border-t border-border/30", idx % 2 === 0 ? "bg-background/30" : "bg-background/10")}
+                    data-testid={`analytics-temp-row-${ski.id}`}
+                  >
+                    <td className="px-4 py-2.5 font-semibold">{ski.skiId}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{ski.brand ?? "—"}</td>
+                    <td className="px-3 py-2.5">
+                      {bestTempRange ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800">
+                          <Thermometer className="h-3 w-3" />
+                          {bestTempRange}
+                        </span>
+                      ) : "—"}
+                    </td>
+                    <td className="px-3 py-2.5">{avgRank !== null ? avgRank.toFixed(1) : "—"}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{tests}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {/* Existing ski comparison section */}
       <SkiAnalyticsSection

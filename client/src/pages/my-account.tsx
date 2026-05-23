@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMobileNav } from "@/components/mobile-nav";
 import { getNavLayout, setNavLayout, type NavLayout } from "@/lib/nav-layout";
+import { type AccentColor, ACCENT_COLORS, getAccentColor, setAccentColor } from "@/lib/accent-color";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { useAppSettings } from "@/lib/app-settings";
@@ -775,6 +776,12 @@ export default function MyAccount() {
     window.dispatchEvent(new Event("glidr-nav-layout-change"));
   };
 
+  const [accentColor, setAccentColorState] = useState<AccentColor>(() => getAccentColor());
+  function handleAccentColor(color: AccentColor) {
+    setAccentColor(color);
+    setAccentColorState(color);
+  }
+
   const { data: watchCodeData, isLoading: watchCodeLoading } = useQuery<{ watchCode: string }>({
     queryKey: ["/api/auth/my-watch-code"],
     enabled: !!user,
@@ -1109,6 +1116,30 @@ export default function MyAccount() {
                   <PanelTop className="h-5 w-5" />
                   {t("account.navLayoutTop")}
                 </button>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-muted/50 px-4 py-3 space-y-3">
+              <div>
+                <div className="text-sm font-medium">Accent Colour</div>
+                <div className="text-xs text-muted-foreground">Changes the primary colour throughout the app.</div>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {ACCENT_COLORS.map((c) => (
+                  <button
+                    key={c.id}
+                    title={c.label}
+                    onClick={() => handleAccentColor(c.id)}
+                    className={cn(
+                      "h-8 w-8 rounded-full transition-all",
+                      accentColor === c.id
+                        ? "scale-110 outline outline-2 outline-offset-2 outline-foreground/40"
+                        : "hover:scale-105 outline outline-1 outline-transparent hover:outline-foreground/20"
+                    )}
+                    style={{ background: `hsl(${c.hsl})` }}
+                    aria-pressed={accentColor === c.id}
+                  />
+                ))}
               </div>
             </div>
           </Card>

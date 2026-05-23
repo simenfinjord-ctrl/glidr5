@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMobileNav } from "@/components/mobile-nav";
 import { getNavLayout, setNavLayout, type NavLayout } from "@/lib/nav-layout";
-import { type AccentColor, ACCENT_COLORS, getAccentColor, setAccentColor } from "@/lib/accent-color";
+import { type AccentColor, ACCENT_COLORS, ACCENT_NAV, getAccentColor, setAccentColor } from "@/lib/accent-color";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { useAppSettings } from "@/lib/app-settings";
@@ -1097,7 +1097,7 @@ export default function MyAccount() {
                   className={cn(
                     "flex-1 flex flex-col items-center gap-1.5 rounded-lg border-2 px-3 py-2.5 text-xs font-medium transition-colors",
                     currentNavLayout === "sidebar"
-                      ? "border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
+                      ? ACCENT_NAV[accentColor].selectedBtn
                       : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
                   )}
                 >
@@ -1109,7 +1109,7 @@ export default function MyAccount() {
                   className={cn(
                     "flex-1 flex flex-col items-center gap-1.5 rounded-lg border-2 px-3 py-2.5 text-xs font-medium transition-colors",
                     currentNavLayout === "top"
-                      ? "border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
+                      ? ACCENT_NAV[accentColor].selectedBtn
                       : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
                   )}
                 >

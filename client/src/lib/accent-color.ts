@@ -11,9 +11,22 @@ export const ACCENT_COLORS: { id: AccentColor; label: string; hsl: string; darkH
   { id: "teal",   label: "Teal",   hsl: "175 58% 36%", darkHsl: "175 62% 46%" },
 ];
 
+/** Tailwind classes used for active nav items — all strings are literals so Tailwind doesn't purge them */
+export const ACCENT_NAV: Record<AccentColor, { activeColor: string; activeBg: string; selectedBtn: string }> = {
+  blue:   { activeColor: "text-blue-700 dark:text-blue-400",   activeBg: "bg-blue-50 dark:bg-blue-900/20",   selectedBtn: "border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400" },
+  green:  { activeColor: "text-green-700 dark:text-green-400", activeBg: "bg-green-50 dark:bg-green-900/20", selectedBtn: "border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400" },
+  pink:   { activeColor: "text-rose-700 dark:text-rose-400",   activeBg: "bg-rose-50 dark:bg-rose-900/20",   selectedBtn: "border-rose-600 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400" },
+  orange: { activeColor: "text-orange-700 dark:text-orange-400", activeBg: "bg-orange-50 dark:bg-orange-900/20", selectedBtn: "border-orange-600 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400" },
+  yellow: { activeColor: "text-yellow-700 dark:text-yellow-400", activeBg: "bg-yellow-50 dark:bg-yellow-900/20", selectedBtn: "border-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400" },
+  purple: { activeColor: "text-purple-700 dark:text-purple-400", activeBg: "bg-purple-50 dark:bg-purple-900/20", selectedBtn: "border-purple-600 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400" },
+  red:    { activeColor: "text-red-700 dark:text-red-400",     activeBg: "bg-red-50 dark:bg-red-900/20",     selectedBtn: "border-red-600 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400" },
+  teal:   { activeColor: "text-teal-700 dark:text-teal-400",   activeBg: "bg-teal-50 dark:bg-teal-900/20",   selectedBtn: "border-teal-600 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400" },
+};
+
 const KEY = "glidr-accent-color";
 const DEFAULT: AccentColor = "blue";
 const STYLE_ID = "glidr-accent-override";
+const EVENT = "glidr-accent-change";
 
 export function getAccentColor(): AccentColor {
   try {
@@ -26,13 +39,18 @@ export function getAccentColor(): AccentColor {
 export function setAccentColor(color: AccentColor) {
   try { localStorage.setItem(KEY, color); } catch {}
   applyAccentColor(color);
+  window.dispatchEvent(new CustomEvent(EVENT, { detail: color }));
+}
+
+export function onAccentChange(cb: (color: AccentColor) => void): () => void {
+  const handler = (e: Event) => cb((e as CustomEvent).detail as AccentColor);
+  window.addEventListener(EVENT, handler);
+  return () => window.removeEventListener(EVENT, handler);
 }
 
 /**
- * Injects (or updates) a <style> tag in <head> that overrides all CSS
- * custom property values for the chosen accent colour.
- * Using a <style> tag appended to <head> + !important is the most reliable
- * approach — it works regardless of Tailwind's compile-time CSS specificity.
+ * Injects a <style> tag with !important overrides for CSS custom properties.
+ * This beats any compiled Tailwind specificity.
  */
 export function applyAccentColor(color: AccentColor) {
   const entry = ACCENT_COLORS.find(c => c.id === color) ?? ACCENT_COLORS[0];

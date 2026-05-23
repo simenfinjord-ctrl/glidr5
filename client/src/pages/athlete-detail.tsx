@@ -979,6 +979,15 @@ export default function AthleteDetail() {
   async function handleExportPDF() {
     if (!athlete) return;
     setIsExporting(true);
+    // Open the window BEFORE any async work so popup blockers don't intervene
+    const win = window.open("", "_blank");
+    if (!win) {
+      toast({ title: "Popup blocked", description: "Allow popups for glidr.no to export PDF.", variant: "destructive" });
+      setIsExporting(false);
+      setExportPdfOpen(false);
+      return;
+    }
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Generating…</title></head><body style="font-family:system-ui,sans-serif;padding:32px;color:#374151"><p>⏳ Generating report, please wait…</p></body></html>`);
     try {
       // Fetch regrinds for every ski in parallel
       const regrindsBySkiId: Record<number, RaceSkiRegrind[]> = {};
@@ -1151,13 +1160,13 @@ export default function AthleteDetail() {
         ${sections.join("")}
       </body></html>`;
 
-      const win = window.open("", "_blank");
-      if (win) {
-        win.document.write(html);
-        win.document.close();
-        win.focus();
-        setTimeout(() => { win.print(); }, 400);
-      }
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      setTimeout(() => { win.print(); }, 500);
+    } catch (e) {
+      win.close();
     } finally {
       setIsExporting(false);
       setExportPdfOpen(false);
@@ -4184,157 +4193,13 @@ function RaceSkiTestCard({
             )}
           </div>
 
-          {/* Checklist sub-section */}
-          <ChecklistSection testId={test.id} />
         </div>
       )}
     </Card>
   );
 }
 
-// ─── Checklist Section ───────────────────────────────────────────────────────
-type ChecklistItem = { id: string; text: string; done: boolean };
-
-const CHECKLIST_DEFAULTS = [
-  "Apply grind",
-  "Verify ski order",
-  "Record weather",
-  "Document results",
-  "Compare with previous test",
-];
-
-function ChecklistSection({ testId }: { testId: number }) {
-  const storageKey = `glidr-test-checklist-${testId}`;
-  const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<ChecklistItem[]>(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) return JSON.parse(stored);
-    } catch {}
-    return [];
-  });
-  const [newText, setNewText] = useState("");
-  const newInputRef = useRef<HTMLInputElement>(null);
-
-  // Pre-populate defaults on first open
-  useEffect(() => {
-    if (open && items.length === 0) {
-      const defaults: ChecklistItem[] = CHECKLIST_DEFAULTS.map((text) => ({
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        text,
-        done: false,
-      }));
-      setItems(defaults);
-    }
-  }, [open]);
-
-  // Persist to localStorage on change
-  useEffect(() => {
-    try { localStorage.setItem(storageKey, JSON.stringify(items)); } catch {}
-  }, [items, storageKey]);
-
-  function toggleItem(id: string) {
-    setItems((prev) => prev.map((item) => item.id === id ? { ...item, done: !item.done } : item));
-  }
-
-  function deleteItem(id: string) {
-    setItems((prev) => prev.filter((item) => item.id !== id));
-  }
-
-  function addItem() {
-    const text = newText.trim();
-    if (!text) return;
-    setItems((prev) => [...prev, { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, text, done: false }]);
-    setNewText("");
-    newInputRef.current?.focus();
-  }
-
-  const doneCount = items.filter((i) => i.done).length;
-
-  return (
-    <div className="mt-3 border-t border-border/30 pt-3">
-      <button
-        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-        onClick={() => setOpen((v) => !v)}
-        data-testid={`toggle-checklist-${testId}`}
-      >
-        <ChecklistIcon className="h-3.5 w-3.5" />
-        Checklist ({doneCount}/{items.length} done)
-        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-      </button>
-
-      {open && (
-        <div className="mt-2 space-y-1.5" data-testid={`checklist-section-${testId}`}>
-          {items.map((item) => (
-            <div key={item.id} className="flex items-center gap-2">
-              <div
-                className="cursor-pointer"
-                onClick={() => toggleItem(item.id)}
-                data-testid={`checklist-item-${item.id}`}
-              >
-                <Checkbox
-                  checked={item.done}
-                  className="pointer-events-none h-3.5 w-3.5"
-                />
-              </div>
-              <span className={cn("text-xs flex-1", item.done && "line-through text-muted-foreground")}>
-                {item.text}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-5 w-5 p-0 text-muted-foreground hover:text-red-500 shrink-0"
-                onClick={() => deleteItem(item.id)}
-                data-testid={`checklist-delete-${item.id}`}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          ))}
-
-          {/* Add item row */}
-          <div className="flex items-center gap-1.5 pt-1">
-            <input
-              ref={newInputRef}
-              type="text"
-              value={newText}
-              onChange={(e) => setNewText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
-              placeholder="Add item…"
-              className="flex-1 text-xs bg-transparent border-b border-border focus:outline-none focus:border-primary py-0.5 text-foreground placeholder:text-muted-foreground/50"
-              data-testid={`checklist-add-input-${testId}`}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
-              onClick={addItem}
-              disabled={!newText.trim()}
-              data-testid={`checklist-add-btn-${testId}`}
-            >
-              <Plus className="h-3 w-3" />
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Helper icon for checklist header
-function ChecklistIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1" y="3" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M2.5 5.5L4 7L6.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M8.5 5.5H14.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <rect x="1" y="10" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M8.5 12.5H14.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-// ─── Race Calendar Section ─��──────────────────────────────────────────────────
+// ─── Race Calendar Section ───────────────────────────────────────────────────
 
 type PlannedRace = {
   id: string;

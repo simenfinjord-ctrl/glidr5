@@ -60,6 +60,7 @@ import { useI18n } from "@/lib/i18n";
 import { useAppSettings } from "@/lib/app-settings";
 import { GlidrIcon, GlidrLogo } from "@/components/glidr-logo";
 import { getNavLayout, setNavLayout, type NavLayout } from "@/lib/nav-layout";
+import { getAccentColor, onAccentChange, type AccentColor, ACCENT_NAV } from "@/lib/accent-color";
 
 const PRESET_AVATARS = [
   "https://api.dicebear.com/7.x/adventurer/svg?seed=alpine",
@@ -565,6 +566,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Text scale: grows linearly as sidebar widens; clamped to [1, 1.35]
   const sidebarScale = sidebarCollapsed ? 1 : Math.min(1.35, Math.max(1, sidebarWidth / 220));
   const [navLayout, setNavLayoutState] = useState<NavLayout>(() => getNavLayout());
+  const [navAccent, setNavAccent] = useState<AccentColor>(() => getAccentColor());
+  useEffect(() => onAccentChange(setNavAccent), []);
 
   // Expose toggle so my-account can call it
   useEffect(() => {
@@ -808,15 +811,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                   "relative flex items-center gap-2 mx-1 rounded-md font-[450] transition-colors duration-100",
                   sidebarCollapsed ? "justify-center px-0 py-[7px]" : "px-3.5 py-[5px]",
                   active
-                    ? `${item.activeBg} ${item.activeColor} font-medium`
+                    ? `${ACCENT_NAV[navAccent].activeBg} ${ACCENT_NAV[navAccent].activeColor} font-medium`
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
                 style={{ fontSize: `${12.5 * sidebarScale}px` }}
               >
                 {active && !sidebarCollapsed && (
-                  <span className="absolute left-0 top-1 bottom-1 w-[2.5px] bg-green-600 rounded-r-sm" />
+                  <span className="absolute left-0 top-1 bottom-1 w-[2.5px] rounded-r-sm" style={{ backgroundColor: `hsl(var(--primary))` }} />
                 )}
-                <Icon className={cn("shrink-0", sidebarCollapsed ? "h-[15px] w-[15px]" : "h-3.5 w-3.5", active ? item.activeColor : "opacity-55")} />
+                <Icon className={cn("shrink-0", sidebarCollapsed ? "h-[15px] w-[15px]" : "h-3.5 w-3.5", active ? ACCENT_NAV[navAccent].activeColor : "opacity-55")} />
                 {!sidebarCollapsed && <span className="flex-1 truncate">{navLabel(item.href)}</span>}
                 {!sidebarCollapsed && item.href === "/watch-queue" && watchQueueCount > 0 && (
                   <span className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-white">
@@ -1026,7 +1029,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="relative h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
           title={t("shell.inbox")}
         >
-          <Mail className="h-4 w-4" />
+          <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
               {unreadCount > 99 ? "99+" : unreadCount}
@@ -1149,10 +1152,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <AppLink key={item.href} href={item.href} testId={item.testId}
                       className={cn(
                         "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150",
-                        active ? `${item.activeBg} ${item.activeColor} shadow-sm dark:bg-opacity-20` : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        active ? `${ACCENT_NAV[navAccent].activeBg} ${ACCENT_NAV[navAccent].activeColor} shadow-sm dark:bg-opacity-20` : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       )}
                     >
-                      <Icon className={cn("h-4 w-4", active ? item.activeColor : item.color)} />
+                      <Icon className={cn("h-4 w-4", active ? ACCENT_NAV[navAccent].activeColor : item.color)} />
                       <span>{navLabel(item.href)}</span>
                       {item.href === "/watch-queue" && watchQueueCount > 0 && (
                         <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-white">{watchQueueCount}</span>

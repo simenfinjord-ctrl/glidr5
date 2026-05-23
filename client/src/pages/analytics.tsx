@@ -139,8 +139,8 @@ function stdDev(arr: number[]): number | null {
 function getSkiSeason(dateStr: string): string {
   const d = new Date(dateStr);
   const year = d.getFullYear();
-  const month = d.getMonth(); // 0-indexed
-  const startYear = month >= 9 ? year : year - 1;
+  const month = d.getMonth(); // 0-indexed; May=4 starts new season (May 1 – Apr 30)
+  const startYear = month >= 4 ? year : year - 1;
   return `${startYear}/${String(startYear + 1).slice(2)}`;
 }
 

@@ -1072,9 +1072,35 @@ export default function AthleteDetail() {
           .map((test) => {
             const entries = entriesByTestId[test.id] ?? [];
             const weath = weather.find((w) => w.id === test.weatherId);
-            const weatherStr = weath
-              ? `Snow ${weath.snowTemperatureC ?? "?"}°C / Air ${weath.airTemperatureC ?? "?"}°C`
-              : "";
+
+            const weatherBlock = weath ? `
+              <table style="border-collapse:collapse;width:100%;margin:6px 0 10px;font-size:11px;">
+                <tr>
+                  ${th("Snow temp")}${th("Air temp")}${th("Snow hum.")}${th("Air hum.")}${th("Clouds")}${th("Visibility")}${th("Wind")}
+                </tr>
+                <tr>
+                  ${cell(weath.snowTemperatureC != null ? `${weath.snowTemperatureC}°C` : null)}
+                  ${cell(weath.airTemperatureC != null ? `${weath.airTemperatureC}°C` : null)}
+                  ${cell(weath.snowHumidityPct != null ? `${weath.snowHumidityPct}%` : null)}
+                  ${cell(weath.airHumidityPct != null ? `${weath.airHumidityPct}%` : null)}
+                  ${cell(weath.clouds != null ? `${weath.clouds}%` : null)}
+                  ${cell(weath.visibility)}
+                  ${cell(weath.wind)}
+                </tr>
+                <tr>
+                  ${th("Precipitation")}${th("Snow type")}${th("Grain size")}${th("Track hardness")}${th("Test quality")}${th("Art. snow")}${th("Nat. snow")}
+                </tr>
+                <tr>
+                  ${cell(weath.precipitation)}
+                  ${cell(weath.snowType)}
+                  ${cell(weath.grainSize)}
+                  ${cell(weath.trackHardness)}
+                  ${cell(weath.testQuality != null ? `${weath.testQuality}/10` : null)}
+                  ${cell(weath.artificialSnow)}
+                  ${cell(weath.naturalSnow)}
+                </tr>
+              </table>` : "";
+
             const entryRows = entries.map((e) => {
               const ski = skiMap.get(e.raceSkiId ?? -1);
               return `<tr>
@@ -1089,12 +1115,12 @@ export default function AthleteDetail() {
             }).join("");
 
             return `
-              <div style="margin-bottom:20px;">
-                <p style="font-size:13px;font-weight:700;color:#374151;margin:0 0 4px;">
+              <div style="margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #f3f4f6;">
+                <p style="font-size:13px;font-weight:700;color:#374151;margin:0 0 2px;">
                   ${test.date} · ${test.location} · ${test.testType}
-                  ${weatherStr ? `<span style="font-weight:400;color:#6b7280;margin-left:8px;">${weatherStr}</span>` : ""}
                 </p>
-                ${test.notes ? `<p style="font-size:11px;color:#6b7280;margin:0 0 6px;">Notes: ${test.notes}</p>` : ""}
+                ${test.notes ? `<p style="font-size:11px;color:#6b7280;margin:2px 0 4px;">Notes: ${test.notes}</p>` : ""}
+                ${weatherBlock}
                 <table style="border-collapse:collapse;width:100%;">
                   <thead><tr>${th("Ski ID")}${th("Brand")}${th("Grind")}${th("Result")}${th("Rank")}${th("Feeling")}${th("Methodology")}</tr></thead>
                   <tbody>${entryRows || `<tr><td colspan="7" style="padding:8px;text-align:center;color:#9ca3af;font-size:12px;">No entries</td></tr>`}</tbody>
@@ -3796,14 +3822,47 @@ function RaceSkiTestCard({
 
   function handleOpenReport() {
     const weath = test.weatherId != null ? weatherMap.get(test.weatherId) : undefined;
-    const weatherStr = weath
-      ? `Snow ${weath.snowTemperatureC ?? "?"}°C / Air ${weath.airTemperatureC ?? "?"}°C`
-      : "No weather data";
 
     const cell = (v: string | number | null | undefined, style = "") =>
       `<td style="padding:5px 10px;border:1px solid #e5e7eb;font-size:12px;${style}">${v ?? "—"}</td>`;
     const th = (v: string) =>
       `<th style="padding:6px 10px;border:1px solid #d1d5db;background:#f9fafb;font-size:11px;font-weight:600;text-align:left;color:#374151;">${v}</th>`;
+
+    const weatherBlock = weath ? `
+      <h2 style="font-size:15px;font-weight:700;color:#111827;margin:0 0 10px;">Weather Conditions</h2>
+      <table style="border-collapse:collapse;width:100%;margin-bottom:24px;">
+        <tbody>
+          <tr>
+            ${th("Snow temp")}${th("Air temp")}${th("Snow humidity")}${th("Air humidity")}${th("Clouds")}${th("Visibility")}
+          </tr>
+          <tr>
+            ${cell(weath.snowTemperatureC != null ? `${weath.snowTemperatureC} °C` : null)}
+            ${cell(weath.airTemperatureC != null ? `${weath.airTemperatureC} °C` : null)}
+            ${cell(weath.snowHumidityPct != null ? `${weath.snowHumidityPct} %` : null)}
+            ${cell(weath.airHumidityPct != null ? `${weath.airHumidityPct} %` : null)}
+            ${cell(weath.clouds != null ? `${weath.clouds} %` : null)}
+            ${cell(weath.visibility)}
+          </tr>
+          <tr>
+            ${th("Wind")}${th("Precipitation")}${th("Snow type")}${th("Grain size")}${th("Track hardness")}${th("Test quality")}
+          </tr>
+          <tr>
+            ${cell(weath.wind)}
+            ${cell(weath.precipitation)}
+            ${cell(weath.snowType)}
+            ${cell(weath.grainSize)}
+            ${cell(weath.trackHardness)}
+            ${cell(weath.testQuality != null ? `${weath.testQuality}/10` : null)}
+          </tr>
+          ${(weath.artificialSnow || weath.naturalSnow || weath.snowHumidityType) ? `
+          <tr>
+            ${th("Artificial snow")}${th("Natural snow")}${th("Snow humidity type")}${th("")}${th("")}${th("")}
+          </tr>
+          <tr>
+            ${cell(weath.artificialSnow)}${cell(weath.naturalSnow)}${cell(weath.snowHumidityType)}${cell("")}${cell("")}${cell("")}
+          </tr>` : ""}
+        </tbody>
+      </table>` : `<p style="font-size:12px;color:#9ca3af;margin-bottom:24px;">No weather data linked to this test.</p>`;
 
     const rowsHtml = relevantEntries.map((e) => {
       const ski = e.raceSkiId ? raceSkiById.get(e.raceSkiId) : undefined;
@@ -3824,7 +3883,7 @@ function RaceSkiTestCard({
       <title>Test Report — ${athleteName ?? "Athlete"} — ${test.date}</title>
       <style>
         * { box-sizing: border-box; }
-        body { font-family: system-ui, -apple-system, sans-serif; color: #111827; padding: 32px; max-width: 800px; margin: 0 auto; }
+        body { font-family: system-ui, -apple-system, sans-serif; color: #111827; padding: 32px; max-width: 860px; margin: 0 auto; }
         @media print { body { padding: 0; } }
       </style>
     </head><body>
@@ -3839,14 +3898,10 @@ function RaceSkiTestCard({
         </div>
       </div>
       <table style="border-collapse:collapse;width:100%;margin-bottom:24px;">
-        <tr>
-          ${th("Date")}${th("Location")}${th("Type")}${th("Weather")}
-        </tr>
-        <tr>
-          ${cell(test.date)}${cell(test.location)}${cell(test.testType)}${cell(weatherStr)}
-        </tr>
+        <tr>${th("Date")}${th("Location")}${th("Type")}${th("Notes")}</tr>
+        <tr>${cell(test.date)}${cell(test.location)}${cell(test.testType)}${cell(test.notes)}</tr>
       </table>
-      ${test.notes ? `<p style="font-size:12px;color:#6b7280;margin-bottom:20px;"><em>Notes: ${test.notes}</em></p>` : ""}
+      ${weatherBlock}
       <h2 style="font-size:15px;font-weight:700;color:#111827;margin:0 0 10px;">Results</h2>
       <table style="border-collapse:collapse;width:100%;">
         <thead><tr>${th("Ski ID")}${th("Brand")}${th("Grind")}${th("Result")}${th("Rank")}${th("Feeling")}</tr></thead>

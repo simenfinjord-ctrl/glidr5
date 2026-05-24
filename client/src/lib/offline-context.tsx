@@ -73,6 +73,67 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const syncNow = useCallback(async () => {
+    if (syncingRef.current || !navigator.onLine) return;
+    syncingRef.current = true;
+    setIsSyncing(true);
+
+    try {
+      const mutations = await getAllMutations();
+      if (mutations.length === 0) {
+        setIsSyncing(false);
+        syncingRef.current = false;
+        return;
+      }
+
+      const sorted = mutations.sort((a, b) => a.timestamp - b.timestamp);
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const m of sorted) {
+        try {
+          const res = await fetch(m.url, {
+            method: m.method,
+            headers: m.body ? { "Content-Type": "application/json" } : {},
+            body: m.body || undefined,
+            credentials: "include",
+          });
+
+          if (res.ok) {
+            await removeMutation(m.id);
+            successCount++;
+          } else if (res.status >= 400 && res.status < 500) {
+            await removeMutation(m.id);
+            failCount++;
+          } else {
+            break;
+          }
+        } catch {
+          break;
+        }
+      }
+
+      await refreshCount();
+      queryClient.invalidateQueries();
+
+      if (successCount > 0) {
+        toast({
+          title: "Synkronisering fullført",
+          description: `${successCount} endring${successCount > 1 ? "er" : ""} synkronisert.${failCount > 0 ? ` ${failCount} mislyktes.` : ""}`,
+        });
+      } else if (failCount > 0) {
+        toast({
+          title: "Synkroniseringsfeil",
+          description: `${failCount} endring${failCount > 1 ? "er" : ""} kunne ikke synkroniseres.`,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsSyncing(false);
+      syncingRef.current = false;
+    }
+  }, [refreshCount, toast]);
+
   // ── Auto-cache every successful API fetch ─────────────────────────────────
   useEffect(() => {
     const unsubscribe = queryClient.getQueryCache().subscribe(async (event) => {
@@ -156,67 +217,6 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     await addMutation(mutation);
     await refreshCount();
   }, [refreshCount]);
-
-  const syncNow = useCallback(async () => {
-    if (syncingRef.current || !navigator.onLine) return;
-    syncingRef.current = true;
-    setIsSyncing(true);
-
-    try {
-      const mutations = await getAllMutations();
-      if (mutations.length === 0) {
-        setIsSyncing(false);
-        syncingRef.current = false;
-        return;
-      }
-
-      const sorted = mutations.sort((a, b) => a.timestamp - b.timestamp);
-      let successCount = 0;
-      let failCount = 0;
-
-      for (const m of sorted) {
-        try {
-          const res = await fetch(m.url, {
-            method: m.method,
-            headers: m.body ? { "Content-Type": "application/json" } : {},
-            body: m.body || undefined,
-            credentials: "include",
-          });
-
-          if (res.ok) {
-            await removeMutation(m.id);
-            successCount++;
-          } else if (res.status >= 400 && res.status < 500) {
-            await removeMutation(m.id);
-            failCount++;
-          } else {
-            break;
-          }
-        } catch {
-          break;
-        }
-      }
-
-      await refreshCount();
-      queryClient.invalidateQueries();
-
-      if (successCount > 0) {
-        toast({
-          title: "Synkronisering fullført",
-          description: `${successCount} endring${successCount > 1 ? "er" : ""} synkronisert.${failCount > 0 ? ` ${failCount} mislyktes.` : ""}`,
-        });
-      } else if (failCount > 0) {
-        toast({
-          title: "Synkroniseringsfeil",
-          description: `${failCount} endring${failCount > 1 ? "er" : ""} kunne ikke synkroniseres.`,
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsSyncing(false);
-      syncingRef.current = false;
-    }
-  }, [refreshCount, toast]);
 
   const cacheQueryData = useCallback(async (key: string, data: unknown) => {
     await setCachedData(key, data);

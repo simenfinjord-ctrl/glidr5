@@ -2395,17 +2395,18 @@ export default function Analytics() {
     openPdfWindow(pdfDocument("Analytics Report", body), newWin);
   }
 
-  const TABS = useMemo(() => [
+  const canGrind = can("grinding", "view");
+  const TABS = [
     { id: "overview", label: t("analytics.overview"), icon: <BarChart3 className="h-4 w-4" /> },
     { id: "products", label: t("analytics.products"), icon: <Search className="h-4 w-4" /> },
     { id: "compare", label: t("analytics.compare"), icon: <TrendingUp className="h-4 w-4" /> },
     { id: "conditions", label: t("analytics.conditions"), icon: <Snowflake className="h-4 w-4" /> },
-    ...(can("grinding", "view") ? [{ id: "grinding", label: "Slipemønstre", icon: <Layers className="h-4 w-4" /> }] : []),
-  ], [t, can]);
+    ...(canGrind ? [{ id: "grinding", label: "Slipemønstre", icon: <Layers className="h-4 w-4" /> }] : []),
+  ];
 
   const { data: grindProfiles = [] } = useQuery<any[]>({
     queryKey: ["/api/grind-profiles"],
-    enabled: can("grinding", "view"),
+    enabled: canGrind,
   });
 
   // Build a map from test.id -> entries for fast lookup in grind stats
@@ -2420,7 +2421,7 @@ export default function Analytics() {
   }, [allEntries]);
 
   const grindStats = useMemo(() => {
-    if (!can("grinding", "view")) return { stoneMap: new Map<string, { wins: number; total: number }>(), patternMap: new Map<string, { wins: number; total: number }>() };
+    if (!canGrind) return { stoneMap: new Map<string, { wins: number; total: number }>(), patternMap: new Map<string, { wins: number; total: number }>() };
 
     const grindTests = filteredTests.filter(t => t.testType === "Grind");
     const stoneMap = new Map<string, { wins: number; total: number }>();
@@ -2449,7 +2450,7 @@ export default function Analytics() {
     }
 
     return { stoneMap, patternMap };
-  }, [filteredTests, entriesByTestId, grindProfiles, can]);
+  }, [filteredTests, entriesByTestId, grindProfiles, canGrind]);
 
   return (
     <AppShell>
@@ -2465,7 +2466,7 @@ export default function Analytics() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            {(["All", "Glide", "Structure", "Classic", "Skating", "Double Poling", ...(can("grinding", "view") ? ["Grind"] : [])]).map((type) => (
+            {(["All", "Glide", "Structure", "Classic", "Skating", "Double Poling", ...(canGrind ? ["Grind"] : [])]).map((type) => (
               <Button
                 key={type}
                 variant={testTypeFilter === type ? "default" : "outline"}

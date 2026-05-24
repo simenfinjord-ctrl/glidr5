@@ -4136,9 +4136,9 @@ type PlannedRace = {
   id: number;
   date: string;
   raceName: string;
-  location: string;
-  discipline: string;
-  notes: string;
+  location: string | null;
+  discipline: string | null;
+  notes: string | null;
 };
 
 function RaceCalendarSection({
@@ -4195,7 +4195,8 @@ function RaceCalendarSection({
     }
   }
 
-  function matchingTestCount(location: string): number {
+  function matchingTestCount(location: string | null | undefined): number {
+    if (!location) return 0;
     return raceSkiTests.filter((t) => t.location.toLowerCase() === location.toLowerCase()).length;
   }
 
@@ -4362,7 +4363,6 @@ type ActivityEntry = {
 };
 
 function AuditLogSection({ athleteId, skis }: { athleteId: number; skis: RaceSki[] }) {
-  const { t } = useI18n();
   const { language } = useLanguage();
   const lang = language === "en" ? "en" : "no";
   const [open, setOpen] = useState(false);

@@ -1,6 +1,7 @@
 {
-  "name": "rest-express",
+  "name": "glidr",
   "version": "1.0.0",
+  "description": "Digital ski test logging platform for wax service teams",
   "type": "module",
   "license": "MIT",
   "scripts": {

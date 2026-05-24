@@ -4,6 +4,60 @@ function getApiKey(): string | null {
   return process.env.RESEND_API_KEY || process.env.SMTP_PASS || null;
 }
 
+// ── Branded HTML wrapper ───────────────────────────────────────────────────────
+// Every email uses this shell so they all look identical and on-brand.
+
+function emailHtml(content: string, footerLine?: string): string {
+  const footer = footerLine ?? "Glidr · simen@glidr.no · glidr.no";
+  return `<!DOCTYPE html>
+<html lang="no">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f3f4f6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:540px;">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#059669;border-radius:12px 12px 0 0;padding:22px 32px;">
+            <span style="color:#fff;font-family:system-ui,-apple-system,sans-serif;font-size:22px;font-weight:800;letter-spacing:-0.5px;">Glidr<span style="color:#a7f3d0;">.</span></span>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="background:#ffffff;border-radius:0 0 12px 12px;padding:32px;font-family:system-ui,-apple-system,sans-serif;color:#111827;">
+            ${content}
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 0 8px;text-align:center;font-family:system-ui,-apple-system,sans-serif;font-size:11px;color:#9ca3af;">
+            ${footer}<br>
+            <span style="color:#d1d5db;">© 2026 Glidr</span>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+function emailBtn(href: string, label: string): string {
+  return `<a href="${href}" style="display:inline-block;background:#059669;color:#ffffff;padding:13px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;font-family:system-ui,-apple-system,sans-serif;">${label}</a>`;
+}
+
+function emailHr(): string {
+  return `<hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;">`;
+}
+
+function emailMeta(html: string): string {
+  return `<p style="font-size:12px;color:#9ca3af;line-height:1.6;margin:0;">${html}</p>`;
+}
+
 const fromAddress = () =>
   process.env.SMTP_FROM || "noreply@glidr.no";
 
@@ -92,23 +146,13 @@ export async function sendPasswordResetEmail(
       c.ignore, "",
       "— The Glidr team",
     ].join("\n"),
-    html: `
-      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:40px 24px;color:#111;">
-        <div style="font-size:22px;font-weight:700;margin-bottom:24px;">${c.subject}</div>
-        <p style="color:#444;line-height:1.6;margin-bottom:28px;">
-          ${c.greeting(name)}<br><br>${c.body}
-        </p>
-        <a href="${resetLink}"
-          style="display:inline-block;background:#111;color:#fff;padding:13px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:28px;">
-          ${c.button}
-        </a>
-        <p style="color:#888;font-size:13px;line-height:1.6;">
-          ${c.expire}<br>${c.ignore}
-        </p>
-        <hr style="border:none;border-top:1px solid #eee;margin:28px 0;">
-        <p style="color:#bbb;font-size:12px;">— The Glidr team</p>
-      </div>
-    `,
+    html: emailHtml(`
+      <p style="font-size:15px;font-weight:600;color:#111827;margin:0 0 6px;">${c.greeting(name)}</p>
+      <p style="color:#4b5563;line-height:1.7;margin:0 0 28px;">${c.body}</p>
+      ${emailBtn(resetLink, c.button)}
+      ${emailHr()}
+      ${emailMeta(`${c.expire}<br>${c.ignore}`)}
+    `),
   });
 }
 
@@ -163,23 +207,13 @@ export async function sendInvitationEmail(
       c.footer, "",
       "— The Glidr team",
     ].join("\n"),
-    html: `
-      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:40px 24px;color:#111;">
-        <div style="font-size:22px;font-weight:700;margin-bottom:24px;">${subject}</div>
-        <p style="color:#444;line-height:1.6;margin-bottom:28px;">
-          ${c.greeting}<br><br>${bodyHtml}
-        </p>
-        <a href="${inviteLink}"
-          style="display:inline-block;background:#111;color:#fff;padding:13px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:28px;">
-          ${c.button}
-        </a>
-        <p style="color:#888;font-size:13px;line-height:1.6;">
-          ${c.expire}
-        </p>
-        <hr style="border:none;border-top:1px solid #eee;margin:28px 0;">
-        <p style="color:#bbb;font-size:12px;">${c.footer}<br>— The Glidr team</p>
-      </div>
-    `,
+    html: emailHtml(`
+      <p style="font-size:15px;font-weight:600;color:#111827;margin:0 0 6px;">${c.greeting}</p>
+      <p style="color:#4b5563;line-height:1.7;margin:0 0 28px;">${bodyHtml}</p>
+      ${emailBtn(inviteLink, c.button)}
+      ${emailHr()}
+      ${emailMeta(`${c.expire}<br>${c.footer}`)}
+    `),
   });
 }
 
@@ -338,69 +372,114 @@ export async function sendWelcomeEmail(
     to,
     subject: c.subject,
     text: textLines.join("\n"),
-    html: `
-      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:40px 24px;color:#111;">
+    html: emailHtml(`
+      <p style="font-size:15px;font-weight:600;color:#111827;margin:0 0 6px;">${c.greeting(name)}</p>
+      <p style="color:#4b5563;line-height:1.7;margin:0 0 24px;">${c.intro}</p>
 
-        <div style="font-size:22px;font-weight:700;margin-bottom:8px;">${c.subject}</div>
+      ${emailBtn(appUrl, c.button)}
 
-        <p style="color:#444;line-height:1.6;margin-bottom:28px;">
-          ${c.greeting(name)}<br><br>${c.intro}
-        </p>
-
-        <a href="${appUrl}"
-          style="display:inline-block;background:#111;color:#fff;padding:13px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:36px;">
-          ${c.button}
-        </a>
-
-        <!-- How it works -->
-        <div style="background:#f8f8f8;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
-          <div style="font-size:15px;font-weight:700;margin-bottom:14px;">${c.howTitle}</div>
-          <ul style="margin:0;padding-left:4px;list-style:none;">
-            ${c.howItems.map(listItem).join("")}
-          </ul>
-        </div>
-
-        <!-- Install as app (PWA) -->
-        <div style="background:#f0fff4;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
-          <div style="font-size:15px;font-weight:700;margin-bottom:10px;">${c.pwaTitle}</div>
-          <p style="margin:0 0 16px;color:#444;line-height:1.6;font-size:14px;">${c.pwaIntro}</p>
-          <div style="display:flex;gap:16px;flex-wrap:wrap;">
-            <div style="flex:1;min-width:200px;background:#fff;border-radius:8px;padding:12px 16px;">
-              <ul style="margin:0;padding-left:4px;list-style:none;">
-                ${c.pwaIos.map(stepItem).join("")}
-              </ul>
-            </div>
-            <div style="flex:1;min-width:200px;background:#fff;border-radius:8px;padding:12px 16px;">
-              <ul style="margin:0;padding-left:4px;list-style:none;">
-                ${c.pwaAndroid.map(stepItem).join("")}
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tips -->
-        <div style="background:#fffbeb;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
-          <div style="font-size:15px;font-weight:700;margin-bottom:14px;">${c.tipsTitle}</div>
-          <ul style="margin:0;padding-left:4px;list-style:none;">
-            ${c.tipsItems.map(listItem).join("")}
-          </ul>
-        </div>
-
-        <!-- Subscription -->
-        <div style="background:#f0f7ff;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
-          <div style="font-size:15px;font-weight:700;margin-bottom:14px;">${c.subTitle}</div>
-          <ul style="margin:0;padding-left:4px;list-style:none;">
-            ${c.subItems.map(listItem).join("")}
-          </ul>
-          <p style="margin:14px 0 0;font-size:12px;color:#666;background:#fff;border-radius:8px;padding:10px 14px;">
-            ${c.subNote}
-          </p>
-        </div>
-
-        <p style="color:#888;font-size:13px;line-height:1.6;">${c.footer}</p>
-        <hr style="border:none;border-top:1px solid #eee;margin:28px 0;">
-        <p style="color:#bbb;font-size:12px;">— The Glidr team</p>
+      <!-- How it works -->
+      <div style="background:#f9fafb;border-radius:10px;padding:18px 20px;margin:28px 0 20px;">
+        <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.05em;">${c.howTitle}</p>
+        <ul style="margin:0;padding-left:0;list-style:none;">
+          ${c.howItems.map(listItem).join("")}
+        </ul>
       </div>
-    `,
+
+      <!-- PWA install -->
+      <div style="background:#ecfdf5;border-radius:10px;padding:18px 20px;margin-bottom:20px;">
+        <p style="font-size:13px;font-weight:700;color:#065f46;margin:0 0 8px;">${c.pwaTitle}</p>
+        <p style="font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 14px;">${c.pwaIntro}</p>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="width:50%;padding-right:8px;vertical-align:top;">
+              <div style="background:#fff;border-radius:8px;padding:12px;">
+                <ul style="margin:0;padding-left:0;list-style:none;">
+                  ${c.pwaIos.map(stepItem).join("")}
+                </ul>
+              </div>
+            </td>
+            <td style="width:50%;padding-left:8px;vertical-align:top;">
+              <div style="background:#fff;border-radius:8px;padding:12px;">
+                <ul style="margin:0;padding-left:0;list-style:none;">
+                  ${c.pwaAndroid.map(stepItem).join("")}
+                </ul>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Tips -->
+      <div style="background:#fffbeb;border-radius:10px;padding:18px 20px;margin-bottom:20px;">
+        <p style="font-size:13px;font-weight:700;color:#78350f;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.05em;">${c.tipsTitle}</p>
+        <ul style="margin:0;padding-left:0;list-style:none;">
+          ${c.tipsItems.map(listItem).join("")}
+        </ul>
+      </div>
+
+      <!-- Subscription -->
+      <div style="background:#eff6ff;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
+        <p style="font-size:13px;font-weight:700;color:#1e40af;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.05em;">${c.subTitle}</p>
+        <ul style="margin:0;padding-left:0;list-style:none;">
+          ${c.subItems.map(listItem).join("")}
+        </ul>
+        <p style="margin:12px 0 0;font-size:12px;color:#6b7280;background:#fff;border-radius:8px;padding:10px 12px;">${c.subNote}</p>
+      </div>
+
+      ${emailHr()}
+      ${emailMeta(c.footer)}
+    `, "Glidr · simen@glidr.no · glidr.no"),
   });
 }
+
+// ── Interest / registration notification (sent to owner) ──────────────────────
+
+export async function sendInterestNotification(reg: {
+  contactName: string;
+  email: string;
+  phone?: string | null;
+  teamName: string;
+  planName?: string | null;
+  userCount?: number | null;
+  billingPeriod?: string | null;
+  notes?: string | null;
+}): Promise<void> {
+  const ownerEmail = process.env.OWNER_EMAIL || "simen@glidr.no";
+  const plan = reg.planName ?? "team";
+  const subject = `Ny registrering: ${reg.teamName} (${plan})`;
+
+  const rows = [
+    ["Kontaktperson", reg.contactName],
+    ["E-post", reg.email],
+    ...(reg.phone ? [["Telefon", reg.phone]] : []),
+    ["Lag/org", reg.teamName],
+    ["Plan", plan],
+    ...(reg.userCount != null ? [["Antall brukere", String(reg.userCount)]] : []),
+    ...(reg.billingPeriod ? [["Faktureringsperiode", reg.billingPeriod]] : []),
+    ...(reg.notes ? [["Merknad", reg.notes]] : []),
+  ] as [string, string][];
+
+  const tableRows = rows.map(([k, v]) =>
+    `<tr><td style="padding:6px 12px;font-size:13px;color:#6b7280;white-space:nowrap;">${k}</td><td style="padding:6px 12px;font-size:13px;font-weight:600;color:#111827;">${v}</td></tr>`
+  ).join("");
+
+  await sendEmail({
+    to: ownerEmail,
+    subject,
+    text: rows.map(([k, v]) => `${k}: ${v}`).join("\n"),
+    html: emailHtml(`
+      <p style="font-size:15px;font-weight:700;color:#111827;margin:0 0 20px;">
+        Ny interesseregistrering mottatt 🎉
+      </p>
+      <table width="100%" cellpadding="0" cellspacing="0"
+        style="border-collapse:collapse;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:24px;">
+        ${tableRows}
+      </table>
+      <a href="https://glidr.no/admin" style="display:inline-block;background:#059669;color:#fff;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
+        Åpne Admin → Registreringer
+      </a>
+    `),
+  });
+}
+

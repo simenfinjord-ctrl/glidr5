@@ -5,7 +5,7 @@ import { storage, parseGroupScopes } from "./storage";
 import { parsePermissions, hashPassword, verifyPassword } from "./auth";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
-import { sendPasswordResetEmail, sendWelcomeEmail, sendInvitationEmail } from "./email";
+import { sendPasswordResetEmail, sendWelcomeEmail, sendInvitationEmail, sendInterestNotification } from "./email";
 import { generateTotpSecret, getTotpUri, generateQrDataUrl, generateBackupCodes, verifyTotp, verifyBackupCode } from "./totp";
 import { r2Enabled, uploadToR2, getR2Url } from "./r2";
 
@@ -6127,6 +6127,8 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
         `);
       }
     } catch (e) { /* inbox notification best-effort */ }
+    // Send email notification to owner
+    sendInterestNotification({ contactName, email, phone, teamName, planName, userCount, billingPeriod, notes }).catch(() => {});
     res.json({ ok: true });
   });
 

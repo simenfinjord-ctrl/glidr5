@@ -61,6 +61,7 @@ import { useAppSettings } from "@/lib/app-settings";
 import { GlidrIcon, GlidrLogo } from "@/components/glidr-logo";
 import { getNavLayout, setNavLayout, type NavLayout } from "@/lib/nav-layout";
 import { getAccentColor, onAccentChange, type AccentColor, ACCENT_NAV } from "@/lib/accent-color";
+import { WhatsNewModal, WhatsNewDot } from "@/components/whats-new-modal";
 
 const PRESET_AVATARS = [
   "https://api.dicebear.com/7.x/adventurer/svg?seed=alpine",
@@ -608,6 +609,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
   const unreadCount = unreadData?.count ?? 0;
 
+  // ── What's New modal ──
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+
   // ── Inbox drawer ──
   const [inboxOpen, setInboxOpen] = useState(false);
   const [expandedMsgId, setExpandedMsgId] = useState<number | null>(null);
@@ -1023,6 +1027,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Button>
       )}
       <div className="w-px h-5 bg-border mx-1 shrink-0" />
+      <Button variant="ghost" size="sm"
+        onClick={() => setWhatsNewOpen(true)}
+        className="relative h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+        title="Hva er nytt?"
+      >
+        <Sparkles className="h-4 w-4" />
+        <WhatsNewDot />
+      </Button>
       {(isSuperAdmin || isTeamAdmin) && (
         <Button variant="ghost" size="sm" data-testid="button-mail"
           onClick={() => setInboxOpen(true)}
@@ -1037,6 +1049,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </Button>
       )}
+      <WhatsNewModal open={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
       <Button variant="ghost" size="sm" data-testid="button-theme-toggle"
         onClick={toggleTheme}
         className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"

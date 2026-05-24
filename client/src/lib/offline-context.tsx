@@ -24,12 +24,24 @@ interface OfflineContextValue {
 
 const OfflineContext = createContext<OfflineContextValue | null>(null);
 
+// Endpoints that are pre-fetched and cached for offline use.
+// These are the pages most likely to be visited in the field.
+const PREFETCH_KEYS = [
+  "/api/tests",
+  "/api/products",
+  "/api/weather",
+  "/api/user",
+  "/api/skis",
+  "/api/athletes",
+];
+
 export function OfflineProvider({ children }: { children: ReactNode }) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
   const syncingRef = useRef(false);
+  const hasPrefetchedRef = useRef(false);
 
   const refreshCount = useCallback(async () => {
     const count = await getMutationCount();
@@ -40,15 +52,88 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     refreshCount();
   }, [refreshCount]);
 
+  // ── Restore cached API data into React Query when going offline ───────────
+  const restoreCacheToQueryClient = useCallback(async () => {
+    for (const key of PREFETCH_KEYS) {
+      const cached = await getCachedData(key);
+      if (cached != null) {
+        queryClient.setQueryData([key], cached);
+      }
+    }
+    // Also restore any other keys that were cached via the query cache subscriber
+    const cache = queryClient.getQueryCache();
+    const allKeys = cache.getAll().map(q => q.queryKey[0] as string).filter(k => typeof k === "string" && k.startsWith("/api/"));
+    for (const key of allKeys) {
+      if (!PREFETCH_KEYS.includes(key)) {
+        const cached = await getCachedData(key);
+        if (cached != null) {
+          queryClient.setQueryData([key], cached);
+        }
+      }
+    }
+  }, []);
+
+  // ── Auto-cache every successful API fetch ─────────────────────────────────
+  useEffect(() => {
+    const unsubscribe = queryClient.getQueryCache().subscribe(async (event) => {
+      if (event.type === "updated" && event.query.state.status === "success") {
+        const key = event.query.queryKey[0];
+        if (typeof key === "string" && key.startsWith("/api/") && event.query.state.data != null) {
+          await setCachedData(key, event.query.state.data);
+        }
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  // ── Pre-fetch critical endpoints once after mount (while online) ──────────
+  useEffect(() => {
+    if (!navigator.onLine || hasPrefetchedRef.current) return;
+    hasPrefetchedRef.current = true;
+
+    const prefetch = async () => {
+      for (const key of PREFETCH_KEYS) {
+        try {
+          // Only fetch if not already in React Query cache
+          const existing = queryClient.getQueryData([key]);
+          if (existing != null) {
+            // Already in React Query cache — persist to IndexedDB too
+            await setCachedData(key, existing);
+            continue;
+          }
+          const res = await fetch(key, { credentials: "include" });
+          if (res.ok) {
+            const data = await res.json();
+            queryClient.setQueryData([key], data);
+            await setCachedData(key, data);
+          }
+        } catch {
+          // Silently skip — prefetch is best-effort
+        }
+      }
+    };
+
+    // Delay slightly so the app has time to finish its own initial queries first
+    const timer = setTimeout(prefetch, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      toast({ title: "Back online", description: "Syncing pending changes..." });
+      toast({
+        title: "Tilkoblet igjen",
+        description: "Synkroniserer ventende endringer…",
+      });
       syncNow();
     };
     const handleOffline = () => {
       setIsOnline(false);
-      toast({ title: "You are offline", description: "Changes will be saved locally and synced when you reconnect." });
+      toast({
+        title: "Du er offline",
+        description: "Endringer lagres lokalt og synkroniseres når du er tilkoblet igjen.",
+      });
+      restoreCacheToQueryClient();
     };
 
     window.addEventListener("online", handleOnline);
@@ -57,7 +142,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, []);
+  }, [restoreCacheToQueryClient]);
 
   const queueMutation = useCallback(async (method: string, url: string, body?: unknown, description?: string) => {
     const mutation: QueuedMutation = {
@@ -113,18 +198,17 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       }
 
       await refreshCount();
-
       queryClient.invalidateQueries();
 
       if (successCount > 0) {
         toast({
-          title: "Sync complete",
-          description: `${successCount} change${successCount > 1 ? "s" : ""} synced successfully.${failCount > 0 ? ` ${failCount} failed.` : ""}`,
+          title: "Synkronisering fullført",
+          description: `${successCount} endring${successCount > 1 ? "er" : ""} synkronisert.${failCount > 0 ? ` ${failCount} mislyktes.` : ""}`,
         });
       } else if (failCount > 0) {
         toast({
-          title: "Sync issues",
-          description: `${failCount} change${failCount > 1 ? "s" : ""} could not be synced.`,
+          title: "Synkroniseringsfeil",
+          description: `${failCount} endring${failCount > 1 ? "er" : ""} kunne ikke synkroniseres.`,
           variant: "destructive",
         });
       }

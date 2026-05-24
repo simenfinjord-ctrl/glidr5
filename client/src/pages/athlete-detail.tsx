@@ -68,6 +68,7 @@ import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn, fmtDate } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { useLanguage } from "@/lib/language";
 import { pdfDocument, pdfSection, pdfCards, pdfTable, pdfWeather, openPdfWindow } from "@/lib/pdf-layout";
 
 type Athlete = {
@@ -3606,9 +3607,17 @@ type TestComment = {
   created_at: string;
 };
 
-function relativeTime(dateStr: string): string {
+function relativeTime(dateStr: string, lang: string = "no"): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
+  if (lang === "no") {
+    if (mins < 1) return "nettopp";
+    if (mins < 60) return `${mins}m siden`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}t siden`;
+    const days = Math.floor(hours / 24);
+    return `${days}d siden`;
+  }
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
   const hours = Math.floor(mins / 60);
@@ -4124,8 +4133,9 @@ function RaceSkiTestCard({
 // ─── Race Calendar Section ───────────────────────────────────────────────────
 
 type PlannedRace = {
-  id: string;
+  id: number;
   date: string;
+  raceName: string;
   location: string;
   discipline: string;
   notes: string;
@@ -4140,43 +4150,49 @@ function RaceCalendarSection({
   raceSkiTests: RaceSkiTest[];
   isReadOnly?: boolean;
 }) {
-  const storageKey = `glidr-race-calendar-${athleteId}`;
-  const [races, setRaces] = useState<PlannedRace[]>(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) return JSON.parse(stored);
-    } catch {}
-    return [];
+  const { toast } = useToast();
+  const { data: races = [], refetch: refetchRaces } = useQuery<PlannedRace[]>({
+    queryKey: [`/api/athletes/${athleteId}/races`],
+    enabled: !!athleteId,
   });
   const [open, setOpen] = useState(false);
   const [pastOpen, setPastOpen] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [form, setForm] = useState({ date: "", location: "", discipline: "Classic", notes: "" });
-
-  useEffect(() => {
-    try { localStorage.setItem(storageKey, JSON.stringify(races)); } catch {}
-  }, [races, storageKey]);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ date: "", raceName: "", location: "", discipline: "Klassisk", notes: "" });
 
   const today = new Date().toISOString().split("T")[0];
-  const upcoming = races.filter((r) => r.date >= today).sort((a, b) => a.date.localeCompare(b.date));
-  const past = races.filter((r) => r.date < today).sort((a, b) => b.date.localeCompare(a.date));
+  const upcoming = [...races].filter((r) => r.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+  const past = [...races].filter((r) => r.date < today).sort((a, b) => b.date.localeCompare(a.date));
 
-  function addRace() {
-    if (!form.date || !form.location.trim()) return;
-    const race: PlannedRace = {
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      date: form.date,
-      location: form.location.trim(),
-      discipline: form.discipline,
-      notes: form.notes.trim(),
-    };
-    setRaces((prev) => [...prev, race]);
-    setForm({ date: "", location: "", discipline: "Classic", notes: "" });
-    setShowAddForm(false);
+  async function addRace() {
+    if (!form.date || !form.raceName.trim()) return;
+    setSaving(true);
+    try {
+      await apiRequest("POST", `/api/athletes/${athleteId}/races`, {
+        date: form.date,
+        raceName: form.raceName.trim(),
+        location: form.location.trim() || null,
+        discipline: form.discipline,
+        notes: form.notes.trim() || null,
+      });
+      await refetchRaces();
+      setForm({ date: "", raceName: "", location: "", discipline: "Klassisk", notes: "" });
+      setShowAddForm(false);
+    } catch {
+      toast({ title: "Feil", description: "Kunne ikke lagre løp", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function deleteRace(id: string) {
-    setRaces((prev) => prev.filter((r) => r.id !== id));
+  async function deleteRace(id: number) {
+    try {
+      await apiRequest("DELETE", `/api/athletes/${athleteId}/races/${id}`);
+      await refetchRaces();
+    } catch {
+      toast({ title: "Feil", description: "Kunne ikke slette løp", variant: "destructive" });
+    }
   }
 
   function matchingTestCount(location: string): number {
@@ -4184,10 +4200,12 @@ function RaceCalendarSection({
   }
 
   const disciplineColors: Record<string, string> = {
-    Classic: "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-800",
-    Skating: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800",
+    Klassisk: "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-800",
+    Skøyting: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800",
     Skiathlon: "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 ring-violet-200 dark:ring-violet-800",
     Sprint: "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 ring-amber-200 dark:ring-amber-800",
+    Classic: "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-800",
+    Skating: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800",
   };
 
   function RaceRow({ race }: { race: PlannedRace }) {
@@ -4198,8 +4216,9 @@ function RaceCalendarSection({
           <CalendarDays className="h-3 w-3" />
           {race.date}
         </span>
-        <span className="font-medium text-sm">{race.location}</span>
-        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${disciplineColors[race.discipline] ?? disciplineColors["Classic"]}`}>
+        <span className="font-medium text-sm">{race.raceName}</span>
+        {race.location && <span className="text-xs text-muted-foreground">{race.location}</span>}
+        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${disciplineColors[race.discipline] ?? disciplineColors["Klassisk"]}`}>
           {race.discipline}
         </span>
         {race.notes && (
@@ -4207,7 +4226,7 @@ function RaceCalendarSection({
         )}
         {matches > 0 && (
           <span className="text-[10px] text-muted-foreground rounded-full bg-muted px-2 py-0.5">
-            {matches} matching test{matches !== 1 ? "s" : ""}
+            {matches} test{matches !== 1 ? "er" : ""}
           </span>
         )}
         {!isReadOnly && (
@@ -4232,7 +4251,7 @@ function RaceCalendarSection({
           <button className="flex items-center gap-2 cursor-pointer select-none" data-testid="toggle-race-calendar">
             {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">Race Calendar</h2>
+            <h2 className="text-lg font-semibold">Løpskalender</h2>
             <span className="text-xs text-muted-foreground">({races.length})</span>
           </button>
         </CollapsibleTrigger>
@@ -4245,29 +4264,27 @@ function RaceCalendarSection({
             data-testid="button-add-race"
           >
             <Plus className="h-3 w-3 mr-1" />
-            Add Race
+            Legg til løp
           </Button>
         )}
       </div>
 
       <CollapsibleContent>
         <div className="mt-3 space-y-3">
-          {/* Upcoming races */}
-          {upcoming.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No upcoming races planned.</p>
+          {upcoming.length === 0 && !showAddForm ? (
+            <p className="text-sm text-muted-foreground">Ingen kommende løp registrert.</p>
           ) : (
             <div className="space-y-2">
               {upcoming.map((r) => <RaceRow key={r.id} race={r} />)}
             </div>
           )}
 
-          {/* Past races (collapsed) */}
           {past.length > 0 && (
             <Collapsible open={pastOpen} onOpenChange={setPastOpen}>
               <CollapsibleTrigger asChild>
                 <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
                   {pastOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                  Past races ({past.length})
+                  Tidligere løp ({past.length})
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent>
@@ -4278,60 +4295,49 @@ function RaceCalendarSection({
             </Collapsible>
           )}
 
-          {/* Add Race form */}
           {showAddForm && !isReadOnly && (
             <Card className="fs-card rounded-2xl p-4" data-testid="form-add-race">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold">New Race</h3>
+                <h3 className="text-sm font-semibold">Nytt løp</h3>
                 <Button variant="ghost" size="sm" onClick={() => setShowAddForm(false)}>
                   <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium">Date *</label>
-                  <Input
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                    data-testid="input-race-date"
-                  />
+                  <label className="mb-1 block text-xs font-medium">Dato *</label>
+                  <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} data-testid="input-race-date" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium">Location *</label>
-                  <Input
-                    value={form.location}
-                    onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-                    placeholder="e.g. Davos"
-                    data-testid="input-race-location"
-                  />
+                  <label className="mb-1 block text-xs font-medium">Rennnavn *</label>
+                  <Input value={form.raceName} onChange={(e) => setForm((f) => ({ ...f, raceName: e.target.value }))} placeholder="f.eks. Birkebeineren" data-testid="input-race-name" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium">Discipline</label>
+                  <label className="mb-1 block text-xs font-medium">Lokasjon</label>
+                  <Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} placeholder="f.eks. Lillehammer" data-testid="input-race-location" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Stilart</label>
                   <Select value={form.discipline} onValueChange={(v) => setForm((f) => ({ ...f, discipline: v }))}>
                     <SelectTrigger data-testid="select-race-discipline"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Classic">Classic</SelectItem>
-                      <SelectItem value="Skating">Skating</SelectItem>
+                      <SelectItem value="Klassisk">Klassisk</SelectItem>
+                      <SelectItem value="Skøyting">Skøyting</SelectItem>
                       <SelectItem value="Skiathlon">Skiathlon</SelectItem>
-                      <SelectItem value="Sprint">Sprint</SelectItem>
+                      <SelectItem value="Sprint klassisk">Sprint klassisk</SelectItem>
+                      <SelectItem value="Sprint skøyting">Sprint skøyting</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium">Notes</label>
-                  <Input
-                    value={form.notes}
-                    onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                    placeholder="Optional notes…"
-                    data-testid="input-race-notes"
-                  />
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block text-xs font-medium">Notater</label>
+                  <Input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Valgfrie notater…" data-testid="input-race-notes" />
                 </div>
               </div>
               <div className="flex items-center justify-end gap-2 mt-3">
-                <Button variant="outline" size="sm" onClick={() => setShowAddForm(false)}>Cancel</Button>
-                <Button size="sm" onClick={addRace} disabled={!form.date || !form.location.trim()} data-testid="button-save-race">
-                  Save Race
+                <Button variant="outline" size="sm" onClick={() => setShowAddForm(false)}>Avbryt</Button>
+                <Button size="sm" onClick={addRace} disabled={!form.date || !form.raceName.trim() || saving} data-testid="button-save-race">
+                  Lagre løp
                 </Button>
               </div>
             </Card>
@@ -4356,7 +4362,22 @@ type ActivityEntry = {
 };
 
 function AuditLogSection({ athleteId, skis }: { athleteId: number; skis: RaceSki[] }) {
+  const { t } = useI18n();
+  const { language } = useLanguage();
+  const lang = language === "en" ? "en" : "no";
   const [open, setOpen] = useState(false);
+
+  const ACTION_LABELS: Record<string, { no: string; en: string }> = {
+    created:          { no: "opprettet",       en: "created" },
+    updated:          { no: "oppdaterte",      en: "updated" },
+    deleted:          { no: "slettet",         en: "deleted" },
+    duplicated:       { no: "dupliserte",      en: "duplicated" },
+    runsheet_applied: { no: "kjørte runsheet", en: "applied runsheet" },
+  };
+
+  function translateAction(action: string): string {
+    return ACTION_LABELS[action]?.[lang] ?? action.replace(/_/g, " ");
+  }
 
   const skiIds = useMemo(() => new Set(skis.map((s) => s.id)), [skis]);
 
@@ -4395,9 +4416,9 @@ function AuditLogSection({ athleteId, skis }: { athleteId: number; skis: RaceSki
           <button className="flex items-center gap-2 cursor-pointer select-none" data-testid="toggle-audit-log">
             {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
             <Clock className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">Activity Log</h2>
+            <h2 className="text-lg font-semibold">{lang === "no" ? "Aktivitetslogg" : "Activity Log"}</h2>
             {filteredActivity.length > 0 && (
-              <span className="text-xs text-muted-foreground">({filteredActivity.length} events)</span>
+              <span className="text-xs text-muted-foreground">({filteredActivity.length} {lang === "no" ? "hendelser" : "events"})</span>
             )}
           </button>
         </CollapsibleTrigger>
@@ -4406,7 +4427,7 @@ function AuditLogSection({ athleteId, skis }: { athleteId: number; skis: RaceSki
       <CollapsibleContent>
         <div className="mt-3" data-testid="audit-log-content">
           {filteredActivity.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No activity recorded yet.</p>
+            <p className="text-sm text-muted-foreground">{lang === "no" ? "Ingen aktivitet registrert ennå." : "No activity recorded yet."}</p>
           ) : (
             <div className="space-y-1.5">
               {filteredActivity.map((e) => (
@@ -4415,8 +4436,8 @@ function AuditLogSection({ athleteId, skis }: { athleteId: number; skis: RaceSki
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span className="text-xs font-medium">{e.userName}</span>
-                      <span className="text-xs text-muted-foreground">{e.action.replace(/_/g, " ")}</span>
-                      <span className="text-[10px] text-muted-foreground ml-auto">{relativeTime(e.createdAt)}</span>
+                      <span className="text-xs text-muted-foreground">{translateAction(e.action)}</span>
+                      <span className="text-[10px] text-muted-foreground ml-auto">{relativeTime(e.createdAt, lang)}</span>
                     </div>
                     {e.details && (
                       <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{e.details}</p>

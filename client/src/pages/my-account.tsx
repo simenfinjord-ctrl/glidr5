@@ -317,7 +317,7 @@ function PlanChangeSection() {
       setOpen(false);
       setNotes("");
     } catch {
-      toast({ title: t("common.error"), description: "Something went wrong. Contact us at simen.finjord@hotmail.com", variant: "destructive" });
+      toast({ title: t("common.error"), description: "Something went wrong. Contact us at hei@glidr.no", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }

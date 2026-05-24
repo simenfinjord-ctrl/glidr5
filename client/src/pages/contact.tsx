@@ -54,7 +54,7 @@ export default function Contact() {
   const price = plan ? (lang === "no" ? plan.priceNo : plan.price) : "";
   const subject = plan ? t.planSubject(plan.name) : t.defaultSubject;
   const body = plan ? t.planBody(plan.name, price) : t.defaultBody;
-  const mailtoHref = `mailto:simen.finjord@hotmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const mailtoHref = `mailto:hei@glidr.no?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   return (
     <div className="min-h-screen bg-background">
@@ -81,7 +81,7 @@ export default function Contact() {
             <div className="flex-1 min-w-0">
               <div className="text-xs text-muted-foreground mb-0.5">{t.emailLabel}</div>
               <a href={mailtoHref} className="font-semibold text-foreground hover:underline break-all">
-                simen.finjord@hotmail.com
+                hei@glidr.no
               </a>
             </div>
             <a href={mailtoHref}

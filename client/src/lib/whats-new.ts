@@ -19,11 +19,12 @@ export const RELEASES: Release[] = [
   {
     version: "2026-05",
     date: "Mai 2026",
-    title: { no: "Felles PDF-design + ny presentasjon", en: "Unified PDF layout + new presentation" },
+    title: { no: "Felles PDF-design, innboks-fix og accentfarger", en: "Unified PDF layout, inbox fix and accent colours" },
     items: [
-      { emoji: "📄", no: "Alle PDF-eksporter — per test, utøver og analyse — bruker nå samme layout med Glidr-logo og konsistent formattering.", en: "All PDF exports — per test, athlete and analytics — now share the same branded layout." },
-      { emoji: "🎨", no: "Presentasjonen er oppdatert med skarpere norsk tekst og rettede formuleringer.", en: "The pitch presentation has been updated with sharper copy and corrected language." },
-      { emoji: "🌈", no: "Fargetemavekreren er nå tilgjengelig under Min konto → Preferanser.", en: "The accent colour picker is now available under My Account → Preferences." },
+      { emoji: "📄", no: "Alle PDF-eksporter — per test, utøver og analyse — bruker nå samme layout med konsistent formattering.", en: "All PDF exports — per test, athlete and analytics — now share the same branded layout." },
+      { emoji: "✅", no: "Innboksen markerer nå meldinger som lest korrekt, og ulesttelleren oppdateres umiddelbart.", en: "The inbox now correctly marks messages as read and updates the unread count instantly." },
+      { emoji: "🎨", no: "Faner i analyse og Watch-kø følger nå valgt accentfarge med en lett tintbakgrunn.", en: "Analytics and Watch Queue tabs now reflect your chosen accent colour with a subtle tinted background." },
+      { emoji: "🌈", no: "Fargevelgeren er tilgjengelig under Min konto → Preferanser.", en: "The accent colour picker is available under My Account → Preferences." },
     ],
   },
   {

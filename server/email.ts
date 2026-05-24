@@ -172,7 +172,7 @@ const inviteCopy: Record<string, {
     body: (teamName, invitedByName) => `Du har blitt invitert til å bli med i teamet <strong>${teamName}</strong> på Glidr av ${invitedByName}. Klikk knappen nedenfor for å godta invitasjonen.`,
     button: "Godta invitasjon",
     expire: "Invitasjonen utløper om <strong>48 timer</strong>.",
-    footer: "Har du spørsmål? Kontakt simen.finjord@hotmail.com eller ring +47 975 40 178",
+    footer: "Har du spørsmål? Kontakt hei@glidr.no eller ring +47 975 40 178",
   },
   en: {
     subject: (teamName) => `You've been invited to ${teamName} on Glidr`,
@@ -180,7 +180,7 @@ const inviteCopy: Record<string, {
     body: (teamName, invitedByName) => `You have been invited to join the team <strong>${teamName}</strong> on Glidr by ${invitedByName}. Click the button below to accept.`,
     button: "Accept invitation",
     expire: "This invitation expires in <strong>48 hours</strong>.",
-    footer: "Got questions? Contact simen.finjord@hotmail.com or call +47 975 40 178",
+    footer: "Got questions? Contact hei@glidr.no or call +47 975 40 178",
   },
 };
 
@@ -279,10 +279,10 @@ const welcomeCopy: Record<string, {
       "Du administrerer abonnementet ditt under <strong>Min konto → Abonnement</strong>.",
       "Du kan når som helst oppgradere, nedgradere eller si opp abonnementet.",
       "Endringer trer i kraft ved neste faktureringsperiode.",
-      "Har du spørsmål om fakturering eller abonnement? Send oss en e-post på <a href='mailto:simen.finjord@hotmail.com' style='color:#111;'>simen.finjord@hotmail.com</a> eller ring <a href='tel:+4797540178' style='color:#111;'>+47 975 40 178</a>.",
+      "Har du spørsmål om fakturering eller abonnement? Send oss en e-post på <a href='mailto:hei@glidr.no' style='color:#111;'>hei@glidr.no</a> eller ring <a href='tel:+4797540178' style='color:#111;'>+47 975 40 178</a>.",
     ],
     subNote: "Gratis prøveperiode gjelder i 14 dager — ingen kredittkort nødvendig for å komme i gang.",
-    footer: "Har du spørsmål? Svar på denne e-posten, skriv til simen.finjord@hotmail.com eller ring +47 975 40 178.",
+    footer: "Har du spørsmål? Svar på denne e-posten, skriv til hei@glidr.no eller ring +47 975 40 178.",
   },
   en: {
     subject: "Welcome to Glidr!",
@@ -326,10 +326,10 @@ const welcomeCopy: Record<string, {
       "Manage your subscription under <strong>My Account → Subscription</strong>.",
       "You can upgrade, downgrade or cancel your subscription at any time.",
       "Changes take effect at the next billing period.",
-      "Questions about billing or your subscription? Email us at <a href='mailto:simen.finjord@hotmail.com' style='color:#111;'>simen.finjord@hotmail.com</a> or call <a href='tel:+4797540178' style='color:#111;'>+47 975 40 178</a>.",
+      "Questions about billing or your subscription? Email us at <a href='mailto:hei@glidr.no' style='color:#111;'>hei@glidr.no</a> or call <a href='tel:+4797540178' style='color:#111;'>+47 975 40 178</a>.",
     ],
     subNote: "Free trial lasts 14 days — no credit card required to get started.",
-    footer: "Got questions? Reply to this email, write to simen.finjord@hotmail.com or call +47 975 40 178.",
+    footer: "Got questions? Reply to this email, write to hei@glidr.no or call +47 975 40 178.",
   },
 };
 

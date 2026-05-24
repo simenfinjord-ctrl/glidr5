@@ -28,6 +28,7 @@ import Analytics from "@/pages/analytics";
 import Profile from "@/pages/profile";
 import Grinding from "@/pages/grinding";
 import RaceSkis from "@/pages/race-skis";
+import RacePrep from "@/pages/race-prep";
 import AthleteDetail from "@/pages/athlete-detail";
 import Suggestions from "@/pages/suggestions";
 import LiveRunsheets from "@/pages/live-runsheets";
@@ -76,6 +77,7 @@ function Router() {
       <Route path="/grinding" component={Grinding} />
       <Route path="/raceskis" component={RaceSkis} />
       <Route path="/raceskis/:id" component={AthleteDetail} />
+      <Route path="/raceprep" component={RacePrep} />
 
 
       <Route path="/watch-queue" component={WatchQueue} />

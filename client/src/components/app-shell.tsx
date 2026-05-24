@@ -40,6 +40,7 @@ import {
   Bell,
   Trash2,
   ChevronDown,
+  Flag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -190,6 +191,16 @@ const nav: NavItem[] = [
     label: "Raceskis",
     icon: Trophy,
     testId: "link-raceskis",
+    color: "text-muted-foreground",
+    activeColor: "text-green-700",
+    activeBg: "bg-green-50 dark:bg-green-900/20",
+    permArea: "raceskis",
+  },
+  {
+    href: "/raceprep",
+    label: "Raceprep",
+    icon: Flag,
+    testId: "link-raceprep",
     color: "text-muted-foreground",
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",

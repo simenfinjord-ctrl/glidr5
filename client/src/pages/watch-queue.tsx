@@ -172,19 +172,22 @@ export default function WatchQueue() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-border overflow-x-auto">
+        <div
+          className="flex gap-1 border-b border-border overflow-x-auto px-1"
+          style={{ backgroundColor: "hsl(var(--primary) / 0.06)" }}
+        >
           <button
             onClick={() => setTab("active")}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              tab === "active"
-                ? "border-green-600 text-green-700 dark:text-green-400"
-                : "border-transparent text-muted-foreground hover:text-foreground/80"
+              tab === "active" ? "border-transparent" : "border-transparent text-muted-foreground hover:text-foreground/80"
             }`}
+            style={tab === "active" ? { borderColor: "hsl(var(--primary))", color: "hsl(var(--primary))" } : undefined}
           >
             <List className="h-4 w-4" />
             {t("watchQueue.queueTab")}
             {queue.length > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
+              <span className="ml-1.5 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-medium"
+                style={{ backgroundColor: "hsl(var(--primary) / 0.12)", color: "hsl(var(--primary))" }}>
                 {queue.length}
               </span>
             )}
@@ -192,10 +195,9 @@ export default function WatchQueue() {
           <button
             onClick={() => setTab("archive")}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              tab === "archive"
-                ? "border-green-600 text-green-700 dark:text-green-400"
-                : "border-transparent text-muted-foreground hover:text-foreground/80"
+              tab === "archive" ? "border-transparent" : "border-transparent text-muted-foreground hover:text-foreground/80"
             }`}
+            style={tab === "archive" ? { borderColor: "hsl(var(--primary))", color: "hsl(var(--primary))" } : undefined}
           >
             <Archive className="h-4 w-4" />
             {t("watchQueue.archiveTab")}

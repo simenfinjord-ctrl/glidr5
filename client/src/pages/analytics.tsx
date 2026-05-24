@@ -23,6 +23,7 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/lib/i18n";
 import { pdfDocument, pdfSection, pdfCards, pdfTable, openPdfWindow } from "@/lib/pdf-layout";
+import { useAuth } from "@/lib/auth";
 
 type Test = {
   id: number;
@@ -2159,6 +2160,7 @@ function ProductCompare({
 
 export default function Analytics() {
   const { t } = useI18n();
+  const { can } = useAuth();
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
@@ -2178,9 +2180,9 @@ export default function Analytics() {
     enabled: allTestIds.length > 0,
   });
 
-  const [testTypeFilter, setTestTypeFilter] = useState<"All" | "Glide" | "Structure">("All");
+  const [testTypeFilter, setTestTypeFilter] = useState<string>("All");
   const [seasonFilter, setSeasonFilter] = useState<string>("All");
-  const [activeTab, setActiveTab] = useState<"overview" | "products" | "compare" | "conditions">("overview");
+  const [activeTab, setActiveTab] = useState<string>("overview");
 
   const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const testsById = useMemo(() => new Map(tests.map((t) => [t.id, t])), [tests]);
@@ -2393,12 +2395,61 @@ export default function Analytics() {
     openPdfWindow(pdfDocument("Analytics Report", body), newWin);
   }
 
-  const TABS = [
-    { id: "overview" as const, label: t("analytics.overview"), icon: <BarChart3 className="h-4 w-4" /> },
-    { id: "products" as const, label: t("analytics.products"), icon: <Search className="h-4 w-4" /> },
-    { id: "compare" as const, label: t("analytics.compare"), icon: <TrendingUp className="h-4 w-4" /> },
-    { id: "conditions" as const, label: t("analytics.conditions"), icon: <Snowflake className="h-4 w-4" /> },
-  ];
+  const TABS = useMemo(() => [
+    { id: "overview", label: t("analytics.overview"), icon: <BarChart3 className="h-4 w-4" /> },
+    { id: "products", label: t("analytics.products"), icon: <Search className="h-4 w-4" /> },
+    { id: "compare", label: t("analytics.compare"), icon: <TrendingUp className="h-4 w-4" /> },
+    { id: "conditions", label: t("analytics.conditions"), icon: <Snowflake className="h-4 w-4" /> },
+    ...(can("grinding", "view") ? [{ id: "grinding", label: "Slipemønstre", icon: <Layers className="h-4 w-4" /> }] : []),
+  ], [t, can]);
+
+  const { data: grindProfiles = [] } = useQuery<any[]>({
+    queryKey: ["/api/grind-profiles"],
+    enabled: can("grinding", "view"),
+  });
+
+  // Build a map from test.id -> entries for fast lookup in grind stats
+  const entriesByTestId = useMemo(() => {
+    const m = new Map<number, TestEntry[]>();
+    for (const e of allEntries) {
+      const arr = m.get(e.testId) || [];
+      arr.push(e);
+      m.set(e.testId, arr);
+    }
+    return m;
+  }, [allEntries]);
+
+  const grindStats = useMemo(() => {
+    if (!can("grinding", "view")) return { stoneMap: new Map<string, { wins: number; total: number }>(), patternMap: new Map<string, { wins: number; total: number }>() };
+
+    const grindTests = filteredTests.filter(t => t.testType === "Grind");
+    const stoneMap = new Map<string, { wins: number; total: number }>();
+    const patternMap = new Map<string, { wins: number; total: number }>();
+
+    for (const test of grindTests) {
+      const entries = entriesByTestId.get(test.id) || [];
+      for (const entry of entries) {
+        const profile = grindProfiles.find((p: any) => p.id === (entry as any).grindProfileId);
+        const stone = profile?.stone || (entry as any).grindStone || "Ukjent";
+        const pattern = profile?.pattern || (entry as any).grindPattern || "Ukjent";
+
+        if (stone) {
+          const s = stoneMap.get(stone) || { wins: 0, total: 0 };
+          s.total++;
+          if (entry.rank0km === 1) s.wins++;
+          stoneMap.set(stone, s);
+        }
+        if (pattern) {
+          const p = patternMap.get(pattern) || { wins: 0, total: 0 };
+          p.total++;
+          if (entry.rank0km === 1) p.wins++;
+          patternMap.set(pattern, p);
+        }
+      }
+    }
+
+    return { stoneMap, patternMap };
+  }, [filteredTests, entriesByTestId, grindProfiles, can]);
 
   return (
     <AppShell>
@@ -2414,15 +2465,15 @@ export default function Analytics() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            {(["All", "Glide", "Structure"] as const).map((type) => (
+            {(["All", "Glide", "Structure", "Classic", "Skating", "Double Poling", ...(can("grinding", "view") ? ["Grind"] : [])]).map((type) => (
               <Button
                 key={type}
                 variant={testTypeFilter === type ? "default" : "outline"}
                 size="sm"
                 onClick={() => setTestTypeFilter(type)}
-                data-testid={`button-filter-${type.toLowerCase()}`}
+                data-testid={`button-filter-${type.toLowerCase().replace(/\s+/g, "-")}`}
               >
-                {type === "All" ? t("analytics.all") : type === "Glide" ? t("tests.glide") : t("tests.structure")}
+                {type === "All" ? t("analytics.all") : type === "Glide" ? t("tests.glide") : type === "Structure" ? t("tests.structure") : type}
               </Button>
             ))}
             {seasons.length > 1 && (
@@ -2449,16 +2500,24 @@ export default function Analytics() {
         </div>
 
         {/* Tab bar */}
-        <div className="flex gap-1 border-b border-border overflow-x-auto">
+        <div
+          className="flex gap-1 border-b border-border overflow-x-auto px-1"
+          style={{ backgroundColor: "hsl(var(--primary) / 0.06)" }}
+        >
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
-                  ? "border-green-600 text-green-700 dark:text-green-400"
+                  ? "border-transparent"
                   : "border-transparent text-muted-foreground hover:text-foreground/80"
               }`}
+              style={
+                activeTab === tab.id
+                  ? { borderColor: "hsl(var(--primary))", color: "hsl(var(--primary))" }
+                  : undefined
+              }
             >
               {tab.icon}
               <span className="hidden sm:inline">{tab.label}</span>
@@ -2677,6 +2736,80 @@ export default function Analytics() {
               )}
             </Card>
           </>
+        )}
+
+        {activeTab === "grinding" && (
+          <div className="space-y-6 p-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="rounded-xl border border-border bg-card p-4">
+                <h3 className="font-semibold text-sm mb-3">Vinnerate per slipestein</h3>
+                {grindStats.stoneMap.size === 0 ? (
+                  <p className="text-sm text-muted-foreground">Ingen slipedata tilgjengelig</p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-muted-foreground border-b border-border">
+                        <th className="text-left py-1.5">Stein</th>
+                        <th className="text-right py-1.5">Seire</th>
+                        <th className="text-right py-1.5">Starter</th>
+                        <th className="text-right py-1.5">Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...grindStats.stoneMap.entries()]
+                        .sort((a, b) => (b[1].wins / Math.max(b[1].total, 1)) - (a[1].wins / Math.max(a[1].total, 1)))
+                        .map(([stone, { wins, total }]) => (
+                          <tr key={stone} className="border-b border-border/50 last:border-0">
+                            <td className="py-2 font-medium">{stone}</td>
+                            <td className="text-right py-2">{wins}</td>
+                            <td className="text-right py-2">{total}</td>
+                            <td className="text-right py-2">
+                              <span className="font-semibold" style={{ color: "hsl(var(--primary))" }}>
+                                {total > 0 ? Math.round((wins / total) * 100) : 0}%
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-border bg-card p-4">
+                <h3 className="font-semibold text-sm mb-3">Vinnerate per mønster</h3>
+                {grindStats.patternMap.size === 0 ? (
+                  <p className="text-sm text-muted-foreground">Ingen slipedata tilgjengelig</p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-muted-foreground border-b border-border">
+                        <th className="text-left py-1.5">Mønster</th>
+                        <th className="text-right py-1.5">Seire</th>
+                        <th className="text-right py-1.5">Starter</th>
+                        <th className="text-right py-1.5">Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...grindStats.patternMap.entries()]
+                        .sort((a, b) => (b[1].wins / Math.max(b[1].total, 1)) - (a[1].wins / Math.max(a[1].total, 1)))
+                        .map(([pattern, { wins, total }]) => (
+                          <tr key={pattern} className="border-b border-border/50 last:border-0">
+                            <td className="py-2 font-medium">{pattern}</td>
+                            <td className="text-right py-2">{wins}</td>
+                            <td className="text-right py-2">{total}</td>
+                            <td className="text-right py-2">
+                              <span className="font-semibold" style={{ color: "hsl(var(--primary))" }}>
+                                {total > 0 ? Math.round((wins / total) * 100) : 0}%
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </AppShell>

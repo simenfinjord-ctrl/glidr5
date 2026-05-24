@@ -766,7 +766,8 @@ export default function Tests() {
   const [filterProduct, setFilterProduct] = useState<string>("All");
   const [filterSnowType, setFilterSnowType] = useState("");
   const [filterLocation, setFilterLocation] = useState("");
-  const [filterDate, setFilterDate] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
   const [filterAirTempMin, setFilterAirTempMin] = useState("");
   const [filterAirTempMax, setFilterAirTempMax] = useState("");
   const [filterSnowTempMin, setFilterSnowTempMin] = useState("");
@@ -836,7 +837,8 @@ export default function Tests() {
       if (filterSeason !== "All" && getSeason(t.date) !== filterSeason) return false;
       if (filterType !== "All" && t.testType !== filterType) return false;
       if (filterLocation && !t.location.toLowerCase().includes(filterLocation.toLowerCase())) return false;
-      if (filterDate && t.date !== filterDate) return false;
+      if (filterDateFrom && t.date < filterDateFrom) return false;
+      if (filterDateTo && t.date > filterDateTo) return false;
 
       if (filterProduct !== "All") {
         const entries = allEntries.filter((e) => e.testId === t.id);
@@ -863,10 +865,7 @@ export default function Tests() {
       return true;
     });
 
-    // In day view, always sort by startTime ascending
-    if (filterDate) {
-      result.sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99"));
-    } else {
+    {
       result.sort((a, b) => {
         switch (sortOrder) {
           case "date-asc":
@@ -884,9 +883,9 @@ export default function Tests() {
     }
 
     return result;
-  }, [tests, filterSeason, filterType, filterProduct, filterSnowType, filterLocation, filterDate, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, allEntries, weatherById, sortOrder]);
+  }, [tests, filterSeason, filterType, filterProduct, filterSnowType, filterLocation, filterDateFrom, filterDateTo, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, allEntries, weatherById, sortOrder]);
 
-  const hasFilters = filterSeason !== "All" || filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || filterDate || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax;
+  const hasFilters = filterSeason !== "All" || filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || (filterDateFrom || filterDateTo) || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax;
 
   const activeFilterCount = [
     filterSeason !== "All",
@@ -894,7 +893,7 @@ export default function Tests() {
     filterProduct !== "All",
     !!filterSnowType,
     !!filterLocation,
-    !!filterDate,
+    !!(filterDateFrom || filterDateTo),
     !!filterAirTempMin,
     !!filterAirTempMax,
     !!filterSnowTempMin,
@@ -911,7 +910,7 @@ export default function Tests() {
     setFilterProduct("All");
     setFilterSnowType("");
     setFilterLocation("");
-    setFilterDate("");
+    setFilterDateFrom(""); setFilterDateTo("");
     setFilterAirTempMin("");
     setFilterAirTempMax("");
     setFilterSnowTempMin("");
@@ -931,7 +930,7 @@ export default function Tests() {
   });
   const twoColLayout = viewMode === "cards2";
   const hideDayDetails = isBlindTester || hideDayDetailsState;
-  const isDayView = !!filterDate;
+  const isDayView = false;
 
   function cycleViewMode() {
     const next = viewMode === "cards" ? "cards2" : viewMode === "cards2" ? "table" : viewMode === "table" ? "calendar" : "cards";
@@ -1048,20 +1047,24 @@ export default function Tests() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="min-w-[170px]">
-                <Select value={filterDate || "all"} onValueChange={(v) => { setFilterDate(v === "all" ? "" : v); setHideDayDetails(false); }}>
-                  <SelectTrigger data-testid="select-filter-date">
-                    <SelectValue placeholder={t("tests.filterDate")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All dates</SelectItem>
-                    {availableDates.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {fmtDate(d)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                  className="h-9 text-xs w-[130px]"
+                  title="Fra dato"
+                  data-testid="input-filter-date-from"
+                />
+                <span className="text-muted-foreground text-xs shrink-0">–</span>
+                <Input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={(e) => setFilterDateTo(e.target.value)}
+                  className="h-9 text-xs w-[130px]"
+                  title="Til dato"
+                  data-testid="input-filter-date-to"
+                />
               </div>
               <div className="min-w-[140px]">
                 <Select value={filterType} onValueChange={setFilterType}>
@@ -1182,7 +1185,7 @@ export default function Tests() {
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2 flex-wrap">
               <CalendarDays className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Day view: {fmtDate(filterDate)}</h2>
+              <h2 className="text-lg font-semibold">{t("tests.dayView") || "Day view"}</h2>
               <span className="rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">{filtered.length} test{filtered.length !== 1 ? "s" : ""}</span>
               {filtered.length > 0 && !isBlindTester && (
                 <Button

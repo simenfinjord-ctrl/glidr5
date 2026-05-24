@@ -460,6 +460,44 @@ export async function registerRoutes(
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS test_comments_test_id_idx ON test_comments(test_id);
+      CREATE TABLE IF NOT EXISTS athlete_race_calendar (
+        id SERIAL PRIMARY KEY,
+        athlete_id INTEGER NOT NULL,
+        team_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        race_name TEXT NOT NULL,
+        location TEXT,
+        discipline TEXT,
+        notes TEXT,
+        created_by_id INTEGER,
+        created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS race_preps (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        location TEXT NOT NULL,
+        race_type TEXT NOT NULL,
+        discipline TEXT NOT NULL,
+        products TEXT,
+        method TEXT,
+        structure TEXT,
+        notes TEXT,
+        created_by_id INTEGER NOT NULL,
+        created_by_name TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS race_prep_entries (
+        id SERIAL PRIMARY KEY,
+        race_prep_id INTEGER NOT NULL,
+        athlete_id INTEGER NOT NULL,
+        athlete_name TEXT NOT NULL,
+        ski_id TEXT,
+        waxer_id INTEGER,
+        waxer_name TEXT,
+        notes TEXT,
+        created_at TEXT NOT NULL
+      );
     `);
   }
 
@@ -2704,7 +2742,8 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Can only manage users in your team" });
       }
     }
-    const newPassword = req.body.password || "password";
+    const newPassword = req.body.password;
+    if (!newPassword) return res.status(400).json({ message: "Password is required" });
     const pwError = validatePassword(newPassword);
     if (pwError) return res.status(400).json({ message: pwError });
     const hashedPw = await hashPassword(newPassword);
@@ -4275,6 +4314,164 @@ export async function registerRoutes(
     res.json(list);
   });
 
+  // ── Athlete Race Calendar ───────────────────────────────────────────────────
+
+  app.get("/api/athletes/:id/races", requirePermission("raceskis", "view"), async (req, res) => {
+    const athleteId = parseInt(req.params.id);
+    const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT id, athlete_id AS "athleteId", team_id AS "teamId", date, race_name AS "raceName",
+              location, discipline, notes, created_at AS "createdAt"
+       FROM athlete_race_calendar WHERE athlete_id = $1 AND team_id = $2 ORDER BY date ASC`,
+      [athleteId, teamId]
+    );
+    return res.json(result.rows);
+  });
+
+  app.post("/api/athletes/:id/races", requirePermission("raceskis", "edit"), async (req, res) => {
+    const athleteId = parseInt(req.params.id);
+    const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
+    const { date, raceName, location, discipline, notes } = req.body;
+    if (!date || !raceName) return res.status(400).json({ message: "date and raceName required" });
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `INSERT INTO athlete_race_calendar (athlete_id, team_id, date, race_name, location, discipline, notes, created_by_id, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+      [athleteId, teamId, date, raceName, location || null, discipline || null, notes || null, u.id, new Date().toISOString()]
+    );
+    return res.json({ id: result.rows[0].id });
+  });
+
+  app.delete("/api/athletes/:id/races/:raceId", requirePermission("raceskis", "edit"), async (req, res) => {
+    const raceId = parseInt(req.params.raceId);
+    const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
+    const { pool } = await import("./db");
+    await (pool as any).query(
+      `DELETE FROM athlete_race_calendar WHERE id = $1 AND team_id = $2`,
+      [raceId, teamId]
+    );
+    return res.json({ ok: true });
+  });
+
+  // ── Race Preps ──────────────────────────────────────────────────────────────
+
+  app.get("/api/race-preps", requirePermission("raceskis", "view"), async (req, res) => {
+    const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT id, team_id AS "teamId", date, location, race_type AS "raceType", discipline,
+              products, method, structure, notes,
+              created_by_id AS "createdById", created_by_name AS "createdByName", created_at AS "createdAt"
+       FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
+      [teamId]
+    );
+    return res.json(result.rows);
+  });
+
+  app.post("/api/race-preps", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
+    const { date, location, raceType, discipline, products, method, structure, notes } = req.body;
+    if (!date || !location || !raceType || !discipline) return res.status(400).json({ message: "date, location, raceType, discipline required" });
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `INSERT INTO race_preps (team_id, date, location, race_type, discipline, products, method, structure, notes, created_by_id, created_by_name, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+      [teamId, date, location, raceType, discipline, products || null, method || null, structure || null, notes || null, u.id, u.name || "Ukjent", new Date().toISOString()]
+    );
+    return res.json({ id: result.rows[0].id });
+  });
+
+  app.put("/api/race-preps/:id", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = req.user as any;
+    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
+    const id = parseInt(req.params.id);
+    const teamId = u.activeTeamId || u.teamId;
+    const { date, location, raceType, discipline, products, method, structure, notes } = req.body;
+    const { pool } = await import("./db");
+    await (pool as any).query(
+      `UPDATE race_preps SET date=$1, location=$2, race_type=$3, discipline=$4, products=$5, method=$6, structure=$7, notes=$8 WHERE id=$9 AND team_id=$10`,
+      [date, location, raceType, discipline, products || null, method || null, structure || null, notes || null, id, teamId]
+    );
+    return res.json({ ok: true });
+  });
+
+  app.delete("/api/race-preps/:id", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = req.user as any;
+    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
+    const id = parseInt(req.params.id);
+    const teamId = u.activeTeamId || u.teamId;
+    const { pool } = await import("./db");
+    await (pool as any).query(`DELETE FROM race_prep_entries WHERE race_prep_id = $1`, [id]);
+    await (pool as any).query(`DELETE FROM race_preps WHERE id = $1 AND team_id = $2`, [id, teamId]);
+    return res.json({ ok: true });
+  });
+
+  app.get("/api/race-preps/:id/entries", requirePermission("raceskis", "view"), async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT id, race_prep_id AS "racePrepId", athlete_id AS "athleteId", athlete_name AS "athleteName",
+              ski_id AS "skiId", waxer_id AS "waxerId", waxer_name AS "waxerName", notes, created_at AS "createdAt"
+       FROM race_prep_entries WHERE race_prep_id = $1 ORDER BY athlete_name ASC`,
+      [id]
+    );
+    return res.json(result.rows);
+  });
+
+  app.post("/api/race-preps/:id/entries", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = req.user as any;
+    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
+    const racePrepId = parseInt(req.params.id);
+    const { athleteId, athleteName } = req.body;
+    if (!athleteId || !athleteName) return res.status(400).json({ message: "athleteId and athleteName required" });
+    const { pool } = await import("./db");
+    const existing = await (pool as any).query(
+      `SELECT id FROM race_prep_entries WHERE race_prep_id=$1 AND athlete_id=$2`,
+      [racePrepId, athleteId]
+    );
+    if (existing.rows.length > 0) return res.status(409).json({ message: "Already on start list" });
+    const result = await (pool as any).query(
+      `INSERT INTO race_prep_entries (race_prep_id, athlete_id, athlete_name, ski_id, waxer_id, waxer_name, notes, created_at)
+       VALUES ($1,$2,$3,NULL,NULL,NULL,NULL,$4) RETURNING id`,
+      [racePrepId, athleteId, athleteName, new Date().toISOString()]
+    );
+    return res.json({ id: result.rows[0].id });
+  });
+
+  app.put("/api/race-preps/:id/entries/:eid", requirePermission("raceskis", "view"), async (req, res) => {
+    const u = req.user as any;
+    const eid = parseInt(req.params.eid);
+    const { skiId, notes } = req.body;
+    const { pool } = await import("./db");
+    const entryRes = await (pool as any).query(
+      `SELECT waxer_id AS "waxerId" FROM race_prep_entries WHERE id=$1`, [eid]
+    );
+    if (!entryRes.rows.length) return res.status(404).json({ message: "Not found" });
+    const waxerId = entryRes.rows[0].waxerId;
+    const isAdmin = u.isTeamAdmin === 1 || u.isAdmin === 1;
+    if (!isAdmin && waxerId !== null && waxerId !== u.id) return res.status(403).json({ message: "You can only update your own entries" });
+    await (pool as any).query(
+      `UPDATE race_prep_entries SET ski_id=$1, waxer_id=$2, waxer_name=$3, notes=$4 WHERE id=$5`,
+      [skiId || null, u.id, u.name || "Ukjent", notes || null, eid]
+    );
+    return res.json({ ok: true });
+  });
+
+  app.delete("/api/race-preps/:id/entries/:eid", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = req.user as any;
+    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
+    const eid = parseInt(req.params.eid);
+    const { pool } = await import("./db");
+    await (pool as any).query(`DELETE FROM race_prep_entries WHERE id=$1`, [eid]);
+    return res.json({ ok: true });
+  });
+
   app.post("/api/race-skis/:id/archive", requirePermission("raceskis", "edit"), async (req, res) => {
     const u = userInfo(req);
     const id = parseInt(req.params.id);
@@ -5602,7 +5799,10 @@ export async function registerRoutes(
     const userId = req.user!.id;
     const { pool } = await import("./db");
     const result = await (pool as any).query(
-      `SELECT * FROM inbox_messages WHERE to_user_id = $1 ORDER BY created_at DESC LIMIT 100`,
+      `SELECT id, to_user_id AS "toUserId", from_user_id AS "fromUserId", from_name AS "fromName",
+              subject, body, is_read AS "isRead", created_at AS "createdAt",
+              team_name AS "teamName", action_type AS "actionType", action_data AS "actionData"
+       FROM inbox_messages WHERE to_user_id = $1 ORDER BY created_at DESC LIMIT 100`,
       [userId]
     );
     return res.json(result.rows);
@@ -6242,12 +6442,8 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
     const { email } = req.body;
     if (!email) return res.json({ ok: true });
     try {
-      console.log(`[forgot-password] Request for email: ${email}`);
       const user = await storage.getUserByEmail(email);
-      if (!user) {
-        console.log(`[forgot-password] No user found for email: ${email}`);
-      } else {
-        console.log(`[forgot-password] Found user: ${user.id}, sending reset email...`);
+      if (user) {
         const rawToken = crypto.randomBytes(32).toString("hex");
         const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
         const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
@@ -6260,7 +6456,6 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
         `);
         const appUrl = process.env.APP_URL || "https://glidr.no";
         await sendPasswordResetEmail(user.email, user.name, `${appUrl}/reset-password?token=${rawToken}`, user.language ?? "no");
-        console.log(`[forgot-password] Email sent to ${user.email}`);
       }
     } catch (e) {
       console.error("[forgot-password] ERROR:", e);

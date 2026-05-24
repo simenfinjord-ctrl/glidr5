@@ -142,7 +142,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, [restoreCacheToQueryClient]);
+  }, [restoreCacheToQueryClient, syncNow]);
 
   const queueMutation = useCallback(async (method: string, url: string, body?: unknown, description?: string) => {
     const mutation: QueuedMutation = {

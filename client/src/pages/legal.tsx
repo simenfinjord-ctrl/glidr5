@@ -128,7 +128,7 @@ function NorwegianContent() {
         <div className="space-y-6">
           <div>
             <h3 className="font-semibold text-foreground mb-2">Behandlingsansvarlig</h3>
-            <p>Simen Finjord, Norge · <a href="mailto:Simen.finjord@hotmail.com" className="underline underline-offset-2">Simen.finjord@hotmail.com</a></p>
+            <p>Simen Finjord, Norge · <a href="mailto:hei@glidr.no" className="underline underline-offset-2">hei@glidr.no</a></p>
           </div>
 
           <div>
@@ -229,7 +229,7 @@ function NorwegianContent() {
           <p><strong>Underdatabehandlere:</strong> Se tredjepartslisten ovenfor. Glidr varsler om nye underdatabehandlere med minst 14 dagers varsel.</p>
           <p><strong>Den registrertes rettigheter:</strong> Glidr bistår kunden med å oppfylle forespørsler om innsyn, retting, sletting og dataportabilitet.</p>
           <p><strong>Avslutning:</strong> Ved kontraktsopphør sletter Glidr all data innen 30 dager, med mindre lovpålagte oppbevaringsregler krever lengre lagring.</p>
-          <p className="text-xs text-muted-foreground mt-4">Bedrifts- og fedrasjonskunder kan be om en separat signert DPA. Kontakt oss på <a href="mailto:Simen.finjord@hotmail.com" className="underline">Simen.finjord@hotmail.com</a>.</p>
+          <p className="text-xs text-muted-foreground mt-4">Bedrifts- og fedrasjonskunder kan be om en separat signert DPA. Kontakt oss på <a href="mailto:hei@glidr.no" className="underline">hei@glidr.no</a>.</p>
         </div>
       </section>
 
@@ -283,7 +283,7 @@ function NorwegianContent() {
             </div>
           ))}
         </div>
-        <p className="mt-4 text-sm">For å utøve rettighetene dine, kontakt oss på <a href="mailto:Simen.finjord@hotmail.com" className="underline underline-offset-2 font-medium">Simen.finjord@hotmail.com</a>. Vi svarer innen 30 dager.</p>
+        <p className="mt-4 text-sm">For å utøve rettighetene dine, kontakt oss på <a href="mailto:hei@glidr.no" className="underline underline-offset-2 font-medium">hei@glidr.no</a>. Vi svarer innen 30 dager.</p>
       </section>
 
       {/* ── Kontakt ───────────────────────────────────────────────────────────── */}
@@ -291,7 +291,7 @@ function NorwegianContent() {
         <h2 className="text-xl font-bold text-foreground mb-4">Kontakt og personvernombud</h2>
         <div className="rounded-xl border bg-card p-5 text-sm space-y-2">
           <p><strong>Behandlingsansvarlig:</strong> Simen Finjord</p>
-          <p><strong>E-post:</strong> <a href="mailto:Simen.finjord@hotmail.com" className="underline underline-offset-2">Simen.finjord@hotmail.com</a></p>
+          <p><strong>E-post:</strong> <a href="mailto:hei@glidr.no" className="underline underline-offset-2">hei@glidr.no</a></p>
           <p><strong>Telefon:</strong> +47 975 40 178</p>
           <p><strong>Land:</strong> Norge</p>
           <p className="text-xs text-muted-foreground pt-2">Som en liten tjeneste er vi ikke pålagt å utpeke et formelt personvernombud (DPO), men du kan alltid kontakte oss direkte med personvernspørsmål.</p>
@@ -340,7 +340,7 @@ function EnglishContent() {
         <div className="space-y-5">
           <div>
             <h3 className="font-semibold text-foreground mb-2">Data Controller</h3>
-            <p>Simen Finjord, Norway · <a href="mailto:Simen.finjord@hotmail.com" className="underline">Simen.finjord@hotmail.com</a></p>
+            <p>Simen Finjord, Norway · <a href="mailto:hei@glidr.no" className="underline">hei@glidr.no</a></p>
           </div>
           <div>
             <h3 className="font-semibold text-foreground mb-2">Data We Collect</h3>
@@ -359,7 +359,7 @@ function EnglishContent() {
 
       <section id="rettigheter">
         <h2 className="text-xl font-bold text-foreground mb-6">Your Rights (GDPR)</h2>
-        <p className="mb-4">You have the right to access, rectify, delete, or port your data. You may also restrict processing or lodge a complaint with your national data protection authority. Contact us at <a href="mailto:Simen.finjord@hotmail.com" className="underline">Simen.finjord@hotmail.com</a> — we respond within 30 days.</p>
+        <p className="mb-4">You have the right to access, rectify, delete, or port your data. You may also restrict processing or lodge a complaint with your national data protection authority. Contact us at <a href="mailto:hei@glidr.no" className="underline">hei@glidr.no</a> — we respond within 30 days.</p>
         <p>You can delete your account and all associated data at any time from <strong>My Account → Danger Zone</strong>.</p>
       </section>
 
@@ -367,7 +367,7 @@ function EnglishContent() {
         <h2 className="text-xl font-bold text-foreground mb-4">Contact</h2>
         <div className="rounded-xl border bg-card p-5 text-sm space-y-1">
           <p><strong>Controller:</strong> Simen Finjord</p>
-          <p><strong>Email:</strong> <a href="mailto:Simen.finjord@hotmail.com" className="underline">Simen.finjord@hotmail.com</a></p>
+          <p><strong>Email:</strong> <a href="mailto:hei@glidr.no" className="underline">hei@glidr.no</a></p>
           <p><strong>Phone:</strong> +47 975 40 178</p>
           <p><strong>Country:</strong> Norway</p>
         </div>

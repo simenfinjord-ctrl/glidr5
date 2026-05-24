@@ -498,6 +498,10 @@ export async function registerRoutes(
         notes TEXT,
         created_at TEXT NOT NULL
       );
+      ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS product_ids TEXT;
+      ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS structure_ids TEXT;
+      ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS kick_product_ids TEXT;
+      ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS tette TEXT;
     `);
   }
 
@@ -4366,6 +4370,7 @@ export async function registerRoutes(
     const result = await (pool as any).query(
       `SELECT id, team_id AS "teamId", date, location, race_type AS "raceType", discipline,
               products, method, structure, notes,
+              product_ids AS "productIds", structure_ids AS "structureIds", kick_product_ids AS "kickProductIds", tette,
               created_by_id AS "createdById", created_by_name AS "createdByName", created_at AS "createdAt"
        FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
       [teamId]
@@ -4376,13 +4381,13 @@ export async function registerRoutes(
   app.post("/api/race-preps", requirePermission("raceskis", "edit"), async (req, res) => {
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
-    const { date, location, raceType, discipline, products, method, structure, notes } = req.body;
+    const { date, location, raceType, discipline, products, method, structure, notes, productIds, structureIds, kickProductIds, tette } = req.body;
     if (!date || !location || !raceType || !discipline) return res.status(400).json({ message: "date, location, raceType, discipline required" });
     const { pool } = await import("./db");
     const result = await (pool as any).query(
-      `INSERT INTO race_preps (team_id, date, location, race_type, discipline, products, method, structure, notes, created_by_id, created_by_name, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
-      [teamId, date, location, raceType, discipline, products || null, method || null, structure || null, notes || null, u.id, u.name || "Ukjent", new Date().toISOString()]
+      `INSERT INTO race_preps (team_id, date, location, race_type, discipline, products, method, structure, notes, product_ids, structure_ids, kick_product_ids, tette, created_by_id, created_by_name, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id`,
+      [teamId, date, location, raceType, discipline, products || null, method || null, structure || null, notes || null, productIds || null, structureIds || null, kickProductIds || null, tette || null, u.id, u.name || "Ukjent", new Date().toISOString()]
     );
     return res.json({ id: result.rows[0].id });
   });
@@ -4392,11 +4397,11 @@ export async function registerRoutes(
     if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
     const id = parseInt(req.params.id);
     const teamId = u.activeTeamId || u.teamId;
-    const { date, location, raceType, discipline, products, method, structure, notes } = req.body;
+    const { date, location, raceType, discipline, products, method, structure, notes, productIds, structureIds, kickProductIds, tette } = req.body;
     const { pool } = await import("./db");
     await (pool as any).query(
-      `UPDATE race_preps SET date=$1, location=$2, race_type=$3, discipline=$4, products=$5, method=$6, structure=$7, notes=$8 WHERE id=$9 AND team_id=$10`,
-      [date, location, raceType, discipline, products || null, method || null, structure || null, notes || null, id, teamId]
+      `UPDATE race_preps SET date=$1, location=$2, race_type=$3, discipline=$4, products=$5, method=$6, structure=$7, notes=$8, product_ids=$9, structure_ids=$10, kick_product_ids=$11, tette=$12 WHERE id=$13 AND team_id=$14`,
+      [date, location, raceType, discipline, products || null, method || null, structure || null, notes || null, productIds || null, structureIds || null, kickProductIds || null, tette || null, id, teamId]
     );
     return res.json({ ok: true });
   });

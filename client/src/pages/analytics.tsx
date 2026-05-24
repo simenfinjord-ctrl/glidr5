@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/lib/i18n";
 import { pdfDocument, pdfSection, pdfCards, pdfTable, openPdfWindow } from "@/lib/pdf-layout";
 import { useAuth } from "@/lib/auth";
+import { useLanguage } from "@/lib/language";
 
 type Test = {
   id: number;
@@ -2161,6 +2162,8 @@ function ProductCompare({
 export default function Analytics() {
   const { t } = useI18n();
   const { can } = useAuth();
+  const { language } = useLanguage();
+  const lang = language === "en" ? "en" : "no";
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
@@ -2401,6 +2404,7 @@ export default function Analytics() {
     { id: "products", label: t("analytics.products"), icon: <Search className="h-4 w-4" /> },
     { id: "compare", label: t("analytics.compare"), icon: <TrendingUp className="h-4 w-4" /> },
     { id: "conditions", label: t("analytics.conditions"), icon: <Snowflake className="h-4 w-4" /> },
+    { id: "racedproducts", label: lang === "en" ? "Raced products" : "Brukte produkter", icon: <Trophy className="h-4 w-4" /> },
     ...(canGrind ? [{ id: "grinding", label: "Slipemønstre", icon: <Layers className="h-4 w-4" /> }] : []),
   ];
 
@@ -2451,6 +2455,39 @@ export default function Analytics() {
 
     return { stoneMap, patternMap };
   }, [filteredTests, entriesByTestId, grindProfiles, canGrind]);
+
+  const { data: racePreps = [] } = useQuery<any[]>({
+    queryKey: ["/api/race-preps"],
+    enabled: can("raceskis", "view"),
+  });
+
+  const racedProductStats = useMemo(() => {
+    const counts = new Map<number, { product: Product; glideCount: number; structureCount: number; kickCount: number; total: number }>();
+
+    const addIds = (idsStr: string | null, type: "glide" | "structure" | "kick") => {
+      if (!idsStr) return;
+      for (const idStr of idsStr.split(",")) {
+        const id = parseInt(idStr);
+        if (isNaN(id)) continue;
+        const product = productsById.get(id);
+        if (!product) continue;
+        const existing = counts.get(id) ?? { product, glideCount: 0, structureCount: 0, kickCount: 0, total: 0 };
+        if (type === "glide") existing.glideCount++;
+        else if (type === "structure") existing.structureCount++;
+        else existing.kickCount++;
+        existing.total++;
+        counts.set(id, existing);
+      }
+    };
+
+    for (const prep of racePreps) {
+      addIds(prep.productIds, "glide");
+      addIds(prep.structureIds, "structure");
+      addIds(prep.kickProductIds, "kick");
+    }
+
+    return Array.from(counts.values()).sort((a, b) => b.total - a.total);
+  }, [racePreps, productsById]);
 
   return (
     <AppShell>
@@ -2737,6 +2774,50 @@ export default function Analytics() {
               )}
             </Card>
           </>
+        )}
+
+        {activeTab === "racedproducts" && (
+          <div className="space-y-4 p-1">
+            <p className="text-sm text-muted-foreground">
+              {lang === "no" ? `${racePreps.length} rennprep-er` : `${racePreps.length} race preps`}
+            </p>
+            {racedProductStats.length === 0 ? (
+              <Card className="p-8 text-center">
+                <Trophy className="h-8 w-8 mx-auto mb-2 opacity-30 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  {lang === "no" ? "Ingen produkter registrert i rennprep ennå." : "No products recorded in race preps yet."}
+                </p>
+              </Card>
+            ) : (
+              <div className="rounded-xl border border-border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <th className="px-4 py-2">{lang === "no" ? "Produkt" : "Product"}</th>
+                      <th className="px-4 py-2 text-center">{lang === "no" ? "Glid" : "Glide"}</th>
+                      <th className="px-4 py-2 text-center">{lang === "no" ? "Struktur" : "Structure"}</th>
+                      <th className="px-4 py-2 text-center">Kick</th>
+                      <th className="px-4 py-2 text-center">{lang === "no" ? "Totalt" : "Total"}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {racedProductStats.map(({ product, glideCount, structureCount, kickCount, total }) => (
+                      <tr key={product.id} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
+                        <td className="px-4 py-2.5">
+                          <span className="font-medium">{product.brand} {product.name}</span>
+                          <span className="ml-1.5 text-xs text-muted-foreground">{product.category}</span>
+                        </td>
+                        <td className="px-4 py-2.5 text-center">{glideCount || "—"}</td>
+                        <td className="px-4 py-2.5 text-center">{structureCount || "—"}</td>
+                        <td className="px-4 py-2.5 text-center">{kickCount || "—"}</td>
+                        <td className="px-4 py-2.5 text-center font-semibold">{total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         )}
 
         {activeTab === "grinding" && (

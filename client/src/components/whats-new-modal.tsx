@@ -19,7 +19,7 @@ interface WhatsNewModalProps {
 
 export function WhatsNewModal({ open: controlledOpen, onClose }: WhatsNewModalProps) {
   const { language } = useLanguage();
-  const lang = language === "en" ? "en" : "no";
+  const lang = "en" as const;
 
   const [open, setOpen] = useState(false);
 

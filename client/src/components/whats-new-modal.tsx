@@ -71,7 +71,7 @@ export function WhatsNewModal({ open: controlledOpen, onClose }: WhatsNewModalPr
             <div key={release.version} className="px-6 py-5">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 px-2 py-0.5 rounded-full">
-                  {release.date}
+                  {release.date[lang]}
                 </span>
                 {idx === 0 && (
                   <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">

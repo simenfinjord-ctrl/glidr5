@@ -10,15 +10,26 @@
 
 export interface Release {
   version: string;
-  date: string; // "DD. MMM YYYY" display format
+  date: { no: string; en: string };
   title: { no: string; en: string };
   items: { emoji: string; no: string; en: string }[];
 }
 
 export const RELEASES: Release[] = [
   {
+    version: "2026-05b",
+    date: { no: "Mai 2026", en: "May 2026" },
+    title: { no: "Raceprep, slipeanalyse og datofilter", en: "Race Prep, grind analytics and date filter" },
+    items: [
+      { emoji: "🏁", no: "Ny Raceprep-side: planlegg renn med startliste, Ski-ID per løper og informasjon om produkt, metode og struktur.", en: "New Race Prep page: plan races with a start list, per-athlete Ski-ID, and product/method/structure info." },
+      { emoji: "⚙️", no: "Ny Slipemønstre-fane i Analyse — vinnerate per stein og mønster for alle med slipetilgang.", en: "New Grind Patterns tab in Analytics — win rate by stone and pattern for users with grinding access." },
+      { emoji: "📅", no: "Løpskalender på utøverprofilen er nå lagret på serveren og synkroniseres på tvers av enheter.", en: "The race calendar on athlete profiles is now server-side and syncs across all devices." },
+      { emoji: "🔍", no: "Datofilter i Tester er oppgradert til et fra/til-område — filtrer tester over en hvilken som helst periode.", en: "The date filter in Tests is now a from/to range — filter tests across any time period." },
+    ],
+  },
+  {
     version: "2026-05",
-    date: "Mai 2026",
+    date: { no: "Mai 2026", en: "May 2026" },
     title: { no: "Felles PDF-design, innboks-fix og accentfarger", en: "Unified PDF layout, inbox fix and accent colours" },
     items: [
       { emoji: "📄", no: "Alle PDF-eksporter — per test, utøver og analyse — bruker nå samme layout med konsistent formattering.", en: "All PDF exports — per test, athlete and analytics — now share the same branded layout." },
@@ -29,7 +40,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: "2026-04",
-    date: "April 2026",
+    date: { no: "April 2026", en: "April 2026" },
     title: { no: "Løpskalender, revisjonslogg og rekkefølge for Watch", en: "Race calendar, audit log and Watch order" },
     items: [
       { emoji: "📅", no: "Løpskalender lagt til på utøversiden — planlegg og følg opp kommende renn.", en: "Race calendar added to athlete page — plan and track upcoming races." },
@@ -40,7 +51,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: "2026-03",
-    date: "Mars 2026",
+    date: { no: "Mars 2026", en: "March 2026" },
     title: { no: "AI-anbefalinger, CSV-import og offline-forbedringer", en: "AI recommendations, CSV import and offline improvements" },
     items: [
       { emoji: "🤖", no: "AI-anbefalinger gir produktforslag basert på dine egne testdata og de aktuelle forholdene.", en: "AI recommendations suggest products based on your own test data and current conditions." },
@@ -50,7 +61,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: "2026-02",
-    date: "Februar 2026",
+    date: { no: "Februar 2026", en: "February 2026" },
     title: { no: "Race Ski, utøverstyring og kommentarer", en: "Race Ski, athlete management and comments" },
     items: [
       { emoji: "🎿", no: "Race Ski-modulen lar deg administrere skibehold, grindlogg og testtilordning per utøver.", en: "The Race Ski module lets you manage ski inventory, grind logs and test assignment per athlete." },

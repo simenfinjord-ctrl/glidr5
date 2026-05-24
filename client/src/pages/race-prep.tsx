@@ -80,11 +80,17 @@ const EMPTY_FORM = {
   notes: "",
 };
 
-const DISCIPLINES = ["Klassisk", "Skøyting", "Skiathlon"];
+// Values stored in DB as English; labels shown per language
+const DISCIPLINES = ["Classic", "Skating", "Skiathlon"];
+const DISCIPLINE_LABEL: Record<string, { no: string; en: string }> = {
+  Classic:   { no: "Klassisk",  en: "Classic" },
+  Skating:   { no: "Skøyting",  en: "Skating" },
+  Skiathlon: { no: "Skiathlon", en: "Skiathlon" },
+};
 
 const DISCIPLINE_COLORS: Record<string, string> = {
-  Klassisk:  "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-800",
-  Skøyting:  "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800",
+  Classic:   "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-800",
+  Skating:   "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800",
   Skiathlon: "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 ring-violet-200 dark:ring-violet-800",
 };
 
@@ -299,7 +305,7 @@ function PrepDetailDialog({
   const glideNames = productNames(prep.productIds, products);
   const structureNamesStr = productNames(prep.structureIds, products);
   const kickNames = productNames(prep.kickProductIds, products);
-  const showKick = prep.discipline === "Klassisk" || prep.discipline === "Skiathlon";
+  const showKick = prep.discipline === "Classic" || prep.discipline === "Skiathlon";
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -320,7 +326,7 @@ function PrepDetailDialog({
           <div>
             <p className="text-xs text-muted-foreground mb-0.5">{L("Stilart", "Discipline")}</p>
             <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1", DISCIPLINE_COLORS[prep.discipline] ?? "")}>
-              {prep.discipline}
+              {DISCIPLINE_LABEL[prep.discipline]?.[lang] ?? prep.discipline}
             </span>
           </div>
           {glideNames && (
@@ -525,7 +531,7 @@ function PrepFormDialog({
     setForm((prev) => ({ ...prev, [key]: val }));
   }
 
-  const showKick = form.discipline === "Klassisk" || form.discipline === "Skiathlon";
+  const showKick = form.discipline === "Classic" || form.discipline === "Skiathlon";
 
   async function submit() {
     if (!form.date || !form.location || !form.raceType || !form.discipline) return;
@@ -574,14 +580,14 @@ function PrepFormDialog({
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium">{L("Renntype", "Race type")} *</label>
-            <Input value={form.raceType} onChange={(e) => f("raceType", e.target.value)} placeholder={L("f.eks. Norgescup", "e.g. World Cup")} />
+            <Input value={form.raceType} onChange={(e) => f("raceType", e.target.value)} placeholder={L("f.eks. 10km", "e.g. 10km")} />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium">{L("Stilart", "Discipline")} *</label>
             <Select value={form.discipline} onValueChange={(v) => f("discipline", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {DISCIPLINES.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                {DISCIPLINES.map((d) => <SelectItem key={d} value={d}>{DISCIPLINE_LABEL[d]?.[lang] ?? d}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -599,8 +605,8 @@ function PrepFormDialog({
             <MultiProductPicker
               value={form.structureIds}
               onChange={(ids) => f("structureIds", ids)}
-              products={products}
-              placeholder={L("Søk etter struktur...", "Search for structure...")}
+              products={products.filter(p => p.category === "Structure tool")}
+              placeholder={L("Søk etter struktur...", "Search for structure tool...")}
             />
           </div>
           {showKick && (

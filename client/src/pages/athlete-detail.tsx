@@ -68,6 +68,7 @@ import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn, fmtDate } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { pdfDocument, pdfSection, pdfCards, pdfTable, pdfWeather, openPdfWindow } from "@/lib/pdf-layout";
 
 type Athlete = {
   id: number;
@@ -1013,12 +1014,7 @@ export default function AthleteDetail() {
 
       const skiMap = new Map(skis.map((s) => [s.id, s]));
 
-      // ── Build HTML ────────────────────────────────────────────────────────
-      const cell = (v: string | number | null | undefined, bold = false) =>
-        `<td style="padding:5px 10px;border:1px solid #e5e7eb;font-size:12px;${bold ? "font-weight:600;" : ""}">${v ?? "—"}</td>`;
-      const th = (v: string) =>
-        `<th style="padding:6px 10px;border:1px solid #d1d5db;background:#f9fafb;font-size:11px;font-weight:600;text-align:left;color:#374151;">${v}</th>`;
-
+      // ── Build body using shared pdf-layout helpers ────────────────────────
       const sections: string[] = [];
 
       // ── Performance Summary ──────────────────────────────────────────────
@@ -1032,106 +1028,66 @@ export default function AthleteDetail() {
           ? (rankedEntries.reduce((s, e) => s + (e.rank0km ?? 0), 0) / rankedEntries.length).toFixed(1)
           : "—";
 
-        sections.push(`
-          <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 12px;">Performance Summary</h2>
-          <table style="border-collapse:collapse;width:100%;margin-bottom:28px;">
-            <tr>${th("Total Skis")}${th("Total Tests")}${th("Avg Rank")}${th("Top-3 Results")}</tr>
-            <tr>${cell(totalSkis)}${cell(totalTests)}${cell(avgRank)}${cell(topRanks)}</tr>
-          </table>
-        `);
+        sections.push(
+          pdfSection("Performance Summary") +
+          pdfCards([
+            { value: totalSkis, label: "Total Skis" },
+            { value: totalTests, label: "Total Tests" },
+            { value: avgRank, label: "Avg Rank" },
+            { value: topRanks, label: "Top-3 Results" },
+          ])
+        );
       }
 
       // ── Ski Inventory ────────────────────────────────────────────────────
       if (exportSections.inventory && skis.length > 0) {
-        const rows = skis.map((s) => `
-          <tr>
-            ${cell(s.skiId, true)}
-            ${cell(s.brand)}
-            ${cell(s.discipline)}
-            ${cell(s.base)}
-            ${cell(s.grind)}
-            ${cell(s.construction)}
-            ${cell(s.mold)}
-            ${cell(s.heights)}
-            ${cell(s.year)}
-            ${cell(s.serialNumber)}
-          </tr>`).join("");
-        sections.push(`
-          <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 12px;">Ski Inventory</h2>
-          <table style="border-collapse:collapse;width:100%;margin-bottom:28px;">
-            <thead><tr>${th("Ski ID")}${th("Brand")}${th("Discipline")}${th("Base")}${th("Grind")}${th("Construction")}${th("Mold")}${th("Heights")}${th("Year")}${th("Serial #")}</tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        `);
+        const rows = skis.map((s) => [
+          s.skiId, s.brand, s.discipline, s.base, s.grind,
+          s.construction, s.mold, s.heights, s.year, s.serialNumber,
+        ]);
+        sections.push(
+          pdfSection("Ski Inventory") +
+          pdfTable(
+            ["Ski ID", "Brand", "Discipline", "Base", "Grind", "Construction", "Mold", "Heights", "Year", "Serial #"],
+            rows,
+          )
+        );
       }
 
       // ── Test Results ─────────────────────────────────────────────────────
       if (exportSections.tests && raceSkiTests.length > 0) {
         const testBlocks = [...raceSkiTests]
           .sort((a, b) => b.date.localeCompare(a.date))
-          .map((test) => {
-            const entries = entriesByTestId[test.id] ?? [];
-            const weath = weather.find((w) => w.id === test.weatherId);
-
-            const weatherBlock = weath ? `
-              <table style="border-collapse:collapse;width:100%;margin:6px 0 10px;font-size:11px;">
-                <tr>
-                  ${th("Snow temp")}${th("Air temp")}${th("Snow hum.")}${th("Air hum.")}${th("Clouds")}${th("Visibility")}${th("Wind")}
-                </tr>
-                <tr>
-                  ${cell(weath.snowTemperatureC != null ? `${weath.snowTemperatureC}°C` : null)}
-                  ${cell(weath.airTemperatureC != null ? `${weath.airTemperatureC}°C` : null)}
-                  ${cell(weath.snowHumidityPct != null ? `${weath.snowHumidityPct}%` : null)}
-                  ${cell(weath.airHumidityPct != null ? `${weath.airHumidityPct}%` : null)}
-                  ${cell(weath.clouds != null ? `${weath.clouds}%` : null)}
-                  ${cell(weath.visibility)}
-                  ${cell(weath.wind)}
-                </tr>
-                <tr>
-                  ${th("Precipitation")}${th("Snow type")}${th("Grain size")}${th("Track hardness")}${th("Test quality")}${th("Art. snow")}${th("Nat. snow")}
-                </tr>
-                <tr>
-                  ${cell(weath.precipitation)}
-                  ${cell(weath.snowType)}
-                  ${cell(weath.grainSize)}
-                  ${cell(weath.trackHardness)}
-                  ${cell(weath.testQuality != null ? `${weath.testQuality}/10` : null)}
-                  ${cell(weath.artificialSnow)}
-                  ${cell(weath.naturalSnow)}
-                </tr>
-              </table>` : "";
+          .map((t) => {
+            const entries = entriesByTestId[t.id] ?? [];
+            const weath = weather.find((w) => w.id === t.weatherId);
 
             const entryRows = entries.map((e) => {
               const ski = skiMap.get(e.raceSkiId ?? -1);
-              return `<tr>
-                ${cell(ski?.skiId ?? `#${e.skiNumber}`, true)}
-                ${cell(ski?.brand)}
-                ${cell(ski?.grind)}
-                ${cell(e.result0kmCmBehind != null ? `${e.result0kmCmBehind} cm` : null)}
-                ${cell(e.rank0km)}
-                ${cell(e.feelingRank)}
-                ${cell(e.methodology)}
-              </tr>`;
-            }).join("");
+              return [
+                ski?.skiId ?? `#${e.skiNumber}`,
+                ski?.brand ?? null,
+                ski?.grind ?? null,
+                e.result0kmCmBehind != null ? `${e.result0kmCmBehind} cm` : null,
+                e.rank0km ?? null,
+                e.feelingRank ?? null,
+                e.methodology ?? null,
+              ];
+            });
 
             return `
-              <div style="margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #f3f4f6;">
-                <p style="font-size:13px;font-weight:700;color:#374151;margin:0 0 2px;">
-                  ${test.date} · ${test.location} · ${test.testType}
-                </p>
-                ${test.notes ? `<p style="font-size:11px;color:#6b7280;margin:2px 0 4px;">Notes: ${test.notes}</p>` : ""}
-                ${weatherBlock}
-                <table style="border-collapse:collapse;width:100%;">
-                  <thead><tr>${th("Ski ID")}${th("Brand")}${th("Grind")}${th("Result")}${th("Rank")}${th("Feeling")}${th("Methodology")}</tr></thead>
-                  <tbody>${entryRows || `<tr><td colspan="7" style="padding:8px;text-align:center;color:#9ca3af;font-size:12px;">No entries</td></tr>`}</tbody>
-                </table>
+              <div class="pdf-test-block">
+                <div class="pdf-test-header">${t.date} · ${t.location} · ${t.testType}</div>
+                ${t.notes ? `<div class="pdf-test-meta">Notes: ${t.notes}</div>` : ""}
+                ${weath ? pdfWeather(weath) : ""}
+                ${pdfTable(
+                  ["Ski ID", "Brand", "Grind", "Result", "Rank", "Feeling", "Methodology"],
+                  entryRows,
+                )}
               </div>`;
           }).join("");
 
-        sections.push(`
-          <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 12px;">Test Results</h2>
-          <div style="margin-bottom:28px;">${testBlocks}</div>
-        `);
+        sections.push(pdfSection("Test Results") + testBlocks);
       }
 
       // ── Grind History ────────────────────────────────────────────────────
@@ -1145,52 +1101,24 @@ export default function AthleteDetail() {
         allRegrinds.sort((a, b) => b.regrind.date.localeCompare(a.regrind.date));
 
         if (allRegrinds.length > 0) {
-          const rows = allRegrinds.map(({ ski, regrind: rg }) => `
-            <tr>
-              ${cell(ski.skiId, true)}
-              ${cell(rg.date)}
-              ${cell(rg.grindType)}
-              ${cell(rg.stone)}
-              ${cell(rg.pattern)}
-              ${cell(rg.notes)}
-            </tr>`).join("");
-          sections.push(`
-            <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 12px;">Grind History</h2>
-            <table style="border-collapse:collapse;width:100%;margin-bottom:28px;">
-              <thead><tr>${th("Ski ID")}${th("Date")}${th("Grind Type")}${th("Stone")}${th("Pattern")}${th("Notes")}</tr></thead>
-              <tbody>${rows}</tbody>
-            </table>
-          `);
+          const rows = allRegrinds.map(({ ski, regrind: rg }) => [
+            ski.skiId, rg.date, rg.grindType, rg.stone, rg.pattern, rg.notes,
+          ]);
+          sections.push(
+            pdfSection("Grind History") +
+            pdfTable(["Ski ID", "Date", "Grind Type", "Stone", "Pattern", "Notes"], rows)
+          );
         }
       }
 
-      const html = `<!DOCTYPE html><html><head>
-        <meta charset="utf-8"/>
-        <title>${athlete.name} — Glidr Report</title>
-        <style>
-          * { box-sizing: border-box; }
-          body { font-family: system-ui, -apple-system, sans-serif; color: #111827; padding: 32px; max-width: 900px; margin: 0 auto; }
-          @media print { body { padding: 0; } }
-        </style>
-      </head><body>
-        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #e5e7eb;padding-bottom:16px;margin-bottom:28px;">
-          <div>
-            <h1 style="font-size:24px;font-weight:800;color:#111827;margin:0;">${athlete.name}</h1>
-            ${athlete.team ? `<p style="font-size:13px;color:#6b7280;margin:4px 0 0;">${athlete.team}</p>` : ""}
-          </div>
-          <div style="text-align:right;">
-            <p style="font-size:11px;color:#9ca3af;margin:0;">Generated by Glidr</p>
-            <p style="font-size:11px;color:#9ca3af;margin:2px 0 0;">${new Date().toLocaleDateString()}</p>
-          </div>
-        </div>
+      const subtitle = [athlete.team, `${raceSkiTests.length} tests`, `${skis.length} skis`].filter(Boolean).join(" · ");
+      const body = `
+        <div class="pdf-title">${athlete.name}</div>
+        <div class="pdf-subtitle">${subtitle}</div>
         ${sections.join("")}
-      </body></html>`;
+      `;
 
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
-      win.focus();
-      setTimeout(() => { win.print(); }, 500);
+      openPdfWindow(pdfDocument(`${athlete.name} — Glidr Report`, body), win);
     } catch (e) {
       win.close();
     } finally {
@@ -3821,101 +3749,40 @@ function RaceSkiTestCard({
   }
 
   function handleOpenReport() {
+    // Open window synchronously before any work (popup-blocker safe)
+    const win = window.open("", "_blank");
+    if (!win) return;
+
     const weath = test.weatherId != null ? weatherMap.get(test.weatherId) : undefined;
 
-    const cell = (v: string | number | null | undefined, style = "") =>
-      `<td style="padding:5px 10px;border:1px solid #e5e7eb;font-size:12px;${style}">${v ?? "—"}</td>`;
-    const th = (v: string) =>
-      `<th style="padding:6px 10px;border:1px solid #d1d5db;background:#f9fafb;font-size:11px;font-weight:600;text-align:left;color:#374151;">${v}</th>`;
-
-    const weatherBlock = weath ? `
-      <h2 style="font-size:15px;font-weight:700;color:#111827;margin:0 0 10px;">Weather Conditions</h2>
-      <table style="border-collapse:collapse;width:100%;margin-bottom:24px;">
-        <tbody>
-          <tr>
-            ${th("Snow temp")}${th("Air temp")}${th("Snow humidity")}${th("Air humidity")}${th("Clouds")}${th("Visibility")}
-          </tr>
-          <tr>
-            ${cell(weath.snowTemperatureC != null ? `${weath.snowTemperatureC} °C` : null)}
-            ${cell(weath.airTemperatureC != null ? `${weath.airTemperatureC} °C` : null)}
-            ${cell(weath.snowHumidityPct != null ? `${weath.snowHumidityPct} %` : null)}
-            ${cell(weath.airHumidityPct != null ? `${weath.airHumidityPct} %` : null)}
-            ${cell(weath.clouds != null ? `${weath.clouds} %` : null)}
-            ${cell(weath.visibility)}
-          </tr>
-          <tr>
-            ${th("Wind")}${th("Precipitation")}${th("Snow type")}${th("Grain size")}${th("Track hardness")}${th("Test quality")}
-          </tr>
-          <tr>
-            ${cell(weath.wind)}
-            ${cell(weath.precipitation)}
-            ${cell(weath.snowType)}
-            ${cell(weath.grainSize)}
-            ${cell(weath.trackHardness)}
-            ${cell(weath.testQuality != null ? `${weath.testQuality}/10` : null)}
-          </tr>
-          ${(weath.artificialSnow || weath.naturalSnow || weath.snowHumidityType) ? `
-          <tr>
-            ${th("Artificial snow")}${th("Natural snow")}${th("Snow humidity type")}${th("")}${th("")}${th("")}
-          </tr>
-          <tr>
-            ${cell(weath.artificialSnow)}${cell(weath.naturalSnow)}${cell(weath.snowHumidityType)}${cell("")}${cell("")}${cell("")}
-          </tr>` : ""}
-        </tbody>
-      </table>` : `<p style="font-size:12px;color:#9ca3af;margin-bottom:24px;">No weather data linked to this test.</p>`;
-
-    const rowsHtml = relevantEntries.map((e) => {
+    const entryRows = relevantEntries.map((e) => {
       const ski = e.raceSkiId ? raceSkiById.get(e.raceSkiId) : undefined;
-      const isFirst = e.rank0km === 1;
-      const highlight = isFirst ? "background:#fef9c3;" : "";
-      return `<tr style="${highlight}">
-        ${cell(ski?.skiId ?? `#${e.skiNumber}`, "font-weight:600;")}
-        ${cell(ski?.brand)}
-        ${cell(ski?.grind)}
-        ${cell(e.result0kmCmBehind != null ? `${e.result0kmCmBehind} cm` : null)}
-        ${cell(e.rank0km != null ? (isFirst ? `🥇 #${e.rank0km}` : `#${e.rank0km}`) : null)}
-        ${cell(e.feelingRank)}
-      </tr>`;
-    }).join("");
+      return [
+        ski?.skiId ?? `#${e.skiNumber}`,
+        ski?.brand ?? null,
+        ski?.grind ?? null,
+        e.result0kmCmBehind != null ? `${e.result0kmCmBehind} cm` : null,
+        e.rank0km != null ? (e.rank0km === 1 ? `🥇 #${e.rank0km}` : `#${e.rank0km}`) : null,
+        e.feelingRank ?? null,
+      ];
+    });
 
-    const html = `<!DOCTYPE html><html><head>
-      <meta charset="utf-8"/>
-      <title>Test Report — ${athleteName ?? "Athlete"} — ${test.date}</title>
-      <style>
-        * { box-sizing: border-box; }
-        body { font-family: system-ui, -apple-system, sans-serif; color: #111827; padding: 32px; max-width: 860px; margin: 0 auto; }
-        @media print { body { padding: 0; } }
-      </style>
-    </head><body>
-      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #e5e7eb;padding-bottom:16px;margin-bottom:24px;">
-        <div>
-          <h1 style="font-size:22px;font-weight:800;color:#111827;margin:0;">Test Report</h1>
-          ${athleteName ? `<p style="font-size:13px;color:#6b7280;margin:4px 0 0;">${athleteName}</p>` : ""}
-        </div>
-        <div style="text-align:right;">
-          <p style="font-size:11px;color:#9ca3af;margin:0;">Generated by Glidr</p>
-          <p style="font-size:11px;color:#9ca3af;margin:2px 0 0;">${new Date().toLocaleDateString()}</p>
-        </div>
-      </div>
-      <table style="border-collapse:collapse;width:100%;margin-bottom:24px;">
-        <tr>${th("Date")}${th("Location")}${th("Type")}${th("Notes")}</tr>
-        <tr>${cell(test.date)}${cell(test.location)}${cell(test.testType)}${cell(test.notes)}</tr>
-      </table>
-      ${weatherBlock}
-      <h2 style="font-size:15px;font-weight:700;color:#111827;margin:0 0 10px;">Results</h2>
-      <table style="border-collapse:collapse;width:100%;">
-        <thead><tr>${th("Ski ID")}${th("Brand")}${th("Grind")}${th("Result")}${th("Rank")}${th("Feeling")}</tr></thead>
-        <tbody>${rowsHtml || `<tr><td colspan="6" style="padding:8px;text-align:center;color:#9ca3af;font-size:12px;">No entries</td></tr>`}</tbody>
-      </table>
-    </body></html>`;
+    const subtitle = [athleteName, test.location, test.testType].filter(Boolean).join(" · ");
 
-    const win = window.open("", "_blank");
-    if (win) {
-      win.document.write(html);
-      win.document.close();
-      win.focus();
-      setTimeout(() => { win.print(); }, 400);
-    }
+    const body = `
+      <div class="pdf-title">Test Report</div>
+      <div class="pdf-subtitle">${subtitle}</div>
+      ${pdfTable(["Date", "Location", "Type", "Notes"], [[test.date, test.location, test.testType, test.notes ?? null]])}
+      ${weath ? pdfWeather(weath) : ""}
+      ${pdfSection("Results")}
+      ${pdfTable(
+        ["Ski ID", "Brand", "Grind", "Result", "Rank", "Feeling"],
+        entryRows,
+        (row) => row[4] != null && String(row[4]).startsWith("🥇"),
+      )}
+    `;
+
+    openPdfWindow(pdfDocument(`Test Report — ${test.date}`, body), win);
   }
 
   const getSkiLabel = (entry: TestEntry) => {

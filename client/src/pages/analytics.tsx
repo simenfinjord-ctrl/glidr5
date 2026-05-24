@@ -22,6 +22,7 @@ import { cn, fmtDate } from "@/lib/utils";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/lib/i18n";
+import { pdfDocument, pdfSection, pdfCards, pdfTable, openPdfWindow } from "@/lib/pdf-layout";
 
 type Test = {
   id: number;
@@ -2360,82 +2361,36 @@ export default function Analytics() {
   function handleExportPDF() {
     const newWin = window.open("", "_blank");
     if (!newWin) return;
+
     const totalTests = tests.length;
     const productsTested = new Set(allEntries.map((e) => e.productId).filter(Boolean)).size;
     const uniqueLocations = new Set(tests.map((t) => t.location)).size;
     const withWeather = tests.filter((t) => t.weatherId != null).length;
     const weatherPct = totalTests > 0 ? Math.round((withWeather / totalTests) * 100) : 0;
-    const dateStr = new Date().toLocaleDateString();
 
-    const topRowsHtml = exportTopByWinRate
-      .map((p, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${p.name}</td>
-          <td>${p.appearances}</td>
-          <td>${p.avgRank}</td>
-          <td>${p.winRate}%</td>
-          <td>${p.wins}</td>
-        </tr>`)
-      .join("");
+    const topRows = exportTopByWinRate.map((p, i) => [i + 1, p.name, p.appearances, p.avgRank, `${p.winRate}%`, p.wins]);
+    const monthRows = testsByMonth.map((m) => [m.month, (m.glide || 0) + (m.structure || 0)]);
 
-    const monthRowsHtml = testsByMonth
-      .map((m) => `<tr><td>${m.month}</td><td>${(m.glide || 0) + (m.structure || 0)}</td></tr>`)
-      .join("");
+    const body = `
+      <div class="pdf-title">Analytics Report</div>
+      <div class="pdf-subtitle">${seasonFilter !== "All" ? `Season ${seasonFilter} · ` : ""}${testTypeFilter !== "All" ? `${testTypeFilter} · ` : ""}All data</div>
 
-    newWin.document.write(`<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Glidr Analytics Report</title>
-<style>
-  body { font-family: sans-serif; margin: 32px; color: #111; background: #fff; }
-  h1 { font-size: 24px; margin-bottom: 4px; }
-  .subtitle { color: #666; font-size: 14px; margin-bottom: 32px; }
-  h2 { font-size: 16px; margin-top: 32px; margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
-  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
-  .summary-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; text-align: center; }
-  .summary-card .value { font-size: 28px; font-weight: 700; }
-  .summary-card .label { font-size: 12px; color: #666; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 8px 12px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; font-weight: 600; }
-  td { padding: 6px 12px; border-bottom: 1px solid #f3f4f6; }
-  @media print {
-    body { margin: 0; }
-    .page-break { page-break-before: always; }
-  }
-</style>
-</head>
-<body>
-<h1>Glidr Analytics Report</h1>
-<div class="subtitle">Generated: ${dateStr}</div>
+      ${pdfCards([
+        { value: totalTests, label: "Total Tests" },
+        { value: productsTested, label: "Products Tested" },
+        { value: uniqueLocations, label: "Unique Locations" },
+        { value: `${weatherPct}%`, label: "Tests with Weather" },
+      ])}
 
-<h2>Summary</h2>
-<div class="summary-grid">
-  <div class="summary-card"><div class="value">${totalTests}</div><div class="label">Total Tests</div></div>
-  <div class="summary-card"><div class="value">${productsTested}</div><div class="label">Products Tested</div></div>
-  <div class="summary-card"><div class="value">${uniqueLocations}</div><div class="label">Unique Locations</div></div>
-  <div class="summary-card"><div class="value">${weatherPct}%</div><div class="label">Tests with Weather</div></div>
-</div>
+      ${pdfSection("Top Products by Win Rate")}
+      ${pdfTable(["Rank", "Product", "Tests", "Avg Rank", "Win Rate", "Wins"], topRows)}
 
-<div class="page-break"></div>
-<h2>Top Products by Win Rate</h2>
-<table>
-  <thead><tr><th>Rank</th><th>Product</th><th>Tests</th><th>Avg Rank</th><th>Win Rate</th><th>Wins</th></tr></thead>
-  <tbody>${topRowsHtml || "<tr><td colspan='6'>No data (min 3 appearances required)</td></tr>"}</tbody>
-</table>
+      <div class="page-break"></div>
+      ${pdfSection("Tests per Month")}
+      ${pdfTable(["Month", "Total Tests"], monthRows)}
+    `;
 
-<div class="page-break"></div>
-<h2>Tests per Month</h2>
-<table>
-  <thead><tr><th>Month</th><th>Total Tests</th></tr></thead>
-  <tbody>${monthRowsHtml || "<tr><td colspan='2'>No data</td></tr>"}</tbody>
-</table>
-</body>
-</html>`);
-    newWin.document.close();
-    newWin.print();
-    newWin.close();
+    openPdfWindow(pdfDocument("Analytics Report", body), newWin);
   }
 
   const TABS = [

@@ -343,7 +343,7 @@ function PrepDetailDialog({
           )}
           {showKick && prep.tette && (
             <div>
-              <p className="text-xs text-muted-foreground mb-0.5">Tette</p>
+              <p className="text-xs text-muted-foreground mb-0.5">{lang === "en" ? "Binder" : "Tette"}</p>
               <p className="font-medium">{prep.tette}</p>
             </div>
           )}
@@ -616,8 +616,8 @@ function PrepFormDialog({
           )}
           {showKick && (
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium">Tette</label>
-              <Input value={form.tette} onChange={(e) => f("tette", e.target.value)} />
+              <label className="mb-1 block text-xs font-medium">{L("Tette", "Binder")}</label>
+              <Input value={form.tette} onChange={(e) => f("tette", e.target.value)} placeholder={L("f.eks. Rode Violet", "e.g. Rode Violet")} />
             </div>
           )}
           <div className="sm:col-span-2">
@@ -641,9 +641,8 @@ function PrepFormDialog({
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function RacePrep() {
   const { user, can, isTeamAdmin, isSuperAdmin } = useAuth();
-  const { language } = useLanguage();
+  const { lang } = useLanguage();
   const { toast } = useToast();
-  const lang = language === "en" ? "en" : "no";
   const isAdmin = !!(isTeamAdmin || isSuperAdmin);
 
   const { data: preps = [], isLoading } = useQuery<RacePrep[]>({

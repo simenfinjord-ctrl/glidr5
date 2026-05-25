@@ -5,7 +5,7 @@ services:
     plan: free
     region: frankfurt
     buildCommand: npm install --include=dev && npm run build
-    startCommand: ./node_modules/.bin/drizzle-kit push --force && npm start
+    startCommand: npm start
     healthCheckPath: /
     envVars:
       - key: NODE_ENV

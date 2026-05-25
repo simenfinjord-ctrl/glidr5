@@ -194,7 +194,7 @@
   }
 
   .fs-gradient-emerald {
-    background: hsl(160 70% 40% / 0.04);
+    background: hsl(var(--primary) / 0.06);
   }
 
   .fs-gradient-violet {

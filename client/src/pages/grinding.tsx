@@ -814,7 +814,7 @@ function GrindProfileDetailDialog({
                           <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
                             <Wind className="h-2.5 w-2.5" /> Air {test.weather.airTemperatureC}°C
                           </span>
-                          <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
+                          <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-primary ring-1 ring-primary/10">
                             <Snowflake className="h-2.5 w-2.5" /> Snow {test.weather.snowTemperatureC}°C
                           </span>
                           {test.weather.humidity != null && (
@@ -936,6 +936,15 @@ export default function Grinding() {
   const [filterDate, setFilterDate] = useState("");
   const [filterGrinds, setFilterGrinds] = useState<string[]>([]);
   const [compareMode, setCompareMode] = useState(false);
+  const [wfAirTempMin, setWfAirTempMin] = useState("");
+  const [wfAirTempMax, setWfAirTempMax] = useState("");
+  const [wfSnowTempMin, setWfSnowTempMin] = useState("");
+  const [wfSnowTempMax, setWfSnowTempMax] = useState("");
+  const [wfAirHumMin, setWfAirHumMin] = useState("");
+  const [wfAirHumMax, setWfAirHumMax] = useState("");
+  const [wfSnowHumMin, setWfSnowHumMin] = useState("");
+  const [wfSnowHumMax, setWfSnowHumMax] = useState("");
+  const [wfWeatherOpen, setWfWeatherOpen] = useState(false);
 
   // Grind profiles state
   const [grindSearch, setGrindSearch] = useState("");
@@ -1045,13 +1054,26 @@ export default function Grinding() {
           if (!filterGrinds.some((g) => testGrindNames.has(g))) return false;
         }
       }
+      // Weather filters
+      if (hasWeatherFiltersGrind) {
+        const w = t.weatherId ? weatherById.get(t.weatherId) : null;
+        if (!w) return false;
+        if (wfAirTempMin !== "" && (w.airTemperatureC ?? 999) < parseFloat(wfAirTempMin)) return false;
+        if (wfAirTempMax !== "" && (w.airTemperatureC ?? -999) > parseFloat(wfAirTempMax)) return false;
+        if (wfSnowTempMin !== "" && (w.snowTemperatureC ?? 999) < parseFloat(wfSnowTempMin)) return false;
+        if (wfSnowTempMax !== "" && (w.snowTemperatureC ?? -999) > parseFloat(wfSnowTempMax)) return false;
+        if (wfAirHumMin !== "" && (w.airHumidityPct ?? 999) < parseFloat(wfAirHumMin)) return false;
+        if (wfAirHumMax !== "" && (w.airHumidityPct ?? -999) > parseFloat(wfAirHumMax)) return false;
+        if (wfSnowHumMin !== "" && (w.snowHumidityPct ?? 999) < parseFloat(wfSnowHumMin)) return false;
+        if (wfSnowHumMax !== "" && (w.snowHumidityPct ?? -999) > parseFloat(wfSnowHumMax)) return false;
+      }
       return true;
     });
     if (filterDate) {
       result.sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99"));
     }
     return result;
-  }, [grindTests, filterSeason, filterLocation, filterDate, filterGrinds, compareMode, allEntries]);
+  }, [grindTests, filterSeason, filterLocation, filterDate, filterGrinds, compareMode, allEntries, hasWeatherFiltersGrind, wfAirTempMin, wfAirTempMax, wfSnowTempMin, wfSnowTempMax, wfAirHumMin, wfAirHumMax, wfSnowHumMin, wfSnowHumMax, weatherById]);
 
   const filteredProfiles = useMemo(() => {
     if (!grindSearch.trim()) return grindProfiles;
@@ -1074,7 +1096,8 @@ export default function Grinding() {
   }, [filterGrinds]);
 
   const isGrindFilterActive = filterGrinds.length > 0;
-  const hasFilters = filterSeason !== "All" || filterLocation || filterDate || isGrindFilterActive;
+  const hasWeatherFiltersGrind = !!(wfAirTempMin || wfAirTempMax || wfSnowTempMin || wfSnowTempMax || wfAirHumMin || wfAirHumMax || wfSnowHumMin || wfSnowHumMax);
+  const hasFilters = filterSeason !== "All" || filterLocation || filterDate || isGrindFilterActive || hasWeatherFiltersGrind;
   const isDayView = !!filterDate;
 
   function getTabSubtitle() {
@@ -1097,7 +1120,7 @@ export default function Grinding() {
           <div className="flex items-center gap-2">
             {tab === "tests" && (
               <AppLink href="/tests/new?type=Grind&returnTo=/grinding">
-                <Button data-testid="button-new-grind-test" className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
+                <Button data-testid="button-new-grind-test" className="shadow-sm">
                   <Plus className="mr-2 h-4 w-4" />
                   New Grind Test
                 </Button>
@@ -1135,24 +1158,24 @@ export default function Grinding() {
         <div className="flex gap-1 border-b border-border">
           <button
             onClick={() => setTab("tests")}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === "tests" ? "border-indigo-600 text-indigo-600" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === "tests" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}
             data-testid="tab-grinding-tests"
           >
             <Disc3 className="inline-block mr-1.5 h-4 w-4" />
             {t("grinding.testsTab")}
             {grindTests.length > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-700">{grindTests.length}</span>
+              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">{grindTests.length}</span>
             )}
           </button>
           <button
             onClick={() => setTab("grinds")}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === "grinds" ? "border-violet-600 text-violet-600" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === "grinds" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}
             data-testid="tab-grinding-grinds"
           >
             <Trophy className="inline-block mr-1.5 h-4 w-4" />
             {t("grinding.grindsTab")}
             {grindProfiles.length > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-violet-100 px-1.5 py-0.5 text-xs font-medium text-violet-700">{grindProfiles.length}</span>
+              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">{grindProfiles.length}</span>
             )}
           </button>
         </div>
@@ -1163,8 +1186,8 @@ export default function Grinding() {
             <Card className="fs-card rounded-2xl p-4">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="inline-flex items-center gap-2 text-sm font-semibold">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-500/10">
-                    <Filter className="h-3.5 w-3.5 text-indigo-600" />
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10">
+                    <Filter className="h-3.5 w-3.5 text-primary" />
                   </div>
                   Filters
                 </div>
@@ -1184,7 +1207,7 @@ export default function Grinding() {
                   </div>
                   <div className="min-w-[150px]">
                     <div className="flex items-center gap-1.5">
-                      <CalendarDays className="h-3.5 w-3.5 text-indigo-500/70" />
+                      <CalendarDays className="h-3.5 w-3.5 text-primary/60" />
                       <Input
                         type="date"
                         value={filterDate}
@@ -1196,7 +1219,7 @@ export default function Grinding() {
                   </div>
                   <div className="min-w-[160px]">
                     <div className="flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-indigo-500/70" />
+                      <MapPin className="h-3.5 w-3.5 text-primary/60" />
                       <Input
                         value={filterLocation}
                         onChange={(e) => setFilterLocation(e.target.value)}
@@ -1206,9 +1229,20 @@ export default function Grinding() {
                     </div>
                   </div>
                 </div>
+                <Button
+                  variant={wfWeatherOpen || hasWeatherFiltersGrind ? "default" : "outline"}
+                  size="sm"
+                  className="gap-1.5 shrink-0"
+                  onClick={() => setWfWeatherOpen(v => !v)}
+                >
+                  <Snowflake className="h-3.5 w-3.5" />
+                  {t("weather.title") || "Weather"}
+                  {hasWeatherFiltersGrind && <span className="ml-1 text-[10px]">✓</span>}
+                </Button>
                 {hasFilters && (
                   <Button
                     variant="secondary"
+                    size="sm"
                     data-testid="button-clear-grind-filters"
                     onClick={() => {
                       setFilterSeason("All");
@@ -1216,12 +1250,76 @@ export default function Grinding() {
                       setFilterDate("");
                       setFilterGrinds([]);
                       setCompareMode(false);
+                      setWfAirTempMin(""); setWfAirTempMax("");
+                      setWfSnowTempMin(""); setWfSnowTempMax("");
+                      setWfAirHumMin(""); setWfAirHumMax("");
+                      setWfSnowHumMin(""); setWfSnowHumMax("");
                     }}
                   >
                     Clear
                   </Button>
                 )}
               </div>
+
+              {/* Weather conditions filter panel */}
+              {wfWeatherOpen && (
+                <div className="mt-3 border-t border-border pt-3">
+                  <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <Snowflake className="h-3 w-3" />
+                    Weather Conditions
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {/* Air temp */}
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
+                        <span className="text-xs text-muted-foreground">Air temp (°C)</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfAirTempMin} onChange={e => setWfAirTempMin(e.target.value)} />
+                        <span className="text-xs text-muted-foreground">–</span>
+                        <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfAirTempMax} onChange={e => setWfAirTempMax(e.target.value)} />
+                      </div>
+                    </div>
+                    {/* Snow temp */}
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                        <span className="text-xs text-muted-foreground">Snow temp (°C)</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfSnowTempMin} onChange={e => setWfSnowTempMin(e.target.value)} />
+                        <span className="text-xs text-muted-foreground">–</span>
+                        <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfSnowTempMax} onChange={e => setWfSnowTempMax(e.target.value)} />
+                      </div>
+                    </div>
+                    {/* Air humidity */}
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <span className="inline-block h-2 w-2 rounded-full bg-violet-500" />
+                        <span className="text-xs text-muted-foreground">Air humidity (%rH)</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfAirHumMin} onChange={e => setWfAirHumMin(e.target.value)} />
+                        <span className="text-xs text-muted-foreground">–</span>
+                        <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfAirHumMax} onChange={e => setWfAirHumMax(e.target.value)} />
+                      </div>
+                    </div>
+                    {/* Snow humidity */}
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+                        <span className="text-xs text-muted-foreground">Snow humidity (%)</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfSnowHumMin} onChange={e => setWfSnowHumMin(e.target.value)} />
+                        <span className="text-xs text-muted-foreground">–</span>
+                        <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfSnowHumMax} onChange={e => setWfSnowHumMax(e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {availableDates.length > 0 && !filterDate && (
                 <div className="mt-3 border-t border-border pt-3">
@@ -1235,7 +1333,7 @@ export default function Grinding() {
                         key={d}
                         type="button"
                         onClick={() => setFilterDate(d)}
-                        className="rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-500/20 transition-colors"
+                        className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
                         data-testid={`button-grind-date-${d}`}
                       >
                         {fmtDate(d)}
@@ -1394,7 +1492,7 @@ export default function Grinding() {
                               </span>
                             )}
                             {w && (
-                              <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
+                              <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-primary ring-1 ring-primary/10">
                                 <Thermometer className="h-2.5 w-2.5" /> Snow {w.snowTemperatureC}°C
                               </span>
                             )}
@@ -1615,7 +1713,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
             <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{gp.pattern}</span>
           )}
           {w && (
-            <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
+            <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-primary ring-1 ring-primary/10">
               <Thermometer className="h-2.5 w-2.5" /> Snow {w.snowTemperatureC}°C
             </span>
           )}

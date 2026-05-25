@@ -5,7 +5,7 @@ import { z } from "zod";
 
 export * from "./models/chat";
 
-export const PERMISSION_AREAS = ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "suggestions", "liverunsheets"] as const;
+export const PERMISSION_AREAS = ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "raceprep", "suggestions", "liverunsheets"] as const;
 export type PermissionArea = typeof PERMISSION_AREAS[number];
 export type PermissionLevel = "none" | "view" | "edit";
 export type UserPermissions = Record<PermissionArea, PermissionLevel>;
@@ -19,6 +19,7 @@ export const DEFAULT_PERMISSIONS: UserPermissions = {
   analytics: "none",
   grinding: "none",
   raceskis: "none",
+  raceprep: "none",
   suggestions: "none",
   liverunsheets: "none",
 };
@@ -32,6 +33,7 @@ export const ADMIN_PERMISSIONS: UserPermissions = {
   analytics: "edit",
   grinding: "edit",
   raceskis: "edit",
+  raceprep: "edit",
   suggestions: "edit",
   liverunsheets: "edit",
 };
@@ -43,7 +45,7 @@ export const ADMIN_PERMISSIONS: UserPermissions = {
 export const TEAM_FEATURES = [
   // Navigation areas (backend-enforced)
   "dashboard", "tests", "testskis", "products", "weather",
-  "analytics", "grinding", "raceskis", "suggestions", "liverunsheets",
+  "analytics", "grinding", "raceskis", "raceprep", "suggestions", "liverunsheets",
   // Field & runsheet tools
   "runsheet_brackets", "garmin_watch", "mobile_runsheet",
   // Export & backup
@@ -65,7 +67,8 @@ export const FEATURE_LABELS: Record<TeamFeature, string> = {
   weather: "Weather Logging",
   analytics: "Analytics & Charts",
   grinding: "Grinding Records",
-  raceskis: "Race Skis & Race Prep",
+  raceskis: "Race Skis",
+  raceprep: "Race Prep Planning",
   suggestions: "Suggestions Engine",
   liverunsheets: "Live Runsheet Monitor",
   runsheet_brackets: "Runsheet Brackets",
@@ -90,7 +93,7 @@ export const FEATURE_LABELS: Record<TeamFeature, string> = {
 export const FEATURE_CATEGORIES: { label: string; features: readonly TeamFeature[] }[] = [
   {
     label: "Navigation Areas",
-    features: ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "suggestions", "liverunsheets"],
+    features: ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "raceprep", "suggestions", "liverunsheets"],
   },
   {
     label: "Field & Runsheet Tools",
@@ -137,7 +140,7 @@ export const PLAN_FEATURE_PRESETS: Record<string, { label: string; color: string
     color: "blue",
     features: [
       "dashboard", "tests", "testskis", "products", "weather",
-      "analytics", "grinding", "raceskis", "suggestions", "liverunsheets",
+      "analytics", "grinding", "raceskis", "raceprep", "suggestions", "liverunsheets",
       "runsheet_brackets", "garmin_watch", "mobile_runsheet",
       "pdf_export", "excel_export", "google_sheets_backup", "offline_mode",
       "blind_tester", "activity_logging", "column_visibility",
@@ -149,7 +152,7 @@ export const PLAN_FEATURE_PRESETS: Record<string, { label: string; color: string
     color: "purple",
     features: [
       "dashboard", "tests", "testskis", "products", "weather",
-      "analytics", "grinding", "raceskis", "suggestions", "liverunsheets",
+      "analytics", "grinding", "raceskis", "raceprep", "suggestions", "liverunsheets",
       "runsheet_brackets", "garmin_watch", "mobile_runsheet",
       "pdf_export", "excel_export", "google_sheets_backup", "offline_mode",
       "blind_tester", "activity_logging", "column_visibility",

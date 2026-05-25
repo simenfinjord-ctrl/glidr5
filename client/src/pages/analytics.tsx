@@ -2173,13 +2173,22 @@ function RacedProductsTab({
   racePreps,
   racedProductStats,
   lang,
+  roleFilter,
 }: {
   racePreps: any[];
   racedProductStats: RacedProductStat[];
   lang: string;
+  roleFilter: string;
 }) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const L = (no: string, en: string) => lang === "en" ? en : no;
+
+  // Apply role filter from analytics header (All / Glide / Structure)
+  const visibleStats = useMemo(() => {
+    if (roleFilter === "Glide") return racedProductStats.filter(s => s.glideCount > 0).map(s => ({ ...s, usages: s.usages.filter(u => u.role === "glide") }));
+    if (roleFilter === "Structure") return racedProductStats.filter(s => s.structureCount > 0).map(s => ({ ...s, usages: s.usages.filter(u => u.role === "structure") }));
+    return racedProductStats;
+  }, [racedProductStats, roleFilter]);
 
   function toggle(id: number) {
     setExpanded(prev => {
@@ -2202,9 +2211,9 @@ function RacedProductsTab({
   return (
     <div className="space-y-4 p-1">
       <p className="text-sm text-muted-foreground">
-        {L(`${racePreps.length} rennprep-er`, `${racePreps.length} race preps`)}
+        {L(`${racePreps.length} rennprep-er · ${visibleStats.length} produkter`, `${racePreps.length} race preps · ${visibleStats.length} products`)}
       </p>
-      {racedProductStats.length === 0 ? (
+      {visibleStats.length === 0 ? (
         <Card className="p-8 text-center">
           <Trophy className="h-8 w-8 mx-auto mb-2 opacity-30 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
@@ -2213,7 +2222,7 @@ function RacedProductsTab({
         </Card>
       ) : (
         <div className="space-y-2">
-          {racedProductStats.map(({ product, glideCount, structureCount, kickCount, total, usages }) => {
+          {visibleStats.map(({ product, glideCount, structureCount, kickCount, total, usages }) => {
             const isOpen = expanded.has(product.id);
             return (
               <div key={product.id} className="rounded-xl border border-border overflow-hidden">
@@ -2953,6 +2962,7 @@ export default function Analytics() {
             racePreps={racePreps}
             racedProductStats={racedProductStats}
             lang={lang}
+            roleFilter={testTypeFilter}
           />
         )}
 

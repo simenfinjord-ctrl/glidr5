@@ -4366,7 +4366,7 @@ export async function registerRoutes(
 
   // ── Race Preps ──────────────────────────────────────────────────────────────
 
-  app.get("/api/race-preps", requirePermission("raceskis", "view"), async (req, res) => {
+  app.get("/api/race-preps", requirePermission("raceprep", "view"), async (req, res) => {
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
     const { pool } = await import("./db");
@@ -4382,7 +4382,7 @@ export async function registerRoutes(
     return res.json(result.rows);
   });
 
-  app.post("/api/race-preps", requirePermission("raceskis", "edit"), async (req, res) => {
+  app.post("/api/race-preps", requirePermission("raceprep", "edit"), async (req, res) => {
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
     const { date, location, raceType, discipline, products, method, structure, notes, productIds, structureIds, kickProductIds, tette, weatherId } = req.body;
@@ -4396,7 +4396,7 @@ export async function registerRoutes(
     return res.json({ id: result.rows[0].id });
   });
 
-  app.put("/api/race-preps/:id", requirePermission("raceskis", "edit"), async (req, res) => {
+  app.put("/api/race-preps/:id", requirePermission("raceprep", "edit"), async (req, res) => {
     const u = req.user as any;
     if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
     const id = parseInt(req.params.id);
@@ -4410,7 +4410,7 @@ export async function registerRoutes(
     return res.json({ ok: true });
   });
 
-  app.delete("/api/race-preps/:id", requirePermission("raceskis", "edit"), async (req, res) => {
+  app.delete("/api/race-preps/:id", requirePermission("raceprep", "edit"), async (req, res) => {
     const u = req.user as any;
     if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
     const id = parseInt(req.params.id);
@@ -4421,7 +4421,7 @@ export async function registerRoutes(
     return res.json({ ok: true });
   });
 
-  app.get("/api/race-preps/:id/entries", requirePermission("raceskis", "view"), async (req, res) => {
+  app.get("/api/race-preps/:id/entries", requirePermission("raceprep", "view"), async (req, res) => {
     const id = parseInt(req.params.id);
     const { pool } = await import("./db");
     const result = await (pool as any).query(
@@ -4434,7 +4434,7 @@ export async function registerRoutes(
     return res.json(result.rows);
   });
 
-  app.post("/api/race-preps/:id/entries", requirePermission("raceskis", "edit"), async (req, res) => {
+  app.post("/api/race-preps/:id/entries", requirePermission("raceprep", "edit"), async (req, res) => {
     const u = req.user as any;
     if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
     const racePrepId = parseInt(req.params.id);
@@ -4454,7 +4454,7 @@ export async function registerRoutes(
     return res.json({ id: result.rows[0].id });
   });
 
-  app.put("/api/race-preps/:id/entries/:eid", requirePermission("raceskis", "view"), async (req, res) => {
+  app.put("/api/race-preps/:id/entries/:eid", requirePermission("raceprep", "view"), async (req, res) => {
     const u = req.user as any;
     const eid = parseInt(req.params.eid);
     const { skiId, skiIdClassic, skiIdSkating, notes } = req.body;
@@ -4476,7 +4476,7 @@ export async function registerRoutes(
     return res.json({ ok: true });
   });
 
-  app.delete("/api/race-preps/:id/entries/:eid", requirePermission("raceskis", "edit"), async (req, res) => {
+  app.delete("/api/race-preps/:id/entries/:eid", requirePermission("raceprep", "edit"), async (req, res) => {
     const u = req.user as any;
     if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
     const eid = parseInt(req.params.eid);

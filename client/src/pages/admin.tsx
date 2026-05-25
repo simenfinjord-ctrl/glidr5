@@ -114,6 +114,7 @@ function PermissionsMatrix({
     analytics: t("nav.analytics"),
     grinding: t("nav.grinding"),
     raceskis: t("nav.raceskis"),
+    raceprep: t("nav.raceprep"),
     suggestions: t("nav.suggestions"),
     liverunsheets: t("nav.liveRunsheets"),
   };

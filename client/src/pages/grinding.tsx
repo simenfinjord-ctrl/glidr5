@@ -1040,6 +1040,9 @@ export default function Grinding() {
     return dates.sort().reverse();
   }, [grindTests]);
 
+  // Weather filter derived values — must be declared BEFORE the filtered useMemo
+  const hasWeatherFiltersGrind = !!(wfAirTempMin || wfAirTempMax || wfSnowTempMin || wfSnowTempMax || wfAirHumMin || wfAirHumMax || wfSnowHumMin || wfSnowHumMax);
+
   const filtered = useMemo(() => {
     const result = grindTests.filter((t) => {
       if (filterSeason !== "All" && getSeason(t.date) !== filterSeason) return false;
@@ -1096,7 +1099,6 @@ export default function Grinding() {
   }, [filterGrinds]);
 
   const isGrindFilterActive = filterGrinds.length > 0;
-  const hasWeatherFiltersGrind = !!(wfAirTempMin || wfAirTempMax || wfSnowTempMin || wfSnowTempMax || wfAirHumMin || wfAirHumMax || wfSnowHumMin || wfSnowHumMax);
   const hasFilters = filterSeason !== "All" || filterLocation || filterDate || isGrindFilterActive || hasWeatherFiltersGrind;
   const isDayView = !!filterDate;
 

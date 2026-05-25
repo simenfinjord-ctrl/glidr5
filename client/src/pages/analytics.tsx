@@ -334,7 +334,7 @@ function ActivityHeatmap({ tests }: { tests: Test[] }) {
 // ── Overview Stats ─────────────────────────────────────────────────────────────
 
 function OverviewStats({
-  tests, allEntries, products, productsById, testsById, weatherById,
+  tests, allEntries, products, productsById, testsById, weatherById, productCategoryFilter,
 }: {
   tests: Test[];
   allEntries: TestEntry[];
@@ -342,6 +342,7 @@ function OverviewStats({
   productsById: Map<number, Product>;
   testsById: Map<number, Test>;
   weatherById: Map<number, Weather>;
+  productCategoryFilter?: string;
 }) {
   const { t } = useI18n();
   const stats = useMemo(() => {
@@ -358,6 +359,14 @@ function OverviewStats({
       }
       const rank = getRank(e);
       for (const pid of ids) {
+        // Filter by product category if a category filter is active
+        if (productCategoryFilter === "Structure") {
+          const p = productsById.get(pid);
+          if (!p || p.category !== "Structure tool") continue;
+        } else if (productCategoryFilter === "Glide") {
+          const p = productsById.get(pid);
+          if (!p || p.category === "Structure tool") continue;
+        }
         if (!pStats.has(pid)) pStats.set(pid, { appearances: 0, ranks: [], wins: 0 });
         const ps = pStats.get(pid)!;
         ps.appearances++;
@@ -423,7 +432,7 @@ function OverviewStats({
     }
 
     return { weatherLinked, weatherPct, topByWinRate, mostUsed, topLocations, byType, snowTempDist, airTempDist, humidityTypeDist, trackHardnessDist };
-  }, [tests, allEntries, productsById, weatherById]);
+  }, [tests, allEntries, productsById, weatherById, productCategoryFilter]);
 
   const totalEntries = allEntries.length;
   const uniqueProductsUsed = new Set(allEntries.map((e) => e.productId).filter(Boolean)).size;
@@ -2342,8 +2351,7 @@ function RacedProductsTab({
 export default function Analytics() {
   const { t } = useI18n();
   const { can } = useAuth();
-  const { language } = useLanguage();
-  const lang = language === "en" ? "en" : "no";
+  const { lang } = useLanguage();
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
@@ -2377,7 +2385,9 @@ export default function Analytics() {
   }, [tests]);
 
   const filteredTests = useMemo(() => {
-    let result = testTypeFilter === "All" ? tests : tests.filter(t => t.testType === testTypeFilter);
+    // "Glide" and "Structure" are product-category filters, not test-type filters
+    const isProductCategoryFilter = testTypeFilter === "Glide" || testTypeFilter === "Structure";
+    let result = (testTypeFilter === "All" || isProductCategoryFilter) ? tests : tests.filter(t => t.testType === testTypeFilter);
     if (seasonFilter !== "All") result = result.filter(t => getSkiSeason(t.date) === seasonFilter);
     return result;
   }, [tests, testTypeFilter, seasonFilter]);
@@ -2762,6 +2772,7 @@ export default function Analytics() {
                   productsById={productsById}
                   testsById={testsById}
                   weatherById={weatherById}
+                  productCategoryFilter={testTypeFilter !== "All" ? testTypeFilter : undefined}
                 />
                 <FormTracker
                   allEntries={allEntries}

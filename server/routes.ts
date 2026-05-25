@@ -503,6 +503,8 @@ export async function registerRoutes(
       ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS kick_product_ids TEXT;
       ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS tette TEXT;
       ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS weather_id INTEGER;
+      ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS ski_id_classic TEXT;
+      ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS ski_id_skating TEXT;
     `);
   }
 
@@ -4424,7 +4426,8 @@ export async function registerRoutes(
     const { pool } = await import("./db");
     const result = await (pool as any).query(
       `SELECT id, race_prep_id AS "racePrepId", athlete_id AS "athleteId", athlete_name AS "athleteName",
-              ski_id AS "skiId", waxer_id AS "waxerId", waxer_name AS "waxerName", notes, created_at AS "createdAt"
+              ski_id AS "skiId", ski_id_classic AS "skiIdClassic", ski_id_skating AS "skiIdSkating",
+              waxer_id AS "waxerId", waxer_name AS "waxerName", notes, created_at AS "createdAt"
        FROM race_prep_entries WHERE race_prep_id = $1 ORDER BY athlete_name ASC`,
       [id]
     );
@@ -4454,7 +4457,7 @@ export async function registerRoutes(
   app.put("/api/race-preps/:id/entries/:eid", requirePermission("raceskis", "view"), async (req, res) => {
     const u = req.user as any;
     const eid = parseInt(req.params.eid);
-    const { skiId, notes } = req.body;
+    const { skiId, skiIdClassic, skiIdSkating, notes } = req.body;
     const { pool } = await import("./db");
     const entryRes = await (pool as any).query(
       `SELECT waxer_id AS "waxerId" FROM race_prep_entries WHERE id=$1`, [eid]
@@ -4464,8 +4467,11 @@ export async function registerRoutes(
     const isAdmin = u.isTeamAdmin === 1 || u.isAdmin === 1;
     if (!isAdmin && waxerId !== null && waxerId !== u.id) return res.status(403).json({ message: "You can only update your own entries" });
     await (pool as any).query(
-      `UPDATE race_prep_entries SET ski_id=$1, waxer_id=$2, waxer_name=$3, notes=$4 WHERE id=$5`,
-      [skiId || null, u.id, u.name || "Ukjent", notes || null, eid]
+      `UPDATE race_prep_entries SET ski_id=$1, ski_id_classic=$2, ski_id_skating=$3, waxer_id=$4, waxer_name=$5, notes=$6 WHERE id=$7`,
+      [skiId != null ? String(skiId) : null,
+       skiIdClassic != null ? String(skiIdClassic) : null,
+       skiIdSkating != null ? String(skiIdSkating) : null,
+       u.id, u.name || "Ukjent", notes || null, eid]
     );
     return res.json({ ok: true });
   });

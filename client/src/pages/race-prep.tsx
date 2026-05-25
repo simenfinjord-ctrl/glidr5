@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Flag, Plus, X, ChevronRight, Pencil, Check, Trash2, Users, Search, Snowflake } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -66,6 +67,8 @@ type RacePrepEntry = {
   athleteId: number;
   athleteName: string;
   skiId: string | null;
+  skiIdClassic: string | null;
+  skiIdSkating: string | null;
   waxerId: number | null;
   waxerName: string | null;
   notes: string | null;
@@ -262,19 +265,27 @@ function SkiIdCell({
   prepId,
   onSaved,
   lang,
+  disciplineHint,
 }: {
   entry: RacePrepEntry;
   canEdit: boolean;
   prepId: number;
   onSaved: () => void;
   lang: string;
+  disciplineHint?: "Classic" | "Skating";
 }) {
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(entry.skiId ?? "");
+  const [val, setVal] = useState(
+    disciplineHint === "Classic" ? (entry.skiIdClassic ?? entry.skiId ?? "")
+    : disciplineHint === "Skating" ? (entry.skiIdSkating ?? "")
+    : (entry.skiId ?? "")
+  );
   const [saving, setSaving] = useState(false);
   const [skiDetailOpen, setSkiDetailOpen] = useState(false);
   const [selectedSki, setSelectedSki] = useState<RaceSkiRecord | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dropRect, setDropRect] = useState<{ top: number; left: number; width: number } | null>(null);
 
   // Fetch athlete's skis for autocomplete
   const { data: athleteSkis = [] } = useQuery<RaceSkiRecord[]>({
@@ -283,49 +294,64 @@ function SkiIdCell({
   });
 
   const suggestions = useMemo(() => {
-    if (!val.trim()) return athleteSkis.slice(0, 8);
-    return athleteSkis.filter(s =>
+    const base = disciplineHint
+      ? athleteSkis.filter(s => s.discipline === disciplineHint)
+      : athleteSkis;
+    if (!val.trim()) return base.slice(0, 8);
+    return base.filter(s =>
       s.skiId.toLowerCase().includes(val.toLowerCase()) ||
       (s.serialNumber ?? "").toLowerCase().includes(val.toLowerCase())
     ).slice(0, 8);
-  }, [athleteSkis, val]);
+  }, [athleteSkis, val, disciplineHint]);
 
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    if (showSuggestions && inputRef.current) {
+      const r = inputRef.current.getBoundingClientRect();
+      setDropRect({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 192) });
+    }
+  }, [showSuggestions, val]);
+
+  // Current ski ID value for display
+  const currentSkiId = disciplineHint === "Classic" ? (entry.skiIdClassic ?? entry.skiId)
+    : disciplineHint === "Skating" ? entry.skiIdSkating
+    : entry.skiId;
 
   async function save(skiIdVal?: string) {
     const finalVal = skiIdVal !== undefined ? skiIdVal : val;
     setSaving(true);
     try {
-      await apiRequest("PUT", `/api/race-preps/${prepId}/entries/${entry.id}`, {
-        skiId: finalVal.trim() || null,
-        notes: entry.notes,
-      });
+      const body: any = { notes: entry.notes };
+      if (disciplineHint === "Classic") body.skiIdClassic = finalVal.trim() || null;
+      else if (disciplineHint === "Skating") body.skiIdSkating = finalVal.trim() || null;
+      else body.skiId = finalVal.trim() || null;
+      await apiRequest("PUT", `/api/race-preps/${prepId}/entries/${entry.id}`, body);
       onSaved();
       setEditing(false);
       setShowSuggestions(false);
     } catch {
-      toast({ title: "Feil", description: "Kunne ikke lagre Ski-ID", variant: "destructive" });
+      toast({ title: "Feil", description: "Kunde ikke lagre Ski-ID", variant: "destructive" });
     } finally {
       setSaving(false);
     }
   }
 
-  // Find ski record matching current entry.skiId for magnifying glass
   const { data: allSkisForAthlete = [] } = useQuery<RaceSkiRecord[]>({
     queryKey: [`/api/athletes/${entry.athleteId}/skis`],
-    enabled: !!entry.skiId,
+    enabled: !!currentSkiId,
   });
 
   const matchedSki = useMemo(() =>
-    allSkisForAthlete.find(s => s.skiId === entry.skiId || s.serialNumber === entry.skiId) ?? null,
-    [allSkisForAthlete, entry.skiId]
+    allSkisForAthlete.find(s => s.skiId === currentSkiId || s.serialNumber === currentSkiId) ?? null,
+    [allSkisForAthlete, currentSkiId]
   );
 
   if (!canEdit) {
     return (
       <div className="flex items-center gap-1">
-        <span className="text-sm">{entry.skiId ?? <span className="text-muted-foreground">—</span>}</span>
-        {entry.skiId && matchedSki && (
+        <span className="text-sm">{currentSkiId ?? <span className="text-muted-foreground">—</span>}</span>
+        {currentSkiId && matchedSki && (
           <button
             className="text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => { setSelectedSki(matchedSki); setSkiDetailOpen(true); }}
@@ -346,18 +372,23 @@ function SkiIdCell({
       <div className="relative flex items-start gap-1">
         <div className="relative">
           <Input
+            ref={inputRef}
             className="h-7 w-28 text-xs"
             value={val}
             onChange={(e) => { setVal(e.target.value); setShowSuggestions(true); }}
             onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
             onKeyDown={(e) => {
               if (e.key === "Enter") { save(); setShowSuggestions(false); }
-              if (e.key === "Escape") { setEditing(false); setVal(entry.skiId ?? ""); setShowSuggestions(false); }
+              if (e.key === "Escape") { setEditing(false); setVal(currentSkiId ?? ""); setShowSuggestions(false); }
             }}
             autoFocus
           />
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute top-full left-0 z-50 mt-1 w-48 rounded-lg border border-border bg-card shadow-md max-h-40 overflow-y-auto">
+          {showSuggestions && suggestions.length > 0 && dropRect && createPortal(
+            <div
+              style={{ position: "fixed", top: dropRect.top, left: dropRect.left, width: dropRect.width, zIndex: 9999 }}
+              className="rounded-lg border border-border bg-card shadow-md max-h-40 overflow-y-auto"
+            >
               {suggestions.map(s => (
                 <button
                   key={s.id}
@@ -370,13 +401,14 @@ function SkiIdCell({
                   {s.discipline && <span className="ml-1 text-muted-foreground text-[10px]">({s.discipline})</span>}
                 </button>
               ))}
-            </div>
+            </div>,
+            document.body
           )}
         </div>
         <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => save()} disabled={saving}>
           <Check className="h-3.5 w-3.5 text-emerald-600" />
         </Button>
-        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditing(false); setVal(entry.skiId ?? ""); setShowSuggestions(false); }}>
+        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditing(false); setVal(currentSkiId ?? ""); setShowSuggestions(false); }}>
           <X className="h-3.5 w-3.5" />
         </Button>
       </div>
@@ -389,10 +421,10 @@ function SkiIdCell({
         className="flex items-center gap-1.5 group text-sm"
         onClick={() => setEditing(true)}
       >
-        <span>{entry.skiId ?? <span className="text-muted-foreground">—</span>}</span>
+        <span>{currentSkiId ?? <span className="text-muted-foreground">—</span>}</span>
         <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </button>
-      {entry.skiId && matchedSki && (
+      {currentSkiId && matchedSki && (
         <button
           className="text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => { setSelectedSki(matchedSki); setSkiDetailOpen(true); }}
@@ -485,6 +517,8 @@ function PrepDetailDialog({
   const L = (no: string, en: string) => lang === "en" ? en : no;
 
   function canEditEntry(entry: RacePrepEntry): boolean {
+    // Admins can always edit. Otherwise: only the assigned waxer for this entry can set Ski-ID.
+    // If waxerId is null (not yet claimed), any raceskis-level user may fill it in (they become the waxer on save).
     return isAdmin || entry.waxerId === null || entry.waxerId === userId;
   }
 
@@ -562,16 +596,16 @@ function PrepDetailDialog({
               <p className="font-medium">{structureNamesStr}</p>
             </div>
           )}
-          {showKick && kickDisplay && (
+          {showKick && (
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">Kick</p>
-              <p className="font-medium">{kickDisplay}</p>
+              <p className="font-medium">{kickDisplay || <span className="text-muted-foreground">—</span>}</p>
             </div>
           )}
-          {showKick && prep.tette && (
+          {showKick && (
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">{lang === "en" ? "Binder" : "Tette"}</p>
-              <p className="font-medium">{prep.tette}</p>
+              <p className="font-medium">{prep.tette || <span className="text-muted-foreground">—</span>}</p>
             </div>
           )}
           {prep.method && (
@@ -627,12 +661,19 @@ function PrepDetailDialog({
               {L("Ingen løpere lagt til ennå.", "No athletes added yet.")}
             </p>
           ) : (
-            <div className="rounded-xl border border-border overflow-hidden">
+            <div className="rounded-xl border border-border overflow-visible">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
                     <th className="px-3 py-2">{L("Løper", "Athlete")}</th>
-                    <th className="px-3 py-2">Ski-ID</th>
+                    {prep.discipline === "Skiathlon" ? (
+                      <>
+                        <th className="px-3 py-2">Ski-ID Klassisk</th>
+                        <th className="px-3 py-2">Ski-ID Skøyting</th>
+                      </>
+                    ) : (
+                      <th className="px-3 py-2">Ski-ID</th>
+                    )}
                     <th className="px-3 py-2">{L("Smører", "Waxer")}</th>
                     {isAdmin && <th className="px-3 py-2 w-8" />}
                   </tr>
@@ -641,15 +682,27 @@ function PrepDetailDialog({
                   {entries.map((entry) => (
                     <tr key={entry.id} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
                       <td className="px-3 py-2.5 font-medium">{entry.athleteName}</td>
-                      <td className="px-3 py-2.5">
-                        <SkiIdCell
-                          entry={entry}
-                          canEdit={canEditEntry(entry)}
-                          prepId={prep.id}
-                          onSaved={refetchEntries}
-                          lang={lang}
-                        />
-                      </td>
+                      {prep.discipline === "Skiathlon" ? (
+                        <>
+                          <td className="px-3 py-2.5">
+                            <SkiIdCell entry={entry} canEdit={canEditEntry(entry)} prepId={prep.id} onSaved={refetchEntries} lang={lang} disciplineHint="Classic" />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <SkiIdCell entry={entry} canEdit={canEditEntry(entry)} prepId={prep.id} onSaved={refetchEntries} lang={lang} disciplineHint="Skating" />
+                          </td>
+                        </>
+                      ) : (
+                        <td className="px-3 py-2.5">
+                          <SkiIdCell
+                            entry={entry}
+                            canEdit={canEditEntry(entry)}
+                            prepId={prep.id}
+                            onSaved={refetchEntries}
+                            lang={lang}
+                            disciplineHint={prep.discipline === "Classic" ? "Classic" : prep.discipline === "Skating" ? "Skating" : undefined}
+                          />
+                        </td>
+                      )}
                       <td className="px-3 py-2.5 text-muted-foreground text-xs">{entry.waxerName ?? "—"}</td>
                       {isAdmin && (
                         <td className="px-3 py-2.5">
@@ -936,6 +989,13 @@ export default function RacePrep() {
   const [disciplineFilter, setDisciplineFilter] = useState("All");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [weatherFilterOpen, setWeatherFilterOpen] = useState(false);
+  const [wfSnowTempMin, setWfSnowTempMin] = useState("");
+  const [wfSnowTempMax, setWfSnowTempMax] = useState("");
+  const [wfAirTempMin, setWfAirTempMin] = useState("");
+  const [wfAirTempMax, setWfAirTempMax] = useState("");
+  const [wfSnowType, setWfSnowType] = useState("");
+  const [wfTrackHardness, setWfTrackHardness] = useState("");
 
   const L = (no: string, en: string) => lang === "en" ? en : no;
 
@@ -950,6 +1010,14 @@ export default function RacePrep() {
       toast({ title: L("Feil", "Error"), variant: "destructive" });
     }
   }
+
+  const weatherById = useMemo(() => {
+    const m = new Map<number, Weather>();
+    for (const w of weatherList) m.set(w.id, w);
+    return m;
+  }, [weatherList]);
+
+  const hasWeatherFilter = !!(wfSnowTempMin || wfSnowTempMax || wfAirTempMin || wfAirTempMax || wfSnowType || wfTrackHardness);
 
   const filteredPreps = useMemo(() => {
     return preps.filter(prep => {
@@ -966,9 +1034,20 @@ export default function RacePrep() {
           !glide.toLowerCase().includes(q)
         ) return false;
       }
+      // Weather filters — only apply if prep has linked weather
+      if (hasWeatherFilter) {
+        const w = prep.weatherId ? weatherById.get(prep.weatherId) : null;
+        if (!w) return false;
+        if (wfSnowTempMin !== "" && (w.snowTemperatureC ?? 999) < parseFloat(wfSnowTempMin)) return false;
+        if (wfSnowTempMax !== "" && (w.snowTemperatureC ?? -999) > parseFloat(wfSnowTempMax)) return false;
+        if (wfAirTempMin !== "" && (w.airTemperatureC ?? 999) < parseFloat(wfAirTempMin)) return false;
+        if (wfAirTempMax !== "" && (w.airTemperatureC ?? -999) > parseFloat(wfAirTempMax)) return false;
+        if (wfSnowType && !(w.snowType ?? "").toLowerCase().includes(wfSnowType.toLowerCase())) return false;
+        if (wfTrackHardness && !(w.trackHardness ?? "").toLowerCase().includes(wfTrackHardness.toLowerCase())) return false;
+      }
       return true;
     });
-  }, [preps, disciplineFilter, dateFrom, dateTo, search, products]);
+  }, [preps, disciplineFilter, dateFrom, dateTo, search, products, hasWeatherFilter, wfSnowTempMin, wfSnowTempMax, wfAirTempMin, wfAirTempMax, wfSnowType, wfTrackHardness, weatherById]);
 
   if (!can("raceskis", "view")) {
     return (
@@ -1030,13 +1109,69 @@ export default function RacePrep() {
             <label className="text-xs text-muted-foreground whitespace-nowrap">{L("Til", "To")}</label>
             <Input type="date" className="w-36 h-9 text-sm" value={dateTo} onChange={e => setDateTo(e.target.value)} />
           </div>
-          {(search || disciplineFilter !== "All" || dateFrom || dateTo) && (
-            <Button variant="ghost" size="sm" className="h-9 px-2 text-xs" onClick={() => { setSearch(""); setDisciplineFilter("All"); setDateFrom(""); setDateTo(""); }}>
+          <Button
+            variant={weatherFilterOpen || hasWeatherFilter ? "default" : "outline"}
+            size="sm"
+            className="h-9 gap-1.5"
+            onClick={() => setWeatherFilterOpen(v => !v)}
+          >
+            <Snowflake className="h-3.5 w-3.5" />
+            {L("Vær", "Weather")}
+            {hasWeatherFilter && <span className="ml-1 rounded-full bg-white/20 text-[10px] px-1">✓</span>}
+          </Button>
+          {(search || disciplineFilter !== "All" || dateFrom || dateTo || hasWeatherFilter) && (
+            <Button variant="ghost" size="sm" className="h-9 px-2 text-xs" onClick={() => { setSearch(""); setDisciplineFilter("All"); setDateFrom(""); setDateTo(""); setWfSnowTempMin(""); setWfSnowTempMax(""); setWfAirTempMin(""); setWfAirTempMax(""); setWfSnowType(""); setWfTrackHardness(""); }}>
               <X className="h-3.5 w-3.5 mr-1" />
               {L("Nullstill", "Clear")}
             </Button>
           )}
         </div>
+
+        {/* Weather filter panel */}
+        {weatherFilterOpen && (
+          <div className="rounded-xl border border-border bg-muted/20 p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">{L("Snøtemp fra (°C)", "Snow temp from (°C)")}</label>
+              <Input type="number" className="h-8 text-sm" value={wfSnowTempMin} onChange={e => setWfSnowTempMin(e.target.value)} placeholder="-20" />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">{L("Snøtemp til (°C)", "Snow temp to (°C)")}</label>
+              <Input type="number" className="h-8 text-sm" value={wfSnowTempMax} onChange={e => setWfSnowTempMax(e.target.value)} placeholder="0" />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">{L("Lufttemp fra (°C)", "Air temp from (°C)")}</label>
+              <Input type="number" className="h-8 text-sm" value={wfAirTempMin} onChange={e => setWfAirTempMin(e.target.value)} placeholder="-20" />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">{L("Lufttemp til (°C)", "Air temp to (°C)")}</label>
+              <Input type="number" className="h-8 text-sm" value={wfAirTempMax} onChange={e => setWfAirTempMax(e.target.value)} placeholder="0" />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">{L("Snøtype", "Snow type")}</label>
+              <Select value={wfSnowType || "__all__"} onValueChange={v => setWfSnowType(v === "__all__" ? "" : v)}>
+                <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">{L("Alle", "All")}</SelectItem>
+                  {["Transformed", "New", "Artificial", "Wet", "Corn", "Granular", "Fine-grained"].map(t => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1 block">{L("Sporhardhet", "Track hardness")}</label>
+              <Select value={wfTrackHardness || "__all__"} onValueChange={v => setWfTrackHardness(v === "__all__" ? "" : v)}>
+                <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">{L("Alle", "All")}</SelectItem>
+                  {["Hard", "Medium", "Soft", "Loose"].map(h => (
+                    <SelectItem key={h} value={h}>{h}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
 
         {/* List */}
         {isLoading ? (

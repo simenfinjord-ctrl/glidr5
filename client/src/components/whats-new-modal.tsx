@@ -47,7 +47,7 @@ export function WhatsNewModal({ open: controlledOpen, onClose }: WhatsNewModalPr
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent className="max-w-lg p-0 overflow-hidden gap-0">
+      <DialogContent className="max-w-lg p-0 overflow-hidden gap-0 [&>button.absolute]:hidden">
         {/* Header */}
         <div className="bg-emerald-600 px-6 py-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">

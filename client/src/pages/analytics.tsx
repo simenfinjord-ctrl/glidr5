@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft, FileDown } from "lucide-react";
+import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft, FileDown, ChevronDown } from "lucide-react";
 import React from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import {
@@ -2159,6 +2159,177 @@ function ProductCompare({
   );
 }
 
+// ── Raced Products tab ────────────────────────────────────────────────────────
+type RacedProductStat = {
+  product: Product;
+  glideCount: number;
+  structureCount: number;
+  kickCount: number;
+  total: number;
+  usages: { prep: any; role: "glide" | "structure" | "kick"; weather: Weather | null }[];
+};
+
+function RacedProductsTab({
+  racePreps,
+  racedProductStats,
+  lang,
+}: {
+  racePreps: any[];
+  racedProductStats: RacedProductStat[];
+  lang: string;
+}) {
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const L = (no: string, en: string) => lang === "en" ? en : no;
+
+  function toggle(id: number) {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function fmtD(d: string) {
+    try { return new Date(d).toLocaleDateString(lang === "en" ? "en-GB" : "nb-NO", { dateStyle: "medium" }); } catch { return d; }
+  }
+
+  const ROLE_LABEL: Record<string, string> = {
+    glide: L("Glid", "Glide"),
+    structure: L("Struktur", "Structure"),
+    kick: "Kick",
+  };
+
+  return (
+    <div className="space-y-4 p-1">
+      <p className="text-sm text-muted-foreground">
+        {L(`${racePreps.length} rennprep-er`, `${racePreps.length} race preps`)}
+      </p>
+      {racedProductStats.length === 0 ? (
+        <Card className="p-8 text-center">
+          <Trophy className="h-8 w-8 mx-auto mb-2 opacity-30 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            {L("Ingen produkter registrert i rennprep ennå.", "No products recorded in race preps yet.")}
+          </p>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {racedProductStats.map(({ product, glideCount, structureCount, kickCount, total, usages }) => {
+            const isOpen = expanded.has(product.id);
+            return (
+              <div key={product.id} className="rounded-xl border border-border overflow-hidden">
+                {/* Summary row */}
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors text-left"
+                  onClick={() => toggle(product.id)}
+                >
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-semibold text-sm">{product.brand} {product.name}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">{product.category}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
+                    {glideCount > 0 && <span className="rounded-full bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 px-2 py-0.5">{L("Glid", "Glide")} {glideCount}×</span>}
+                    {structureCount > 0 && <span className="rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 px-2 py-0.5">{L("Struktur", "Structure")} {structureCount}×</span>}
+                    {kickCount > 0 && <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5">Kick {kickCount}×</span>}
+                    <span className="font-bold text-foreground text-sm">{total}×</span>
+                  </div>
+                </button>
+
+                {/* Expanded usage details */}
+                {isOpen && (
+                  <div className="border-t border-border divide-y divide-border/50">
+                    {usages.map((u, i) => {
+                      const p = u.prep;
+                      const w = u.weather;
+                      return (
+                        <div key={i} className="px-4 py-3 bg-muted/10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 text-sm">
+                          {/* Date + location + race type */}
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Dato / Sted", "Date / Location")}</p>
+                            <p className="font-medium">{fmtD(p.date)} — {p.location}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Renntype", "Race type")}</p>
+                            <p className="font-medium">{p.raceType} <span className="text-muted-foreground text-xs">({p.discipline})</span></p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Rolle", "Role")}</p>
+                            <p className="font-medium">{ROLE_LABEL[u.role]}</p>
+                          </div>
+                          {/* Weather fields */}
+                          {w && (
+                            <>
+                              {w.snowTemperatureC != null && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Snøtemp", "Snow temp")}</p>
+                                  <p className="font-medium">{w.snowTemperatureC}°C</p>
+                                </div>
+                              )}
+                              {w.airTemperatureC != null && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Lufttemp", "Air temp")}</p>
+                                  <p className="font-medium">{w.airTemperatureC}°C</p>
+                                </div>
+                              )}
+                              {w.snowHumidityPct != null && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Snøfukt", "Snow humidity")}</p>
+                                  <p className="font-medium">{w.snowHumidityPct}%</p>
+                                </div>
+                              )}
+                              {w.airHumidityPct != null && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Luftfukt", "Air humidity")}</p>
+                                  <p className="font-medium">{w.airHumidityPct}%</p>
+                                </div>
+                              )}
+                              {w.snowType && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Snøtype", "Snow type")}</p>
+                                  <p className="font-medium">{w.snowType}</p>
+                                </div>
+                              )}
+                              {w.trackHardness && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Sporhardhet", "Track hardness")}</p>
+                                  <p className="font-medium">{w.trackHardness}</p>
+                                </div>
+                              )}
+                              {w.wind && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Vind", "Wind")}</p>
+                                  <p className="font-medium">{w.wind}</p>
+                                </div>
+                              )}
+                              {w.artificialSnow && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Kunstig snø", "Artificial snow")}</p>
+                                  <p className="font-medium">{w.artificialSnow}</p>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {/* Notes / method */}
+                          {p.notes && (
+                            <div className="sm:col-span-2 md:col-span-3">
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Notater", "Notes")}</p>
+                              <p className="text-muted-foreground">{p.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Analytics() {
   const { t } = useI18n();
   const { can } = useAuth();
@@ -2404,8 +2575,7 @@ export default function Analytics() {
     { id: "products", label: t("analytics.products"), icon: <Search className="h-4 w-4" /> },
     { id: "compare", label: t("analytics.compare"), icon: <TrendingUp className="h-4 w-4" /> },
     { id: "conditions", label: t("analytics.conditions"), icon: <Snowflake className="h-4 w-4" /> },
-    { id: "racedproducts", label: lang === "en" ? "Raced products" : "Brukte produkter", icon: <Trophy className="h-4 w-4" /> },
-    ...(canGrind ? [{ id: "grinding", label: "Slipemønstre", icon: <Layers className="h-4 w-4" /> }] : []),
+    { id: "racedproducts", label: "Raced Products", icon: <Trophy className="h-4 w-4" /> },
   ];
 
   const { data: grindProfiles = [] } = useQuery<any[]>({
@@ -2462,32 +2632,34 @@ export default function Analytics() {
   });
 
   const racedProductStats = useMemo(() => {
-    const counts = new Map<number, { product: Product; glideCount: number; structureCount: number; kickCount: number; total: number }>();
+    const counts = new Map<number, RacedProductStat>();
 
-    const addIds = (idsStr: string | null, type: "glide" | "structure" | "kick") => {
+    const addIds = (idsStr: string | null, type: "glide" | "structure" | "kick", prep: any) => {
       if (!idsStr) return;
       for (const idStr of idsStr.split(",")) {
         const id = parseInt(idStr);
         if (isNaN(id)) continue;
         const product = productsById.get(id);
         if (!product) continue;
-        const existing = counts.get(id) ?? { product, glideCount: 0, structureCount: 0, kickCount: 0, total: 0 };
+        const existing = counts.get(id) ?? { product, glideCount: 0, structureCount: 0, kickCount: 0, total: 0, usages: [] };
         if (type === "glide") existing.glideCount++;
         else if (type === "structure") existing.structureCount++;
         else existing.kickCount++;
         existing.total++;
+        const weather = prep.weatherId ? (weatherById.get(prep.weatherId) ?? null) : null;
+        existing.usages.push({ prep, role: type, weather });
         counts.set(id, existing);
       }
     };
 
     for (const prep of racePreps) {
-      addIds(prep.productIds, "glide");
-      addIds(prep.structureIds, "structure");
-      addIds(prep.kickProductIds, "kick");
+      addIds(prep.productIds, "glide", prep);
+      addIds(prep.structureIds, "structure", prep);
+      addIds(prep.kickProductIds, "kick", prep);
     }
 
     return Array.from(counts.values()).sort((a, b) => b.total - a.total);
-  }, [racePreps, productsById]);
+  }, [racePreps, productsById, weatherById]);
 
   return (
     <AppShell>
@@ -2503,7 +2675,7 @@ export default function Analytics() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            {(["All", "Glide", "Structure", "Classic", "Skating", "Double Poling", ...(canGrind ? ["Grind"] : [])]).map((type) => (
+            {(["All", "Glide", "Structure"]).map((type) => (
               <Button
                 key={type}
                 variant={testTypeFilter === type ? "default" : "outline"}
@@ -2777,122 +2949,13 @@ export default function Analytics() {
         )}
 
         {activeTab === "racedproducts" && (
-          <div className="space-y-4 p-1">
-            <p className="text-sm text-muted-foreground">
-              {lang === "no" ? `${racePreps.length} rennprep-er` : `${racePreps.length} race preps`}
-            </p>
-            {racedProductStats.length === 0 ? (
-              <Card className="p-8 text-center">
-                <Trophy className="h-8 w-8 mx-auto mb-2 opacity-30 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  {lang === "no" ? "Ingen produkter registrert i rennprep ennå." : "No products recorded in race preps yet."}
-                </p>
-              </Card>
-            ) : (
-              <div className="rounded-xl border border-border overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                      <th className="px-4 py-2">{lang === "no" ? "Produkt" : "Product"}</th>
-                      <th className="px-4 py-2 text-center">{lang === "no" ? "Glid" : "Glide"}</th>
-                      <th className="px-4 py-2 text-center">{lang === "no" ? "Struktur" : "Structure"}</th>
-                      <th className="px-4 py-2 text-center">Kick</th>
-                      <th className="px-4 py-2 text-center">{lang === "no" ? "Totalt" : "Total"}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {racedProductStats.map(({ product, glideCount, structureCount, kickCount, total }) => (
-                      <tr key={product.id} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
-                        <td className="px-4 py-2.5">
-                          <span className="font-medium">{product.brand} {product.name}</span>
-                          <span className="ml-1.5 text-xs text-muted-foreground">{product.category}</span>
-                        </td>
-                        <td className="px-4 py-2.5 text-center">{glideCount || "—"}</td>
-                        <td className="px-4 py-2.5 text-center">{structureCount || "—"}</td>
-                        <td className="px-4 py-2.5 text-center">{kickCount || "—"}</td>
-                        <td className="px-4 py-2.5 text-center font-semibold">{total}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <RacedProductsTab
+            racePreps={racePreps}
+            racedProductStats={racedProductStats}
+            lang={lang}
+          />
         )}
 
-        {activeTab === "grinding" && (
-          <div className="space-y-6 p-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="rounded-xl border border-border bg-card p-4">
-                <h3 className="font-semibold text-sm mb-3">Vinnerate per slipestein</h3>
-                {grindStats.stoneMap.size === 0 ? (
-                  <p className="text-sm text-muted-foreground">Ingen slipedata tilgjengelig</p>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-xs text-muted-foreground border-b border-border">
-                        <th className="text-left py-1.5">Stein</th>
-                        <th className="text-right py-1.5">Seire</th>
-                        <th className="text-right py-1.5">Starter</th>
-                        <th className="text-right py-1.5">Rate</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...grindStats.stoneMap.entries()]
-                        .sort((a, b) => (b[1].wins / Math.max(b[1].total, 1)) - (a[1].wins / Math.max(a[1].total, 1)))
-                        .map(([stone, { wins, total }]) => (
-                          <tr key={stone} className="border-b border-border/50 last:border-0">
-                            <td className="py-2 font-medium">{stone}</td>
-                            <td className="text-right py-2">{wins}</td>
-                            <td className="text-right py-2">{total}</td>
-                            <td className="text-right py-2">
-                              <span className="font-semibold" style={{ color: "hsl(var(--primary))" }}>
-                                {total > 0 ? Math.round((wins / total) * 100) : 0}%
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-
-              <div className="rounded-xl border border-border bg-card p-4">
-                <h3 className="font-semibold text-sm mb-3">Vinnerate per mønster</h3>
-                {grindStats.patternMap.size === 0 ? (
-                  <p className="text-sm text-muted-foreground">Ingen slipedata tilgjengelig</p>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-xs text-muted-foreground border-b border-border">
-                        <th className="text-left py-1.5">Mønster</th>
-                        <th className="text-right py-1.5">Seire</th>
-                        <th className="text-right py-1.5">Starter</th>
-                        <th className="text-right py-1.5">Rate</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...grindStats.patternMap.entries()]
-                        .sort((a, b) => (b[1].wins / Math.max(b[1].total, 1)) - (a[1].wins / Math.max(a[1].total, 1)))
-                        .map(([pattern, { wins, total }]) => (
-                          <tr key={pattern} className="border-b border-border/50 last:border-0">
-                            <td className="py-2 font-medium">{pattern}</td>
-                            <td className="text-right py-2">{wins}</td>
-                            <td className="text-right py-2">{total}</td>
-                            <td className="text-right py-2">
-                              <span className="font-semibold" style={{ color: "hsl(var(--primary))" }}>
-                                {total > 0 ? Math.round((wins / total) * 100) : 0}%
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </AppShell>
   );

@@ -65,7 +65,7 @@ export const FEATURE_LABELS: Record<TeamFeature, string> = {
   weather: "Weather Logging",
   analytics: "Analytics & Charts",
   grinding: "Grinding Records",
-  raceskis: "Race Skis",
+  raceskis: "Race Skis & Race Prep",
   suggestions: "Suggestions Engine",
   liverunsheets: "Live Runsheet Monitor",
   runsheet_brackets: "Runsheet Brackets",

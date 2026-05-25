@@ -1,7 +1,7 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Flag, Plus, X, ChevronDown, ChevronRight, Pencil, Check, Trash2, Users } from "lucide-react";
+import { Flag, Plus, X, ChevronRight, Pencil, Check, Trash2, Users, Search, Snowflake } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,26 @@ import { cn } from "@/lib/utils";
 
 type Product = { id: number; category: string; brand: string; name: string };
 
+type Weather = {
+  id: number;
+  date: string;
+  location: string;
+  snowTemperatureC: number | null;
+  airTemperatureC: number | null;
+  snowHumidityPct: number | null;
+  airHumidityPct: number | null;
+  artificialSnow: string | null;
+  naturalSnow: string | null;
+  snowHumidityType: string | null;
+  trackHardness: string | null;
+  testQuality: number | null;
+  snowType: string | null;
+  wind: string | null;
+  clouds: number | null;
+  precipitation: string | null;
+  grainSize: string | null;
+};
+
 type RacePrep = {
   id: number;
   teamId: number;
@@ -34,6 +54,7 @@ type RacePrep = {
   structureIds: string | null;
   kickProductIds: string | null;
   tette: string | null;
+  weatherId: number | null;
   createdById: number;
   createdByName: string;
   createdAt: string;
@@ -57,6 +78,21 @@ type Athlete = {
   team: string | null;
 };
 
+type RaceSkiRecord = {
+  id: number;
+  athleteId: number;
+  skiId: string;
+  serialNumber: string | null;
+  brand: string | null;
+  discipline: string;
+  construction: string | null;
+  mold: string | null;
+  base: string | null;
+  grind: string | null;
+  heights: string | null;
+  year: string | null;
+};
+
 const parseIds = (s: string | null) => s ? s.split(",").map(Number).filter(Boolean) : [];
 
 function productNames(ids: string | null, products: Product[]): string {
@@ -67,6 +103,12 @@ function productNames(ids: string | null, products: Product[]): string {
   }).filter(Boolean).join(" + ");
 }
 
+// Returns true if the string looks like free text (not a list of numeric IDs)
+function isFreeText(s: string | null): boolean {
+  if (!s) return false;
+  return s.split(",").some(part => isNaN(Number(part.trim())));
+}
+
 const EMPTY_FORM = {
   date: "",
   location: "",
@@ -74,10 +116,11 @@ const EMPTY_FORM = {
   discipline: "Klassisk",
   productIds: [] as number[],
   structureIds: [] as number[],
-  kickProductIds: [] as number[],
+  kick: "",
   tette: "",
   method: "",
   notes: "",
+  weatherId: null as number | null,
 };
 
 // Values stored in DB as English; labels shown per language
@@ -165,32 +208,101 @@ function MultiProductPicker({
   );
 }
 
+// ── Ski detail dialog ─────────────────────────────────────────────────────────
+function SkiDetailDialog({
+  ski,
+  open,
+  onClose,
+  lang,
+}: {
+  ski: RaceSkiRecord;
+  open: boolean;
+  onClose: () => void;
+  lang: string;
+}) {
+  const L = (no: string, en: string) => lang === "en" ? en : no;
+  const fields: { label: string; value: string | null | undefined }[] = [
+    { label: "Ski ID", value: ski.skiId },
+    { label: L("Serienummer", "Serial number"), value: ski.serialNumber },
+    { label: L("Merke", "Brand"), value: ski.brand },
+    { label: L("Stilart", "Discipline"), value: ski.discipline },
+    { label: L("Konstruksjon", "Construction"), value: ski.construction },
+    { label: L("Form", "Mold"), value: ski.mold },
+    { label: L("Sål", "Base"), value: ski.base },
+    { label: L("Slipemønster", "Grind"), value: ski.grind },
+    { label: L("Høyder", "Heights"), value: ski.heights },
+    { label: L("År", "Year"), value: ski.year },
+  ];
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-primary" />
+            {L("Skiinfo", "Ski info")} — {ski.skiId}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          {fields.filter(f => f.value).map(f => (
+            <div key={f.label}>
+              <p className="text-xs text-muted-foreground mb-0.5">{f.label}</p>
+              <p className="font-medium">{f.value}</p>
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Inline ski-ID editor ──────────────────────────────────────────────────────
 function SkiIdCell({
   entry,
   canEdit,
   prepId,
   onSaved,
+  lang,
 }: {
   entry: RacePrepEntry;
   canEdit: boolean;
   prepId: number;
   onSaved: () => void;
+  lang: string;
 }) {
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(entry.skiId ?? "");
   const [saving, setSaving] = useState(false);
+  const [skiDetailOpen, setSkiDetailOpen] = useState(false);
+  const [selectedSki, setSelectedSki] = useState<RaceSkiRecord | null>(null);
 
-  async function save() {
+  // Fetch athlete's skis for autocomplete
+  const { data: athleteSkis = [] } = useQuery<RaceSkiRecord[]>({
+    queryKey: [`/api/athletes/${entry.athleteId}/skis`],
+    enabled: editing,
+  });
+
+  const suggestions = useMemo(() => {
+    if (!val.trim()) return athleteSkis.slice(0, 8);
+    return athleteSkis.filter(s =>
+      s.skiId.toLowerCase().includes(val.toLowerCase()) ||
+      (s.serialNumber ?? "").toLowerCase().includes(val.toLowerCase())
+    ).slice(0, 8);
+  }, [athleteSkis, val]);
+
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  async function save(skiIdVal?: string) {
+    const finalVal = skiIdVal !== undefined ? skiIdVal : val;
     setSaving(true);
     try {
       await apiRequest("PUT", `/api/race-preps/${prepId}/entries/${entry.id}`, {
-        skiId: val.trim() || null,
+        skiId: finalVal.trim() || null,
         notes: entry.notes,
       });
       onSaved();
       setEditing(false);
+      setShowSuggestions(false);
     } catch {
       toast({ title: "Feil", description: "Kunne ikke lagre Ski-ID", variant: "destructive" });
     } finally {
@@ -198,24 +310,73 @@ function SkiIdCell({
     }
   }
 
+  // Find ski record matching current entry.skiId for magnifying glass
+  const { data: allSkisForAthlete = [] } = useQuery<RaceSkiRecord[]>({
+    queryKey: [`/api/athletes/${entry.athleteId}/skis`],
+    enabled: !!entry.skiId,
+  });
+
+  const matchedSki = useMemo(() =>
+    allSkisForAthlete.find(s => s.skiId === entry.skiId || s.serialNumber === entry.skiId) ?? null,
+    [allSkisForAthlete, entry.skiId]
+  );
+
   if (!canEdit) {
-    return <span className="text-sm">{entry.skiId ?? <span className="text-muted-foreground">—</span>}</span>;
+    return (
+      <div className="flex items-center gap-1">
+        <span className="text-sm">{entry.skiId ?? <span className="text-muted-foreground">—</span>}</span>
+        {entry.skiId && matchedSki && (
+          <button
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => { setSelectedSki(matchedSki); setSkiDetailOpen(true); }}
+            title="View ski details"
+          >
+            <Search className="h-3.5 w-3.5" />
+          </button>
+        )}
+        {selectedSki && (
+          <SkiDetailDialog ski={selectedSki} open={skiDetailOpen} onClose={() => setSkiDetailOpen(false)} lang={lang} />
+        )}
+      </div>
+    );
   }
 
   if (editing) {
     return (
-      <div className="flex items-center gap-1">
-        <Input
-          className="h-7 w-24 text-xs"
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setEditing(false); setVal(entry.skiId ?? ""); } }}
-          autoFocus
-        />
-        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={save} disabled={saving}>
+      <div className="relative flex items-start gap-1">
+        <div className="relative">
+          <Input
+            className="h-7 w-28 text-xs"
+            value={val}
+            onChange={(e) => { setVal(e.target.value); setShowSuggestions(true); }}
+            onFocus={() => setShowSuggestions(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { save(); setShowSuggestions(false); }
+              if (e.key === "Escape") { setEditing(false); setVal(entry.skiId ?? ""); setShowSuggestions(false); }
+            }}
+            autoFocus
+          />
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="absolute top-full left-0 z-50 mt-1 w-48 rounded-lg border border-border bg-card shadow-md max-h-40 overflow-y-auto">
+              {suggestions.map(s => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted/60 transition-colors"
+                  onMouseDown={(e) => { e.preventDefault(); setVal(s.skiId); setShowSuggestions(false); save(s.skiId); }}
+                >
+                  <span className="font-medium">{s.skiId}</span>
+                  {s.brand && <span className="ml-1 text-muted-foreground">{s.brand}</span>}
+                  {s.discipline && <span className="ml-1 text-muted-foreground text-[10px]">({s.discipline})</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => save()} disabled={saving}>
           <Check className="h-3.5 w-3.5 text-emerald-600" />
         </Button>
-        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditing(false); setVal(entry.skiId ?? ""); }}>
+        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditing(false); setVal(entry.skiId ?? ""); setShowSuggestions(false); }}>
           <X className="h-3.5 w-3.5" />
         </Button>
       </div>
@@ -223,13 +384,65 @@ function SkiIdCell({
   }
 
   return (
-    <button
-      className="flex items-center gap-1.5 group text-sm"
-      onClick={() => setEditing(true)}
-    >
-      <span>{entry.skiId ?? <span className="text-muted-foreground">—</span>}</span>
-      <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-    </button>
+    <div className="flex items-center gap-1">
+      <button
+        className="flex items-center gap-1.5 group text-sm"
+        onClick={() => setEditing(true)}
+      >
+        <span>{entry.skiId ?? <span className="text-muted-foreground">—</span>}</span>
+        <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+      </button>
+      {entry.skiId && matchedSki && (
+        <button
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => { setSelectedSki(matchedSki); setSkiDetailOpen(true); }}
+          title="View ski details"
+        >
+          <Search className="h-3.5 w-3.5" />
+        </button>
+      )}
+      {selectedSki && (
+        <SkiDetailDialog ski={selectedSki} open={skiDetailOpen} onClose={() => setSkiDetailOpen(false)} lang={lang} />
+      )}
+    </div>
+  );
+}
+
+// ── Weather summary row ───────────────────────────────────────────────────────
+function WeatherRow({ weather, lang }: { weather: Weather; lang: string }) {
+  const L = (no: string, en: string) => lang === "en" ? en : no;
+  const rows: { label: string; value: string | number | null | undefined }[] = [
+    { label: L("Snøtemp", "Snow temp"), value: weather.snowTemperatureC != null ? `${weather.snowTemperatureC}°C` : null },
+    { label: L("Lufttemp", "Air temp"), value: weather.airTemperatureC != null ? `${weather.airTemperatureC}°C` : null },
+    { label: L("Snøfukt", "Snow humidity"), value: weather.snowHumidityPct != null ? `${weather.snowHumidityPct}%` : null },
+    { label: L("Luftfukt", "Air humidity"), value: weather.airHumidityPct != null ? `${weather.airHumidityPct}%` : null },
+    { label: L("Kunstig snø", "Artificial snow"), value: weather.artificialSnow },
+    { label: L("Naturlig snø", "Natural snow"), value: weather.naturalSnow },
+    { label: L("Snøtype", "Snow type"), value: weather.snowType },
+    { label: L("Sporhardhet", "Track hardness"), value: weather.trackHardness },
+    { label: L("Vind", "Wind"), value: weather.wind },
+    { label: L("Skyer", "Clouds"), value: weather.clouds != null ? `${weather.clouds}/8` : null },
+    { label: L("Nedbør", "Precipitation"), value: weather.precipitation },
+    { label: L("Kornstørrelse", "Grain size"), value: weather.grainSize },
+    { label: L("Testkvalitet", "Test quality"), value: weather.testQuality != null ? String(weather.testQuality) : null },
+  ];
+  const visible = rows.filter(r => r.value != null && r.value !== "");
+  if (visible.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-border bg-muted/20 p-3">
+      <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+        <Snowflake className="h-3.5 w-3.5" />
+        {L("Værforhold", "Weather conditions")} — {fmtDate(weather.date, lang)}, {weather.location}
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+        {visible.map(r => (
+          <div key={r.label}>
+            <p className="text-[10px] text-muted-foreground">{r.label}</p>
+            <p className="font-medium text-sm">{r.value as string}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -241,6 +454,7 @@ function PrepDetailDialog({
   isAdmin,
   userId,
   lang,
+  weatherList,
 }: {
   prep: RacePrep;
   open: boolean;
@@ -248,6 +462,7 @@ function PrepDetailDialog({
   isAdmin: boolean;
   userId: number;
   lang: string;
+  weatherList: Weather[];
 }) {
   const { toast } = useToast();
   const [addAthletesOpen, setAddAthletesOpen] = useState(false);
@@ -304,8 +519,14 @@ function PrepDetailDialog({
 
   const glideNames = productNames(prep.productIds, products);
   const structureNamesStr = productNames(prep.structureIds, products);
-  const kickNames = productNames(prep.kickProductIds, products);
+  // kickProductIds may hold free text or legacy comma-sep IDs
+  const kickDisplay = prep.kickProductIds
+    ? (isFreeText(prep.kickProductIds) ? prep.kickProductIds : productNames(prep.kickProductIds, products))
+    : null;
   const showKick = prep.discipline === "Classic" || prep.discipline === "Skiathlon";
+
+  // Linked weather record
+  const linkedWeather = prep.weatherId ? weatherList.find(w => w.id === prep.weatherId) ?? null : null;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -341,10 +562,10 @@ function PrepDetailDialog({
               <p className="font-medium">{structureNamesStr}</p>
             </div>
           )}
-          {showKick && kickNames && (
+          {showKick && kickDisplay && (
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">Kick</p>
-              <p className="font-medium">{kickNames}</p>
+              <p className="font-medium">{kickDisplay}</p>
             </div>
           )}
           {showKick && prep.tette && (
@@ -379,6 +600,11 @@ function PrepDetailDialog({
             </div>
           )}
         </div>
+
+        {/* Linked weather */}
+        {linkedWeather && (
+          <WeatherRow weather={linkedWeather} lang={lang} />
+        )}
 
         {/* Start list */}
         <div className="mt-4">
@@ -421,6 +647,7 @@ function PrepDetailDialog({
                           canEdit={canEditEntry(entry)}
                           prepId={prep.id}
                           onSaved={refetchEntries}
+                          lang={lang}
                         />
                       </td>
                       <td className="px-3 py-2.5 text-muted-foreground text-xs">{entry.waxerName ?? "—"}</td>
@@ -498,11 +725,13 @@ function PrepFormDialog({
   onClose,
   editPrep,
   lang,
+  weatherList,
 }: {
   open: boolean;
   onClose: (saved: boolean) => void;
   editPrep?: RacePrep;
   lang: string;
+  weatherList: Weather[];
 }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -517,10 +746,14 @@ function PrepFormDialog({
           discipline: editPrep.discipline,
           productIds: parseIds(editPrep.productIds),
           structureIds: parseIds(editPrep.structureIds),
-          kickProductIds: parseIds(editPrep.kickProductIds),
+          // kickProductIds may be free text or legacy IDs — display as text
+          kick: editPrep.kickProductIds
+            ? (isFreeText(editPrep.kickProductIds) ? editPrep.kickProductIds : productNames(editPrep.kickProductIds, []))
+            : "",
           tette: editPrep.tette ?? "",
           method: editPrep.method ?? "",
           notes: editPrep.notes ?? "",
+          weatherId: editPrep.weatherId ?? null,
         }
       : { ...EMPTY_FORM }
   );
@@ -533,6 +766,12 @@ function PrepFormDialog({
 
   const showKick = form.discipline === "Classic" || form.discipline === "Skiathlon";
 
+  // Sort weather list newest first, labeled with date+location
+  const weatherOptions = useMemo(() =>
+    [...weatherList].sort((a, b) => b.date.localeCompare(a.date)),
+    [weatherList]
+  );
+
   async function submit() {
     if (!form.date || !form.location || !form.raceType || !form.discipline) return;
     setSaving(true);
@@ -544,10 +783,12 @@ function PrepFormDialog({
         discipline: form.discipline,
         productIds: form.productIds.join(","),
         structureIds: form.structureIds.join(","),
-        kickProductIds: form.kickProductIds.join(","),
+        // Store kick free text in kickProductIds column
+        kickProductIds: form.kick,
         tette: form.tette,
         method: form.method,
         notes: form.notes,
+        weatherId: form.weatherId,
       };
       if (editPrep) {
         await apiRequest("PUT", `/api/race-preps/${editPrep.id}`, payload);
@@ -612,11 +853,12 @@ function PrepFormDialog({
           {showKick && (
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-medium">Kick</label>
-              <MultiProductPicker
-                value={form.kickProductIds}
-                onChange={(ids) => f("kickProductIds", ids)}
-                products={products}
-                placeholder={L("Søk etter kick-produkt...", "Search for kick product...")}
+              <Textarea
+                value={form.kick}
+                onChange={(e) => f("kick", e.target.value)}
+                placeholder={L("Beskriv kick-produkt(er) og behandling...", "Describe kick product(s) and application...")}
+                rows={2}
+                className="resize-none text-sm"
               />
             </div>
           )}
@@ -634,6 +876,28 @@ function PrepFormDialog({
             <label className="mb-1 block text-xs font-medium">{L("Notater", "Notes")}</label>
             <Textarea value={form.notes} onChange={(e) => f("notes", e.target.value)} rows={2} className="resize-none" />
           </div>
+          {weatherOptions.length > 0 && (
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium">{L("Koble til værobservasjon (valgfritt)", "Link weather record (optional)")}</label>
+              <Select
+                value={form.weatherId != null ? String(form.weatherId) : "__none__"}
+                onValueChange={(v) => f("weatherId", v === "__none__" ? null : parseInt(v))}
+              >
+                <SelectTrigger className="text-sm">
+                  <SelectValue placeholder={L("Ingen", "None")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">{L("Ingen", "None")}</SelectItem>
+                  {weatherOptions.map((w) => (
+                    <SelectItem key={w.id} value={String(w.id)}>
+                      {fmtDate(w.date, lang)} — {w.location}
+                      {w.snowTemperatureC != null && ` (${w.snowTemperatureC}°C)`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         <div className="flex justify-end gap-2 border-t border-border pt-3">
           <Button variant="outline" onClick={() => onClose(false)}>{L("Avbryt", "Cancel")}</Button>
@@ -658,9 +922,20 @@ export default function RacePrep() {
 
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
 
+  const { data: weatherList = [] } = useQuery<Weather[]>({
+    queryKey: ["/api/weather"],
+    enabled: can("weather", "view"),
+  });
+
   const [createOpen, setCreateOpen] = useState(false);
   const [editPrep, setEditPrep] = useState<RacePrep | null>(null);
   const [detailPrep, setDetailPrep] = useState<RacePrep | null>(null);
+
+  // Search & filter state
+  const [search, setSearch] = useState("");
+  const [disciplineFilter, setDisciplineFilter] = useState("All");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const L = (no: string, en: string) => lang === "en" ? en : no;
 
@@ -676,6 +951,25 @@ export default function RacePrep() {
     }
   }
 
+  const filteredPreps = useMemo(() => {
+    return preps.filter(prep => {
+      if (disciplineFilter !== "All" && prep.discipline !== disciplineFilter) return false;
+      if (dateFrom && prep.date < dateFrom) return false;
+      if (dateTo && prep.date > dateTo) return false;
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const glide = productNames(prep.productIds, products);
+        if (
+          !prep.location.toLowerCase().includes(q) &&
+          !prep.raceType.toLowerCase().includes(q) &&
+          !(prep.notes ?? "").toLowerCase().includes(q) &&
+          !glide.toLowerCase().includes(q)
+        ) return false;
+      }
+      return true;
+    });
+  }, [preps, disciplineFilter, dateFrom, dateTo, search, products]);
+
   if (!can("raceskis", "view")) {
     return (
       <AppShell>
@@ -688,17 +982,58 @@ export default function RacePrep() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-4xl px-4 py-6 space-y-6">
+      <div className="px-4 py-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <Flag className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold">Raceprep</h1>
+            <div>
+              <h1 className="text-2xl font-bold">Race Prep</h1>
+              <p className="text-sm text-muted-foreground">{L("Planlegg renn og smørevalg", "Plan races and waxing choices")}</p>
+            </div>
           </div>
           {isAdmin && (
             <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
               <Plus className="h-4 w-4" />
               {L("Ny raceprep", "New race prep")}
+            </Button>
+          )}
+        </div>
+
+        {/* Search & filters */}
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="relative flex-1 min-w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder={L("Søk etter sted, renntype...", "Search by location, race type...")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Select value={disciplineFilter} onValueChange={setDisciplineFilter}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">{L("Alle stilarter", "All disciplines")}</SelectItem>
+              {DISCIPLINES.map(d => (
+                <SelectItem key={d} value={d}>{DISCIPLINE_LABEL[d]?.[lang] ?? d}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs text-muted-foreground whitespace-nowrap">{L("Fra", "From")}</label>
+            <Input type="date" className="w-36 h-9 text-sm" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs text-muted-foreground whitespace-nowrap">{L("Til", "To")}</label>
+            <Input type="date" className="w-36 h-9 text-sm" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+          </div>
+          {(search || disciplineFilter !== "All" || dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" className="h-9 px-2 text-xs" onClick={() => { setSearch(""); setDisciplineFilter("All"); setDateFrom(""); setDateTo(""); }}>
+              <X className="h-3.5 w-3.5 mr-1" />
+              {L("Nullstill", "Clear")}
             </Button>
           )}
         </div>
@@ -710,13 +1045,15 @@ export default function RacePrep() {
               <div key={i} className="h-16 rounded-2xl bg-muted/40 animate-pulse" />
             ))}
           </div>
-        ) : preps.length === 0 ? (
+        ) : filteredPreps.length === 0 ? (
           <Card className="rounded-2xl p-10 text-center">
             <Flag className="h-8 w-8 text-muted-foreground mx-auto mb-3 opacity-40" />
             <p className="text-muted-foreground text-sm">
-              {L("Ingen raceprep registrert ennå.", "No race preps registered yet.")}
+              {preps.length === 0
+                ? L("Ingen raceprep registrert ennå.", "No race preps registered yet.")
+                : L("Ingen treff på søket.", "No results match your search.")}
             </p>
-            {isAdmin && (
+            {isAdmin && preps.length === 0 && (
               <Button variant="outline" className="mt-4" onClick={() => setCreateOpen(true)}>
                 <Plus className="h-4 w-4 mr-1.5" />
                 {L("Opprett den første", "Create the first one")}
@@ -725,8 +1062,9 @@ export default function RacePrep() {
           </Card>
         ) : (
           <div className="space-y-3">
-            {preps.map((prep) => {
+            {filteredPreps.map((prep) => {
               const glideDisplay = productNames(prep.productIds, products) || prep.products || null;
+              const linkedWeather = prep.weatherId ? weatherList.find(w => w.id === prep.weatherId) : null;
               return (
                 <Card
                   key={prep.id}
@@ -739,8 +1077,14 @@ export default function RacePrep() {
                       <span className="text-xs text-muted-foreground">{fmtDate(prep.date, lang)}</span>
                       <Badge variant="outline" className="text-xs">{prep.raceType}</Badge>
                       <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1", DISCIPLINE_COLORS[prep.discipline] ?? "")}>
-                        {prep.discipline}
+                        {DISCIPLINE_LABEL[prep.discipline]?.[lang] ?? prep.discipline}
                       </span>
+                      {linkedWeather && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                          <Snowflake className="h-3 w-3" />
+                          {linkedWeather.snowTemperatureC != null ? `${linkedWeather.snowTemperatureC}°C` : ""}
+                        </span>
+                      )}
                     </div>
                     {glideDisplay && (
                       <p className="text-xs text-muted-foreground mt-1 truncate">{glideDisplay}</p>
@@ -782,6 +1126,7 @@ export default function RacePrep() {
           open={createOpen}
           onClose={(saved) => { setCreateOpen(false); }}
           lang={lang}
+          weatherList={weatherList}
         />
       )}
 
@@ -792,6 +1137,7 @@ export default function RacePrep() {
           onClose={() => setEditPrep(null)}
           editPrep={editPrep}
           lang={lang}
+          weatherList={weatherList}
         />
       )}
 
@@ -804,6 +1150,7 @@ export default function RacePrep() {
           isAdmin={isAdmin}
           userId={user?.id ?? 0}
           lang={lang}
+          weatherList={weatherList}
         />
       )}
     </AppShell>

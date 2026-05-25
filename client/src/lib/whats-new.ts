@@ -17,6 +17,19 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "2026-05c",
+    date: { no: "Mai 2026", en: "May 2026" },
+    title: { no: "Raceprep-oppdatering, analyse-forbedringer og prisside", en: "Race Prep updates, analytics improvements and pricing page" },
+    items: [
+      { emoji: "🏁", no: "Raceprep: Kick-feltet er nå fritekst — skriv inn produkter og behandling fritt.", en: "Race Prep: Kick field is now free text — describe products and application freely." },
+      { emoji: "🌨️", no: "Raceprep: Koble en værobservasjon til en raceprep for å lagre alle værdataene automatisk.", en: "Race Prep: Link a weather record to a race prep to store all weather data automatically." },
+      { emoji: "🔍", no: "Raceprep: Klikk på forstørrelsesikonet ved siden av Ski-ID for å se full skiinformasjon.", en: "Race Prep: Click the magnifying glass next to Ski-ID to view full ski details." },
+      { emoji: "📋", no: "Raceprep: Søk og filtrer etter stilart og dato — siden er nå full bredde.", en: "Race Prep: Search and filter by discipline and date — the page is now full width." },
+      { emoji: "📊", no: "Analyse: Fjernet Classic, Skating og Grind fra testtype-filteret. Slipemønstre-fanen er flyttet til Slipe-siden.", en: "Analytics: Removed Classic, Skating and Grind from the test type filter. Grind Patterns tab moved to the Grinding page." },
+      { emoji: "💰", no: "Prissiden: Tydelig NOK-merking og Race Prep lagt til i funksjonssammenligning.", en: "Pricing: Clear NOK labelling and Race Prep added to feature comparison." },
+    ],
+  },
+  {
     version: "2026-05b",
     date: { no: "Mai 2026", en: "May 2026" },
     title: { no: "Raceprep, slipeanalyse og datofilter", en: "Race Prep, grind analytics and date filter" },

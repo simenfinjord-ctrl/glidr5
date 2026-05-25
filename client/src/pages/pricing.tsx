@@ -107,7 +107,7 @@ const PLAN_STATIC = [
     features: [
       "Up to 25 users",
       "Everything in Team, plus:",
-      "Race ski & athlete management",
+      "Race ski management & Race Prep",
       "Ski inventory with regrind tracking",
       "Athlete access control & sharing",
       "Live runsheet monitoring",
@@ -156,6 +156,7 @@ const COMPARISON = [
   { feature: "Garmin watch", free: "—", starter: "—", team: "✓", pro: "✓", federation: "✓" },
   { feature: "Blind tester mode", free: "—", starter: "—", team: "✓", pro: "✓", federation: "✓" },
   { feature: "Race ski management", free: "—", starter: "—", team: "—", pro: "✓", federation: "✓" },
+  { feature: "Race Prep planning", free: "—", starter: "—", team: "—", pro: "✓", federation: "✓" },
   { feature: "Live runsheet monitor", free: "—", starter: "—", team: "—", pro: "✓", federation: "✓" },
   { feature: "Athlete management", free: "—", starter: "—", team: "—", pro: "✓", federation: "✓" },
   { feature: "Multi-team support", free: "—", starter: "—", team: "—", pro: "—", federation: "✓" },
@@ -274,7 +275,7 @@ function PlanCard({ plan, lang }: { plan: PlanWithPrice; lang: "en" | "no" }) {
           {plan.period && <span className="text-sm text-muted-foreground">{plan.period}</span>}
         </div>
         {plan.id !== "federation" && (
-          <p className="text-xs text-muted-foreground mb-1">inkl. mva</p>
+          <p className="text-xs text-muted-foreground mb-1">NOK, inkl. mva</p>
         )}
         <p className="text-xs text-muted-foreground leading-relaxed">{PLAN_TEXT[lang][plan.id]?.tagline ?? plan.tagline}</p>
       </div>

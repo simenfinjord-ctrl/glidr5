@@ -63,7 +63,16 @@ type Weather = {
   snowHumidityType: string | null;
   trackHardness: string | null;
   testQuality: number | null;
+  precipitation: string | null;
+  wind: string | null;
+  visibility: string | null;
+  clouds: number | null;
 };
+
+const TRACK_HARDNESS_OPTIONS = ["Very soft", "Soft", "Medium hard", "Hard", "Very hard", "Ice"] as const;
+const SNOW_HUMIDITY_TYPE_OPTIONS = ["Dry", "Moist", "Wet", "Very wet", "Slush"] as const;
+const GRAIN_SIZE_OPTIONS = ["Extra fine", "Very fine", "Fine", "Average", "Coarse", "Very coarse"] as const;
+const SNOW_STAGE_OPTIONS = ["Falling new", "New", "Irreg. dir. new", "Irreg. dir. transf.", "Transformed"] as const;
 
 type RoundResult = { result: number | null; rank: number | null };
 
@@ -776,6 +785,16 @@ export default function Tests() {
   const [filterAirHumMax, setFilterAirHumMax] = useState("");
   const [filterSnowHumMin, setFilterSnowHumMin] = useState("");
   const [filterSnowHumMax, setFilterSnowHumMax] = useState("");
+  const [filterTrackHardness, setFilterTrackHardness] = useState("");
+  const [filterSnowHumidityType, setFilterSnowHumidityType] = useState("");
+  const [filterGrainSize, setFilterGrainSize] = useState("");
+  const [filterArtSnow, setFilterArtSnow] = useState("");
+  const [filterNatSnow, setFilterNatSnow] = useState("");
+  const [filterPrecipitation, setFilterPrecipitation] = useState("");
+  const [filterWind, setFilterWind] = useState("");
+  const [filterVisibility, setFilterVisibility] = useState("");
+  const [filterCloudMin, setFilterCloudMin] = useState("");
+  const [filterCloudMax, setFilterCloudMax] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const seriesById = new Map(series.map((s) => [s.id, s.name] as const));
@@ -861,6 +880,16 @@ export default function Tests() {
       if (filterAirHumMax && (!w || w.airHumidityPct > parseFloat(filterAirHumMax))) return false;
       if (filterSnowHumMin && (!w || w.snowHumidityPct < parseFloat(filterSnowHumMin))) return false;
       if (filterSnowHumMax && (!w || w.snowHumidityPct > parseFloat(filterSnowHumMax))) return false;
+      if (filterTrackHardness && !(w?.trackHardness ?? "").toLowerCase().includes(filterTrackHardness.toLowerCase())) return false;
+      if (filterSnowHumidityType && !(w?.snowHumidityType ?? "").toLowerCase().includes(filterSnowHumidityType.toLowerCase())) return false;
+      if (filterGrainSize && !(w?.grainSize ?? "").toLowerCase().includes(filterGrainSize.toLowerCase())) return false;
+      if (filterArtSnow && !(w?.artificialSnow ?? "").toLowerCase().includes(filterArtSnow.toLowerCase())) return false;
+      if (filterNatSnow && !(w?.naturalSnow ?? "").toLowerCase().includes(filterNatSnow.toLowerCase())) return false;
+      if (filterPrecipitation && !(w?.precipitation ?? "").toLowerCase().includes(filterPrecipitation.toLowerCase())) return false;
+      if (filterWind && !(w?.wind ?? "").toLowerCase().includes(filterWind.toLowerCase())) return false;
+      if (filterVisibility && !(w?.visibility ?? "").toLowerCase().includes(filterVisibility.toLowerCase())) return false;
+      if (filterCloudMin !== "" && (w?.clouds ?? 999) < parseFloat(filterCloudMin)) return false;
+      if (filterCloudMax !== "" && (w?.clouds ?? -999) > parseFloat(filterCloudMax)) return false;
 
       return true;
     });
@@ -883,9 +912,9 @@ export default function Tests() {
     }
 
     return result;
-  }, [tests, filterSeason, filterType, filterProduct, filterSnowType, filterLocation, filterDateFrom, filterDateTo, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, allEntries, weatherById, sortOrder]);
+  }, [tests, filterSeason, filterType, filterProduct, filterSnowType, filterLocation, filterDateFrom, filterDateTo, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, filterTrackHardness, filterSnowHumidityType, filterGrainSize, filterArtSnow, filterNatSnow, filterPrecipitation, filterWind, filterVisibility, filterCloudMin, filterCloudMax, allEntries, weatherById, sortOrder]);
 
-  const hasFilters = filterSeason !== "All" || filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || (filterDateFrom || filterDateTo) || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax;
+  const hasFilters = filterSeason !== "All" || filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || (filterDateFrom || filterDateTo) || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax || filterTrackHardness || filterSnowHumidityType || filterGrainSize || filterArtSnow || filterNatSnow || filterPrecipitation || filterWind || filterVisibility || filterCloudMin || filterCloudMax;
 
   const activeFilterCount = [
     filterSeason !== "All",
@@ -919,6 +948,16 @@ export default function Tests() {
     setFilterAirHumMax("");
     setFilterSnowHumMin("");
     setFilterSnowHumMax("");
+    setFilterTrackHardness("");
+    setFilterSnowHumidityType("");
+    setFilterGrainSize("");
+    setFilterArtSnow("");
+    setFilterNatSnow("");
+    setFilterPrecipitation("");
+    setFilterWind("");
+    setFilterVisibility("");
+    setFilterCloudMin("");
+    setFilterCloudMax("");
   }
 
   const [hideDayDetailsState, setHideDayDetails] = useState(false);
@@ -1125,54 +1164,128 @@ export default function Tests() {
             )}
           </div>
 
-          <div className={cn("mt-3 border-t border-border pt-3", !filtersOpen && "hidden sm:block")}>
-            <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className={cn("mt-3 border-t border-border pt-3 space-y-4", !filtersOpen && "hidden sm:block")}>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               <Thermometer className="h-3 w-3" />
               {t("testDetail.weather")}
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />
-                  {t("testDetail.airTemp")} (°C)
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <Input type="number" value={filterAirTempMin} onChange={(e) => setFilterAirTempMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-air-temp-min" />
-                  <span className="text-xs text-muted-foreground">–</span>
-                  <Input type="number" value={filterAirTempMax} onChange={(e) => setFilterAirTempMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-air-temp-max" />
+            {/* Temperature & Humidity */}
+            <div>
+              <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Temperature & Humidity</div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />Air temp (°C)</label>
+                  <div className="flex items-center gap-1">
+                    <Input type="number" value={filterAirTempMin} onChange={e => setFilterAirTempMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-air-temp-min" />
+                    <span className="text-xs text-muted-foreground">–</span>
+                    <Input type="number" value={filterAirTempMax} onChange={e => setFilterAirTempMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-air-temp-max" />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />Snow temp (°C)</label>
+                  <div className="flex items-center gap-1">
+                    <Input type="number" value={filterSnowTempMin} onChange={e => setFilterSnowTempMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-snow-temp-min" />
+                    <span className="text-xs text-muted-foreground">–</span>
+                    <Input type="number" value={filterSnowTempMax} onChange={e => setFilterSnowTempMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-snow-temp-max" />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400" />Air humidity (%rH)</label>
+                  <div className="flex items-center gap-1">
+                    <Input type="number" value={filterAirHumMin} onChange={e => setFilterAirHumMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-air-hum-min" />
+                    <span className="text-xs text-muted-foreground">–</span>
+                    <Input type="number" value={filterAirHumMax} onChange={e => setFilterAirHumMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-air-hum-max" />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />Snow humidity (%)</label>
+                  <div className="flex items-center gap-1">
+                    <Input type="number" value={filterSnowHumMin} onChange={e => setFilterSnowHumMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-snow-hum-min" />
+                    <span className="text-xs text-muted-foreground">–</span>
+                    <Input type="number" value={filterSnowHumMax} onChange={e => setFilterSnowHumMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-snow-hum-max" />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-400" />Cloud cover (%)</label>
+                  <div className="flex items-center gap-1">
+                    <Input type="number" value={filterCloudMin} onChange={e => setFilterCloudMin(e.target.value)} placeholder="Min" className="h-8 text-xs" />
+                    <span className="text-xs text-muted-foreground">–</span>
+                    <Input type="number" value={filterCloudMax} onChange={e => setFilterCloudMax(e.target.value)} placeholder="Max" className="h-8 text-xs" />
+                  </div>
                 </div>
               </div>
-              <div>
-                <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  {t("testDetail.snowTemp")} (°C)
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <Input type="number" value={filterSnowTempMin} onChange={(e) => setFilterSnowTempMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-snow-temp-min" />
-                  <span className="text-xs text-muted-foreground">–</span>
-                  <Input type="number" value={filterSnowTempMax} onChange={(e) => setFilterSnowTempMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-snow-temp-max" />
+            </div>
+            {/* Snow Type */}
+            <div>
+              <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow Type</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-400" />Artificial snow</label>
+                  <Select value={filterArtSnow || "__any__"} onValueChange={v => setFilterArtSnow(v === "__any__" ? "" : v)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__any__">— Any —</SelectItem>
+                      {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-teal-400" />Natural snow</label>
+                  <Select value={filterNatSnow || "__any__"} onValueChange={v => setFilterNatSnow(v === "__any__" ? "" : v)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__any__">— Any —</SelectItem>
+                      {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-400" />Snow humidity type</label>
+                  <Select value={filterSnowHumidityType || "__any__"} onValueChange={v => setFilterSnowHumidityType(v === "__any__" ? "" : v)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__any__">— Any —</SelectItem>
+                      {SNOW_HUMIDITY_TYPE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-lime-400" />Grain size</label>
+                  <Select value={filterGrainSize || "__any__"} onValueChange={v => setFilterGrainSize(v === "__any__" ? "" : v)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__any__">— Any —</SelectItem>
+                      {GRAIN_SIZE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-              <div>
-                <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400" />
-                  {t("weather.airHumidity")}
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <Input type="number" value={filterAirHumMin} onChange={(e) => setFilterAirHumMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-air-hum-min" />
-                  <span className="text-xs text-muted-foreground">–</span>
-                  <Input type="number" value={filterAirHumMax} onChange={(e) => setFilterAirHumMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-air-hum-max" />
+            </div>
+            {/* Snow & Track */}
+            <div>
+              <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow & Track</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-400" />Track hardness</label>
+                  <Select value={filterTrackHardness || "__any__"} onValueChange={v => setFilterTrackHardness(v === "__any__" ? "" : v)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__any__">— Any —</SelectItem>
+                      {TRACK_HARDNESS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
-              <div>
-                <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
-                  {t("weather.snowHumidity")}
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <Input type="number" value={filterSnowHumMin} onChange={(e) => setFilterSnowHumMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-snow-hum-min" />
-                  <span className="text-xs text-muted-foreground">–</span>
-                  <Input type="number" value={filterSnowHumMax} onChange={(e) => setFilterSnowHumMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-snow-hum-max" />
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400" />Precipitation</label>
+                  <Input className="h-8 text-xs" placeholder="e.g. Light snow" value={filterPrecipitation} onChange={e => setFilterPrecipitation(e.target.value)} />
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-purple-400" />Wind</label>
+                  <Input className="h-8 text-xs" placeholder="e.g. Light NW" value={filterWind} onChange={e => setFilterWind(e.target.value)} />
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-pink-400" />Visibility</label>
+                  <Input className="h-8 text-xs" placeholder="e.g. Good" value={filterVisibility} onChange={e => setFilterVisibility(e.target.value)} />
                 </div>
               </div>
             </div>

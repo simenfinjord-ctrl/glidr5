@@ -1757,10 +1757,10 @@ export default function AthleteDetail() {
                           <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                             <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-400" />Artificial snow
                           </label>
-                          <Select value={raceArtSnow} onValueChange={setRaceArtSnow}>
+                          <Select value={raceArtSnow || "__any__"} onValueChange={v => setRaceArtSnow(v === "__any__" ? "" : v)}>
                             <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">— Any —</SelectItem>
+                              <SelectItem value="__any__">— Any —</SelectItem>
                               {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                             </SelectContent>
                           </Select>
@@ -1769,10 +1769,10 @@ export default function AthleteDetail() {
                           <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                             <span className="inline-block h-1.5 w-1.5 rounded-full bg-teal-400" />Natural snow
                           </label>
-                          <Select value={raceNatSnow} onValueChange={setRaceNatSnow}>
+                          <Select value={raceNatSnow || "__any__"} onValueChange={v => setRaceNatSnow(v === "__any__" ? "" : v)}>
                             <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">— Any —</SelectItem>
+                              <SelectItem value="__any__">— Any —</SelectItem>
                               {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                             </SelectContent>
                           </Select>
@@ -1781,10 +1781,10 @@ export default function AthleteDetail() {
                           <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                             <span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-400" />Snow humidity type
                           </label>
-                          <Select value={raceSnowHumidityType} onValueChange={setRaceSnowHumidityType}>
+                          <Select value={raceSnowHumidityType || "__any__"} onValueChange={v => setRaceSnowHumidityType(v === "__any__" ? "" : v)}>
                             <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">— Any —</SelectItem>
+                              <SelectItem value="__any__">— Any —</SelectItem>
                               {SNOW_HUMIDITY_TYPE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                             </SelectContent>
                           </Select>
@@ -1793,10 +1793,10 @@ export default function AthleteDetail() {
                           <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                             <span className="inline-block h-1.5 w-1.5 rounded-full bg-lime-400" />Grain size
                           </label>
-                          <Select value={raceGrainSize} onValueChange={setRaceGrainSize}>
+                          <Select value={raceGrainSize || "__any__"} onValueChange={v => setRaceGrainSize(v === "__any__" ? "" : v)}>
                             <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">— Any —</SelectItem>
+                              <SelectItem value="__any__">— Any —</SelectItem>
                               {GRAIN_SIZE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                             </SelectContent>
                           </Select>
@@ -1810,10 +1810,10 @@ export default function AthleteDetail() {
                           <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                             <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-400" />Track hardness
                           </label>
-                          <Select value={raceTrackHardness} onValueChange={setRaceTrackHardness}>
+                          <Select value={raceTrackHardness || "__any__"} onValueChange={v => setRaceTrackHardness(v === "__any__" ? "" : v)}>
                             <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">— Any —</SelectItem>
+                              <SelectItem value="__any__">— Any —</SelectItem>
                               {TRACK_HARDNESS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                             </SelectContent>
                           </Select>
@@ -2416,10 +2416,10 @@ export default function AthleteDetail() {
                               <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-400" />Artificial snow
                               </label>
-                              <Select value={testArtSnow} onValueChange={setTestArtSnow}>
+                              <Select value={testArtSnow || "__any__"} onValueChange={v => setTestArtSnow(v === "__any__" ? "" : v)}>
                                 <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">— Any —</SelectItem>
+                                  <SelectItem value="__any__">— Any —</SelectItem>
                                   {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                                 </SelectContent>
                               </Select>
@@ -2428,10 +2428,10 @@ export default function AthleteDetail() {
                               <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-teal-400" />Natural snow
                               </label>
-                              <Select value={testNatSnow} onValueChange={setTestNatSnow}>
+                              <Select value={testNatSnow || "__any__"} onValueChange={v => setTestNatSnow(v === "__any__" ? "" : v)}>
                                 <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">— Any —</SelectItem>
+                                  <SelectItem value="__any__">— Any —</SelectItem>
                                   {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                                 </SelectContent>
                               </Select>
@@ -2440,10 +2440,10 @@ export default function AthleteDetail() {
                               <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-400" />Snow humidity type
                               </label>
-                              <Select value={testSnowHumidityType} onValueChange={setTestSnowHumidityType}>
+                              <Select value={testSnowHumidityType || "__any__"} onValueChange={v => setTestSnowHumidityType(v === "__any__" ? "" : v)}>
                                 <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">— Any —</SelectItem>
+                                  <SelectItem value="__any__">— Any —</SelectItem>
                                   {SNOW_HUMIDITY_TYPE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                                 </SelectContent>
                               </Select>
@@ -2452,10 +2452,10 @@ export default function AthleteDetail() {
                               <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-lime-400" />Grain size
                               </label>
-                              <Select value={testGrainSize} onValueChange={setTestGrainSize}>
+                              <Select value={testGrainSize || "__any__"} onValueChange={v => setTestGrainSize(v === "__any__" ? "" : v)}>
                                 <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">— Any —</SelectItem>
+                                  <SelectItem value="__any__">— Any —</SelectItem>
                                   {GRAIN_SIZE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                                 </SelectContent>
                               </Select>
@@ -2469,10 +2469,10 @@ export default function AthleteDetail() {
                               <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-400" />Track hardness
                               </label>
-                              <Select value={testTrackHardness} onValueChange={setTestTrackHardness}>
+                              <Select value={testTrackHardness || "__any__"} onValueChange={v => setTestTrackHardness(v === "__any__" ? "" : v)}>
                                 <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">— Any —</SelectItem>
+                                  <SelectItem value="__any__">— Any —</SelectItem>
                                   {TRACK_HARDNESS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                                 </SelectContent>
                               </Select>

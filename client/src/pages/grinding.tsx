@@ -1476,10 +1476,10 @@ export default function Grinding() {
                             <span className="inline-block h-2 w-2 rounded-full bg-indigo-500" />
                             <span className="text-xs text-muted-foreground">Artificial snow</span>
                           </div>
-                          <Select value={wfArtSnow} onValueChange={setWfArtSnow}>
+                          <Select value={wfArtSnow || "__any__"} onValueChange={v => setWfArtSnow(v === "__any__" ? "" : v)}>
                             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">— Any —</SelectItem>
+                              <SelectItem value="__any__">— Any —</SelectItem>
                               {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                             </SelectContent>
                           </Select>
@@ -1489,10 +1489,10 @@ export default function Grinding() {
                             <span className="inline-block h-2 w-2 rounded-full bg-teal-500" />
                             <span className="text-xs text-muted-foreground">Natural snow</span>
                           </div>
-                          <Select value={wfNatSnow} onValueChange={setWfNatSnow}>
+                          <Select value={wfNatSnow || "__any__"} onValueChange={v => setWfNatSnow(v === "__any__" ? "" : v)}>
                             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">— Any —</SelectItem>
+                              <SelectItem value="__any__">— Any —</SelectItem>
                               {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                             </SelectContent>
                           </Select>
@@ -1502,10 +1502,10 @@ export default function Grinding() {
                             <span className="inline-block h-2 w-2 rounded-full bg-cyan-500" />
                             <span className="text-xs text-muted-foreground">Snow humidity type</span>
                           </div>
-                          <Select value={wfSnowHumidityType} onValueChange={setWfSnowHumidityType}>
+                          <Select value={wfSnowHumidityType || "__any__"} onValueChange={v => setWfSnowHumidityType(v === "__any__" ? "" : v)}>
                             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">— Any —</SelectItem>
+                              <SelectItem value="__any__">— Any —</SelectItem>
                               {SNOW_HUMIDITY_TYPE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                             </SelectContent>
                           </Select>
@@ -1515,10 +1515,10 @@ export default function Grinding() {
                             <span className="inline-block h-2 w-2 rounded-full bg-lime-500" />
                             <span className="text-xs text-muted-foreground">Grain size</span>
                           </div>
-                          <Select value={wfGrainSize} onValueChange={setWfGrainSize}>
+                          <Select value={wfGrainSize || "__any__"} onValueChange={v => setWfGrainSize(v === "__any__" ? "" : v)}>
                             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">— Any —</SelectItem>
+                              <SelectItem value="__any__">— Any —</SelectItem>
                               {GRAIN_SIZE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                             </SelectContent>
                           </Select>
@@ -1533,10 +1533,10 @@ export default function Grinding() {
                             <span className="inline-block h-2 w-2 rounded-full bg-orange-500" />
                             <span className="text-xs text-muted-foreground">Track hardness</span>
                           </div>
-                          <Select value={wfTrackHardness} onValueChange={setWfTrackHardness}>
+                          <Select value={wfTrackHardness || "__any__"} onValueChange={v => setWfTrackHardness(v === "__any__" ? "" : v)}>
                             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">— Any —</SelectItem>
+                              <SelectItem value="__any__">— Any —</SelectItem>
                               {TRACK_HARDNESS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                             </SelectContent>
                           </Select>

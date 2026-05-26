@@ -773,18 +773,30 @@ export default function Dashboard() {
             {savedShortcuts.map((s) => {
               const Icon = SHORTCUT_ICON_MAP[s.iconKey] ?? ListChecks;
               return (
-                <AppLink key={s.uid} href={s.href} testId={`shortcut-${s.uid}`}
-                  className="group block rounded-2xl border border-primary/20 bg-primary/5 p-3.5 transition-all duration-200 hover:shadow-md hover:border-primary/40 hover:bg-primary/10">
-                  <div className="flex items-center gap-2.5">
-                    <div className={cn("inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/60 dark:bg-black/20 shadow-sm shrink-0", s.iconColor)}>
-                      <Icon className="h-5 w-5" />
+                <div key={s.uid} className="relative">
+                  {editingWidgets && (
+                    <button
+                      type="button"
+                      onClick={() => removeShortcut(s.uid)}
+                      className="absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/80 transition-colors"
+                      title="Remove shortcut"
+                    >
+                      <span className="text-[11px] font-bold leading-none">−</span>
+                    </button>
+                  )}
+                  <AppLink href={s.href} testId={`shortcut-${s.uid}`}
+                    className="group block rounded-2xl border border-primary/20 bg-primary/5 p-3.5 transition-all duration-200 hover:shadow-md hover:border-primary/40 hover:bg-primary/10">
+                    <div className="flex items-center gap-2.5">
+                      <div className={cn("inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/60 dark:bg-black/20 shadow-sm shrink-0", s.iconColor)}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{s.label}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{s.description}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{s.label}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{s.description}</p>
-                    </div>
-                  </div>
-                </AppLink>
+                  </AppLink>
+                </div>
               );
             })}
           </div>

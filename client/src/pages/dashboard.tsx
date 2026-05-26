@@ -18,6 +18,17 @@ const SHORTCUT_ICON_MAP: Record<string, React.ComponentType<{ className?: string
   ListChecks, Snowflake, PackagePlus, CalendarPlus, Trophy, BarChart2, Disc3, Flag, Layers, MapPin, Watch, Award, Settings2, User, Activity,
 };
 
+// A saved shortcut — stores everything needed to render the pinned card
+type SavedShortcut = {
+  uid: string;        // unique id for this saved entry (parent id + optional suffix)
+  label: string;
+  description: string;
+  href: string;
+  iconKey: string;
+  iconColor: string;
+};
+
+// Top-level shortcut definition
 type ShortcutDef = {
   id: string;
   label: string;
@@ -27,17 +38,33 @@ type ShortcutDef = {
   iconColor: string;
   adminOnly?: boolean;
   blindHide?: boolean;
+  // If present, the user must drill into sub-options before the shortcut is added
+  subOptions?: { id: string; label: string; description: string; href: string }[];
+  // Populated dynamically at render time (e.g. one option per athlete)
+  dynamicChildren?: "athletes";
 };
 
 const ALL_SHORTCUTS: ShortcutDef[] = [
-  { id: "new-test",       label: "New Test",         description: "Create a new glide or kick test",    href: "/tests/new",       iconKey: "ListChecks",  iconColor: "text-emerald-600", blindHide: true },
+  { id: "new-test",       label: "New Test",         description: "Create a new test",                  href: "/tests/new",       iconKey: "ListChecks",  iconColor: "text-emerald-600", blindHide: true },
   { id: "tests",          label: "All Tests",         description: "Browse all tests",                   href: "/tests",           iconKey: "ListChecks",  iconColor: "text-emerald-600" },
   { id: "testskis",       label: "Test Skis",         description: "Manage test ski series",             href: "/testskis",        iconKey: "Snowflake",   iconColor: "text-sky-600", blindHide: true },
   { id: "products",       label: "Products",          description: "Wax products catalogue",             href: "/products",        iconKey: "PackagePlus", iconColor: "text-amber-600", blindHide: true },
   { id: "weather",        label: "Weather",           description: "Log weather & snow data",            href: "/weather",         iconKey: "CalendarPlus",iconColor: "text-violet-600" },
   { id: "analytics",      label: "Analytics",         description: "Charts & performance data",          href: "/analytics",       iconKey: "BarChart2",   iconColor: "text-blue-600" },
-  { id: "grinding",       label: "Grinding",          description: "Grind tests and profiles",           href: "/grinding",        iconKey: "Disc3",       iconColor: "text-indigo-600" },
-  { id: "raceskis",       label: "Race Skis",         description: "Ski garage & race records",          href: "/raceskis",        iconKey: "Layers",      iconColor: "text-rose-600" },
+  {
+    id: "grinding", label: "Grinding", description: "Grind tests and profiles", href: "/grinding",
+    iconKey: "Disc3", iconColor: "text-indigo-600",
+    subOptions: [
+      { id: "grinding-tests",     label: "Grinding — Tests",     description: "Grind test sessions",    href: "/grinding" },
+      { id: "grinding-grinds",    label: "Grinding — Profiles",  description: "Grind profiles library", href: "/grinding?tab=grinds" },
+      { id: "grinding-analytics", label: "Grinding — Analytics", description: "Grind analytics",        href: "/grinding?tab=analytics" },
+    ],
+  },
+  {
+    id: "raceskis", label: "Race Skis", description: "Ski garage & race records", href: "/raceskis",
+    iconKey: "Layers", iconColor: "text-rose-600",
+    dynamicChildren: "athletes",
+  },
   { id: "raceprep",       label: "Race Prep",         description: "Race day preparation",               href: "/raceprep",        iconKey: "Flag",        iconColor: "text-orange-600" },
   { id: "suggestions",    label: "Suggestions",       description: "Wax suggestions",                    href: "/suggestions",     iconKey: "Trophy",      iconColor: "text-yellow-600" },
   { id: "live-runsheets", label: "Live Runsheets",    description: "Live test runsheets",                href: "/live-runsheets",  iconKey: "Activity",    iconColor: "text-pink-600" },
@@ -45,10 +72,10 @@ const ALL_SHORTCUTS: ShortcutDef[] = [
   { id: "admin",          label: "Admin",             description: "Team admin settings",                href: "/admin",           iconKey: "Settings2",   iconColor: "text-gray-600", adminOnly: true },
 ];
 
-const SHORTCUTS_STORAGE_KEY = "glidr-dashboard-shortcuts";
+const SHORTCUTS_STORAGE_KEY = "glidr-dashboard-shortcuts-v2";
 const MAX_SHORTCUTS = 4;
 
-function loadShortcuts(userId: number | undefined): string[] {
+function loadShortcuts(userId: number | undefined): SavedShortcut[] {
   try {
     const raw = localStorage.getItem(`${SHORTCUTS_STORAGE_KEY}-${userId ?? "anon"}`);
     if (!raw) return [];
@@ -57,8 +84,8 @@ function loadShortcuts(userId: number | undefined): string[] {
   } catch { return []; }
 }
 
-function saveShortcuts(userId: number | undefined, ids: string[]) {
-  try { localStorage.setItem(`${SHORTCUTS_STORAGE_KEY}-${userId ?? "anon"}`, JSON.stringify(ids)); } catch {}
+function saveShortcuts(userId: number | undefined, shortcuts: SavedShortcut[]) {
+  try { localStorage.setItem(`${SHORTCUTS_STORAGE_KEY}-${userId ?? "anon"}`, JSON.stringify(shortcuts)); } catch {}
 }
 
 type Test = { id: number; date: string; location: string; testName: string | null; testType: string; createdByName: string; groupScope: string; weatherId: number | null; seriesId: number; createdAt: string; testSkiSource?: string | null; athleteId?: number | null };
@@ -374,15 +401,27 @@ export default function Dashboard() {
   const [editingWidgets, setEditingWidgets] = useState(false);
 
   // Shortcuts
-  const [shortcutIds, setShortcutIds] = useState<string[]>(() => loadShortcuts(user?.id));
-  function toggleShortcut(id: string) {
-    setShortcutIds((prev) => {
-      const next = prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id].slice(0, MAX_SHORTCUTS);
+  const [savedShortcuts, setSavedShortcuts] = useState<SavedShortcut[]>(() => loadShortcuts(user?.id));
+  const [expandedShortcutId, setExpandedShortcutId] = useState<string | null>(null);
+
+  function addShortcut(s: SavedShortcut) {
+    setSavedShortcuts((prev) => {
+      if (prev.some((p) => p.uid === s.uid)) return prev; // already added
+      const next = [...prev, s].slice(0, MAX_SHORTCUTS);
       saveShortcuts(user?.id, next);
       return next;
     });
   }
-  const activeShortcuts = ALL_SHORTCUTS.filter((s) => shortcutIds.includes(s.id));
+  function removeShortcut(uid: string) {
+    setSavedShortcuts((prev) => {
+      const next = prev.filter((s) => s.uid !== uid);
+      saveShortcuts(user?.id, next);
+      return next;
+    });
+  }
+  function isShortcutSaved(uid: string) {
+    return savedShortcuts.some((s) => s.uid === uid);
+  }
 
   function toggleWidget(id: WidgetId) {
     const next = widgetPrefs.map((p) => p.id === id ? { ...p, enabled: !p.enabled } : p);
@@ -600,44 +639,125 @@ export default function Dashboard() {
 
             {/* ── Shortcuts config ── */}
             <div className="mt-4 border-t border-border pt-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold text-foreground">Quick-access shortcuts ({shortcutIds.length}/{MAX_SHORTCUTS})</p>
-                {shortcutIds.length > 0 && (
-                  <button type="button" onClick={() => { setShortcutIds([]); saveShortcuts(user?.id, []); }}
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs font-semibold text-foreground">
+                  Quick-access shortcuts ({savedShortcuts.length}/{MAX_SHORTCUTS})
+                </p>
+                {savedShortcuts.length > 0 && (
+                  <button type="button" onClick={() => { setSavedShortcuts([]); saveShortcuts(user?.id, []); }}
                     className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
                     Clear all
                   </button>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground mb-3">Choose up to {MAX_SHORTCUTS} shortcuts to pin at the top of your dashboard.</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              <p className="text-[11px] text-muted-foreground mb-3">
+                Choose up to {MAX_SHORTCUTS} shortcuts to pin at the top of your dashboard.
+                Some pages let you drill down to a specific section or athlete.
+              </p>
+
+              <div className="flex flex-col gap-1.5">
                 {ALL_SHORTCUTS.filter((s) => {
                   if (s.adminOnly && !canManage) return false;
                   if (s.blindHide && isBlindTester) return false;
                   return true;
                 }).map((s) => {
-                  const active = shortcutIds.includes(s.id);
                   const Icon = SHORTCUT_ICON_MAP[s.iconKey] ?? ListChecks;
-                  const canAdd = active || shortcutIds.length < MAX_SHORTCUTS;
+                  const hasChildren = !!(s.subOptions?.length || s.dynamicChildren);
+                  const isExpanded = expandedShortcutId === s.id;
+
+                  // Build dynamic athlete sub-options for Race Skis
+                  const dynamicOpts: { id: string; label: string; description: string; href: string }[] =
+                    s.dynamicChildren === "athletes"
+                      ? [
+                          { id: `${s.id}-all`, label: "Race Skis — All athletes", description: "Ski garage overview", href: s.href },
+                          ...athletes.map((a) => ({
+                            id: `${s.id}-athlete-${a.id}`,
+                            label: `Race Skis — ${a.name}`,
+                            description: a.name,
+                            href: `/athletes/${a.id}`,
+                          })),
+                        ]
+                      : [];
+
+                  const allChildren = [...(s.subOptions ?? []), ...dynamicOpts];
+
+                  // Whether ALL sub-options for this parent are already saved
+                  const parentSaved = !hasChildren && isShortcutSaved(s.id);
+                  const canAddMore = savedShortcuts.length < MAX_SHORTCUTS;
+
                   return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => { if (canAdd || active) toggleShortcut(s.id); }}
-                      disabled={!canAdd && !active}
-                      className={cn(
-                        "flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-all text-xs",
-                        active
-                          ? "border-primary/40 bg-primary/10 text-primary"
-                          : canAdd
-                            ? "border-border bg-muted/20 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-                            : "border-border bg-muted/10 text-muted-foreground/50 cursor-not-allowed"
+                    <div key={s.id}>
+                      {/* Top-level row */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (hasChildren) {
+                            setExpandedShortcutId(isExpanded ? null : s.id);
+                          } else {
+                            // Direct shortcut — toggle
+                            if (parentSaved) {
+                              removeShortcut(s.id);
+                            } else if (canAddMore) {
+                              addShortcut({ uid: s.id, label: s.label, description: s.description, href: s.href, iconKey: s.iconKey, iconColor: s.iconColor });
+                            }
+                          }
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 rounded-xl border px-3 py-2 text-left text-xs transition-all",
+                          parentSaved
+                            ? "border-primary/40 bg-primary/10 text-primary"
+                            : hasChildren
+                              ? isExpanded
+                                ? "border-primary/30 bg-primary/5 text-foreground"
+                                : "border-border bg-muted/20 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                              : canAddMore
+                                ? "border-border bg-muted/20 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                                : "border-border bg-muted/10 text-muted-foreground/40 cursor-not-allowed"
+                        )}
+                      >
+                        <Icon className={cn("h-3.5 w-3.5 shrink-0", parentSaved ? "text-primary" : s.iconColor)} />
+                        <span className="font-medium flex-1 truncate">{s.label}</span>
+                        {parentSaved && <span className="text-[10px] font-bold text-primary shrink-0">✓</span>}
+                        {hasChildren && (
+                          <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", isExpanded && "rotate-180")} />
+                        )}
+                      </button>
+
+                      {/* Sub-options (drill-down) */}
+                      {isExpanded && allChildren.length > 0 && (
+                        <div className="ml-5 mt-1 flex flex-col gap-1">
+                          {allChildren.map((child) => {
+                            const saved = isShortcutSaved(child.id);
+                            const canAdd = canAddMore || saved;
+                            return (
+                              <button
+                                key={child.id}
+                                type="button"
+                                disabled={!canAdd}
+                                onClick={() => {
+                                  if (saved) {
+                                    removeShortcut(child.id);
+                                  } else if (canAddMore) {
+                                    addShortcut({ uid: child.id, label: child.label, description: child.description, href: child.href, iconKey: s.iconKey, iconColor: s.iconColor });
+                                  }
+                                }}
+                                className={cn(
+                                  "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-left text-xs transition-all",
+                                  saved
+                                    ? "border-primary/40 bg-primary/10 text-primary"
+                                    : canAdd
+                                      ? "border-border bg-muted/10 text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                                      : "border-border bg-muted/5 text-muted-foreground/40 cursor-not-allowed"
+                                )}
+                              >
+                                <span className="flex-1 truncate">{child.label}</span>
+                                {saved && <span className="text-[10px] font-bold text-primary shrink-0">✓</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
                       )}
-                    >
-                      <Icon className={cn("h-3.5 w-3.5 shrink-0", active ? "text-primary" : s.iconColor)} />
-                      <span className="font-medium truncate">{s.label}</span>
-                      {active && <span className="ml-auto text-[10px] font-bold text-primary">✓</span>}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -646,15 +766,15 @@ export default function Dashboard() {
         )}
 
         {/* Pinned shortcuts row */}
-        {activeShortcuts.length > 0 && (
-          <div className={`grid grid-cols-2 gap-3 sm:grid-cols-4`} data-testid="dashboard-shortcuts">
-            {activeShortcuts.map((s) => {
+        {savedShortcuts.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" data-testid="dashboard-shortcuts">
+            {savedShortcuts.map((s) => {
               const Icon = SHORTCUT_ICON_MAP[s.iconKey] ?? ListChecks;
               return (
-                <AppLink key={s.id} href={s.href} testId={`shortcut-${s.id}`}
+                <AppLink key={s.uid} href={s.href} testId={`shortcut-${s.uid}`}
                   className="group block rounded-2xl border border-primary/20 bg-primary/5 p-3.5 transition-all duration-200 hover:shadow-md hover:border-primary/40 hover:bg-primary/10">
                   <div className="flex items-center gap-2.5">
-                    <div className={cn("inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/60 dark:bg-black/20 shadow-sm", s.iconColor)}>
+                    <div className={cn("inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/60 dark:bg-black/20 shadow-sm shrink-0", s.iconColor)}>
                       <Icon className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">

@@ -752,10 +752,9 @@ function PrepDetailDialog({
       <DialogContent
         className="max-w-2xl max-h-[90vh] overflow-y-auto"
         onPointerDownOutside={(e) => {
-          // Radix fires this with detail.originalEvent pointing to the actually-clicked element
-          const target = (e as unknown as CustomEvent<{ originalEvent: PointerEvent }>)
-            .detail?.originalEvent?.target as Element | null;
-          if (target?.closest?.('[data-ski-suggestion-portal]')) {
+          // If any ski-suggestion portal is currently in the DOM, the user is
+          // clicking on the autocomplete dropdown — keep the dialog open.
+          if (document.querySelector('[data-ski-suggestion-portal]')) {
             e.preventDefault();
           }
         }}

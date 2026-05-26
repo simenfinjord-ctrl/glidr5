@@ -212,6 +212,11 @@ function MultiProductPicker({
 }
 
 // ── Ski detail dialog ─────────────────────────────────────────────────────────
+function parseCustomParams(s: string | null): Record<string, string> {
+  if (!s) return {};
+  try { return JSON.parse(s); } catch { return {}; }
+}
+
 function SkiDetailDialog({
   ski,
   open,
@@ -224,6 +229,7 @@ function SkiDetailDialog({
   lang: string;
 }) {
   const L = (no: string, en: string) => lang === "en" ? en : no;
+  const cp = parseCustomParams(ski.customParams);
   const fields: { label: string; value: string | null | undefined }[] = [
     { label: "Ski ID", value: ski.skiId },
     { label: L("Serienummer", "Serial number"), value: ski.serialNumber },
@@ -233,9 +239,12 @@ function SkiDetailDialog({
     { label: L("Form", "Mold"), value: ski.mold },
     { label: L("Sål", "Base"), value: ski.base },
     { label: L("Slipemønster", "Grind"), value: ski.grind },
+    { label: "RA-Value", value: cp.ra_value ?? null },
     { label: L("Høyder", "Heights"), value: ski.heights },
     { label: L("År", "Year"), value: ski.year },
   ];
+  // Any extra custom params beyond ra_value
+  const extraCustom = Object.entries(cp).filter(([k]) => k !== "ra_value");
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-sm">
@@ -252,9 +261,120 @@ function SkiDetailDialog({
               <p className="font-medium">{f.value}</p>
             </div>
           ))}
+          {extraCustom.map(([k, v]) => (
+            <div key={k}>
+              <p className="text-xs text-muted-foreground mb-0.5">{k}</p>
+              <p className="font-medium">{v}</p>
+            </div>
+          ))}
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ── Equipment overview — one row per ski per athlete ─────────────────────────
+function AthleteSkiOverviewRow({
+  entry,
+  skiId,
+  disciplineLabel,
+  lang,
+}: {
+  entry: RacePrepEntry;
+  skiId: string | null | undefined;
+  disciplineLabel?: string;
+  lang: string;
+}) {
+  const { data: skis = [] } = useQuery<RaceSkiRecord[]>({
+    queryKey: [`/api/athletes/${entry.athleteId}/skis`],
+    enabled: !!skiId,
+  });
+  const ski = skis.find(s => s.skiId === skiId || s.serialNumber === skiId) ?? null;
+  const cp = parseCustomParams(ski?.customParams ?? null);
+  const cell = (v: string | null | undefined) => (
+    <td className="px-3 py-2 text-xs text-muted-foreground">{v || "—"}</td>
+  );
+  return (
+    <tr className="border-b border-border/40 last:border-0 hover:bg-muted/20">
+      <td className="px-3 py-2 text-sm font-medium">
+        {entry.athleteName}
+        {disciplineLabel && (
+          <span className="ml-1.5 text-[10px] text-muted-foreground">({disciplineLabel})</span>
+        )}
+      </td>
+      <td className="px-3 py-2 text-xs font-mono">{skiId || <span className="text-muted-foreground">—</span>}</td>
+      {cell(ski?.serialNumber)}
+      {cell(ski?.brand)}
+      {cell(ski?.grind)}
+      {cell(cp.ra_value)}
+      {cell(ski?.construction)}
+      {cell(ski?.base)}
+      {cell(ski?.heights)}
+    </tr>
+  );
+}
+
+function EquipmentOverview({
+  entries,
+  discipline,
+  lang,
+}: {
+  entries: RacePrepEntry[];
+  discipline: string;
+  lang: string;
+}) {
+  const L = (no: string, en: string) => lang === "en" ? en : no;
+  const headers = [
+    L("Løper", "Athlete"),
+    "Ski-ID",
+    L("Serienr.", "Serial No."),
+    L("Merke", "Brand"),
+    L("Slipemønster", "Grind"),
+    "RA-Value",
+    L("Konstruksjon", "Construction"),
+    L("Sål", "Base"),
+    L("Høyder", "Heights"),
+  ];
+  return (
+    <div className="rounded-xl border border-border overflow-x-auto mt-3">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border bg-muted/30 text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+            {headers.map(h => <th key={h} className="px-3 py-2 whitespace-nowrap">{h}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map(entry => {
+            if (discipline === "Skiathlon") {
+              return [
+                <AthleteSkiOverviewRow
+                  key={`${entry.id}-c`}
+                  entry={entry}
+                  skiId={entry.skiIdClassic ?? entry.skiId}
+                  disciplineLabel={L("Klassisk", "Classic")}
+                  lang={lang}
+                />,
+                <AthleteSkiOverviewRow
+                  key={`${entry.id}-s`}
+                  entry={entry}
+                  skiId={entry.skiIdSkating}
+                  disciplineLabel={L("Skøyting", "Skating")}
+                  lang={lang}
+                />,
+              ];
+            }
+            return (
+              <AthleteSkiOverviewRow
+                key={entry.id}
+                entry={entry}
+                skiId={entry.skiId ?? entry.skiIdClassic}
+                lang={lang}
+              />
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -542,6 +662,7 @@ function PrepDetailDialog({
   const [addAthletesOpen, setAddAthletesOpen] = useState(false);
   const [selectedAthleteIds, setSelectedAthleteIds] = useState<Set<number>>(new Set());
   const [addingSaving, setAddingSaving] = useState(false);
+  const [showEquipment, setShowEquipment] = useState(false);
 
   const SKI_PARAM_COLS = [
     { key: "serialNumber", label: lang === "en" ? "Serial No." : "Serienr." },
@@ -757,7 +878,10 @@ function PrepDetailDialog({
                   </thead>
                   <tbody>
                     {entries.map((entry) => {
-                      const skiIdVal = entry.skiId ?? entry.skiIdClassic;
+                      // For param columns: use the primary ski ID for this discipline
+                      const skiIdVal = prep.discipline === "Skating"
+                        ? (entry.skiIdSkating ?? entry.skiId)
+                        : (entry.skiId ?? entry.skiIdClassic);
                       return (
                         <tr key={entry.id} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
                           <td className="px-3 py-2.5 font-medium">{entry.athleteName}</td>
@@ -806,6 +930,30 @@ function PrepDetailDialog({
                   </tbody>
                 </table>
               </div>
+
+              {/* Equipment overview — admin toggle */}
+              {isAdmin && entries.length > 0 && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowEquipment(v => !v)}
+                    className={cn(
+                      "flex items-center gap-1.5 text-xs font-medium rounded-full px-3 py-1 ring-1 transition-colors",
+                      showEquipment
+                        ? "bg-primary/10 text-primary ring-primary/20"
+                        : "text-muted-foreground ring-border hover:bg-muted/60"
+                    )}
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                    {showEquipment
+                      ? L("Skjul utstyrsoversikt", "Hide equipment overview")
+                      : L("Vis alle skipar og parametre", "Show all skis & parameters")}
+                  </button>
+                  {showEquipment && (
+                    <EquipmentOverview entries={entries} discipline={prep.discipline} lang={lang} />
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>

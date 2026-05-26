@@ -256,6 +256,11 @@ const DISCIPLINE_LABEL_DETAIL: Record<string, { no: string; en: string }> = {
   Skiathlon: { no: "Skiathlon", en: "Skiathlon" },
 };
 
+const TRACK_HARDNESS_OPTIONS = ["Very soft", "Soft", "Medium hard", "Hard", "Very hard", "Ice"] as const;
+const SNOW_HUMIDITY_TYPE_OPTIONS = ["Dry", "Moist", "Wet", "Very wet", "Slush"] as const;
+const GRAIN_SIZE_OPTIONS = ["Extra fine", "Very fine", "Fine", "Average", "Coarse", "Very coarse"] as const;
+const SNOW_STAGE_OPTIONS = ["Falling new", "New", "Irreg. dir. new", "Irreg. dir. transf.", "Transformed"] as const;
+
 export default function AthleteDetail() {
   const [, params] = useRoute("/raceskis/:id");
   const [, navigate] = useLocation();
@@ -701,6 +706,16 @@ export default function AthleteDetail() {
   const [testAirHumMax, setTestAirHumMax] = useState("");
   const [testSnowHumMin, setTestSnowHumMin] = useState("");
   const [testSnowHumMax, setTestSnowHumMax] = useState("");
+  const [testTrackHardness, setTestTrackHardness] = useState("");
+  const [testSnowHumidityType, setTestSnowHumidityType] = useState("");
+  const [testGrainSize, setTestGrainSize] = useState("");
+  const [testArtSnow, setTestArtSnow] = useState("");
+  const [testNatSnow, setTestNatSnow] = useState("");
+  const [testPrecipitation, setTestPrecipitation] = useState("");
+  const [testWind, setTestWind] = useState("");
+  const [testVisibility, setTestVisibility] = useState("");
+  const [testCloudMin, setTestCloudMin] = useState("");
+  const [testCloudMax, setTestCloudMax] = useState("");
   const [showTestWeatherFilters, setShowTestWeatherFilters] = useState(false);
 
   // ── Race history filters ──────────────────────────────────────────────────
@@ -718,6 +733,15 @@ export default function AthleteDetail() {
   const [raceSnowHumMax, setRaceSnowHumMax] = useState("");
   const [raceSnowType, setRaceSnowType] = useState("");
   const [raceTrackHardness, setRaceTrackHardness] = useState("");
+  const [raceSnowHumidityType, setRaceSnowHumidityType] = useState("");
+  const [raceGrainSize, setRaceGrainSize] = useState("");
+  const [raceArtSnow, setRaceArtSnow] = useState("");
+  const [raceNatSnow, setRaceNatSnow] = useState("");
+  const [racePrecipitation, setRacePrecipitation] = useState("");
+  const [raceWind, setRaceWind] = useState("");
+  const [raceVisibility, setRaceVisibility] = useState("");
+  const [raceCloudMin, setRaceCloudMin] = useState("");
+  const [raceCloudMax, setRaceCloudMax] = useState("");
   const [showRaceWeatherFilters, setShowRaceWeatherFilters] = useState(false);
 
   const testDates = useMemo(() => {
@@ -725,7 +749,7 @@ export default function AthleteDetail() {
     return dates;
   }, [raceSkiTests]);
 
-  const testWeatherById = useMemo(() => new Map(weatherList.map(w => [w.id, w])), [weatherList]);
+  const testWeatherById = useMemo(() => new Map(weather.map(w => [w.id, w])), [weather]);
 
   const testAvailableSeasons = useMemo(() => {
     const s = new Set(raceSkiTests.map(t => {
@@ -749,7 +773,7 @@ export default function AthleteDetail() {
     }
     if (testDateFrom) list = list.filter(t => t.date >= testDateFrom);
     if (testDateTo) list = list.filter(t => t.date <= testDateTo);
-    const hasWeatherFilter = testAirTempMin || testAirTempMax || testSnowTempMin || testSnowTempMax || testAirHumMin || testAirHumMax || testSnowHumMin || testSnowHumMax;
+    const hasWeatherFilter = testAirTempMin || testAirTempMax || testSnowTempMin || testSnowTempMax || testAirHumMin || testAirHumMax || testSnowHumMin || testSnowHumMax || testTrackHardness || testSnowHumidityType || testGrainSize || testArtSnow || testNatSnow || testPrecipitation || testWind || testVisibility || testCloudMin || testCloudMax;
     if (hasWeatherFilter) {
       list = list.filter(t => {
         const w = t.weatherId ? testWeatherById.get(t.weatherId) : null;
@@ -762,6 +786,16 @@ export default function AthleteDetail() {
         if (testAirHumMax && (w.airHumidityPct ?? -999) > parseFloat(testAirHumMax)) return false;
         if (testSnowHumMin && (w.snowHumidityPct ?? 999) < parseFloat(testSnowHumMin)) return false;
         if (testSnowHumMax && (w.snowHumidityPct ?? -999) > parseFloat(testSnowHumMax)) return false;
+        if (testArtSnow && !(w?.artificialSnow ?? "").toLowerCase().includes(testArtSnow.toLowerCase())) return false;
+        if (testNatSnow && !(w?.naturalSnow ?? "").toLowerCase().includes(testNatSnow.toLowerCase())) return false;
+        if (testTrackHardness && !(w?.trackHardness ?? "").toLowerCase().includes(testTrackHardness.toLowerCase())) return false;
+        if (testSnowHumidityType && !(w?.snowHumidityType ?? "").toLowerCase().includes(testSnowHumidityType.toLowerCase())) return false;
+        if (testGrainSize && !(w?.grainSize ?? "").toLowerCase().includes(testGrainSize.toLowerCase())) return false;
+        if (testPrecipitation && !(w?.precipitation ?? "").toLowerCase().includes(testPrecipitation.toLowerCase())) return false;
+        if (testWind && !(w?.wind ?? "").toLowerCase().includes(testWind.toLowerCase())) return false;
+        if (testVisibility && !(w?.visibility ?? "").toLowerCase().includes(testVisibility.toLowerCase())) return false;
+        if (testCloudMin !== "" && (w?.clouds ?? 999) < parseFloat(testCloudMin)) return false;
+        if (testCloudMax !== "" && (w?.clouds ?? -999) > parseFloat(testCloudMax)) return false;
         return true;
       });
     }
@@ -775,7 +809,7 @@ export default function AthleteDetail() {
       }
     });
     return list;
-  }, [raceSkiTests, testDateFilter, testTypeFilter, testSortBy, testLocationFilter, testSeasonFilter, testDateFrom, testDateTo, testAirTempMin, testAirTempMax, testSnowTempMin, testSnowTempMax, testAirHumMin, testAirHumMax, testSnowHumMin, testSnowHumMax, testWeatherById]);
+  }, [raceSkiTests, testDateFilter, testTypeFilter, testSortBy, testLocationFilter, testSeasonFilter, testDateFrom, testDateTo, testAirTempMin, testAirTempMax, testSnowTempMin, testSnowTempMax, testAirHumMin, testAirHumMax, testSnowHumMin, testSnowHumMax, testTrackHardness, testSnowHumidityType, testGrainSize, testArtSnow, testNatSnow, testPrecipitation, testWind, testVisibility, testCloudMin, testCloudMax, testWeatherById]);
 
   // Full weather map (WeatherItem with all fields) for race history
   const raceWeatherById = useMemo(() => new Map(weather.map(w => [w.id, w])), [weather]);
@@ -801,7 +835,8 @@ export default function AthleteDetail() {
     if (raceDateFrom) list = list.filter(r => r.date >= raceDateFrom);
     if (raceDateTo) list = list.filter(r => r.date <= raceDateTo);
     const hasWFilter = raceAirTempMin || raceAirTempMax || raceSnowTempMin || raceSnowTempMax ||
-      raceAirHumMin || raceAirHumMax || raceSnowHumMin || raceSnowHumMax || raceSnowType || raceTrackHardness;
+      raceAirHumMin || raceAirHumMax || raceSnowHumMin || raceSnowHumMax || raceSnowType || raceTrackHardness ||
+      raceSnowHumidityType || raceGrainSize || raceArtSnow || raceNatSnow || racePrecipitation || raceWind || raceVisibility || raceCloudMin || raceCloudMax;
     if (hasWFilter) {
       list = list.filter(r => {
         const w = r.weatherId ? raceWeatherById.get(r.weatherId) : null;
@@ -816,6 +851,15 @@ export default function AthleteDetail() {
         if (raceSnowHumMax && (w.snowHumidityPct ?? -999) > parseFloat(raceSnowHumMax)) return false;
         if (raceSnowType && !(w.snowType ?? "").toLowerCase().includes(raceSnowType.toLowerCase())) return false;
         if (raceTrackHardness && !(w.trackHardness ?? "").toLowerCase().includes(raceTrackHardness.toLowerCase())) return false;
+        if (raceArtSnow && !(w?.artificialSnow ?? "").toLowerCase().includes(raceArtSnow.toLowerCase())) return false;
+        if (raceNatSnow && !(w?.naturalSnow ?? "").toLowerCase().includes(raceNatSnow.toLowerCase())) return false;
+        if (raceSnowHumidityType && !(w?.snowHumidityType ?? "").toLowerCase().includes(raceSnowHumidityType.toLowerCase())) return false;
+        if (raceGrainSize && !(w?.grainSize ?? "").toLowerCase().includes(raceGrainSize.toLowerCase())) return false;
+        if (racePrecipitation && !(w?.precipitation ?? "").toLowerCase().includes(racePrecipitation.toLowerCase())) return false;
+        if (raceWind && !(w?.wind ?? "").toLowerCase().includes(raceWind.toLowerCase())) return false;
+        if (raceVisibility && !(w?.visibility ?? "").toLowerCase().includes(raceVisibility.toLowerCase())) return false;
+        if (raceCloudMin !== "" && (w?.clouds ?? 999) < parseFloat(raceCloudMin)) return false;
+        if (raceCloudMax !== "" && (w?.clouds ?? -999) > parseFloat(raceCloudMax)) return false;
         return true;
       });
     }
@@ -823,7 +867,8 @@ export default function AthleteDetail() {
   }, [raceHistory, raceLocationFilter, raceSeasonFilter, raceDateFrom, raceDateTo,
       raceAirTempMin, raceAirTempMax, raceSnowTempMin, raceSnowTempMax,
       raceAirHumMin, raceAirHumMax, raceSnowHumMin, raceSnowHumMax,
-      raceSnowType, raceTrackHardness, raceWeatherById]);
+      raceSnowType, raceTrackHardness, raceSnowHumidityType, raceGrainSize, raceArtSnow, raceNatSnow,
+      racePrecipitation, raceWind, raceVisibility, raceCloudMin, raceCloudMax, raceWeatherById]);
 
   function buildSkiBody(data: typeof skiForm) {
     const cp: Record<string, string | null> = {};
@@ -1626,7 +1671,7 @@ export default function AthleteDetail() {
                 <span className="text-xs text-muted-foreground">–</span>
                 <Input type="date" value={raceDateTo} onChange={e => setRaceDateTo(e.target.value)} className="h-8 w-[130px] text-xs" />
                 <Button
-                  variant={(showRaceWeatherFilters || !!(raceAirTempMin || raceAirTempMax || raceSnowTempMin || raceSnowTempMax || raceAirHumMin || raceAirHumMax || raceSnowHumMin || raceSnowHumMax || raceSnowType || raceTrackHardness)) ? "default" : "outline"}
+                  variant={(showRaceWeatherFilters || !!(raceAirTempMin || raceAirTempMax || raceSnowTempMin || raceSnowTempMax || raceAirHumMin || raceAirHumMax || raceSnowHumMin || raceSnowHumMax || raceSnowType || raceTrackHardness || raceSnowHumidityType || raceGrainSize || raceArtSnow || raceNatSnow || racePrecipitation || raceWind || raceVisibility || raceCloudMin || raceCloudMax)) ? "default" : "outline"}
                   size="sm"
                   className="h-8 gap-1 text-xs"
                   onClick={() => setShowRaceWeatherFilters(v => !v)}
@@ -1634,12 +1679,14 @@ export default function AthleteDetail() {
                   <Snowflake className="h-3 w-3" />
                   Weather
                 </Button>
-                {(raceLocationFilter || raceSeasonFilter !== "all" || raceDateFrom || raceDateTo || raceAirTempMin || raceAirTempMax || raceSnowTempMin || raceSnowTempMax || raceAirHumMin || raceAirHumMax || raceSnowHumMin || raceSnowHumMax || raceSnowType || raceTrackHardness) && (
+                {(raceLocationFilter || raceSeasonFilter !== "all" || raceDateFrom || raceDateTo || raceAirTempMin || raceAirTempMax || raceSnowTempMin || raceSnowTempMax || raceAirHumMin || raceAirHumMax || raceSnowHumMin || raceSnowHumMax || raceSnowType || raceTrackHardness || raceSnowHumidityType || raceGrainSize || raceArtSnow || raceNatSnow || racePrecipitation || raceWind || raceVisibility || raceCloudMin || raceCloudMax) && (
                   <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => {
                     setRaceLocationFilter(""); setRaceSeasonFilter("all"); setRaceDateFrom(""); setRaceDateTo("");
                     setRaceAirTempMin(""); setRaceAirTempMax(""); setRaceSnowTempMin(""); setRaceSnowTempMax("");
                     setRaceAirHumMin(""); setRaceAirHumMax(""); setRaceSnowHumMin(""); setRaceSnowHumMax("");
                     setRaceSnowType(""); setRaceTrackHardness("");
+                    setRaceSnowHumidityType(""); setRaceGrainSize(""); setRaceArtSnow(""); setRaceNatSnow("");
+                    setRacePrecipitation(""); setRaceWind(""); setRaceVisibility(""); setRaceCloudMin(""); setRaceCloudMax("");
                   }}>
                     <X className="h-3 w-3 mr-1" />Clear
                   </Button>
@@ -1647,58 +1694,149 @@ export default function AthleteDetail() {
               </div>
               {showRaceWeatherFilters && (
                 <div className="rounded-xl border border-border bg-muted/20 p-3">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="space-y-4">
                     <div>
-                      <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />Air temp (°C)
-                      </label>
-                      <div className="flex items-center gap-1">
-                        <Input type="number" className="h-7 text-xs" placeholder="Min" value={raceAirTempMin} onChange={e => setRaceAirTempMin(e.target.value)} />
-                        <span className="text-xs">–</span>
-                        <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceAirTempMax} onChange={e => setRaceAirTempMax(e.target.value)} />
+                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Temperature & Humidity</div>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />Air temp (°C)
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="h-7 text-xs" placeholder="Min" value={raceAirTempMin} onChange={e => setRaceAirTempMin(e.target.value)} />
+                            <span className="text-xs">–</span>
+                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceAirTempMax} onChange={e => setRaceAirTempMax(e.target.value)} />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />Snow temp (°C)
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="h-7 text-xs" placeholder="Min" value={raceSnowTempMin} onChange={e => setRaceSnowTempMin(e.target.value)} />
+                            <span className="text-xs">–</span>
+                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceSnowTempMax} onChange={e => setRaceSnowTempMax(e.target.value)} />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400" />Air humidity (%)
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="h-7 text-xs" placeholder="Min" value={raceAirHumMin} onChange={e => setRaceAirHumMin(e.target.value)} />
+                            <span className="text-xs">–</span>
+                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceAirHumMax} onChange={e => setRaceAirHumMax(e.target.value)} />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />Snow humidity (%)
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="h-7 text-xs" placeholder="Min" value={raceSnowHumMin} onChange={e => setRaceSnowHumMin(e.target.value)} />
+                            <span className="text-xs">–</span>
+                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceSnowHumMax} onChange={e => setRaceSnowHumMax(e.target.value)} />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-300" />Cloud cover (%)
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="h-7 text-xs" placeholder="Min" value={raceCloudMin} onChange={e => setRaceCloudMin(e.target.value)} />
+                            <span className="text-xs">–</span>
+                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceCloudMax} onChange={e => setRaceCloudMax(e.target.value)} />
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <div>
-                      <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />Snow temp (°C)
-                      </label>
-                      <div className="flex items-center gap-1">
-                        <Input type="number" className="h-7 text-xs" placeholder="Min" value={raceSnowTempMin} onChange={e => setRaceSnowTempMin(e.target.value)} />
-                        <span className="text-xs">–</span>
-                        <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceSnowTempMax} onChange={e => setRaceSnowTempMax(e.target.value)} />
+                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow Type</div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-400" />Artificial snow
+                          </label>
+                          <Select value={raceArtSnow} onValueChange={setRaceArtSnow}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">— Any —</SelectItem>
+                              {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-teal-400" />Natural snow
+                          </label>
+                          <Select value={raceNatSnow} onValueChange={setRaceNatSnow}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">— Any —</SelectItem>
+                              {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-400" />Snow humidity type
+                          </label>
+                          <Select value={raceSnowHumidityType} onValueChange={setRaceSnowHumidityType}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">— Any —</SelectItem>
+                              {SNOW_HUMIDITY_TYPE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-lime-400" />Grain size
+                          </label>
+                          <Select value={raceGrainSize} onValueChange={setRaceGrainSize}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">— Any —</SelectItem>
+                              {GRAIN_SIZE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </div>
                     <div>
-                      <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400" />Air humidity (%)
-                      </label>
-                      <div className="flex items-center gap-1">
-                        <Input type="number" className="h-7 text-xs" placeholder="Min" value={raceAirHumMin} onChange={e => setRaceAirHumMin(e.target.value)} />
-                        <span className="text-xs">–</span>
-                        <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceAirHumMax} onChange={e => setRaceAirHumMax(e.target.value)} />
+                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow & Track</div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-400" />Track hardness
+                          </label>
+                          <Select value={raceTrackHardness} onValueChange={setRaceTrackHardness}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">— Any —</SelectItem>
+                              {TRACK_HARDNESS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400" />Precipitation
+                          </label>
+                          <Input className="h-7 text-xs" placeholder="e.g. Snow" value={racePrecipitation} onChange={e => setRacePrecipitation(e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-400" />Wind
+                          </label>
+                          <Input className="h-7 text-xs" placeholder="e.g. NW 3m/s" value={raceWind} onChange={e => setRaceWind(e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-gray-400" />Visibility
+                          </label>
+                          <Input className="h-7 text-xs" placeholder="e.g. Good" value={raceVisibility} onChange={e => setRaceVisibility(e.target.value)} />
+                        </div>
                       </div>
-                    </div>
-                    <div>
-                      <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />Snow humidity (%)
-                      </label>
-                      <div className="flex items-center gap-1">
-                        <Input type="number" className="h-7 text-xs" placeholder="Min" value={raceSnowHumMin} onChange={e => setRaceSnowHumMin(e.target.value)} />
-                        <span className="text-xs">–</span>
-                        <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceSnowHumMax} onChange={e => setRaceSnowHumMax(e.target.value)} />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-400" />Snow type
-                      </label>
-                      <Input className="h-7 text-xs" placeholder="e.g. New snow" value={raceSnowType} onChange={e => setRaceSnowType(e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-400" />Track hardness
-                      </label>
-                      <Input className="h-7 text-xs" placeholder="e.g. Hard" value={raceTrackHardness} onChange={e => setRaceTrackHardness(e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -2198,7 +2336,7 @@ export default function AthleteDetail() {
                     <span className="text-xs text-muted-foreground">–</span>
                     <Input type="date" value={testDateTo} onChange={e => setTestDateTo(e.target.value)} className="h-8 w-[130px] text-xs" />
                     <Button
-                      variant={(showTestWeatherFilters || !!(testAirTempMin || testAirTempMax || testSnowTempMin || testSnowTempMax || testAirHumMin || testAirHumMax || testSnowHumMin || testSnowHumMax)) ? "default" : "outline"}
+                      variant={(showTestWeatherFilters || !!(testAirTempMin || testAirTempMax || testSnowTempMin || testSnowTempMax || testAirHumMin || testAirHumMax || testSnowHumMin || testSnowHumMax || testTrackHardness || testSnowHumidityType || testGrainSize || testArtSnow || testNatSnow || testPrecipitation || testWind || testVisibility || testCloudMin || testCloudMax)) ? "default" : "outline"}
                       size="sm"
                       className="h-8 gap-1 text-xs"
                       onClick={() => setShowTestWeatherFilters(v => !v)}
@@ -2206,8 +2344,8 @@ export default function AthleteDetail() {
                       <Snowflake className="h-3 w-3" />
                       Weather
                     </Button>
-                    {(testLocationFilter || testSeasonFilter !== "all" || testDateFrom || testDateTo) && (
-                      <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => { setTestLocationFilter(""); setTestSeasonFilter("all"); setTestDateFrom(""); setTestDateTo(""); setTestAirTempMin(""); setTestAirTempMax(""); setTestSnowTempMin(""); setTestSnowTempMax(""); setTestAirHumMin(""); setTestAirHumMax(""); setTestSnowHumMin(""); setTestSnowHumMax(""); }}>
+                    {(testLocationFilter || testSeasonFilter !== "all" || testDateFrom || testDateTo || testAirTempMin || testAirTempMax || testSnowTempMin || testSnowTempMax || testAirHumMin || testAirHumMax || testSnowHumMin || testSnowHumMax || testTrackHardness || testSnowHumidityType || testGrainSize || testArtSnow || testNatSnow || testPrecipitation || testWind || testVisibility || testCloudMin || testCloudMax) && (
+                      <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => { setTestLocationFilter(""); setTestSeasonFilter("all"); setTestDateFrom(""); setTestDateTo(""); setTestAirTempMin(""); setTestAirTempMax(""); setTestSnowTempMin(""); setTestSnowTempMax(""); setTestAirHumMin(""); setTestAirHumMax(""); setTestSnowHumMin(""); setTestSnowHumMax(""); setTestTrackHardness(""); setTestSnowHumidityType(""); setTestGrainSize(""); setTestArtSnow(""); setTestNatSnow(""); setTestPrecipitation(""); setTestWind(""); setTestVisibility(""); setTestCloudMin(""); setTestCloudMax(""); }}>
                         <X className="h-3 w-3 mr-1" />
                         Clear
                       </Button>
@@ -2215,49 +2353,148 @@ export default function AthleteDetail() {
                   </div>
                   {showTestWeatherFilters && (
                     <div className="rounded-xl border border-border bg-muted/20 p-3">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="space-y-4">
                         <div>
-                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />
-                            Air temp (°C)
-                          </label>
-                          <div className="flex items-center gap-1">
-                            <Input type="number" className="h-7 text-xs" placeholder="Min" value={testAirTempMin} onChange={e => setTestAirTempMin(e.target.value)} />
-                            <span className="text-xs">–</span>
-                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={testAirTempMax} onChange={e => setTestAirTempMax(e.target.value)} />
+                          <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Temperature & Humidity</div>
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                            <div>
+                              <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />Air temp (°C)
+                              </label>
+                              <div className="flex items-center gap-1">
+                                <Input type="number" className="h-7 text-xs" placeholder="Min" value={testAirTempMin} onChange={e => setTestAirTempMin(e.target.value)} />
+                                <span className="text-xs">–</span>
+                                <Input type="number" className="h-7 text-xs" placeholder="Max" value={testAirTempMax} onChange={e => setTestAirTempMax(e.target.value)} />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />Snow temp (°C)
+                              </label>
+                              <div className="flex items-center gap-1">
+                                <Input type="number" className="h-7 text-xs" placeholder="Min" value={testSnowTempMin} onChange={e => setTestSnowTempMin(e.target.value)} />
+                                <span className="text-xs">–</span>
+                                <Input type="number" className="h-7 text-xs" placeholder="Max" value={testSnowTempMax} onChange={e => setTestSnowTempMax(e.target.value)} />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400" />Air humidity (%)
+                              </label>
+                              <div className="flex items-center gap-1">
+                                <Input type="number" className="h-7 text-xs" placeholder="Min" value={testAirHumMin} onChange={e => setTestAirHumMin(e.target.value)} />
+                                <span className="text-xs">–</span>
+                                <Input type="number" className="h-7 text-xs" placeholder="Max" value={testAirHumMax} onChange={e => setTestAirHumMax(e.target.value)} />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />Snow humidity (%)
+                              </label>
+                              <div className="flex items-center gap-1">
+                                <Input type="number" className="h-7 text-xs" placeholder="Min" value={testSnowHumMin} onChange={e => setTestSnowHumMin(e.target.value)} />
+                                <span className="text-xs">–</span>
+                                <Input type="number" className="h-7 text-xs" placeholder="Max" value={testSnowHumMax} onChange={e => setTestSnowHumMax(e.target.value)} />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-300" />Cloud cover (%)
+                              </label>
+                              <div className="flex items-center gap-1">
+                                <Input type="number" className="h-7 text-xs" placeholder="Min" value={testCloudMin} onChange={e => setTestCloudMin(e.target.value)} />
+                                <span className="text-xs">–</span>
+                                <Input type="number" className="h-7 text-xs" placeholder="Max" value={testCloudMax} onChange={e => setTestCloudMax(e.target.value)} />
+                              </div>
+                            </div>
                           </div>
                         </div>
                         <div>
-                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                            Snow temp (°C)
-                          </label>
-                          <div className="flex items-center gap-1">
-                            <Input type="number" className="h-7 text-xs" placeholder="Min" value={testSnowTempMin} onChange={e => setTestSnowTempMin(e.target.value)} />
-                            <span className="text-xs">–</span>
-                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={testSnowTempMax} onChange={e => setTestSnowTempMax(e.target.value)} />
+                          <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow Type</div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div>
+                              <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-400" />Artificial snow
+                              </label>
+                              <Select value={testArtSnow} onValueChange={setTestArtSnow}>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">— Any —</SelectItem>
+                                  {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-teal-400" />Natural snow
+                              </label>
+                              <Select value={testNatSnow} onValueChange={setTestNatSnow}>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">— Any —</SelectItem>
+                                  {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-400" />Snow humidity type
+                              </label>
+                              <Select value={testSnowHumidityType} onValueChange={setTestSnowHumidityType}>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">— Any —</SelectItem>
+                                  {SNOW_HUMIDITY_TYPE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-lime-400" />Grain size
+                              </label>
+                              <Select value={testGrainSize} onValueChange={setTestGrainSize}>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">— Any —</SelectItem>
+                                  {GRAIN_SIZE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                         </div>
                         <div>
-                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400" />
-                            Air humidity (%)
-                          </label>
-                          <div className="flex items-center gap-1">
-                            <Input type="number" className="h-7 text-xs" placeholder="Min" value={testAirHumMin} onChange={e => setTestAirHumMin(e.target.value)} />
-                            <span className="text-xs">–</span>
-                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={testAirHumMax} onChange={e => setTestAirHumMax(e.target.value)} />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
-                            Snow humidity (%)
-                          </label>
-                          <div className="flex items-center gap-1">
-                            <Input type="number" className="h-7 text-xs" placeholder="Min" value={testSnowHumMin} onChange={e => setTestSnowHumMin(e.target.value)} />
-                            <span className="text-xs">–</span>
-                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={testSnowHumMax} onChange={e => setTestSnowHumMax(e.target.value)} />
+                          <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow & Track</div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div>
+                              <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-400" />Track hardness
+                              </label>
+                              <Select value={testTrackHardness} onValueChange={setTestTrackHardness}>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">— Any —</SelectItem>
+                                  {TRACK_HARDNESS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400" />Precipitation
+                              </label>
+                              <Input className="h-7 text-xs" placeholder="e.g. Snow" value={testPrecipitation} onChange={e => setTestPrecipitation(e.target.value)} />
+                            </div>
+                            <div>
+                              <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-400" />Wind
+                              </label>
+                              <Input className="h-7 text-xs" placeholder="e.g. NW 3m/s" value={testWind} onChange={e => setTestWind(e.target.value)} />
+                            </div>
+                            <div>
+                              <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-gray-400" />Visibility
+                              </label>
+                              <Input className="h-7 text-xs" placeholder="e.g. Good" value={testVisibility} onChange={e => setTestVisibility(e.target.value)} />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -4657,8 +4894,7 @@ function RaceCalendarSection({
   isReadOnly?: boolean;
 }) {
   const { toast } = useToast();
-  const { language } = useLanguage();
-  const lang = language === "en" ? "en" : "no";
+  const { lang } = useLanguage();
   const L = (no: string, en: string) => lang === "en" ? en : no;
   const { data: races = [], refetch: refetchRaces } = useQuery<PlannedRace[]>({
     queryKey: [`/api/athletes/${athleteId}/races`],
@@ -4872,8 +5108,7 @@ type ActivityEntry = {
 };
 
 function AuditLogSection({ athleteId, skis }: { athleteId: number; skis: RaceSki[] }) {
-  const { language } = useLanguage();
-  const lang = language === "en" ? "en" : "no";
+  const { lang } = useLanguage();
   const [open, setOpen] = useState(false);
 
   const ACTION_LABELS: Record<string, { no: string; en: string }> = {

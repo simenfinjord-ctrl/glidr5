@@ -64,6 +64,14 @@ type Weather = {
   snowHumidityPct?: number | null;
   snowType?: string | null;
   trackHardness?: string | null;
+  artificialSnow?: string | null;
+  naturalSnow?: string | null;
+  snowHumidityType?: string | null;
+  grainSize?: string | null;
+  precipitation?: string | null;
+  wind?: string | null;
+  visibility?: string | null;
+  clouds?: number | null;
 };
 
 
@@ -1012,6 +1020,11 @@ const GRIND_COMPARE_COLORS = [
   { row: "bg-pink-400/15",   nameBg: "bg-pink-400/20 text-pink-700 ring-1 ring-pink-400/50",   dot: "bg-pink-400" },
 ] as const;
 
+const TRACK_HARDNESS_OPTIONS = ["Very soft", "Soft", "Medium hard", "Hard", "Very hard", "Ice"] as const;
+const SNOW_HUMIDITY_TYPE_OPTIONS = ["Dry", "Moist", "Wet", "Very wet", "Slush"] as const;
+const GRAIN_SIZE_OPTIONS = ["Extra fine", "Very fine", "Fine", "Average", "Coarse", "Very coarse"] as const;
+const SNOW_STAGE_OPTIONS = ["Falling new", "New", "Irreg. dir. new", "Irreg. dir. transf.", "Transformed"] as const;
+
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Grinding() {
@@ -1032,6 +1045,17 @@ export default function Grinding() {
   const [wfAirHumMax, setWfAirHumMax] = useState("");
   const [wfSnowHumMin, setWfSnowHumMin] = useState("");
   const [wfSnowHumMax, setWfSnowHumMax] = useState("");
+  const [wfSnowType, setWfSnowType] = useState("");
+  const [wfTrackHardness, setWfTrackHardness] = useState("");
+  const [wfArtSnow, setWfArtSnow] = useState("");
+  const [wfNatSnow, setWfNatSnow] = useState("");
+  const [wfSnowHumidityType, setWfSnowHumidityType] = useState("");
+  const [wfGrainSize, setWfGrainSize] = useState("");
+  const [wfPrecipitation, setWfPrecipitation] = useState("");
+  const [wfWind, setWfWind] = useState("");
+  const [wfVisibility, setWfVisibility] = useState("");
+  const [wfCloudMin, setWfCloudMin] = useState("");
+  const [wfCloudMax, setWfCloudMax] = useState("");
   const [wfWeatherOpen, setWfWeatherOpen] = useState(false);
 
   // Grind profiles state
@@ -1129,7 +1153,7 @@ export default function Grinding() {
   }, [grindTests]);
 
   // Weather filter derived values — must be declared BEFORE the filtered useMemo
-  const hasWeatherFiltersGrind = !!(wfAirTempMin || wfAirTempMax || wfSnowTempMin || wfSnowTempMax || wfAirHumMin || wfAirHumMax || wfSnowHumMin || wfSnowHumMax);
+  const hasWeatherFiltersGrind = !!(wfAirTempMin || wfAirTempMax || wfSnowTempMin || wfSnowTempMax || wfAirHumMin || wfAirHumMax || wfSnowHumMin || wfSnowHumMax || wfSnowType || wfTrackHardness || wfArtSnow || wfNatSnow || wfSnowHumidityType || wfGrainSize || wfPrecipitation || wfWind || wfVisibility || wfCloudMin || wfCloudMax);
 
   const filtered = useMemo(() => {
     const result = grindTests.filter((t) => {
@@ -1157,6 +1181,17 @@ export default function Grinding() {
         if (wfAirHumMax !== "" && (w.airHumidityPct ?? -999) > parseFloat(wfAirHumMax)) return false;
         if (wfSnowHumMin !== "" && (w.snowHumidityPct ?? 999) < parseFloat(wfSnowHumMin)) return false;
         if (wfSnowHumMax !== "" && (w.snowHumidityPct ?? -999) > parseFloat(wfSnowHumMax)) return false;
+        if (wfSnowType && !(w.snowType ?? "").toLowerCase().includes(wfSnowType.toLowerCase())) return false;
+        if (wfTrackHardness && !(w.trackHardness ?? "").toLowerCase().includes(wfTrackHardness.toLowerCase())) return false;
+        if (wfArtSnow && !(w.artificialSnow ?? "").toLowerCase().includes(wfArtSnow.toLowerCase())) return false;
+        if (wfNatSnow && !(w.naturalSnow ?? "").toLowerCase().includes(wfNatSnow.toLowerCase())) return false;
+        if (wfSnowHumidityType && !(w.snowHumidityType ?? "").toLowerCase().includes(wfSnowHumidityType.toLowerCase())) return false;
+        if (wfGrainSize && !(w.grainSize ?? "").toLowerCase().includes(wfGrainSize.toLowerCase())) return false;
+        if (wfPrecipitation && !(w.precipitation ?? "").toLowerCase().includes(wfPrecipitation.toLowerCase())) return false;
+        if (wfWind && !(w.wind ?? "").toLowerCase().includes(wfWind.toLowerCase())) return false;
+        if (wfVisibility && !(w.visibility ?? "").toLowerCase().includes(wfVisibility.toLowerCase())) return false;
+        if (wfCloudMin !== "" && (w.clouds ?? 999) < parseFloat(wfCloudMin)) return false;
+        if (wfCloudMax !== "" && (w.clouds ?? -999) > parseFloat(wfCloudMax)) return false;
       }
       return true;
     });
@@ -1164,7 +1199,7 @@ export default function Grinding() {
       result.sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99"));
     }
     return result;
-  }, [grindTests, filterSeason, filterLocation, filterDate, filterGrinds, compareMode, allEntries, hasWeatherFiltersGrind, wfAirTempMin, wfAirTempMax, wfSnowTempMin, wfSnowTempMax, wfAirHumMin, wfAirHumMax, wfSnowHumMin, wfSnowHumMax, weatherById]);
+  }, [grindTests, filterSeason, filterLocation, filterDate, filterGrinds, compareMode, allEntries, hasWeatherFiltersGrind, wfAirTempMin, wfAirTempMax, wfSnowTempMin, wfSnowTempMax, wfAirHumMin, wfAirHumMax, wfSnowHumMin, wfSnowHumMax, wfSnowType, wfTrackHardness, wfArtSnow, wfNatSnow, wfSnowHumidityType, wfGrainSize, wfPrecipitation, wfWind, wfVisibility, wfCloudMin, wfCloudMax, weatherById]);
 
   const filteredProfiles = useMemo(() => {
     if (!grindSearch.trim()) return grindProfiles;
@@ -1353,6 +1388,11 @@ export default function Grinding() {
                       setWfSnowTempMin(""); setWfSnowTempMax("");
                       setWfAirHumMin(""); setWfAirHumMax("");
                       setWfSnowHumMin(""); setWfSnowHumMax("");
+                      setWfSnowType(""); setWfTrackHardness("");
+                      setWfArtSnow(""); setWfNatSnow("");
+                      setWfSnowHumidityType(""); setWfGrainSize("");
+                      setWfPrecipitation(""); setWfWind(""); setWfVisibility("");
+                      setWfCloudMin(""); setWfCloudMax("");
                     }}
                   >
                     Clear
@@ -1367,53 +1407,161 @@ export default function Grinding() {
                     <Snowflake className="h-3 w-3" />
                     Weather Conditions
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {/* Air temp */}
+                  <div className="space-y-4">
                     <div>
-                      <div className="flex items-center gap-1 mb-1">
-                        <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
-                        <span className="text-xs text-muted-foreground">Air temp (°C)</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfAirTempMin} onChange={e => setWfAirTempMin(e.target.value)} />
-                        <span className="text-xs text-muted-foreground">–</span>
-                        <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfAirTempMax} onChange={e => setWfAirTempMax(e.target.value)} />
+                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Temperature & Humidity</div>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
+                            <span className="text-xs text-muted-foreground">Air temp (°C)</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfAirTempMin} onChange={e => setWfAirTempMin(e.target.value)} />
+                            <span className="text-xs text-muted-foreground">–</span>
+                            <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfAirTempMax} onChange={e => setWfAirTempMax(e.target.value)} />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                            <span className="text-xs text-muted-foreground">Snow temp (°C)</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfSnowTempMin} onChange={e => setWfSnowTempMin(e.target.value)} />
+                            <span className="text-xs text-muted-foreground">–</span>
+                            <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfSnowTempMax} onChange={e => setWfSnowTempMax(e.target.value)} />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="inline-block h-2 w-2 rounded-full bg-violet-500" />
+                            <span className="text-xs text-muted-foreground">Air humidity (%rH)</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfAirHumMin} onChange={e => setWfAirHumMin(e.target.value)} />
+                            <span className="text-xs text-muted-foreground">–</span>
+                            <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfAirHumMax} onChange={e => setWfAirHumMax(e.target.value)} />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+                            <span className="text-xs text-muted-foreground">Snow humidity (%)</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfSnowHumMin} onChange={e => setWfSnowHumMin(e.target.value)} />
+                            <span className="text-xs text-muted-foreground">–</span>
+                            <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfSnowHumMax} onChange={e => setWfSnowHumMax(e.target.value)} />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="inline-block h-2 w-2 rounded-full bg-sky-400" />
+                            <span className="text-xs text-muted-foreground">Cloud cover (%)</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfCloudMin} onChange={e => setWfCloudMin(e.target.value)} />
+                            <span className="text-xs text-muted-foreground">–</span>
+                            <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfCloudMax} onChange={e => setWfCloudMax(e.target.value)} />
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    {/* Snow temp */}
                     <div>
-                      <div className="flex items-center gap-1 mb-1">
-                        <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-                        <span className="text-xs text-muted-foreground">Snow temp (°C)</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfSnowTempMin} onChange={e => setWfSnowTempMin(e.target.value)} />
-                        <span className="text-xs text-muted-foreground">–</span>
-                        <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfSnowTempMax} onChange={e => setWfSnowTempMax(e.target.value)} />
+                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow Type</div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="inline-block h-2 w-2 rounded-full bg-indigo-500" />
+                            <span className="text-xs text-muted-foreground">Artificial snow</span>
+                          </div>
+                          <Select value={wfArtSnow} onValueChange={setWfArtSnow}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">— Any —</SelectItem>
+                              {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="inline-block h-2 w-2 rounded-full bg-teal-500" />
+                            <span className="text-xs text-muted-foreground">Natural snow</span>
+                          </div>
+                          <Select value={wfNatSnow} onValueChange={setWfNatSnow}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">— Any —</SelectItem>
+                              {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="inline-block h-2 w-2 rounded-full bg-cyan-500" />
+                            <span className="text-xs text-muted-foreground">Snow humidity type</span>
+                          </div>
+                          <Select value={wfSnowHumidityType} onValueChange={setWfSnowHumidityType}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">— Any —</SelectItem>
+                              {SNOW_HUMIDITY_TYPE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="inline-block h-2 w-2 rounded-full bg-lime-500" />
+                            <span className="text-xs text-muted-foreground">Grain size</span>
+                          </div>
+                          <Select value={wfGrainSize} onValueChange={setWfGrainSize}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">— Any —</SelectItem>
+                              {GRAIN_SIZE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </div>
-                    {/* Air humidity */}
                     <div>
-                      <div className="flex items-center gap-1 mb-1">
-                        <span className="inline-block h-2 w-2 rounded-full bg-violet-500" />
-                        <span className="text-xs text-muted-foreground">Air humidity (%rH)</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfAirHumMin} onChange={e => setWfAirHumMin(e.target.value)} />
-                        <span className="text-xs text-muted-foreground">–</span>
-                        <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfAirHumMax} onChange={e => setWfAirHumMax(e.target.value)} />
-                      </div>
-                    </div>
-                    {/* Snow humidity */}
-                    <div>
-                      <div className="flex items-center gap-1 mb-1">
-                        <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
-                        <span className="text-xs text-muted-foreground">Snow humidity (%)</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfSnowHumMin} onChange={e => setWfSnowHumMin(e.target.value)} />
-                        <span className="text-xs text-muted-foreground">–</span>
-                        <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfSnowHumMax} onChange={e => setWfSnowHumMax(e.target.value)} />
+                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow & Track</div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="inline-block h-2 w-2 rounded-full bg-orange-500" />
+                            <span className="text-xs text-muted-foreground">Track hardness</span>
+                          </div>
+                          <Select value={wfTrackHardness} onValueChange={setWfTrackHardness}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">— Any —</SelectItem>
+                              {TRACK_HARDNESS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="inline-block h-2 w-2 rounded-full bg-blue-400" />
+                            <span className="text-xs text-muted-foreground">Precipitation</span>
+                          </div>
+                          <Input className="h-8 text-xs" placeholder="e.g. Snow" value={wfPrecipitation} onChange={e => setWfPrecipitation(e.target.value)} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="inline-block h-2 w-2 rounded-full bg-slate-400" />
+                            <span className="text-xs text-muted-foreground">Wind</span>
+                          </div>
+                          <Input className="h-8 text-xs" placeholder="e.g. NW 3m/s" value={wfWind} onChange={e => setWfWind(e.target.value)} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="inline-block h-2 w-2 rounded-full bg-gray-400" />
+                            <span className="text-xs text-muted-foreground">Visibility</span>
+                          </div>
+                          <Input className="h-8 text-xs" placeholder="e.g. Good" value={wfVisibility} onChange={e => setWfVisibility(e.target.value)} />
+                        </div>
                       </div>
                     </div>
                   </div>

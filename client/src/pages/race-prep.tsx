@@ -37,6 +37,7 @@ type Weather = {
   clouds: number | null;
   precipitation: string | null;
   grainSize: string | null;
+  visibility: string | null;
 };
 
 type RacePrep = {
@@ -147,6 +148,11 @@ function fmtDate(d: string, lang: string) {
     return d;
   }
 }
+
+const TRACK_HARDNESS_OPTIONS = ["Very soft", "Soft", "Medium hard", "Hard", "Very hard", "Ice"] as const;
+const SNOW_HUMIDITY_TYPE_OPTIONS = ["Dry", "Moist", "Wet", "Very wet", "Slush"] as const;
+const GRAIN_SIZE_OPTIONS = ["Extra fine", "Very fine", "Fine", "Average", "Coarse", "Very coarse"] as const;
+const SNOW_STAGE_OPTIONS = ["Falling new", "New", "Irreg. dir. new", "Irreg. dir. transf.", "Transformed"] as const;
 
 // ── Multi-product picker ──────────────────────────────────────────────────────
 function MultiProductPicker({
@@ -1220,12 +1226,20 @@ export default function RacePrep() {
   const [wfSnowTempMax, setWfSnowTempMax] = useState("");
   const [wfAirTempMin, setWfAirTempMin] = useState("");
   const [wfAirTempMax, setWfAirTempMax] = useState("");
-  const [wfSnowType, setWfSnowType] = useState("");
   const [wfTrackHardness, setWfTrackHardness] = useState("");
   const [wfAirHumMin, setWfAirHumMin] = useState("");
   const [wfAirHumMax, setWfAirHumMax] = useState("");
   const [wfSnowHumMin, setWfSnowHumMin] = useState("");
   const [wfSnowHumMax, setWfSnowHumMax] = useState("");
+  const [wfArtSnow, setWfArtSnow] = useState("");
+  const [wfNatSnow, setWfNatSnow] = useState("");
+  const [wfSnowHumidityType, setWfSnowHumidityType] = useState("");
+  const [wfGrainSize, setWfGrainSize] = useState("");
+  const [wfPrecipitation, setWfPrecipitation] = useState("");
+  const [wfWind, setWfWind] = useState("");
+  const [wfVisibility, setWfVisibility] = useState("");
+  const [wfCloudMin, setWfCloudMin] = useState("");
+  const [wfCloudMax, setWfCloudMax] = useState("");
 
   const L = (no: string, en: string) => lang === "en" ? en : no;
 
@@ -1247,7 +1261,7 @@ export default function RacePrep() {
     return m;
   }, [weatherList]);
 
-  const hasWeatherFilter = !!(wfSnowTempMin || wfSnowTempMax || wfAirTempMin || wfAirTempMax || wfSnowType || wfTrackHardness || wfAirHumMin || wfAirHumMax || wfSnowHumMin || wfSnowHumMax);
+  const hasWeatherFilter = !!(wfSnowTempMin || wfSnowTempMax || wfAirTempMin || wfAirTempMax || wfTrackHardness || wfAirHumMin || wfAirHumMax || wfSnowHumMin || wfSnowHumMax || wfArtSnow || wfNatSnow || wfSnowHumidityType || wfGrainSize || wfPrecipitation || wfWind || wfVisibility || wfCloudMin || wfCloudMax);
 
   const filteredPreps = useMemo(() => {
     return preps.filter(prep => {
@@ -1278,16 +1292,24 @@ export default function RacePrep() {
         if (wfSnowTempMax !== "" && (w.snowTemperatureC ?? -999) > parseFloat(wfSnowTempMax)) return false;
         if (wfAirTempMin !== "" && (w.airTemperatureC ?? 999) < parseFloat(wfAirTempMin)) return false;
         if (wfAirTempMax !== "" && (w.airTemperatureC ?? -999) > parseFloat(wfAirTempMax)) return false;
-        if (wfSnowType && !(w.snowType ?? "").toLowerCase().includes(wfSnowType.toLowerCase())) return false;
         if (wfTrackHardness && !(w.trackHardness ?? "").toLowerCase().includes(wfTrackHardness.toLowerCase())) return false;
         if (wfAirHumMin !== "" && (w.airHumidityPct ?? 999) < parseFloat(wfAirHumMin)) return false;
         if (wfAirHumMax !== "" && (w.airHumidityPct ?? -999) > parseFloat(wfAirHumMax)) return false;
         if (wfSnowHumMin !== "" && (w.snowHumidityPct ?? 999) < parseFloat(wfSnowHumMin)) return false;
         if (wfSnowHumMax !== "" && (w.snowHumidityPct ?? -999) > parseFloat(wfSnowHumMax)) return false;
+        if (wfArtSnow && !(w.artificialSnow ?? "").toLowerCase().includes(wfArtSnow.toLowerCase())) return false;
+        if (wfNatSnow && !(w.naturalSnow ?? "").toLowerCase().includes(wfNatSnow.toLowerCase())) return false;
+        if (wfSnowHumidityType && !(w.snowHumidityType ?? "").toLowerCase().includes(wfSnowHumidityType.toLowerCase())) return false;
+        if (wfGrainSize && !(w.grainSize ?? "").toLowerCase().includes(wfGrainSize.toLowerCase())) return false;
+        if (wfPrecipitation && !(w.precipitation ?? "").toLowerCase().includes(wfPrecipitation.toLowerCase())) return false;
+        if (wfWind && !(w.wind ?? "").toLowerCase().includes(wfWind.toLowerCase())) return false;
+        if (wfVisibility && !(w.visibility ?? "").toLowerCase().includes(wfVisibility.toLowerCase())) return false;
+        if (wfCloudMin !== "" && (w.clouds ?? 999) < parseFloat(wfCloudMin)) return false;
+        if (wfCloudMax !== "" && (w.clouds ?? -999) > parseFloat(wfCloudMax)) return false;
       }
       return true;
     });
-  }, [preps, disciplineFilter, dateFrom, dateTo, search, products, hasWeatherFilter, wfSnowTempMin, wfSnowTempMax, wfAirTempMin, wfAirTempMax, wfSnowType, wfTrackHardness, wfAirHumMin, wfAirHumMax, wfSnowHumMin, wfSnowHumMax, weatherById]);
+  }, [preps, disciplineFilter, dateFrom, dateTo, search, products, hasWeatherFilter, wfSnowTempMin, wfSnowTempMax, wfAirTempMin, wfAirTempMax, wfTrackHardness, wfAirHumMin, wfAirHumMax, wfSnowHumMin, wfSnowHumMax, wfArtSnow, wfNatSnow, wfSnowHumidityType, wfGrainSize, wfPrecipitation, wfWind, wfVisibility, wfCloudMin, wfCloudMax, weatherById]);
 
   if (!can("raceprep", "view")) {
     return (
@@ -1360,7 +1382,7 @@ export default function RacePrep() {
             {hasWeatherFilter && <span className="ml-1 rounded-full bg-white/20 text-[10px] px-1">✓</span>}
           </Button>
           {(search || disciplineFilter !== "All" || dateFrom || dateTo || hasWeatherFilter) && (
-            <Button variant="ghost" size="sm" className="h-9 px-2 text-xs" onClick={() => { setSearch(""); setDisciplineFilter("All"); setDateFrom(""); setDateTo(""); setWfSnowTempMin(""); setWfSnowTempMax(""); setWfAirTempMin(""); setWfAirTempMax(""); setWfSnowType(""); setWfTrackHardness(""); setWfAirHumMin(""); setWfAirHumMax(""); setWfSnowHumMin(""); setWfSnowHumMax(""); }}>
+            <Button variant="ghost" size="sm" className="h-9 px-2 text-xs" onClick={() => { setSearch(""); setDisciplineFilter("All"); setDateFrom(""); setDateTo(""); setWfSnowTempMin(""); setWfSnowTempMax(""); setWfAirTempMin(""); setWfAirTempMax(""); setWfTrackHardness(""); setWfAirHumMin(""); setWfAirHumMax(""); setWfSnowHumMin(""); setWfSnowHumMax(""); setWfArtSnow(""); setWfNatSnow(""); setWfSnowHumidityType(""); setWfGrainSize(""); setWfPrecipitation(""); setWfWind(""); setWfVisibility(""); setWfCloudMin(""); setWfCloudMax(""); }}>
               <X className="h-3.5 w-3.5 mr-1" />
               {L("Nullstill", "Clear")}
             </Button>
@@ -1374,64 +1396,165 @@ export default function RacePrep() {
               <Snowflake className="h-3.5 w-3.5" />
               {L("Værforhold", "Weather Conditions")}
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="space-y-4">
+              {/* Temperature & Humidity */}
               <div>
-                <div className="flex items-center gap-1 mb-1.5">
-                  <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
-                  <span className="text-xs text-muted-foreground">{L("Lufttemp (°C)", "Air temp (°C)")}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfAirTempMin} onChange={e => setWfAirTempMin(e.target.value)} />
-                  <span className="text-xs text-muted-foreground">–</span>
-                  <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfAirTempMax} onChange={e => setWfAirTempMax(e.target.value)} />
+                <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Temperatur & fuktighet", "Temperature & Humidity")}</div>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div>
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
+                      <span className="text-xs text-muted-foreground">{L("Lufttemp (°C)", "Air temp (°C)")}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfAirTempMin} onChange={e => setWfAirTempMin(e.target.value)} />
+                      <span className="text-xs text-muted-foreground">–</span>
+                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfAirTempMax} onChange={e => setWfAirTempMax(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                      <span className="text-xs text-muted-foreground">{L("Snøtemp (°C)", "Snow temp (°C)")}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfSnowTempMin} onChange={e => setWfSnowTempMin(e.target.value)} />
+                      <span className="text-xs text-muted-foreground">–</span>
+                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfSnowTempMax} onChange={e => setWfSnowTempMax(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-violet-500" />
+                      <span className="text-xs text-muted-foreground">{L("Luftfukt (%rH)", "Air humidity (%rH)")}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfAirHumMin} onChange={e => setWfAirHumMin(e.target.value)} />
+                      <span className="text-xs text-muted-foreground">–</span>
+                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfAirHumMax} onChange={e => setWfAirHumMax(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+                      <span className="text-xs text-muted-foreground">{L("Snøfukt (%)", "Snow humidity (%)")}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfSnowHumMin} onChange={e => setWfSnowHumMin(e.target.value)} />
+                      <span className="text-xs text-muted-foreground">–</span>
+                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfSnowHumMax} onChange={e => setWfSnowHumMax(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-sky-400" />
+                      <span className="text-xs text-muted-foreground">{L("Skydekke (%)", "Cloud cover (%)")}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfCloudMin} onChange={e => setWfCloudMin(e.target.value)} />
+                      <span className="text-xs text-muted-foreground">–</span>
+                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfCloudMax} onChange={e => setWfCloudMax(e.target.value)} />
+                    </div>
+                  </div>
                 </div>
               </div>
+              {/* Snow Type */}
               <div>
-                <div className="flex items-center gap-1 mb-1.5">
-                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs text-muted-foreground">{L("Snøtemp (°C)", "Snow temp (°C)")}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfSnowTempMin} onChange={e => setWfSnowTempMin(e.target.value)} />
-                  <span className="text-xs text-muted-foreground">–</span>
-                  <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfSnowTempMax} onChange={e => setWfSnowTempMax(e.target.value)} />
+                <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Snøtype", "Snow Type")}</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-indigo-500" />
+                      <span className="text-xs text-muted-foreground">{L("Kunstig snø", "Artificial snow")}</span>
+                    </div>
+                    <Select value={wfArtSnow} onValueChange={setWfArtSnow}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">— Any —</SelectItem>
+                        {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-teal-500" />
+                      <span className="text-xs text-muted-foreground">{L("Naturlig snø", "Natural snow")}</span>
+                    </div>
+                    <Select value={wfNatSnow} onValueChange={setWfNatSnow}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">— Any —</SelectItem>
+                        {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-cyan-500" />
+                      <span className="text-xs text-muted-foreground">{L("Snøfuktighetstype", "Snow humidity type")}</span>
+                    </div>
+                    <Select value={wfSnowHumidityType} onValueChange={setWfSnowHumidityType}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">— Any —</SelectItem>
+                        {SNOW_HUMIDITY_TYPE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-lime-500" />
+                      <span className="text-xs text-muted-foreground">{L("Kornstørrelse", "Grain size")}</span>
+                    </div>
+                    <Select value={wfGrainSize} onValueChange={setWfGrainSize}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">— Any —</SelectItem>
+                        {GRAIN_SIZE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
+              {/* Snow & Track */}
               <div>
-                <div className="flex items-center gap-1 mb-1.5">
-                  <span className="inline-block h-2 w-2 rounded-full bg-violet-500" />
-                  <span className="text-xs text-muted-foreground">{L("Luftfukt (%rH)", "Air humidity (%rH)")}</span>
+                <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Snø & spor", "Snow & Track")}</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-orange-500" />
+                      <span className="text-xs text-muted-foreground">{L("Sporharhet", "Track hardness")}</span>
+                    </div>
+                    <Select value={wfTrackHardness} onValueChange={setWfTrackHardness}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">— Any —</SelectItem>
+                        {TRACK_HARDNESS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-blue-400" />
+                      <span className="text-xs text-muted-foreground">{L("Nedbør", "Precipitation")}</span>
+                    </div>
+                    <Input className="h-8 text-xs" placeholder="e.g. Snow" value={wfPrecipitation} onChange={e => setWfPrecipitation(e.target.value)} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-slate-400" />
+                      <span className="text-xs text-muted-foreground">{L("Vind", "Wind")}</span>
+                    </div>
+                    <Input className="h-8 text-xs" placeholder="e.g. NW 3m/s" value={wfWind} onChange={e => setWfWind(e.target.value)} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-gray-400" />
+                      <span className="text-xs text-muted-foreground">{L("Sikt", "Visibility")}</span>
+                    </div>
+                    <Input className="h-8 text-xs" placeholder="e.g. Good" value={wfVisibility} onChange={e => setWfVisibility(e.target.value)} />
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfAirHumMin} onChange={e => setWfAirHumMin(e.target.value)} />
-                  <span className="text-xs text-muted-foreground">–</span>
-                  <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfAirHumMax} onChange={e => setWfAirHumMax(e.target.value)} />
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center gap-1 mb-1.5">
-                  <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
-                  <span className="text-xs text-muted-foreground">{L("Snøfukt (%)", "Snow humidity (%)")}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfSnowHumMin} onChange={e => setWfSnowHumMin(e.target.value)} />
-                  <span className="text-xs text-muted-foreground">–</span>
-                  <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfSnowHumMax} onChange={e => setWfSnowHumMax(e.target.value)} />
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center gap-1 mb-1.5">
-                  <span className="inline-block h-2 w-2 rounded-full bg-indigo-500" />
-                  <span className="text-xs text-muted-foreground">{L("Snøtype", "Snow type")}</span>
-                </div>
-                <Input className="h-8 text-xs" placeholder={L("f.eks. Ny snø", "e.g. New snow")} value={wfSnowType} onChange={e => setWfSnowType(e.target.value)} />
-              </div>
-              <div>
-                <div className="flex items-center gap-1 mb-1.5">
-                  <span className="inline-block h-2 w-2 rounded-full bg-orange-500" />
-                  <span className="text-xs text-muted-foreground">{L("Sporharhet", "Track hardness")}</span>
-                </div>
-                <Input className="h-8 text-xs" placeholder={L("f.eks. Hard", "e.g. Hard")} value={wfTrackHardness} onChange={e => setWfTrackHardness(e.target.value)} />
               </div>
             </div>
           </div>

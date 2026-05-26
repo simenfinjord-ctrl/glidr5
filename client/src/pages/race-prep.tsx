@@ -523,14 +523,18 @@ function SkiIdCell({
               data-ski-suggestion-portal=""
               style={{ position: "fixed", top: dropRect.top, left: dropRect.left, width: dropRect.width, zIndex: 9999 }}
               className="rounded-lg border border-border bg-card shadow-md max-h-40 overflow-y-auto"
-              onMouseDown={(e) => e.preventDefault()}
             >
               {suggestions.map(s => (
                 <button
                   key={s.id}
                   type="button"
                   className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted/60 transition-colors"
-                  onClick={() => {
+                  onPointerDown={(e) => {
+                    // preventDefault stops: (1) focus leaving input, (2) mousedown/click chain
+                    e.preventDefault();
+                    // stopImmediatePropagation stops Radix's document-level native pointerdown
+                    // listener from firing and treating this as an "outside click"
+                    e.nativeEvent.stopImmediatePropagation();
                     setVal(s.skiId);
                     setShowSuggestions(false);
                     save(s.skiId);
@@ -744,8 +748,10 @@ function PrepDetailDialog({
       <DialogContent
         className="max-w-2xl max-h-[90vh] overflow-y-auto"
         onPointerDownOutside={(e) => {
-          // Prevent dialog closing when clicking the ski suggestion portal dropdown
-          if ((e.target as Element)?.closest?.('[data-ski-suggestion-portal]')) {
+          // Radix fires this with detail.originalEvent pointing to the actually-clicked element
+          const target = (e as unknown as CustomEvent<{ originalEvent: PointerEvent }>)
+            .detail?.originalEvent?.target as Element | null;
+          if (target?.closest?.('[data-ski-suggestion-portal]')) {
             e.preventDefault();
           }
         }}

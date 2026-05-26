@@ -795,7 +795,7 @@ export default function Tests() {
   const [filterVisibility, setFilterVisibility] = useState("");
   const [filterCloudMin, setFilterCloudMin] = useState("");
   const [filterCloudMax, setFilterCloudMax] = useState("");
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(true);
 
   const seriesById = new Map(series.map((s) => [s.id, s.name] as const));
   const productsById = new Map(products.map((p) => [p.id, p] as const));
@@ -1010,8 +1010,8 @@ export default function Tests() {
         </div>
 
         <Card className="fs-card rounded-2xl p-4">
-          {/* Filter toggle — mobile only */}
-          <div className="sm:hidden flex items-center gap-2 mb-3">
+          {/* Filter toggle */}
+          <div className="flex items-center gap-2 mb-3">
             <Button
               variant="outline"
               size="sm"
@@ -1064,8 +1064,8 @@ export default function Tests() {
             </Button>
           </div>
 
-          {/* Filters — always visible on desktop, togglable on mobile */}
-          <div className={cn("flex flex-wrap items-center gap-3", !filtersOpen && "hidden sm:flex")}>
+          {/* Filters — togglable */}
+          <div className={cn("flex flex-wrap items-center gap-3", !filtersOpen && "hidden")}>
             <div className="inline-flex items-center gap-2 text-sm font-semibold">
               <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10">
                 <Filter className="h-3.5 w-3.5 text-primary" />
@@ -1164,7 +1164,7 @@ export default function Tests() {
             )}
           </div>
 
-          <div className={cn("mt-3 border-t border-border pt-3 space-y-4", !filtersOpen && "hidden sm:block")}>
+          <div className={cn("mt-3 border-t border-border pt-3 space-y-4", !filtersOpen && "hidden")}>
             <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               <Thermometer className="h-3 w-3" />
               {t("testDetail.weather")}

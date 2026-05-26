@@ -313,6 +313,7 @@ export async function registerRoutes(
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_stone TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_pattern TEXT;
       ALTER TABLE grind_profiles ADD COLUMN IF NOT EXISTS grind_id TEXT;
+      ALTER TABLE grind_profiles ADD COLUMN IF NOT EXISTS notes TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_profile_id INTEGER;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS is_paused INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
@@ -3192,7 +3193,7 @@ export async function registerRoutes(
   app.post("/api/grind-profiles", requirePermission("grinding", "edit"), async (req, res) => {
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
-    const { name, grindType, stone, pattern, extraParams } = req.body;
+    const { name, grindType, stone, pattern, extraParams, notes } = req.body;
     if (!name || !grindType || !stone || !pattern) {
       return res.status(400).json({ message: "name, grindType, stone, and pattern are required" });
     }
@@ -3210,6 +3211,7 @@ export async function registerRoutes(
       pattern,
       extraParams: extraParams ? JSON.stringify(extraParams) : null,
       grindId,
+      notes: notes ?? null,
       createdByName: u.name,
       teamId,
       createdAt: new Date().toISOString(),
@@ -3230,7 +3232,7 @@ export async function registerRoutes(
     const existing = await storage.getGrindProfile(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
     if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
-    const { name, grindType, stone, pattern, extraParams } = req.body;
+    const { name, grindType, stone, pattern, extraParams, notes } = req.body;
     if (!name || !grindType || !stone || !pattern) {
       return res.status(400).json({ message: "name, grindType, stone, and pattern are required" });
     }
@@ -3240,6 +3242,7 @@ export async function registerRoutes(
       stone,
       pattern,
       extraParams: extraParams ? JSON.stringify(extraParams) : null,
+      notes: notes ?? null,
     });
     if (!updated) return res.status(404).json({ message: "Not found" });
     res.json(updated);
@@ -3266,6 +3269,7 @@ export async function registerRoutes(
       pattern: existing.pattern,
       extraParams: existing.extraParams,
       grindId: grindIdDup,
+      notes: existing.notes ?? null,
       createdByName: u.name,
       teamId,
       createdAt: new Date().toISOString(),

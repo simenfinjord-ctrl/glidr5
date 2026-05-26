@@ -1,6 +1,5 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useMemo, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Flag, Plus, X, ChevronRight, Pencil, Check, Trash2, Users, Search, Snowflake } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -398,22 +397,21 @@ function SkiIdCell({
             }}
             autoFocus
           />
-          {showSuggestions && suggestions.length > 0 && dropRect && createPortal(
+          {showSuggestions && suggestions.length > 0 && dropRect && (
             <div
               style={{ position: "fixed", top: dropRect.top, left: dropRect.left, width: dropRect.width, zIndex: 9999 }}
               className="rounded-lg border border-border bg-card shadow-md max-h-40 overflow-y-auto"
+              onMouseDown={(e) => e.preventDefault()}
             >
               {suggestions.map(s => (
                 <button
                   key={s.id}
                   type="button"
                   className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted/60 transition-colors"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    preventBlurRef.current = true;
+                  onClick={() => {
                     setVal(s.skiId);
                     setShowSuggestions(false);
-                    save(s.skiId).finally(() => { preventBlurRef.current = false; });
+                    save(s.skiId);
                   }}
                 >
                   <span className="font-medium">{s.skiId}</span>
@@ -421,8 +419,7 @@ function SkiIdCell({
                   {s.discipline && <span className="ml-1 text-muted-foreground text-[10px]">({s.discipline})</span>}
                 </button>
               ))}
-            </div>,
-            document.body
+            </div>
           )}
         </div>
         <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => save()} disabled={saving}>

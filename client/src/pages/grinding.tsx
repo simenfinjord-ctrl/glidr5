@@ -71,6 +71,7 @@ type GrindProfile = {
   pattern: string;
   extraParams: string | null;
   grindId?: string | null;
+  notes: string | null;
   createdByName: string;
   teamId: number;
   createdAt: string;
@@ -222,6 +223,7 @@ function GrindProfileForm({
   };
 
   const [params, setParams] = useState<ParamRow[]>(initParams);
+  const [notesField, setNotesField] = useState(editProfile?.notes ?? "");
 
   const grindProfileSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -276,6 +278,7 @@ function GrindProfileForm({
         stone,
         pattern,
         extraParams: Object.keys(extraObj).length > 0 ? extraObj : null,
+        notes: notesField.trim() || null,
       };
       if (editProfile) {
         const res = await apiRequest("PUT", `/api/grind-profiles/${editProfile.id}`, payload);
@@ -401,6 +404,17 @@ function GrindProfileForm({
           )}
         </div>
 
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-foreground">Notes</label>
+          <Textarea
+            value={notesField}
+            onChange={(e) => setNotesField(e.target.value)}
+            placeholder="Add notes about this grind profile…"
+            className="min-h-[72px] text-sm"
+            data-testid="input-grind-profile-notes"
+          />
+        </div>
+
         <div className="flex justify-end pt-2">
           <Button type="submit" disabled={!canSave} data-testid="button-save-grind-profile">
             {editProfile ? t("common.save") : t("grinding.addGrind")}
@@ -451,8 +465,9 @@ function GrindProfilesTable({
               <th className="px-3 py-2.5">Stone</th>
               <th className="px-3 py-2.5">Pattern</th>
               {allExtraKeys.map((k) => (
-                <th key={k} className="px-3 py-2.5">{k === "ra_value" ? "RA-value" : k}</th>
+                <th key={k} className="px-3 py-2.5">{k === "ra_value" ? "RA-Value" : k}</th>
               ))}
+              <th className="px-3 py-2.5">Notes</th>
               <th className="px-3 py-2.5">{t("grinding.addedBy")}</th>
               <th className="px-3 py-2.5">Date</th>
               <th className="px-3 py-2.5 text-right">Actions</th>
@@ -486,6 +501,11 @@ function GrindProfilesTable({
                   {allExtraKeys.map((k) => (
                     <td key={k} className="px-3 py-2 text-muted-foreground text-xs">{extra[k] ?? "—"}</td>
                   ))}
+                  <td className="px-3 py-2 text-xs text-muted-foreground max-w-[200px]">
+                    {profile.notes ? (
+                      <span className="italic">{profile.notes}</span>
+                    ) : "—"}
+                  </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">{profile.createdByName}</td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(profile.createdAt)}</td>
                   <td className="px-3 py-2">
@@ -528,6 +548,7 @@ function GrindProfileCard({
   onViewResults: () => void;
 }) {
   const { t } = useI18n();
+  const { toast } = useToast();
   // Build ordered param list from extraParams (user-defined order), with legacy fallback
   const extra = parseExtraParams(profile.extraParams);
   const extraKeys = new Set(Object.keys(extra));
@@ -535,6 +556,30 @@ function GrindProfileCard({
   if (!extraKeys.has("stone") && profile.stone) legacyParams.push(["stone", profile.stone]);
   if (!extraKeys.has("pattern") && profile.pattern) legacyParams.push(["pattern", profile.pattern]);
   const allParamEntries = [...legacyParams, ...Object.entries(extra).filter(([, v]) => v)];
+
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesVal, setNotesVal] = useState(profile.notes ?? "");
+  const [notesSaving, setNotesSaving] = useState(false);
+
+  async function saveProfileNotes() {
+    setNotesSaving(true);
+    try {
+      await apiRequest("PUT", `/api/grind-profiles/${profile.id}`, {
+        name: profile.name,
+        grindType: profile.grindType,
+        stone: profile.stone,
+        pattern: profile.pattern,
+        extraParams: profile.extraParams ? JSON.parse(profile.extraParams) : null,
+        notes: notesVal.trim() || null,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/grind-profiles"] });
+      setEditingNotes(false);
+    } catch {
+      toast({ title: "Error", description: "Could not save notes", variant: "destructive" });
+    } finally {
+      setNotesSaving(false);
+    }
+  }
 
   return (
     <Card className="fs-card rounded-2xl p-4 sm:p-5" data-testid={`card-grind-profile-${profile.id}`}>
@@ -567,6 +612,44 @@ function GrindProfileCard({
             <span>{t("grinding.addedBy")} {profile.createdByName}</span>
             <span>·</span>
             <span>{formatDate(profile.createdAt)}</span>
+          </div>
+          {/* Notes — always visible, inline editable */}
+          <div className="mt-1.5 group/notes">
+            {editingNotes ? (
+              <div className="flex flex-col gap-1.5">
+                <Textarea
+                  value={notesVal}
+                  onChange={(e) => setNotesVal(e.target.value)}
+                  className="min-h-[60px] text-xs"
+                  placeholder="Add notes about this grind profile…"
+                  autoFocus
+                />
+                <div className="flex gap-1.5">
+                  <Button size="sm" className="h-6 px-2 text-xs" onClick={saveProfileNotes} disabled={notesSaving}>
+                    <Check className="h-3 w-3 mr-1" />Save
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => { setEditingNotes(false); setNotesVal(profile.notes ?? ""); }}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-1.5">
+                {profile.notes ? (
+                  <p className="text-xs text-muted-foreground italic flex-1">{profile.notes}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground/40 italic flex-1">No notes</p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setEditingNotes(true)}
+                  className="opacity-0 group-hover/notes:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                  title="Edit notes"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -678,7 +761,7 @@ function GrindProfileDetailDialog({
     if (col === "name") return "Grind name";
     if (col === "stone") return "Stone";
     if (col === "pattern") return "Pattern";
-    if (col === "ra_value") return "RA-value";
+    if (col === "ra_value") return "RA-Value";
     // User-defined keys: show exactly as stored
     return col;
   }
@@ -1667,7 +1750,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
     grindProfileId: "Grind-ID",
     grindStone: "Stone",
     grindPattern: "Pattern",
-    ra_value: "RA-value",
+    ra_value: "RA-Value",
   };
 
   // For column labels: use colLabels for known internal keys, otherwise show key exactly as stored

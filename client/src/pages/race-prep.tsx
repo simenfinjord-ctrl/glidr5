@@ -94,6 +94,7 @@ type RaceSkiRecord = {
   grind: string | null;
   heights: string | null;
   year: string | null;
+  customParams: string | null;
 };
 
 const parseIds = (s: string | null) => s ? s.split(",").map(Number).filter(Boolean) : [];
@@ -116,7 +117,7 @@ const EMPTY_FORM = {
   date: "",
   location: "",
   raceType: "",
-  discipline: "Klassisk",
+  discipline: "Classic",
   productIds: [] as number[],
   structureIds: [] as number[],
   kick: "",
@@ -286,6 +287,8 @@ function SkiIdCell({
   const [selectedSki, setSelectedSki] = useState<RaceSkiRecord | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dropRect, setDropRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  // Prevents blur from closing the suggestion list when a suggestion is being clicked (Safari-safe)
+  const preventBlurRef = useRef(false);
 
   // Fetch athlete's skis for autocomplete
   const { data: athleteSkis = [] } = useQuery<RaceSkiRecord[]>({
@@ -322,10 +325,13 @@ function SkiIdCell({
     const finalVal = skiIdVal !== undefined ? skiIdVal : val;
     setSaving(true);
     try {
-      const body: any = { notes: entry.notes };
-      if (disciplineHint === "Classic") body.skiIdClassic = finalVal.trim() || null;
-      else if (disciplineHint === "Skating") body.skiIdSkating = finalVal.trim() || null;
-      else body.skiId = finalVal.trim() || null;
+      // Always send all three ski ID fields to avoid nulling out sibling fields (e.g. Skiathlon)
+      const body: any = {
+        notes: entry.notes,
+        skiId: disciplineHint == null ? (finalVal.trim() || null) : (entry.skiId ?? null),
+        skiIdClassic: disciplineHint === "Classic" ? (finalVal.trim() || null) : (entry.skiIdClassic ?? null),
+        skiIdSkating: disciplineHint === "Skating" ? (finalVal.trim() || null) : (entry.skiIdSkating ?? null),
+      };
       await apiRequest("PUT", `/api/race-preps/${prepId}/entries/${entry.id}`, body);
       onSaved();
       setEditing(false);
@@ -377,7 +383,10 @@ function SkiIdCell({
             value={val}
             onChange={(e) => { setVal(e.target.value); setShowSuggestions(true); }}
             onFocus={() => setShowSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            onBlur={() => {
+              if (preventBlurRef.current) return; // suggestion click in progress
+              setTimeout(() => setShowSuggestions(false), 150);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") { save(); setShowSuggestions(false); }
               if (e.key === "Escape") { setEditing(false); setVal(currentSkiId ?? ""); setShowSuggestions(false); }
@@ -394,7 +403,13 @@ function SkiIdCell({
                   key={s.id}
                   type="button"
                   className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted/60 transition-colors"
-                  onMouseDown={(e) => { e.preventDefault(); setVal(s.skiId); setShowSuggestions(false); save(s.skiId); }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    preventBlurRef.current = true;
+                    setVal(s.skiId);
+                    setShowSuggestions(false);
+                    save(s.skiId).finally(() => { preventBlurRef.current = false; });
+                  }}
                 >
                   <span className="font-medium">{s.skiId}</span>
                   {s.brand && <span className="ml-1 text-muted-foreground">{s.brand}</span>}
@@ -478,6 +493,31 @@ function WeatherRow({ weather, lang }: { weather: Weather; lang: string }) {
   );
 }
 
+// ── Ski param cell — fetches athlete skis (React Query caches) ────────────────
+function SkiParamCell({ athleteId, skiIdValue, paramKey }: { athleteId: number; skiIdValue: string | null | undefined; paramKey: string }) {
+  const { data: skis = [] } = useQuery<RaceSkiRecord[]>({
+    queryKey: [`/api/athletes/${athleteId}/skis`],
+    enabled: !!skiIdValue,
+  });
+  if (!skiIdValue) return <span className="text-muted-foreground text-xs">—</span>;
+  const ski = skis.find(s => s.skiId === skiIdValue || s.serialNumber === skiIdValue);
+  if (!ski) return <span className="text-muted-foreground text-xs">—</span>;
+
+  if (paramKey === "serialNumber") return <span className="text-xs">{ski.serialNumber || "—"}</span>;
+  if (paramKey === "brand") return <span className="text-xs">{ski.brand || "—"}</span>;
+  if (paramKey === "grind") return <span className="text-xs">{ski.grind || "—"}</span>;
+  if (paramKey === "construction") return <span className="text-xs">{ski.construction || "—"}</span>;
+  if (paramKey === "base") return <span className="text-xs">{ski.base || "—"}</span>;
+  if (paramKey === "heights") return <span className="text-xs">{ski.heights || "—"}</span>;
+  if (paramKey === "raValue") {
+    try {
+      const cp = ski.customParams ? JSON.parse(ski.customParams) : {};
+      return <span className="text-xs">{cp.ra_value || "—"}</span>;
+    } catch { return <span className="text-xs">—</span>; }
+  }
+  return <span className="text-xs">—</span>;
+}
+
 // ── Detail dialog ─────────────────────────────────────────────────────────────
 function PrepDetailDialog({
   prep,
@@ -500,6 +540,17 @@ function PrepDetailDialog({
   const [addAthletesOpen, setAddAthletesOpen] = useState(false);
   const [selectedAthleteIds, setSelectedAthleteIds] = useState<Set<number>>(new Set());
   const [addingSaving, setAddingSaving] = useState(false);
+
+  const SKI_PARAM_COLS = [
+    { key: "serialNumber", label: lang === "en" ? "Serial No." : "Serienr." },
+    { key: "brand", label: lang === "en" ? "Brand" : "Merke" },
+    { key: "grind", label: lang === "en" ? "Grind" : "Slipemønster" },
+    { key: "raValue", label: "RA-Value" },
+    { key: "construction", label: lang === "en" ? "Construction" : "Konstruksjon" },
+    { key: "base", label: lang === "en" ? "Base" : "Sål" },
+    { key: "heights", label: lang === "en" ? "Heights" : "Høyder" },
+  ];
+  const [visibleSkiCols, setVisibleSkiCols] = useState<string[]>([]);
 
   const { data: entries = [], refetch: refetchEntries } = useQuery<RacePrepEntry[]>({
     queryKey: [`/api/race-preps/${prep.id}/entries`],
@@ -661,66 +712,99 @@ function PrepDetailDialog({
               {L("Ingen løpere lagt til ennå.", "No athletes added yet.")}
             </p>
           ) : (
-            <div className="rounded-xl border border-border overflow-visible">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                    <th className="px-3 py-2">{L("Løper", "Athlete")}</th>
-                    {prep.discipline === "Skiathlon" ? (
-                      <>
-                        <th className="px-3 py-2">Ski-ID Klassisk</th>
-                        <th className="px-3 py-2">Ski-ID Skøyting</th>
-                      </>
-                    ) : (
-                      <th className="px-3 py-2">Ski-ID</th>
+            <>
+              {/* Column selector */}
+              <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mr-1">{L("Vis kolonner:", "Show columns:")}</span>
+                {SKI_PARAM_COLS.map(col => (
+                  <button
+                    key={col.key}
+                    type="button"
+                    onClick={() => setVisibleSkiCols(prev => prev.includes(col.key) ? prev.filter(k => k !== col.key) : [...prev, col.key])}
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 transition-colors",
+                      visibleSkiCols.includes(col.key)
+                        ? "bg-primary/10 text-primary ring-primary/20"
+                        : "text-muted-foreground ring-border hover:bg-muted/60"
                     )}
-                    <th className="px-3 py-2">{L("Smører", "Waxer")}</th>
-                    {isAdmin && <th className="px-3 py-2 w-8" />}
-                  </tr>
-                </thead>
-                <tbody>
-                  {entries.map((entry) => (
-                    <tr key={entry.id} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
-                      <td className="px-3 py-2.5 font-medium">{entry.athleteName}</td>
+                  >
+                    {col.label}
+                  </button>
+                ))}
+              </div>
+              <div className="rounded-xl border border-border overflow-visible">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <th className="px-3 py-2">{L("Løper", "Athlete")}</th>
                       {prep.discipline === "Skiathlon" ? (
                         <>
-                          <td className="px-3 py-2.5">
-                            <SkiIdCell entry={entry} canEdit={canEditEntry(entry)} prepId={prep.id} onSaved={refetchEntries} lang={lang} disciplineHint="Classic" />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <SkiIdCell entry={entry} canEdit={canEditEntry(entry)} prepId={prep.id} onSaved={refetchEntries} lang={lang} disciplineHint="Skating" />
-                          </td>
+                          <th className="px-3 py-2">{L("Ski-ID Klassisk", "Ski-ID Classic")}</th>
+                          <th className="px-3 py-2">{L("Ski-ID Skøyting", "Ski-ID Skating")}</th>
                         </>
                       ) : (
-                        <td className="px-3 py-2.5">
-                          <SkiIdCell
-                            entry={entry}
-                            canEdit={canEditEntry(entry)}
-                            prepId={prep.id}
-                            onSaved={refetchEntries}
-                            lang={lang}
-                            disciplineHint={prep.discipline === "Classic" ? "Classic" : prep.discipline === "Skating" ? "Skating" : undefined}
-                          />
-                        </td>
+                        <th className="px-3 py-2">Ski-ID</th>
                       )}
-                      <td className="px-3 py-2.5 text-muted-foreground text-xs">{entry.waxerName ?? "—"}</td>
-                      {isAdmin && (
-                        <td className="px-3 py-2.5">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500"
-                            onClick={() => removeEntry(entry.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </td>
-                      )}
+                      {visibleSkiCols.map(colKey => {
+                        const col = SKI_PARAM_COLS.find(c => c.key === colKey)!;
+                        return <th key={colKey} className="px-3 py-2 text-[10px]">{col.label}</th>;
+                      })}
+                      <th className="px-3 py-2">{L("Smører", "Waxer")}</th>
+                      {isAdmin && <th className="px-3 py-2 w-8" />}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {entries.map((entry) => {
+                      const skiIdVal = entry.skiId ?? entry.skiIdClassic;
+                      return (
+                        <tr key={entry.id} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
+                          <td className="px-3 py-2.5 font-medium">{entry.athleteName}</td>
+                          {prep.discipline === "Skiathlon" ? (
+                            <>
+                              <td className="px-3 py-2.5">
+                                <SkiIdCell entry={entry} canEdit={canEditEntry(entry)} prepId={prep.id} onSaved={refetchEntries} lang={lang} disciplineHint="Classic" />
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <SkiIdCell entry={entry} canEdit={canEditEntry(entry)} prepId={prep.id} onSaved={refetchEntries} lang={lang} disciplineHint="Skating" />
+                              </td>
+                            </>
+                          ) : (
+                            <td className="px-3 py-2.5">
+                              <SkiIdCell
+                                entry={entry}
+                                canEdit={canEditEntry(entry)}
+                                prepId={prep.id}
+                                onSaved={refetchEntries}
+                                lang={lang}
+                                disciplineHint={prep.discipline === "Classic" ? "Classic" : prep.discipline === "Skating" ? "Skating" : undefined}
+                              />
+                            </td>
+                          )}
+                          {visibleSkiCols.map(colKey => (
+                            <td key={colKey} className="px-3 py-2.5">
+                              <SkiParamCell athleteId={entry.athleteId} skiIdValue={skiIdVal} paramKey={colKey} />
+                            </td>
+                          ))}
+                          <td className="px-3 py-2.5 text-muted-foreground text-xs">{entry.waxerName ?? "—"}</td>
+                          {isAdmin && (
+                            <td className="px-3 py-2.5">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500"
+                                onClick={() => removeEntry(entry.id)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 
@@ -1031,11 +1115,17 @@ export default function RacePrep() {
       if (search.trim()) {
         const q = search.toLowerCase();
         const glide = productNames(prep.productIds, products);
+        const structure = productNames(prep.structureIds, products);
+        const kick = prep.kickProductIds ?? "";
+        const disc = (DISCIPLINE_LABEL[prep.discipline]?.en ?? prep.discipline).toLowerCase();
         if (
           !prep.location.toLowerCase().includes(q) &&
           !prep.raceType.toLowerCase().includes(q) &&
           !(prep.notes ?? "").toLowerCase().includes(q) &&
-          !glide.toLowerCase().includes(q)
+          !glide.toLowerCase().includes(q) &&
+          !structure.toLowerCase().includes(q) &&
+          !kick.toLowerCase().includes(q) &&
+          !disc.includes(q)
         ) return false;
       }
       // Weather filters — only apply if prep has linked weather

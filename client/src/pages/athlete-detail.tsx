@@ -40,6 +40,8 @@ import {
   CalendarDays,
   Upload,
   Clock,
+  Flag,
+  Snowflake,
 } from "lucide-react";
 import { useOffline } from "@/lib/offline-context";
 import { AppShell } from "@/components/app-shell";
@@ -200,6 +202,27 @@ type UserItem = {
   email: string;
 };
 
+type AthleteRaceHistory = {
+  entryId: number;
+  skiId: string | null;
+  skiIdClassic: string | null;
+  skiIdSkating: string | null;
+  waxerName: string | null;
+  entryNotes: string | null;
+  racePrepId: number;
+  date: string;
+  location: string;
+  raceType: string;
+  discipline: string;
+  productIds: string | null;
+  structureIds: string | null;
+  kickProductIds: string | null;
+  tette: string | null;
+  method: string | null;
+  prepNotes: string | null;
+  weatherId: number | null;
+};
+
 // ─── Ski color tags ──────────────────────────────────────────────────────────
 const SKI_COLORS = [
   { id: "none",    label: "None",    bg: "bg-muted/40",                              ring: "ring-border",         dot: "" },
@@ -219,6 +242,19 @@ function getSkiColor(ski: RaceSki): string {
     return cp._color || "none";
   } catch { return "none"; }
 }
+
+// Discipline color badges - same as race-prep.tsx
+const DISCIPLINE_COLORS_DETAIL: Record<string, string> = {
+  Classic:   "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-800",
+  Skating:   "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-800",
+  Skiathlon: "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 ring-violet-200 dark:ring-violet-800",
+};
+
+const DISCIPLINE_LABEL_DETAIL: Record<string, { no: string; en: string }> = {
+  Classic:   { no: "Klassisk", en: "Classic" },
+  Skating:   { no: "Skøyting", en: "Skating" },
+  Skiathlon: { no: "Skiathlon", en: "Skiathlon" },
+};
 
 export default function AthleteDetail() {
   const [, params] = useRoute("/raceskis/:id");
@@ -471,6 +507,19 @@ export default function AthleteDetail() {
     enabled: !!athleteId,
   });
 
+  const { data: raceHistory = [] } = useQuery<AthleteRaceHistory[]>({
+    queryKey: [`/api/athletes/${athleteId}/race-history`],
+    enabled: !!athleteId,
+  });
+
+  const { data: weatherList = [] } = useQuery<{ id: number; date: string; location: string; snowTemperatureC: number | null; airTemperatureC: number | null; snowHumidityPct: number | null; airHumidityPct: number | null; snowHumidityType: string | null; trackHardness: string | null }[]>({
+    queryKey: ["/api/weather"],
+  });
+
+  const { data: allProducts = [] } = useQuery<{ id: number; brand: string; name: string; category: string }[]>({
+    queryKey: ["/api/products"],
+  });
+
   const { data: archivedSkis = [] } = useQuery<RaceSki[]>({
     queryKey: [`/api/athletes/${athleteId}/skis/archived`],
     enabled: !!athleteId && showArchivedSkis,
@@ -640,15 +689,65 @@ export default function AthleteDetail() {
   const [testTypeFilter, setTestTypeFilter] = useState<string>("all");
   const [testSortBy, setTestSortBy] = useState<string>("date-desc");
 
+  const [testLocationFilter, setTestLocationFilter] = useState("");
+  const [testSeasonFilter, setTestSeasonFilter] = useState("all");
+  const [testDateFrom, setTestDateFrom] = useState("");
+  const [testDateTo, setTestDateTo] = useState("");
+  const [testAirTempMin, setTestAirTempMin] = useState("");
+  const [testAirTempMax, setTestAirTempMax] = useState("");
+  const [testSnowTempMin, setTestSnowTempMin] = useState("");
+  const [testSnowTempMax, setTestSnowTempMax] = useState("");
+  const [testAirHumMin, setTestAirHumMin] = useState("");
+  const [testAirHumMax, setTestAirHumMax] = useState("");
+  const [testSnowHumMin, setTestSnowHumMin] = useState("");
+  const [testSnowHumMax, setTestSnowHumMax] = useState("");
+  const [showTestWeatherFilters, setShowTestWeatherFilters] = useState(false);
+
   const testDates = useMemo(() => {
     const dates = [...new Set(raceSkiTests.map((t) => t.date))].sort((a, b) => b.localeCompare(a));
     return dates;
+  }, [raceSkiTests]);
+
+  const testWeatherById = useMemo(() => new Map(weatherList.map(w => [w.id, w])), [weatherList]);
+
+  const testAvailableSeasons = useMemo(() => {
+    const s = new Set(raceSkiTests.map(t => {
+      const d = new Date(t.date); const m = d.getMonth(); const y = d.getFullYear();
+      return m >= 9 ? `${y}/${y+1}` : `${y-1}/${y}`;
+    }));
+    return Array.from(s).sort().reverse();
   }, [raceSkiTests]);
 
   const filteredTests = useMemo(() => {
     let list = raceSkiTests;
     if (testDateFilter !== "all") list = list.filter((t) => t.date === testDateFilter);
     if (testTypeFilter !== "all") list = list.filter((t) => t.testType === testTypeFilter);
+    if (testLocationFilter) list = list.filter(t => t.location.toLowerCase().includes(testLocationFilter.toLowerCase()));
+    if (testSeasonFilter !== "all") {
+      list = list.filter(t => {
+        const d = new Date(t.date); const m = d.getMonth(); const y = d.getFullYear();
+        const season = m >= 9 ? `${y}/${y+1}` : `${y-1}/${y}`;
+        return season === testSeasonFilter;
+      });
+    }
+    if (testDateFrom) list = list.filter(t => t.date >= testDateFrom);
+    if (testDateTo) list = list.filter(t => t.date <= testDateTo);
+    const hasWeatherFilter = testAirTempMin || testAirTempMax || testSnowTempMin || testSnowTempMax || testAirHumMin || testAirHumMax || testSnowHumMin || testSnowHumMax;
+    if (hasWeatherFilter) {
+      list = list.filter(t => {
+        const w = t.weatherId ? testWeatherById.get(t.weatherId) : null;
+        if (!w) return false;
+        if (testAirTempMin && (w.airTemperatureC ?? 999) < parseFloat(testAirTempMin)) return false;
+        if (testAirTempMax && (w.airTemperatureC ?? -999) > parseFloat(testAirTempMax)) return false;
+        if (testSnowTempMin && (w.snowTemperatureC ?? 999) < parseFloat(testSnowTempMin)) return false;
+        if (testSnowTempMax && (w.snowTemperatureC ?? -999) > parseFloat(testSnowTempMax)) return false;
+        if (testAirHumMin && (w.airHumidityPct ?? 999) < parseFloat(testAirHumMin)) return false;
+        if (testAirHumMax && (w.airHumidityPct ?? -999) > parseFloat(testAirHumMax)) return false;
+        if (testSnowHumMin && (w.snowHumidityPct ?? 999) < parseFloat(testSnowHumMin)) return false;
+        if (testSnowHumMax && (w.snowHumidityPct ?? -999) > parseFloat(testSnowHumMax)) return false;
+        return true;
+      });
+    }
     list = [...list].sort((a, b) => {
       switch (testSortBy) {
         case "date-asc": return a.date.localeCompare(b.date);
@@ -659,7 +758,7 @@ export default function AthleteDetail() {
       }
     });
     return list;
-  }, [raceSkiTests, testDateFilter, testTypeFilter, testSortBy]);
+  }, [raceSkiTests, testDateFilter, testTypeFilter, testSortBy, testLocationFilter, testSeasonFilter, testDateFrom, testDateTo, testAirTempMin, testAirTempMax, testSnowTempMin, testSnowTempMax, testAirHumMin, testAirHumMax, testSnowHumMin, testSnowHumMax, testWeatherById]);
 
   function buildSkiBody(data: typeof skiForm) {
     const cp: Record<string, string | null> = {};
@@ -1428,6 +1527,45 @@ export default function AthleteDetail() {
           </Card>
         )}
 
+        {/* Race History */}
+        {raceHistory.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+              <Flag className="h-5 w-5 text-primary" />
+              {t("nav.raceprep") || "Race History"}
+              <span className="text-sm font-normal text-muted-foreground">({raceHistory.length})</span>
+            </h2>
+            <div className="space-y-2">
+              {raceHistory.map((entry) => {
+                const skiLabel = entry.discipline === "Skiathlon"
+                  ? [entry.skiIdClassic && `Classic: ${entry.skiIdClassic}`, entry.skiIdSkating && `Skating: ${entry.skiIdSkating}`].filter(Boolean).join(" / ")
+                  : (entry.skiId ?? "—");
+                const raceWeather = entry.weatherId ? weatherList.find(w => w.id === entry.weatherId) : null;
+                return (
+                  <Card key={entry.entryId} className="rounded-xl px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="font-semibold text-sm">{entry.location}</span>
+                      <span className="text-xs text-muted-foreground">{new Date(entry.date).toLocaleDateString()}</span>
+                      <span className="text-xs text-muted-foreground">{entry.raceType}</span>
+                      <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1", DISCIPLINE_COLORS_DETAIL[entry.discipline] ?? "")}>
+                        {DISCIPLINE_LABEL_DETAIL[entry.discipline]?.en ?? entry.discipline}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                      {skiLabel && <span>Ski: <span className="font-medium text-foreground">{skiLabel}</span></span>}
+                      {entry.waxerName && <span>Waxer: <span className="font-medium text-foreground">{entry.waxerName}</span></span>}
+                      {raceWeather && raceWeather.snowTemperatureC != null && <span>Snow: <span className="font-medium text-foreground">{raceWeather.snowTemperatureC}°C</span></span>}
+                      {raceWeather && raceWeather.airTemperatureC != null && <span>Air: <span className="font-medium text-foreground">{raceWeather.airTemperatureC}°C</span></span>}
+                      {raceWeather && raceWeather.snowHumidityPct != null && <span>Snow hum: <span className="font-medium text-foreground">{raceWeather.snowHumidityPct}%</span></span>}
+                      {raceWeather && raceWeather.trackHardness && <span>Track: <span className="font-medium text-foreground">{raceWeather.trackHardness}</span></span>}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Ski Garage */}
         <Collapsible open={skiGarageOpen} onOpenChange={setSkiGarageOpen} data-testid="section-ski-garage">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1606,6 +1744,8 @@ export default function AthleteDetail() {
                     onDeleteRegrind={(id) => {
                       if (confirm("Delete this regrind record?")) deleteRegrindMutation.mutate(id);
                     }}
+                    raceHistory={raceHistory}
+                    weatherList={weatherList}
                   />
                 ))}
                 {filteredGarageSkis.length === 0 && skis.length > 0 && (
@@ -1679,6 +1819,8 @@ export default function AthleteDetail() {
                                     onArchive={() => { if (confirm("Archive this ski? It can be restored later.")) archiveSkiMutation.mutate(ski.id); }}
                                     onRegrind={() => openRegrind(ski.id)}
                                     onDeleteRegrind={(id) => { if (confirm("Delete this regrind record?")) deleteRegrindMutation.mutate(id); }}
+                                    raceHistory={raceHistory}
+                                    weatherList={weatherList}
                                   />
                                 </td>
                               </tr>
@@ -1727,6 +1869,8 @@ export default function AthleteDetail() {
                     onDelete={() => {
                       if (confirm("Permanently delete this ski and all its regrind history? This cannot be undone.")) deleteSkiMutation.mutate(ski.id);
                     }}
+                    raceHistory={raceHistory}
+                    weatherList={weatherList}
                   />
                 ))}
               </div>
@@ -1815,40 +1959,125 @@ export default function AthleteDetail() {
           {testsExpanded && (
             <div className="mt-3 space-y-3">
               {raceSkiTests.length > 0 && !showTestForm && (
-                <div className="flex flex-wrap items-center gap-2" data-testid="test-filters">
-                  <Select value={testDateFilter} onValueChange={setTestDateFilter}>
-                    <SelectTrigger className="h-8 w-[140px] text-xs" data-testid="select-test-date-filter">
-                      <SelectValue placeholder="All dates" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All dates</SelectItem>
-                      {testDates.map((d) => (
-                        <SelectItem key={d} value={d}>{d}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={testTypeFilter} onValueChange={setTestTypeFilter}>
-                    <SelectTrigger className="h-8 w-[120px] text-xs" data-testid="select-test-type-filter">
-                      <SelectValue placeholder="All types" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All types</SelectItem>
-                      <SelectItem value="Classic">Classic</SelectItem>
-                      <SelectItem value="Skating">Skating</SelectItem>
-                      <SelectItem value="Double Poling">Double Poling</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={testSortBy} onValueChange={setTestSortBy}>
-                    <SelectTrigger className="h-8 w-[130px] text-xs" data-testid="select-test-sort">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="date-desc">Date ↓</SelectItem>
-                      <SelectItem value="date-asc">Date ↑</SelectItem>
-                      <SelectItem value="location-asc">Location A-Z</SelectItem>
-                      <SelectItem value="location-desc">Location Z-A</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2" data-testid="test-filters">
+                    <Select value={testDateFilter} onValueChange={setTestDateFilter}>
+                      <SelectTrigger className="h-8 w-[140px] text-xs" data-testid="select-test-date-filter">
+                        <SelectValue placeholder="All dates" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All dates</SelectItem>
+                        {testDates.map((d) => (
+                          <SelectItem key={d} value={d}>{d}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={testTypeFilter} onValueChange={setTestTypeFilter}>
+                      <SelectTrigger className="h-8 w-[120px] text-xs" data-testid="select-test-type-filter">
+                        <SelectValue placeholder="All types" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All types</SelectItem>
+                        <SelectItem value="Classic">Classic</SelectItem>
+                        <SelectItem value="Skating">Skating</SelectItem>
+                        <SelectItem value="Double Poling">Double Poling</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={testSortBy} onValueChange={setTestSortBy}>
+                      <SelectTrigger className="h-8 w-[130px] text-xs" data-testid="select-test-sort">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="date-desc">Date ↓</SelectItem>
+                        <SelectItem value="date-asc">Date ↑</SelectItem>
+                        <SelectItem value="location-asc">Location A-Z</SelectItem>
+                        <SelectItem value="location-desc">Location Z-A</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      value={testLocationFilter}
+                      onChange={e => setTestLocationFilter(e.target.value)}
+                      placeholder="Location..."
+                      className="h-8 w-[140px] text-xs"
+                    />
+                    <Select value={testSeasonFilter} onValueChange={setTestSeasonFilter}>
+                      <SelectTrigger className="h-8 w-[120px] text-xs">
+                        <SelectValue placeholder="Season" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All seasons</SelectItem>
+                        {testAvailableSeasons.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Input type="date" value={testDateFrom} onChange={e => setTestDateFrom(e.target.value)} className="h-8 w-[130px] text-xs" />
+                    <span className="text-xs text-muted-foreground">–</span>
+                    <Input type="date" value={testDateTo} onChange={e => setTestDateTo(e.target.value)} className="h-8 w-[130px] text-xs" />
+                    <Button
+                      variant={(showTestWeatherFilters || !!(testAirTempMin || testAirTempMax || testSnowTempMin || testSnowTempMax || testAirHumMin || testAirHumMax || testSnowHumMin || testSnowHumMax)) ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 gap-1 text-xs"
+                      onClick={() => setShowTestWeatherFilters(v => !v)}
+                    >
+                      <Snowflake className="h-3 w-3" />
+                      Weather
+                    </Button>
+                    {(testLocationFilter || testSeasonFilter !== "all" || testDateFrom || testDateTo) && (
+                      <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => { setTestLocationFilter(""); setTestSeasonFilter("all"); setTestDateFrom(""); setTestDateTo(""); setTestAirTempMin(""); setTestAirTempMax(""); setTestSnowTempMin(""); setTestSnowTempMax(""); setTestAirHumMin(""); setTestAirHumMax(""); setTestSnowHumMin(""); setTestSnowHumMax(""); }}>
+                        <X className="h-3 w-3 mr-1" />
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  {showTestWeatherFilters && (
+                    <div className="rounded-xl border border-border bg-muted/20 p-3">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />
+                            Air temp (°C)
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="h-7 text-xs" placeholder="Min" value={testAirTempMin} onChange={e => setTestAirTempMin(e.target.value)} />
+                            <span className="text-xs">–</span>
+                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={testAirTempMax} onChange={e => setTestAirTempMax(e.target.value)} />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                            Snow temp (°C)
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="h-7 text-xs" placeholder="Min" value={testSnowTempMin} onChange={e => setTestSnowTempMin(e.target.value)} />
+                            <span className="text-xs">–</span>
+                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={testSnowTempMax} onChange={e => setTestSnowTempMax(e.target.value)} />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400" />
+                            Air humidity (%)
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="h-7 text-xs" placeholder="Min" value={testAirHumMin} onChange={e => setTestAirHumMin(e.target.value)} />
+                            <span className="text-xs">–</span>
+                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={testAirHumMax} onChange={e => setTestAirHumMax(e.target.value)} />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
+                            Snow humidity (%)
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="h-7 text-xs" placeholder="Min" value={testSnowHumMin} onChange={e => setTestSnowHumMin(e.target.value)} />
+                            <span className="text-xs">–</span>
+                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={testSnowHumMax} onChange={e => setTestSnowHumMax(e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {/* Column chooser bar */}
@@ -2943,12 +3172,16 @@ function SkiDetailPanel({
   onArchive,
   onRegrind,
   onDeleteRegrind,
+  raceHistory = [],
+  weatherList = [],
 }: {
   ski: RaceSki;
   onEdit?: () => void;
   onArchive?: () => void;
   onRegrind?: () => void;
   onDeleteRegrind?: (id: number) => void;
+  raceHistory?: AthleteRaceHistory[];
+  weatherList?: { id: number; date: string; location: string; snowTemperatureC: number | null; airTemperatureC: number | null; snowHumidityPct: number | null; airHumidityPct: number | null; snowHumidityType: string | null; trackHardness: string | null }[];
 }) {
   const { t } = useI18n();
   const { data: regrinds = [] } = useQuery<RaceSkiRegrind[]>({
@@ -3046,6 +3279,36 @@ function SkiDetailPanel({
           </div>
         )}
       </div>
+
+      {/* Race history for this ski */}
+      {(() => {
+        const skiRaces = raceHistory.filter(r =>
+          r.skiId === ski.skiId || r.skiIdClassic === ski.skiId || r.skiIdSkating === ski.skiId
+        );
+        if (skiRaces.length === 0) return null;
+        return (
+          <div className="mt-2 pt-2 border-t border-border/40">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+              Raced {skiRaces.length}×
+            </p>
+            <div className="space-y-1">
+              {skiRaces.slice(0, 3).map(r => {
+                const w = r.weatherId ? weatherList.find(ww => ww.id === r.weatherId) : null;
+                return (
+                  <div key={r.entryId} className="text-[10px] text-muted-foreground leading-snug">
+                    <span className="font-medium text-foreground">{r.location}</span>
+                    {" · "}{new Date(r.date).toLocaleDateString()}
+                    {w?.snowTemperatureC != null && ` · ${w.snowTemperatureC}°C`}
+                  </div>
+                );
+              })}
+              {skiRaces.length > 3 && (
+                <p className="text-[10px] text-muted-foreground">+{skiRaces.length - 3} more</p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -3260,6 +3523,8 @@ function SkiCard({
   isArchived,
   onRestore,
   onDelete,
+  raceHistory = [],
+  weatherList = [],
 }: {
   ski: RaceSki;
   expanded: boolean;
@@ -3271,6 +3536,8 @@ function SkiCard({
   isArchived?: boolean;
   onRestore?: () => void;
   onDelete?: () => void;
+  raceHistory?: AthleteRaceHistory[];
+  weatherList?: { id: number; date: string; location: string; snowTemperatureC: number | null; airTemperatureC: number | null; snowHumidityPct: number | null; airHumidityPct: number | null; snowHumidityType: string | null; trackHardness: string | null }[];
 }) {
   const { t } = useI18n();
   const { data: regrinds = [] } = useQuery<RaceSkiRegrind[]>({
@@ -3466,6 +3733,36 @@ function SkiCard({
               </div>
             )}
           </div>
+
+          {/* Race history for this ski */}
+          {(() => {
+            const skiRaces = raceHistory.filter(r =>
+              r.skiId === ski.skiId || r.skiIdClassic === ski.skiId || r.skiIdSkating === ski.skiId
+            );
+            if (skiRaces.length === 0) return null;
+            return (
+              <div className="mt-2 pt-2 border-t border-border/40">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                  Raced {skiRaces.length}×
+                </p>
+                <div className="space-y-1">
+                  {skiRaces.slice(0, 3).map(r => {
+                    const w = r.weatherId ? weatherList.find(ww => ww.id === r.weatherId) : null;
+                    return (
+                      <div key={r.entryId} className="text-[10px] text-muted-foreground leading-snug">
+                        <span className="font-medium text-foreground">{r.location}</span>
+                        {" · "}{new Date(r.date).toLocaleDateString()}
+                        {w?.snowTemperatureC != null && ` · ${w.snowTemperatureC}°C`}
+                      </div>
+                    );
+                  })}
+                  {skiRaces.length > 3 && (
+                    <p className="text-[10px] text-muted-foreground">+{skiRaces.length - 3} more</p>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </Card>

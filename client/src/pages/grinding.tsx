@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2, LayoutGrid, LayoutList, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2, LayoutGrid, LayoutList, ExternalLink, Check } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn, fmtDate } from "@/lib/utils";
@@ -1676,6 +1677,24 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
 
   const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>(["name"]);
 
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesVal, setNotesVal] = useState(test.notes ?? "");
+  const [notesSaving, setNotesSaving] = useState(false);
+  const { toast } = useToast();
+
+  async function saveNotes() {
+    setNotesSaving(true);
+    try {
+      await apiRequest("PUT", `/api/tests/${test.id}`, { notes: notesVal.trim() || null });
+      queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
+      setEditingNotes(false);
+    } catch {
+      toast({ title: "Error", description: "Could not save notes", variant: "destructive" });
+    } finally {
+      setNotesSaving(false);
+    }
+  }
+
   function toggleGrindCol(col: string) {
     setVisibleGrindCols((prev) =>
       prev.includes(col) ? prev.filter((c) => c !== col) : [...prev, col]
@@ -1812,6 +1831,48 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
           </table>
         </div>
       )}
+      {/* Notes — always visible, editable */}
+      <div className="mt-3 border-t border-border/30 pt-3">
+        {editingNotes ? (
+          <div className="space-y-1.5">
+            <Textarea
+              value={notesVal}
+              onChange={e => setNotesVal(e.target.value)}
+              placeholder="Add notes for this grind test..."
+              rows={2}
+              className="text-xs resize-none"
+              autoFocus
+            />
+            <div className="flex items-center gap-1.5">
+              <Button size="sm" className="h-6 px-2 text-xs" onClick={saveNotes} disabled={notesSaving}>
+                <Check className="h-3 w-3 mr-1" />
+                Save
+              </Button>
+              <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => { setEditingNotes(false); setNotesVal(test.notes ?? ""); }}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2 group">
+            <div className="flex-1">
+              {test.notes ? (
+                <p className="text-xs text-muted-foreground italic">{test.notes}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground/50 italic">No notes</p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setEditingNotes(true)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+              title="Edit notes"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+      </div>
     </Card>
   );
 }

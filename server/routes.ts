@@ -4485,6 +4485,40 @@ export async function registerRoutes(
     return res.json({ ok: true });
   });
 
+  app.get("/api/athletes/:id/race-history", requirePermission("raceprep", "view"), async (req, res) => {
+    const athleteId = parseInt(req.params.id);
+    const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT
+         rpe.id AS "entryId",
+         rpe.ski_id AS "skiId",
+         rpe.ski_id_classic AS "skiIdClassic",
+         rpe.ski_id_skating AS "skiIdSkating",
+         rpe.waxer_name AS "waxerName",
+         rpe.notes AS "entryNotes",
+         rp.id AS "racePrepId",
+         rp.date,
+         rp.location,
+         rp.race_type AS "raceType",
+         rp.discipline,
+         rp.product_ids AS "productIds",
+         rp.structure_ids AS "structureIds",
+         rp.kick_product_ids AS "kickProductIds",
+         rp.tette,
+         rp.method,
+         rp.notes AS "prepNotes",
+         rp.weather_id AS "weatherId"
+       FROM race_prep_entries rpe
+       JOIN race_preps rp ON rpe.race_prep_id = rp.id
+       WHERE rpe.athlete_id = $1 AND rp.team_id = $2
+       ORDER BY rp.date DESC`,
+      [athleteId, teamId]
+    );
+    return res.json(result.rows);
+  });
+
   app.post("/api/race-skis/:id/archive", requirePermission("raceskis", "edit"), async (req, res) => {
     const u = userInfo(req);
     const id = parseInt(req.params.id);

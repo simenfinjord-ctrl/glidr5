@@ -509,7 +509,10 @@ function SkiIdCell({
             onChange={(e) => { setVal(e.target.value); setShowSuggestions(true); }}
             onFocus={() => setShowSuggestions(true)}
             onBlur={() => {
-              if (preventBlurRef.current) return; // suggestion click in progress
+              if (preventBlurRef.current) {
+                preventBlurRef.current = false;
+                return; // suggestion click in progress — don't close
+              }
               setTimeout(() => setShowSuggestions(false), 150);
             }}
             onKeyDown={(e) => {
@@ -528,13 +531,14 @@ function SkiIdCell({
                 <button
                   key={s.id}
                   type="button"
-                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted/60 transition-colors"
-                  onPointerDown={(e) => {
-                    // preventDefault stops: (1) focus leaving input, (2) mousedown/click chain
+                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-primary/10 hover:text-primary transition-colors"
+                  onMouseDown={(e) => {
+                    // Prevent input from losing focus (which would close the dropdown before click fires)
                     e.preventDefault();
-                    // stopImmediatePropagation stops Radix's document-level native pointerdown
-                    // listener from firing and treating this as an "outside click"
-                    e.nativeEvent.stopImmediatePropagation();
+                    preventBlurRef.current = true;
+                  }}
+                  onClick={() => {
+                    preventBlurRef.current = false;
                     setVal(s.skiId);
                     setShowSuggestions(false);
                     save(s.skiId);

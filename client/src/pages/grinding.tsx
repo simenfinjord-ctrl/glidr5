@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2, LayoutGrid, LayoutList, ExternalLink, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2, LayoutGrid, LayoutList, ExternalLink, Check, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
@@ -60,6 +60,10 @@ type Weather = {
   location: string;
   airTemperatureC: number;
   snowTemperatureC: number;
+  airHumidityPct?: number | null;
+  snowHumidityPct?: number | null;
+  snowType?: string | null;
+  trackHardness?: string | null;
 };
 
 
@@ -1013,7 +1017,7 @@ const GRIND_COMPARE_COLORS = [
 export default function Grinding() {
   const { t } = useI18n();
   const { toast } = useToast();
-  const [tab, setTab] = useState<"tests" | "grinds">("tests");
+  const [tab, setTab] = useState<"tests" | "grinds" | "analytics">("tests");
 
   const [filterSeason, setFilterSeason] = useState<string>("All");
   const [filterLocation, setFilterLocation] = useState("");
@@ -1188,6 +1192,7 @@ export default function Grinding() {
 
   function getTabSubtitle() {
     if (tab === "tests") return `${filtered.length} grind test${filtered.length !== 1 ? "s" : ""}${hasFilters ? " matching filters" : " total"}`;
+    if (tab === "analytics") return `Analytics — ${grindProfiles.length} profiles, ${grindTests.length} tests`;
     return `${filteredProfiles.length} grind profile${filteredProfiles.length !== 1 ? "s" : ""}${grindSearch ? " matching search" : " total"}`;
   }
 
@@ -1263,6 +1268,14 @@ export default function Grinding() {
             {grindProfiles.length > 0 && (
               <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">{grindProfiles.length}</span>
             )}
+          </button>
+          <button
+            onClick={() => setTab("analytics")}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === "analytics" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}
+            data-testid="tab-grinding-analytics"
+          >
+            <TrendingUp className="inline-block mr-1.5 h-4 w-4" />
+            Analytics
           </button>
         </div>
 
@@ -1692,6 +1705,16 @@ export default function Grinding() {
           </div>
         )}
 
+        {/* Analytics tab */}
+        {tab === "analytics" && (
+          <GrindingAnalytics
+            grindTests={grindTests}
+            allEntries={allEntries}
+            grindProfiles={grindProfiles}
+            weatherById={weatherById}
+          />
+        )}
+
       </div>
 
       {/* Grind profile detail dialog */}
@@ -1701,6 +1724,427 @@ export default function Grinding() {
         onClose={() => setDetailOpen(false)}
       />
     </AppShell>
+  );
+}
+
+// ─── Grinding Analytics ────────────────────────────────────────────────────────
+
+function GrindingAnalytics({
+  grindTests,
+  allEntries,
+  grindProfiles,
+  weatherById,
+}: {
+  grindTests: Test[];
+  allEntries: TestEntry[];
+  grindProfiles: GrindProfile[];
+  weatherById: Map<number, Weather>;
+}) {
+  const [searchGrind, setSearchGrind] = useState("");
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
+
+  // ── Per-profile stats ─────────────────────────────────────────────────────
+  const profileStats = useMemo(() => {
+    return grindProfiles.map((profile) => {
+      // Find all entries that reference this profile
+      const entries = allEntries.filter((e) => e.grindProfileId === profile.id);
+      const testIds = new Set(entries.map((e) => e.testId));
+      const testsForProfile = grindTests.filter((t) => testIds.has(t.id));
+
+      const ranks: number[] = entries.map((e) => e.rank0km).filter((r): r is number => r !== null);
+      const results: number[] = entries.map((e) => e.result0kmCmBehind).filter((r): r is number => r !== null);
+      const wins = ranks.filter((r) => r === 1).length;
+      const top3 = ranks.filter((r) => r <= 3).length;
+      const avgRank = ranks.length > 0 ? ranks.reduce((a, b) => a + b, 0) / ranks.length : null;
+      const avgResult = results.length > 0 ? results.reduce((a, b) => a + b, 0) / results.length : null;
+
+      // Feeling ranks
+      const feelingRanks = entries.map((e) => e.feelingRank).filter((r): r is number => r !== null);
+      const avgFeeling = feelingRanks.length > 0 ? feelingRanks.reduce((a, b) => a + b, 0) / feelingRanks.length : null;
+
+      // Weather stats (average over tests where this profile was used)
+      const weatherSamples = testsForProfile
+        .map((t) => t.weatherId ? weatherById.get(t.weatherId) : null)
+        .filter((w): w is Weather => w != null);
+      const avgAirTemp = weatherSamples.length > 0
+        ? weatherSamples.reduce((a, w) => a + (w.airTemperatureC ?? 0), 0) / weatherSamples.length
+        : null;
+      const avgSnowTemp = weatherSamples.length > 0
+        ? weatherSamples.reduce((a, w) => a + (w.snowTemperatureC ?? 0), 0) / weatherSamples.length
+        : null;
+
+      return {
+        profile,
+        testCount: testsForProfile.length,
+        entryCount: entries.length,
+        wins,
+        top3,
+        avgRank,
+        avgResult,
+        avgFeeling,
+        avgAirTemp,
+        avgSnowTemp,
+        winRate: ranks.length > 0 ? (wins / ranks.length) * 100 : null,
+        top3Rate: ranks.length > 0 ? (top3 / ranks.length) * 100 : null,
+      };
+    }).sort((a, b) => {
+      // Sort by win rate desc, then test count desc
+      if (b.winRate !== null && a.winRate !== null) return b.winRate - a.winRate;
+      if (b.winRate !== null) return 1;
+      if (a.winRate !== null) return -1;
+      return b.testCount - a.testCount;
+    });
+  }, [grindProfiles, allEntries, grindTests, weatherById]);
+
+  // ── Filtered for search ────────────────────────────────────────────────────
+  const filteredStats = useMemo(() => {
+    if (!searchGrind.trim()) return profileStats;
+    const q = searchGrind.toLowerCase();
+    return profileStats.filter((s) =>
+      s.profile.name.toLowerCase().includes(q) ||
+      s.profile.grindType.toLowerCase().includes(q) ||
+      s.profile.stone.toLowerCase().includes(q)
+    );
+  }, [profileStats, searchGrind]);
+
+  // ── Selected profile details ───────────────────────────────────────────────
+  const selectedStat = useMemo(() =>
+    selectedProfileId != null ? profileStats.find((s) => s.profile.id === selectedProfileId) ?? null : null,
+    [profileStats, selectedProfileId]
+  );
+
+  const selectedEntries = useMemo(() =>
+    selectedProfileId != null ? allEntries.filter((e) => e.grindProfileId === selectedProfileId) : [],
+    [allEntries, selectedProfileId]
+  );
+
+  const selectedTests = useMemo(() => {
+    if (!selectedProfileId) return [];
+    const testIds = new Set(selectedEntries.map((e) => e.testId));
+    return grindTests.filter((t) => testIds.has(t.id)).sort((a, b) => b.date.localeCompare(a.date));
+  }, [selectedProfileId, selectedEntries, grindTests]);
+
+  // ── Weather correlation for selected profile ─────────────────────────────
+  const correlationData = useMemo(() => {
+    if (!selectedStat) return [];
+    return selectedTests.map((test) => {
+      const w = test.weatherId ? weatherById.get(test.weatherId) : null;
+      const testEntries = selectedEntries.filter((e) => e.testId === test.id);
+      const ranks = testEntries.map((e) => e.rank0km).filter((r): r is number => r !== null);
+      const avgRank = ranks.length > 0 ? ranks.reduce((a, b) => a + b, 0) / ranks.length : null;
+      return {
+        date: test.date,
+        location: test.location,
+        airTemp: w?.airTemperatureC ?? null,
+        snowTemp: w?.snowTemperatureC ?? null,
+        airHum: w?.airHumidityPct ?? null,
+        snowType: w?.snowType ?? null,
+        trackHardness: w?.trackHardness ?? null,
+        avgRank,
+      };
+    }).filter((d) => d.avgRank !== null);
+  }, [selectedStat, selectedTests, selectedEntries, weatherById]);
+
+  // ── Overall totals ─────────────────────────────────────────────────────────
+  const totalTests = grindTests.length;
+  const totalEntries = allEntries.length;
+  const profilesWithData = profileStats.filter((s) => s.entryCount > 0).length;
+
+  function fmt1(v: number | null) {
+    if (v === null) return "—";
+    return v.toFixed(1);
+  }
+  function fmtPct(v: number | null) {
+    if (v === null) return "—";
+    return `${v.toFixed(0)}%`;
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card className="fs-card rounded-2xl p-4">
+          <p className="text-xs text-muted-foreground mb-1">Total tests</p>
+          <p className="text-2xl font-bold text-primary">{totalTests}</p>
+        </Card>
+        <Card className="fs-card rounded-2xl p-4">
+          <p className="text-xs text-muted-foreground mb-1">Total entries</p>
+          <p className="text-2xl font-bold text-primary">{totalEntries}</p>
+        </Card>
+        <Card className="fs-card rounded-2xl p-4">
+          <p className="text-xs text-muted-foreground mb-1">Profiles</p>
+          <p className="text-2xl font-bold text-primary">{grindProfiles.length}</p>
+        </Card>
+        <Card className="fs-card rounded-2xl p-4">
+          <p className="text-xs text-muted-foreground mb-1">Profiles with data</p>
+          <p className="text-2xl font-bold text-primary">{profilesWithData}</p>
+        </Card>
+      </div>
+
+      {/* Grind comparison table */}
+      <Card className="fs-card rounded-2xl p-4">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h2 className="font-semibold text-base flex items-center gap-2">
+            <BarChart2 className="h-4 w-4 text-primary" />
+            Grind Profile Comparison
+          </h2>
+          <div className="relative max-w-xs flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={searchGrind}
+              onChange={(e) => setSearchGrind(e.target.value)}
+              placeholder="Search grind profiles…"
+              className="pl-9 h-8 text-sm"
+            />
+            {searchGrind && (
+              <button type="button" onClick={() => setSearchGrind("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {filteredStats.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6">No grind profiles found</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 pr-4 font-medium text-muted-foreground text-xs">Profile</th>
+                  <th className="text-left py-2 pr-4 font-medium text-muted-foreground text-xs">Type</th>
+                  <th className="text-right py-2 pr-4 font-medium text-muted-foreground text-xs">Tests</th>
+                  <th className="text-right py-2 pr-4 font-medium text-muted-foreground text-xs">Entries</th>
+                  <th className="text-right py-2 pr-4 font-medium text-muted-foreground text-xs">Wins</th>
+                  <th className="text-right py-2 pr-4 font-medium text-muted-foreground text-xs">Win %</th>
+                  <th className="text-right py-2 pr-4 font-medium text-muted-foreground text-xs">Top 3 %</th>
+                  <th className="text-right py-2 pr-4 font-medium text-muted-foreground text-xs">Avg rank</th>
+                  <th className="text-right py-2 pr-4 font-medium text-muted-foreground text-xs">Avg result</th>
+                  <th className="text-right py-2 pr-4 font-medium text-muted-foreground text-xs">Avg feeling</th>
+                  <th className="text-right py-2 font-medium text-muted-foreground text-xs">Avg air °C</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStats.map((s) => (
+                  <tr
+                    key={s.profile.id}
+                    className={cn(
+                      "border-b border-border/50 cursor-pointer transition-colors",
+                      selectedProfileId === s.profile.id
+                        ? "bg-primary/10"
+                        : "hover:bg-muted/40"
+                    )}
+                    onClick={() => setSelectedProfileId(selectedProfileId === s.profile.id ? null : s.profile.id)}
+                  >
+                    <td className="py-2 pr-4">
+                      <span className="font-medium">{s.profile.name}</span>
+                    </td>
+                    <td className="py-2 pr-4 text-muted-foreground text-xs">{s.profile.grindType}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums">{s.testCount}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums">{s.entryCount}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums">
+                      {s.wins > 0 ? <span className="text-yellow-500 font-bold">{s.wins}</span> : <span className="text-muted-foreground">0</span>}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums">
+                      {s.winRate !== null ? (
+                        <span className={cn("font-medium", s.winRate >= 30 ? "text-emerald-500" : s.winRate >= 10 ? "text-amber-500" : "text-muted-foreground")}>
+                          {fmtPct(s.winRate)}
+                        </span>
+                      ) : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">{fmtPct(s.top3Rate)}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums">
+                      {s.avgRank !== null ? (
+                        <span className={cn(s.avgRank <= 2 ? "text-emerald-500 font-medium" : "text-foreground")}>{fmt1(s.avgRank)}</span>
+                      ) : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">{fmt1(s.avgResult)}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">{fmt1(s.avgFeeling)}</td>
+                    <td className="py-2 text-right tabular-nums text-muted-foreground">{fmt1(s.avgAirTemp)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* Single profile deep-dive */}
+      {selectedStat && (
+        <Card className="fs-card rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              {selectedStat.profile.name}
+              <span className="text-xs text-muted-foreground font-normal ml-1">— detailed stats</span>
+            </h2>
+            <button onClick={() => setSelectedProfileId(null)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Key stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-5">
+            {[
+              { label: "Tests", value: selectedStat.testCount },
+              { label: "Entries", value: selectedStat.entryCount },
+              { label: "Wins", value: selectedStat.wins, highlight: selectedStat.wins > 0 },
+              { label: "Win rate", value: fmtPct(selectedStat.winRate), highlight: (selectedStat.winRate ?? 0) >= 20 },
+              { label: "Top 3 rate", value: fmtPct(selectedStat.top3Rate) },
+              { label: "Avg rank", value: fmt1(selectedStat.avgRank), highlight: (selectedStat.avgRank ?? 99) <= 2 },
+              { label: "Avg result (cm)", value: fmt1(selectedStat.avgResult) },
+              { label: "Avg feeling rank", value: fmt1(selectedStat.avgFeeling) },
+              { label: "Avg air temp °C", value: fmt1(selectedStat.avgAirTemp) },
+              { label: "Avg snow temp °C", value: fmt1(selectedStat.avgSnowTemp) },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl bg-muted/40 p-3">
+                <p className="text-[11px] text-muted-foreground mb-0.5">{item.label}</p>
+                <p className={cn("text-lg font-bold", item.highlight ? "text-primary" : "text-foreground")}>
+                  {String(item.value)}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Weather correlations */}
+          {correlationData.length > 0 && (
+            <div className="mb-5">
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                <Thermometer className="h-3.5 w-3.5 text-primary" />
+                Weather correlation per test
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-1.5 pr-3 font-medium text-muted-foreground">Date</th>
+                      <th className="text-left py-1.5 pr-3 font-medium text-muted-foreground">Location</th>
+                      <th className="text-right py-1.5 pr-3 font-medium text-muted-foreground">Air °C</th>
+                      <th className="text-right py-1.5 pr-3 font-medium text-muted-foreground">Snow °C</th>
+                      <th className="text-left py-1.5 pr-3 font-medium text-muted-foreground">Snow type</th>
+                      <th className="text-left py-1.5 pr-3 font-medium text-muted-foreground">Track</th>
+                      <th className="text-right py-1.5 font-medium text-muted-foreground">Avg rank</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {correlationData.map((row, i) => (
+                      <tr key={i} className="border-b border-border/40">
+                        <td className="py-1.5 pr-3 tabular-nums">{row.date.slice(0, 10)}</td>
+                        <td className="py-1.5 pr-3">{row.location}</td>
+                        <td className="py-1.5 pr-3 text-right tabular-nums">{row.airTemp !== null ? row.airTemp.toFixed(1) : "—"}</td>
+                        <td className="py-1.5 pr-3 text-right tabular-nums">{row.snowTemp !== null ? row.snowTemp.toFixed(1) : "—"}</td>
+                        <td className="py-1.5 pr-3 text-muted-foreground">{row.snowType ?? "—"}</td>
+                        <td className="py-1.5 pr-3 text-muted-foreground">{row.trackHardness ?? "—"}</td>
+                        <td className="py-1.5 text-right tabular-nums">
+                          <RankBadge rank={row.avgRank !== null ? Math.round(row.avgRank) : null} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Test list */}
+          {selectedTests.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold mb-2">All tests using this profile</h3>
+              <div className="flex flex-col gap-2">
+                {selectedTests.map((test) => {
+                  const entries = selectedEntries.filter((e) => e.testId === test.id);
+                  const ranks = entries.map((e) => e.rank0km).filter((r): r is number => r !== null);
+                  const wins = ranks.filter((r) => r === 1).length;
+                  const avgR = ranks.length > 0 ? ranks.reduce((a, b) => a + b, 0) / ranks.length : null;
+                  const w = test.weatherId ? weatherById.get(test.weatherId) : null;
+                  return (
+                    <div key={test.id} className="flex flex-wrap items-center gap-3 rounded-xl bg-muted/30 px-3 py-2 text-xs">
+                      <span className="font-medium">{test.date.slice(0, 10)}</span>
+                      <span className="text-muted-foreground">{test.location}</span>
+                      {w && <span className="text-muted-foreground">{w.airTemperatureC.toFixed(1)}°C air</span>}
+                      {w && <span className="text-muted-foreground">{w.snowTemperatureC.toFixed(1)}°C snow</span>}
+                      <span>{entries.length} ski{entries.length !== 1 ? "s" : ""}</span>
+                      {wins > 0 && <span className="text-yellow-500 font-bold">🥇 {wins}×</span>}
+                      {avgR !== null && <span className="text-muted-foreground">avg rank {avgR.toFixed(1)}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Per-grind type breakdown */}
+      <Card className="fs-card rounded-2xl p-4">
+        <h2 className="font-semibold text-base flex items-center gap-2 mb-4">
+          <Disc3 className="h-4 w-4 text-primary" />
+          Breakdown by Grind Type
+        </h2>
+        {(() => {
+          const types = Array.from(new Set(grindProfiles.map((p) => p.grindType))).sort();
+          if (types.length === 0) return <p className="text-sm text-muted-foreground">No data</p>;
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {types.map((type) => {
+                const typeProfiles = profileStats.filter((s) => s.profile.grindType === type);
+                const totalT = typeProfiles.reduce((a, s) => a + s.testCount, 0);
+                const totalE = typeProfiles.reduce((a, s) => a + s.entryCount, 0);
+                const totalW = typeProfiles.reduce((a, s) => a + s.wins, 0);
+                const allRanks = typeProfiles.flatMap((s) =>
+                  allEntries.filter((e) => e.grindProfileId === s.profile.id)
+                    .map((e) => e.rank0km).filter((r): r is number => r !== null)
+                );
+                const avgR = allRanks.length > 0 ? allRanks.reduce((a, b) => a + b, 0) / allRanks.length : null;
+                return (
+                  <div key={type} className="rounded-xl bg-muted/40 p-3">
+                    <p className="font-semibold text-sm mb-2">{type}</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                      <span className="text-muted-foreground">Profiles</span><span className="font-medium text-right">{typeProfiles.length}</span>
+                      <span className="text-muted-foreground">Tests</span><span className="font-medium text-right">{totalT}</span>
+                      <span className="text-muted-foreground">Entries</span><span className="font-medium text-right">{totalE}</span>
+                      <span className="text-muted-foreground">Wins</span><span className={cn("font-medium text-right", totalW > 0 ? "text-yellow-500" : "")}>{totalW}</span>
+                      <span className="text-muted-foreground">Avg rank</span><span className="font-medium text-right">{fmt1(avgR)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+      </Card>
+
+      {/* Top performers */}
+      <Card className="fs-card rounded-2xl p-4">
+        <h2 className="font-semibold text-base flex items-center gap-2 mb-4">
+          <Trophy className="h-4 w-4 text-yellow-500" />
+          Top Performing Grinds
+        </h2>
+        {profileStats.filter((s) => s.entryCount >= 2).slice(0, 5).length === 0 ? (
+          <p className="text-sm text-muted-foreground">Not enough data yet (need ≥ 2 entries per profile)</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {profileStats.filter((s) => s.entryCount >= 2).slice(0, 5).map((s, i) => (
+              <div key={s.profile.id} className="flex items-center gap-3 rounded-xl bg-muted/30 px-3 py-2">
+                <span className={cn("text-base font-bold w-6 text-center", i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground")}>
+                  {i + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{s.profile.name}</p>
+                  <p className="text-xs text-muted-foreground">{s.profile.grindType} · {s.entryCount} entries</p>
+                </div>
+                <div className="flex items-center gap-4 text-xs text-right">
+                  {s.wins > 0 && <span className="text-yellow-500 font-bold">{s.wins}×🥇</span>}
+                  <span className="text-muted-foreground">{fmtPct(s.winRate)} win</span>
+                  <span className="text-muted-foreground">avg {fmt1(s.avgRank)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
   );
 }
 

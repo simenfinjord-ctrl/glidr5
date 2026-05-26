@@ -283,6 +283,8 @@ function SkiIdCell({
     : (entry.skiId ?? "")
   );
   const [saving, setSaving] = useState(false);
+  // Optimistic local value so cell shows the saved ID immediately while refetch is in-flight
+  const [optimisticVal, setOptimisticVal] = useState<string | null | undefined>(undefined);
   const [skiDetailOpen, setSkiDetailOpen] = useState(false);
   const [selectedSki, setSelectedSki] = useState<RaceSkiRecord | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -316,10 +318,11 @@ function SkiIdCell({
     }
   }, [showSuggestions, val]);
 
-  // Current ski ID value for display
+  // Current ski ID value for display (use optimistic value while refetch is in-flight)
   const currentSkiId = disciplineHint === "Classic" ? (entry.skiIdClassic ?? entry.skiId)
     : disciplineHint === "Skating" ? entry.skiIdSkating
     : entry.skiId;
+  const displaySkiId = optimisticVal !== undefined ? optimisticVal : currentSkiId;
 
   async function save(skiIdVal?: string) {
     const finalVal = skiIdVal !== undefined ? skiIdVal : val;
@@ -333,6 +336,8 @@ function SkiIdCell({
         skiIdSkating: disciplineHint === "Skating" ? (finalVal.trim() || null) : (entry.skiIdSkating ?? null),
       };
       await apiRequest("PUT", `/api/race-preps/${prepId}/entries/${entry.id}`, body);
+      // Show value immediately while refetch is in-flight (prevents flash to "—")
+      setOptimisticVal(finalVal.trim() || null);
       onSaved();
       setEditing(false);
       setShowSuggestions(false);
@@ -356,8 +361,8 @@ function SkiIdCell({
   if (!canEdit) {
     return (
       <div className="flex items-center gap-1">
-        <span className="text-sm">{currentSkiId ?? <span className="text-muted-foreground">—</span>}</span>
-        {currentSkiId && matchedSki && (
+        <span className="text-sm">{displaySkiId ?? <span className="text-muted-foreground">—</span>}</span>
+        {displaySkiId && matchedSki && (
           <button
             className="text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => { setSelectedSki(matchedSki); setSkiDetailOpen(true); }}
@@ -389,7 +394,7 @@ function SkiIdCell({
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") { save(); setShowSuggestions(false); }
-              if (e.key === "Escape") { setEditing(false); setVal(currentSkiId ?? ""); setShowSuggestions(false); }
+              if (e.key === "Escape") { setEditing(false); setVal(displaySkiId ?? ""); setShowSuggestions(false); }
             }}
             autoFocus
           />
@@ -423,7 +428,7 @@ function SkiIdCell({
         <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => save()} disabled={saving}>
           <Check className="h-3.5 w-3.5 text-emerald-600" />
         </Button>
-        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditing(false); setVal(currentSkiId ?? ""); setShowSuggestions(false); }}>
+        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditing(false); setVal(displaySkiId ?? ""); setShowSuggestions(false); }}>
           <X className="h-3.5 w-3.5" />
         </Button>
       </div>
@@ -436,10 +441,10 @@ function SkiIdCell({
         className="flex items-center gap-1.5 group text-sm"
         onClick={() => setEditing(true)}
       >
-        <span>{currentSkiId ?? <span className="text-muted-foreground">—</span>}</span>
+        <span>{displaySkiId ?? <span className="text-muted-foreground">—</span>}</span>
         <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </button>
-      {currentSkiId && matchedSki && (
+      {displaySkiId && matchedSki && (
         <button
           className="text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => { setSelectedSki(matchedSki); setSkiDetailOpen(true); }}

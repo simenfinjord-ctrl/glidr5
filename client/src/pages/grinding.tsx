@@ -1685,7 +1685,17 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
   async function saveNotes() {
     setNotesSaving(true);
     try {
-      await apiRequest("PUT", `/api/tests/${test.id}`, { notes: notesVal.trim() || null });
+      // PUT /api/tests/:id requires all core fields — send them from the existing test object
+      await apiRequest("PUT", `/api/tests/${test.id}`, {
+        date: test.date,
+        location: test.location,
+        testType: test.testType,
+        seriesId: test.seriesId,
+        weatherId: test.weatherId ?? null,
+        grindParameters: test.grindParameters ?? null,
+        startTime: test.startTime ?? null,
+        notes: notesVal.trim() || null,
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
       setEditingNotes(false);
     } catch {

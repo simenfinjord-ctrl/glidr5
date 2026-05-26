@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useMemo, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Flag, Plus, X, ChevronRight, Pencil, Check, Trash2, Users, Search, Snowflake } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -517,8 +518,9 @@ function SkiIdCell({
             }}
             autoFocus
           />
-          {showSuggestions && suggestions.length > 0 && dropRect && (
+          {showSuggestions && suggestions.length > 0 && dropRect && createPortal(
             <div
+              data-ski-suggestion-portal=""
               style={{ position: "fixed", top: dropRect.top, left: dropRect.left, width: dropRect.width, zIndex: 9999 }}
               className="rounded-lg border border-border bg-card shadow-md max-h-40 overflow-y-auto"
               onMouseDown={(e) => e.preventDefault()}
@@ -539,7 +541,8 @@ function SkiIdCell({
                   {s.discipline && <span className="ml-1 text-muted-foreground text-[10px]">({s.discipline})</span>}
                 </button>
               ))}
-            </div>
+            </div>,
+            document.body
           )}
         </div>
         <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => save()} disabled={saving}>
@@ -738,7 +741,15 @@ function PrepDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => {
+          // Prevent dialog closing when clicking the ski suggestion portal dropdown
+          if ((e.target as Element)?.closest?.('[data-ski-suggestion-portal]')) {
+            e.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Flag className="h-4 w-4 text-primary" />

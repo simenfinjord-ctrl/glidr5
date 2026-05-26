@@ -36,6 +36,7 @@ type ShortcutDef = {
   href: string;
   iconKey: string;
   iconColor: string;
+  permArea?: string;   // checked via can(permArea) — only show when user has access
   adminOnly?: boolean;
   blindHide?: boolean;
   // If present, the user must drill into sub-options before the shortcut is added
@@ -45,15 +46,15 @@ type ShortcutDef = {
 };
 
 const ALL_SHORTCUTS: ShortcutDef[] = [
-  { id: "new-test",       label: "New Test",         description: "Create a new test",                  href: "/tests/new",       iconKey: "ListChecks",  iconColor: "text-emerald-600", blindHide: true },
-  { id: "tests",          label: "All Tests",         description: "Browse all tests",                   href: "/tests",           iconKey: "ListChecks",  iconColor: "text-emerald-600" },
-  { id: "testskis",       label: "Test Skis",         description: "Manage test ski series",             href: "/testskis",        iconKey: "Snowflake",   iconColor: "text-sky-600", blindHide: true },
-  { id: "products",       label: "Products",          description: "Wax products catalogue",             href: "/products",        iconKey: "PackagePlus", iconColor: "text-amber-600", blindHide: true },
-  { id: "weather",        label: "Weather",           description: "Log weather & snow data",            href: "/weather",         iconKey: "CalendarPlus",iconColor: "text-violet-600" },
-  { id: "analytics",      label: "Analytics",         description: "Charts & performance data",          href: "/analytics",       iconKey: "BarChart2",   iconColor: "text-blue-600" },
+  { id: "new-test",       label: "New Test",         description: "Create a new test",                  href: "/tests/new",       iconKey: "ListChecks",  iconColor: "text-emerald-600", permArea: "tests",     blindHide: true },
+  { id: "tests",          label: "All Tests",         description: "Browse all tests",                   href: "/tests",           iconKey: "ListChecks",  iconColor: "text-emerald-600", permArea: "tests" },
+  { id: "testskis",       label: "Test Skis",         description: "Manage test ski series",             href: "/testskis",        iconKey: "Snowflake",   iconColor: "text-sky-600",     permArea: "testskis",  blindHide: true },
+  { id: "products",       label: "Products",          description: "Wax products catalogue",             href: "/products",        iconKey: "PackagePlus", iconColor: "text-amber-600",   permArea: "products",  blindHide: true },
+  { id: "weather",        label: "Weather",           description: "Log weather & snow data",            href: "/weather",         iconKey: "CalendarPlus",iconColor: "text-violet-600",  permArea: "weather" },
+  { id: "analytics",      label: "Analytics",         description: "Charts & performance data",          href: "/analytics",       iconKey: "BarChart2",   iconColor: "text-blue-600",    permArea: "analytics" },
   {
     id: "grinding", label: "Grinding", description: "Grind tests and profiles", href: "/grinding",
-    iconKey: "Disc3", iconColor: "text-indigo-600",
+    iconKey: "Disc3", iconColor: "text-indigo-600", permArea: "grinding",
     subOptions: [
       { id: "grinding-tests",     label: "Grinding — Tests",     description: "Grind test sessions",    href: "/grinding" },
       { id: "grinding-grinds",    label: "Grinding — Profiles",  description: "Grind profiles library", href: "/grinding?tab=grinds" },
@@ -62,14 +63,14 @@ const ALL_SHORTCUTS: ShortcutDef[] = [
   },
   {
     id: "raceskis", label: "Race Skis", description: "Ski garage & race records", href: "/raceskis",
-    iconKey: "Layers", iconColor: "text-rose-600",
+    iconKey: "Layers", iconColor: "text-rose-600", permArea: "raceskis",
     dynamicChildren: "athletes",
   },
-  { id: "raceprep",       label: "Race Prep",         description: "Race day preparation",               href: "/raceprep",        iconKey: "Flag",        iconColor: "text-orange-600" },
-  { id: "suggestions",    label: "Suggestions",       description: "Wax suggestions",                    href: "/suggestions",     iconKey: "Trophy",      iconColor: "text-yellow-600" },
+  { id: "raceprep",       label: "Race Prep",         description: "Race day preparation",               href: "/raceprep",        iconKey: "Flag",        iconColor: "text-orange-600",  permArea: "raceskis" },
+  { id: "suggestions",    label: "Suggestions",       description: "Wax suggestions",                    href: "/suggestions",     iconKey: "Trophy",      iconColor: "text-yellow-600",  permArea: "suggestions" },
   { id: "live-runsheets", label: "Live Runsheets",    description: "Live test runsheets",                href: "/live-runsheets",  iconKey: "Activity",    iconColor: "text-pink-600" },
   { id: "watch-queue",    label: "Watch Queue",       description: "Garmin watch queue",                 href: "/watch-queue",     iconKey: "Watch",       iconColor: "text-sky-600" },
-  { id: "admin",          label: "Admin",             description: "Team admin settings",                href: "/admin",           iconKey: "Settings2",   iconColor: "text-gray-600", adminOnly: true },
+  { id: "admin",          label: "Admin",             description: "Team admin settings",                href: "/admin",           iconKey: "Settings2",   iconColor: "text-gray-600",    adminOnly: true },
 ];
 
 const SHORTCUTS_STORAGE_KEY = "glidr-dashboard-shortcuts-v2";
@@ -659,6 +660,7 @@ export default function Dashboard() {
                 {ALL_SHORTCUTS.filter((s) => {
                   if (s.adminOnly && !canManage) return false;
                   if (s.blindHide && isBlindTester) return false;
+                  if (s.permArea && !can(s.permArea)) return false;
                   return true;
                 }).map((s) => {
                   const Icon = SHORTCUT_ICON_MAP[s.iconKey] ?? ListChecks;

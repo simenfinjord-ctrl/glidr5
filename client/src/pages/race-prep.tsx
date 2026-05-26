@@ -1,6 +1,5 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
-import { useState, useMemo, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Flag, Plus, X, ChevronRight, Pencil, Check, Trash2, Users, Search, Snowflake } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -408,10 +407,6 @@ function SkiIdCell({
   const [skiDetailOpen, setSkiDetailOpen] = useState(false);
   const [selectedSki, setSelectedSki] = useState<RaceSkiRecord | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [dropRect, setDropRect] = useState<{ top: number; left: number; width: number } | null>(null);
-  // Prevents blur from closing the suggestion list when a suggestion is being clicked (Safari-safe)
-  const preventBlurRef = useRef(false);
-
   // Fetch athlete's skis for autocomplete
   const { data: athleteSkis = [] } = useQuery<RaceSkiRecord[]>({
     queryKey: [`/api/athletes/${entry.athleteId}/skis`],
@@ -430,13 +425,6 @@ function SkiIdCell({
   }, [athleteSkis, val, disciplineHint]);
 
   const [showSuggestions, setShowSuggestions] = useState(false);
-
-  useEffect(() => {
-    if (showSuggestions && inputRef.current) {
-      const r = inputRef.current.getBoundingClientRect();
-      setDropRect({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 192) });
-    }
-  }, [showSuggestions, val]);
 
   // Current ski ID value for display (use optimistic value while refetch is in-flight)
   const currentSkiId = disciplineHint === "Classic" ? (entry.skiIdClassic ?? entry.skiId)
@@ -509,10 +497,7 @@ function SkiIdCell({
             onChange={(e) => { setVal(e.target.value); setShowSuggestions(true); }}
             onFocus={() => setShowSuggestions(true)}
             onBlur={() => {
-              if (preventBlurRef.current) {
-                preventBlurRef.current = false;
-                return; // suggestion click in progress — don't close
-              }
+              // Small delay so a mousedown on a suggestion can fire first
               setTimeout(() => setShowSuggestions(false), 150);
             }}
             onKeyDown={(e) => {
@@ -521,24 +506,19 @@ function SkiIdCell({
             }}
             autoFocus
           />
-          {showSuggestions && suggestions.length > 0 && dropRect && createPortal(
-            <div
-              data-ski-suggestion-portal=""
-              style={{ position: "fixed", top: dropRect.top, left: dropRect.left, width: dropRect.width, zIndex: 9999 }}
-              className="rounded-lg border border-border bg-card shadow-md max-h-40 overflow-y-auto"
-            >
+          {showSuggestions && suggestions.length > 0 && (
+            // Rendered inside the dialog DOM — no portal, no Radix "outside click" problems.
+            // position:absolute relative to the enclosing `relative` div keeps it below the input.
+            <div className="absolute top-full left-0 z-50 mt-0.5 min-w-[12rem] w-full rounded-lg border border-border bg-card shadow-lg max-h-40 overflow-y-auto">
               {suggestions.map(s => (
                 <button
                   key={s.id}
                   type="button"
                   className="w-full text-left px-3 py-1.5 text-xs hover:bg-primary/10 hover:text-primary transition-colors"
                   onMouseDown={(e) => {
-                    // Prevent input from losing focus (which would close the dropdown before click fires)
+                    // preventDefault keeps the input focused (no blur) so the dropdown
+                    // stays mounted until we hide it ourselves.
                     e.preventDefault();
-                    preventBlurRef.current = true;
-                  }}
-                  onClick={() => {
-                    preventBlurRef.current = false;
                     setVal(s.skiId);
                     setShowSuggestions(false);
                     save(s.skiId);
@@ -549,8 +529,7 @@ function SkiIdCell({
                   {s.discipline && <span className="ml-1 text-muted-foreground text-[10px]">({s.discipline})</span>}
                 </button>
               ))}
-            </div>,
-            document.body
+            </div>
           )}
         </div>
         <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => save()} disabled={saving}>
@@ -751,13 +730,6 @@ function PrepDetailDialog({
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent
         className="max-w-2xl max-h-[90vh] overflow-y-auto"
-        onPointerDownOutside={(e) => {
-          // If any ski-suggestion portal is currently in the DOM, the user is
-          // clicking on the autocomplete dropdown — keep the dialog open.
-          if (document.querySelector('[data-ski-suggestion-portal]')) {
-            e.preventDefault();
-          }
-        }}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

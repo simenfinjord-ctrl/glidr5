@@ -1374,7 +1374,7 @@ export default function RacePrep() {
               <Snowflake className="h-3.5 w-3.5" />
               {L("Værforhold", "Weather Conditions")}
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div>
                 <div className="flex items-center gap-1 mb-1.5">
                   <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
@@ -1418,6 +1418,20 @@ export default function RacePrep() {
                   <span className="text-xs text-muted-foreground">–</span>
                   <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfSnowHumMax} onChange={e => setWfSnowHumMax(e.target.value)} />
                 </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-1 mb-1.5">
+                  <span className="inline-block h-2 w-2 rounded-full bg-indigo-500" />
+                  <span className="text-xs text-muted-foreground">{L("Snøtype", "Snow type")}</span>
+                </div>
+                <Input className="h-8 text-xs" placeholder={L("f.eks. Ny snø", "e.g. New snow")} value={wfSnowType} onChange={e => setWfSnowType(e.target.value)} />
+              </div>
+              <div>
+                <div className="flex items-center gap-1 mb-1.5">
+                  <span className="inline-block h-2 w-2 rounded-full bg-orange-500" />
+                  <span className="text-xs text-muted-foreground">{L("Sporharhet", "Track hardness")}</span>
+                </div>
+                <Input className="h-8 text-xs" placeholder={L("f.eks. Hard", "e.g. Hard")} value={wfTrackHardness} onChange={e => setWfTrackHardness(e.target.value)} />
               </div>
             </div>
           </div>

@@ -1094,7 +1094,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 
   // ── Shared page body (offline banner + children + footer) ──
-  const PageBody = () => (
+  // NOTE: This is a JSX variable, NOT a component. Defining it as `const PageBody = () => (...)`
+  // creates a new component type on every render, causing React to unmount+remount the entire
+  // subtree (destroying focused inputs, state, etc.) on every AppShell re-render.
+  const pageBodyContent = (
     <>
       {!isOnline && (
         <div className="shrink-0 bg-amber-500 text-white text-xs font-medium text-center py-1.5 px-4">
@@ -1197,7 +1200,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <div className="flex flex-col flex-1 overflow-hidden">
-          <PageBody />
+          {pageBodyContent}
         </div>
         <ReportProblemDialog open={reportOpen} onClose={() => setReportOpen(false)} />
         {showMobilePrompt && (
@@ -1275,7 +1278,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <HeaderControls />
         </header>
 
-        <PageBody />
+        {pageBodyContent}
       </div>
 
       <CommandSearch />

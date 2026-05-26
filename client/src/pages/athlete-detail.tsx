@@ -716,6 +716,8 @@ export default function AthleteDetail() {
   const [raceAirHumMax, setRaceAirHumMax] = useState("");
   const [raceSnowHumMin, setRaceSnowHumMin] = useState("");
   const [raceSnowHumMax, setRaceSnowHumMax] = useState("");
+  const [raceSnowType, setRaceSnowType] = useState("");
+  const [raceTrackHardness, setRaceTrackHardness] = useState("");
   const [showRaceWeatherFilters, setShowRaceWeatherFilters] = useState(false);
 
   const testDates = useMemo(() => {
@@ -799,7 +801,7 @@ export default function AthleteDetail() {
     if (raceDateFrom) list = list.filter(r => r.date >= raceDateFrom);
     if (raceDateTo) list = list.filter(r => r.date <= raceDateTo);
     const hasWFilter = raceAirTempMin || raceAirTempMax || raceSnowTempMin || raceSnowTempMax ||
-      raceAirHumMin || raceAirHumMax || raceSnowHumMin || raceSnowHumMax;
+      raceAirHumMin || raceAirHumMax || raceSnowHumMin || raceSnowHumMax || raceSnowType || raceTrackHardness;
     if (hasWFilter) {
       list = list.filter(r => {
         const w = r.weatherId ? raceWeatherById.get(r.weatherId) : null;
@@ -812,13 +814,16 @@ export default function AthleteDetail() {
         if (raceAirHumMax && (w.airHumidityPct ?? -999) > parseFloat(raceAirHumMax)) return false;
         if (raceSnowHumMin && (w.snowHumidityPct ?? 999) < parseFloat(raceSnowHumMin)) return false;
         if (raceSnowHumMax && (w.snowHumidityPct ?? -999) > parseFloat(raceSnowHumMax)) return false;
+        if (raceSnowType && !(w.snowType ?? "").toLowerCase().includes(raceSnowType.toLowerCase())) return false;
+        if (raceTrackHardness && !(w.trackHardness ?? "").toLowerCase().includes(raceTrackHardness.toLowerCase())) return false;
         return true;
       });
     }
     return [...list].sort((a, b) => b.date.localeCompare(a.date));
   }, [raceHistory, raceLocationFilter, raceSeasonFilter, raceDateFrom, raceDateTo,
       raceAirTempMin, raceAirTempMax, raceSnowTempMin, raceSnowTempMax,
-      raceAirHumMin, raceAirHumMax, raceSnowHumMin, raceSnowHumMax, raceWeatherById]);
+      raceAirHumMin, raceAirHumMax, raceSnowHumMin, raceSnowHumMax,
+      raceSnowType, raceTrackHardness, raceWeatherById]);
 
   function buildSkiBody(data: typeof skiForm) {
     const cp: Record<string, string | null> = {};
@@ -1621,7 +1626,7 @@ export default function AthleteDetail() {
                 <span className="text-xs text-muted-foreground">–</span>
                 <Input type="date" value={raceDateTo} onChange={e => setRaceDateTo(e.target.value)} className="h-8 w-[130px] text-xs" />
                 <Button
-                  variant={(showRaceWeatherFilters || !!(raceAirTempMin || raceAirTempMax || raceSnowTempMin || raceSnowTempMax || raceAirHumMin || raceAirHumMax || raceSnowHumMin || raceSnowHumMax)) ? "default" : "outline"}
+                  variant={(showRaceWeatherFilters || !!(raceAirTempMin || raceAirTempMax || raceSnowTempMin || raceSnowTempMax || raceAirHumMin || raceAirHumMax || raceSnowHumMin || raceSnowHumMax || raceSnowType || raceTrackHardness)) ? "default" : "outline"}
                   size="sm"
                   className="h-8 gap-1 text-xs"
                   onClick={() => setShowRaceWeatherFilters(v => !v)}
@@ -1629,11 +1634,12 @@ export default function AthleteDetail() {
                   <Snowflake className="h-3 w-3" />
                   Weather
                 </Button>
-                {(raceLocationFilter || raceSeasonFilter !== "all" || raceDateFrom || raceDateTo || raceAirTempMin || raceAirTempMax || raceSnowTempMin || raceSnowTempMax || raceAirHumMin || raceAirHumMax || raceSnowHumMin || raceSnowHumMax) && (
+                {(raceLocationFilter || raceSeasonFilter !== "all" || raceDateFrom || raceDateTo || raceAirTempMin || raceAirTempMax || raceSnowTempMin || raceSnowTempMax || raceAirHumMin || raceAirHumMax || raceSnowHumMin || raceSnowHumMax || raceSnowType || raceTrackHardness) && (
                   <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => {
                     setRaceLocationFilter(""); setRaceSeasonFilter("all"); setRaceDateFrom(""); setRaceDateTo("");
                     setRaceAirTempMin(""); setRaceAirTempMax(""); setRaceSnowTempMin(""); setRaceSnowTempMax("");
                     setRaceAirHumMin(""); setRaceAirHumMax(""); setRaceSnowHumMin(""); setRaceSnowHumMax("");
+                    setRaceSnowType(""); setRaceTrackHardness("");
                   }}>
                     <X className="h-3 w-3 mr-1" />Clear
                   </Button>
@@ -1641,7 +1647,7 @@ export default function AthleteDetail() {
               </div>
               {showRaceWeatherFilters && (
                 <div className="rounded-xl border border-border bg-muted/20 p-3">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     <div>
                       <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                         <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />Air temp (°C)
@@ -1681,6 +1687,18 @@ export default function AthleteDetail() {
                         <span className="text-xs">–</span>
                         <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceSnowHumMax} onChange={e => setRaceSnowHumMax(e.target.value)} />
                       </div>
+                    </div>
+                    <div>
+                      <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-400" />Snow type
+                      </label>
+                      <Input className="h-7 text-xs" placeholder="e.g. New snow" value={raceSnowType} onChange={e => setRaceSnowType(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-400" />Track hardness
+                      </label>
+                      <Input className="h-7 text-xs" placeholder="e.g. Hard" value={raceTrackHardness} onChange={e => setRaceTrackHardness(e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -4639,6 +4657,9 @@ function RaceCalendarSection({
   isReadOnly?: boolean;
 }) {
   const { toast } = useToast();
+  const { language } = useLanguage();
+  const lang = language === "en" ? "en" : "no";
+  const L = (no: string, en: string) => lang === "en" ? en : no;
   const { data: races = [], refetch: refetchRaces } = useQuery<PlannedRace[]>({
     queryKey: [`/api/athletes/${athleteId}/races`],
     enabled: !!athleteId,
@@ -4668,7 +4689,7 @@ function RaceCalendarSection({
       setForm({ date: "", raceName: "", location: "", discipline: "Klassisk", notes: "" });
       setShowAddForm(false);
     } catch {
-      toast({ title: "Feil", description: "Kunne ikke lagre løp", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: L("Kunne ikke lagre løp", "Could not save race"), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -4679,7 +4700,7 @@ function RaceCalendarSection({
       await apiRequest("DELETE", `/api/athletes/${athleteId}/races/${id}`);
       await refetchRaces();
     } catch {
-      toast({ title: "Feil", description: "Kunne ikke slette løp", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: L("Kunne ikke slette løp", "Could not delete race"), variant: "destructive" });
     }
   }
 
@@ -4715,7 +4736,7 @@ function RaceCalendarSection({
         )}
         {matches > 0 && (
           <span className="text-[10px] text-muted-foreground rounded-full bg-muted px-2 py-0.5">
-            {matches} test{matches !== 1 ? "er" : ""}
+            {matches} {lang === "no" ? `test${matches !== 1 ? "er" : ""}` : `test${matches !== 1 ? "s" : ""}`}
           </span>
         )}
         {!isReadOnly && (
@@ -4740,7 +4761,7 @@ function RaceCalendarSection({
           <button className="flex items-center gap-2 cursor-pointer select-none" data-testid="toggle-race-calendar">
             {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">Løpskalender</h2>
+            <h2 className="text-lg font-semibold">{L("Løpskalender", "Race Calendar")}</h2>
             <span className="text-xs text-muted-foreground">({races.length})</span>
           </button>
         </CollapsibleTrigger>
@@ -4753,7 +4774,7 @@ function RaceCalendarSection({
             data-testid="button-add-race"
           >
             <Plus className="h-3 w-3 mr-1" />
-            Legg til løp
+            {L("Legg til løp", "Add race")}
           </Button>
         )}
       </div>
@@ -4761,7 +4782,7 @@ function RaceCalendarSection({
       <CollapsibleContent>
         <div className="mt-3 space-y-3">
           {upcoming.length === 0 && !showAddForm ? (
-            <p className="text-sm text-muted-foreground">Ingen kommende løp registrert.</p>
+            <p className="text-sm text-muted-foreground">{L("Ingen kommende løp registrert.", "No upcoming races registered.")}</p>
           ) : (
             <div className="space-y-2">
               {upcoming.map((r) => <RaceRow key={r.id} race={r} />)}
@@ -4773,7 +4794,7 @@ function RaceCalendarSection({
               <CollapsibleTrigger asChild>
                 <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
                   {pastOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                  Tidligere løp ({past.length})
+                  {L("Tidligere løp", "Past races")} ({past.length})
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent>
@@ -4787,46 +4808,46 @@ function RaceCalendarSection({
           {showAddForm && !isReadOnly && (
             <Card className="fs-card rounded-2xl p-4" data-testid="form-add-race">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold">Nytt løp</h3>
+                <h3 className="text-sm font-semibold">{L("Nytt løp", "New race")}</h3>
                 <Button variant="ghost" size="sm" onClick={() => setShowAddForm(false)}>
                   <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium">Dato *</label>
+                  <label className="mb-1 block text-xs font-medium">{L("Dato *", "Date *")}</label>
                   <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} data-testid="input-race-date" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium">Rennnavn *</label>
-                  <Input value={form.raceName} onChange={(e) => setForm((f) => ({ ...f, raceName: e.target.value }))} placeholder="f.eks. Birkebeineren" data-testid="input-race-name" />
+                  <label className="mb-1 block text-xs font-medium">{L("Rennnavn *", "Race name *")}</label>
+                  <Input value={form.raceName} onChange={(e) => setForm((f) => ({ ...f, raceName: e.target.value }))} placeholder={L("f.eks. Birkebeineren", "e.g. Birkebeineren")} data-testid="input-race-name" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium">Lokasjon</label>
-                  <Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} placeholder="f.eks. Lillehammer" data-testid="input-race-location" />
+                  <label className="mb-1 block text-xs font-medium">{L("Lokasjon", "Location")}</label>
+                  <Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} placeholder={L("f.eks. Lillehammer", "e.g. Lillehammer")} data-testid="input-race-location" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium">Stilart</label>
+                  <label className="mb-1 block text-xs font-medium">{L("Stilart", "Discipline")}</label>
                   <Select value={form.discipline} onValueChange={(v) => setForm((f) => ({ ...f, discipline: v }))}>
                     <SelectTrigger data-testid="select-race-discipline"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Klassisk">Klassisk</SelectItem>
-                      <SelectItem value="Skøyting">Skøyting</SelectItem>
+                      <SelectItem value="Klassisk">{L("Klassisk", "Classic")}</SelectItem>
+                      <SelectItem value="Skøyting">{L("Skøyting", "Skating")}</SelectItem>
                       <SelectItem value="Skiathlon">Skiathlon</SelectItem>
-                      <SelectItem value="Sprint klassisk">Sprint klassisk</SelectItem>
-                      <SelectItem value="Sprint skøyting">Sprint skøyting</SelectItem>
+                      <SelectItem value="Sprint klassisk">{L("Sprint klassisk", "Sprint classic")}</SelectItem>
+                      <SelectItem value="Sprint skøyting">{L("Sprint skøyting", "Sprint skating")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="mb-1 block text-xs font-medium">Notater</label>
-                  <Input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Valgfrie notater…" data-testid="input-race-notes" />
+                  <label className="mb-1 block text-xs font-medium">{L("Notater", "Notes")}</label>
+                  <Input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder={L("Valgfrie notater…", "Optional notes…")} data-testid="input-race-notes" />
                 </div>
               </div>
               <div className="flex items-center justify-end gap-2 mt-3">
-                <Button variant="outline" size="sm" onClick={() => setShowAddForm(false)}>Avbryt</Button>
+                <Button variant="outline" size="sm" onClick={() => setShowAddForm(false)}>{L("Avbryt", "Cancel")}</Button>
                 <Button size="sm" onClick={addRace} disabled={!form.date || !form.raceName.trim() || saving} data-testid="button-save-race">
-                  Lagre løp
+                  {L("Lagre løp", "Save race")}
                 </Button>
               </div>
             </Card>

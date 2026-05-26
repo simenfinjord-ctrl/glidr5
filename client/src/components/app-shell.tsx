@@ -807,7 +807,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return (
       <nav className="flex-1 overflow-y-auto py-2" data-testid="nav-primary">
         {visibleNav.map((item) => {
-          const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
+          const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href + "/"));
           const Icon = item.icon;
           const showSection = !sidebarCollapsed && item.section && item.section !== lastSection;
           if (item.section) lastSection = item.section;
@@ -1173,7 +1173,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {/* Nav — xl+ only */}
               <nav className={cn("hidden xl:flex flex-1 items-center justify-center gap-0.5", mobileNavEnabled && "!hidden")} data-testid="nav-primary">
                 {visibleNav.map((item) => {
-                  const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
+                  const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href + "/"));
                   const Icon = item.icon;
                   return (
                     <AppLink key={item.href} href={item.href} testId={item.testId}

@@ -676,7 +676,7 @@ export default function Dashboard() {
                             id: `${s.id}-athlete-${a.id}`,
                             label: `Race Skis — ${a.name}`,
                             description: a.name,
-                            href: `/athletes/${a.id}`,
+                            href: `/raceskis/${a.id}`,
                           })),
                         ]
                       : [];

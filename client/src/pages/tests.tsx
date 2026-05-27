@@ -1099,6 +1099,7 @@ export default function Tests() {
               {t("common.filter")}
             </div>
             <div className="flex flex-1 flex-wrap items-center gap-3">
+              {/* 1. Season */}
               <div className="min-w-[140px]">
                 <Select value={filterSeason} onValueChange={setFilterSeason}>
                   <SelectTrigger data-testid="select-filter-season">
@@ -1112,42 +1113,14 @@ export default function Tests() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-1">
-                <div className="relative h-9 w-[130px]">
-                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
-                    {filterDateFrom ? fmtDate(filterDateFrom) : <span className="text-muted-foreground text-xs">—</span>}
-                  </div>
-                  <input
-                    type="date"
-                    value={filterDateFrom}
-                    onChange={(e) => setFilterDateFrom(e.target.value)}
-                    className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0"
-                    title="Fra dato"
-                    data-testid="input-filter-date-from"
-                  />
-                </div>
-                <span className="text-muted-foreground text-xs shrink-0">–</span>
-                <div className="relative h-9 w-[130px]">
-                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
-                    {filterDateTo ? fmtDate(filterDateTo) : <span className="text-muted-foreground text-xs">—</span>}
-                  </div>
-                  <input
-                    type="date"
-                    value={filterDateTo}
-                    onChange={(e) => setFilterDateTo(e.target.value)}
-                    className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0"
-                    title="Til dato"
-                    data-testid="input-filter-date-to"
-                  />
-                </div>
-              </div>
+              {/* 2. All dates */}
               <div className="min-w-[180px]">
                 <Select
                   value={quickDayDate || "__all__"}
                   onValueChange={(v) => { setQuickDayDate(v === "__all__" ? "" : v); if (v !== "__all__") setHideDayDetails(false); }}
                 >
                   <SelectTrigger className="h-9 text-xs" data-testid="select-filter-date">
-                    <SelectValue placeholder={t("common.allDates") ?? "All dates"} />
+                    <SelectValue placeholder="All dates" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__all__">All dates</SelectItem>
@@ -1157,6 +1130,23 @@ export default function Tests() {
                   </SelectContent>
                 </Select>
               </div>
+              {/* 3. Date range */}
+              <div className="flex items-center gap-1">
+                <div className="relative h-9 w-[130px]">
+                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
+                    {filterDateFrom ? fmtDate(filterDateFrom) : <span className="text-muted-foreground text-xs">—</span>}
+                  </div>
+                  <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0" title="Fra dato" data-testid="input-filter-date-from" />
+                </div>
+                <span className="text-muted-foreground text-xs shrink-0">–</span>
+                <div className="relative h-9 w-[130px]">
+                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
+                    {filterDateTo ? fmtDate(filterDateTo) : <span className="text-muted-foreground text-xs">—</span>}
+                  </div>
+                  <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0" title="Til dato" data-testid="input-filter-date-to" />
+                </div>
+              </div>
+              {/* 4. Test type */}
               <div className="min-w-[140px]">
                 <Select value={filterType} onValueChange={setFilterType}>
                   <SelectTrigger data-testid="select-filter-test-type">
@@ -1173,6 +1163,16 @@ export default function Tests() {
                   </SelectContent>
                 </Select>
               </div>
+              {/* 5. Location */}
+              <div className="min-w-[160px]">
+                <LocationAutocomplete
+                  value={filterLocation}
+                  onChange={setFilterLocation}
+                  placeholder={t("common.location")}
+                  data-testid="input-filter-location"
+                />
+              </div>
+              {/* Extras: product, snow type */}
               {!isBlindTester && <div className="min-w-[200px]">
                 <Select value={filterProduct} onValueChange={setFilterProduct}>
                   <SelectTrigger data-testid="select-filter-product">
@@ -1194,14 +1194,6 @@ export default function Tests() {
                   onChange={(e) => setFilterSnowType(e.target.value)}
                   placeholder={t("tests.filterSnowType")}
                   data-testid="input-filter-snow-type"
-                />
-              </div>
-              <div className="min-w-[160px]">
-                <LocationAutocomplete
-                  value={filterLocation}
-                  onChange={setFilterLocation}
-                  placeholder={t("common.location")}
-                  data-testid="input-filter-location"
                 />
               </div>
             </div>

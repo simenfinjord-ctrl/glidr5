@@ -1035,6 +1035,8 @@ export default function Grinding() {
   const [filterSeason, setFilterSeason] = useState<string>("All");
   const [filterLocation, setFilterLocation] = useState("");
   const [filterDate, setFilterDate] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
   const [filterGrinds, setFilterGrinds] = useState<string[]>([]);
   const [compareMode, setCompareMode] = useState(false);
   const [wfAirTempMin, setWfAirTempMin] = useState("");
@@ -1172,6 +1174,8 @@ export default function Grinding() {
       if (filterSeason !== "All" && getSeason(t.date) !== filterSeason) return false;
       if (filterLocation && !t.location.toLowerCase().includes(filterLocation.toLowerCase())) return false;
       if (filterDate && t.date !== filterDate) return false;
+      if (!filterDate && filterDateFrom && t.date < filterDateFrom) return false;
+      if (!filterDate && filterDateTo && t.date > filterDateTo) return false;
       if (filterGrinds.length > 0) {
         const testEntries = allEntries.filter((e) => e.testId === t.id);
         const testGrindNames = new Set(testEntries.map((e) => e.grindType).filter(Boolean) as string[]);
@@ -1249,7 +1253,7 @@ export default function Grinding() {
   }, [filterGrinds]);
 
   const isGrindFilterActive = filterGrinds.length > 0;
-  const hasFilters = filterSeason !== "All" || filterLocation || filterDate || isGrindFilterActive || hasWeatherFiltersGrind;
+  const hasFilters = filterSeason !== "All" || filterLocation || filterDate || filterDateFrom || filterDateTo || isGrindFilterActive || hasWeatherFiltersGrind;
   const isDayView = !!filterDate;
 
   function getTabSubtitle() {
@@ -1353,10 +1357,11 @@ export default function Grinding() {
                   Filters
                 </div>
                 <div className="flex flex-1 flex-wrap items-center gap-3">
+                  {/* 1. Season */}
                   <div className="min-w-[140px]">
                     <Select value={filterSeason} onValueChange={setFilterSeason}>
                       <SelectTrigger data-testid="select-grind-filter-season">
-                        <SelectValue placeholder="Season" />
+                        <SelectValue placeholder="All seasons" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="All">All seasons</SelectItem>
@@ -1366,7 +1371,8 @@ export default function Grinding() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="min-w-[200px]">
+                  {/* 2. All dates */}
+                  <div className="min-w-[180px]">
                     <Select
                       value={filterDate || "__all__"}
                       onValueChange={(v) => setFilterDate(v === "__all__" ? "" : v)}
@@ -1383,16 +1389,30 @@ export default function Grinding() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="min-w-[160px]">
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-primary/60" />
-                      <Input
-                        value={filterLocation}
-                        onChange={(e) => setFilterLocation(e.target.value)}
-                        placeholder={`${t("common.location")}…`}
-                        data-testid="input-grind-filter-location"
-                      />
+                  {/* 3. Date range */}
+                  <div className="flex items-center gap-1">
+                    <div className="relative h-9 w-[130px]">
+                      <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
+                        {filterDateFrom ? fmtDate(filterDateFrom) : <span className="text-muted-foreground text-xs">—</span>}
+                      </div>
+                      <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0" data-testid="input-grind-filter-date-from" />
                     </div>
+                    <span className="text-muted-foreground text-xs shrink-0">–</span>
+                    <div className="relative h-9 w-[130px]">
+                      <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
+                        {filterDateTo ? fmtDate(filterDateTo) : <span className="text-muted-foreground text-xs">—</span>}
+                      </div>
+                      <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0" data-testid="input-grind-filter-date-to" />
+                    </div>
+                  </div>
+                  {/* 5. Location */}
+                  <div className="min-w-[160px]">
+                    <Input
+                      value={filterLocation}
+                      onChange={(e) => setFilterLocation(e.target.value)}
+                      placeholder={`${t("common.location")}…`}
+                      data-testid="input-grind-filter-location"
+                    />
                   </div>
                 </div>
                 <Button
@@ -1414,6 +1434,7 @@ export default function Grinding() {
                       setFilterSeason("All");
                       setFilterLocation("");
                       setFilterDate("");
+                      setFilterDateFrom(""); setFilterDateTo("");
                       setFilterGrinds([]);
                       setCompareMode(false);
                       setWfAirTempMin(""); setWfAirTempMax("");

@@ -2393,8 +2393,19 @@ export default function AthleteDetail() {
               {raceSkiTests.length > 0 && !showTestForm && (
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2" data-testid="test-filters">
+                    {/* 1. Season */}
+                    <Select value={testSeasonFilter} onValueChange={setTestSeasonFilter}>
+                      <SelectTrigger className="h-8 min-w-[140px] text-xs">
+                        <SelectValue placeholder="All seasons" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All seasons</SelectItem>
+                        {testAvailableSeasons.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    {/* 2. All dates */}
                     <Select value={testDateFilter} onValueChange={setTestDateFilter}>
-                      <SelectTrigger className="h-8 w-[140px] text-xs" data-testid="select-test-date-filter">
+                      <SelectTrigger className="h-8 min-w-[180px] text-xs" data-testid="select-test-date-filter">
                         <SelectValue placeholder="All dates" />
                       </SelectTrigger>
                       <SelectContent>
@@ -2404,8 +2415,25 @@ export default function AthleteDetail() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {/* 3. Date range */}
+                    <div className="flex items-center gap-1">
+                      <div className="relative h-8 w-[130px]">
+                        <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
+                          {testDateFrom ? fmtDate(testDateFrom) : <span className="text-muted-foreground">—</span>}
+                        </div>
+                        <input type="date" value={testDateFrom} onChange={e => setTestDateFrom(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0" />
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0">–</span>
+                      <div className="relative h-8 w-[130px]">
+                        <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
+                          {testDateTo ? fmtDate(testDateTo) : <span className="text-muted-foreground">—</span>}
+                        </div>
+                        <input type="date" value={testDateTo} onChange={e => setTestDateTo(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0" />
+                      </div>
+                    </div>
+                    {/* 4. Test type */}
                     <Select value={testTypeFilter} onValueChange={setTestTypeFilter}>
-                      <SelectTrigger className="h-8 w-[120px] text-xs" data-testid="select-test-type-filter">
+                      <SelectTrigger className="h-8 min-w-[140px] text-xs" data-testid="select-test-type-filter">
                         <SelectValue placeholder="All types" />
                       </SelectTrigger>
                       <SelectContent>
@@ -2415,8 +2443,16 @@ export default function AthleteDetail() {
                         <SelectItem value="Double Poling">Double Poling</SelectItem>
                       </SelectContent>
                     </Select>
+                    {/* 5. Location */}
+                    <Input
+                      value={testLocationFilter}
+                      onChange={e => setTestLocationFilter(e.target.value)}
+                      placeholder="Location..."
+                      className="h-8 min-w-[140px] text-xs"
+                    />
+                    {/* Extra: Sort */}
                     <Select value={testSortBy} onValueChange={setTestSortBy}>
-                      <SelectTrigger className="h-8 w-[130px] text-xs" data-testid="select-test-sort">
+                      <SelectTrigger className="h-8 min-w-[130px] text-xs" data-testid="select-test-sort">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -2426,34 +2462,6 @@ export default function AthleteDetail() {
                         <SelectItem value="location-desc">Location Z-A</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Input
-                      value={testLocationFilter}
-                      onChange={e => setTestLocationFilter(e.target.value)}
-                      placeholder="Location..."
-                      className="h-8 w-[140px] text-xs"
-                    />
-                    <Select value={testSeasonFilter} onValueChange={setTestSeasonFilter}>
-                      <SelectTrigger className="h-8 w-[120px] text-xs">
-                        <SelectValue placeholder="Season" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All seasons</SelectItem>
-                        {testAvailableSeasons.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <div className="relative h-8 w-[130px]">
-                      <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
-                        {testDateFrom ? fmtDate(testDateFrom) : <span className="text-muted-foreground">—</span>}
-                      </div>
-                      <input type="date" value={testDateFrom} onChange={e => setTestDateFrom(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">–</span>
-                    <div className="relative h-8 w-[130px]">
-                      <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
-                        {testDateTo ? fmtDate(testDateTo) : <span className="text-muted-foreground">—</span>}
-                      </div>
-                      <input type="date" value={testDateTo} onChange={e => setTestDateTo(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0" />
-                    </div>
                     <Button
                       variant={(showTestWeatherFilters || !!(testAirTempMin || testAirTempMax || testSnowTempMin || testSnowTempMax || testAirHumMin || testAirHumMax || testSnowHumMin || testSnowHumMax || testTrackHardness || testSnowHumidityType || testGrainSize || testArtSnow || testNatSnow || testPrecipitation || testWind || testVisibility || testCloudMin || testCloudMax)) ? "default" : "outline"}
                       size="sm"

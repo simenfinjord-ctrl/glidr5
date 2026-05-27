@@ -49,7 +49,7 @@ class SettingsView extends WatchUi.View {
     function drawToggleItem(dc, w, h, cx, index, label, isOn) {
         var fontH  = Graphics.getFontHeight(Graphics.FONT_XTINY);
         var barH   = (fontH * 1.5).toNumber();
-        var barTop = (h * 0.22).toNumber() + index * (h * 0.155).toNumber() - (barH / 2).toNumber();
+        var barTop = Ld.menuStartY(h) + index * Ld.rowSpacing(h) - (barH / 2).toNumber();
         var textY  = barTop + ((barH - fontH) / 2).toNumber();
         var isSelected = (index == selectedIndex);
 
@@ -72,7 +72,7 @@ class SettingsView extends WatchUi.View {
     function drawActionItem(dc, w, h, cx, index, label, color) {
         var fontH  = Graphics.getFontHeight(Graphics.FONT_XTINY);
         var barH   = (fontH * 1.5).toNumber();
-        var barTop = (h * 0.22).toNumber() + index * (h * 0.155).toNumber() - (barH / 2).toNumber();
+        var barTop = Ld.menuStartY(h) + index * Ld.rowSpacing(h) - (barH / 2).toNumber();
         var textY  = barTop + ((barH - fontH) / 2).toNumber();
         var isSelected = (index == selectedIndex);
 

@@ -52,10 +52,10 @@ class MainMenuView extends WatchUi.View {
         var fontH = Graphics.getFontHeight(Graphics.FONT_SMALL);
         var barH  = (fontH * 1.5).toNumber();
         var halfBar = (barH / 2).toNumber();
-        var itemSpacing = (h * 0.165).toNumber();
+        var itemSpacing = Ld.rowSpacing(h);
 
         for (var i = 0; i < menuItems.size(); i++) {
-            var barTop = (h * 0.33).toNumber() + i * itemSpacing - halfBar;
+            var barTop = Ld.mainMenuStartY(h) + i * itemSpacing - halfBar;
             var textY  = barTop + ((barH - fontH) / 2).toNumber();
 
             if (i == selectedIndex) {

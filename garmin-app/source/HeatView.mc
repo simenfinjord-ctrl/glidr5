@@ -99,14 +99,14 @@ class HeatView extends WatchUi.View {
 
             var distColor = (distance == 0) ? Graphics.COLOR_LT_GRAY : Graphics.COLOR_ORANGE;
             dc.setColor(distColor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.38, Graphics.FONT_NUMBER_HOT, distance.toString(), Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, Ld.distanceNumY(h), Ld.distanceFont(h), distance.toString(), Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.64, Graphics.FONT_XTINY, "cm", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, Ld.distanceCmY(h), Graphics.FONT_XTINY, "cm", Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.75, Graphics.FONT_XTINY, "UP: +10  DOWN: -10", Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(cx, h * 0.84, Graphics.FONT_XTINY, "SELECT: confirm", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, Ld.hintY1(h), Graphics.FONT_XTINY, "UP: +10  DOWN: -10", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, Ld.hintY2(h), Graphics.FONT_XTINY, "SELECT: confirm", Graphics.TEXT_JUSTIFY_CENTER);
         }
     }
 }

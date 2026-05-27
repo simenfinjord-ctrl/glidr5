@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { cn, fmtDate } from "@/lib/utils";
+import { cn, fmtDate, fmtDateShort } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
 type Test = {
@@ -1028,7 +1028,7 @@ const SNOW_STAGE_OPTIONS = ["Falling new", "New", "Irreg. dir. new", "Irreg. dir
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Grinding() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { toast } = useToast();
   const [tab, setTab] = useState<"tests" | "grinds" | "analytics">("tests");
 
@@ -1617,9 +1617,14 @@ export default function Grinding() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none__">—</SelectItem>
-                          {availableDates.slice(10).map((d) => (
-                            <SelectItem key={d} value={d}>{fmtDate(d)}</SelectItem>
-                          ))}
+                          {availableDates.slice(10).map((d) => {
+                            const locs = [...new Set(grindTests.filter(tt => tt.date === d).map((tt: any) => tt.location))];
+                            const locale = language === 'no' ? 'nb-NO' : 'en-US';
+                            const day = new Date(d + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long' });
+                            const dayName = day.charAt(0).toUpperCase() + day.slice(1);
+                            const label = [fmtDateShort(d), dayName, ...locs].join(' · ');
+                            return <SelectItem key={d} value={d}>{label}</SelectItem>;
+                          })}
                         </SelectContent>
                       </Select>
                     )}

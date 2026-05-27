@@ -68,7 +68,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { cn, fmtDate } from "@/lib/utils";
+import { cn, fmtDate, fmtDateShort } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language";
 import { pdfDocument, pdfSection, pdfCards, pdfTable, pdfWeather, openPdfWindow } from "@/lib/pdf-layout";
@@ -271,7 +271,7 @@ export default function AthleteDetail() {
   const isAnalyticsView = new URLSearchParams(search).get("view") === "analytics";
   const isAthletePortal = new URLSearchParams(search).get("view") === "athlete-portal";
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { isOnline, pendingCount, queueMutation } = useOffline();
 
   const [skiDialogOpen, setSkiDialogOpen] = useState(false);
@@ -2649,9 +2649,14 @@ export default function AthleteDetail() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__none__">—</SelectItem>
-                              {testDates.slice(10).map((d) => (
-                                <SelectItem key={d} value={d}>{fmtDate(d)}</SelectItem>
-                              ))}
+                              {testDates.slice(10).map((d) => {
+                                const locs = [...new Set(raceSkiTests.filter((tt: any) => tt.date === d).map((tt: any) => tt.location))];
+                                const locale = language === 'no' ? 'nb-NO' : 'en-US';
+                                const day = new Date(d + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long' });
+                                const dayName = day.charAt(0).toUpperCase() + day.slice(1);
+                                const label = [fmtDateShort(d), dayName, ...locs].join(' · ');
+                                return <SelectItem key={d} value={d}>{label}</SelectItem>;
+                              })}
                             </SelectContent>
                           </Select>
                         )}

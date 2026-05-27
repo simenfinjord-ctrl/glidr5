@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { LocationAutocomplete } from "@/components/location-autocomplete";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { cn, fmtDate } from "@/lib/utils";
+import { cn, fmtDate, fmtDateShort } from "@/lib/utils";
 import { parseApplication } from "@/lib/parse-application";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -747,7 +747,7 @@ function CalendarView({
 
 export default function Tests() {
   const [, navigate] = useLocation();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { isBlindTester, can } = useAuth();
   const canViewGrinding = can("grinding", "view");
   const { data: tests = [], isLoading: testsLoading } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
@@ -1350,9 +1350,14 @@ export default function Tests() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">—</SelectItem>
-                      {availableDates.slice(10).map((d) => (
-                        <SelectItem key={d} value={d}>{fmtDate(d)}</SelectItem>
-                      ))}
+                      {availableDates.slice(10).map((d) => {
+                        const locs = [...new Set(tests.filter(tt => tt.date === d).map(tt => tt.location))];
+                        const locale = language === 'no' ? 'nb-NO' : 'en-US';
+                        const day = new Date(d + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long' });
+                        const dayName = day.charAt(0).toUpperCase() + day.slice(1);
+                        const label = [fmtDateShort(d), dayName, ...locs].join(' · ');
+                        return <SelectItem key={d} value={d}>{label}</SelectItem>;
+                      })}
                     </SelectContent>
                   </Select>
                 )}

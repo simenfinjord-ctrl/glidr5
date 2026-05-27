@@ -24,3 +24,20 @@ export function fmtDate(iso: string | null | undefined, format?: 'european' | 'a
   }
   return `${parts[2]}.${parts[1]}.${parts[0]}`; // DD.MM.YYYY
 }
+
+/**
+ * Short date for compact contexts, e.g. dropdown labels.
+ * European: DD/MM/YY  |  American: MM/DD/YY
+ */
+export function fmtDateShort(iso: string | null | undefined, format?: 'european' | 'american'): string {
+  if (!iso) return "—";
+  const s = iso.slice(0, 10);
+  const parts = s.split("-");
+  if (parts.length !== 3) return s;
+  const yy = (parts[0] ?? "").slice(-2);
+  const fmt = format ?? __glidrDateFormat;
+  if (fmt === 'american') {
+    return `${parts[1]}/${parts[2]}/${yy}`; // MM/DD/YY
+  }
+  return `${parts[2]}/${parts[1]}/${yy}`; // DD/MM/YY
+}

@@ -953,6 +953,8 @@ function ProductSearchStats({
   const { t } = useI18n();
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
+  const [expandedCombo, setExpandedCombo] = useState<number | null>(null);
+  const [expandedApp, setExpandedApp] = useState<string | null>(null);
 
   const selectedProduct = selectedProductId ? productsById.get(selectedProductId) : null;
 
@@ -1409,6 +1411,7 @@ function ProductSearchStats({
                         <th className="text-center px-3 py-2 text-xs font-medium">Times</th>
                         <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
                         <th className="text-center px-3 py-2 text-xs font-medium">Wins</th>
+                        <th className="w-8 px-2 py-2"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1418,34 +1421,116 @@ function ProductSearchStats({
                         const partParsed = c.partnerApp ? parseApplication(c.partnerApp) : null;
                         const selName = selectedProduct ? `${selectedProduct.brand} ${selectedProduct.name}` : "—";
                         const partName = partner ? `${partner.brand} ${partner.name}` : `#${c.partnerId}`;
+                        const isOpen = expandedCombo === c.partnerId;
+                        // Find all test results that contain this partner product
+                        const comboTests = stats.testResults.filter(({ entry }) => {
+                          if (entry.productId !== null && entry.productId !== selectedProductId && entry.productId === c.partnerId) return true;
+                          if (entry.additionalProductIds) {
+                            const ids = entry.additionalProductIds.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+                            if (ids.includes(c.partnerId)) return true;
+                          }
+                          return false;
+                        });
                         return (
-                          <tr key={c.partnerId} className={cn("border-t", i === 0 && "bg-violet-50/40 dark:bg-violet-900/10")}>
-                            <td className="px-3 py-2.5">
-                              {i === 0 && (
-                                <div className="text-[9px] font-semibold uppercase tracking-wider text-violet-500 mb-1.5">Best combo</div>
-                              )}
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                {/* Selected product — highlighted */}
-                                <span className="inline-flex items-center gap-1 rounded-md bg-violet-100 dark:bg-violet-900/40 px-2 py-0.5 text-xs font-semibold text-violet-800 dark:text-violet-200 ring-1 ring-violet-300/60 dark:ring-violet-600/40">
-                                  {selName}
-                                  {selParsed?.interpreted && (
-                                    <span className="font-normal opacity-75 ml-0.5">· {selParsed.interpreted}</span>
+                          <React.Fragment key={c.partnerId}>
+                            <tr
+                              className={cn("border-t cursor-pointer hover:bg-muted/30 transition-colors", i === 0 && "bg-violet-50/40 dark:bg-violet-900/10")}
+                              onClick={() => setExpandedCombo(isOpen ? null : c.partnerId)}
+                            >
+                              <td className="px-3 py-2.5">
+                                {i === 0 && (
+                                  <div className="text-[9px] font-semibold uppercase tracking-wider text-violet-500 mb-1.5">Best combo</div>
+                                )}
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="inline-flex items-center gap-1 rounded-md bg-violet-100 dark:bg-violet-900/40 px-2 py-0.5 text-xs font-semibold text-violet-800 dark:text-violet-200 ring-1 ring-violet-300/60 dark:ring-violet-600/40">
+                                    {selName}
+                                    {selParsed?.interpreted && (
+                                      <span className="font-normal opacity-75 ml-0.5">· {selParsed.interpreted}</span>
+                                    )}
+                                  </span>
+                                  <span className="text-muted-foreground text-xs font-medium">+</span>
+                                  <span className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-2 py-0.5 text-xs font-medium text-foreground ring-1 ring-border/60">
+                                    {partName}
+                                    {partParsed?.interpreted && (
+                                      <span className="font-normal text-muted-foreground ml-0.5">· {partParsed.interpreted}</span>
+                                    )}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-center text-muted-foreground text-xs">{c.count}</td>
+                              <td className="px-3 py-2.5 text-center font-semibold text-xs">{c.avgRank ?? "—"}</td>
+                              <td className="px-3 py-2.5 text-center text-xs">{c.wins > 0 ? <span className="text-amber-600 font-bold">{c.wins}</span> : "—"}</td>
+                              <td className="px-2 py-2.5 text-center">
+                                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+                              </td>
+                            </tr>
+                            {isOpen && (
+                              <tr className="border-t bg-violet-50/20 dark:bg-violet-900/5">
+                                <td colSpan={5} className="px-3 py-3">
+                                  <div className="text-[10px] font-semibold uppercase tracking-wider text-violet-500 mb-2">
+                                    {comboTests.length} test{comboTests.length !== 1 ? "s" : ""} with this combination
+                                  </div>
+                                  {comboTests.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground">No test details found.</p>
+                                  ) : (
+                                    <div className="rounded-md border overflow-hidden">
+                                      <table className="w-full text-xs">
+                                        <thead className="bg-muted/60">
+                                          <tr>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">Date</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">Location</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">Type</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">Application</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">Partner app</th>
+                                            <th className="text-center px-2.5 py-1.5 font-medium">Snow °C</th>
+                                            <th className="text-center px-2.5 py-1.5 font-medium">Rank</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {comboTests.map(({ test, rank, entry }, idx) => {
+                                            const w = test.weatherId ? weatherById.get(test.weatherId) : undefined;
+                                            const selApp = entry.methodology ? parseApplication(entry.methodology.split("|")[0].trim()).interpreted || entry.methodology.split("|")[0].trim() : "—";
+                                            let partApp = "—";
+                                            if (entry.methodology && entry.additionalProductIds) {
+                                              const addIds = entry.additionalProductIds.split(",").map((s) => parseInt(s.trim(), 10));
+                                              const idx2 = addIds.indexOf(c.partnerId);
+                                              if (idx2 !== -1) {
+                                                const raw = entry.methodology.split("|")[idx2 + 1]?.trim() ?? "";
+                                                partApp = raw ? (parseApplication(raw).interpreted || raw) : "—";
+                                              }
+                                            } else if (entry.productId === c.partnerId && entry.methodology) {
+                                              partApp = parseApplication(entry.methodology.split("|")[0].trim()).interpreted || entry.methodology.split("|")[0].trim() || "—";
+                                            }
+                                            return (
+                                              <tr key={`${test.id}-${idx}`} className={cn("border-t hover:bg-muted/30", idx === 0 && "")}>
+                                                <td className="px-2.5 py-1.5 font-medium">{fmtDate(test.date)}</td>
+                                                <td className="px-2.5 py-1.5 text-muted-foreground">{test.location}</td>
+                                                <td className="px-2.5 py-1.5 text-muted-foreground">{test.testType}</td>
+                                                <td className="px-2.5 py-1.5">{selApp}</td>
+                                                <td className="px-2.5 py-1.5 text-muted-foreground">{partApp}</td>
+                                                <td className="px-2.5 py-1.5 text-center text-muted-foreground">{w?.snowTemperatureC != null ? `${w.snowTemperatureC}°` : "—"}</td>
+                                                <td className="px-2.5 py-1.5 text-center">
+                                                  {rank != null ? (
+                                                    <span className={cn(
+                                                      "inline-flex min-w-5 items-center justify-center rounded-full px-1 py-0.5 text-[10px] font-bold",
+                                                      rank === 1 && "bg-yellow-500/20 text-yellow-600",
+                                                      rank === 2 && "bg-slate-300/20 text-slate-500",
+                                                      rank === 3 && "bg-amber-700/20 text-amber-600",
+                                                      rank > 3 && "bg-muted/60 text-muted-foreground",
+                                                    )}>#{rank}</span>
+                                                  ) : "—"}
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
                                   )}
-                                </span>
-                                <span className="text-muted-foreground text-xs font-medium">+</span>
-                                {/* Partner product — neutral */}
-                                <span className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-2 py-0.5 text-xs font-medium text-foreground ring-1 ring-border/60">
-                                  {partName}
-                                  {partParsed?.interpreted && (
-                                    <span className="font-normal text-muted-foreground ml-0.5">· {partParsed.interpreted}</span>
-                                  )}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-2.5 text-center text-muted-foreground text-xs">{c.count}</td>
-                            <td className="px-3 py-2.5 text-center font-semibold text-xs">{c.avgRank ?? "—"}</td>
-                            <td className="px-3 py-2.5 text-center text-xs">{c.wins > 0 ? <span className="text-amber-600 font-bold">{c.wins}</span> : "—"}</td>
-                          </tr>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         );
                       })}
                     </tbody>
@@ -1469,36 +1554,110 @@ function ProductSearchStats({
                         <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
                         <th className="text-center px-3 py-2 text-xs font-medium">Best</th>
                         <th className="text-left px-3 py-2 text-xs font-medium">Conditions</th>
+                        <th className="w-8 px-2 py-2"></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {stats.appStats.map((s, i) => (
-                        <tr key={i} className={cn("border-t", i === 0 && "bg-amber-50/40 dark:bg-amber-900/10")}>
-                          <td className="px-3 py-1.5 font-medium text-xs">
-                            {i === 0 && <span className="mr-1 text-amber-500">★</span>}
-                            {s.application}
-                          </td>
-                          <td className="px-3 py-1.5 text-center text-muted-foreground">{s.count}</td>
-                          <td className="px-3 py-1.5 text-center font-semibold">{s.avgRank ?? "—"}</td>
-                          <td className="px-3 py-1.5 text-center">
-                            {s.bestRank != null ? (
-                              <span className={cn(
-                                "inline-flex min-w-5 items-center justify-center rounded-full px-1 py-0.5 text-[10px] font-bold",
-                                s.bestRank === 1 && "bg-yellow-500/20 text-yellow-600",
-                                s.bestRank === 2 && "bg-slate-300/20 text-slate-500",
-                                s.bestRank === 3 && "bg-amber-700/20 text-amber-600",
-                                s.bestRank > 3 && "bg-muted/60 text-muted-foreground",
-                              )}>{s.bestRank}</span>
-                            ) : "—"}
-                          </td>
-                          <td className="px-3 py-1.5 text-xs text-muted-foreground">
-                            {[
-                              s.avgTemp != null ? `${s.avgTemp}°C` : null,
-                              s.commonSnow,
-                            ].filter(Boolean).join(", ") || "—"}
-                          </td>
-                        </tr>
-                      ))}
+                      {stats.appStats.map((s, i) => {
+                        const isOpen = expandedApp === s.application;
+                        // Find all test results where this product was primary and application matches
+                        const appTests = stats.testResults.filter(({ entry }) => {
+                          if (entry.productId !== selectedProductId) return false;
+                          if (!entry.methodology) return false;
+                          const primaryApp = entry.methodology.split("|")[0].trim();
+                          const parsed = parseApplication(primaryApp);
+                          return (parsed.interpreted || primaryApp) === s.application;
+                        });
+                        return (
+                          <React.Fragment key={i}>
+                            <tr
+                              className={cn("border-t cursor-pointer hover:bg-muted/30 transition-colors", i === 0 && "bg-amber-50/40 dark:bg-amber-900/10")}
+                              onClick={() => setExpandedApp(isOpen ? null : s.application)}
+                            >
+                              <td className="px-3 py-1.5 font-medium text-xs">
+                                {i === 0 && <span className="mr-1 text-amber-500">★</span>}
+                                {s.application}
+                              </td>
+                              <td className="px-3 py-1.5 text-center text-muted-foreground">{s.count}</td>
+                              <td className="px-3 py-1.5 text-center font-semibold">{s.avgRank ?? "—"}</td>
+                              <td className="px-3 py-1.5 text-center">
+                                {s.bestRank != null ? (
+                                  <span className={cn(
+                                    "inline-flex min-w-5 items-center justify-center rounded-full px-1 py-0.5 text-[10px] font-bold",
+                                    s.bestRank === 1 && "bg-yellow-500/20 text-yellow-600",
+                                    s.bestRank === 2 && "bg-slate-300/20 text-slate-500",
+                                    s.bestRank === 3 && "bg-amber-700/20 text-amber-600",
+                                    s.bestRank > 3 && "bg-muted/60 text-muted-foreground",
+                                  )}>{s.bestRank}</span>
+                                ) : "—"}
+                              </td>
+                              <td className="px-3 py-1.5 text-xs text-muted-foreground">
+                                {[
+                                  s.avgTemp != null ? `${s.avgTemp}°C` : null,
+                                  s.commonSnow,
+                                ].filter(Boolean).join(", ") || "—"}
+                              </td>
+                              <td className="px-2 py-1.5 text-center">
+                                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+                              </td>
+                            </tr>
+                            {isOpen && (
+                              <tr className="border-t bg-amber-50/20 dark:bg-amber-900/5">
+                                <td colSpan={6} className="px-3 py-3">
+                                  <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-500 mb-2">
+                                    {appTests.length} test{appTests.length !== 1 ? "s" : ""} with this application
+                                  </div>
+                                  {appTests.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground">No test details found.</p>
+                                  ) : (
+                                    <div className="rounded-md border overflow-hidden">
+                                      <table className="w-full text-xs">
+                                        <thead className="bg-muted/60">
+                                          <tr>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">Date</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">Location</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">Type</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">Full methodology</th>
+                                            <th className="text-center px-2.5 py-1.5 font-medium">Snow °C</th>
+                                            <th className="text-center px-2.5 py-1.5 font-medium">Air °C</th>
+                                            <th className="text-center px-2.5 py-1.5 font-medium">Rank</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {appTests.map(({ test, rank, entry }, idx) => {
+                                            const w = test.weatherId ? weatherById.get(test.weatherId) : undefined;
+                                            return (
+                                              <tr key={`${test.id}-${idx}`} className="border-t hover:bg-muted/30">
+                                                <td className="px-2.5 py-1.5 font-medium">{fmtDate(test.date)}</td>
+                                                <td className="px-2.5 py-1.5 text-muted-foreground">{test.location}</td>
+                                                <td className="px-2.5 py-1.5 text-muted-foreground">{test.testType}</td>
+                                                <td className="px-2.5 py-1.5 max-w-[200px] truncate" title={entry.methodology ?? ""}>{entry.methodology || "—"}</td>
+                                                <td className="px-2.5 py-1.5 text-center text-muted-foreground">{w?.snowTemperatureC != null ? `${w.snowTemperatureC}°` : "—"}</td>
+                                                <td className="px-2.5 py-1.5 text-center text-muted-foreground">{w?.airTemperatureC != null ? `${w.airTemperatureC}°` : "—"}</td>
+                                                <td className="px-2.5 py-1.5 text-center">
+                                                  {rank != null ? (
+                                                    <span className={cn(
+                                                      "inline-flex min-w-5 items-center justify-center rounded-full px-1 py-0.5 text-[10px] font-bold",
+                                                      rank === 1 && "bg-yellow-500/20 text-yellow-600",
+                                                      rank === 2 && "bg-slate-300/20 text-slate-500",
+                                                      rank === 3 && "bg-amber-700/20 text-amber-600",
+                                                      rank > 3 && "bg-muted/60 text-muted-foreground",
+                                                    )}>#{rank}</span>
+                                                  ) : "—"}
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

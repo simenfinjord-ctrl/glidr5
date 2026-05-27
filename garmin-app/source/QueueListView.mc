@@ -132,22 +132,25 @@ class QueueListView extends WatchUi.View {
             visibleStart = visibleEnd > 1 ? visibleEnd - 2 : 0;
         }
 
-        var yStart = h * 0.22;
-        var itemSpacing = h * 0.24;
+        var fontH = Graphics.getFontHeight(Graphics.FONT_XTINY);
+        var barH  = (fontH * 1.5).toNumber();
+        var yStart = (h * 0.22).toNumber();
+        var itemSpacing = (h * 0.24).toNumber();
 
         for (var i = visibleStart; i <= visibleEnd; i++) {
             var item = items[i];
             var label = getItemLabel(item);
-            var yPos = yStart + (i - visibleStart) * itemSpacing;
+            var barTop = yStart + (i - visibleStart) * itemSpacing - (barH / 2).toNumber();
+            var textY  = barTop + ((barH - fontH) / 2).toNumber();
 
             if (i == selectedIndex) {
-                dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
-                dc.fillRoundedRectangle(cx - Ld.hx(w), yPos - 4, Ld.fw(w), Ld.ih(h), 6);
+                dc.setColor(Ld.accentColor(), Graphics.COLOR_TRANSPARENT);
+                dc.fillRoundedRectangle(cx - Ld.hx(w), barTop, Ld.fw(w), barH, Ld.cr(w));
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
             } else {
                 dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
             }
-            dc.drawText(cx, yPos, Graphics.FONT_XTINY, label, Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, textY, Graphics.FONT_XTINY, label, Graphics.TEXT_JUSTIFY_CENTER);
         }
 
         // Scroll indicators

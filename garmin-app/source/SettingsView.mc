@@ -47,39 +47,43 @@ class SettingsView extends WatchUi.View {
     }
 
     function drawToggleItem(dc, w, h, cx, index, label, isOn) {
-        var itemY = h * 0.15 + index * (h * 0.155);
-        var itemH = Ld.ih(h);
+        var fontH  = Graphics.getFontHeight(Graphics.FONT_XTINY);
+        var barH   = (fontH * 1.5).toNumber();
+        var barTop = (h * 0.15).toNumber() + index * (h * 0.155).toNumber() - (barH / 2).toNumber();
+        var textY  = barTop + ((barH - fontH) / 2).toNumber();
         var isSelected = (index == selectedIndex);
 
         if (isSelected) {
-            dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
-            dc.fillRoundedRectangle(cx - Ld.hx(w), itemY - 4, Ld.fw(w), itemH, 6);
+            dc.setColor(Ld.accentColor(), Graphics.COLOR_TRANSPARENT);
+            dc.fillRoundedRectangle(cx - Ld.hx(w), barTop, Ld.fw(w), barH, Ld.cr(w));
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         } else {
             dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
         }
 
-        dc.drawText(cx - w * 0.18, itemY + 1, Graphics.FONT_XTINY, label, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx - w * 0.18, textY, Graphics.FONT_XTINY, label, Graphics.TEXT_JUSTIFY_CENTER);
 
         var statusColor = isOn ? Graphics.COLOR_GREEN : Graphics.COLOR_RED;
         if (!isSelected) { statusColor = isOn ? Graphics.COLOR_GREEN : Graphics.COLOR_DK_RED; }
         dc.setColor(statusColor, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx + w * 0.22, itemY + 1, Graphics.FONT_XTINY, isOn ? "ON" : "OFF", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx + w * 0.22, textY, Graphics.FONT_XTINY, isOn ? "ON" : "OFF", Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     function drawActionItem(dc, w, h, cx, index, label, color) {
-        var itemY = h * 0.15 + index * (h * 0.155);
-        var itemH = Ld.ih(h);
+        var fontH  = Graphics.getFontHeight(Graphics.FONT_XTINY);
+        var barH   = (fontH * 1.5).toNumber();
+        var barTop = (h * 0.15).toNumber() + index * (h * 0.155).toNumber() - (barH / 2).toNumber();
+        var textY  = barTop + ((barH - fontH) / 2).toNumber();
         var isSelected = (index == selectedIndex);
 
         if (isSelected) {
-            dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
-            dc.fillRoundedRectangle(cx - Ld.hx(w), itemY - 4, Ld.fw(w), itemH, 6);
+            dc.setColor(Ld.accentColor(), Graphics.COLOR_TRANSPARENT);
+            dc.fillRoundedRectangle(cx - Ld.hx(w), barTop, Ld.fw(w), barH, Ld.cr(w));
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         } else {
             dc.setColor(color, Graphics.COLOR_TRANSPARENT);
         }
 
-        dc.drawText(cx, itemY + 1, Graphics.FONT_XTINY, label, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, textY, Graphics.FONT_XTINY, label, Graphics.TEXT_JUSTIFY_CENTER);
     }
 }

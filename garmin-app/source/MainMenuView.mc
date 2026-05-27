@@ -49,19 +49,25 @@ class MainMenuView extends WatchUi.View {
         }
 
         // ── Menu items ───────────────────────────────────────────
-        var itemH = Ld.ih(h);
+        // Use FONT_SMALL for menu labels — calculate text height for centering
+        var fontH = Graphics.getFontHeight(Graphics.FONT_SMALL);
+        var barH  = (fontH * 1.5).toNumber();   // bar taller than text for padding
+        var halfBar = (barH / 2).toNumber();
+        var itemSpacing = (h * 0.165).toNumber();
+
         for (var i = 0; i < menuItems.size(); i++) {
-            var itemY = h * 0.29 + i * (h * 0.165);
+            var barTop = (h * 0.29).toNumber() + i * itemSpacing - halfBar;
+            var textY  = barTop + ((barH - fontH) / 2).toNumber();
 
             if (i == selectedIndex) {
-                dc.setColor(Graphics.COLOR_BLUE, Graphics.COLOR_TRANSPARENT);
-                dc.fillRoundedRectangle(cx - Ld.hx(w), itemY - 3, Ld.fw(w), itemH, 6);
+                dc.setColor(Ld.accentColor(), Graphics.COLOR_TRANSPARENT);
+                dc.fillRoundedRectangle(cx - Ld.hx(w), barTop, Ld.fw(w), barH, Ld.cr(w));
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
             } else {
                 dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
             }
 
-            dc.drawText(cx, itemY, Graphics.FONT_SMALL, menuItems[i][0], Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, textY, Graphics.FONT_SMALL, menuItems[i][0], Graphics.TEXT_JUSTIFY_CENTER);
         }
 
         // ── Hint ────────────────────────────────────────────────

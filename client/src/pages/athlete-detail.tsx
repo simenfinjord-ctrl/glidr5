@@ -2400,7 +2400,7 @@ export default function AthleteDetail() {
                       <SelectContent>
                         <SelectItem value="all">All dates</SelectItem>
                         {testDates.map((d) => (
-                          <SelectItem key={d} value={d}>{d}</SelectItem>
+                          <SelectItem key={d} value={d}>{dateLabelMap.get(d) ?? fmtDate(d)}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -2441,9 +2441,19 @@ export default function AthleteDetail() {
                         {testAvailableSeasons.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    <Input type="date" value={testDateFrom} onChange={e => setTestDateFrom(e.target.value)} className="h-8 w-[130px] text-xs" />
+                    <div className="relative h-8 w-[130px]">
+                      <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
+                        {testDateFrom ? fmtDate(testDateFrom) : <span className="text-muted-foreground">—</span>}
+                      </div>
+                      <input type="date" value={testDateFrom} onChange={e => setTestDateFrom(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0" />
+                    </div>
                     <span className="text-xs text-muted-foreground">–</span>
-                    <Input type="date" value={testDateTo} onChange={e => setTestDateTo(e.target.value)} className="h-8 w-[130px] text-xs" />
+                    <div className="relative h-8 w-[130px]">
+                      <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
+                        {testDateTo ? fmtDate(testDateTo) : <span className="text-muted-foreground">—</span>}
+                      </div>
+                      <input type="date" value={testDateTo} onChange={e => setTestDateTo(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0" />
+                    </div>
                     <Button
                       variant={(showTestWeatherFilters || !!(testAirTempMin || testAirTempMax || testSnowTempMin || testSnowTempMax || testAirHumMin || testAirHumMax || testSnowHumMin || testSnowHumMax || testTrackHardness || testSnowHumidityType || testGrainSize || testArtSnow || testNatSnow || testPrecipitation || testWind || testVisibility || testCloudMin || testCloudMax)) ? "default" : "outline"}
                       size="sm"
@@ -2656,8 +2666,8 @@ export default function AthleteDetail() {
                               }
                             }}
                           >
-                            <SelectTrigger className="h-7 rounded-full border-0 bg-primary/10 px-3 text-xs font-medium text-primary hover:bg-primary/20 min-w-0 w-auto gap-1 [&>svg]:h-3 [&>svg]:w-3">
-                              <SelectValue placeholder="…" />
+                            <SelectTrigger className="h-8 min-w-[160px] text-xs">
+                              <SelectValue placeholder="—" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__none__">—</SelectItem>

@@ -1366,23 +1366,22 @@ export default function Grinding() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="min-w-[150px]">
-                    <div className="flex items-center gap-1.5">
-                      <CalendarDays className="h-3.5 w-3.5 text-primary/60" />
-                      <div className="relative h-9 flex-1">
-                        <div className="pointer-events-none absolute inset-0 z-10 flex items-center px-3 text-xs">
-                          {filterDate ? fmtDate(filterDate) : <span className="text-muted-foreground">—</span>}
-                        </div>
-                        <Input
-                          type="date"
-                          value={filterDate}
-                          onChange={(e) => setFilterDate(e.target.value)}
-                          className="h-9 w-full"
-                          style={{ color: "transparent" }}
-                          data-testid="input-grind-filter-date"
-                        />
-                      </div>
-                    </div>
+                  <div className="min-w-[200px]">
+                    <Select
+                      value={filterDate || "__all__"}
+                      onValueChange={(v) => setFilterDate(v === "__all__" ? "" : v)}
+                      data-testid="select-grind-filter-date"
+                    >
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="All dates" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">All dates</SelectItem>
+                        {availableDates.map((d) => (
+                          <SelectItem key={d} value={d}>{dateLabelMap.get(d) ?? fmtDate(d)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="min-w-[160px]">
                     <div className="flex items-center gap-1.5">
@@ -1624,8 +1623,8 @@ export default function Grinding() {
                         value="__none__"
                         onValueChange={(v) => { if (v !== "__none__") setFilterDate(v); }}
                       >
-                        <SelectTrigger className="h-7 rounded-full border-0 bg-primary/10 px-3 text-xs font-medium text-primary hover:bg-primary/20 min-w-0 w-auto gap-1 [&>svg]:h-3 [&>svg]:w-3">
-                          <SelectValue placeholder="…" />
+                        <SelectTrigger className="h-8 min-w-[160px] text-xs">
+                          <SelectValue placeholder="—" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none__">—</SelectItem>

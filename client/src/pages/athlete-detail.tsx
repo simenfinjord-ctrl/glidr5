@@ -2417,19 +2417,25 @@ export default function AthleteDetail() {
                     </Select>
                     {/* 3. Date range */}
                     <div className="flex items-center gap-1">
-                      <div className="relative h-8 w-[130px]">
-                        <input type="date" value={testDateFrom} onChange={e => setTestDateFrom(e.target.value)}
-                          className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden" />
-                        <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
-                          {testDateFrom ? fmtDate(testDateFrom) : <span className="text-muted-foreground">—</span>}
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-muted-foreground px-1">Date from:</span>
+                        <div className="relative h-8 w-[130px]">
+                          <input type="date" value={testDateFrom} onChange={e => setTestDateFrom(e.target.value)}
+                            className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden" />
+                          <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
+                            {testDateFrom ? fmtDate(testDateFrom) : <span className="text-muted-foreground">—</span>}
+                          </div>
                         </div>
                       </div>
-                      <span className="text-xs text-muted-foreground shrink-0">–</span>
-                      <div className="relative h-8 w-[130px]">
-                        <input type="date" value={testDateTo} onChange={e => setTestDateTo(e.target.value)}
-                          className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden" />
-                        <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
-                          {testDateTo ? fmtDate(testDateTo) : <span className="text-muted-foreground">—</span>}
+                      <span className="text-xs text-muted-foreground shrink-0 mt-4">–</span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-muted-foreground px-1">Date to:</span>
+                        <div className="relative h-8 w-[130px]">
+                          <input type="date" value={testDateTo} onChange={e => setTestDateTo(e.target.value)}
+                            className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden" />
+                          <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
+                            {testDateTo ? fmtDate(testDateTo) : <span className="text-muted-foreground">—</span>}
+                          </div>
                         </div>
                       </div>
                     </div>

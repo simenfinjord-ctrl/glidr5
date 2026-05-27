@@ -1132,21 +1132,27 @@ export default function Tests() {
               </div>
               {/* 3. Date range */}
               <div className="flex items-center gap-1">
-                <div className="relative h-9 w-[130px]">
-                  <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)}
-                    className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden"
-                    title="Fra dato" data-testid="input-filter-date-from" />
-                  <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
-                    {filterDateFrom ? fmtDate(filterDateFrom) : <span className="text-muted-foreground text-xs">—</span>}
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] text-muted-foreground px-1">Date from:</span>
+                  <div className="relative h-9 w-[130px]">
+                    <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)}
+                      className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden"
+                      title="Fra dato" data-testid="input-filter-date-from" />
+                    <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
+                      {filterDateFrom ? fmtDate(filterDateFrom) : <span className="text-muted-foreground text-xs">—</span>}
+                    </div>
                   </div>
                 </div>
-                <span className="text-muted-foreground text-xs shrink-0">–</span>
-                <div className="relative h-9 w-[130px]">
-                  <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)}
-                    className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden"
-                    title="Til dato" data-testid="input-filter-date-to" />
-                  <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
-                    {filterDateTo ? fmtDate(filterDateTo) : <span className="text-muted-foreground text-xs">—</span>}
+                <span className="text-muted-foreground text-xs shrink-0 mt-4">–</span>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] text-muted-foreground px-1">Date to:</span>
+                  <div className="relative h-9 w-[130px]">
+                    <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)}
+                      className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden"
+                      title="Til dato" data-testid="input-filter-date-to" />
+                    <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
+                      {filterDateTo ? fmtDate(filterDateTo) : <span className="text-muted-foreground text-xs">—</span>}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -211,6 +211,7 @@ type AthleteRaceHistory = {
   entryNotes: string | null;
   racePrepId: number;
   date: string;
+  startTime: string | null;
   location: string;
   raceType: string;
   discipline: string;
@@ -3720,7 +3721,7 @@ function SkiDetailPanel({
                 return (
                   <div key={r.entryId} className="text-xs text-muted-foreground">
                     <div className="font-medium text-foreground">
-                      {r.location} · {new Date(r.date).toLocaleDateString()} · {r.raceType}
+                      {r.location} · {new Date(r.date).toLocaleDateString()}{r.startTime ? ` · ${r.startTime}` : ""} · {r.raceType}
                     </div>
                     {w && (
                       <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-[10px]">

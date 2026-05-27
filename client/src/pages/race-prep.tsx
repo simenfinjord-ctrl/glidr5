@@ -44,6 +44,7 @@ type RacePrep = {
   id: number;
   teamId: number;
   date: string;
+  startTime: string | null;
   location: string;
   raceType: string;
   discipline: string;
@@ -115,6 +116,7 @@ function isFreeText(s: string | null): boolean {
 
 const EMPTY_FORM = {
   date: "",
+  startTime: "",
   location: "",
   raceType: "",
   discipline: "Classic",
@@ -740,7 +742,7 @@ function PrepDetailDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Flag className="h-4 w-4 text-primary" />
-            {prep.location} — {fmtDate(prep.date, lang)}
+            {prep.location} — {fmtDate(prep.date, lang)}{prep.startTime ? ` · ${prep.startTime}` : ""}
           </DialogTitle>
         </DialogHeader>
 
@@ -1026,6 +1028,7 @@ function PrepFormDialog({
     editPrep
       ? {
           date: editPrep.date,
+          startTime: editPrep.startTime ?? "",
           location: editPrep.location,
           raceType: editPrep.raceType,
           discipline: editPrep.discipline,
@@ -1058,11 +1061,12 @@ function PrepFormDialog({
   );
 
   async function submit() {
-    if (!form.date || !form.location || !form.raceType || !form.discipline) return;
+    if (!form.date || !form.startTime || !form.location || !form.raceType || !form.discipline) return;
     setSaving(true);
     try {
       const payload = {
         date: form.date,
+        startTime: form.startTime,
         location: form.location,
         raceType: form.raceType,
         discipline: form.discipline,
@@ -1099,6 +1103,10 @@ function PrepFormDialog({
           <div>
             <label className="mb-1 block text-xs font-medium">{L("Dato", "Date")} *</label>
             <Input type="date" value={form.date} onChange={(e) => f("date", e.target.value)} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium">{L("Starttid", "Start time")} *</label>
+            <Input type="time" value={form.startTime} onChange={(e) => f("startTime", e.target.value)} />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium">{L("Lokasjon", "Location")} *</label>
@@ -1186,7 +1194,7 @@ function PrepFormDialog({
         </div>
         <div className="flex justify-end gap-2 border-t border-border pt-3">
           <Button variant="outline" onClick={() => onClose(false)}>{L("Avbryt", "Cancel")}</Button>
-          <Button onClick={submit} disabled={saving || !form.date || !form.location || !form.raceType}>{L("Lagre", "Save")}</Button>
+          <Button onClick={submit} disabled={saving || !form.date || !form.startTime || !form.location || !form.raceType}>{L("Lagre", "Save")}</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -1596,7 +1604,7 @@ export default function RacePrep() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm">{prep.location}</span>
-                      <span className="text-xs text-muted-foreground">{fmtDate(prep.date, lang)}</span>
+                      <span className="text-xs text-muted-foreground">{fmtDate(prep.date, lang)}{prep.startTime ? ` · ${prep.startTime}` : ""}</span>
                       <Badge variant="outline" className="text-xs">{prep.raceType}</Badge>
                       <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1", DISCIPLINE_COLORS[prep.discipline] ?? "")}>
                         {DISCIPLINE_LABEL[prep.discipline]?.[lang] ?? prep.discipline}

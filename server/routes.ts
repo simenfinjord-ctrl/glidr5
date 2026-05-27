@@ -5297,6 +5297,50 @@ export async function registerRoutes(
     res.json({ pin });
   });
 
+  // Get team PIN + all watch-enabled users with their codes (watch users only)
+  app.get("/api/watch/team-codes", requireAuth, async (req, res) => {
+    if (!(await hasGarminWatchAccess(req))) {
+      return res.status(403).json({ message: "Watch access not granted" });
+    }
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+
+    // Get team PIN (auto-generate if missing)
+    const pinResult = await (pool as any).query(`SELECT watch_pin FROM teams WHERE id = $1`, [teamId]);
+    let pin: string = pinResult.rows[0]?.watch_pin;
+    if (!pin) {
+      pin = String(Math.floor(1000 + Math.random() * 9000));
+      await (pool as any).query(`UPDATE teams SET watch_pin = $1 WHERE id = $2`, [pin, teamId]);
+    }
+
+    // All users with garmin_watch access (flag set OR team admin)
+    const usersResult = await (pool as any).query(
+      `SELECT id, name, watch_code, is_team_admin FROM users
+       WHERE team_id = $1 AND is_active = 1 AND (garmin_watch = 1 OR is_team_admin = 1)
+       ORDER BY name`,
+      [teamId]
+    );
+
+    // Ensure every eligible user has a watch code
+    const members = [];
+    for (const row of usersResult.rows) {
+      let code: string = row.watch_code;
+      if (!code) {
+        do {
+          code = String(Math.floor(1000 + Math.random() * 9000));
+          const conflict = await (pool as any).query(
+            `SELECT id FROM users WHERE watch_code = $1`, [code]
+          );
+          if (conflict.rows.length === 0) break;
+        } while (true);
+        await (pool as any).query(`UPDATE users SET watch_code = $1 WHERE id = $2`, [code, row.id]);
+      }
+      members.push({ id: row.id, name: row.name, watchCode: code, isTeamAdmin: row.is_team_admin === 1 });
+    }
+
+    res.json({ teamPin: pin, members });
+  });
+
   // Check if user has garmin_watch access (team feature enabled + per-user flag, or admin)
   async function hasGarminWatchAccess(req: Request): Promise<boolean> {
     const u = req.user!;

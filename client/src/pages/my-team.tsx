@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Users, Shield, Mail, Search, X,
   ArrowUpDown, ChevronDown, List, LayoutGrid, AlignJustify, Calendar,
+  Watch, RefreshCw, Copy, Check,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -102,6 +103,39 @@ function RoleBadge({ isTeamAdmin }: { isTeamAdmin: boolean }) {
 export default function MyTeam() {
   const { user } = useAuth();
   const isTeamAdmin = !!(user as any)?.isTeamAdmin || !!(user as any)?.isAdmin;
+  const hasGarminWatch = !!(user as any)?.garminWatch || isTeamAdmin;
+
+  const queryClient = useQueryClient();
+  const [copiedPin, setCopiedPin] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<number | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
+
+  const { data: watchData } = useQuery<{ teamPin: string; members: { id: number; name: string; watchCode: string; isTeamAdmin: boolean }[] }>({
+    queryKey: ["/api/watch/team-codes"],
+    enabled: !!user && hasGarminWatch,
+  });
+
+  async function regeneratePin() {
+    setRegenerating(true);
+    try {
+      await fetch("/api/watch/pin/regenerate", { method: "POST", credentials: "include" });
+      queryClient.invalidateQueries({ queryKey: ["/api/watch/team-codes"] });
+    } finally {
+      setRegenerating(false);
+    }
+  }
+
+  function copyToClipboard(text: string, type: "pin" | number) {
+    navigator.clipboard.writeText(text).then(() => {
+      if (type === "pin") {
+        setCopiedPin(true);
+        setTimeout(() => setCopiedPin(false), 1500);
+      } else {
+        setCopiedCode(type as number);
+        setTimeout(() => setCopiedCode(null), 1500);
+      }
+    });
+  }
 
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("name-asc");
@@ -527,6 +561,78 @@ export default function MyTeam() {
                   </div>
                 );
               })}
+            </div>
+          </Card>
+        )}
+        {/* Watch section — only for users with Garmin Watch access */}
+        {hasGarminWatch && watchData && (
+          <Card className="rounded-2xl p-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/10">
+                <Watch className="h-4 w-4 text-sky-500" />
+              </div>
+              <h2 className="text-sm font-semibold">Watch</h2>
+            </div>
+
+            {/* Team PIN */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-1.5">Team ID</p>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-2.5">
+                  <span className="font-mono text-2xl font-bold tracking-[0.25em] text-foreground">
+                    {watchData.teamPin}
+                  </span>
+                  <button
+                    onClick={() => copyToClipboard(watchData.teamPin, "pin")}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    title="Copy"
+                  >
+                    {copiedPin ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+                {isTeamAdmin && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={regeneratePin}
+                    disabled={regenerating}
+                    className="gap-1.5 text-xs"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${regenerating ? "animate-spin" : ""}`} />
+                    Regenerate
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* User codes */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-2">Personal codes</p>
+              <div className="space-y-1.5">
+                {watchData.members.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between rounded-xl border border-border bg-muted/20 px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-[9px] font-bold text-white shrink-0">
+                        {m.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
+                      </div>
+                      <span className="text-sm font-medium truncate">{m.name}</span>
+                      {m.isTeamAdmin && (
+                        <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">TA</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="font-mono text-sm font-bold tracking-widest text-foreground">{m.watchCode}</span>
+                      <button
+                        onClick={() => copyToClipboard(m.watchCode, m.id)}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        title="Copy"
+                      >
+                        {copiedCode === m.id ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </Card>
         )}

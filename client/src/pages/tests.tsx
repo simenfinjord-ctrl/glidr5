@@ -25,6 +25,8 @@ type Test = {
   weatherId: number | null;
   testType: string;
   seriesId: number;
+  testSkiSource?: string;
+  athleteId?: number | null;
   notes: string | null;
   distanceLabels: string | null;
   distanceLabel0km: string | null;
@@ -34,7 +36,7 @@ type Test = {
   groupScope: string;
 };
 
-type Series = { id: number; name: string };
+type Series = { id: number; name: string; pairLabels?: string | null };
 type Product = { id: number; category: string; brand: string; name: string };
 type TestEntry = {
   id: number;
@@ -800,6 +802,7 @@ export default function Tests() {
   const [filtersOpen, setFiltersOpen] = useState(true);
 
   const seriesById = new Map(series.map((s) => [s.id, s.name] as const));
+  const seriesFullById = new Map(series.map((s) => [s.id, s] as const));
   const productsById = new Map(products.map((p) => [p.id, p] as const));
   const weatherById = new Map(weather.map((w) => [w.id, w] as const));
 
@@ -1433,6 +1436,23 @@ export default function Tests() {
                 const w = tst.weatherId ? weatherById.get(tst.weatherId) : null;
                 const winner = winnersByTest.get(tst.id);
 
+                // Build ski labels from series pairLabels
+                const skiLabels = (() => {
+                  const s = tst.seriesId ? seriesFullById.get(tst.seriesId) : null;
+                  if (!s?.pairLabels) return null;
+                  try {
+                    const parsed = JSON.parse(s.pairLabels);
+                    if (typeof parsed === "object" && parsed !== null) {
+                      const labels: Record<number, string> = {};
+                      for (const [k, v] of Object.entries(parsed)) {
+                        if (typeof v === "string" && v) labels[Number(k)] = v;
+                      }
+                      return Object.keys(labels).length > 0 ? labels : null;
+                    }
+                  } catch {}
+                  return null;
+                })();
+
                 return (
                   <Card key={tst.id} className="fs-card rounded-2xl p-4 sm:p-5" data-testid={`card-day-test-${tst.id}`}>
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1526,8 +1546,8 @@ export default function Tests() {
                                   data-testid={`row-day-entry-${entry.id}`}
                                 >
                                   <td className="py-2 pr-3">
-                                    <span className="inline-flex h-6 w-8 items-center justify-center rounded bg-background/50 text-xs font-semibold ring-1 ring-border/50">
-                                      {entry.skiNumber}
+                                    <span className="inline-flex h-6 min-w-[2rem] items-center justify-center rounded bg-background/50 px-1 text-xs font-semibold ring-1 ring-border/50">
+                                      {skiLabels?.[entry.skiNumber] ?? entry.skiNumber}
                                     </span>
                                   </td>
                                   {!hideDayDetails && (

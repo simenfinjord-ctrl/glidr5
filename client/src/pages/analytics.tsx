@@ -1036,8 +1036,28 @@ function ProductSearchStats({
 
     testResults.sort((a, b) => b.test.date.localeCompare(a.test.date));
 
+    // Helper: get the application string for a specific product in an entry
+    function getEntryApp(entry: TestEntry, productId: number): string {
+      if (!entry.methodology) return "";
+      const apps = entry.methodology.split("|");
+      if (entry.productId === productId) return apps[0]?.trim() ?? "";
+      if (entry.additionalProductIds) {
+        const addIds = entry.additionalProductIds.split(",").map(Number).filter((n) => !isNaN(n));
+        const idx = addIds.indexOf(productId);
+        if (idx !== -1) return apps[idx + 1]?.trim() ?? "";
+      }
+      return "";
+    }
+    function mostCommonApp(arr: string[]): string {
+      const filtered = arr.filter(Boolean);
+      if (filtered.length === 0) return "";
+      const freq = new Map<string, number>();
+      for (const v of filtered) freq.set(v, (freq.get(v) || 0) + 1);
+      return [...freq.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    }
+
     // Best combinations: other products that appear on the same ski in the same entry
-    const comboMap = new Map<number, { count: number; wins: number; totalRank: number }>();
+    const comboMap = new Map<number, { count: number; wins: number; totalRank: number; selectedApps: string[]; partnerApps: string[] }>();
     for (const entry of productEntries) {
       const partners: number[] = [];
       if (entry.productId !== null && entry.productId !== selectedProductId) partners.push(entry.productId);
@@ -1048,11 +1068,15 @@ function ProductSearchStats({
         }
       }
       const rank = getRank(entry);
+      const selectedApp = getEntryApp(entry, selectedProductId!);
       for (const pid of partners) {
-        if (!comboMap.has(pid)) comboMap.set(pid, { count: 0, wins: 0, totalRank: 0 });
+        if (!comboMap.has(pid)) comboMap.set(pid, { count: 0, wins: 0, totalRank: 0, selectedApps: [], partnerApps: [] });
         const c = comboMap.get(pid)!;
         c.count++;
         if (rank !== null) { c.totalRank += rank; if (rank === 1) c.wins++; }
+        if (selectedApp) c.selectedApps.push(selectedApp);
+        const partnerApp = getEntryApp(entry, pid);
+        if (partnerApp) c.partnerApps.push(partnerApp);
       }
     }
     const bestCombinations = Array.from(comboMap.entries())
@@ -1061,6 +1085,8 @@ function ProductSearchStats({
         count: s.count,
         avgRank: s.count > 0 ? parseFloat((s.totalRank / s.count).toFixed(2)) : null,
         wins: s.wins,
+        selectedApp: mostCommonApp(s.selectedApps),
+        partnerApp: mostCommonApp(s.partnerApps),
       }))
       .sort((a, b) => b.count - a.count || (a.avgRank ?? 99) - (b.avgRank ?? 99))
       .slice(0, 6);
@@ -1380,6 +1406,7 @@ function ProductSearchStats({
                     <thead className="bg-muted/60">
                       <tr>
                         <th className="text-left px-3 py-2 text-xs font-medium">Combined with</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium">Application</th>
                         <th className="text-center px-3 py-2 text-xs font-medium">Times</th>
                         <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
                         <th className="text-center px-3 py-2 text-xs font-medium">Wins</th>
@@ -1388,11 +1415,32 @@ function ProductSearchStats({
                     <tbody>
                       {stats.bestCombinations.map((c, i) => {
                         const p = productsById.get(c.partnerId);
+                        const selParsed = c.selectedApp ? parseApplication(c.selectedApp) : null;
+                        const partParsed = c.partnerApp ? parseApplication(c.partnerApp) : null;
                         return (
                           <tr key={c.partnerId} className={cn("border-t", i === 0 && "bg-violet-50/40 dark:bg-violet-900/10")}>
-                            <td className="px-3 py-1.5 font-medium">
+                            <td className="px-3 py-1.5 font-medium text-xs">
                               {i === 0 && <span className="mr-1 text-violet-500">★</span>}
                               {p ? `${p.brand} ${p.name}` : `#${c.partnerId}`}
+                            </td>
+                            <td className="px-3 py-1.5">
+                              <div className="flex flex-col gap-0.5">
+                                {selParsed?.interpreted && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    <span className="font-medium text-foreground/70">This:</span>{" "}
+                                    {selParsed.interpreted}
+                                  </span>
+                                )}
+                                {partParsed?.interpreted && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    <span className="font-medium text-foreground/70">+:</span>{" "}
+                                    {partParsed.interpreted}
+                                  </span>
+                                )}
+                                {!selParsed?.interpreted && !partParsed?.interpreted && (
+                                  <span className="text-[10px] text-muted-foreground">—</span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-3 py-1.5 text-center text-muted-foreground">{c.count}</td>
                             <td className="px-3 py-1.5 text-center font-semibold">{c.avgRank ?? "—"}</td>

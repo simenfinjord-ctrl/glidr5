@@ -1194,13 +1194,13 @@ export default function TestDetail() {
                 </div>
                 <div className="rounded-xl fs-gradient-amber px-3 py-3 ring-1 ring-amber-500/10" data-testid="text-weather-snow-humidity">
                   <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-amber-300/70">
-                    <Droplets className="h-3 w-3" /> {t("testDetail.humidity")}
+                    <Droplets className="h-3 w-3" /> Snow humidity
                   </div>
                   <div className="mt-1 text-lg font-bold text-amber-300">{weather.snowHumidityPct}%</div>
                 </div>
                 <div className="rounded-xl fs-gradient-violet px-3 py-3 ring-1 ring-violet-500/10" data-testid="text-weather-air-humidity">
                   <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-violet-700/70">
-                    <Droplets className="h-3 w-3" /> {t("testDetail.humidity")}
+                    <Droplets className="h-3 w-3" /> Air humidity
                   </div>
                   <div className="mt-1 text-lg font-bold text-violet-700">{weather.airHumidityPct}%rH</div>
                 </div>

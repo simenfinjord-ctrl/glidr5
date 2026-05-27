@@ -724,7 +724,6 @@ export default function MyAccount() {
   const [activeSection, setActiveSection] = useState<Section>("profile");
   const [copied, setCopied] = useState(false);
   const [copiedPin, setCopiedPin] = useState(false);
-  const [copiedMemberCode, setCopiedMemberCode] = useState<number | null>(null);
   const [pinRegenerating, setPinRegenerating] = useState(false);
 
   const [showUsernameForm, setShowUsernameForm] = useState(false);
@@ -792,10 +791,7 @@ export default function MyAccount() {
 
   const hasGarminWatch = !!(user as any)?.garminWatch || !!(user as any)?.isTeamAdmin || !!(user as any)?.isAdmin;
 
-  const { data: teamCodesData, isLoading: teamCodesLoading } = useQuery<{
-    teamPin: string;
-    members: { id: number; name: string; watchCode: string; isTeamAdmin: boolean }[];
-  }>({
+  const { data: teamCodesData, isLoading: teamCodesLoading } = useQuery<{ teamPin: string }>({
     queryKey: ["/api/watch/team-codes"],
     enabled: !!user && hasGarminWatch,
   });
@@ -817,12 +813,6 @@ export default function MyAccount() {
     });
   }
 
-  function copyMemberCode(text: string, id: number) {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopiedMemberCode(id);
-      setTimeout(() => setCopiedMemberCode(null), 1500);
-    });
-  }
 
   const regenerateMutation = useMutation({
     mutationFn: async () => {
@@ -1284,37 +1274,6 @@ export default function MyAccount() {
                 )}
               </div>
 
-              {/* Member codes */}
-              {teamCodesData && teamCodesData.members.length > 0 && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2">Personal codes</p>
-                  <div className="space-y-1.5">
-                    {teamCodesData.members.map((m) => (
-                      <div key={m.id} className="flex items-center justify-between rounded-xl border border-border bg-muted/20 px-3 py-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-[9px] font-bold text-white shrink-0">
-                            {m.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
-                          </div>
-                          <span className="text-sm font-medium truncate">{m.name}</span>
-                          {m.isTeamAdmin && (
-                            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">TA</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="font-mono text-sm font-bold tracking-widest text-foreground">{m.watchCode}</span>
-                          <button
-                            onClick={() => copyMemberCode(m.watchCode, m.id)}
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                            title={t("common.copy")}
-                          >
-                            {copiedMemberCode === m.id ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </Card>
           </div>
         );

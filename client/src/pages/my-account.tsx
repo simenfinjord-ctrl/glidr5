@@ -723,6 +723,9 @@ export default function MyAccount() {
 
   const [activeSection, setActiveSection] = useState<Section>("profile");
   const [copied, setCopied] = useState(false);
+  const [copiedPin, setCopiedPin] = useState(false);
+  const [copiedMemberCode, setCopiedMemberCode] = useState<number | null>(null);
+  const [pinRegenerating, setPinRegenerating] = useState(false);
 
   const [showUsernameForm, setShowUsernameForm] = useState(false);
   const [newUsername, setNewUsername] = useState("");
@@ -787,6 +790,40 @@ export default function MyAccount() {
     enabled: !!user,
   });
 
+  const hasGarminWatch = !!(user as any)?.garminWatch || !!(user as any)?.isTeamAdmin || !!(user as any)?.isAdmin;
+
+  const { data: teamCodesData, isLoading: teamCodesLoading } = useQuery<{
+    teamPin: string;
+    members: { id: number; name: string; watchCode: string; isTeamAdmin: boolean }[];
+  }>({
+    queryKey: ["/api/watch/team-codes"],
+    enabled: !!user && hasGarminWatch,
+  });
+
+  async function regeneratePin() {
+    setPinRegenerating(true);
+    try {
+      await fetch("/api/watch/pin/regenerate", { method: "POST", credentials: "include" });
+      queryClient.invalidateQueries({ queryKey: ["/api/watch/team-codes"] });
+    } finally {
+      setPinRegenerating(false);
+    }
+  }
+
+  function copyPin(text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedPin(true);
+      setTimeout(() => setCopiedPin(false), 1500);
+    });
+  }
+
+  function copyMemberCode(text: string, id: number) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedMemberCode(id);
+      setTimeout(() => setCopiedMemberCode(null), 1500);
+    });
+  }
+
   const regenerateMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/auth/my-watch-code/regenerate");
@@ -845,7 +882,7 @@ export default function MyAccount() {
     { id: "security", labelKey: "account.navSecurity", icon: KeyRound },
     { id: "preferences", labelKey: "account.navPreferences", icon: Smartphone },
     { id: "language", labelKey: "account.navLanguage", icon: Mail },
-    { id: "watch", labelKey: "account.navWatch", icon: Watch },
+    ...(hasGarminWatch ? [{ id: "watch" as Section, labelKey: "account.navWatch", icon: Watch }] : []),
     { id: "sessions", labelKey: "account.navSessions", icon: Shield },
     ...(commercializationEnabled && isTeamAdmin && !user?.isAdmin
       ? [{ id: "subscription" as Section, labelKey: "account.navSubscription", icon: Shield }]
@@ -1169,39 +1206,117 @@ export default function MyAccount() {
 
       case "watch":
         return (
-          <Card className="p-5 space-y-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-              <Watch className="h-4 w-4 text-sky-500" />
-              {t("account.watchCode")}
-            </h2>
-            <p className="text-sm text-muted-foreground">{t("account.watchCodeDesc")}</p>
+          <div className="space-y-4">
+            {/* Personal code */}
+            <Card className="p-5 space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                <Watch className="h-4 w-4 text-sky-500" />
+                {t("account.watchCode")}
+              </h2>
+              <p className="text-sm text-muted-foreground">{t("account.watchCodeDesc")}</p>
 
-            {watchCodeLoading ? (
-              <div className="h-12 bg-muted/50 rounded-lg animate-pulse" />
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="flex-1 rounded-lg border border-border bg-muted/30 px-4 py-3 text-2xl font-mono font-bold tracking-[0.3em] text-center">
-                  {watchCodeData?.watchCode ?? "—"}
+              {watchCodeLoading ? (
+                <div className="h-12 bg-muted/50 rounded-lg animate-pulse" />
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 rounded-lg border border-border bg-muted/30 px-4 py-3 text-2xl font-mono font-bold tracking-[0.3em] text-center">
+                    {watchCodeData?.watchCode ?? "—"}
+                  </div>
+                  <button
+                    onClick={handleCopy}
+                    title={t("common.copy")}
+                    className="p-2 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground"
+                  >
+                    {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                  <button
+                    onClick={() => { if (confirm(t("account.watchCodeRegenConfirm"))) regenerateMutation.mutate(); }}
+                    disabled={regenerateMutation.isPending}
+                    title={t("common.generate")}
+                    className="p-2 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground disabled:opacity-50"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${regenerateMutation.isPending ? "animate-spin" : ""}`} />
+                  </button>
                 </div>
-                <button
-                  onClick={handleCopy}
-                  title={t("common.copy")}
-                  className="p-2 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground"
-                >
-                  {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                </button>
-                <button
-                  onClick={() => { if (confirm(t("account.watchCodeRegenConfirm"))) regenerateMutation.mutate(); }}
-                  disabled={regenerateMutation.isPending}
-                  title={t("common.generate")}
-                  className="p-2 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground disabled:opacity-50"
-                >
-                  <RefreshCw className={`h-4 w-4 ${regenerateMutation.isPending ? "animate-spin" : ""}`} />
-                </button>
+              )}
+              <p className="text-xs text-muted-foreground/60">{t("account.watchCodePrivate")}</p>
+            </Card>
+
+            {/* Team ID + member codes */}
+            <Card className="p-5 space-y-4">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                <Watch className="h-4 w-4 text-sky-500" />
+                Team Watch
+              </h2>
+
+              {/* Team PIN */}
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5">Team ID</p>
+                {teamCodesLoading ? (
+                  <div className="h-12 bg-muted/50 rounded-lg animate-pulse" />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-2.5">
+                      <span className="font-mono text-2xl font-bold tracking-[0.25em] text-foreground">
+                        {teamCodesData?.teamPin ?? "—"}
+                      </span>
+                      <button
+                        onClick={() => teamCodesData && copyPin(teamCodesData.teamPin)}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        title={t("common.copy")}
+                      >
+                        {copiedPin ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
+                    {isTeamAdmin && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={regeneratePin}
+                        disabled={pinRegenerating}
+                        className="gap-1.5 text-xs"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${pinRegenerating ? "animate-spin" : ""}`} />
+                        Regenerate
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-            <p className="text-xs text-muted-foreground/60">{t("account.watchCodePrivate")}</p>
-          </Card>
+
+              {/* Member codes */}
+              {teamCodesData && teamCodesData.members.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Personal codes</p>
+                  <div className="space-y-1.5">
+                    {teamCodesData.members.map((m) => (
+                      <div key={m.id} className="flex items-center justify-between rounded-xl border border-border bg-muted/20 px-3 py-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-[9px] font-bold text-white shrink-0">
+                            {m.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
+                          </div>
+                          <span className="text-sm font-medium truncate">{m.name}</span>
+                          {m.isTeamAdmin && (
+                            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">TA</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-mono text-sm font-bold tracking-widest text-foreground">{m.watchCode}</span>
+                          <button
+                            onClick={() => copyMemberCode(m.watchCode, m.id)}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            title={t("common.copy")}
+                          >
+                            {copiedMemberCode === m.id ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
         );
 
       case "sessions":

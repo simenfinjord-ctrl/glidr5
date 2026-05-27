@@ -84,14 +84,17 @@ function parseSingleToken(raw: string): string {
   // Temperature: 200c, -5c, 130f
   const tempMatch = t.match(/^(-?\d+(?:\.\d+)?)\s*([cf])$/);
   if (tempMatch) {
-    const val = parseFloat(tempMatch[1]);
-    const unit = tempMatch[2];
+    const val = parseFloat(tempMatch[1] ?? '0');
+    const unit = tempMatch[2] ?? 'c';
     return unit === 'f' ? `${val}°F` : `${val}°C`;
   }
 
   // Layers / passes: *2, x2, 2x, ×3
   const layerMatch = t.match(/^[x*×](\d+)$/) || t.match(/^(\d+)[x*×]$/);
-  if (layerMatch) return `× ${layerMatch[1] || layerMatch[2]} ${t.startsWith('x') || t.startsWith('*') || t.startsWith('×') ? 'lag' : 'lag'}`;
+  if (layerMatch) {
+    const num = layerMatch[1] ?? layerMatch[2] ?? '?';
+    return `× ${num} stryk`;
+  }
 
   if (KEYWORDS[t]) return KEYWORDS[t];
 
@@ -137,11 +140,11 @@ export function parseApplication(raw: string): ParsedApplication {
 
   // Extract temperature (first occurrence)
   const tempMatch = raw.match(/(-?\d+(?:\.\d+)?)\s*c\b/i);
-  const tempC = tempMatch ? parseFloat(tempMatch[1]) : undefined;
+  const tempC = tempMatch ? parseFloat(tempMatch[1] ?? '0') : undefined;
 
   // Extract layers
   const layerMatch = raw.match(/[x*×](\d+)|(\d+)[x*×]/i);
-  const layers = layerMatch ? parseInt(layerMatch[1] ?? layerMatch[2]) : undefined;
+  const layers = layerMatch ? parseInt(layerMatch[1] ?? layerMatch[2] ?? '0', 10) : undefined;
 
   return { raw, interpreted, tempC, layers, components };
 }

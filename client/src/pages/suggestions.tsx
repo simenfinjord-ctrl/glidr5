@@ -500,14 +500,14 @@ export default function Suggestions() {
           const p2 = addIds[i];
           const app2Raw = addApps[i]?.trim() ?? "";
           const app2 = app2Raw ? (parseApplication(app2Raw).interpreted || app2Raw) : "";
-          const [pA, pB] = entry.productId < p2 ? [entry.productId, p2] : [p2, entry.productId];
-          const [aA, aB] = entry.productId < p2 ? [app1, app2] : [app2, app1];
-          const key = `${pA}-${pB}`;
-          if (!comboMap.has(key)) comboMap.set(key, { p1: pA, p2: pB, ranks: [], wins: 0, apps1: [], apps2: [] });
+          // Keep original order: entry.productId is always p1, addId is always p2
+          // Different orders = different combinations (not merged)
+          const key = `${entry.productId}-${p2}`;
+          if (!comboMap.has(key)) comboMap.set(key, { p1: entry.productId, p2, ranks: [], wins: 0, apps1: [], apps2: [] });
           const s = comboMap.get(key)!;
           if (rank !== null) { s.ranks.push(rank); if (rank === 1) s.wins++; }
-          if (aA) s.apps1.push(aA);
-          if (aB) s.apps2.push(aB);
+          if (app1) s.apps1.push(app1);
+          if (app2) s.apps2.push(app2);
         }
       }
 

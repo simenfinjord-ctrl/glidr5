@@ -325,7 +325,6 @@ export function TestEntryTable({
                       testId={`select-raceski-${row.id}`}
                     />
                   ) : (
-                  {/* Products side by side, each with an application field below */}
                   <div className="flex items-start gap-1.5 flex-wrap">
                     {/* Primary product block */}
                     <div className="flex flex-col gap-1 min-w-[140px]">

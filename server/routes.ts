@@ -2725,8 +2725,10 @@ export async function registerRoutes(
     } as any);
     const { password, ...safe } = created;
     res.json(safe);
-    // Send welcome email (fire-and-forget)
-    sendWelcomeEmail(created.email, created.name, created.language ?? "no").catch((e) => console.error("[welcome-email]", e));
+    // Send welcome email (fire-and-forget) — only if explicitly requested (defaults to true)
+    if (req.body.sendWelcomeEmail !== false) {
+      sendWelcomeEmail(created.email, created.name, created.language ?? "no").catch((e) => console.error("[welcome-email]", e));
+    }
   });
 
   app.put("/api/users/:id", requireAuth, async (req, res) => {

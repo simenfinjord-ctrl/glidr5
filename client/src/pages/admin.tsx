@@ -8,7 +8,7 @@ import {
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle,
   HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash, RotateCcw,
-  MessageSquare, UserPlus, FileText, ExternalLink, LayoutDashboard, CreditCard,
+  MessageSquare, UserPlus, FileText, ExternalLink, LayoutDashboard, CreditCard, Mail,
 } from "lucide-react";
 import {
   PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS,
@@ -347,7 +347,9 @@ function getTeamDisabledAreas(teams: ApiTeam[], teamId: number, isSuperAdmin: bo
 function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: () => void; allGroups: ApiGroup[]; defaultTeamId: number; teams: ApiTeam[] }) {
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
+  const { t } = useI18n();
   const [perms, setPerms] = useState<UserPermissions>({ ...DEFAULT_PERMISSIONS });
+  const [doSendWelcomeEmail, setDoSendWelcomeEmail] = useState(true);
   const [selectedTeamId, setSelectedTeamId] = useState(defaultTeamId);
   const teamChanged = selectedTeamId !== defaultTeamId;
   const { data: teamGroups } = useQuery<ApiGroup[]>({
@@ -365,7 +367,7 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
 
   const mutation = useMutation({
     mutationFn: async (data: z.infer<typeof userSchema>) => {
-      const res = await apiRequest("POST", "/api/users", data);
+      const res = await apiRequest("POST", "/api/users", { ...data, sendWelcomeEmail: doSendWelcomeEmail });
       return res.json();
     },
     onSuccess: () => {
@@ -503,6 +505,26 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
             <FormMessage />
           </FormItem>
         )} />
+        <div>
+          <label
+            className={cn(
+              "inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-all",
+              doSendWelcomeEmail
+                ? "border-blue-300 bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:border-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
+                : "border-border bg-muted/30 text-muted-foreground hover:bg-background/50"
+            )}
+            data-testid="checkbox-send-welcome-email"
+          >
+            <input
+              type="checkbox"
+              checked={doSendWelcomeEmail}
+              onChange={(e) => setDoSendWelcomeEmail(e.target.checked)}
+              className="sr-only"
+            />
+            <Mail className="h-3.5 w-3.5" />
+            {t("admin.sendWelcomeEmail")}
+          </label>
+        </div>
         <div className="flex justify-end">
           <Button type="submit" data-testid="button-create-user" disabled={mutation.isPending}>Create</Button>
         </div>

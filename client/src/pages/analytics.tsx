@@ -1405,8 +1405,7 @@ function ProductSearchStats({
                   <table className="w-full text-sm">
                     <thead className="bg-muted/60">
                       <tr>
-                        <th className="text-left px-3 py-2 text-xs font-medium">Combined with</th>
-                        <th className="text-left px-3 py-2 text-xs font-medium">Application</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium">Recipe</th>
                         <th className="text-center px-3 py-2 text-xs font-medium">Times</th>
                         <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
                         <th className="text-center px-3 py-2 text-xs font-medium">Wins</th>
@@ -1414,37 +1413,39 @@ function ProductSearchStats({
                     </thead>
                     <tbody>
                       {stats.bestCombinations.map((c, i) => {
-                        const p = productsById.get(c.partnerId);
+                        const partner = productsById.get(c.partnerId);
                         const selParsed = c.selectedApp ? parseApplication(c.selectedApp) : null;
                         const partParsed = c.partnerApp ? parseApplication(c.partnerApp) : null;
+                        const selName = selectedProduct ? `${selectedProduct.brand} ${selectedProduct.name}` : "—";
+                        const partName = partner ? `${partner.brand} ${partner.name}` : `#${c.partnerId}`;
                         return (
                           <tr key={c.partnerId} className={cn("border-t", i === 0 && "bg-violet-50/40 dark:bg-violet-900/10")}>
-                            <td className="px-3 py-1.5 font-medium text-xs">
-                              {i === 0 && <span className="mr-1 text-violet-500">★</span>}
-                              {p ? `${p.brand} ${p.name}` : `#${c.partnerId}`}
-                            </td>
-                            <td className="px-3 py-1.5">
-                              <div className="flex flex-col gap-0.5">
-                                {selParsed?.interpreted && (
-                                  <span className="text-[10px] text-muted-foreground">
-                                    <span className="font-medium text-foreground/70">This:</span>{" "}
-                                    {selParsed.interpreted}
-                                  </span>
+                            <td className="px-3 py-2">
+                              <div className="flex flex-col gap-1">
+                                {i === 0 && (
+                                  <span className="text-[9px] font-semibold uppercase tracking-wider text-violet-500 mb-0.5">Best combo</span>
                                 )}
-                                {partParsed?.interpreted && (
-                                  <span className="text-[10px] text-muted-foreground">
-                                    <span className="font-medium text-foreground/70">+:</span>{" "}
-                                    {partParsed.interpreted}
-                                  </span>
-                                )}
-                                {!selParsed?.interpreted && !partParsed?.interpreted && (
-                                  <span className="text-[10px] text-muted-foreground">—</span>
-                                )}
+                                {/* Row 1: selected product */}
+                                <div className="flex items-baseline gap-1.5 text-xs">
+                                  <span className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 text-[9px] font-bold">1</span>
+                                  <span className="font-medium text-foreground">{selName}</span>
+                                  {selParsed?.interpreted && (
+                                    <span className="text-muted-foreground">· {selParsed.interpreted}</span>
+                                  )}
+                                </div>
+                                {/* Row 2: partner product */}
+                                <div className="flex items-baseline gap-1.5 text-xs">
+                                  <span className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[9px] font-bold">2</span>
+                                  <span className="font-medium text-foreground">{partName}</span>
+                                  {partParsed?.interpreted && (
+                                    <span className="text-muted-foreground">· {partParsed.interpreted}</span>
+                                  )}
+                                </div>
                               </div>
                             </td>
-                            <td className="px-3 py-1.5 text-center text-muted-foreground">{c.count}</td>
-                            <td className="px-3 py-1.5 text-center font-semibold">{c.avgRank ?? "—"}</td>
-                            <td className="px-3 py-1.5 text-center">{c.wins > 0 ? <span className="text-amber-600 font-bold">{c.wins}</span> : "—"}</td>
+                            <td className="px-3 py-2 text-center text-muted-foreground text-xs">{c.count}</td>
+                            <td className="px-3 py-2 text-center font-semibold text-xs">{c.avgRank ?? "—"}</td>
+                            <td className="px-3 py-2 text-center text-xs">{c.wins > 0 ? <span className="text-amber-600 font-bold">{c.wins}</span> : "—"}</td>
                           </tr>
                         );
                       })}

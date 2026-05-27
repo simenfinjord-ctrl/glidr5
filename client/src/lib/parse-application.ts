@@ -96,6 +96,13 @@ function parseSingleToken(raw: string): string {
     return `× ${num} stryk`;
   }
 
+  // Bare number with no unit → interpret as Celsius (e.g. "200" → "200°C")
+  const bareNumMatch = t.match(/^(-?\d+(?:\.\d+)?)$/);
+  if (bareNumMatch) {
+    const val = parseFloat(bareNumMatch[1] ?? '0');
+    return `${val}°C`;
+  }
+
   if (KEYWORDS[t]) return KEYWORDS[t];
 
   return raw.trim(); // Return as-is if not recognized

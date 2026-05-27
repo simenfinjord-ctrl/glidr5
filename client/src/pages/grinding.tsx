@@ -1070,7 +1070,7 @@ export default function Grinding() {
 
   const { data: allTests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
-  const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
+  const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather/for-filtering"] });
   const { data: grindProfiles = [] } = useQuery<GrindProfile[]>({ queryKey: ["/api/grind-profiles"] });
 
   const allProfileParamKeys = useMemo(() => {
@@ -1169,18 +1169,33 @@ export default function Grinding() {
           if (!filterGrinds.some((g) => testGrindNames.has(g))) return false;
         }
       }
-      // Weather filters
+      // Weather filters — tests without linked weather are excluded when weather filters are active
       if (hasWeatherFiltersGrind) {
         const w = t.weatherId ? weatherById.get(t.weatherId) : null;
         if (!w) return false;
-        if (wfAirTempMin !== "" && (w.airTemperatureC ?? 999) < parseFloat(wfAirTempMin)) return false;
-        if (wfAirTempMax !== "" && (w.airTemperatureC ?? -999) > parseFloat(wfAirTempMax)) return false;
-        if (wfSnowTempMin !== "" && (w.snowTemperatureC ?? 999) < parseFloat(wfSnowTempMin)) return false;
-        if (wfSnowTempMax !== "" && (w.snowTemperatureC ?? -999) > parseFloat(wfSnowTempMax)) return false;
-        if (wfAirHumMin !== "" && (w.airHumidityPct ?? 999) < parseFloat(wfAirHumMin)) return false;
-        if (wfAirHumMax !== "" && (w.airHumidityPct ?? -999) > parseFloat(wfAirHumMax)) return false;
-        if (wfSnowHumMin !== "" && (w.snowHumidityPct ?? 999) < parseFloat(wfSnowHumMin)) return false;
-        if (wfSnowHumMax !== "" && (w.snowHumidityPct ?? -999) > parseFloat(wfSnowHumMax)) return false;
+        const airMin = wfAirTempMin !== "" ? parseFloat(wfAirTempMin) : null;
+        const airMax = wfAirTempMax !== "" ? parseFloat(wfAirTempMax) : null;
+        const snowMin = wfSnowTempMin !== "" ? parseFloat(wfSnowTempMin) : null;
+        const snowMax = wfSnowTempMax !== "" ? parseFloat(wfSnowTempMax) : null;
+        const airHumMin = wfAirHumMin !== "" ? parseFloat(wfAirHumMin) : null;
+        const airHumMax = wfAirHumMax !== "" ? parseFloat(wfAirHumMax) : null;
+        const snowHumMin = wfSnowHumMin !== "" ? parseFloat(wfSnowHumMin) : null;
+        const snowHumMax = wfSnowHumMax !== "" ? parseFloat(wfSnowHumMax) : null;
+        const cloudMin = wfCloudMin !== "" ? parseFloat(wfCloudMin) : null;
+        const cloudMax = wfCloudMax !== "" ? parseFloat(wfCloudMax) : null;
+        // For each range: auto-swap if user enters min > max (handles negative temp confusion)
+        const [effAirMin, effAirMax] = airMin != null && airMax != null && airMin > airMax ? [airMax, airMin] : [airMin, airMax];
+        const [effSnowMin, effSnowMax] = snowMin != null && snowMax != null && snowMin > snowMax ? [snowMax, snowMin] : [snowMin, snowMax];
+        const air = w.airTemperatureC ?? null;
+        const snow = w.snowTemperatureC ?? null;
+        if (effAirMin != null && (air == null || air < effAirMin)) return false;
+        if (effAirMax != null && (air == null || air > effAirMax)) return false;
+        if (effSnowMin != null && (snow == null || snow < effSnowMin)) return false;
+        if (effSnowMax != null && (snow == null || snow > effSnowMax)) return false;
+        if (airHumMin != null && (w.airHumidityPct == null || w.airHumidityPct < airHumMin)) return false;
+        if (airHumMax != null && (w.airHumidityPct == null || w.airHumidityPct > airHumMax)) return false;
+        if (snowHumMin != null && (w.snowHumidityPct == null || w.snowHumidityPct < snowHumMin)) return false;
+        if (snowHumMax != null && (w.snowHumidityPct == null || w.snowHumidityPct > snowHumMax)) return false;
         if (wfSnowType && !(w.snowType ?? "").toLowerCase().includes(wfSnowType.toLowerCase())) return false;
         if (wfTrackHardness && !(w.trackHardness ?? "").toLowerCase().includes(wfTrackHardness.toLowerCase())) return false;
         if (wfArtSnow && !(w.artificialSnow ?? "").toLowerCase().includes(wfArtSnow.toLowerCase())) return false;
@@ -1190,8 +1205,8 @@ export default function Grinding() {
         if (wfPrecipitation && !(w.precipitation ?? "").toLowerCase().includes(wfPrecipitation.toLowerCase())) return false;
         if (wfWind && !(w.wind ?? "").toLowerCase().includes(wfWind.toLowerCase())) return false;
         if (wfVisibility && !(w.visibility ?? "").toLowerCase().includes(wfVisibility.toLowerCase())) return false;
-        if (wfCloudMin !== "" && (w.clouds ?? 999) < parseFloat(wfCloudMin)) return false;
-        if (wfCloudMax !== "" && (w.clouds ?? -999) > parseFloat(wfCloudMax)) return false;
+        if (cloudMin != null && (w.clouds == null || w.clouds < cloudMin)) return false;
+        if (cloudMax != null && (w.clouds == null || w.clouds > cloudMax)) return false;
       }
       return true;
     });

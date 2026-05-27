@@ -1342,6 +1342,32 @@ export async function registerRoutes(
     res.json(list);
   });
 
+  // Lightweight weather lookup used for filter dropdowns/maps — available to any
+  // authenticated team member, regardless of whether they have weather permission.
+  app.get("/api/weather/for-filtering", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT id, date, location,
+              air_temperature_c AS "airTemperatureC",
+              snow_temperature_c AS "snowTemperatureC",
+              air_humidity_pct AS "airHumidityPct",
+              snow_humidity_pct AS "snowHumidityPct",
+              clouds, visibility, wind, precipitation,
+              artificial_snow AS "artificialSnow",
+              natural_snow AS "naturalSnow",
+              grain_size AS "grainSize",
+              snow_humidity_type AS "snowHumidityType",
+              track_hardness AS "trackHardness",
+              snow_type AS "snowType"
+       FROM daily_weather
+       WHERE team_id = $1`,
+      [teamId]
+    );
+    res.json(result.rows);
+  });
+
   app.get("/api/weather/find", requirePermission("weather", "view"), async (req, res) => {
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);

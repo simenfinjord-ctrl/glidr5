@@ -519,7 +519,7 @@ export default function AthleteDetail() {
   });
 
   const { data: weatherList = [] } = useQuery<{ id: number; date: string; location: string; snowTemperatureC: number | null; airTemperatureC: number | null; snowHumidityPct: number | null; airHumidityPct: number | null; snowHumidityType: string | null; trackHardness: string | null }[]>({
-    queryKey: ["/api/weather"],
+    queryKey: ["/api/weather/for-filtering"],
   });
 
   const { data: allProducts = [] } = useQuery<{ id: number; brand: string; name: string; category: string }[]>({
@@ -542,7 +542,7 @@ export default function AthleteDetail() {
   });
 
   const { data: weather = [] } = useQuery<WeatherItem[]>({
-    queryKey: ["/api/weather"],
+    queryKey: ["/api/weather/for-filtering"],
   });
 
   const { data: allTests = [] } = useQuery<RaceSkiTest[]>({
@@ -779,14 +779,21 @@ export default function AthleteDetail() {
       list = list.filter(t => {
         const w = t.weatherId ? testWeatherById.get(t.weatherId) : null;
         if (!w) return false;
-        if (testAirTempMin && (w.airTemperatureC ?? 999) < parseFloat(testAirTempMin)) return false;
-        if (testAirTempMax && (w.airTemperatureC ?? -999) > parseFloat(testAirTempMax)) return false;
-        if (testSnowTempMin && (w.snowTemperatureC ?? 999) < parseFloat(testSnowTempMin)) return false;
-        if (testSnowTempMax && (w.snowTemperatureC ?? -999) > parseFloat(testSnowTempMax)) return false;
-        if (testAirHumMin && (w.airHumidityPct ?? 999) < parseFloat(testAirHumMin)) return false;
-        if (testAirHumMax && (w.airHumidityPct ?? -999) > parseFloat(testAirHumMax)) return false;
-        if (testSnowHumMin && (w.snowHumidityPct ?? 999) < parseFloat(testSnowHumMin)) return false;
-        if (testSnowHumMax && (w.snowHumidityPct ?? -999) > parseFloat(testSnowHumMax)) return false;
+        // Auto-swap if user enters min > max (handles negative temperature confusion)
+        const airMinRaw = testAirTempMin !== "" ? parseFloat(testAirTempMin) : null;
+        const airMaxRaw = testAirTempMax !== "" ? parseFloat(testAirTempMax) : null;
+        const snowMinRaw = testSnowTempMin !== "" ? parseFloat(testSnowTempMin) : null;
+        const snowMaxRaw = testSnowTempMax !== "" ? parseFloat(testSnowTempMax) : null;
+        const [airMin, airMax] = airMinRaw != null && airMaxRaw != null && airMinRaw > airMaxRaw ? [airMaxRaw, airMinRaw] : [airMinRaw, airMaxRaw];
+        const [snowMin, snowMax] = snowMinRaw != null && snowMaxRaw != null && snowMinRaw > snowMaxRaw ? [snowMaxRaw, snowMinRaw] : [snowMinRaw, snowMaxRaw];
+        if (airMin != null && (w.airTemperatureC == null || w.airTemperatureC < airMin)) return false;
+        if (airMax != null && (w.airTemperatureC == null || w.airTemperatureC > airMax)) return false;
+        if (snowMin != null && (w.snowTemperatureC == null || w.snowTemperatureC < snowMin)) return false;
+        if (snowMax != null && (w.snowTemperatureC == null || w.snowTemperatureC > snowMax)) return false;
+        if (testAirHumMin && (w.airHumidityPct == null || w.airHumidityPct < parseFloat(testAirHumMin))) return false;
+        if (testAirHumMax && (w.airHumidityPct == null || w.airHumidityPct > parseFloat(testAirHumMax))) return false;
+        if (testSnowHumMin && (w.snowHumidityPct == null || w.snowHumidityPct < parseFloat(testSnowHumMin))) return false;
+        if (testSnowHumMax && (w.snowHumidityPct == null || w.snowHumidityPct > parseFloat(testSnowHumMax))) return false;
         if (testArtSnow && !(w?.artificialSnow ?? "").toLowerCase().includes(testArtSnow.toLowerCase())) return false;
         if (testNatSnow && !(w?.naturalSnow ?? "").toLowerCase().includes(testNatSnow.toLowerCase())) return false;
         if (testTrackHardness && !(w?.trackHardness ?? "").toLowerCase().includes(testTrackHardness.toLowerCase())) return false;
@@ -795,8 +802,8 @@ export default function AthleteDetail() {
         if (testPrecipitation && !(w?.precipitation ?? "").toLowerCase().includes(testPrecipitation.toLowerCase())) return false;
         if (testWind && !(w?.wind ?? "").toLowerCase().includes(testWind.toLowerCase())) return false;
         if (testVisibility && !(w?.visibility ?? "").toLowerCase().includes(testVisibility.toLowerCase())) return false;
-        if (testCloudMin !== "" && (w?.clouds ?? 999) < parseFloat(testCloudMin)) return false;
-        if (testCloudMax !== "" && (w?.clouds ?? -999) > parseFloat(testCloudMax)) return false;
+        if (testCloudMin !== "" && (w?.clouds == null || w.clouds < parseFloat(testCloudMin))) return false;
+        if (testCloudMax !== "" && (w?.clouds == null || w.clouds > parseFloat(testCloudMax))) return false;
         return true;
       });
     }
@@ -842,14 +849,20 @@ export default function AthleteDetail() {
       list = list.filter(r => {
         const w = r.weatherId ? raceWeatherById.get(r.weatherId) : null;
         if (!w) return false;
-        if (raceAirTempMin && (w.airTemperatureC ?? 999) < parseFloat(raceAirTempMin)) return false;
-        if (raceAirTempMax && (w.airTemperatureC ?? -999) > parseFloat(raceAirTempMax)) return false;
-        if (raceSnowTempMin && (w.snowTemperatureC ?? 999) < parseFloat(raceSnowTempMin)) return false;
-        if (raceSnowTempMax && (w.snowTemperatureC ?? -999) > parseFloat(raceSnowTempMax)) return false;
-        if (raceAirHumMin && (w.airHumidityPct ?? 999) < parseFloat(raceAirHumMin)) return false;
-        if (raceAirHumMax && (w.airHumidityPct ?? -999) > parseFloat(raceAirHumMax)) return false;
-        if (raceSnowHumMin && (w.snowHumidityPct ?? 999) < parseFloat(raceSnowHumMin)) return false;
-        if (raceSnowHumMax && (w.snowHumidityPct ?? -999) > parseFloat(raceSnowHumMax)) return false;
+        const airMinRaw = raceAirTempMin !== "" ? parseFloat(raceAirTempMin) : null;
+        const airMaxRaw = raceAirTempMax !== "" ? parseFloat(raceAirTempMax) : null;
+        const snowMinRaw = raceSnowTempMin !== "" ? parseFloat(raceSnowTempMin) : null;
+        const snowMaxRaw = raceSnowTempMax !== "" ? parseFloat(raceSnowTempMax) : null;
+        const [airMin, airMax] = airMinRaw != null && airMaxRaw != null && airMinRaw > airMaxRaw ? [airMaxRaw, airMinRaw] : [airMinRaw, airMaxRaw];
+        const [snowMin, snowMax] = snowMinRaw != null && snowMaxRaw != null && snowMinRaw > snowMaxRaw ? [snowMaxRaw, snowMinRaw] : [snowMinRaw, snowMaxRaw];
+        if (airMin != null && (w.airTemperatureC == null || w.airTemperatureC < airMin)) return false;
+        if (airMax != null && (w.airTemperatureC == null || w.airTemperatureC > airMax)) return false;
+        if (snowMin != null && (w.snowTemperatureC == null || w.snowTemperatureC < snowMin)) return false;
+        if (snowMax != null && (w.snowTemperatureC == null || w.snowTemperatureC > snowMax)) return false;
+        if (raceAirHumMin && (w.airHumidityPct == null || w.airHumidityPct < parseFloat(raceAirHumMin))) return false;
+        if (raceAirHumMax && (w.airHumidityPct == null || w.airHumidityPct > parseFloat(raceAirHumMax))) return false;
+        if (raceSnowHumMin && (w.snowHumidityPct == null || w.snowHumidityPct < parseFloat(raceSnowHumMin))) return false;
+        if (raceSnowHumMax && (w.snowHumidityPct == null || w.snowHumidityPct > parseFloat(raceSnowHumMax))) return false;
         if (raceSnowType && !(w.snowType ?? "").toLowerCase().includes(raceSnowType.toLowerCase())) return false;
         if (raceTrackHardness && !(w.trackHardness ?? "").toLowerCase().includes(raceTrackHardness.toLowerCase())) return false;
         if (raceArtSnow && !(w?.artificialSnow ?? "").toLowerCase().includes(raceArtSnow.toLowerCase())) return false;
@@ -859,8 +872,8 @@ export default function AthleteDetail() {
         if (racePrecipitation && !(w?.precipitation ?? "").toLowerCase().includes(racePrecipitation.toLowerCase())) return false;
         if (raceWind && !(w?.wind ?? "").toLowerCase().includes(raceWind.toLowerCase())) return false;
         if (raceVisibility && !(w?.visibility ?? "").toLowerCase().includes(raceVisibility.toLowerCase())) return false;
-        if (raceCloudMin !== "" && (w?.clouds ?? 999) < parseFloat(raceCloudMin)) return false;
-        if (raceCloudMax !== "" && (w?.clouds ?? -999) > parseFloat(raceCloudMax)) return false;
+        if (raceCloudMin !== "" && (w?.clouds == null || w.clouds < parseFloat(raceCloudMin))) return false;
+        if (raceCloudMax !== "" && (w?.clouds == null || w.clouds > parseFloat(raceCloudMax))) return false;
         return true;
       });
     }
@@ -5253,7 +5266,7 @@ function AthleteAnalyticsView({
 
   // Weather data for conditions analysis
   const { data: weather = [] } = useQuery<WeatherItem[]>({
-    queryKey: ["/api/weather"],
+    queryKey: ["/api/weather/for-filtering"],
   });
 
   const weatherById = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);

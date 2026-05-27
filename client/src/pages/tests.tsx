@@ -750,7 +750,7 @@ export default function Tests() {
   const { data: tests = [], isLoading: testsLoading } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
-  const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
+  const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather/for-filtering"] });
 
   const allTestIds = tests.map((t) => t.id);
   const { data: allEntries = [] } = useQuery<TestEntry[]>({
@@ -872,10 +872,18 @@ export default function Tests() {
         if (!w || !snowLabel.includes(filterSnowType.toLowerCase())) return false;
       }
 
-      if (filterAirTempMin && (!w || w.airTemperatureC < parseFloat(filterAirTempMin))) return false;
-      if (filterAirTempMax && (!w || w.airTemperatureC > parseFloat(filterAirTempMax))) return false;
-      if (filterSnowTempMin && (!w || w.snowTemperatureC < parseFloat(filterSnowTempMin))) return false;
-      if (filterSnowTempMax && (!w || w.snowTemperatureC > parseFloat(filterSnowTempMax))) return false;
+      // Temperature filters with auto-swap (handles negative temperature confusion)
+      const airMin = filterAirTempMin !== "" ? parseFloat(filterAirTempMin) : null;
+      const airMax = filterAirTempMax !== "" ? parseFloat(filterAirTempMax) : null;
+      const snowMin = filterSnowTempMin !== "" ? parseFloat(filterSnowTempMin) : null;
+      const snowMax = filterSnowTempMax !== "" ? parseFloat(filterSnowTempMax) : null;
+      const [effAirMin, effAirMax] = airMin != null && airMax != null && airMin > airMax ? [airMax, airMin] : [airMin, airMax];
+      const [effSnowMin, effSnowMax] = snowMin != null && snowMax != null && snowMin > snowMax ? [snowMax, snowMin] : [snowMin, snowMax];
+
+      if (effAirMin != null && (!w || (w.airTemperatureC ?? null) == null || w.airTemperatureC! < effAirMin)) return false;
+      if (effAirMax != null && (!w || (w.airTemperatureC ?? null) == null || w.airTemperatureC! > effAirMax)) return false;
+      if (effSnowMin != null && (!w || (w.snowTemperatureC ?? null) == null || w.snowTemperatureC! < effSnowMin)) return false;
+      if (effSnowMax != null && (!w || (w.snowTemperatureC ?? null) == null || w.snowTemperatureC! > effSnowMax)) return false;
       if (filterAirHumMin && (!w || w.airHumidityPct < parseFloat(filterAirHumMin))) return false;
       if (filterAirHumMax && (!w || w.airHumidityPct > parseFloat(filterAirHumMax))) return false;
       if (filterSnowHumMin && (!w || w.snowHumidityPct < parseFloat(filterSnowHumMin))) return false;
@@ -888,8 +896,8 @@ export default function Tests() {
       if (filterPrecipitation && !(w?.precipitation ?? "").toLowerCase().includes(filterPrecipitation.toLowerCase())) return false;
       if (filterWind && !(w?.wind ?? "").toLowerCase().includes(filterWind.toLowerCase())) return false;
       if (filterVisibility && !(w?.visibility ?? "").toLowerCase().includes(filterVisibility.toLowerCase())) return false;
-      if (filterCloudMin !== "" && (w?.clouds ?? 999) < parseFloat(filterCloudMin)) return false;
-      if (filterCloudMax !== "" && (w?.clouds ?? -999) > parseFloat(filterCloudMax)) return false;
+      if (filterCloudMin !== "" && (!w || (w.clouds ?? 999) < parseFloat(filterCloudMin))) return false;
+      if (filterCloudMax !== "" && (!w || (w.clouds ?? -999) > parseFloat(filterCloudMax))) return false;
 
       return true;
     });

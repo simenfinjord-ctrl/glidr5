@@ -325,36 +325,20 @@ export function TestEntryTable({
                       testId={`select-raceski-${row.id}`}
                     />
                   ) : (
-                  <div className="flex flex-col gap-2">
-                    {/* Primary product + application */}
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-1">
-                        <ProductCombobox
-                          testType={testType as "Glide" | "Structure" | "Classic" | "Skating" | "Double Poling"}
-                          products={products}
-                          value={row.productId}
-                          onChange={(id) => {
-                            const next = rows.map((r) => (r.id === row.id ? { ...r, productId: id } : r));
-                            setRows(next);
-                          }}
-                          testId={`input-product-${row.id}`}
-                        />
-                        <button
-                          type="button"
-                          className="flex-shrink-0 flex items-center justify-center h-7 w-7 rounded-md text-emerald-400 hover:bg-emerald-500/15 transition-colors"
-                          onClick={() => {
-                            const updated = [...additionalIds, 0];
-                            const next = rows.map((r) =>
-                              r.id === row.id ? { ...r, additionalProductIds: serializeAdditionalIds(updated) } : r
-                            );
-                            setRows(next);
-                          }}
-                          data-testid={`button-add-product-${row.id}`}
-                          title="Add product"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                  {/* Products side by side, each with an application field below */}
+                  <div className="flex items-start gap-1.5 flex-wrap">
+                    {/* Primary product block */}
+                    <div className="flex flex-col gap-1 min-w-[140px]">
+                      <ProductCombobox
+                        testType={testType as "Glide" | "Structure" | "Classic" | "Skating" | "Double Poling"}
+                        products={products}
+                        value={row.productId}
+                        onChange={(id) => {
+                          const next = rows.map((r) => (r.id === row.id ? { ...r, productId: id } : r));
+                          setRows(next);
+                        }}
+                        testId={`input-product-${row.id}`}
+                      />
                       <Input
                         value={row.applications?.[0] ?? ""}
                         onChange={(e) => {
@@ -367,67 +351,85 @@ export function TestEntryTable({
                           );
                           setRows(next);
                         }}
-                        className="h-7 text-xs bg-background/70 border-dashed"
-                        placeholder="Application (e.g. 200c+wool)"
+                        className="h-6 text-[11px] bg-background/60 border-dashed px-2"
+                        placeholder="Application…"
                         data-testid={`input-application-0-${row.id}`}
                       />
                     </div>
-                    {/* Additional products + applications */}
+                    {/* Additional product blocks */}
                     {additionalIds.map((addId, addIdx) => (
-                      <div key={addIdx} className="flex flex-col gap-1">
-                        <div className="flex items-center gap-0.5">
-                          <span className="text-xs font-bold text-muted-foreground">+</span>
-                          <ProductCombobox
-                            testType={testType as "Glide" | "Structure" | "Classic" | "Skating" | "Double Poling"}
-                            products={products}
-                            value={addId || undefined}
-                            onChange={(newId) => {
-                              const updated = [...additionalIds];
-                              if (newId) {
-                                updated[addIdx] = newId;
-                              } else {
-                                updated.splice(addIdx, 1);
-                              }
+                      <div key={addIdx} className="flex items-start gap-1">
+                        <span className="mt-2 text-xs font-bold text-muted-foreground">+</span>
+                        <div className="flex flex-col gap-1 min-w-[140px]">
+                          <div className="flex items-center gap-0.5">
+                            <ProductCombobox
+                              testType={testType as "Glide" | "Structure" | "Classic" | "Skating" | "Double Poling"}
+                              products={products}
+                              value={addId || undefined}
+                              onChange={(newId) => {
+                                const updated = [...additionalIds];
+                                if (newId) {
+                                  updated[addIdx] = newId;
+                                } else {
+                                  updated.splice(addIdx, 1);
+                                }
+                                const next = rows.map((r) =>
+                                  r.id === row.id ? { ...r, additionalProductIds: serializeAdditionalIds(updated) } : r
+                                );
+                                setRows(next);
+                              }}
+                              testId={`input-product-add-${row.id}-${addIdx}`}
+                            />
+                            <button
+                              type="button"
+                              className="flex-shrink-0 text-red-400 hover:text-red-300 transition-colors"
+                              onClick={() => {
+                                const updated = additionalIds.filter((_, i) => i !== addIdx);
+                                const next = rows.map((r) =>
+                                  r.id === row.id ? { ...r, additionalProductIds: serializeAdditionalIds(updated) } : r
+                                );
+                                setRows(next);
+                              }}
+                              data-testid={`button-remove-product-${row.id}-${addIdx}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                          <Input
+                            value={row.applications?.[addIdx + 1] ?? ""}
+                            onChange={(e) => {
+                              const apps = [...(row.applications ?? [])];
+                              apps[addIdx + 1] = e.target.value;
                               const next = rows.map((r) =>
-                                r.id === row.id ? { ...r, additionalProductIds: serializeAdditionalIds(updated) } : r
+                                r.id === row.id
+                                  ? { ...r, applications: apps, methodology: apps.join('|') }
+                                  : r
                               );
                               setRows(next);
                             }}
-                            testId={`input-product-add-${row.id}-${addIdx}`}
+                            className="h-6 text-[11px] bg-background/60 border-dashed px-2"
+                            placeholder="Application…"
+                            data-testid={`input-application-${addIdx + 1}-${row.id}`}
                           />
-                          <button
-                            type="button"
-                            className="flex-shrink-0 text-red-400 hover:text-red-300 transition-colors"
-                            onClick={() => {
-                              const updated = additionalIds.filter((_, i) => i !== addIdx);
-                              const next = rows.map((r) =>
-                                r.id === row.id ? { ...r, additionalProductIds: serializeAdditionalIds(updated) } : r
-                              );
-                              setRows(next);
-                            }}
-                            data-testid={`button-remove-product-${row.id}-${addIdx}`}
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
                         </div>
-                        <Input
-                          value={row.applications?.[addIdx + 1] ?? ""}
-                          onChange={(e) => {
-                            const apps = [...(row.applications ?? [])];
-                            apps[addIdx + 1] = e.target.value;
-                            const next = rows.map((r) =>
-                              r.id === row.id
-                                ? { ...r, applications: apps, methodology: apps.join('|') }
-                                : r
-                            );
-                            setRows(next);
-                          }}
-                          className="h-7 text-xs bg-background/70 border-dashed"
-                          placeholder="Application (e.g. 200c+wool)"
-                          data-testid={`input-application-${addIdx + 1}-${row.id}`}
-                        />
                       </div>
                     ))}
+                    {/* Add product button */}
+                    <button
+                      type="button"
+                      className="mt-1.5 flex items-center justify-center h-7 w-7 rounded-md text-emerald-400 hover:bg-emerald-500/15 transition-colors flex-shrink-0"
+                      onClick={() => {
+                        const updated = [...additionalIds, 0];
+                        const next = rows.map((r) =>
+                          r.id === row.id ? { ...r, additionalProductIds: serializeAdditionalIds(updated) } : r
+                        );
+                        setRows(next);
+                      }}
+                      data-testid={`button-add-product-${row.id}`}
+                      title="Add product"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                   )}
                 </td>

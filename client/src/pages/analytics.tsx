@@ -19,6 +19,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn, fmtDate } from "@/lib/utils";
+import { parseApplication } from "@/lib/parse-application";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/lib/i18n";
@@ -1070,6 +1071,40 @@ function ProductSearchStats({
     const podiumCount = ranks.filter(r => r <= 3).length;
     const podiumRate = ranks.length > 0 ? parseFloat(((podiumCount / ranks.length) * 100).toFixed(1)) : 0;
 
+    // Application insights: group by primary application of entries where this product is primary
+    const appMap = new Map<string, { count: number; ranks: number[]; temps: number[]; snowTypes: string[] }>();
+    for (const entry of productEntries) {
+      if (!entry.methodology) continue;
+      // Only count entries where this product is the primary product
+      if (entry.productId !== selectedProductId) continue;
+      const primaryApp = entry.methodology.split('|')[0].trim();
+      if (!primaryApp) continue;
+      const parsed = parseApplication(primaryApp);
+      const key = parsed.interpreted || primaryApp;
+      if (!appMap.has(key)) appMap.set(key, { count: 0, ranks: [], temps: [], snowTypes: [] });
+      const s = appMap.get(key)!;
+      s.count++;
+      const rank = getRank(entry);
+      if (rank !== null) s.ranks.push(rank);
+      const test = testsById.get(entry.testId);
+      const w = test?.weatherId ? weatherById.get(test.weatherId) : undefined;
+      if (w?.airTemperatureC != null) s.temps.push(w.airTemperatureC);
+      if (w?.snowType) s.snowTypes.push(w.snowType);
+    }
+    const appStats = Array.from(appMap.entries())
+      .map(([application, s]) => ({
+        application,
+        count: s.count,
+        avgRank: s.ranks.length > 0 ? parseFloat((s.ranks.reduce((a, b) => a + b, 0) / s.ranks.length).toFixed(1)) : null,
+        bestRank: s.ranks.length > 0 ? Math.min(...s.ranks) : null,
+        avgTemp: s.temps.length > 0 ? parseFloat((s.temps.reduce((a, b) => a + b, 0) / s.temps.length).toFixed(1)) : null,
+        commonSnow: s.snowTypes.length > 0
+          ? [...s.snowTypes].sort((a, b) => s.snowTypes.filter(x => x === b).length - s.snowTypes.filter(x => x === a).length)[0]
+          : null,
+      }))
+      .filter(s => s.count > 0)
+      .sort((a, b) => (a.avgRank ?? 99) - (b.avgRank ?? 99));
+
     return {
       totalTests: testsUsed.length,
       totalWins,
@@ -1082,9 +1117,10 @@ function ProductSearchStats({
       performanceOverTime,
       testResults,
       bestCombinations,
+      appStats,
       productEntries,
     };
-  }, [selectedProductId, allEntries, testsById]);
+  }, [selectedProductId, allEntries, testsById, weatherById]);
 
   return (
     <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-product-search">
@@ -1332,42 +1368,95 @@ function ProductSearchStats({
             </div>
           </div>
 
-          {stats.bestCombinations.length > 0 && (
-            <div>
-              <div className="text-sm font-medium mb-2 flex items-center gap-1.5">
-                <TrendingUp className="h-4 w-4 text-violet-500" />
-                Best combinations
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {stats.bestCombinations.length > 0 && (
+              <div>
+                <div className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                  <TrendingUp className="h-4 w-4 text-violet-500" />
+                  Best combinations
+                </div>
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/60">
+                      <tr>
+                        <th className="text-left px-3 py-2 text-xs font-medium">Combined with</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">Times</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">Wins</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.bestCombinations.map((c, i) => {
+                        const p = productsById.get(c.partnerId);
+                        return (
+                          <tr key={c.partnerId} className={cn("border-t", i === 0 && "bg-violet-50/40 dark:bg-violet-900/10")}>
+                            <td className="px-3 py-1.5 font-medium">
+                              {i === 0 && <span className="mr-1 text-violet-500">★</span>}
+                              {p ? `${p.brand} ${p.name}` : `#${c.partnerId}`}
+                            </td>
+                            <td className="px-3 py-1.5 text-center text-muted-foreground">{c.count}</td>
+                            <td className="px-3 py-1.5 text-center font-semibold">{c.avgRank ?? "—"}</td>
+                            <td className="px-3 py-1.5 text-center">{c.wins > 0 ? <span className="text-amber-600 font-bold">{c.wins}</span> : "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <div className="overflow-x-auto rounded-lg border">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/60">
-                    <tr>
-                      <th className="text-left px-3 py-2 text-xs font-medium">Combined with</th>
-                      <th className="text-center px-3 py-2 text-xs font-medium">Times</th>
-                      <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
-                      <th className="text-center px-3 py-2 text-xs font-medium">Wins</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.bestCombinations.map((c, i) => {
-                      const p = productsById.get(c.partnerId);
-                      return (
-                        <tr key={c.partnerId} className={cn("border-t", i === 0 && "bg-violet-50/40 dark:bg-violet-900/10")}>
-                          <td className="px-3 py-1.5 font-medium">
-                            {i === 0 && <span className="mr-1 text-violet-500">★</span>}
-                            {p ? `${p.brand} ${p.name}` : `#${c.partnerId}`}
+            )}
+
+            {stats.appStats.length > 0 && (
+              <div>
+                <div className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                  <FlaskConical className="h-4 w-4 text-amber-500" />
+                  Application insights
+                </div>
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/60">
+                      <tr>
+                        <th className="text-left px-3 py-2 text-xs font-medium">Application</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">Count</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">Best</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium">Conditions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.appStats.map((s, i) => (
+                        <tr key={i} className={cn("border-t", i === 0 && "bg-amber-50/40 dark:bg-amber-900/10")}>
+                          <td className="px-3 py-1.5 font-medium text-xs">
+                            {i === 0 && <span className="mr-1 text-amber-500">★</span>}
+                            {s.application}
                           </td>
-                          <td className="px-3 py-1.5 text-center text-muted-foreground">{c.count}</td>
-                          <td className="px-3 py-1.5 text-center font-semibold">{c.avgRank ?? "—"}</td>
-                          <td className="px-3 py-1.5 text-center">{c.wins > 0 ? <span className="text-amber-600 font-bold">{c.wins}</span> : "—"}</td>
+                          <td className="px-3 py-1.5 text-center text-muted-foreground">{s.count}</td>
+                          <td className="px-3 py-1.5 text-center font-semibold">{s.avgRank ?? "—"}</td>
+                          <td className="px-3 py-1.5 text-center">
+                            {s.bestRank != null ? (
+                              <span className={cn(
+                                "inline-flex min-w-5 items-center justify-center rounded-full px-1 py-0.5 text-[10px] font-bold",
+                                s.bestRank === 1 && "bg-yellow-500/20 text-yellow-600",
+                                s.bestRank === 2 && "bg-slate-300/20 text-slate-500",
+                                s.bestRank === 3 && "bg-amber-700/20 text-amber-600",
+                                s.bestRank > 3 && "bg-muted/60 text-muted-foreground",
+                              )}>{s.bestRank}</span>
+                            ) : "—"}
+                          </td>
+                          <td className="px-3 py-1.5 text-xs text-muted-foreground">
+                            {[
+                              s.avgTemp != null ? `${s.avgTemp}°C` : null,
+                              s.commonSnow,
+                            ].filter(Boolean).join(", ") || "—"}
+                          </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Location performance */}
           {(() => {

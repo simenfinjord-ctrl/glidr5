@@ -2418,17 +2418,19 @@ export default function AthleteDetail() {
                     {/* 3. Date range */}
                     <div className="flex items-center gap-1">
                       <div className="relative h-8 w-[130px]">
-                        <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
+                        <input type="date" value={testDateFrom} onChange={e => setTestDateFrom(e.target.value)}
+                          className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden" />
+                        <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
                           {testDateFrom ? fmtDate(testDateFrom) : <span className="text-muted-foreground">—</span>}
                         </div>
-                        <input type="date" value={testDateFrom} onChange={e => setTestDateFrom(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0" />
                       </div>
                       <span className="text-xs text-muted-foreground shrink-0">–</span>
                       <div className="relative h-8 w-[130px]">
-                        <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
+                        <input type="date" value={testDateTo} onChange={e => setTestDateTo(e.target.value)}
+                          className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden" />
+                        <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
                           {testDateTo ? fmtDate(testDateTo) : <span className="text-muted-foreground">—</span>}
                         </div>
-                        <input type="date" value={testDateTo} onChange={e => setTestDateTo(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0" />
                       </div>
                     </div>
                     {/* 4. Test type */}

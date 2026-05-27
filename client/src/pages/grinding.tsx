@@ -1392,17 +1392,21 @@ export default function Grinding() {
                   {/* 3. Date range */}
                   <div className="flex items-center gap-1">
                     <div className="relative h-9 w-[130px]">
-                      <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
+                      <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)}
+                        className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden"
+                        data-testid="input-grind-filter-date-from" />
+                      <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
                         {filterDateFrom ? fmtDate(filterDateFrom) : <span className="text-muted-foreground text-xs">—</span>}
                       </div>
-                      <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0" data-testid="input-grind-filter-date-from" />
                     </div>
                     <span className="text-muted-foreground text-xs shrink-0">–</span>
                     <div className="relative h-9 w-[130px]">
-                      <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border border-input bg-background px-3 text-xs">
+                      <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)}
+                        className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden"
+                        data-testid="input-grind-filter-date-to" />
+                      <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
                         {filterDateTo ? fmtDate(filterDateTo) : <span className="text-muted-foreground text-xs">—</span>}
                       </div>
-                      <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer rounded-md opacity-0" data-testid="input-grind-filter-date-to" />
                     </div>
                   </div>
                   {/* 5. Location */}

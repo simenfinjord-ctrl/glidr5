@@ -1290,6 +1290,28 @@ export default function Tests() {
               </div>
             </div>
           </div>
+
+          {/* Quick day select */}
+          {availableDates.length > 0 && !filterDateFrom && !filterDateTo && (
+            <div className={cn("mt-3 border-t border-border pt-3", !filtersOpen && "hidden")}>
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <CalendarDays className="h-3 w-3" />
+                Quick day select
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {availableDates.slice(0, 10).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => { setFilterDateFrom(d); setFilterDateTo(d); }}
+                    className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </Card>
 
         {testsLoading && <SkeletonCards count={5} />}

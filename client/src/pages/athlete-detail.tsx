@@ -2501,6 +2501,28 @@ export default function AthleteDetail() {
                       </div>
                     </div>
                   )}
+
+                  {/* Quick day select */}
+                  {testDates.length > 0 && !testDateFrom && !testDateTo && testDateFilter === "all" && (
+                    <div className="mt-3 border-t border-border pt-3">
+                      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        <CalendarDays className="h-3 w-3" />
+                        Quick day select
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {testDates.slice(0, 10).map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => { setTestDateFrom(d); setTestDateTo(d); }}
+                            className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                          >
+                            {d}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {/* Column chooser bar */}

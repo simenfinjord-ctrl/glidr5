@@ -1426,29 +1426,29 @@ export default function Tests() {
               </Card>
             ) : (
               <div className={cn("grid gap-4", twoColLayout ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1")}>
-              {filtered.map((t) => {
-                const distLabels = getDistanceLabels(t);
-                const testEntries = allEntries.filter((e) => e.testId === t.id);
+              {filtered.map((tst) => {
+                const distLabels = getDistanceLabels(tst);
+                const testEntries = allEntries.filter((e) => e.testId === tst.id);
                 const sortedEntries = [...testEntries].sort((a, b) => a.skiNumber - b.skiNumber);
-                const w = t.weatherId ? weatherById.get(t.weatherId) : null;
-                const winner = winnersByTest.get(t.id);
+                const w = tst.weatherId ? weatherById.get(tst.weatherId) : null;
+                const winner = winnersByTest.get(tst.id);
 
                 return (
-                  <Card key={t.id} className="fs-card rounded-2xl p-4 sm:p-5" data-testid={`card-day-test-${t.id}`}>
+                  <Card key={tst.id} className="fs-card rounded-2xl p-4 sm:p-5" data-testid={`card-day-test-${tst.id}`}>
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        {t.startTime && (
-                          <span className="font-mono text-xs font-semibold text-muted-foreground tabular-nums">{t.startTime}</span>
+                        {tst.startTime && (
+                          <span className="font-mono text-xs font-semibold text-muted-foreground tabular-nums">{tst.startTime}</span>
                         )}
-                        <AppLink href={`/tests/${t.id}`} testId={`link-test-${t.id}`}>
+                        <AppLink href={`/tests/${tst.id}`} testId={`link-test-${tst.id}`}>
                           <span className="text-base font-semibold hover:text-primary transition-colors cursor-pointer">
-                            {t.testName || t.location}
+                            {tst.testName || tst.location}
                           </span>
                         </AppLink>
-                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
-                          {t.testType}
+                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", tst.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
+                          {tst.testType}
                         </span>
-                        <span className="text-xs text-muted-foreground">{(t as any).seriesName || seriesById.get(t.seriesId) || ""}</span>
+                        <span className="text-xs text-muted-foreground">{(tst as any).seriesName || seriesById.get(tst.seriesId) || ""}</span>
                         {w && (
                           <>
                             <span className="inline-flex items-center gap-1 rounded-full fs-gradient-blue px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-500/10">
@@ -1473,17 +1473,16 @@ export default function Tests() {
 
                     {sortedEntries.length > 0 && (
                       <div className="overflow-x-auto">
-                        <table className="w-full text-sm table-fixed" data-testid={`table-day-test-${t.id}`}>
+                        <table className="w-full text-sm table-fixed" data-testid={`table-day-test-${tst.id}`}>
                           <colgroup>
                             <col style={{ width: 52 }} />
-                            {!hideDayDetails && <col style={{ width: "30%" }} />}
-                            {!hideDayDetails && <col style={{ width: "20%" }} />}
+                            {!hideDayDetails && <col style={{ width: "40%" }} />}
                             {distLabels.map((_, i) => (
                               <col key={i} style={{ width: 64 }} />
                             ))}
                             <col style={{ width: 52 }} />
                             <col style={{ width: 44 }} />
-                            {t.testType === "Classic" && <col style={{ width: 44 }} />}
+                            {tst.testType === "Classic" && <col style={{ width: 44 }} />}
                           </colgroup>
                           <thead>
                             <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -1496,7 +1495,7 @@ export default function Tests() {
                               ))}
                               <th className="pb-2 pr-3">{t("tests.rank")}</th>
                               <th className="pb-2">{t("tests.feelCol")}</th>
-                              {t.testType === "Classic" && <th className="pb-2 pl-2">{t("newTest.kick")}</th>}
+                              {tst.testType === "Classic" && <th className="pb-2 pl-2">{t("newTest.kick")}</th>}
                             </tr>
                           </thead>
                           <tbody>
@@ -1560,7 +1559,7 @@ export default function Tests() {
                                       </span>
                                     ) : "—"}
                                   </td>
-                                  {t.testType === "Classic" && (
+                                  {tst.testType === "Classic" && (
                                   <td className="py-2 pl-2 text-xs">
                                     {entry.kickRank != null ? (
                                       <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">

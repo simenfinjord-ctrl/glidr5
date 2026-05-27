@@ -39,12 +39,12 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
             view.selectedLabel = view.labelB;
             view.loserLabel = view.labelA;
             view.phase = 1;
-            view.distance = 10;
+            view.distance = 50;
             playKeySound();
             WatchUi.requestUpdate();
         } else if (view.phase == 1) {
             view.distance -= 10;
-            if (view.distance < 10) { view.distance = 10; }
+            if (view.distance < 0) { view.distance = 0; }
             WatchUi.requestUpdate();
         }
         return true;
@@ -59,7 +59,7 @@ class HeatDelegate extends WatchUi.BehaviorDelegate {
             view.selectedLabel = view.labelA;
             view.loserLabel = view.labelB;
             view.phase = 1;
-            view.distance = 10;
+            view.distance = 50;
             playKeySound();
             WatchUi.requestUpdate();
         } else if (view.phase == 1) {

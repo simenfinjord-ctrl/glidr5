@@ -97,7 +97,8 @@ class HeatView extends WatchUi.View {
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
             dc.drawText(cx, h * 0.30, Graphics.FONT_XTINY, loserLabel + " behind:", Graphics.TEXT_JUSTIFY_CENTER);
 
-            dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
+            var distColor = (distance == 0) ? Graphics.COLOR_LT_GRAY : Graphics.COLOR_ORANGE;
+            dc.setColor(distColor, Graphics.COLOR_TRANSPARENT);
             dc.drawText(cx, h * 0.38, Graphics.FONT_NUMBER_HOT, distance.toString(), Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);

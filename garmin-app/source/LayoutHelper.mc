@@ -53,12 +53,57 @@ module Ld {
 
     // Digit cell width for 4-digit code entry
     function dw(w) {
-        return (w * 0.14).toNumber();
+        return (w * 0.16).toNumber();
     }
 
     // Gap between digit pairs (the separator in xx-xx)
     function dgap(w) {
-        return (w * 0.04).toNumber();
+        return (w * 0.05).toNumber();
+    }
+
+    // Draw a 4-digit code row with clear active/inactive distinction.
+    // digits: array of 4 Numbers. cursorPos: 0-3. centerY: vertical center of the digit row.
+    function drawDigitRow(dc, w, centerY, digits, cursorPos) {
+        var cellW  = dw(w);
+        var cellH  = (cellW * 1.35).toNumber();   // slightly taller than wide
+        var gap    = dgap(w);
+        var sep    = (w * 0.03).toNumber();        // separator gap between pairs
+        var cx     = w / 2;
+
+        // Total width: 4 cells + separator between pair 1 and pair 2
+        var totalW = cellW * 4 + sep;
+        var startX = cx - totalW / 2;
+
+        var fontH = Graphics.getFontHeight(Graphics.FONT_NUMBER_MILD);
+
+        for (var i = 0; i < 4; i++) {
+            // x position — insert separator gap between digit 1 and 2
+            var cellX = startX + i * cellW + (i >= 2 ? sep : 0);
+            var textX = cellX + cellW / 2;
+            var boxTop = centerY - cellH / 2;
+
+            if (i == cursorPos) {
+                // Active: accent-color box + white text
+                dc.setColor(accentColor(), Graphics.COLOR_TRANSPARENT);
+                dc.fillRoundedRectangle(cellX, boxTop, cellW, cellH, cr(w));
+                dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+            } else {
+                // Inactive: subtle dark box + gray text
+                dc.setColor(0x222222, Graphics.COLOR_TRANSPARENT);
+                dc.fillRoundedRectangle(cellX, boxTop, cellW, cellH, cr(w));
+                dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            }
+
+            var textY = centerY - fontH / 2;
+            dc.drawText(textX, textY, Graphics.FONT_NUMBER_MILD,
+                digits[i].toString(), Graphics.TEXT_JUSTIFY_CENTER);
+        }
+
+        // Separator dot between the two pairs
+        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+        var dotX = startX + cellW * 2 + sep / 2;
+        dc.drawText(dotX, centerY - Graphics.getFontHeight(Graphics.FONT_XTINY) / 2,
+            Graphics.FONT_XTINY, "-", Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     // Vertical offset to vertically center text inside a highlight bar of height ih(h)

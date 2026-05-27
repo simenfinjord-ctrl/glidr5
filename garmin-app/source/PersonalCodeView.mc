@@ -55,33 +55,7 @@ class PersonalCodeView extends WatchUi.View {
         dc.drawText(cx, h * 0.35, Graphics.FONT_XTINY, labelText, Graphics.TEXT_JUSTIFY_CENTER);
 
         // ── Digit boxes ─────────────────────────────────────────
-        var digitWidth = Ld.dw(w);
-        var gap = Ld.dgap(w);
-        var totalWidth = digitWidth * 4 + gap;
-        var startX = cx - totalWidth / 2;
-        var digitY = h * 0.45;
-
-        for (var i = 0; i < 4; i++) {
-            var dx = startX + i * digitWidth + (i >= 2 ? gap : 0);
-            var textX = dx + digitWidth / 2;
-
-            if (i == cursorPos) {
-                dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-            } else {
-                dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            }
-
-            dc.drawText(textX, digitY, Graphics.FONT_NUMBER_MILD,
-                digits[i].toString(), Graphics.TEXT_JUSTIFY_CENTER);
-
-            if (i == cursorPos) {
-                var underlineY = digitY + (h * 0.07).toNumber();
-                dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-                dc.setPenWidth(2);
-                dc.drawLine(textX - 10, underlineY, textX + 10, underlineY);
-                dc.setPenWidth(1);
-            }
-        }
+        Ld.drawDigitRow(dc, w, (h * 0.50).toNumber(), digits, cursorPos);
 
         // ── Hints ───────────────────────────────────────────────
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);

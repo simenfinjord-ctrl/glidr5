@@ -47,25 +47,20 @@ class PersonalCodeView extends WatchUi.View {
             displayStatus = isLoginMode ? "Enter personal ID" : "Enter your code";
         }
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.25, Graphics.FONT_XTINY, displayStatus, Graphics.TEXT_JUSTIFY_CENTER);
-
-        // ── Label ───────────────────────────────────────────────
-        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-        var labelText = isLoginMode ? "Personal ID" : "Personal code";
-        dc.drawText(cx, h * 0.35, Graphics.FONT_XTINY, labelText, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.28, Graphics.FONT_XTINY, displayStatus, Graphics.TEXT_JUSTIFY_CENTER);
 
         // ── Digit boxes ─────────────────────────────────────────
-        Ld.drawDigitRow(dc, w, (h * 0.50).toNumber(), digits, cursorPos);
+        Ld.drawDigitRow(dc, w, (h * 0.47).toNumber(), digits, cursorPos);
 
         // ── Hints ───────────────────────────────────────────────
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.70, Graphics.FONT_XTINY, "UP/DN: change digit", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.66, Graphics.FONT_XTINY, "UP/DN: change digit", Graphics.TEXT_JUSTIFY_CENTER);
         if (isLoginMode) {
-            dc.drawText(cx, h * 0.78, Graphics.FONT_XTINY, "SELECT: next digit / continue", Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(cx, h * 0.86, Graphics.FONT_XTINY, "BACK: prev digit", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.75, Graphics.FONT_XTINY, "SELECT: next / continue", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.84, Graphics.FONT_XTINY, "BACK: prev digit", Graphics.TEXT_JUSTIFY_CENTER);
         } else {
-            dc.drawText(cx, h * 0.78, Graphics.FONT_XTINY, "SELECT: next / confirm", Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(cx, h * 0.86, Graphics.FONT_XTINY, "BACK: prev / cancel", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.75, Graphics.FONT_XTINY, "SELECT: next / confirm", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.84, Graphics.FONT_XTINY, "BACK: prev / cancel", Graphics.TEXT_JUSTIFY_CENTER);
         }
 
         // ── Stored name (settings mode only) ────────────────────

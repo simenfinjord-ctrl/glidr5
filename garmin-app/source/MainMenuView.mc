@@ -37,26 +37,25 @@ class MainMenuView extends WatchUi.View {
 
         if (teamName != null && userName != null) {
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.14, Graphics.FONT_XTINY, teamName, Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.13, Graphics.FONT_XTINY, teamName, Graphics.TEXT_JUSTIFY_CENTER);
             dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.21, Graphics.FONT_XTINY, userName, Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.19, Graphics.FONT_XTINY, userName, Graphics.TEXT_JUSTIFY_CENTER);
         } else if (teamName != null) {
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.17, Graphics.FONT_XTINY, teamName, Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.15, Graphics.FONT_XTINY, teamName, Graphics.TEXT_JUSTIFY_CENTER);
         } else if (userName != null) {
             dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.17, Graphics.FONT_XTINY, userName, Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.15, Graphics.FONT_XTINY, userName, Graphics.TEXT_JUSTIFY_CENTER);
         }
 
         // ── Menu items ───────────────────────────────────────────
-        // Use FONT_SMALL for menu labels — calculate text height for centering
         var fontH = Graphics.getFontHeight(Graphics.FONT_SMALL);
-        var barH  = (fontH * 1.5).toNumber();   // bar taller than text for padding
+        var barH  = (fontH * 1.5).toNumber();
         var halfBar = (barH / 2).toNumber();
         var itemSpacing = (h * 0.165).toNumber();
 
         for (var i = 0; i < menuItems.size(); i++) {
-            var barTop = (h * 0.29).toNumber() + i * itemSpacing - halfBar;
+            var barTop = (h * 0.33).toNumber() + i * itemSpacing - halfBar;
             var textY  = barTop + ((barH - fontH) / 2).toNumber();
 
             if (i == selectedIndex) {

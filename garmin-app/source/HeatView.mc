@@ -92,20 +92,20 @@ class HeatView extends WatchUi.View {
 
         } else if (phase == 1) {
             dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.10, Graphics.FONT_SMALL, selectedLabel + " wins", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.16, Graphics.FONT_SMALL, selectedLabel + " wins", Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.28, Graphics.FONT_XTINY, loserLabel + " behind:", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.30, Graphics.FONT_XTINY, loserLabel + " behind:", Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_ORANGE, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.46, Graphics.FONT_NUMBER_HOT, distance.toString(), Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.38, Graphics.FONT_NUMBER_HOT, distance.toString(), Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.68, Graphics.FONT_XTINY, "cm", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.64, Graphics.FONT_XTINY, "cm", Graphics.TEXT_JUSTIFY_CENTER);
 
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.78, Graphics.FONT_XTINY, "UP: +10  DOWN: -10", Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(cx, h * 0.86, Graphics.FONT_XTINY, "SELECT: confirm", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.75, Graphics.FONT_XTINY, "UP: +10  DOWN: -10", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.84, Graphics.FONT_XTINY, "SELECT: confirm", Graphics.TEXT_JUSTIFY_CENTER);
         }
     }
 }

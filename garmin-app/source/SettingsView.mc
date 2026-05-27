@@ -43,13 +43,13 @@ class SettingsView extends WatchUi.View {
         drawActionItem(dc, w, h, cx, 4, "Log Out", Graphics.COLOR_RED);
 
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.95, Graphics.FONT_XTINY, "UP/DN: navigate  SELECT: open", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.93, Graphics.FONT_XTINY, "UP/DN: navigate  SELECT: open", Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     function drawToggleItem(dc, w, h, cx, index, label, isOn) {
         var fontH  = Graphics.getFontHeight(Graphics.FONT_XTINY);
         var barH   = (fontH * 1.5).toNumber();
-        var barTop = (h * 0.15).toNumber() + index * (h * 0.155).toNumber() - (barH / 2).toNumber();
+        var barTop = (h * 0.22).toNumber() + index * (h * 0.155).toNumber() - (barH / 2).toNumber();
         var textY  = barTop + ((barH - fontH) / 2).toNumber();
         var isSelected = (index == selectedIndex);
 
@@ -72,7 +72,7 @@ class SettingsView extends WatchUi.View {
     function drawActionItem(dc, w, h, cx, index, label, color) {
         var fontH  = Graphics.getFontHeight(Graphics.FONT_XTINY);
         var barH   = (fontH * 1.5).toNumber();
-        var barTop = (h * 0.15).toNumber() + index * (h * 0.155).toNumber() - (barH / 2).toNumber();
+        var barTop = (h * 0.22).toNumber() + index * (h * 0.155).toNumber() - (barH / 2).toNumber();
         var textY  = barTop + ((barH - fontH) / 2).toNumber();
         var isSelected = (index == selectedIndex);
 

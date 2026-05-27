@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { cn, fmtDate } from "@/lib/utils";
+import { parseApplication } from "@/lib/parse-application";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ type ProductTest = {
     results: string | null;
     feelingRank: number | null;
     isSelectedProduct: boolean;
+    methodology: string | null;  // pipe-separated applications
   }[];
 };
 
@@ -224,6 +226,41 @@ function ProductDetailInner() {
         : null;
 
     return { wins, avgRank, glideCount, structureCount, totalTests: tests.length };
+  }, [tests]);
+
+  // ── Application analytics ────────────────────────────────────────────────
+  const appStats = useMemo(() => {
+    const map = new Map<string, { count: number; ranks: number[]; temps: number[]; snowTypes: string[] }>();
+    for (const test of tests) {
+      for (const entry of test.entries) {
+        if (!entry.methodology || !entry.isSelectedProduct) continue;
+        const primaryApp = entry.methodology.split('|')[0].trim();
+        if (!primaryApp) continue;
+        const parsed = parseApplication(primaryApp);
+        const key = parsed.interpreted || primaryApp;
+        if (!map.has(key)) map.set(key, { count: 0, ranks: [], temps: [], snowTypes: [] });
+        const stat = map.get(key)!;
+        stat.count++;
+        if (entry.rank0km != null) stat.ranks.push(entry.rank0km);
+        if (test.weather?.airTemperatureC != null) stat.temps.push(test.weather.airTemperatureC);
+        if (test.weather?.snowType) stat.snowTypes.push(test.weather.snowType);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([key, val]) => ({
+        application: key,
+        count: val.count,
+        avgRank: val.ranks.length > 0 ? val.ranks.reduce((a, b) => a + b, 0) / val.ranks.length : null,
+        bestRank: val.ranks.length > 0 ? Math.min(...val.ranks) : null,
+        avgTemp: val.temps.length > 0 ? val.temps.reduce((a, b) => a + b, 0) / val.temps.length : null,
+        commonSnow: val.snowTypes.length > 0
+          ? val.snowTypes.sort((a, b) =>
+              val.snowTypes.filter(x => x === b).length - val.snowTypes.filter(x => x === a).length
+            )[0]
+          : null,
+      }))
+      .filter(s => s.count > 0)
+      .sort((a, b) => (a.avgRank ?? 99) - (b.avgRank ?? 99));
   }, [tests]);
 
   // ── Not found ─────────────────────────────────────────────────────────────
@@ -537,6 +574,50 @@ function ProductDetailInner() {
                   </Card>
                 );
               })}
+            </div>
+          )}
+
+          {/* APPLICATION ANALYTICS */}
+          {appStats.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                Application Insights
+              </h2>
+              <Card className="overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-xs text-muted-foreground">
+                        <th className="px-4 py-2 font-medium">Application</th>
+                        <th className="px-4 py-2 font-medium text-center">Count</th>
+                        <th className="px-4 py-2 font-medium text-center">Avg Rank</th>
+                        <th className="px-4 py-2 font-medium text-center">Best Rank</th>
+                        <th className="px-4 py-2 font-medium">Typical Conditions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {appStats.map((s, i) => (
+                        <tr key={i} className={cn("border-b last:border-0", i % 2 === 0 ? "bg-card" : "bg-muted/20")}>
+                          <td className="px-4 py-2 font-medium">{s.application}</td>
+                          <td className="px-4 py-2 text-center tabular-nums">{s.count}</td>
+                          <td className="px-4 py-2 text-center tabular-nums">
+                            {s.avgRank != null ? s.avgRank.toFixed(1) : "—"}
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            {s.bestRank != null ? <RankBadge rank={s.bestRank} /> : "—"}
+                          </td>
+                          <td className="px-4 py-2 text-xs text-muted-foreground">
+                            {[
+                              s.avgTemp != null ? `${s.avgTemp.toFixed(1)}°C` : null,
+                              s.commonSnow,
+                            ].filter(Boolean).join(", ") || "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
             </div>
           )}
         </div>

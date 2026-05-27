@@ -369,6 +369,7 @@ export async function registerRoutes(
       ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS action_data TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'no';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS date_format TEXT DEFAULT 'european';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TEXT;
       CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       INSERT INTO app_settings (key, value) VALUES ('commercialization_enabled', 'false') ON CONFLICT (key) DO NOTHING;
@@ -1213,7 +1214,7 @@ export async function registerRoutes(
       const entryRows = await (pg as any).query(
         `SELECT te.id, te.test_id, te.ski_number, te.product_id, te.additional_product_ids,
                 te.result_0km_cm_behind, te.rank_0km, te.result_xkm_cm_behind, te.rank_xkm,
-                te.results, te.feeling_rank,
+                te.results, te.feeling_rank, te.methodology,
                 p.brand as product_brand, p.name as product_name
          FROM test_entries te
          LEFT JOIN products p ON p.id = te.product_id
@@ -1266,6 +1267,7 @@ export async function registerRoutes(
           result0kmCmBehind: e.result_0km_cm_behind, rank0km: e.rank_0km,
           resultXkmCmBehind: e.result_xkm_cm_behind, rankXkm: e.rank_xkm,
           results: e.results, feelingRank: e.feeling_rank,
+          methodology: e.methodology ?? null,
           isSelectedProduct,
         });
       }
@@ -2964,6 +2966,29 @@ export async function registerRoutes(
     // Update session
     (u as any).username = clean;
     return res.json({ ok: true, username: clean });
+  });
+
+  // Update own profile preferences (dateFormat, etc.)
+  app.put("/api/user/profile", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const { dateFormat } = req.body;
+    const updates: string[] = [];
+    const values: any[] = [];
+    if (dateFormat !== undefined) {
+      if (dateFormat !== 'european' && dateFormat !== 'american') {
+        return res.status(400).json({ message: "dateFormat must be 'european' or 'american'" });
+      }
+      updates.push(`date_format = $${values.length + 1}`);
+      values.push(dateFormat);
+    }
+    if (updates.length === 0) return res.status(400).json({ message: "No fields to update" });
+    values.push(u.id);
+    const { pool } = await import("./db");
+    await (pool as any).query(
+      `UPDATE users SET ${updates.join(", ")} WHERE id = $${values.length}`,
+      values
+    );
+    return res.json({ ok: true });
   });
 
   // Update own avatar

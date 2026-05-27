@@ -296,7 +296,13 @@ export async function setupAuth(app: Express) {
         }
       } catch {}
     }
-    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas });
+    // Fetch extra user fields not stored in session
+    let dateFormat: string = 'european';
+    try {
+      const dfRow = await pool.query(`SELECT date_format FROM users WHERE id = $1`, [safe.id]);
+      if (dfRow.rows[0]?.date_format) dateFormat = dfRow.rows[0].date_format;
+    } catch {}
+    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat });
   });
 
   app.post("/api/auth/incognito", (req, res) => {

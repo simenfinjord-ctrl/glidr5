@@ -14,7 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useMobileNav } from "@/components/mobile-nav";
 import { getNavLayout, setNavLayout, type NavLayout } from "@/lib/nav-layout";
 import { type AccentColor, ACCENT_COLORS, ACCENT_NAV, getAccentColor, setAccentColor } from "@/lib/accent-color";
-import { cn } from "@/lib/utils";
+import { cn, setGlidrDateFormat } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { useAppSettings } from "@/lib/app-settings";
 
@@ -784,6 +784,26 @@ export default function MyAccount() {
     setAccentColorState(color);
   }
 
+  const [dateFormat, setDateFormatState] = useState<'european' | 'american'>('european');
+  useEffect(() => {
+    const fmt = (user as any)?.dateFormat as 'european' | 'american' | undefined;
+    if (fmt) setDateFormatState(fmt);
+  }, [(user as any)?.dateFormat]);
+  const updateProfileMutation = useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const res = await apiRequest("PUT", "/api/user/profile", body);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+  });
+  function handleDateFormat(fmt: 'european' | 'american') {
+    setDateFormatState(fmt);
+    setGlidrDateFormat(fmt);
+    updateProfileMutation.mutate({ dateFormat: fmt });
+  }
+
   const { data: watchCodeData, isLoading: watchCodeLoading } = useQuery<{ watchCode: string }>({
     queryKey: ["/api/auth/my-watch-code"],
     enabled: !!user,
@@ -1167,6 +1187,38 @@ export default function MyAccount() {
                     aria-pressed={accentColor === c.id}
                   />
                 ))}
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-muted/50 px-4 py-3 space-y-2">
+              <div>
+                <div className="text-sm font-medium">{t("preferences.dateFormat")}</div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => handleDateFormat("european")}
+                  className={cn(
+                    "flex-1 rounded-lg border-2 px-3 py-2 text-xs font-medium transition-colors",
+                    dateFormat === "european"
+                      ? ACCENT_NAV[accentColor].selectedBtn
+                      : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                  )}
+                  aria-pressed={dateFormat === "european"}
+                >
+                  {t("preferences.dateFormatEuropean")}
+                </button>
+                <button
+                  onClick={() => handleDateFormat("american")}
+                  className={cn(
+                    "flex-1 rounded-lg border-2 px-3 py-2 text-xs font-medium transition-colors",
+                    dateFormat === "american"
+                      ? ACCENT_NAV[accentColor].selectedBtn
+                      : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                  )}
+                  aria-pressed={dateFormat === "american"}
+                >
+                  {t("preferences.dateFormatAmerican")}
+                </button>
               </div>
             </div>
           </Card>

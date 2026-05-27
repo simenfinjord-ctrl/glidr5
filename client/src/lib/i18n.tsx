@@ -203,8 +203,8 @@ const translations: Record<string, Record<string, string>> = {
     "tests.confirmDelete": "Are you sure you want to delete this test? This action cannot be undone.",
     "tests.imageAdded": "Image added",
     "tests.addImage": "Add image",
-    "tests.showBlind": "Show results",
-    "tests.hideBlind": "Hide results",
+    "tests.showBlind": "Show product & winner",
+    "tests.hideBlind": "Hide product & winner",
     "tests.grid": "Grid",
     "tests.list": "List",
     "tests.table": "Table",
@@ -234,6 +234,20 @@ const translations: Record<string, Record<string, string>> = {
     "tests.sortOldest": "Oldest first",
     "tests.sortLocation": "By location",
     "tests.sortType": "By type",
+    "tests.application": "Application",
+    "tests.applicationPlaceholder": "e.g. 200c+wool",
+
+    // ── Preferences ───────────────────────────────────────────────────────────────
+    "preferences.dateFormat": "Date format",
+    "preferences.dateFormatEuropean": "European (DD.MM.YYYY)",
+    "preferences.dateFormatAmerican": "American (MM/DD/YYYY)",
+
+    // ── Product detail ────────────────────────────────────────────────────────────
+    "productDetail.appInsights": "Application Insights",
+    "productDetail.appCount": "Count",
+    "productDetail.appAvgRank": "Avg Rank",
+    "productDetail.appBestRank": "Best Rank",
+    "productDetail.appConditions": "Typical Conditions",
 
     // ── New / Edit Test ────────────────────────────────────────────────────────
     "newTest.title": "New test",
@@ -1378,8 +1392,8 @@ const translations: Record<string, Record<string, string>> = {
     "tests.confirmDelete": "Er du sikker på at du vil slette denne testen? Handlingen kan ikke angres.",
     "tests.imageAdded": "Bilde lagt til",
     "tests.addImage": "Legg til bilde",
-    "tests.showBlind": "Vis resultater",
-    "tests.hideBlind": "Skjul resultater",
+    "tests.showBlind": "Vis produkt & vinner",
+    "tests.hideBlind": "Skjul produkt & vinner",
     "tests.grid": "Rutenett",
     "tests.list": "Liste",
     "tests.table": "Tabell",
@@ -1409,6 +1423,20 @@ const translations: Record<string, Record<string, string>> = {
     "tests.sortOldest": "Eldste først",
     "tests.sortLocation": "Etter sted",
     "tests.sortType": "Etter type",
+    "tests.application": "Applikasjon",
+    "tests.applicationPlaceholder": "f.eks. 200c+ull",
+
+    // ── Preferanser ───────────────────────────────────────────────────────────────
+    "preferences.dateFormat": "Datoformat",
+    "preferences.dateFormatEuropean": "Europeisk (DD.MM.YYYY)",
+    "preferences.dateFormatAmerican": "Amerikansk (MM/DD/YYYY)",
+
+    // ── Produktdetaljer ───────────────────────────────────────────────────────────
+    "productDetail.appInsights": "Applikasjonsanalyse",
+    "productDetail.appCount": "Antall",
+    "productDetail.appAvgRank": "Snittplassering",
+    "productDetail.appBestRank": "Beste plassering",
+    "productDetail.appConditions": "Typiske forhold",
 
     // ── Ny / Rediger test ─────────────────────────────────────────────────────
     "newTest.title": "Ny test",

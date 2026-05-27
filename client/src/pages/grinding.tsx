@@ -1139,7 +1139,7 @@ export default function Grinding() {
     const d = new Date(dateStr);
     const month = d.getMonth();
     const year = d.getFullYear();
-    return month >= 9 ? `${year}/${year + 1}` : `${year - 1}/${year}`;
+    return month >= 4 ? `${year}/${year + 1}` : `${year - 1}/${year}`;
   }
 
   const availableSeasons = useMemo(() => {

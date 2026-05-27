@@ -777,6 +777,7 @@ export default function Tests() {
   const [filterLocation, setFilterLocation] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
+  const [quickDayDate, setQuickDayDate] = useState("");
   const [filterAirTempMin, setFilterAirTempMin] = useState("");
   const [filterAirTempMax, setFilterAirTempMax] = useState("");
   const [filterSnowTempMin, setFilterSnowTempMin] = useState("");
@@ -805,7 +806,7 @@ export default function Tests() {
     const d = new Date(dateStr);
     const month = d.getMonth();
     const year = d.getFullYear();
-    return month >= 9 ? `${year}/${year + 1}` : `${year - 1}/${year}`;
+    return month >= 4 ? `${year}/${year + 1}` : `${year - 1}/${year}`;
   }
 
   const availableSeasons = useMemo(() => {
@@ -856,8 +857,9 @@ export default function Tests() {
       if (filterSeason !== "All" && getSeason(t.date) !== filterSeason) return false;
       if (filterType !== "All" && t.testType !== filterType) return false;
       if (filterLocation && !t.location.toLowerCase().includes(filterLocation.toLowerCase())) return false;
-      if (filterDateFrom && t.date < filterDateFrom) return false;
-      if (filterDateTo && t.date > filterDateTo) return false;
+      if (quickDayDate && t.date !== quickDayDate) return false;
+      if (!quickDayDate && filterDateFrom && t.date < filterDateFrom) return false;
+      if (!quickDayDate && filterDateTo && t.date > filterDateTo) return false;
 
       if (filterProduct !== "All") {
         const entries = allEntries.filter((e) => e.testId === t.id);
@@ -920,7 +922,7 @@ export default function Tests() {
     }
 
     return result;
-  }, [tests, filterSeason, filterType, filterProduct, filterSnowType, filterLocation, filterDateFrom, filterDateTo, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, filterTrackHardness, filterSnowHumidityType, filterGrainSize, filterArtSnow, filterNatSnow, filterPrecipitation, filterWind, filterVisibility, filterCloudMin, filterCloudMax, allEntries, weatherById, sortOrder]);
+  }, [tests, filterSeason, filterType, filterProduct, filterSnowType, filterLocation, quickDayDate, filterDateFrom, filterDateTo, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, filterTrackHardness, filterSnowHumidityType, filterGrainSize, filterArtSnow, filterNatSnow, filterPrecipitation, filterWind, filterVisibility, filterCloudMin, filterCloudMax, allEntries, weatherById, sortOrder]);
 
   const hasFilters = filterSeason !== "All" || filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || (filterDateFrom || filterDateTo) || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax || filterTrackHardness || filterSnowHumidityType || filterGrainSize || filterArtSnow || filterNatSnow || filterPrecipitation || filterWind || filterVisibility || filterCloudMin || filterCloudMax;
 
@@ -947,7 +949,7 @@ export default function Tests() {
     setFilterProduct("All");
     setFilterSnowType("");
     setFilterLocation("");
-    setFilterDateFrom(""); setFilterDateTo("");
+    setFilterDateFrom(""); setFilterDateTo(""); setQuickDayDate("");
     setFilterAirTempMin("");
     setFilterAirTempMax("");
     setFilterSnowTempMin("");
@@ -977,7 +979,7 @@ export default function Tests() {
   });
   const twoColLayout = viewMode === "cards2";
   const hideDayDetails = isBlindTester || hideDayDetailsState;
-  const isDayView = false;
+  const isDayView = !!quickDayDate;
 
   function cycleViewMode() {
     const next = viewMode === "cards" ? "cards2" : viewMode === "cards2" ? "table" : viewMode === "table" ? "calendar" : "cards";
@@ -1300,7 +1302,7 @@ export default function Tests() {
           </div>
 
           {/* Quick day select */}
-          {availableDates.length > 0 && !filterDateFrom && !filterDateTo && (
+          {availableDates.length > 0 && (
             <div className={cn("mt-3 border-t border-border pt-3", !filtersOpen && "hidden")}>
               <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 <CalendarDays className="h-3 w-3" />
@@ -1311,8 +1313,13 @@ export default function Tests() {
                   <button
                     key={d}
                     type="button"
-                    onClick={() => { setFilterDateFrom(d); setFilterDateTo(d); }}
-                    className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                    onClick={() => { setQuickDayDate(prev => prev === d ? "" : d); setHideDayDetails(false); }}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                      quickDayDate === d
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-primary/10 text-primary hover:bg-primary/20"
+                    )}
                   >
                     {d}
                   </button>

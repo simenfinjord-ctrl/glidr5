@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest, getQueryFn, queryClient } from "@/lib/queryClient";
+import { setGlidrDateFormat } from "@/lib/utils";
 
 export type PermissionLevel = "none" | "view" | "edit";
 export type UserPermissions = {
@@ -32,6 +34,7 @@ type User = {
   garminWatch?: boolean;
   teamEnabledAreas?: string[] | null;
   avatarUrl?: string | null;
+  dateFormat?: 'european' | 'american';
 };
 
 export function useAuth() {
@@ -39,6 +42,10 @@ export function useAuth() {
     queryKey: ["/api/auth/me"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
+
+  useEffect(() => {
+    setGlidrDateFormat(user?.dateFormat ?? 'european');
+  }, [user?.dateFormat]);
 
   const { data: userTeams = [], isLoading: userTeamsLoading } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/user/teams"],

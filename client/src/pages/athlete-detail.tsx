@@ -699,6 +699,7 @@ export default function AthleteDetail() {
   const [testSeasonFilter, setTestSeasonFilter] = useState("all");
   const [testDateFrom, setTestDateFrom] = useState("");
   const [testDateTo, setTestDateTo] = useState("");
+  const [quickTestDayDate, setQuickTestDayDate] = useState("");
   const [testAirTempMin, setTestAirTempMin] = useState("");
   const [testAirTempMax, setTestAirTempMax] = useState("");
   const [testSnowTempMin, setTestSnowTempMin] = useState("");
@@ -755,7 +756,7 @@ export default function AthleteDetail() {
   const testAvailableSeasons = useMemo(() => {
     const s = new Set(raceSkiTests.map(t => {
       const d = new Date(t.date); const m = d.getMonth(); const y = d.getFullYear();
-      return m >= 9 ? `${y}/${y+1}` : `${y-1}/${y}`;
+      return m >= 4 ? `${y}/${y+1}` : `${y-1}/${y}`;
     }));
     return Array.from(s).sort().reverse();
   }, [raceSkiTests]);
@@ -768,12 +769,15 @@ export default function AthleteDetail() {
     if (testSeasonFilter !== "all") {
       list = list.filter(t => {
         const d = new Date(t.date); const m = d.getMonth(); const y = d.getFullYear();
-        const season = m >= 9 ? `${y}/${y+1}` : `${y-1}/${y}`;
+        const season = m >= 4 ? `${y}/${y+1}` : `${y-1}/${y}`;
         return season === testSeasonFilter;
       });
     }
-    if (testDateFrom) list = list.filter(t => t.date >= testDateFrom);
-    if (testDateTo) list = list.filter(t => t.date <= testDateTo);
+    if (quickTestDayDate) { list = list.filter(t => t.date === quickTestDayDate); }
+    else {
+      if (testDateFrom) list = list.filter(t => t.date >= testDateFrom);
+      if (testDateTo) list = list.filter(t => t.date <= testDateTo);
+    }
     const hasWeatherFilter = testAirTempMin || testAirTempMax || testSnowTempMin || testSnowTempMax || testAirHumMin || testAirHumMax || testSnowHumMin || testSnowHumMax || testTrackHardness || testSnowHumidityType || testGrainSize || testArtSnow || testNatSnow || testPrecipitation || testWind || testVisibility || testCloudMin || testCloudMax;
     if (hasWeatherFilter) {
       list = list.filter(t => {
@@ -817,7 +821,7 @@ export default function AthleteDetail() {
       }
     });
     return list;
-  }, [raceSkiTests, testDateFilter, testTypeFilter, testSortBy, testLocationFilter, testSeasonFilter, testDateFrom, testDateTo, testAirTempMin, testAirTempMax, testSnowTempMin, testSnowTempMax, testAirHumMin, testAirHumMax, testSnowHumMin, testSnowHumMax, testTrackHardness, testSnowHumidityType, testGrainSize, testArtSnow, testNatSnow, testPrecipitation, testWind, testVisibility, testCloudMin, testCloudMax, testWeatherById]);
+  }, [raceSkiTests, testDateFilter, testTypeFilter, testSortBy, testLocationFilter, testSeasonFilter, quickTestDayDate, testDateFrom, testDateTo, testAirTempMin, testAirTempMax, testSnowTempMin, testSnowTempMax, testAirHumMin, testAirHumMax, testSnowHumMin, testSnowHumMax, testTrackHardness, testSnowHumidityType, testGrainSize, testArtSnow, testNatSnow, testPrecipitation, testWind, testVisibility, testCloudMin, testCloudMax, testWeatherById]);
 
   // Full weather map (WeatherItem with all fields) for race history
   const raceWeatherById = useMemo(() => new Map(weather.map(w => [w.id, w])), [weather]);
@@ -825,7 +829,7 @@ export default function AthleteDetail() {
   const raceAvailableSeasons = useMemo(() => {
     const s = new Set(raceHistory.map(r => {
       const d = new Date(r.date); const m = d.getMonth(); const y = d.getFullYear();
-      return m >= 9 ? `${y}/${y+1}` : `${y-1}/${y}`;
+      return m >= 4 ? `${y}/${y+1}` : `${y-1}/${y}`;
     }));
     return Array.from(s).sort().reverse();
   }, [raceHistory]);
@@ -836,7 +840,7 @@ export default function AthleteDetail() {
     if (raceSeasonFilter !== "all") {
       list = list.filter(r => {
         const d = new Date(r.date); const m = d.getMonth(); const y = d.getFullYear();
-        const season = m >= 9 ? `${y}/${y+1}` : `${y-1}/${y}`;
+        const season = m >= 4 ? `${y}/${y+1}` : `${y-1}/${y}`;
         return season === raceSeasonFilter;
       });
     }
@@ -2516,7 +2520,7 @@ export default function AthleteDetail() {
                   )}
 
                   {/* Quick day select */}
-                  {testDates.length > 0 && !testDateFrom && !testDateTo && testDateFilter === "all" && (
+                  {testDates.length > 0 && (
                     <div className="mt-3 border-t border-border pt-3">
                       <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         <CalendarDays className="h-3 w-3" />
@@ -2527,8 +2531,23 @@ export default function AthleteDetail() {
                           <button
                             key={d}
                             type="button"
-                            onClick={() => { setTestDateFrom(d); setTestDateTo(d); }}
-                            className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                            onClick={() => {
+                              const isSelecting = quickTestDayDate !== d;
+                              setQuickTestDayDate(isSelecting ? d : "");
+                              if (isSelecting) {
+                                setExpandedTestIds(new Set(
+                                  raceSkiTests
+                                    .filter(t => t.date === d)
+                                    .map(t => t.id)
+                                ));
+                              }
+                            }}
+                            className={cn(
+                              "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                              quickTestDayDate === d
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-primary/10 text-primary hover:bg-primary/20"
+                            )}
                           >
                             {d}
                           </button>

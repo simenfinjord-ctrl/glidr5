@@ -751,6 +751,18 @@ export default function AthleteDetail() {
     return dates;
   }, [raceSkiTests]);
 
+  const dateLabelMap = useMemo(() => {
+    const locale = language === "no" ? "nb-NO" : "en-US";
+    const map = new Map<string, string>();
+    for (const d of testDates) {
+      const weekday = new Date(d + "T12:00:00").toLocaleDateString(locale, { weekday: "long" });
+      const locs = [...new Set(raceSkiTests.filter((test) => test.date === d).map((test) => test.location))];
+      const loc = locs.length > 0 ? locs[0] : "";
+      map.set(d, [fmtDate(d), weekday, loc].filter(Boolean).join("  "));
+    }
+    return map;
+  }, [testDates, language, raceSkiTests]);
+
   const testWeatherById = useMemo(() => new Map(weather.map(w => [w.id, w])), [weather]);
 
   const testAvailableSeasons = useMemo(() => {
@@ -2649,14 +2661,9 @@ export default function AthleteDetail() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__none__">—</SelectItem>
-                              {testDates.slice(10).map((d) => {
-                                const locs = [...new Set(raceSkiTests.filter((tt: any) => tt.date === d).map((tt: any) => tt.location))];
-                                const locale = language === 'no' ? 'nb-NO' : 'en-US';
-                                const day = new Date(d + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long' });
-                                const dayName = day.charAt(0).toUpperCase() + day.slice(1);
-                                const label = [fmtDateShort(d), dayName, ...locs].join(' · ');
-                                return <SelectItem key={d} value={d}>{label}</SelectItem>;
-                              })}
+                              {testDates.slice(10).map((d) => (
+                                <SelectItem key={d} value={d}>{dateLabelMap.get(d) ?? fmtDate(d)}</SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         )}

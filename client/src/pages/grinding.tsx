@@ -1152,6 +1152,18 @@ export default function Grinding() {
     return dates.sort().reverse();
   }, [grindTests]);
 
+  const dateLabelMap = useMemo(() => {
+    const locale = language === "no" ? "nb-NO" : "en-US";
+    const map = new Map<string, string>();
+    for (const d of availableDates) {
+      const weekday = new Date(d + "T12:00:00").toLocaleDateString(locale, { weekday: "long" });
+      const locs = [...new Set((grindTests as any[]).filter((test) => test.date === d).map((test) => test.location as string))];
+      const loc = locs.length > 0 ? locs[0] : "";
+      map.set(d, [fmtDate(d), weekday, loc].filter(Boolean).join("  "));
+    }
+    return map;
+  }, [availableDates, language, grindTests]);
+
   // Weather filter derived values — must be declared BEFORE the filtered useMemo
   const hasWeatherFiltersGrind = !!(wfAirTempMin || wfAirTempMax || wfSnowTempMin || wfSnowTempMax || wfAirHumMin || wfAirHumMax || wfSnowHumMin || wfSnowHumMax || wfSnowType || wfTrackHardness || wfArtSnow || wfNatSnow || wfSnowHumidityType || wfGrainSize || wfPrecipitation || wfWind || wfVisibility || wfCloudMin || wfCloudMax);
 
@@ -1617,14 +1629,9 @@ export default function Grinding() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none__">—</SelectItem>
-                          {availableDates.slice(10).map((d) => {
-                            const locs = [...new Set(grindTests.filter(tt => tt.date === d).map((tt: any) => tt.location))];
-                            const locale = language === 'no' ? 'nb-NO' : 'en-US';
-                            const day = new Date(d + 'T12:00:00').toLocaleDateString(locale, { weekday: 'long' });
-                            const dayName = day.charAt(0).toUpperCase() + day.slice(1);
-                            const label = [fmtDateShort(d), dayName, ...locs].join(' · ');
-                            return <SelectItem key={d} value={d}>{label}</SelectItem>;
-                          })}
+                          {availableDates.slice(10).map((d) => (
+                            <SelectItem key={d} value={d}>{dateLabelMap.get(d) ?? fmtDate(d)}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     )}

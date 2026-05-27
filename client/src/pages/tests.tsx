@@ -11,6 +11,7 @@ import { LocationAutocomplete } from "@/components/location-autocomplete";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn, fmtDate } from "@/lib/utils";
+import { parseApplication } from "@/lib/parse-application";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { SkeletonCards } from "@/components/skeleton-card";
@@ -1488,7 +1489,6 @@ export default function Tests() {
                             <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                               <th className="pb-2 pr-3">{t("tests.skiCol")}</th>
                               {!hideDayDetails && <th className="pb-2 pr-3">{t("tests.product")}</th>}
-                              {!hideDayDetails && <th className="pb-2 pr-3">{t("tests.methodCol")}</th>}
                               {distLabels.map((label, i) => (
                                 <th key={i} className="pb-2 pr-3">
                                   {label?.trim() || `R${i + 1}`}
@@ -1505,13 +1505,15 @@ export default function Tests() {
                               const additionalIds = entry.additionalProductIds
                                 ? entry.additionalProductIds.split(",").map(Number).filter((n) => !isNaN(n) && n > 0)
                                 : [];
-                              const allProducts = [
-                                product ? `${product.brand} ${product.name}` : null,
-                                ...additionalIds.map((aid) => {
+                              // Pair each product with its parsed application
+                              const appParts = entry.methodology ? entry.methodology.split("|") : [];
+                              const productEntries = [
+                                product ? { name: `${product.brand} ${product.name}`, app: parseApplication(appParts[0]?.trim() ?? "").interpreted } : null,
+                                ...additionalIds.map((aid, i) => {
                                   const p = productsById.get(aid);
-                                  return p ? `${p.brand} ${p.name}` : null;
+                                  return p ? { name: `${p.brand} ${p.name}`, app: parseApplication(appParts[i + 1]?.trim() ?? "").interpreted } : null;
                                 }),
-                              ].filter(Boolean);
+                              ].filter((x): x is { name: string; app: string } => !!x);
                               const rounds = getEntryRounds(entry, distLabels.length);
                               const firstRank = rounds[0]?.rank ?? null;
 
@@ -1530,13 +1532,17 @@ export default function Tests() {
                                     </span>
                                   </td>
                                   {!hideDayDetails && (
-                                    <td className="py-2 pr-3 text-xs truncate">
-                                      {allProducts.length > 0 ? allProducts.join(" + ") : "—"}
-                                    </td>
-                                  )}
-                                  {!hideDayDetails && (
-                                    <td className="py-2 pr-3 text-xs text-muted-foreground truncate">
-                                      {entry.methodology || "—"}
+                                    <td className="py-2 pr-4 text-xs">
+                                      {productEntries.length > 0 ? (
+                                        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                                          {productEntries.map((pe, i) => (
+                                            <span key={i} className="flex items-baseline gap-1">
+                                              <span className="font-medium">{pe.name}</span>
+                                              {pe.app && <span className="text-muted-foreground">{pe.app}</span>}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      ) : "—"}
                                     </td>
                                   )}
                                   {rounds.map((rr, i) => (

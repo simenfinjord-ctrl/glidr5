@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { cn, fmtDate } from "@/lib/utils";
+import { parseApplication } from "@/lib/parse-application";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
@@ -1332,7 +1333,6 @@ export default function TestDetail() {
                   <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="pb-3 pr-3">{t("tests.skiNumber")}</th>
                     {!isGrind && <th className="pb-3 pr-3">{t("tests.product")}</th>}
-                    {!isGrind && <th className="pb-3 pr-3">{t("tests.methodology")}</th>}
                     {isGrind && visibleGrindCols.map((col) => (
                       <th key={col} className="pb-3 pr-3">{formatGrindColLabel(col)}</th>
                     ))}
@@ -1354,13 +1354,15 @@ export default function TestDetail() {
                     const additionalIds = entry.additionalProductIds
                       ? entry.additionalProductIds.split(",").map(Number).filter((n) => !isNaN(n) && n > 0)
                       : [];
-                    const allProducts = [
-                      product ? `${product.brand} ${product.name}` : null,
-                      ...additionalIds.map((aid) => {
+                    // Pair each product with its parsed application (pipe-separated)
+                    const appParts = entry.methodology ? entry.methodology.split("|") : [];
+                    const productEntries = [
+                      product ? { name: `${product.brand} ${product.name}`, app: parseApplication(appParts[0]?.trim() ?? "").interpreted } : null,
+                      ...additionalIds.map((aid, i) => {
                         const p = productsById.get(aid);
-                        return p ? `${p.brand} ${p.name}` : null;
+                        return p ? { name: `${p.brand} ${p.name}`, app: parseApplication(appParts[i + 1]?.trim() ?? "").interpreted } : null;
                       }),
-                    ].filter(Boolean);
+                    ].filter((x): x is { name: string; app: string } => !!x);
 
                     const rounds = getEntryRounds(entry, distLabels.length);
                     const firstRank = rounds[0]?.rank ?? null;
@@ -1383,13 +1385,21 @@ export default function TestDetail() {
                           </span>
                         </td>
                         {!isGrind && (
-                          <td className="py-3 pr-3" data-testid={`text-product-${entry.id}`}>
-                            {hideDetails ? "" : (allProducts.length > 0 ? allProducts.join(" + ") : "—")}
-                          </td>
-                        )}
-                        {!isGrind && (
-                          <td className="py-3 pr-3 text-muted-foreground" data-testid={`text-method-${entry.id}`}>
-                            {hideDetails ? "" : (entry.methodology || "—")}
+                          <td className="py-3 pr-5" data-testid={`text-product-${entry.id}`}>
+                            {hideDetails ? "" : (
+                              productEntries.length > 0 ? (
+                                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                  {productEntries.map((pe, i) => (
+                                    <span key={i} className="flex items-baseline gap-1.5 text-sm">
+                                      <span className="font-medium">{pe.name}</span>
+                                      {pe.app && (
+                                        <span className="text-xs text-muted-foreground whitespace-nowrap">{pe.app}</span>
+                                      )}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : "—"
+                            )}
                           </td>
                         )}
                         {isGrind && visibleGrindCols.map((col) => (

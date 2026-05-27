@@ -2605,7 +2605,7 @@ export default function AthleteDetail() {
                         <CalendarDays className="h-3 w-3" />
                         Quick day select
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {testDates.slice(0, 10).map((d) => (
                           <button
                             key={d}
@@ -2628,9 +2628,33 @@ export default function AthleteDetail() {
                                 : "bg-primary/10 text-primary hover:bg-primary/20"
                             )}
                           >
-                            {d}
+                            {fmtDate(d)}
                           </button>
                         ))}
+                        {testDates.length > 10 && (
+                          <Select
+                            value={quickTestDayDate && !testDates.slice(0, 10).includes(quickTestDayDate) ? quickTestDayDate : "__none__"}
+                            onValueChange={(v) => {
+                              const date = v === "__none__" ? "" : v;
+                              setQuickTestDayDate(date);
+                              if (date) {
+                                setExpandedTestIds(new Set(
+                                  raceSkiTests.filter(t => t.date === date).map(t => t.id)
+                                ));
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-7 rounded-full border-0 bg-primary/10 px-3 text-xs font-medium text-primary hover:bg-primary/20 min-w-0 w-auto gap-1 [&>svg]:h-3 [&>svg]:w-3">
+                              <SelectValue placeholder="…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">—</SelectItem>
+                              {testDates.slice(10).map((d) => (
+                                <SelectItem key={d} value={d}>{fmtDate(d)}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </div>
                     </div>
                   )}

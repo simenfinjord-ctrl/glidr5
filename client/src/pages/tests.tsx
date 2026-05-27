@@ -1101,23 +1101,35 @@ export default function Tests() {
                 </Select>
               </div>
               <div className="flex items-center gap-1">
-                <Input
-                  type="date"
-                  value={filterDateFrom}
-                  onChange={(e) => setFilterDateFrom(e.target.value)}
-                  className="h-9 text-xs w-[130px]"
-                  title="Fra dato"
-                  data-testid="input-filter-date-from"
-                />
+                <div className="relative h-9 w-[130px]">
+                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center px-3 text-xs">
+                    {filterDateFrom ? fmtDate(filterDateFrom) : <span className="text-muted-foreground">—</span>}
+                  </div>
+                  <Input
+                    type="date"
+                    value={filterDateFrom}
+                    onChange={(e) => setFilterDateFrom(e.target.value)}
+                    className="h-9 w-full text-xs"
+                    style={{ color: "transparent" }}
+                    title="Fra dato"
+                    data-testid="input-filter-date-from"
+                  />
+                </div>
                 <span className="text-muted-foreground text-xs shrink-0">–</span>
-                <Input
-                  type="date"
-                  value={filterDateTo}
-                  onChange={(e) => setFilterDateTo(e.target.value)}
-                  className="h-9 text-xs w-[130px]"
-                  title="Til dato"
-                  data-testid="input-filter-date-to"
-                />
+                <div className="relative h-9 w-[130px]">
+                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center px-3 text-xs">
+                    {filterDateTo ? fmtDate(filterDateTo) : <span className="text-muted-foreground">—</span>}
+                  </div>
+                  <Input
+                    type="date"
+                    value={filterDateTo}
+                    onChange={(e) => setFilterDateTo(e.target.value)}
+                    className="h-9 w-full text-xs"
+                    style={{ color: "transparent" }}
+                    title="Til dato"
+                    data-testid="input-filter-date-to"
+                  />
+                </div>
               </div>
               <div className="min-w-[140px]">
                 <Select value={filterType} onValueChange={setFilterType}>
@@ -1312,7 +1324,7 @@ export default function Tests() {
                 <CalendarDays className="h-3 w-3" />
                 Quick day select
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {availableDates.slice(0, 10).map((d) => (
                   <button
                     key={d}
@@ -1325,9 +1337,25 @@ export default function Tests() {
                         : "bg-primary/10 text-primary hover:bg-primary/20"
                     )}
                   >
-                    {d}
+                    {fmtDate(d)}
                   </button>
                 ))}
+                {availableDates.length > 10 && (
+                  <Select
+                    value={quickDayDate && !availableDates.slice(0, 10).includes(quickDayDate) ? quickDayDate : "__none__"}
+                    onValueChange={(v) => { setQuickDayDate(v === "__none__" ? "" : v); if (v !== "__none__") setHideDayDetails(false); }}
+                  >
+                    <SelectTrigger className="h-7 rounded-full border-0 bg-primary/10 px-3 text-xs font-medium text-primary hover:bg-primary/20 min-w-0 w-auto gap-1 [&>svg]:h-3 [&>svg]:w-3">
+                      <SelectValue placeholder={t("common.more") + "…"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">—</SelectItem>
+                      {availableDates.slice(10).map((d) => (
+                        <SelectItem key={d} value={d}>{fmtDate(d)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
           )}

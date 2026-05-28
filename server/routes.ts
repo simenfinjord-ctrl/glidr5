@@ -1186,6 +1186,41 @@ export async function registerRoutes(
     res.json(list);
   });
 
+  // Product usage stats — which products have been tested and/or raced
+  app.get("/api/products/usage-stats", requirePermission("products", "view"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const { pool: pg } = await import("./db");
+
+    // Tested: product IDs used in at least one test entry for this team
+    const testedResult = await (pg as any).query(
+      `SELECT DISTINCT te.product_id
+       FROM test_entries te
+       JOIN tests t ON t.id = te.test_id
+       WHERE t.team_id = $1 AND te.product_id IS NOT NULL`,
+      [teamId]
+    );
+    const testedIds: number[] = testedResult.rows.map((r: any) => Number(r.product_id));
+
+    // Raced: product IDs used in any race prep's product_ids, structure_ids, or kick_product_ids
+    const rpResult = await (pg as any).query(
+      `SELECT product_ids, structure_ids, kick_product_ids FROM race_preps WHERE team_id = $1`,
+      [teamId]
+    );
+    const racedSet = new Set<number>();
+    for (const row of rpResult.rows) {
+      for (const col of [row.product_ids, row.structure_ids, row.kick_product_ids]) {
+        if (col) {
+          for (const part of String(col).split(",")) {
+            const n = parseInt(part.trim(), 10);
+            if (!isNaN(n)) racedSet.add(n);
+          }
+        }
+      }
+    }
+
+    return res.json({ racedIds: Array.from(racedSet), testedIds });
+  });
+
   app.post("/api/products/:id/archive", requirePermission("products", "edit"), async (req, res) => {
     const u = userInfo(req);
     if (!u.isScopeAdmin) return res.status(403).json({ message: "Admin only" });
@@ -1332,6 +1367,56 @@ export async function registerRoutes(
     }));
 
     res.json({ tests });
+  });
+
+  // Product race prep history — race preps where this product was used
+  app.get("/api/products/:id/race-preps", requirePermission("products", "view"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const productId = parseInt(req.params.id);
+    const { pool: pg } = await import("./db");
+
+    const rpResult = await (pg as any).query(
+      `SELECT rp.id, rp.date, rp.start_time AS "startTime", rp.location,
+              rp.race_type AS "raceType", rp.discipline,
+              rp.products, rp.method, rp.structure, rp.notes,
+              rp.product_ids AS "productIds",
+              rp.structure_ids AS "structureIds",
+              rp.kick_product_ids AS "kickProductIds",
+              rp.tette, rp.weather_id AS "weatherId",
+              rp.created_by_name AS "createdByName",
+              w.air_temperature_c AS "airTemperatureC",
+              w.snow_temperature_c AS "snowTemperatureC",
+              w.air_humidity_pct AS "airHumidityPct",
+              w.snow_type AS "snowType",
+              w.track_hardness AS "trackHardness",
+              w.artificial_snow AS "artificialSnow"
+       FROM race_preps rp
+       LEFT JOIN daily_weather w ON w.id = rp.weather_id
+       WHERE rp.team_id = $1
+         AND (
+           (',' || rp.product_ids || ',') LIKE ('%,' || $2 || ',%')
+           OR (',' || rp.structure_ids || ',') LIKE ('%,' || $2 || ',%')
+           OR (',' || rp.kick_product_ids || ',') LIKE ('%,' || $2 || ',%')
+         )
+       ORDER BY rp.date DESC`,
+      [teamId, productId]
+    );
+
+    // Determine role of this product in each prep
+    const rows = rpResult.rows.map((r: any) => {
+      const parseIds = (s: string | null) =>
+        s ? s.split(",").map((x: string) => parseInt(x.trim(), 10)).filter((n: number) => !isNaN(n)) : [];
+      const productIds = parseIds(r.productIds);
+      const structureIds = parseIds(r.structureIds);
+      const kickIds = parseIds(r.kickProductIds);
+      const roles: string[] = [];
+      if (productIds.includes(productId)) roles.push("glide");
+      if (structureIds.includes(productId)) roles.push("structure");
+      if (kickIds.includes(productId)) roles.push("kick");
+      return { ...r, roles };
+    });
+
+    return res.json(rows);
   });
 
   app.post("/api/products/bulk-assign-group", requirePermission("products", "edit"), async (req, res) => {

@@ -10,6 +10,8 @@ import {
   FlaskConical,
   Trophy,
   TrendingUp,
+  Flag,
+  MapPin,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -77,6 +79,27 @@ type ProductTest = {
     isSelectedProduct: boolean;
     methodology: string | null;  // pipe-separated applications
   }[];
+};
+
+type RacePrep = {
+  id: number;
+  date: string;
+  startTime: string | null;
+  location: string;
+  raceType: string;
+  discipline: string;
+  method: string | null;
+  notes: string | null;
+  tette: string | null;
+  weatherId: number | null;
+  airTemperatureC: number | null;
+  snowTemperatureC: number | null;
+  airHumidityPct: number | null;
+  snowType: string | null;
+  trackHardness: string | null;
+  artificialSnow: string | null;
+  createdByName: string;
+  roles: string[]; // "glide" | "structure" | "kick"
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -186,6 +209,16 @@ function ProductDetailInner() {
     queryFn: async () => {
       const res = await fetch(`/api/products/${productId}/tests`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load test history");
+      return res.json();
+    },
+    enabled: productId != null,
+  });
+
+  const { data: racePreps = [] } = useQuery<RacePrep[]>({
+    queryKey: [`/api/products/${productId}/race-preps`],
+    queryFn: async () => {
+      const res = await fetch(`/api/products/${productId}/race-preps`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load race history");
       return res.json();
     },
     enabled: productId != null,
@@ -352,7 +385,7 @@ function ProductDetailInner() {
         </div>
 
         {/* ── Stats row ───────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" data-testid="stats-row">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5" data-testid="stats-row">
           <StatCard
             icon={<FlaskConical className="h-3.5 w-3.5" />}
             label="Total tests"
@@ -375,6 +408,12 @@ function ProductDetailInner() {
             label="Test types"
             value={`${stats.glideCount}G / ${stats.structureCount}S`}
             sub="glide / structure entries"
+          />
+          <StatCard
+            icon={<Flag className="h-3.5 w-3.5 text-rose-500" />}
+            label="Times raced"
+            value={racePreps.length}
+            sub={racePreps.length > 0 ? `last: ${racePreps[0].location}` : "not used in any race prep"}
           />
         </div>
 
@@ -635,6 +674,84 @@ function ProductDetailInner() {
             </div>
           )}
         </div>
+
+        {/* ── Race Prep History ────────────────────────────────────────────── */}
+        {racePreps.length > 0 && (
+          <div>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Race Prep History — {racePreps.length} race{racePreps.length !== 1 ? "s" : ""}
+            </h2>
+            <Card className="fs-card rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <th className="px-4 py-2.5 font-medium">Date</th>
+                      <th className="px-4 py-2.5 font-medium">Location</th>
+                      <th className="px-4 py-2.5 font-medium">Discipline</th>
+                      <th className="px-4 py-2.5 font-medium">Role</th>
+                      <th className="px-4 py-2.5 font-medium">Method</th>
+                      <th className="px-4 py-2.5 font-medium">Conditions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {racePreps.map((rp) => (
+                      <tr key={rp.id} className="border-t border-border hover:bg-muted/20 transition-colors">
+                        <td className="px-4 py-2.5 text-xs whitespace-nowrap">
+                          {new Date(rp.date).toLocaleDateString()}
+                          {rp.startTime && <span className="ml-1 text-muted-foreground">{rp.startTime}</span>}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-1 text-xs font-medium">
+                            <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
+                            {rp.location}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">{rp.raceType}</div>
+                        </td>
+                        <td className="px-4 py-2.5 text-xs">{rp.discipline}</td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex flex-wrap gap-1">
+                            {rp.roles.map((role) => (
+                              <span key={role} className={cn(
+                                "rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize",
+                                role === "glide" ? "fs-badge-glide" :
+                                role === "structure" ? "fs-badge-structure" :
+                                "fs-badge-topping"
+                              )}>{role}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground max-w-[160px] truncate">
+                          {rp.method || "—"}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex flex-wrap gap-1">
+                            {rp.airTemperatureC != null && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-900/20 px-2 py-0.5 text-[10px] text-sky-700 dark:text-sky-300">
+                                <Thermometer className="h-2.5 w-2.5" />{rp.airTemperatureC}°C
+                              </span>
+                            )}
+                            {rp.snowTemperatureC != null && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-[10px] text-emerald-700 dark:text-emerald-300">
+                                <Snowflake className="h-2.5 w-2.5" />{rp.snowTemperatureC}°C
+                              </span>
+                            )}
+                            {rp.snowType && (
+                              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{rp.snowType}</span>
+                            )}
+                            {rp.trackHardness && (
+                              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{rp.trackHardness}</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </AppShell>
   );

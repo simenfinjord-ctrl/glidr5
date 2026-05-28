@@ -383,6 +383,8 @@ export default function Products() {
   const [groupFilter, setGroupFilter] = useState("All");
   const [selectedBrand, setSelectedBrand] = useState("All");
   const [nameSearch, setNameSearch] = useState("");
+  const [racedFilter, setRacedFilter] = useState<"All" | "Raced" | "Not Raced">("All");
+  const [testedFilter, setTestedFilter] = useState<"All" | "Tested" | "Not Tested">("All");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | undefined>();
   const [editingDetailsProduct, setEditingDetailsProduct] = useState<Product | undefined>();
@@ -397,6 +399,11 @@ export default function Products() {
     queryKey: ["/api/products/archived"],
     enabled: viewMode === "archived" && isAdmin,
   });
+  const { data: usageStats } = useQuery<{ racedIds: number[]; testedIds: number[] }>({
+    queryKey: ["/api/products/usage-stats"],
+  });
+  const racedSet = useMemo(() => new Set(usageStats?.racedIds ?? []), [usageStats]);
+  const testedSet = useMemo(() => new Set(usageStats?.testedIds ?? []), [usageStats]);
   const { data: stockChanges = [] } = useQuery<StockChange[]>({
     queryKey: ["/api/stock-changes"],
     enabled: viewMode === "stock-changes",
@@ -433,15 +440,19 @@ export default function Products() {
       const okBrand = selectedBrand === "All" ? true : p.brand === selectedBrand;
       const okName = n ? p.name.toLowerCase().includes(n) : true;
       const okGroup = groupFilter === "All" ? true : p.groupScope.split(",").map((g) => g.trim()).includes(groupFilter);
-      return okCategory && okBrand && okName && okGroup;
+      const okRaced = racedFilter === "All" ? true : racedFilter === "Raced" ? racedSet.has(p.id) : !racedSet.has(p.id);
+      const okTested = testedFilter === "All" ? true : testedFilter === "Tested" ? testedSet.has(p.id) : !testedSet.has(p.id);
+      return okCategory && okBrand && okName && okGroup && okRaced && okTested;
     });
-  }, [products, category, selectedBrand, nameSearch, groupFilter]);
+  }, [products, category, selectedBrand, nameSearch, groupFilter, racedFilter, testedFilter, racedSet, testedSet]);
 
   const activeFilterCount = [
     category !== "All",
     groupFilter !== "All",
     selectedBrand !== "All",
     !!nameSearch.trim(),
+    racedFilter !== "All",
+    testedFilter !== "All",
   ].filter(Boolean).length;
 
   function clearFilters() {
@@ -449,6 +460,8 @@ export default function Products() {
     setGroupFilter("All");
     setSelectedBrand("All");
     setNameSearch("");
+    setRacedFilter("All");
+    setTestedFilter("All");
   }
 
   const sortedFiltered = useMemo(() => {
@@ -471,9 +484,11 @@ export default function Products() {
       const okBrand = selectedBrand === "All" ? true : p.brand === selectedBrand;
       const okName = n ? p.name.toLowerCase().includes(n) : true;
       const okGroup = groupFilter === "All" ? true : p.groupScope.split(",").map((g) => g.trim()).includes(groupFilter);
-      return okCategory && okBrand && okName && okGroup;
+      const okRaced = racedFilter === "All" ? true : racedFilter === "Raced" ? racedSet.has(p.id) : !racedSet.has(p.id);
+      const okTested = testedFilter === "All" ? true : testedFilter === "Tested" ? testedSet.has(p.id) : !testedSet.has(p.id);
+      return okCategory && okBrand && okName && okGroup && okRaced && okTested;
     });
-  }, [archivedProducts, category, selectedBrand, nameSearch, groupFilter]);
+  }, [archivedProducts, category, selectedBrand, nameSearch, groupFilter, racedFilter, testedFilter, racedSet, testedSet]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -724,6 +739,30 @@ export default function Products() {
                   placeholder="Name contains…"
                   data-testid="input-filter-name"
                 />
+              </div>
+              <div className="min-w-[160px]">
+                <Select value={racedFilter} onValueChange={(v) => setRacedFilter(v as any)}>
+                  <SelectTrigger data-testid="select-filter-raced">
+                    <SelectValue placeholder="Race status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All (raced + not)</SelectItem>
+                    <SelectItem value="Raced">Raced</SelectItem>
+                    <SelectItem value="Not Raced">Not Raced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="min-w-[160px]">
+                <Select value={testedFilter} onValueChange={(v) => setTestedFilter(v as any)}>
+                  <SelectTrigger data-testid="select-filter-tested">
+                    <SelectValue placeholder="Test status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All (tested + not)</SelectItem>
+                    <SelectItem value="Tested">Tested</SelectItem>
+                    <SelectItem value="Not Tested">Not Tested</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <Button

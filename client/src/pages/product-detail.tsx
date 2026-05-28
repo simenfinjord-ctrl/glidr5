@@ -31,6 +31,7 @@ type Product = {
   createdByName: string;
   groupScope: string;
   stockQuantity: number;
+  archivedAt?: string | null;
 };
 
 type ProductTest = {
@@ -170,8 +171,15 @@ function ProductDetailInner() {
   const { data: allProducts = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
+  const { data: archivedProducts = [] } = useQuery<Product[]>({
+    queryKey: ["/api/products/archived"],
+    enabled: productId != null && allProducts.length > 0 && !allProducts.find((p) => p.id === productId),
+  });
 
-  const product = allProducts.find((p) => p.id === productId) ?? null;
+  const product = allProducts.find((p) => p.id === productId)
+    ?? archivedProducts.find((p) => p.id === productId)
+    ?? null;
+  const isArchived = !!product?.archivedAt;
 
   const { data, isLoading } = useQuery<{ tests: ProductTest[] }>({
     queryKey: [`/api/products/${productId}/tests`],
@@ -264,7 +272,8 @@ function ProductDetailInner() {
   }, [tests]);
 
   // ── Not found ─────────────────────────────────────────────────────────────
-  if (!isLoading && productId != null && allProducts.length > 0 && !product) {
+  const allProductsLoaded = allProducts.length > 0 || archivedProducts.length > 0;
+  if (!isLoading && productId != null && allProductsLoaded && !product) {
     return (
       <AppShell>
         <div className="flex flex-col items-center gap-4 py-20">
@@ -307,6 +316,11 @@ function ProductDetailInner() {
                 data-testid="badge-product-category"
               >
                 {product.category}
+              </span>
+            )}
+            {isArchived && (
+              <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700">
+                Archived
               </span>
             )}
             <h1

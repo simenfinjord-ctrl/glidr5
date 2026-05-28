@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer, Droplets, Snowflake, ChevronDown, Archive, ArchiveRestore, MoreHorizontal } from "lucide-react";
+import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer, Droplets, Snowflake, ChevronDown, Archive, ArchiveRestore, MoreHorizontal, LayoutGrid, LayoutList, Table2 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -376,6 +376,7 @@ export default function Products() {
   const isAdmin = !!user?.isAdmin || !!user?.isTeamAdmin;
   const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"products" | "storage" | "stock-changes" | "archived">("products");
+  const [productLayout, setProductLayout] = useState<"grid" | "list" | "table">("grid");
   const [stockChangeGroupFilter, setStockChangeGroupFilter] = useState("All");
   const [stockSort, setStockSort] = useState<"asc" | "desc" | "alpha">("asc");
   const [category, setCategory] = useState<ProductCategory | "All">("All");
@@ -574,6 +575,37 @@ export default function Products() {
               <History className="mr-2 h-4 w-4" />
               Stock Changes
             </Button>
+            {(viewMode === "products" || viewMode === "archived") && (
+              <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5 gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn("h-7 w-7 p-0", productLayout === "grid" && "bg-background shadow-sm")}
+                  onClick={() => setProductLayout("grid")}
+                  title="Grid view"
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn("h-7 w-7 p-0", productLayout === "list" && "bg-background shadow-sm")}
+                  onClick={() => setProductLayout("list")}
+                  title="List view"
+                >
+                  <LayoutList className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn("h-7 w-7 p-0", productLayout === "table" && "bg-background shadow-sm")}
+                  onClick={() => setProductLayout("table")}
+                  title="Table view"
+                >
+                  <Table2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
             {viewMode === "storage" && (
               <Select value={stockSort} onValueChange={(v) => setStockSort(v as "asc" | "desc" | "alpha")}>
                 <SelectTrigger className="w-[150px] h-9 text-sm" data-testid="select-sort-stock">
@@ -705,47 +737,101 @@ export default function Products() {
         </Card>)}
 
         {viewMode === "archived" ? (
-          <div className="space-y-2">
+          <div>
             {filteredArchived.length === 0 ? (
               <Card className="fs-card rounded-2xl">
                 <EmptyState icon={Archive} title="No archived products" description="Archived products will appear here." />
               </Card>
-            ) : (
-              filteredArchived.map((p) => (
-                <div key={p.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 gap-3">
-                  <AppLink href={`/products/${p.id}`} className="min-w-0 flex-1 group">
-                    <div className="flex items-center gap-2">
-                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold opacity-60", categoryBadgeClass(p.category))}>{p.category}</span>
-                      <span className="text-sm font-medium text-foreground group-hover:text-amber-600 transition-colors">{p.brand} {p.name}</span>
-                    </div>
-                    {p.archivedAt && (
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">Archived {new Date(p.archivedAt).toLocaleDateString()}</p>
-                    )}
-                  </AppLink>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setHistoryProduct(p)}>
-                        <History className="mr-2 h-4 w-4" />
-                        History
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => restoreMutation.mutate(p.id)} disabled={restoreMutation.isPending}>
-                        <ArchiveRestore className="mr-2 h-4 w-4" />
-                        Restore
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setDeletingProduct(p)} className="text-red-600 focus:text-red-600">
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            ) : productLayout === "table" ? (
+              <Card className="fs-card rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <th className="px-4 py-2.5 font-medium">Category</th>
+                        <th className="px-4 py-2.5 font-medium">Product</th>
+                        <th className="px-4 py-2.5 font-medium">Archived</th>
+                        <th className="px-4 py-2.5 font-medium text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredArchived.map((p) => (
+                        <tr key={p.id} className="border-t border-border hover:bg-muted/20 transition-colors">
+                          <td className="px-4 py-2.5">
+                            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold opacity-60", categoryBadgeClass(p.category))}>
+                              {p.category}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <AppLink href={`/products/${p.id}`} className="font-medium hover:text-amber-600 transition-colors">
+                              {p.brand} {p.name}
+                            </AppLink>
+                          </td>
+                          <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                            {p.archivedAt ? new Date(p.archivedAt).toLocaleDateString() : "—"}
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setHistoryProduct(p)}>
+                                  <History className="mr-2 h-4 w-4" />History
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => restoreMutation.mutate(p.id)} disabled={restoreMutation.isPending}>
+                                  <ArchiveRestore className="mr-2 h-4 w-4" />Restore
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setDeletingProduct(p)} className="text-red-600 focus:text-red-600">
+                                  <Trash2 className="mr-2 h-4 w-4" />Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              ))
+              </Card>
+            ) : (
+              <div className={cn("grid gap-3", productLayout === "grid" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
+                {filteredArchived.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 gap-3">
+                    <AppLink href={`/products/${p.id}`} className="min-w-0 flex-1 group">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold opacity-60", categoryBadgeClass(p.category))}>{p.category}</span>
+                        <span className="text-sm font-medium text-foreground group-hover:text-amber-600 transition-colors">{p.brand} {p.name}</span>
+                      </div>
+                      {p.archivedAt && (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">Archived {new Date(p.archivedAt).toLocaleDateString()}</p>
+                      )}
+                    </AppLink>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setHistoryProduct(p)}>
+                          <History className="mr-2 h-4 w-4" />History
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => restoreMutation.mutate(p.id)} disabled={restoreMutation.isPending}>
+                          <ArchiveRestore className="mr-2 h-4 w-4" />Restore
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setDeletingProduct(p)} className="text-red-600 focus:text-red-600">
+                          <Trash2 className="mr-2 h-4 w-4" />Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         ) : viewMode === "stock-changes" ? (
@@ -860,17 +946,97 @@ export default function Products() {
                 )}
               </div>
             )}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {filtered.length === 0 ? (
-                <Card className="fs-card rounded-2xl sm:col-span-2" data-testid="empty-products">
-                  <EmptyState
-                    icon={PackagePlus}
-                    title={t("products.noProducts")}
-                    description="Add your first product using the button above."
-                  />
-                </Card>
-              ) : (
-                filtered.map((p) => (
+            {filtered.length === 0 ? (
+              <Card className="fs-card rounded-2xl" data-testid="empty-products">
+                <EmptyState
+                  icon={PackagePlus}
+                  title={t("products.noProducts")}
+                  description="Add your first product using the button above."
+                />
+              </Card>
+            ) : productLayout === "table" ? (
+              <Card className="fs-card rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <th className="px-4 py-2.5 font-medium">Category</th>
+                        <th className="px-4 py-2.5 font-medium">Product</th>
+                        <th className="px-4 py-2.5 font-medium">Groups</th>
+                        <th className="px-4 py-2.5 font-medium">Added</th>
+                        <th className="px-4 py-2.5 font-medium text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((p) => {
+                        const groups = p.groupScope.split(",").map((s) => s.trim()).filter(Boolean);
+                        return (
+                          <tr key={p.id} className="border-t border-border hover:bg-muted/20 transition-colors">
+                            <td className="px-4 py-2.5">
+                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap", categoryBadgeClass(p.category))}>
+                                {p.category}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <AppLink href={`/products/${p.id}`} className="font-medium hover:text-amber-600 transition-colors">
+                                {p.brand} {p.name}
+                              </AppLink>
+                              <div className="text-[11px] text-muted-foreground">{p.createdByName}</div>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <div className="flex flex-wrap gap-1">
+                                {groups.map((g) => (
+                                  <span key={g} className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:ring-emerald-800">
+                                    {g}
+                                  </span>
+                                ))}
+                                {groups.length === 0 && <span className="text-[10px] text-muted-foreground">—</span>}
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                              {new Date(p.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem onClick={() => setHistoryProduct(p)}>
+                                    <History className="mr-2 h-4 w-4" />History
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setEditingDetailsProduct(p)}>
+                                    <Pencil className="mr-2 h-4 w-4" />Edit
+                                  </DropdownMenuItem>
+                                  {isAdmin && (
+                                    <>
+                                      <DropdownMenuItem onClick={() => setEditingProduct(p)}>
+                                        <Users className="mr-2 h-4 w-4" />Groups
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => archiveMutation.mutate(p.id)}>
+                                        <Archive className="mr-2 h-4 w-4" />Add to Archive
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setDeletingProduct(p)} className="text-red-600 focus:text-red-600">
+                                        <Trash2 className="mr-2 h-4 w-4" />Delete
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            ) : (
+              <div className={cn("grid gap-3", productLayout === "grid" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
+                {filtered.map((p) => (
                   <ProductCard
                     key={p.id}
                     product={p}
@@ -889,9 +1055,9 @@ export default function Products() {
                     onArchive={() => archiveMutation.mutate(p.id)}
                     onViewHistory={() => setHistoryProduct(p)}
                   />
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

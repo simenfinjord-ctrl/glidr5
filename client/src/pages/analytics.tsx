@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft, FileDown, ChevronDown } from "lucide-react";
+import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft, FileDown, ChevronDown, ChevronRight } from "lucide-react";
 import React from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import {
@@ -22,6 +22,7 @@ import { cn, fmtDate } from "@/lib/utils";
 import { parseApplication } from "@/lib/parse-application";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useI18n } from "@/lib/i18n";
 import { pdfDocument, pdfSection, pdfCards, pdfTable, openPdfWindow } from "@/lib/pdf-layout";
 import { useAuth } from "@/lib/auth";
@@ -1815,6 +1816,7 @@ function CombinationSearch({
   const [p2Id, setP2Id] = useState<number | null>(null);
   const [open1, setOpen1] = useState(false);
   const [open2, setOpen2] = useState(false);
+  const [expandedTestId, setExpandedTestId] = useState<number | null>(null);
 
   const stats = useMemo(() => {
     if (!p1Id || !p2Id || p1Id === p2Id) return null;
@@ -1869,7 +1871,6 @@ function CombinationSearch({
 
     const recentTests = [...combined]
       .sort((a, b) => b.test.date.localeCompare(a.test.date))
-      .slice(0, 8)
       .map(({ entry, test }) => ({ entry, test, rank: getRank(entry) }));
 
     return { count: combined.length, avgRank, wins, winRate, conditionStats, best, recentTests };
@@ -2001,11 +2002,12 @@ function CombinationSearch({
           )}
 
           <div>
-            <div className="text-sm font-medium mb-2">Recent tests ({stats.recentTests.length})</div>
+            <div className="text-sm font-medium mb-2">Tests ({stats.recentTests.length})</div>
             <div className="rounded-lg border overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/60">
                   <tr>
+                    <th className="w-8 px-2 py-2" />
                     <th className="text-left px-3 py-2 text-xs font-medium">Date</th>
                     <th className="text-left px-3 py-2 text-xs font-medium">Location</th>
                     <th className="text-center px-3 py-2 text-xs font-medium">Ski #</th>
@@ -2013,24 +2015,114 @@ function CombinationSearch({
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.recentTests.map(({ entry, test, rank }, i) => (
-                    <tr key={`${test.id}-${entry.id}-${i}`} className="border-t hover:bg-muted/30">
-                      <td className="px-3 py-2">{fmtDate(test.date)}</td>
-                      <td className="px-3 py-2 truncate max-w-[120px]">{test.location}</td>
-                      <td className="px-3 py-2 text-center font-mono">{entry.skiNumber}</td>
-                      <td className="px-3 py-2 text-center">
-                        {rank !== null ? (
-                          <span className={cn(
-                            "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
-                            rank === 1 && "bg-amber-100 text-amber-700",
-                            rank === 2 && "bg-muted text-foreground/80",
-                            rank === 3 && "bg-orange-100 text-orange-700",
-                            rank > 3 && "text-muted-foreground",
-                          )}>{rank}</span>
-                        ) : <span className="text-muted-foreground">—</span>}
-                      </td>
-                    </tr>
-                  ))}
+                  {stats.recentTests.map(({ entry, test, rank }, i) => {
+                    const isExpanded = expandedTestId === entry.id;
+                    const w = test.weatherId ? weatherById.get(test.weatherId) ?? null : null;
+                    const methodologyParts = entry.methodology ? entry.methodology.split("|").map((s) => s.trim()) : [];
+                    const p1App = methodologyParts[0] ?? null;
+                    const p2App = methodologyParts[1] ?? null;
+                    return (
+                      <React.Fragment key={`${test.id}-${entry.id}-${i}`}>
+                        <tr
+                          className="border-t hover:bg-muted/30 cursor-pointer select-none"
+                          onClick={() => setExpandedTestId(isExpanded ? null : entry.id)}
+                        >
+                          <td className="px-2 py-2 text-center text-muted-foreground">
+                            {isExpanded
+                              ? <ChevronDown className="h-3.5 w-3.5 inline-block" />
+                              : <ChevronRight className="h-3.5 w-3.5 inline-block" />}
+                          </td>
+                          <td className="px-3 py-2">{fmtDate(test.date)}</td>
+                          <td className="px-3 py-2 truncate max-w-[120px]">{test.location}</td>
+                          <td className="px-3 py-2 text-center font-mono">{entry.skiNumber}</td>
+                          <td className="px-3 py-2 text-center">
+                            {rank !== null ? (
+                              <span className={cn(
+                                "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+                                rank === 1 && "bg-amber-100 text-amber-700",
+                                rank === 2 && "bg-muted text-foreground/80",
+                                rank === 3 && "bg-orange-100 text-orange-700",
+                                rank > 3 && "text-muted-foreground",
+                              )}>{rank}</span>
+                            ) : <span className="text-muted-foreground">—</span>}
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="border-t bg-muted/20">
+                            <td colSpan={5} className="px-4 py-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                {/* Application / methodology */}
+                                <div className="space-y-1.5">
+                                  <div className="font-semibold text-muted-foreground uppercase tracking-wide text-[10px]">Methodology</div>
+                                  {p1 && (
+                                    <div className="flex items-start gap-1.5">
+                                      <span className="font-medium shrink-0">{p1.brand} {p1.name}:</span>
+                                      <span className="text-muted-foreground">{p1App ? parseApplication(p1App).label || p1App : "—"}</span>
+                                    </div>
+                                  )}
+                                  {p2 && (
+                                    <div className="flex items-start gap-1.5">
+                                      <span className="font-medium shrink-0">{p2.brand} {p2.name}:</span>
+                                      <span className="text-muted-foreground">{p2App ? parseApplication(p2App).label || p2App : "—"}</span>
+                                    </div>
+                                  )}
+                                  {entry.feelingRank != null && (
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className="text-muted-foreground">Feeling rank:</span>
+                                      <span className="font-medium">{entry.feelingRank}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Weather */}
+                                {w && (
+                                  <div className="space-y-1.5">
+                                    <div className="font-semibold text-muted-foreground uppercase tracking-wide text-[10px]">Conditions</div>
+                                    <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                                      <div className="flex items-center gap-1">
+                                        <Snowflake className="h-3 w-3 text-blue-400 shrink-0" />
+                                        <span className="text-muted-foreground">Snow:</span>
+                                        <span className="font-medium ml-1">{w.snowTemperatureC}°C</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Thermometer className="h-3 w-3 text-orange-400 shrink-0" />
+                                        <span className="text-muted-foreground">Air:</span>
+                                        <span className="font-medium ml-1">{w.airTemperatureC}°C</span>
+                                      </div>
+                                      {w.snowHumidityPct != null && (
+                                        <div className="flex items-center gap-1">
+                                          <Droplets className="h-3 w-3 text-cyan-400 shrink-0" />
+                                          <span className="text-muted-foreground">Humidity:</span>
+                                          <span className="font-medium ml-1">{w.snowHumidityPct}%</span>
+                                        </div>
+                                      )}
+                                      {w.snowType && (
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-muted-foreground">Snow type:</span>
+                                          <span className="font-medium ml-1">{w.snowType}</span>
+                                        </div>
+                                      )}
+                                      {w.trackHardness && (
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-muted-foreground">Track:</span>
+                                          <span className="font-medium ml-1">{w.trackHardness}</span>
+                                        </div>
+                                      )}
+                                      {w.snowHumidityType && (
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-muted-foreground">Type:</span>
+                                          <span className="font-medium ml-1">{w.snowHumidityType}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -2229,6 +2321,8 @@ function ProductCompare({
   const { t } = useI18n();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [open, setOpen] = useState(false);
+  type CurveParam = "snowTemp" | "airTemp" | "snowHumidity" | "airHumidity" | "snowType" | "trackHardness" | "snowHumidityType";
+  const [curveParam, setCurveParam] = useState<CurveParam>("snowTemp");
 
   const addProduct = (id: number) => {
     if (!selectedIds.includes(id)) setSelectedIds([...selectedIds, id]);
@@ -2283,7 +2377,52 @@ function ProductCompare({
       .sort((a, b) => b.test.date.localeCompare(a.test.date));
   }, [compareStats, testsById]);
 
-  // Temperature curve: avg rank per 2°C snow-temp bucket per product
+  // Performance Curve: avg rank per bucket for a chosen parameter
+  const CURVE_PARAM_2C = Array.from({ length: 21 }, (_, i) => {
+    const min = -30 + i * 3;
+    const max = min + 3;
+    const fmt = (v: number) => v <= 0 ? `${v}` : `+${v}`;
+    return { min, max, label: `${fmt(min)}/${fmt(max)}°` };
+  });
+  const HUMIDITY_10PCT = Array.from({ length: 11 }, (_, i) => ({
+    min: i * 10, max: (i + 1) * 10, label: `${i * 10}–${(i + 1) * 10}%`,
+  }));
+
+  const getBucketLabel = (w: Weather, param: typeof curveParam): string | null => {
+    if (param === "snowTemp") {
+      const b = SNOW_TEMP_2C.find((b) => w.snowTemperatureC >= b.min && w.snowTemperatureC < b.max);
+      return b?.label ?? null;
+    }
+    if (param === "airTemp") {
+      const b = CURVE_PARAM_2C.find((b) => w.airTemperatureC >= b.min && w.airTemperatureC < b.max);
+      return b?.label ?? null;
+    }
+    if (param === "snowHumidity") {
+      if (w.snowHumidityPct == null) return null;
+      const b = HUMIDITY_10PCT.find((b) => (w.snowHumidityPct as number) >= b.min && (w.snowHumidityPct as number) < b.max);
+      return b?.label ?? null;
+    }
+    if (param === "airHumidity") {
+      if (w.airHumidityPct == null) return null;
+      const b = HUMIDITY_10PCT.find((b) => (w.airHumidityPct as number) >= b.min && (w.airHumidityPct as number) < b.max);
+      return b?.label ?? null;
+    }
+    if (param === "snowType") return w.snowType ?? null;
+    if (param === "trackHardness") return w.trackHardness ?? null;
+    if (param === "snowHumidityType") return w.snowHumidityType ?? null;
+    return null;
+  };
+
+  const ORDERED_BUCKETS = {
+    snowTemp: SNOW_TEMP_2C.map((b) => b.label),
+    airTemp: CURVE_PARAM_2C.map((b) => b.label),
+    snowHumidity: HUMIDITY_10PCT.map((b) => b.label),
+    airHumidity: HUMIDITY_10PCT.map((b) => b.label),
+    snowType: null,
+    trackHardness: null,
+    snowHumidityType: null,
+  } as Record<string, string[] | null>;
+
   const { tempCurveData, sweetSpots } = useMemo(() => {
     if (!compareStats) return { tempCurveData: [], sweetSpots: new Map<number, string>() };
 
@@ -2297,21 +2436,27 @@ function ProductCompare({
         if (!test?.weatherId) continue;
         const w = weatherById.get(test.weatherId);
         if (w == null) continue;
-        const bucket = SNOW_TEMP_2C.find((b) => w.snowTemperatureC >= b.min && w.snowTemperatureC < b.max);
-        if (!bucket) continue;
-        if (!bucketMap.has(bucket.label)) bucketMap.set(bucket.label, []);
-        bucketMap.get(bucket.label)!.push(rank);
+        const label = getBucketLabel(w, curveParam);
+        if (!label) continue;
+        if (!bucketMap.has(label)) bucketMap.set(label, []);
+        bucketMap.get(label)!.push(rank);
       }
       productBuckets.set(s.product.id, bucketMap);
     }
 
-    // Build chart rows (only buckets with at least one product having data)
-    const rows = SNOW_TEMP_2C
-      .map((b) => {
-        const row: Record<string, any> = { bucket: b.label };
+    // Determine bucket order
+    const orderedKeys = ORDERED_BUCKETS[curveParam];
+    const allBuckets = orderedKeys
+      ? orderedKeys.filter((lbl) => compareStats.some((s) => productBuckets.get(s.product.id)?.has(lbl)))
+      : Array.from(new Set(compareStats.flatMap((s) => Array.from(productBuckets.get(s.product.id)?.keys() ?? []))));
+
+    // Build chart rows
+    const rows = allBuckets
+      .map((lbl) => {
+        const row: Record<string, any> = { bucket: lbl };
         let hasData = false;
         for (const s of compareStats) {
-          const ranks = productBuckets.get(s.product.id)?.get(b.label);
+          const ranks = productBuckets.get(s.product.id)?.get(lbl);
           if (ranks && ranks.length > 0) {
             row[`p_${s.product.id}`] = parseFloat((ranks.reduce((a, v) => a + v, 0) / ranks.length).toFixed(2));
             row[`p_${s.product.id}_n`] = ranks.length;
@@ -2337,7 +2482,7 @@ function ProductCompare({
     }
 
     return { tempCurveData: rows, sweetSpots };
-  }, [compareStats, testsById, weatherById]);
+  }, [compareStats, testsById, weatherById, curveParam]);
 
   return (
     <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-product-compare">
@@ -2413,7 +2558,7 @@ function ProductCompare({
                   <th className="text-center px-3 py-2 font-medium">Wins</th>
                   <th className="text-center px-3 py-2 font-medium">Avg rank</th>
                   <th className="text-left px-3 py-2 font-medium">Win rate</th>
-                  <th className="text-left px-3 py-2 font-medium">Sweet spot (snow °C)</th>
+                  <th className="text-left px-3 py-2 font-medium">Sweet spot</th>
                 </tr>
               </thead>
               <tbody>
@@ -2486,9 +2631,28 @@ function ProductCompare({
             </div>
           )}
 
-          {tempCurveData.length >= 2 && (
+          {(tempCurveData.length >= 2 || compareStats != null) && (
             <div>
-              <div className="text-sm font-medium mb-1">Average rank by snow temperature (2°C buckets)</div>
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <span className="text-sm font-medium">Performance Curve</span>
+                <Select value={curveParam} onValueChange={(v) => setCurveParam(v as typeof curveParam)}>
+                  <SelectTrigger className="h-7 w-auto min-w-[160px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="snowTemp">{t("weather.snowTemp")}</SelectItem>
+                    <SelectItem value="airTemp">{t("weather.airTemp")}</SelectItem>
+                    <SelectItem value="snowHumidity">{t("weather.snowHumidity")}</SelectItem>
+                    <SelectItem value="airHumidity">{t("weather.airHumidity")}</SelectItem>
+                    <SelectItem value="snowType">{t("weather.snowType")}</SelectItem>
+                    <SelectItem value="trackHardness">{t("weather.trackHardness")}</SelectItem>
+                    <SelectItem value="snowHumidityType">{t("weather.snowHumidityType")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {tempCurveData.length < 2 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">Not enough data for the selected parameter.</p>
+              ) : (<>
               <p className="text-xs text-muted-foreground mb-3">Lower rank = better performance. Only buckets with test data shown.</p>
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={tempCurveData}>
@@ -2530,6 +2694,7 @@ function ProductCompare({
                   ))}
                 </LineChart>
               </ResponsiveContainer>
+              </>)}
             </div>
           )}
 

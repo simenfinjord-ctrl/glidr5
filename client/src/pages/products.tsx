@@ -374,7 +374,7 @@ export default function Products() {
   const { user } = useAuth();
   const isAdmin = !!user?.isAdmin || !!user?.isTeamAdmin;
   const [open, setOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"products" | "storage" | "stock-changes">("products");
+  const [viewMode, setViewMode] = useState<"products" | "storage" | "stock-changes" | "archived">("products");
   const [stockChangeGroupFilter, setStockChangeGroupFilter] = useState("All");
   const [stockSort, setStockSort] = useState<"asc" | "desc" | "alpha">("asc");
   const [category, setCategory] = useState<ProductCategory | "All">("All");
@@ -388,13 +388,12 @@ export default function Products() {
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkGroup, setBulkGroup] = useState<string>("");
-  const [showArchived, setShowArchived] = useState(false);
   const { toast } = useToast();
 
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: archivedProducts = [] } = useQuery<Product[]>({
     queryKey: ["/api/products/archived"],
-    enabled: showArchived && isAdmin,
+    enabled: viewMode === "archived" && isAdmin,
   });
   const { data: stockChanges = [] } = useQuery<StockChange[]>({
     queryKey: ["/api/stock-changes"],
@@ -520,9 +519,9 @@ export default function Products() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl">{viewMode === "stock-changes" ? t("products.stockHistory") : viewMode === "storage" ? t("products.stock") : t("products.title")}</h1>
+            <h1 className="text-2xl sm:text-3xl">{viewMode === "stock-changes" ? t("products.stockHistory") : viewMode === "storage" ? t("products.stock") : viewMode === "archived" ? "Archived Products" : t("products.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-products-subtitle">
-              {viewMode === "stock-changes" ? `${stockChanges.length} log entries` : t("products.subtitle", { count: filtered.length })}
+              {viewMode === "stock-changes" ? `${stockChanges.length} log entries` : viewMode === "archived" ? `${archivedProducts.length} archived` : t("products.subtitle", { count: filtered.length })}
             </p>
           </div>
 
@@ -536,6 +535,17 @@ export default function Products() {
               <Warehouse className="mr-2 h-4 w-4" />
               Storage
             </Button>
+            {isAdmin && (
+              <Button
+                variant={viewMode === "archived" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode(viewMode === "archived" ? "products" : "archived")}
+                data-testid="button-toggle-archived"
+              >
+                <Archive className="mr-2 h-4 w-4" />
+                Archive
+              </Button>
+            )}
             <Button
               variant={viewMode === "stock-changes" ? "default" : "outline"}
               size="sm"
@@ -576,7 +586,7 @@ export default function Products() {
           </div>
         </div>
 
-        {viewMode !== "stock-changes" && (<Card className="fs-card rounded-2xl p-4">
+        {viewMode !== "stock-changes" && viewMode !== "archived" && (<Card className="fs-card rounded-2xl p-4">
           {/* Filter toggle — mobile only */}
           <div className="sm:hidden flex items-center gap-2 mb-3">
             <Button
@@ -668,7 +678,49 @@ export default function Products() {
           </div>
         </Card>)}
 
-        {viewMode === "stock-changes" ? (
+        {viewMode === "archived" ? (
+          <div className="space-y-2">
+            {archivedProducts.length === 0 ? (
+              <Card className="fs-card rounded-2xl">
+                <EmptyState icon={Archive} title="No archived products" description="Archived products will appear here." />
+              </Card>
+            ) : (
+              archivedProducts.map((p) => (
+                <div key={p.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold opacity-60", categoryBadgeClass(p.category))}>{p.category}</span>
+                      <span className="text-sm font-medium text-foreground">{p.brand} {p.name}</span>
+                    </div>
+                    {p.archivedAt && (
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">Archived {new Date(p.archivedAt).toLocaleDateString()}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-muted-foreground hover:text-emerald-600"
+                      onClick={() => restoreMutation.mutate(p.id)}
+                      disabled={restoreMutation.isPending}
+                    >
+                      <ArchiveRestore className="mr-1 h-3.5 w-3.5" />
+                      Restore
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                      onClick={() => setDeletingProduct(p)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        ) : viewMode === "stock-changes" ? (
           <StockChangesView
             stockChanges={stockChanges}
             uniqueGroups={uniqueGroups}
@@ -815,63 +867,6 @@ export default function Products() {
           </div>
         )}
 
-        {/* Archived products section */}
-        {isAdmin && viewMode === "products" && (
-          <div>
-            <button
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setShowArchived((v) => !v)}
-            >
-              <Archive className="h-4 w-4" />
-              <span>{showArchived ? "Hide archived products" : `Show archived products`}</span>
-              {showArchived && archivedProducts.length > 0 && (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{archivedProducts.length}</span>
-              )}
-              <ChevronDown className={cn("h-4 w-4 transition-transform", showArchived && "rotate-180")} />
-            </button>
-            {showArchived && (
-              <div className="mt-3 space-y-2">
-                {archivedProducts.length === 0 ? (
-                  <p className="text-sm text-muted-foreground pl-1">No archived products.</p>
-                ) : (
-                  archivedProducts.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3 gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold opacity-60", categoryBadgeClass(p.category))}>{p.category}</span>
-                          <span className="text-sm font-medium text-muted-foreground">{p.brand} {p.name}</span>
-                        </div>
-                        {p.archivedAt && (
-                          <p className="mt-0.5 text-[11px] text-muted-foreground">Archived {new Date(p.archivedAt).toLocaleDateString()}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs text-muted-foreground hover:text-emerald-600"
-                          onClick={() => restoreMutation.mutate(p.id)}
-                          disabled={restoreMutation.isPending}
-                        >
-                          <ArchiveRestore className="mr-1 h-3.5 w-3.5" />
-                          Restore
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
-                          onClick={() => setDeletingProduct(p)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
         <Dialog open={!!editingProduct} onOpenChange={(v) => { if (!v) setEditingProduct(undefined); }}>
           <DialogContent className="sm:max-w-md">
@@ -1510,10 +1505,10 @@ function ProductCard({
                   size="sm"
                   className="h-7 text-xs text-muted-foreground hover:text-amber-600 hover:bg-amber-500/10"
                   data-testid={`button-archive-product-${p.id}`}
-                  title="Archive (hides from lists, preserves test history)"
                   onClick={onArchive}
                 >
-                  <Archive className="h-3 w-3" />
+                  <Archive className="mr-1 h-3 w-3" />
+                  Add to Archive
                 </Button>
                 <Button
                   variant="ghost"

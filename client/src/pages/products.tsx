@@ -372,7 +372,7 @@ function GroupAssignModal({
 export default function Products() {
   const { t } = useI18n();
   const { user } = useAuth();
-  const isAdmin = !!user?.isAdmin;
+  const isAdmin = !!user?.isAdmin || !!user?.isTeamAdmin;
   const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"products" | "storage" | "stock-changes">("products");
   const [stockChangeGroupFilter, setStockChangeGroupFilter] = useState("All");

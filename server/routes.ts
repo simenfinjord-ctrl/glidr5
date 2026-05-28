@@ -508,6 +508,7 @@ export async function registerRoutes(
       ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS start_time TEXT;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS ski_id_classic TEXT;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS ski_id_skating TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS archived_at TEXT;
     `);
   }
 
@@ -1176,6 +1177,49 @@ export async function registerRoutes(
       });
     } catch (_) {}
     res.json({ ok: true });
+  });
+
+  app.get("/api/products/archived", requirePermission("products", "view"), async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const list = await storage.listArchivedProducts(u.groupScope, u.isScopeAdmin, teamId);
+    res.json(list);
+  });
+
+  app.post("/api/products/:id/archive", requirePermission("products", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isScopeAdmin) return res.status(403).json({ message: "Admin only" });
+    const id = parseInt(req.params.id);
+    const existing = await storage.getProduct(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
+    const updated = await storage.archiveProduct(id);
+    if (!isIncognito(req)) try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "archived",
+        entityType: "product", entityId: id,
+        details: `${existing.brand} ${existing.name}`, createdAt: new Date().toISOString(), groupScope: u.groupScope, teamId: getActiveTeamId(req),
+      });
+    } catch (_) {}
+    res.json(updated);
+  });
+
+  app.post("/api/products/:id/restore", requirePermission("products", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isScopeAdmin) return res.status(403).json({ message: "Admin only" });
+    const id = parseInt(req.params.id);
+    const existing = await storage.getProduct(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
+    const updated = await storage.restoreProduct(id);
+    if (!isIncognito(req)) try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "restored",
+        entityType: "product", entityId: id,
+        details: `${existing.brand} ${existing.name}`, createdAt: new Date().toISOString(), groupScope: u.groupScope, teamId: getActiveTeamId(req),
+      });
+    } catch (_) {}
+    res.json(updated);
   });
 
   // Product test history

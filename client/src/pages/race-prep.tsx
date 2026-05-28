@@ -1,7 +1,7 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Flag, Plus, X, ChevronRight, Pencil, Check, Trash2, Users, Search, Snowflake } from "lucide-react";
+import { Flag, Plus, X, ChevronRight, Pencil, Check, Trash2, Users, Search, Snowflake, FileDown } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/auth";
 import { useLanguage } from "@/lib/language";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
+import { pdfDocument, pdfSection, pdfTable, pdfWeather, openPdfWindow } from "@/lib/pdf-layout";
 
 type Product = { id: number; category: string; brand: string; name: string };
 
@@ -734,15 +735,96 @@ function PrepDetailDialog({
   // Linked weather record
   const linkedWeather = prep.weatherId ? weatherList.find(w => w.id === prep.weatherId) ?? null : null;
 
+  function exportPDF() {
+    const win = window.open("", "_blank");
+    const disciplineLabel = DISCIPLINE_LABEL[prep.discipline]?.[lang] ?? prep.discipline;
+    const title = `${L("Rennprep", "Race Prep")} — ${prep.location} ${fmtDate(prep.date, lang)}`;
+
+    const infoRows: [string, string][] = [
+      [L("Sted", "Location"), prep.location],
+      [L("Dato", "Date"), fmtDate(prep.date, lang) + (prep.startTime ? ` · ${prep.startTime}` : "")],
+      [L("Renntype", "Race type"), prep.raceType],
+      [L("Stilart", "Discipline"), disciplineLabel],
+    ];
+    if (glideNames) infoRows.push([L("Glid", "Glide"), glideNames]);
+    if (structureNamesStr) infoRows.push([L("Struktur", "Structure"), structureNamesStr]);
+    if (showKick && kickDisplay) infoRows.push(["Kick", kickDisplay]);
+    if (showKick && prep.tette) infoRows.push([lang === "en" ? "Binder" : "Tette", prep.tette]);
+    if (prep.method) infoRows.push([L("Metode", "Method"), prep.method]);
+    if (prep.notes) infoRows.push([L("Notater", "Notes"), prep.notes]);
+
+    const infoTable = `<table class="pdf-table" style="margin-bottom:16px">
+      <tbody>${infoRows.map(([k, v]) => `<tr><td style="font-weight:600;width:35%">${k}</td><td>${v}</td></tr>`).join("")}</tbody>
+    </table>`;
+
+    const weatherBlock = linkedWeather ? pdfWeather({
+      snowTemperatureC: linkedWeather.snowTemperatureC,
+      airTemperatureC: linkedWeather.airTemperatureC,
+      snowHumidityPct: linkedWeather.snowHumidityPct,
+      airHumidityPct: linkedWeather.airHumidityPct,
+      snowType: linkedWeather.snowType,
+      trackHardness: linkedWeather.trackHardness,
+      snowHumidityType: linkedWeather.snowHumidityType,
+      grainSize: linkedWeather.grainSize,
+      wind: linkedWeather.wind,
+      clouds: linkedWeather.clouds,
+      precipitation: linkedWeather.precipitation,
+      visibility: linkedWeather.visibility,
+      location: linkedWeather.location,
+      time: linkedWeather.date,
+    }) : "";
+
+    const athleteHeaders = [
+      L("Løper", "Athlete"),
+      L("Stilart-ski", "Ski"),
+      L("Glid", "Glide"),
+      L("Struktur", "Structure"),
+      ...(showKick ? ["Kick"] : []),
+      L("Vokser", "Waxer"),
+      L("Notater", "Notes"),
+    ];
+    const athleteRows = entries.map((e) => {
+      const skiVal = prep.discipline === "Skating" ? e.skiIdSkating : e.skiIdClassic ?? e.skiId ?? "—";
+      return [
+        e.athleteName,
+        skiVal ?? "—",
+        glideNames || "—",
+        structureNamesStr || "—",
+        ...(showKick ? [kickDisplay || "—"] : []),
+        e.waxerName ?? "—",
+        e.notes ?? "",
+      ];
+    });
+
+    const body =
+      pdfSection(title) +
+      infoTable +
+      weatherBlock +
+      (entries.length > 0 ? pdfSection(L("Startliste", "Start list")) + pdfTable(athleteHeaders, athleteRows) : "");
+
+    openPdfWindow(pdfDocument(title, body), win);
+  }
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent
         className="max-w-2xl max-h-[90vh] overflow-y-auto"
       >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Flag className="h-4 w-4 text-primary" />
-            {prep.location} — {fmtDate(prep.date, lang)}{prep.startTime ? ` · ${prep.startTime}` : ""}
+          <DialogTitle className="flex items-center justify-between gap-2 pr-6">
+            <span className="flex items-center gap-2">
+              <Flag className="h-4 w-4 text-primary shrink-0" />
+              {prep.location} — {fmtDate(prep.date, lang)}{prep.startTime ? ` · ${prep.startTime}` : ""}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs shrink-0"
+              onClick={exportPDF}
+            >
+              <FileDown className="h-3.5 w-3.5 mr-1" />
+              {L("Last ned rapport", "Download report")}
+            </Button>
           </DialogTitle>
         </DialogHeader>
 

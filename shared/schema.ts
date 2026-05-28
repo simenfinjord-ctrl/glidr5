@@ -290,6 +290,7 @@ export const products = pgTable("products", {
   groupScope: text("group_scope").notNull(),
   teamId: integer("team_id").notNull().default(1),
   stockQuantity: integer("stock_quantity").notNull().default(0),
+  archivedAt: text("archived_at"),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });

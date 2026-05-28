@@ -431,6 +431,8 @@ const translations: Record<string, Record<string, string>> = {
     "products.units": "units",
     "products.stockChanged": "Stock updated",
     "products.confirmDelete": "Delete this product and all its test entries?",
+    "products.archived": "Product archived",
+    "products.restored": "Product restored",
 
     // ── Weather ───────────────────────────────────────────────────────────────
     "weather.title": "Weather",
@@ -1621,6 +1623,8 @@ const translations: Record<string, Record<string, string>> = {
     "products.units": "enheter",
     "products.stockChanged": "Lager oppdatert",
     "products.confirmDelete": "Slett dette produktet og alle tilknyttede testoppføringer?",
+    "products.archived": "Produkt arkivert",
+    "products.restored": "Produkt gjenopprettet",
 
     // ── Vær ───────────────────────────────────────────────────────────────────
     "weather.title": "Vær",

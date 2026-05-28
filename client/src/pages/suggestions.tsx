@@ -3,7 +3,7 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Sparkles, Lightbulb, ThermometerSnowflake, Target, Layers,
-  FlaskConical, TrendingUp, ChevronDown, Link2,
+  FlaskConical, TrendingUp, ChevronDown, Link2, HelpCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { parseApplication } from "@/lib/parse-application";
 import { useI18n } from "@/lib/i18n";
 
@@ -180,14 +181,39 @@ function RankBadge({ rank }: { rank: number | null }) {
   );
 }
 
-function ConfidenceBadge({ level }: { level: "High" | "Medium" | "Low" }) {
+function ConfidenceBadge({ level, count, usingFallback }: {
+  level: "High" | "Medium" | "Low";
+  count?: number;
+  usingFallback?: boolean;
+}) {
+  const tooltipText =
+    usingFallback
+      ? "No tests matched these conditions — showing results from all tests."
+      : level === "High"
+        ? `High confidence: based on ${count ?? "5+"} tests that closely match your conditions.`
+        : level === "Medium"
+          ? `Medium confidence: based on ${count ?? "2–4"} tests matching your conditions.`
+          : `Low confidence: based on ${count ?? 1} test matching your conditions, or estimated from all tests.`;
+
   return (
-    <span className={cn(
-      "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1",
-      level === "High" && "bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:ring-emerald-800",
-      level === "Medium" && "bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:ring-amber-800",
-      level === "Low" && "bg-muted text-muted-foreground ring-border",
-    )}>{level}</span>
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={cn(
+            "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 cursor-help",
+            level === "High" && "bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:ring-emerald-800",
+            level === "Medium" && "bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:ring-amber-800",
+            level === "Low" && "bg-muted text-muted-foreground ring-border",
+          )}>
+            {level}
+            <HelpCircle className="h-2.5 w-2.5 opacity-60" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[220px] text-xs text-center">
+          {tooltipText}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -234,7 +260,7 @@ function ProductRow({ rank, productName, result }: {
           <span className="text-muted-foreground">
             <span className="font-semibold text-foreground">{result.count}</span>t
           </span>
-          <ConfidenceBadge level={result.confidence} />
+          <ConfidenceBadge level={result.confidence} count={result.count} />
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", open && "rotate-180")} />
         </div>
       </div>
@@ -311,7 +337,7 @@ function ComboRow({ rank, combo, productsById }: {
         <div className="flex items-center gap-2 text-xs shrink-0">
           {combo.hasRankData && <RankBadge rank={combo.bestRank} />}
           <span className="text-muted-foreground"><span className="font-semibold text-foreground">{combo.count}</span>t</span>
-          <ConfidenceBadge level={combo.confidence} />
+          <ConfidenceBadge level={combo.confidence} count={combo.count} />
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", open && "rotate-180")} />
         </div>
       </div>

@@ -62,9 +62,12 @@ export interface IStorage {
   deleteSeries(id: number): Promise<boolean>;
 
   listProducts(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Product[]>;
+  listArchivedProducts(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Product[]>;
   getProduct(id: number): Promise<Product | undefined>;
   createProduct(p: InsertProduct): Promise<Product>;
   updateProduct(id: number, data: Partial<InsertProduct>): Promise<Product | undefined>;
+  archiveProduct(id: number): Promise<Product | undefined>;
+  restoreProduct(id: number): Promise<Product | undefined>;
   deleteProduct(id: number): Promise<boolean>;
 
   listWeather(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Weather[]>;
@@ -335,11 +338,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async listProducts(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Product[]> {
-    const filter = this.scopeFilter(groupScope, isAdmin, products, teamId);
-    if (filter) {
-      return db.select().from(products).where(filter);
+    const notArchived = isNull(products.archivedAt);
+    const scopeFilter = this.scopeFilter(groupScope, isAdmin, products, teamId);
+    if (scopeFilter) {
+      return db.select().from(products).where(and(scopeFilter, notArchived));
     }
-    return db.select().from(products);
+    return db.select().from(products).where(notArchived);
+  }
+
+  async listArchivedProducts(groupScope: string, isAdmin: boolean, teamId?: number): Promise<Product[]> {
+    const archived = isNotNull(products.archivedAt);
+    const scopeFilter = this.scopeFilter(groupScope, isAdmin, products, teamId);
+    if (scopeFilter) {
+      return db.select().from(products).where(and(scopeFilter, archived));
+    }
+    return db.select().from(products).where(archived);
   }
 
   async getProduct(id: number): Promise<Product | undefined> {
@@ -354,6 +367,22 @@ export class DatabaseStorage implements IStorage {
 
   async updateProduct(id: number, data: Partial<InsertProduct>): Promise<Product | undefined> {
     const [updated] = await db.update(products).set(data).where(eq(products.id, id)).returning();
+    return updated;
+  }
+
+  async archiveProduct(id: number): Promise<Product | undefined> {
+    const [updated] = await db.update(products)
+      .set({ archivedAt: new Date().toISOString() })
+      .where(eq(products.id, id))
+      .returning();
+    return updated;
+  }
+
+  async restoreProduct(id: number): Promise<Product | undefined> {
+    const [updated] = await db.update(products)
+      .set({ archivedAt: null })
+      .where(eq(products.id, id))
+      .returning();
     return updated;
   }
 

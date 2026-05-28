@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer, Droplets, Snowflake, ChevronDown } from "lucide-react";
+import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer, Droplets, Snowflake, ChevronDown, Archive, ArchiveRestore } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ type Product = {
   createdByName: string;
   groupScope: string;
   stockQuantity: number;
+  archivedAt: string | null;
 };
 
 type ApiGroup = { id: number; name: string };
@@ -386,9 +387,14 @@ export default function Products() {
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkGroup, setBulkGroup] = useState<string>("");
+  const [showArchived, setShowArchived] = useState(false);
   const { toast } = useToast();
 
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
+  const { data: archivedProducts = [] } = useQuery<Product[]>({
+    queryKey: ["/api/products/archived"],
+    enabled: showArchived && isAdmin,
+  });
   const { data: stockChanges = [] } = useQuery<StockChange[]>({
     queryKey: ["/api/stock-changes"],
     enabled: viewMode === "stock-changes",
@@ -455,8 +461,37 @@ export default function Products() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products/archived"] });
       toast({ title: "Product deleted" });
       setDeletingProduct(undefined);
+    },
+    onError: (e) => {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("POST", `/api/products/${id}/archive`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products/archived"] });
+      toast({ title: t("products.archived") });
+    },
+    onError: (e) => {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    },
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("POST", `/api/products/${id}/restore`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products/archived"] });
+      toast({ title: t("products.restored") });
     },
     onError: (e) => {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
@@ -762,11 +797,70 @@ export default function Products() {
                     onEdit={() => setEditingDetailsProduct(p)}
                     onEditGroups={() => setEditingProduct(p)}
                     onDelete={() => setDeletingProduct(p)}
+                    onArchive={() => archiveMutation.mutate(p.id)}
                     onViewHistory={() => setHistoryProduct(p)}
                   />
                 ))
               )}
             </div>
+          </div>
+        )}
+
+        {/* Archived products section */}
+        {isAdmin && viewMode === "products" && (
+          <div>
+            <button
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setShowArchived((v) => !v)}
+            >
+              <Archive className="h-4 w-4" />
+              <span>{showArchived ? "Hide archived products" : `Show archived products`}</span>
+              {showArchived && archivedProducts.length > 0 && (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{archivedProducts.length}</span>
+              )}
+              <ChevronDown className={cn("h-4 w-4 transition-transform", showArchived && "rotate-180")} />
+            </button>
+            {showArchived && (
+              <div className="mt-3 space-y-2">
+                {archivedProducts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground pl-1">No archived products.</p>
+                ) : (
+                  archivedProducts.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3 gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold opacity-60", categoryBadgeClass(p.category))}>{p.category}</span>
+                          <span className="text-sm font-medium text-muted-foreground">{p.brand} {p.name}</span>
+                        </div>
+                        {p.archivedAt && (
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">Archived {new Date(p.archivedAt).toLocaleDateString()}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-muted-foreground hover:text-emerald-600"
+                          onClick={() => restoreMutation.mutate(p.id)}
+                          disabled={restoreMutation.isPending}
+                        >
+                          <ArchiveRestore className="mr-1 h-3.5 w-3.5" />
+                          Restore
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                          onClick={() => setDeletingProduct(p)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -1305,6 +1399,7 @@ function ProductCard({
   onEdit,
   onEditGroups,
   onDelete,
+  onArchive,
   onViewHistory,
 }: {
   product: Product;
@@ -1314,6 +1409,7 @@ function ProductCard({
   onEdit: () => void;
   onEditGroups: () => void;
   onDelete: () => void;
+  onArchive: () => void;
   onViewHistory: () => void;
 }) {
   const { t } = useI18n();
@@ -1399,6 +1495,16 @@ function ProductCard({
                 >
                   <Users className="mr-1 h-3 w-3" />
                   Groups
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-muted-foreground hover:text-amber-600 hover:bg-amber-500/10"
+                  data-testid={`button-archive-product-${p.id}`}
+                  title="Archive (hides from lists, preserves test history)"
+                  onClick={onArchive}
+                >
+                  <Archive className="h-3 w-3" />
                 </Button>
                 <Button
                   variant="ghost"

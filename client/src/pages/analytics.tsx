@@ -100,6 +100,15 @@ const TEMP_BRACKETS = [
   { label: "0°C +",        min: 0,    max: Infinity },
 ];
 
+// 2°C snow temperature buckets for temperature curve
+const SNOW_TEMP_2C = Array.from({ length: 15 }, (_, i) => {
+  const min = -20 + i * 2;
+  const max = min + 2;
+  const minStr = min < 0 ? `${min}` : `+${min}`;
+  const maxStr = max <= 0 ? `${max}` : `+${max}`;
+  return { min, max, label: `${minStr}/${maxStr}°` };
+});
+
 function tempBracket(temp: number) {
   return TEMP_BRACKETS.find((b) => temp >= b.min && temp < b.max)?.label ?? "Unknown";
 }
@@ -2208,12 +2217,14 @@ function ProductCompare({
   productsById,
   testsById,
   filteredTestIds,
+  weatherById = new Map(),
 }: {
   products: Product[];
   allEntries: TestEntry[];
   productsById: Map<number, Product>;
   testsById: Map<number, Test>;
   filteredTestIds: Set<number>;
+  weatherById?: Map<number, Weather>;
 }) {
   const { t } = useI18n();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -2271,6 +2282,62 @@ function ProductCompare({
       })
       .sort((a, b) => b.test.date.localeCompare(a.test.date));
   }, [compareStats, testsById]);
+
+  // Temperature curve: avg rank per 2°C snow-temp bucket per product
+  const { tempCurveData, sweetSpots } = useMemo(() => {
+    if (!compareStats) return { tempCurveData: [], sweetSpots: new Map<number, string>() };
+
+    // Build bucket → ranks map for each product
+    const productBuckets = new Map<number, Map<string, number[]>>();
+    for (const s of compareStats) {
+      const bucketMap = new Map<string, number[]>();
+      for (const [testId, rank] of s.testRanks) {
+        if (rank === null) continue;
+        const test = testsById.get(testId);
+        if (!test?.weatherId) continue;
+        const w = weatherById.get(test.weatherId);
+        if (w == null) continue;
+        const bucket = SNOW_TEMP_2C.find((b) => w.snowTemperatureC >= b.min && w.snowTemperatureC < b.max);
+        if (!bucket) continue;
+        if (!bucketMap.has(bucket.label)) bucketMap.set(bucket.label, []);
+        bucketMap.get(bucket.label)!.push(rank);
+      }
+      productBuckets.set(s.product.id, bucketMap);
+    }
+
+    // Build chart rows (only buckets with at least one product having data)
+    const rows = SNOW_TEMP_2C
+      .map((b) => {
+        const row: Record<string, any> = { bucket: b.label };
+        let hasData = false;
+        for (const s of compareStats) {
+          const ranks = productBuckets.get(s.product.id)?.get(b.label);
+          if (ranks && ranks.length > 0) {
+            row[`p_${s.product.id}`] = parseFloat((ranks.reduce((a, v) => a + v, 0) / ranks.length).toFixed(2));
+            row[`p_${s.product.id}_n`] = ranks.length;
+            hasData = true;
+          } else {
+            row[`p_${s.product.id}`] = null;
+          }
+        }
+        return hasData ? row : null;
+      })
+      .filter((r): r is Record<string, any> => r !== null);
+
+    // Sweet spot: bucket with lowest avg rank per product
+    const sweetSpots = new Map<number, string>();
+    for (const s of compareStats) {
+      let bestLabel = "—";
+      let bestAvg = Infinity;
+      for (const [label, ranks] of productBuckets.get(s.product.id)?.entries() ?? []) {
+        const avg = ranks.reduce((a, v) => a + v, 0) / ranks.length;
+        if (avg < bestAvg) { bestAvg = avg; bestLabel = `${label} (avg #${avg.toFixed(1)})`; }
+      }
+      sweetSpots.set(s.product.id, bestLabel);
+    }
+
+    return { tempCurveData: rows, sweetSpots };
+  }, [compareStats, testsById, weatherById]);
 
   return (
     <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-product-compare">
@@ -2345,24 +2412,34 @@ function ProductCompare({
                   <th className="text-center px-3 py-2 font-medium">Tests</th>
                   <th className="text-center px-3 py-2 font-medium">Wins</th>
                   <th className="text-center px-3 py-2 font-medium">Avg rank</th>
-                  <th className="text-center px-3 py-2 font-medium">Win rate</th>
+                  <th className="text-left px-3 py-2 font-medium">Win rate</th>
+                  <th className="text-left px-3 py-2 font-medium">Sweet spot (snow °C)</th>
                 </tr>
               </thead>
               <tbody>
                 {compareStats.map((s, i) => {
                   const best = compareStats.every((o) => o === s || (s.avgRank !== null && (o.avgRank === null || s.avgRank <= o.avgRank)));
+                  const color = CHART_COLORS[i % CHART_COLORS.length];
                   return (
-                    <tr key={s.product.id} className={cn("border-t", best && "bg-amber-50/50")} data-testid={`row-compare-${s.product.id}`}>
+                    <tr key={s.product.id} className={cn("border-t", best && "bg-amber-50/50 dark:bg-amber-900/10")} data-testid={`row-compare-${s.product.id}`}>
                       <td className="px-3 py-2 font-medium">
                         <span className="inline-flex items-center gap-2">
-                          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                          <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
                           {s.product.brand} {s.product.name}
                         </span>
                       </td>
                       <td className="text-center px-3 py-2">{s.totalTests}</td>
                       <td className="text-center px-3 py-2">{s.totalWins}</td>
                       <td className="text-center px-3 py-2 font-semibold">{s.avgRank ?? "—"}</td>
-                      <td className="text-center px-3 py-2">{s.winRate}%</td>
+                      <td className="px-3 py-2 min-w-[120px]">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 rounded-full bg-muted/60 overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${s.winRate}%`, backgroundColor: color }} />
+                          </div>
+                          <span className="text-xs font-medium tabular-nums">{s.winRate}%</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{sweetSpots.get(s.product.id) ?? "—"}</td>
                     </tr>
                   );
                 })}
@@ -2409,9 +2486,73 @@ function ProductCompare({
             </div>
           )}
 
+          {tempCurveData.length >= 2 && (
+            <div>
+              <div className="text-sm font-medium mb-1">Average rank by snow temperature (2°C buckets)</div>
+              <p className="text-xs text-muted-foreground mb-3">Lower rank = better performance. Only buckets with test data shown.</p>
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={tempCurveData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis dataKey="bucket" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={48} />
+                  <YAxis
+                    reversed
+                    allowDecimals={false}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                    label={{ value: "Avg Rank", angle: -90, position: "insideLeft", style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }}
+                  />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px" }}
+                    formatter={(value: any, name: string) => {
+                      const id = parseInt(name.replace("p_", ""), 10);
+                      const prod = productsById.get(id);
+                      return [value != null ? `#${value}` : "—", prod ? `${prod.brand} ${prod.name}` : name];
+                    }}
+                  />
+                  <Legend
+                    formatter={(value) => {
+                      const id = parseInt(value.replace("p_", ""), 10);
+                      const prod = productsById.get(id);
+                      return prod ? `${prod.brand} ${prod.name}` : value;
+                    }}
+                    wrapperStyle={{ fontSize: "12px" }}
+                  />
+                  {compareStats.map((s, i) => (
+                    <Line
+                      key={s.product.id}
+                      type="monotone"
+                      dataKey={`p_${s.product.id}`}
+                      stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                      strokeWidth={2.5}
+                      dot={{ r: 4, strokeWidth: 0 }}
+                      activeDot={{ r: 6 }}
+                      connectNulls={false}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
           {headToHead.length > 0 && (
             <div>
-              <div className="text-sm font-medium mb-2">Head-to-head ({headToHead.length} shared tests)</div>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-sm font-medium">Head-to-head ({headToHead.length} shared tests)</span>
+                <div className="flex flex-wrap gap-2">
+                  {compareStats.map((s, i) => {
+                    const wins = headToHead.filter(({ ranks }) => {
+                      const myRank = ranks.find((r) => r.product.id === s.product.id)?.rank;
+                      return myRank != null && ranks.every((r) => r.product.id === s.product.id || r.rank == null || myRank <= r.rank);
+                    }).length;
+                    return (
+                      <span key={s.product.id} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-border/40"
+                        style={{ color: CHART_COLORS[i % CHART_COLORS.length] }}>
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                        {s.product.name}: {wins}W / {headToHead.length - wins}L
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
               <div className="max-h-64 overflow-y-auto rounded-lg border" data-testid="table-head-to-head">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
@@ -3187,6 +3328,7 @@ export default function Analytics() {
                 productsById={productsById}
                 testsById={testsById}
                 filteredTestIds={filteredTestIds}
+                weatherById={weatherById}
               />
             </ErrorBoundary>
             <ErrorBoundary label="Combination search">

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer, Droplets, Snowflake, ChevronDown, Archive, ArchiveRestore } from "lucide-react";
+import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer, Droplets, Snowflake, ChevronDown, Archive, ArchiveRestore, MoreHorizontal } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
@@ -379,7 +380,7 @@ export default function Products() {
   const [stockSort, setStockSort] = useState<"asc" | "desc" | "alpha">("asc");
   const [category, setCategory] = useState<ProductCategory | "All">("All");
   const [groupFilter, setGroupFilter] = useState("All");
-  const [brand, setBrand] = useState("");
+  const [selectedBrand, setSelectedBrand] = useState("All");
   const [nameSearch, setNameSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | undefined>();
@@ -416,29 +417,36 @@ export default function Products() {
     return Array.from(set).sort();
   }, [products]);
 
+  const uniqueBrands = useMemo(() => {
+    const counts: Record<string, number> = {};
+    products.forEach((p) => {
+      counts[p.brand] = (counts[p.brand] ?? 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [products]);
+
   const filtered = useMemo(() => {
-    const b = brand.trim().toLowerCase();
     const n = nameSearch.trim().toLowerCase();
     return products.filter((p) => {
       const okCategory = category === "All" ? true : p.category === category;
-      const okBrand = b ? p.brand.toLowerCase().includes(b) : true;
+      const okBrand = selectedBrand === "All" ? true : p.brand === selectedBrand;
       const okName = n ? p.name.toLowerCase().includes(n) : true;
       const okGroup = groupFilter === "All" ? true : p.groupScope.split(",").map((g) => g.trim()).includes(groupFilter);
       return okCategory && okBrand && okName && okGroup;
     });
-  }, [products, category, brand, nameSearch, groupFilter]);
+  }, [products, category, selectedBrand, nameSearch, groupFilter]);
 
   const activeFilterCount = [
     category !== "All",
     groupFilter !== "All",
-    !!brand.trim(),
+    selectedBrand !== "All",
     !!nameSearch.trim(),
   ].filter(Boolean).length;
 
   function clearFilters() {
     setCategory("All");
     setGroupFilter("All");
-    setBrand("");
+    setSelectedBrand("All");
     setNameSearch("");
   }
 
@@ -454,6 +462,17 @@ export default function Products() {
         : b.stockQuantity - a.stockQuantity;
     });
   }, [filtered, viewMode, stockSort]);
+
+  const filteredArchived = useMemo(() => {
+    const n = nameSearch.trim().toLowerCase();
+    return archivedProducts.filter((p) => {
+      const okCategory = category === "All" ? true : p.category === category;
+      const okBrand = selectedBrand === "All" ? true : p.brand === selectedBrand;
+      const okName = n ? p.name.toLowerCase().includes(n) : true;
+      const okGroup = groupFilter === "All" ? true : p.groupScope.split(",").map((g) => g.trim()).includes(groupFilter);
+      return okCategory && okBrand && okName && okGroup;
+    });
+  }, [archivedProducts, category, selectedBrand, nameSearch, groupFilter]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -521,7 +540,7 @@ export default function Products() {
           <div>
             <h1 className="text-2xl sm:text-3xl">{viewMode === "stock-changes" ? t("products.stockHistory") : viewMode === "storage" ? t("products.stock") : viewMode === "archived" ? "Archived Products" : t("products.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-products-subtitle">
-              {viewMode === "stock-changes" ? `${stockChanges.length} log entries` : viewMode === "archived" ? `${archivedProducts.length} archived` : t("products.subtitle", { count: filtered.length })}
+              {viewMode === "stock-changes" ? `${stockChanges.length} log entries` : viewMode === "archived" ? `${filteredArchived.length} archived` : t("products.subtitle", { count: filtered.length })}
             </p>
           </div>
 
@@ -586,7 +605,7 @@ export default function Products() {
           </div>
         </div>
 
-        {viewMode !== "stock-changes" && viewMode !== "archived" && (<Card className="fs-card rounded-2xl p-4">
+        {viewMode !== "stock-changes" && (<Card className="fs-card rounded-2xl p-4">
           {/* Filter toggle — mobile only */}
           <div className="sm:hidden flex items-center gap-2 mb-3">
             <Button
@@ -651,14 +670,21 @@ export default function Products() {
                   </Select>
                 </div>
               )}
-              <div className="min-w-[220px]">
-                <Input
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  placeholder="Brand contains…"
-                  data-testid="input-filter-brand"
-                />
-              </div>
+              {uniqueBrands.length > 1 && (
+                <div className="min-w-[180px]">
+                  <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+                    <SelectTrigger data-testid="select-filter-brand">
+                      <SelectValue placeholder="All brands" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All brands</SelectItem>
+                      {uniqueBrands.map(([b, count]) => (
+                        <SelectItem key={b} value={b}>{b} ({count})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="min-w-[220px]">
                 <Input
                   value={nameSearch}
@@ -680,42 +706,44 @@ export default function Products() {
 
         {viewMode === "archived" ? (
           <div className="space-y-2">
-            {archivedProducts.length === 0 ? (
+            {filteredArchived.length === 0 ? (
               <Card className="fs-card rounded-2xl">
                 <EmptyState icon={Archive} title="No archived products" description="Archived products will appear here." />
               </Card>
             ) : (
-              archivedProducts.map((p) => (
+              filteredArchived.map((p) => (
                 <div key={p.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 gap-3">
-                  <div className="min-w-0">
+                  <AppLink href={`/products/${p.id}`} className="min-w-0 flex-1 group">
                     <div className="flex items-center gap-2">
                       <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold opacity-60", categoryBadgeClass(p.category))}>{p.category}</span>
-                      <span className="text-sm font-medium text-foreground">{p.brand} {p.name}</span>
+                      <span className="text-sm font-medium text-foreground group-hover:text-amber-600 transition-colors">{p.brand} {p.name}</span>
                     </div>
                     {p.archivedAt && (
                       <p className="mt-0.5 text-[11px] text-muted-foreground">Archived {new Date(p.archivedAt).toLocaleDateString()}</p>
                     )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs text-muted-foreground hover:text-emerald-600"
-                      onClick={() => restoreMutation.mutate(p.id)}
-                      disabled={restoreMutation.isPending}
-                    >
-                      <ArchiveRestore className="mr-1 h-3.5 w-3.5" />
-                      Restore
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
-                      onClick={() => setDeletingProduct(p)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  </AppLink>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setHistoryProduct(p)}>
+                        <History className="mr-2 h-4 w-4" />
+                        History
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => restoreMutation.mutate(p.id)} disabled={restoreMutation.isPending}>
+                        <ArchiveRestore className="mr-2 h-4 w-4" />
+                        Restore
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setDeletingProduct(p)} className="text-red-600 focus:text-red-600">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               ))
             )}
@@ -1466,62 +1494,41 @@ function ProductCard({
           <div className="inline-flex rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground">
             {new Date(p.createdAt).toLocaleDateString()}
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs text-muted-foreground hover:text-amber-600"
-              data-testid={`button-history-product-${p.id}`}
-              onClick={onViewHistory}
-              title="Test history"
-            >
-              <History className="mr-1 h-3 w-3" />
-              History
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs text-muted-foreground hover:text-foreground"
-              data-testid={`button-edit-product-${p.id}`}
-              onClick={onEdit}
-            >
-              <Pencil className="mr-1 h-3 w-3" />
-              {t("common.edit")}
-            </Button>
-            {isAdmin && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                  data-testid={`button-edit-groups-${p.id}`}
-                  onClick={onEditGroups}
-                >
-                  <Users className="mr-1 h-3 w-3" />
-                  Groups
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs text-muted-foreground hover:text-amber-600 hover:bg-amber-500/10"
-                  data-testid={`button-archive-product-${p.id}`}
-                  onClick={onArchive}
-                >
-                  <Archive className="mr-1 h-3 w-3" />
-                  Add to Archive
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
-                  data-testid={`button-delete-product-${p.id}`}
-                  onClick={onDelete}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </>
-            )}
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                Actions
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={onViewHistory}>
+                <History className="mr-2 h-4 w-4" />
+                History
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              {isAdmin && (
+                <>
+                  <DropdownMenuItem onClick={onEditGroups}>
+                    <Users className="mr-2 h-4 w-4" />
+                    Groups
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onArchive}>
+                    <Archive className="mr-2 h-4 w-4" />
+                    Add to Archive
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-600">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </Card>

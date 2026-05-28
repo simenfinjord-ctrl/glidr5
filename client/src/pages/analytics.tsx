@@ -290,7 +290,7 @@ function ActivityHeatmap({ tests }: { tests: Test[] }) {
   return (
     <Card className="fs-card rounded-2xl p-4 sm:p-6">
       <div className="flex items-center gap-2 mb-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
           <CalendarDays className="h-4 w-4 text-emerald-600" />
         </div>
         <h2 className="text-base font-semibold">Test activity</h2>
@@ -711,7 +711,7 @@ function FormTracker({ allEntries, productsById, testsById }: {
   return (
     <Card className="fs-card rounded-2xl p-4 sm:p-6">
       <div className="flex items-center gap-2 mb-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-50">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-50 dark:bg-orange-900/20">
           <TrendingUp className="h-4 w-4 text-orange-500" />
         </div>
         <h2 className="text-base font-semibold">Form tracker</h2>
@@ -1163,7 +1163,7 @@ function ProductSearchStats({
   return (
     <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-product-search">
       <div className="flex items-center gap-2 mb-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-50">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
           <Search className="h-4 w-4 text-cyan-600" />
         </div>
         <h2 className="text-base font-semibold">Product performance lookup</h2>
@@ -2192,7 +2192,7 @@ function HeadToHeadMatrix({ allEntries, productsById, testsById }: {
   return (
     <Card className="fs-card rounded-2xl p-4 sm:p-6">
       <div className="flex items-center gap-2 mb-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-900/20">
           <Target className="h-4 w-4 text-indigo-600" />
         </div>
         <h2 className="text-base font-semibold">Head-to-head matrix</h2>
@@ -2487,7 +2487,7 @@ function ProductCompare({
   return (
     <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-product-compare">
       <div className="flex items-center gap-2 mb-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-900/30">
           <BarChart3 className="h-4 w-4 text-violet-600" />
         </div>
         <h2 className="text-base font-semibold">Compare products</h2>
@@ -3384,7 +3384,7 @@ export default function Analytics() {
 
                 <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-wins-trend">
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
                       <TrendingUp className="h-4 w-4 text-emerald-600" />
                     </div>
                     <h2 className="text-base font-semibold">Product wins over time</h2>
@@ -3410,7 +3410,7 @@ export default function Analytics() {
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-avg-rank">
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-green-50">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-green-50 dark:bg-green-900/20">
                         <Award className="h-4 w-4 text-green-600" />
                       </div>
                       <h2 className="text-base font-semibold">Average rank by product</h2>
@@ -3435,7 +3435,7 @@ export default function Analytics() {
 
                   <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-tests-month">
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-900/30">
                         <BarChart3 className="h-4 w-4 text-violet-600" />
                       </div>
                       <h2 className="text-base font-semibold">Tests per month</h2>
@@ -3522,7 +3522,7 @@ export default function Analytics() {
 
             <Card className="fs-card rounded-2xl p-4 sm:p-6" data-testid="card-chart-temp-rank">
               <div className="flex items-center gap-2 mb-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-900/20">
                   <Thermometer className="h-4 w-4 text-amber-600" />
                 </div>
                 <h2 className="text-base font-semibold">Snow temperature vs. rank</h2>

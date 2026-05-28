@@ -176,17 +176,87 @@
     color: hsl(215 80% 40%);
     border: 1px solid hsl(215 80% 48% / 0.2);
   }
+  .dark .fs-badge-glide {
+    background: hsl(215 80% 58% / 0.15);
+    color: hsl(215 80% 72%);
+    border: 1px solid hsl(215 80% 58% / 0.3);
+  }
 
   .fs-badge-structure {
     background: hsl(270 60% 55% / 0.08);
     color: hsl(270 60% 42%);
     border: 1px solid hsl(270 60% 55% / 0.2);
   }
+  .dark .fs-badge-structure {
+    background: hsl(270 60% 65% / 0.15);
+    color: hsl(270 60% 78%);
+    border: 1px solid hsl(270 60% 65% / 0.3);
+  }
 
   .fs-badge-topping {
     background: hsl(35 85% 50% / 0.08);
     color: hsl(35 85% 38%);
     border: 1px solid hsl(35 85% 50% / 0.2);
+  }
+  .dark .fs-badge-topping {
+    background: hsl(35 85% 55% / 0.15);
+    color: hsl(35 85% 72%);
+    border: 1px solid hsl(35 85% 55% / 0.3);
+  }
+
+  /* ── Icon box — shared base, semantic color variants ─────────────────────── */
+  .fs-icon-box {
+    display: flex;
+    height: 2rem;
+    width: 2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+  }
+  /* Tests / TestSkis */
+  .fs-icon-tests    { background: hsl(215 80% 48% / 0.10); }
+  .dark .fs-icon-tests { background: hsl(215 80% 58% / 0.18); }
+  /* Products */
+  .fs-icon-products { background: hsl(160 70% 40% / 0.10); }
+  .dark .fs-icon-products { background: hsl(160 70% 50% / 0.18); }
+  /* Analytics */
+  .fs-icon-analytics { background: hsl(270 60% 55% / 0.10); }
+  .dark .fs-icon-analytics { background: hsl(270 60% 65% / 0.18); }
+  /* Weather */
+  .fs-icon-weather  { background: hsl(200 85% 50% / 0.10); }
+  .dark .fs-icon-weather { background: hsl(200 85% 60% / 0.18); }
+  /* Race Prep */
+  .fs-icon-raceprep { background: hsl(350 80% 56% / 0.10); }
+  .dark .fs-icon-raceprep { background: hsl(350 80% 65% / 0.18); }
+  /* Grinding */
+  .fs-icon-grinding { background: hsl(35 85% 50% / 0.10); }
+  .dark .fs-icon-grinding { background: hsl(35 85% 55% / 0.18); }
+  /* Suggestions */
+  .fs-icon-suggestions { background: hsl(245 75% 58% / 0.10); }
+  .dark .fs-icon-suggestions { background: hsl(245 75% 68% / 0.18); }
+
+  /* ── Section heading ─────────────────────────────────────────────────────── */
+  .fs-section-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* ── Empty state ─────────────────────────────────────────────────────────── */
+  .fs-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+    gap: 0.75rem;
+  }
+  .fs-empty-icon {
+    opacity: 0.25;
+    margin-bottom: 0.25rem;
   }
 
   .fs-gradient-blue {

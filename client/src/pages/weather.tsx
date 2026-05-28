@@ -7,6 +7,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Thermometer, Droplets, Snowflake, MapPin, Cloud, Wind, Eye, Star } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
+import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -712,8 +713,12 @@ export default function WeatherPage() {
 
         <div className="grid grid-cols-1 gap-3">
           {weather.length === 0 ? (
-            <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-weather">
-              {t("weather.noEntries")}
+            <Card className="fs-card rounded-2xl" data-testid="empty-weather">
+              <EmptyState
+                icon={Cloud}
+                title={t("weather.noEntries")}
+                description="Add your first weather entry using the button above."
+              />
             </Card>
           ) : (
             weather.map((w) => (

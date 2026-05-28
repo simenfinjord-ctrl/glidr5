@@ -3,6 +3,7 @@ import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Awar
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { AppShell } from "@/components/app-shell";
+import { EmptyState } from "@/components/empty-state";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -1419,8 +1420,8 @@ export default function Tests() {
               </Button>
             </div>
             {filtered.length === 0 ? (
-              <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-day-tests">
-                {t("tests.noTests")}
+              <Card className="fs-card rounded-2xl" data-testid="empty-day-tests">
+                <EmptyState icon={Trophy} title={t("tests.noTests")} description="No tests match the current filters." />
               </Card>
             ) : viewMode === "table" ? (
               <Card className="fs-card rounded-2xl overflow-hidden">
@@ -1660,8 +1661,8 @@ export default function Tests() {
         ) : viewMode === "table" ? (
           <Card className="fs-card rounded-2xl overflow-hidden">
             {filtered.length === 0 ? (
-              <div className="p-6 text-sm text-muted-foreground" data-testid="empty-tests">
-                {t("tests.noTests")}
+              <div data-testid="empty-tests">
+                <EmptyState icon={Trophy} title={t("tests.noTests")} description="No tests match the current filters." />
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -1737,8 +1738,8 @@ export default function Tests() {
         ) : (
           <div className={cn("grid gap-3", twoColLayout ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1")}>
             {filtered.length === 0 ? (
-              <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-tests">
-                {t("tests.noTests")}
+              <Card className="fs-card rounded-2xl" data-testid="empty-tests">
+                <EmptyState icon={Trophy} title={t("tests.noTests")} description="No tests match the current filters." />
               </Card>
             ) : (
               filtered.map((t) => {

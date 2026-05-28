@@ -193,8 +193,8 @@ function TopProductsWidget({ recentResults }: { recentResults: RecentResult[] })
   return (
     <Card className="fs-card rounded-2xl p-4">
       <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-yellow-50">
-          <Award className="h-3.5 w-3.5 text-yellow-600" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-yellow-50 dark:bg-yellow-900/20">
+          <Award className="h-4 w-4 text-yellow-600" />
         </div>
         Top Products
       </div>
@@ -243,8 +243,8 @@ function AthleteRecentTestsWidget({ selectedAthleteIds, athletes, tests }: Athle
   return (
     <Card className="fs-card rounded-2xl p-4">
       <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
-          <User className="h-3.5 w-3.5 text-sky-600" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 dark:bg-sky-900/20">
+          <User className="h-4 w-4 text-sky-600" />
         </div>
         Athlete Recent Tests
         {sorted.length > 0 && (
@@ -307,8 +307,8 @@ function RecentActivityWidget() {
   return (
     <Card className="fs-card rounded-2xl p-4">
       <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-50">
-          <Activity className="h-3.5 w-3.5 text-violet-600" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-900/20">
+          <Activity className="h-4 w-4 text-violet-600" />
         </div>
         Team Activity
       </div>
@@ -847,8 +847,8 @@ export default function Dashboard() {
         {isWidgetEnabled("today-tests") && todayTests.length > 0 && (
           <Card className="fs-card rounded-2xl border-emerald-200 p-4" data-testid="card-today-tests">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50">
-                <Zap className="h-3.5 w-3.5 text-emerald-600" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+                <Zap className="h-4 w-4 text-emerald-600" />
               </div>
               {t("dashboard.todayTests")}
               <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200">{todayTests.length}</span>
@@ -875,8 +875,8 @@ export default function Dashboard() {
           <Card className="fs-card rounded-2xl border-sky-200 p-4">
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-50">
-                  <Watch className="h-3.5 w-3.5 text-sky-600" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 dark:bg-sky-900/20">
+                  <Watch className="h-4 w-4 text-sky-600" />
                 </div>
                 {t("dashboard.watchQueue")}
                 <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-700 ring-1 ring-sky-200">{activeQueue.length}</span>
@@ -911,8 +911,8 @@ export default function Dashboard() {
         {isWidgetEnabled("recent-results") && (
           <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-results">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-yellow-50">
-                <Trophy className="h-3.5 w-3.5 text-yellow-600" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-yellow-50 dark:bg-yellow-900/20">
+                <Trophy className="h-4 w-4 text-yellow-600" />
               </div>
               {t("dashboard.recentResults")}
               <span className="flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-600 ring-1 ring-green-200">
@@ -1003,8 +1003,8 @@ export default function Dashboard() {
           {isWidgetEnabled("recent-weather") && recentWeather.length > 0 && (
             <Card className="fs-card rounded-2xl p-4" data-testid="card-recent-weather">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-50">
-                  <CloudSun className="h-3.5 w-3.5 text-violet-600" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-900/20">
+                  <CloudSun className="h-4 w-4 text-violet-600" />
                 </div>
                 {t("dashboard.recentWeather")}
               </div>
@@ -1033,8 +1033,8 @@ export default function Dashboard() {
           {isWidgetEnabled("products-overview") && products.length > 0 && !isBlindTester && (
             <Card className="fs-card rounded-2xl p-4" data-testid="card-products-overview">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50">
-                  <Package className="h-3.5 w-3.5 text-amber-600" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-900/20">
+                  <Package className="h-4 w-4 text-amber-600" />
                 </div>
                 {t("nav.products")}
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{products.length}</span>

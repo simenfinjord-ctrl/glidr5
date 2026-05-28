@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer, Droplets, Snowflake, ChevronDown, Archive, ArchiveRestore } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -722,8 +723,12 @@ export default function Products() {
             )}
             <div className="space-y-2">
               {sortedFiltered.length === 0 ? (
-                <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-products">
-                  {t("products.noProducts")}
+                <Card className="fs-card rounded-2xl" data-testid="empty-products">
+                  <EmptyState
+                    icon={PackagePlus}
+                    title={t("products.noProducts")}
+                    description="Add your first product using the button above."
+                  />
                 </Card>
               ) : (
                 sortedFiltered.map((p) => (
@@ -777,8 +782,12 @@ export default function Products() {
             )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {filtered.length === 0 ? (
-                <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground sm:col-span-2" data-testid="empty-products">
-                  {t("products.noProducts")}
+                <Card className="fs-card rounded-2xl sm:col-span-2" data-testid="empty-products">
+                  <EmptyState
+                    icon={PackagePlus}
+                    title={t("products.noProducts")}
+                    description="Add your first product using the button above."
+                  />
                 </Card>
               ) : (
                 filtered.map((p) => (

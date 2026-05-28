@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Pencil, Snowflake, Hash, Table, ArrowUpDown, Archive, RotateCcw, Trash2, Filter, ChevronDown } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
@@ -589,8 +590,12 @@ export default function TestSkis() {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {sortedSeries.length === 0 ? (
-            <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground sm:col-span-2" data-testid="empty-series">
-              {t("testskis.noSeries")}
+            <Card className="fs-card rounded-2xl sm:col-span-2" data-testid="empty-series">
+              <EmptyState
+                icon={Snowflake}
+                title={t("testskis.noSeries")}
+                description="Create your first test ski series using the button above."
+              />
             </Card>
           ) : (
             sortedSeries.map((s) => (

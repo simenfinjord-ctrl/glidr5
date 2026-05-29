@@ -1070,12 +1070,22 @@ function buildExportHtml(data: {
   // Grinding records
   // Race preps
   if (data.racePreps.length > 0) {
+    const resolveRpIds = (raw: string | null | undefined): string => {
+      if (!raw) return '';
+      try {
+        const ids: number[] = JSON.parse(raw);
+        if (!Array.isArray(ids)) return raw;
+        return ids.map(id => { const p = productMap.get(id); return p ? `${p.brand || ''} ${p.name}`.trim() : `#${id}`; }).filter(Boolean).join(' + ');
+      } catch { return raw || ''; }
+    };
     body += htmlSection(`Race Preps (${data.racePreps.length})`, htmlTable(
-      ['Date', 'Start Time', 'Location', 'Race Type', 'Discipline', 'Glide Products', 'Structure', 'Method', 'Notes', 'Created By'],
+      ['Date', 'Location', 'Race Type', 'Discipline', 'Glide', 'Structure', 'Kick/Binder', 'Application', 'Notes', 'Created By'],
       data.racePreps.map((rp: any) => [
-        rp.date || '', rp.start_time || '', rp.location || '', rp.race_type || '',
-        rp.discipline || '', rp.products || '', rp.structure || '', rp.method || '',
-        rp.notes || '', rp.created_by_name || '',
+        rp.date || '', rp.location || '', rp.race_type || '', rp.discipline || '',
+        resolveRpIds(rp.product_ids) || rp.products || '',
+        resolveRpIds(rp.structure_ids) || rp.structure || '',
+        resolveRpIds(rp.kick_product_ids) || '',
+        rp.method || '', rp.notes || '', rp.created_by_name || '',
       ])
     ));
   }

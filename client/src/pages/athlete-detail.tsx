@@ -1892,102 +1892,119 @@ export default function AthleteDetail() {
                 const hasProducts = glideProducts.length > 0 || structureProducts.length > 0 || kickProducts.length > 0 || !!kickText;
 
                 return (
-                  <Card key={entry.entryId} className="rounded-xl px-4 py-3">
-                    {/* ── Header: location · date · time · distance · discipline ── */}
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <Card key={entry.entryId} className="rounded-xl overflow-hidden">
+                    {/* ── Header bar ── */}
+                    <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-2">
                       <span className="font-semibold text-sm">{entry.location}</span>
                       <span className="text-xs text-muted-foreground">{fmtDate(entry.date)}</span>
                       {entry.startTime && (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground">
-                          <Clock className="h-3 w-3 text-muted-foreground" />
-                          {entry.startTime}
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />{entry.startTime}
                         </span>
                       )}
                       {entry.raceType && <span className="text-xs text-muted-foreground">{entry.raceType}</span>}
-                      <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1", DISCIPLINE_COLORS_DETAIL[entry.discipline] ?? "")}>
+                      <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1", DISCIPLINE_COLORS_DETAIL[entry.discipline] ?? "")}>
                         {DISCIPLINE_LABEL_DETAIL[entry.discipline]?.en ?? entry.discipline}
                       </span>
-                    </div>
-
-                    {/* ── Ski pair(s) + Waxer ── */}
-                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                      {entry.discipline === "Skiathlon" ? (
-                        <>
-                          {entry.skiIdClassic && (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 dark:bg-sky-900/20 px-2 py-0.5 text-xs font-semibold text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800">
-                              Classic <span className="font-bold">{entry.skiIdClassic}</span>
-                            </span>
-                          )}
-                          {entry.skiIdSkating && (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-800">
-                              Skating <span className="font-bold">{entry.skiIdSkating}</span>
-                            </span>
-                          )}
-                          {!entry.skiIdClassic && !entry.skiIdSkating && (
-                            <span className="text-xs text-muted-foreground">Ski: —</span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800">
-                          Ski <span className="font-bold">{entry.skiId ?? "—"}</span>
-                        </span>
-                      )}
                       {entry.waxerName && (
-                        <span className="text-xs text-muted-foreground">
+                        <span className="ml-auto text-xs text-muted-foreground">
                           Waxer: <span className="font-medium text-foreground">{entry.waxerName}</span>
                         </span>
                       )}
                     </div>
 
-                    {/* ── Products + Application ── */}
-                    {hasProducts && (
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1.5">
-                        {glideProducts.map((p, i) => (
-                          <span key={i} className="inline-flex items-center rounded-md bg-violet-50 dark:bg-violet-900/20 px-2 py-0.5 text-[11px] font-medium text-violet-700 dark:text-violet-300 ring-1 ring-violet-200 dark:ring-violet-800">
-                            {p.brand} {p.name}
-                          </span>
-                        ))}
-                        {structureProducts.map((p, i) => (
-                          <span key={`s${i}`} className="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700">
-                            {p.brand} {p.name}
-                          </span>
-                        ))}
-                        {kickProducts.map((p, i) => (
-                          <span key={`k${i}`} className="inline-flex items-center rounded-md bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 text-[11px] font-medium text-orange-700 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-800">
-                            {p.brand} {p.name}
-                          </span>
-                        ))}
-                        {kickText && (
-                          <span className="inline-flex items-center rounded-md bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 text-[11px] font-medium text-orange-700 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-800">
-                            {kickText}
-                          </span>
-                        )}
-                        {entry.method && (
-                          <span className="text-xs text-muted-foreground">
-                            · <span className="font-medium text-foreground">{entry.method}</span>
-                          </span>
-                        )}
-                      </div>
-                    )}
+                    {/* ── SKI PAIR — hero section ── */}
+                    <div className="px-4 pb-3">
+                      {entry.discipline === "Skiathlon" ? (
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          <div className="rounded-xl bg-sky-50 dark:bg-sky-900/25 ring-1 ring-sky-200 dark:ring-sky-800 px-4 py-3">
+                            <div className="text-[9px] font-bold uppercase tracking-widest text-sky-500 dark:text-sky-400 mb-0.5">Classic</div>
+                            <div className="text-xl font-bold text-sky-700 dark:text-sky-200 leading-tight">
+                              {entry.skiIdClassic ?? <span className="text-muted-foreground text-sm font-normal">—</span>}
+                            </div>
+                          </div>
+                          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/25 ring-1 ring-emerald-200 dark:ring-emerald-800 px-4 py-3">
+                            <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-500 dark:text-emerald-400 mb-0.5">Skating</div>
+                            <div className="text-xl font-bold text-emerald-700 dark:text-emerald-200 leading-tight">
+                              {entry.skiIdSkating ?? <span className="text-muted-foreground text-sm font-normal">—</span>}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="inline-flex flex-col rounded-xl bg-violet-50 dark:bg-violet-900/25 ring-1 ring-violet-200 dark:ring-violet-800 px-5 py-2.5 mb-3">
+                          <div className="text-[9px] font-bold uppercase tracking-widest text-violet-400 mb-0.5">
+                            {DISCIPLINE_LABEL_DETAIL[entry.discipline]?.en ?? entry.discipline}
+                          </div>
+                          <div className="text-2xl font-bold text-violet-700 dark:text-violet-200 leading-tight">
+                            {entry.skiId ?? <span className="text-muted-foreground text-sm font-normal">—</span>}
+                          </div>
+                        </div>
+                      )}
 
-                    {/* ── Weather conditions ── */}
-                    {rw && (
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground pt-1.5 mt-1 border-t border-border/40">
-                        {rw.snowTemperatureC != null && <span>Snow: <span className="font-medium text-foreground">{rw.snowTemperatureC}°C</span></span>}
-                        {rw.airTemperatureC != null && <span>Air: <span className="font-medium text-foreground">{rw.airTemperatureC}°C</span></span>}
-                        {rw.snowHumidityPct != null && <span>Snow RH: <span className="font-medium text-foreground">{rw.snowHumidityPct}%</span></span>}
-                        {rw.airHumidityPct != null && <span>Air RH: <span className="font-medium text-foreground">{rw.airHumidityPct}%</span></span>}
-                        {rw.snowType && <span>Snow type: <span className="font-medium text-foreground">{rw.snowType}</span></span>}
-                        {rw.trackHardness && <span>Track: <span className="font-medium text-foreground">{rw.trackHardness}</span></span>}
-                        {rw.grainSize && <span>Grain: <span className="font-medium text-foreground">{rw.grainSize}</span></span>}
-                        {rw.precipitation && <span>Precip: <span className="font-medium text-foreground">{rw.precipitation}</span></span>}
-                        {rw.artificialSnow && <span>Artificial: <span className="font-medium text-foreground">{rw.artificialSnow}</span></span>}
-                        {rw.naturalSnow && <span>Natural: <span className="font-medium text-foreground">{rw.naturalSnow}</span></span>}
-                        {rw.wind && <span>Wind: <span className="font-medium text-foreground">{rw.wind}</span></span>}
-                        {rw.clouds != null && <span>Clouds: <span className="font-medium text-foreground">{rw.clouds}/8</span></span>}
-                        {rw.testQuality != null && <span>Quality: <span className="font-medium text-foreground">{rw.testQuality}</span></span>}
-                      </div>
-                    )}
+                      {/* ── Products + Application ── */}
+                      {hasProducts && (
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mb-3">
+                          {glideProducts.map((p, i) => (
+                            <span key={i} className="inline-flex items-center rounded-lg bg-violet-50 dark:bg-violet-900/20 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:text-violet-300 ring-1 ring-violet-200 dark:ring-violet-800">
+                              {p.brand} {p.name}
+                            </span>
+                          ))}
+                          {structureProducts.map((p, i) => (
+                            <span key={`s${i}`} className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700">
+                              {p.brand} {p.name}
+                            </span>
+                          ))}
+                          {kickProducts.map((p, i) => (
+                            <span key={`k${i}`} className="inline-flex items-center rounded-lg bg-orange-50 dark:bg-orange-900/20 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-800">
+                              {p.brand} {p.name}
+                            </span>
+                          ))}
+                          {kickText && (
+                            <span className="inline-flex items-center rounded-lg bg-orange-50 dark:bg-orange-900/20 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-800">
+                              {kickText}
+                            </span>
+                          )}
+                          {entry.method && (
+                            <span className="text-xs text-muted-foreground">
+                              · {entry.method}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* ── Weather conditions grid ── */}
+                      {rw && (() => {
+                        const cells: { val: string; lbl: string }[] = [];
+                        if (rw.snowTemperatureC != null) cells.push({ val: `${rw.snowTemperatureC}°C`, lbl: "Snow Temp" });
+                        if (rw.airTemperatureC != null)  cells.push({ val: `${rw.airTemperatureC}°C`,  lbl: "Air Temp" });
+                        if (rw.snowHumidityPct != null)  cells.push({ val: `${rw.snowHumidityPct}%`,   lbl: "Snow RH" });
+                        if (rw.airHumidityPct != null)   cells.push({ val: `${rw.airHumidityPct}%`,    lbl: "Air RH" });
+                        if (rw.snowType)                 cells.push({ val: rw.snowType,                lbl: "Snow Type" });
+                        if (rw.snowHumidityType)         cells.push({ val: rw.snowHumidityType,        lbl: "Hum. Type" });
+                        if (rw.trackHardness)            cells.push({ val: rw.trackHardness,           lbl: "Track" });
+                        if (rw.grainSize)                cells.push({ val: rw.grainSize,               lbl: "Grain Size" });
+                        if (rw.clouds != null)           cells.push({ val: `${rw.clouds}/8`,           lbl: "Clouds" });
+                        if (rw.wind)                     cells.push({ val: rw.wind,                    lbl: "Wind" });
+                        if (rw.precipitation)            cells.push({ val: rw.precipitation,           lbl: "Precip." });
+                        if (rw.visibility)               cells.push({ val: rw.visibility,              lbl: "Visibility" });
+                        if (rw.artificialSnow)           cells.push({ val: rw.artificialSnow,          lbl: "Artificial" });
+                        if (rw.naturalSnow)              cells.push({ val: rw.naturalSnow,             lbl: "Natural" });
+                        if (rw.testQuality != null)      cells.push({ val: `${rw.testQuality}/10`,     lbl: "Quality" });
+                        if (cells.length === 0) return null;
+                        return (
+                          <div className="border-t border-border/40 pt-2.5 mt-1">
+                            <div className="grid grid-cols-4 gap-1.5">
+                              {cells.map(({ val, lbl }) => (
+                                <div key={lbl} className="rounded-lg bg-muted/50 dark:bg-muted/20 px-2 py-1.5 text-center">
+                                  <div className="text-xs font-semibold text-foreground leading-tight truncate">{val}</div>
+                                  <div className="text-[9px] text-muted-foreground mt-0.5 leading-tight">{lbl}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </Card>
                 );
               })}

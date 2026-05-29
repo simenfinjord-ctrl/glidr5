@@ -9,7 +9,7 @@ function getApiKey(): string | null {
 // Every email uses this shell so they all look identical and on-brand.
 
 function emailHtml(content: string, footerLine?: string): string {
-  const footer = footerLine ?? "Glidr · simen@glidr.no · glidr.no";
+  const footer = footerLine ?? "Glidr · hei@glidr.no · glidr.no";
   return `<!DOCTYPE html>
 <html lang="no">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -430,7 +430,7 @@ export async function sendWelcomeEmail(
 
       ${emailHr()}
       ${emailMeta(c.footer)}
-    `, "Glidr · simen@glidr.no · glidr.no"),
+    `, "Glidr · hei@glidr.no · glidr.no"),
   });
 }
 
@@ -446,7 +446,7 @@ export async function sendInterestNotification(reg: {
   billingPeriod?: string | null;
   notes?: string | null;
 }): Promise<void> {
-  const ownerEmail = process.env.OWNER_EMAIL || "simen@glidr.no";
+  const ownerEmail = process.env.OWNER_EMAIL || "hei@glidr.no";
   const plan = reg.planName ?? "team";
   const subject = `Ny registrering: ${reg.teamName} (${plan})`;
 

@@ -17,6 +17,7 @@ import {
 import type { UserPermissions, PermissionLevel } from "@shared/schema";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { generateFeatureGuidePDF } from "@/lib/featureGuidePdf";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
@@ -239,7 +240,7 @@ type ActivityEntry = {
   groupScope: string;
 };
 
-type TabId = "overview" | "users" | "groups" | "teams" | "security" | "backup" | "activity" | "logins" | "data" | "danger" | "registrations" | "accounting";
+type TabId = "overview" | "users" | "groups" | "teams" | "security" | "backup" | "activity" | "logins" | "data" | "danger" | "registrations" | "accounting" | "guide";
 
 function parseGroups(groupScope: string): string[] {
   return groupScope.split(",").map((s) => s.trim()).filter(Boolean);
@@ -1543,6 +1544,7 @@ const ALL_TABS: { id: TabId; labelKey: string; superAdminOnly?: boolean; icon: R
   { id: "security", labelKey: "admin.tabSecurity", superAdminOnly: true, icon: Shield },
   { id: "registrations", labelKey: "admin.tabRegistrations", superAdminOnly: true, icon: UserPlus },
   { id: "accounting" as TabId, labelKey: "admin.tabAccounting", superAdminOnly: true, icon: CreditCard },
+  { id: "guide", labelKey: "admin.tabFeatureGuide", icon: FileText, superAdminOnly: true },
 ];
 
 function BackupStatusCard() {
@@ -4173,6 +4175,62 @@ export default function Admin() {
         )}
 
         {activeTab === "data" && <DataManagementTab teamScopeParam={teamScopeParam} downloadFullPdf={downloadFullPdf} pdfLoading={pdfLoading} isSuperAdmin={isSuperAdmin} teams={teams} />}
+
+        {activeTab === "guide" && (
+          <div className="space-y-6">
+            <Card className="fs-card rounded-2xl p-6">
+              <div className="flex items-start gap-4">
+                <div className="rounded-xl bg-violet-100 dark:bg-violet-900/30 p-3">
+                  <FileText className="h-6 w-6 text-violet-600" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-semibold mb-1">Glidr Feature Guide</h2>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    A complete, confidential reference document covering all platform features, role requirements, and the permission system. Updated automatically as new features are added.
+                  </p>
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-3 mb-4">
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      <strong>Confidential:</strong> This document contains proprietary feature descriptions and internal workflows. Do not distribute to third parties or use as a reference for competing software development.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => generateFeatureGuidePDF()}
+                    className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download PDF
+                  </Button>
+                </div>
+              </div>
+            </Card>
+            <Card className="fs-card rounded-2xl p-6">
+              <h3 className="font-semibold mb-3">Document Contents</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                {[
+                  "Introduction & Role Overview",
+                  "Tests (all types, AI entry, blind testing)",
+                  "Products & Combination Search",
+                  "Weather & Conditions (15 fields)",
+                  "Analytics & Compare",
+                  "Race Preparations",
+                  "Athletes & Race Skis",
+                  "Grinding & Grind Profiles",
+                  "Garmin Watch Integration",
+                  "Offline Mode",
+                  "My Account",
+                  "★ Team Admin Features",
+                  "Permission System",
+                  "Competitive Reservation & Legal",
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-violet-500 flex-shrink-0" />
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
 
         {activeTab === "danger" && <DangerZoneTab />}
 

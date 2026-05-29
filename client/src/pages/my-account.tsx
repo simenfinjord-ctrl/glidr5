@@ -720,15 +720,129 @@ function DownloadMyDataButton() {
     try {
       const res = await fetch("/api/users/me/data-export", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to export data");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "glidr-my-data.json";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const data = await res.json() as {
+        exportedAt: string;
+        user: { id: number; name: string; email: string; username?: string; created_at: string } | null;
+        tests: any[];
+        testEntries: any[];
+      };
+
+      const { jsPDF } = await import("jspdf");
+      const autoTable = (await import("jspdf-autotable")).default;
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = doc.internal.pageSize.getWidth();
+      let y = 18;
+
+      // Header
+      doc.setFontSize(18);
+      doc.setFont("helvetica", "bold");
+      doc.text("My Glidr Data Export", 14, y);
+      y += 7;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(120);
+      doc.text(`Exported: ${new Date(data.exportedAt).toLocaleString()}`, 14, y);
+      y += 10;
+      doc.setTextColor(0);
+
+      // User info
+      if (data.user) {
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("Profile", 14, y);
+        y += 5;
+        autoTable(doc, {
+          startY: y,
+          head: [["Field", "Value"]],
+          body: [
+            ["Name", data.user.name ?? ""],
+            ["Email", data.user.email ?? ""],
+            ["Username", data.user.username ?? ""],
+            ["Member since", data.user.created_at ? new Date(data.user.created_at).toLocaleDateString() : ""],
+          ],
+          theme: "grid",
+          headStyles: { fillColor: [30, 100, 200], textColor: 255, fontSize: 9, fontStyle: "bold" },
+          bodyStyles: { fontSize: 9 },
+          columnStyles: { 0: { cellWidth: 40, fontStyle: "bold" } },
+          margin: { left: 14, right: 14 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      // Tests
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Tests (${data.tests.length})`, 14, y);
+      y += 5;
+      if (data.tests.length === 0) {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(150);
+        doc.text("No tests recorded.", 14, y);
+        doc.setTextColor(0);
+        y += 8;
+      } else {
+        autoTable(doc, {
+          startY: y,
+          head: [["Date", "Location", "Snow Type", "Snow Temp", "Air Temp", "Notes"]],
+          body: data.tests.map((t: any) => [
+            t.date ? new Date(t.date).toLocaleDateString() : "",
+            t.location ?? "",
+            t.snow_type ?? "",
+            t.snow_temp != null ? `${t.snow_temp}°C` : "",
+            t.air_temp != null ? `${t.air_temp}°C` : "",
+            t.notes ?? "",
+          ]),
+          theme: "striped",
+          headStyles: { fillColor: [30, 100, 200], textColor: 255, fontSize: 8, fontStyle: "bold" },
+          bodyStyles: { fontSize: 8 },
+          margin: { left: 14, right: 14 },
+          didDrawPage: () => { y = 20; },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      // Test entries
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.text(`Test Entries (${data.testEntries.length})`, 14, y);
+      y += 5;
+      if (data.testEntries.length === 0) {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(150);
+        doc.text("No test entries recorded.", 14, y);
+        doc.setTextColor(0);
+      } else {
+        autoTable(doc, {
+          startY: y,
+          head: [["Test ID", "Ski", "Rank", "Speed", "Glide Score", "Notes"]],
+          body: data.testEntries.map((e: any) => [
+            e.test_id ?? "",
+            e.ski_label ?? e.ski_id ?? "",
+            e.rank ?? "",
+            e.speed ?? "",
+            e.glide_score ?? "",
+            e.notes ?? "",
+          ]),
+          theme: "striped",
+          headStyles: { fillColor: [30, 100, 200], textColor: 255, fontSize: 8, fontStyle: "bold" },
+          bodyStyles: { fontSize: 8 },
+          margin: { left: 14, right: 14 },
+        });
+      }
+
+      // Page numbers
+      const pageCount = (doc.internal as any).getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(160);
+        doc.text(`Page ${i} of ${pageCount}`, pageW - 14, doc.internal.pageSize.getHeight() - 8, { align: "right" });
+      }
+
+      doc.save("glidr-my-data.pdf");
     } catch {
       toast({ title: "Error", description: "Could not download data. Try again later.", variant: "destructive" });
     } finally {
@@ -738,7 +852,7 @@ function DownloadMyDataButton() {
 
   return (
     <Button variant="outline" size="sm" onClick={handleDownload} disabled={downloading}>
-      {downloading ? "Downloading…" : "Download my data"}
+      {downloading ? "Downloading…" : "Download my data (PDF)"}
     </Button>
   );
 }

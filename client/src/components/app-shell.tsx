@@ -1162,7 +1162,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </p>
         </footer>
       </main>
-      {mobileNavEnabled && <div className="sm:hidden"><MobileNav watchQueueCount={watchQueueCount} /></div>}
+      {mobileNavEnabled && <div className="lg:hidden"><MobileNav watchQueueCount={watchQueueCount} /></div>}
     </>
   );
 

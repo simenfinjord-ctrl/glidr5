@@ -1257,7 +1257,11 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
   });
 
   const puppeteer = await import('puppeteer');
+  const { existsSync } = await import('fs');
+  // On Render/Linux use the system Chromium if available (bundled one often lacks libs)
+  const systemChromium = ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome-stable'].find(p => existsSync(p));
   const browser = await puppeteer.default.launch({
+    executablePath: systemChromium,   // undefined → falls back to bundled Chromium
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -1265,7 +1269,6 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
       '--disable-gpu',
       '--no-first-run',
       '--no-zygote',
-      '--single-process',
     ],
   });
   try {

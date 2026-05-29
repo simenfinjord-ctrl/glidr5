@@ -4244,6 +4244,7 @@ export default function Admin() {
               </p>
 
               {/* ── Shared Drive auto-upload (Google Workspace only) ── */}
+              {teams.some(t => !(t as any).driveFolderId) && (
               <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20 p-3 mb-3 text-[11px] text-amber-800 dark:text-amber-300 space-y-1">
                 <p className="font-semibold">⚠ Automatic Drive upload requires a Shared Drive (Google Workspace)</p>
                 <p>Google service accounts cannot store files in a personal My Drive. To use automatic upload you need a <strong>Shared Drive</strong> (available on Google Workspace / G Suite):</p>
@@ -4253,6 +4254,7 @@ export default function Admin() {
                   <li>Copy the Shared Drive URL and paste it below.</li>
                 </ol>
               </div>
+              )}
               <div className="space-y-3">
                 {teams.map((team) => {
                   const driveInputVal = driveFolderInputs[team.id] ?? (team as any).driveFolderId ?? '';

@@ -7,15 +7,17 @@ export function AppLink({
   testId,
   className,
   title,
+  dataTour,
 }: {
   href: string;
   children: ReactNode;
   testId?: string;
   className?: string;
   title?: string;
+  dataTour?: string;
 }) {
   return (
-    <Link href={href} data-testid={testId} className={className} title={title}>
+    <Link href={href} data-testid={testId} data-tour={dataTour} className={className} title={title}>
       {children}
     </Link>
   );

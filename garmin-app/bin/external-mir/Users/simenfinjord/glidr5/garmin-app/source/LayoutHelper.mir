@@ -1,0 +1,839 @@
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 4; @symbol_moduledef = [Ld,4,7,9]; ]
+module Ld {
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 4; ]
+    <init> {
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 5; @symbol_usingdef<0> = [Toybox,5,10,16]; @symbol_usingdef<1> = [System,5,17,23]; ]
+    using Toybox.System;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 6; @symbol_usingdef<0> = [Toybox,6,10,16]; @symbol_usingdef<1> = [Graphics,6,17,25]; ]
+    using Toybox.Graphics;
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 9; @symbol_functiondef = [isRect,9,13,19]; ]
+    function isRect() {
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_9_22_14_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 10 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_9_22_14_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_9_22_14_4_stop" ]
+        %shape.1 = local;
+        symbol [ shape %shape.1 10 12 17 ];
+        symbol [ System %tmp.1 10 20 26 ];
+        %tmp.1 = getm $.Toybox.System;
+        symbol [ getDeviceSettings %tmp.2 10 27 44 ];
+        %tmp.2 = getv function %tmp.1 :getDeviceSettings;
+        %tmp.3 = invoke %tmp.1 %tmp.2();
+        symbol [ screenShape %tmp.4 10 47 58 ];
+        %tmp.4 = getv %tmp.3 :screenShape;
+        lputv %shape.1 %tmp.4;
+        symbol [ shape %shape.1 10 12 17 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 12 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_12_16_13_32_begin:
+        %tmp.5 = lgetv %shape.1;
+        symbol [ shape %tmp.5 12 16 21 ];
+        symbol [ System %tmp.6 12 25 31 ];
+        %tmp.6 = getm $.Toybox.System;
+        symbol [ SCREEN_SHAPE_RECTANGLE %tmp.7 12 32 54 ];
+        %tmp.7 = getv %tmp.6 :SCREEN_SHAPE_RECTANGLE;
+        %tmp.8 = eq %tmp.5 %tmp.7;
+        %tmp.9 = dup %tmp.8;
+        bt %tmp.9 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_13_16_13_32_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_13_16_13_32_false:
+        %tmp.10 = lgetv %shape.1;
+        symbol [ shape %tmp.10 13 16 21 ];
+        symbol [ System %tmp.11 13 25 31 ];
+        %tmp.11 = getm $.Toybox.System;
+        symbol [ SCREEN_SHAPE_SEMI_OCTAGON %tmp.12 13 32 57 ];
+        %tmp.12 = getv %tmp.11 :SCREEN_SHAPE_SEMI_OCTAGON;
+        %tmp.13 = eq %tmp.10 %tmp.12;
+        %tmp.14 = or %tmp.8 %tmp.13;
+        push %tmp.14;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_13_16_13_32_end:
+        %tmp.15 = phi [%tmp.9 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_12_16_13_32_begin] [%tmp.14 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_13_16_13_32_false] [%tmp.15 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_13_16_13_32_end];
+        ret %tmp.15;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_9_22_14_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 18; @symbol_functiondef = [isAmoled,18,13,21]; ]
+    function isAmoled() {
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_18_24_26_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 19 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_18_24_26_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_18_24_26_4_stop" ]
+        %settings.1 = local;
+        symbol [ settings %settings.1 19 12 20 ];
+        symbol [ System %tmp.1 19 23 29 ];
+        %tmp.1 = getm $.Toybox.System;
+        symbol [ getDeviceSettings %tmp.2 19 30 47 ];
+        %tmp.2 = getv function %tmp.1 :getDeviceSettings;
+        %tmp.3 = invoke %tmp.1 %tmp.2();
+        lputv %settings.1 %tmp.3;
+        symbol [ settings %settings.1 19 12 20 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 20 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_20_8_23_8_if_stmt:
+        %tmp.4 = lgetv %settings.1;
+        symbol [ settings %tmp.4 20 12 20 ];
+        %tmp.6 = const :displayType;
+        symbol [ displayType %tmp.6 20 26 37 const ];
+        %tmp.7 = canhazplz %tmp.4 %tmp.6;
+        bf %tmp.7 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_20_8_23_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_20_8_23_8_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_20_39_23_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 22 12 ]
+        %tmp.8 = lgetv %settings.1;
+        symbol [ settings %tmp.8 22 19 27 ];
+        %tmp.9 = as %tmp.8 { (interface { var displayType; }) };
+        symbol [ displayType %tmp.10 22 28 39 ];
+        %tmp.10 = getv %tmp.9 :displayType;
+        %tmp.11 = 1;
+        %tmp.12 = eq %tmp.10 %tmp.11;
+        ret %tmp.12;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_20_39_23_8_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_20_8_23_8_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_20_8_23_8_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 25 8 ]
+        %tmp.13 = false;
+        ret %tmp.13;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_18_24_26_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 30; @symbol_functiondef = [hx,30,13,15]; @symbol_param<0> = [w,30,16,17]; ]
+    function hx(w) {
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_30_19_33_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 31 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_31_8_31_54_if_stmt:
+        %tmp.1 = self;
+        symbol [ isRect %tmp.2 31 12 18 ];
+        %tmp.2 = getv function %tmp.1 :isRect;
+        %tmp.3 = invoke %tmp.1 %tmp.2();
+        bf %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_31_8_31_54_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_31_8_31_54_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_31_22_31_54_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 31 24 ]
+        %tmp.4 = lgetv %w;
+        symbol [ w %tmp.4 31 32 33 ];
+        %tmp.5 = 0.46;
+        %tmp.6 = mul %tmp.4 %tmp.5;
+        symbol [ toNumber %tmp.7 31 42 50 ];
+        %tmp.7 = getv function %tmp.6 :toNumber;
+        %tmp.8 = invoke %tmp.6 %tmp.7();
+        ret %tmp.8;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_31_22_31_54_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_31_8_31_54_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_31_8_31_54_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 32 8 ]
+        %tmp.9 = lgetv %w;
+        symbol [ w %tmp.9 32 16 17 ];
+        %tmp.10 = 0.40;
+        %tmp.11 = mul %tmp.9 %tmp.10;
+        symbol [ toNumber %tmp.12 32 26 34 ];
+        %tmp.12 = getv function %tmp.11 :toNumber;
+        %tmp.13 = invoke %tmp.11 %tmp.12();
+        ret %tmp.13;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_30_19_33_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 36; @symbol_functiondef = [fw,36,13,15]; @symbol_param<0> = [w,36,16,17]; ]
+    function fw(w) {
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_36_19_39_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 37 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_37_8_37_54_if_stmt:
+        %tmp.1 = self;
+        symbol [ isRect %tmp.2 37 12 18 ];
+        %tmp.2 = getv function %tmp.1 :isRect;
+        %tmp.3 = invoke %tmp.1 %tmp.2();
+        bf %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_37_8_37_54_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_37_8_37_54_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_37_22_37_54_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 37 24 ]
+        %tmp.4 = lgetv %w;
+        symbol [ w %tmp.4 37 32 33 ];
+        %tmp.5 = 0.92;
+        %tmp.6 = mul %tmp.4 %tmp.5;
+        symbol [ toNumber %tmp.7 37 42 50 ];
+        %tmp.7 = getv function %tmp.6 :toNumber;
+        %tmp.8 = invoke %tmp.6 %tmp.7();
+        ret %tmp.8;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_37_22_37_54_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_37_8_37_54_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_37_8_37_54_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 38 8 ]
+        %tmp.9 = lgetv %w;
+        symbol [ w %tmp.9 38 16 17 ];
+        %tmp.10 = 0.80;
+        %tmp.11 = mul %tmp.9 %tmp.10;
+        symbol [ toNumber %tmp.12 38 26 34 ];
+        %tmp.12 = getv function %tmp.11 :toNumber;
+        %tmp.13 = invoke %tmp.11 %tmp.12();
+        ret %tmp.13;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_36_19_39_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 43; @symbol_functiondef = [ih,43,13,15]; @symbol_param<0> = [h,43,16,17]; ]
+    function ih(h) {
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_43_19_46_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 44 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_44_8_44_57_if_stmt:
+        %tmp.1 = self;
+        symbol [ isAmoled %tmp.2 44 12 20 ];
+        %tmp.2 = getv function %tmp.1 :isAmoled;
+        %tmp.3 = invoke %tmp.1 %tmp.2();
+        bf %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_44_8_44_57_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_44_8_44_57_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_44_24_44_57_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 44 26 ]
+        %tmp.4 = lgetv %h;
+        symbol [ h %tmp.4 44 34 35 ];
+        %tmp.5 = 0.115;
+        %tmp.6 = mul %tmp.4 %tmp.5;
+        symbol [ toNumber %tmp.7 44 45 53 ];
+        %tmp.7 = getv function %tmp.6 :toNumber;
+        %tmp.8 = invoke %tmp.6 %tmp.7();
+        ret %tmp.8;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_44_24_44_57_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_44_8_44_57_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_44_8_44_57_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 45 8 ]
+        %tmp.9 = lgetv %h;
+        symbol [ h %tmp.9 45 16 17 ];
+        %tmp.10 = 0.105;
+        %tmp.11 = mul %tmp.9 %tmp.10;
+        symbol [ toNumber %tmp.12 45 27 35 ];
+        %tmp.12 = getv function %tmp.11 :toNumber;
+        %tmp.13 = invoke %tmp.11 %tmp.12();
+        ret %tmp.13;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_43_19_46_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 50; @symbol_functiondef = [cr,50,13,15]; @symbol_param<0> = [w,50,16,17]; ]
+    function cr(w) {
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_50_19_52_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 51 8 ]
+        %tmp.1 = lgetv %w;
+        symbol [ w %tmp.1 51 16 17 ];
+        %tmp.2 = 0.04;
+        %tmp.3 = mul %tmp.1 %tmp.2;
+        symbol [ toNumber %tmp.4 51 26 34 ];
+        %tmp.4 = getv function %tmp.3 :toNumber;
+        %tmp.5 = invoke %tmp.3 %tmp.4();
+        ret %tmp.5;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_50_19_52_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 55; @symbol_functiondef = [dw,55,13,15]; @symbol_param<0> = [w,55,16,17]; ]
+    function dw(w) {
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_55_19_57_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 56 8 ]
+        %tmp.1 = lgetv %w;
+        symbol [ w %tmp.1 56 16 17 ];
+        %tmp.2 = 0.16;
+        %tmp.3 = mul %tmp.1 %tmp.2;
+        symbol [ toNumber %tmp.4 56 26 34 ];
+        %tmp.4 = getv function %tmp.3 :toNumber;
+        %tmp.5 = invoke %tmp.3 %tmp.4();
+        ret %tmp.5;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_55_19_57_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 60; @symbol_functiondef = [dgap,60,13,17]; @symbol_param<0> = [w,60,18,19]; ]
+    function dgap(w) {
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_60_21_62_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 61 8 ]
+        %tmp.1 = lgetv %w;
+        symbol [ w %tmp.1 61 16 17 ];
+        %tmp.2 = 0.05;
+        %tmp.3 = mul %tmp.1 %tmp.2;
+        symbol [ toNumber %tmp.4 61 26 34 ];
+        %tmp.4 = getv function %tmp.3 :toNumber;
+        %tmp.5 = invoke %tmp.3 %tmp.4();
+        ret %tmp.5;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_60_21_62_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 66; @symbol_functiondef = [drawDigitRow,66,13,25]; @symbol_param<0> = [dc,66,26,28]; @symbol_param<1> = [w,66,30,31]; @symbol_param<2> = [centerY,66,33,40]; @symbol_param<3> = [digits,66,42,48]; @symbol_param<4> = [cursorPos,66,50,59]; ]
+    function drawDigitRow(dc, w, centerY, digits, cursorPos) {
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 67 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_stop" ]
+        %cellW.1 = local;
+        symbol [ cellW %cellW.1 67 12 17 ];
+        %tmp.1 = self;
+        symbol [ dw %tmp.2 67 21 23 ];
+        %tmp.2 = getv function %tmp.1 :dw;
+        %tmp.3 = lgetv %w;
+        symbol [ w %tmp.3 67 24 25 ];
+        %tmp.4 = invoke %tmp.1 %tmp.2(%tmp.3);
+        lputv %cellW.1 %tmp.4;
+        symbol [ cellW %cellW.1 67 12 17 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 68 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_stop" ]
+        %cellH.2 = local;
+        symbol [ cellH %cellH.2 68 12 17 ];
+        %tmp.5 = lgetv %cellW.1;
+        symbol [ cellW %tmp.5 68 22 27 ];
+        %tmp.6 = 1.35;
+        %tmp.7 = mul %tmp.5 %tmp.6;
+        symbol [ toNumber %tmp.8 68 36 44 ];
+        %tmp.8 = getv function %tmp.7 :toNumber;
+        %tmp.9 = invoke %tmp.7 %tmp.8();
+        lputv %cellH.2 %tmp.9;
+        symbol [ cellH %cellH.2 68 12 17 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 69 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_stop" ]
+        %gap.3 = local;
+        symbol [ gap %gap.3 69 12 15 ];
+        %tmp.10 = self;
+        symbol [ dgap %tmp.11 69 21 25 ];
+        %tmp.11 = getv function %tmp.10 :dgap;
+        %tmp.12 = lgetv %w;
+        symbol [ w %tmp.12 69 26 27 ];
+        %tmp.13 = invoke %tmp.10 %tmp.11(%tmp.12);
+        lputv %gap.3 %tmp.13;
+        symbol [ gap %gap.3 69 12 15 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 70 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_stop" ]
+        %sep.4 = local;
+        symbol [ sep %sep.4 70 12 15 ];
+        %tmp.14 = lgetv %w;
+        symbol [ w %tmp.14 70 22 23 ];
+        %tmp.15 = 0.03;
+        %tmp.16 = mul %tmp.14 %tmp.15;
+        symbol [ toNumber %tmp.17 70 32 40 ];
+        %tmp.17 = getv function %tmp.16 :toNumber;
+        %tmp.18 = invoke %tmp.16 %tmp.17();
+        lputv %sep.4 %tmp.18;
+        symbol [ sep %sep.4 70 12 15 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 71 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_stop" ]
+        %cx.5 = local;
+        symbol [ cx %cx.5 71 12 14 ];
+        %tmp.19 = lgetv %w;
+        symbol [ w %tmp.19 71 21 22 ];
+        %tmp.20 = 2;
+        %tmp.21 = div %tmp.19 %tmp.20;
+        lputv %cx.5 %tmp.21;
+        symbol [ cx %cx.5 71 12 14 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 74 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_stop" ]
+        %totalW.6 = local;
+        symbol [ totalW %totalW.6 74 12 18 ];
+        %tmp.22 = lgetv %cellW.1;
+        symbol [ cellW %tmp.22 74 21 26 ];
+        %tmp.23 = 4;
+        %tmp.24 = mul %tmp.22 %tmp.23;
+        %tmp.25 = lgetv %sep.4;
+        symbol [ sep %tmp.25 74 33 36 ];
+        %tmp.26 = add %tmp.24 %tmp.25;
+        lputv %totalW.6 %tmp.26;
+        symbol [ totalW %totalW.6 74 12 18 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 75 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_stop" ]
+        %startX.7 = local;
+        symbol [ startX %startX.7 75 12 18 ];
+        %tmp.27 = lgetv %cx.5;
+        symbol [ cx %tmp.27 75 21 23 ];
+        %tmp.28 = lgetv %totalW.6;
+        symbol [ totalW %tmp.28 75 26 32 ];
+        %tmp.29 = 2;
+        %tmp.30 = div %tmp.28 %tmp.29;
+        %tmp.31 = sub %tmp.27 %tmp.30;
+        lputv %startX.7 %tmp.31;
+        symbol [ startX %startX.7 75 12 18 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 77 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_stop" ]
+        %fontH.8 = local;
+        symbol [ fontH %fontH.8 77 12 17 ];
+        symbol [ Graphics %tmp.32 77 20 28 ];
+        %tmp.32 = getm $.Toybox.Graphics;
+        symbol [ getFontHeight %tmp.33 77 29 42 ];
+        %tmp.33 = getv function %tmp.32 :getFontHeight;
+        symbol [ Graphics %tmp.34 77 43 51 ];
+        %tmp.34 = getm $.Toybox.Graphics;
+        symbol [ FONT_NUMBER_MILD %tmp.35 77 52 68 ];
+        %tmp.35 = getv %tmp.34 :FONT_NUMBER_MILD;
+        %tmp.36 = invoke %tmp.32 %tmp.33(%tmp.35);
+        lputv %fontH.8 %tmp.36;
+        symbol [ fontH %fontH.8 77 12 17 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 79 8 ]
+        for @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_8_100_8_for_test @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_8_100_8_for_incr @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_8_100_8_for_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_8_100_8_for_init:
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_8_100_8_for_begin" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_8_100_8_for_end" ]
+        %i.9 = local;
+        symbol [ i %i.9 79 17 18 ];
+        %tmp.37 = 0;
+        lputv %i.9 %tmp.37;
+        symbol [ i %i.9 79 17 18 ];
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_8_100_8_for_test:
+        %tmp.38 = lgetv %i.9;
+        symbol [ i %tmp.38 79 24 25 ];
+        %tmp.39 = 4;
+        %tmp.40 = lt %tmp.38 %tmp.39;
+        bf %tmp.40 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_8_100_8_for_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_8_100_8_for_begin:
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_36_100_8_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 81 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_36_100_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_36_100_8_stop" ]
+        %cellX.10 = local;
+        symbol [ cellX %cellX.10 81 16 21 ];
+        %tmp.41 = lgetv %startX.7;
+        symbol [ startX %tmp.41 81 24 30 ];
+        %tmp.42 = lgetv %i.9;
+        symbol [ i %tmp.42 81 33 34 ];
+        %tmp.43 = lgetv %cellW.1;
+        symbol [ cellW %tmp.43 81 37 42 ];
+        %tmp.44 = mul %tmp.42 %tmp.43;
+        %tmp.45 = add %tmp.41 %tmp.44;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_81_46_81_61_begin:
+        %tmp.46 = lgetv %i.9;
+        symbol [ i %tmp.46 81 46 47 ];
+        %tmp.47 = 2;
+        %tmp.48 = gte %tmp.46 %tmp.47;
+        bf %tmp.48 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_81_46_81_61_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_81_46_81_61_true:
+        %tmp.49 = lgetv %sep.4;
+        symbol [ sep %tmp.49 81 55 58 ];
+        push %tmp.49;
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_81_46_81_61_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_81_46_81_61_else_false:
+        %tmp.50 = 0;
+        push %tmp.50;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_81_46_81_61_end:
+        %tmp.51 = phi [%tmp.48 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_81_46_81_61_begin] [%tmp.49 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_81_46_81_61_true] [%tmp.50 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_81_46_81_61_else_false] [%tmp.51 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_81_46_81_61_end];
+        %tmp.52 = add %tmp.45 %tmp.51;
+        lputv %cellX.10 %tmp.52;
+        symbol [ cellX %cellX.10 81 16 21 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 82 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_36_100_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_36_100_8_stop" ]
+        %textX.11 = local;
+        symbol [ textX %textX.11 82 16 21 ];
+        %tmp.53 = lgetv %cellX.10;
+        symbol [ cellX %tmp.53 82 24 29 ];
+        %tmp.54 = lgetv %cellW.1;
+        symbol [ cellW %tmp.54 82 32 37 ];
+        %tmp.55 = 2;
+        %tmp.56 = div %tmp.54 %tmp.55;
+        %tmp.57 = add %tmp.53 %tmp.56;
+        lputv %textX.11 %tmp.57;
+        symbol [ textX %textX.11 82 16 21 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 83 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_36_100_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_36_100_8_stop" ]
+        %boxTop.12 = local;
+        symbol [ boxTop %boxTop.12 83 16 22 ];
+        %tmp.58 = lgetv %centerY;
+        symbol [ centerY %tmp.58 83 25 32 ];
+        %tmp.59 = lgetv %cellH.2;
+        symbol [ cellH %tmp.59 83 35 40 ];
+        %tmp.60 = 2;
+        %tmp.61 = div %tmp.59 %tmp.60;
+        %tmp.62 = sub %tmp.58 %tmp.61;
+        lputv %boxTop.12 %tmp.62;
+        symbol [ boxTop %boxTop.12 83 16 22 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 85 12 ]
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_85_12_95_12_if_stmt:
+        %tmp.63 = lgetv %i.9;
+        symbol [ i %tmp.63 85 16 17 ];
+        %tmp.64 = lgetv %cursorPos;
+        symbol [ cursorPos %tmp.64 85 21 30 ];
+        %tmp.65 = eq %tmp.63 %tmp.64;
+        bf %tmp.65 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_85_12_95_12_if_else_false;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_85_12_95_12_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_85_32_90_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 87 16 ]
+        %tmp.66 = lgetv %dc;
+        symbol [ dc %tmp.66 87 16 18 ];
+        symbol [ setColor %tmp.67 87 19 27 ];
+        %tmp.67 = getv function %tmp.66 :setColor;
+        %tmp.68 = self;
+        symbol [ accentColor %tmp.69 87 28 39 ];
+        %tmp.69 = getv function %tmp.68 :accentColor;
+        %tmp.70 = invoke %tmp.68 %tmp.69();
+        symbol [ Graphics %tmp.71 87 43 51 ];
+        %tmp.71 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.72 87 52 69 ];
+        %tmp.72 = getv %tmp.71 :COLOR_TRANSPARENT;
+        invoke %tmp.66 %tmp.67(%tmp.70, %tmp.72);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 88 16 ]
+        %tmp.73 = lgetv %dc;
+        symbol [ dc %tmp.73 88 16 18 ];
+        symbol [ fillRoundedRectangle %tmp.74 88 19 39 ];
+        %tmp.74 = getv function %tmp.73 :fillRoundedRectangle;
+        %tmp.75 = lgetv %cellX.10;
+        symbol [ cellX %tmp.75 88 40 45 ];
+        %tmp.76 = lgetv %boxTop.12;
+        symbol [ boxTop %tmp.76 88 47 53 ];
+        %tmp.77 = lgetv %cellW.1;
+        symbol [ cellW %tmp.77 88 55 60 ];
+        %tmp.78 = lgetv %cellH.2;
+        symbol [ cellH %tmp.78 88 62 67 ];
+        %tmp.79 = self;
+        symbol [ cr %tmp.80 88 69 71 ];
+        %tmp.80 = getv function %tmp.79 :cr;
+        %tmp.81 = lgetv %w;
+        symbol [ w %tmp.81 88 72 73 ];
+        %tmp.82 = invoke %tmp.79 %tmp.80(%tmp.81);
+        invoke %tmp.73 %tmp.74(%tmp.75, %tmp.76, %tmp.77, %tmp.78, %tmp.82);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 89 16 ]
+        %tmp.83 = lgetv %dc;
+        symbol [ dc %tmp.83 89 16 18 ];
+        symbol [ setColor %tmp.84 89 19 27 ];
+        %tmp.84 = getv function %tmp.83 :setColor;
+        symbol [ Graphics %tmp.85 89 28 36 ];
+        %tmp.85 = getm $.Toybox.Graphics;
+        symbol [ COLOR_WHITE %tmp.86 89 37 48 ];
+        %tmp.86 = getv %tmp.85 :COLOR_WHITE;
+        symbol [ Graphics %tmp.87 89 50 58 ];
+        %tmp.87 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.88 89 59 76 ];
+        %tmp.88 = getv %tmp.87 :COLOR_TRANSPARENT;
+        invoke %tmp.83 %tmp.84(%tmp.86, %tmp.88);
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_85_32_90_12_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_85_12_95_12_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_85_12_95_12_if_else_false:
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_90_19_95_12_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 92 16 ]
+        %tmp.89 = lgetv %dc;
+        symbol [ dc %tmp.89 92 16 18 ];
+        symbol [ setColor %tmp.90 92 19 27 ];
+        %tmp.90 = getv function %tmp.89 :setColor;
+        %tmp.91 = 0x222222;
+        symbol [ Graphics %tmp.92 92 38 46 ];
+        %tmp.92 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.93 92 47 64 ];
+        %tmp.93 = getv %tmp.92 :COLOR_TRANSPARENT;
+        invoke %tmp.89 %tmp.90(%tmp.91, %tmp.93);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 93 16 ]
+        %tmp.94 = lgetv %dc;
+        symbol [ dc %tmp.94 93 16 18 ];
+        symbol [ fillRoundedRectangle %tmp.95 93 19 39 ];
+        %tmp.95 = getv function %tmp.94 :fillRoundedRectangle;
+        %tmp.96 = lgetv %cellX.10;
+        symbol [ cellX %tmp.96 93 40 45 ];
+        %tmp.97 = lgetv %boxTop.12;
+        symbol [ boxTop %tmp.97 93 47 53 ];
+        %tmp.98 = lgetv %cellW.1;
+        symbol [ cellW %tmp.98 93 55 60 ];
+        %tmp.99 = lgetv %cellH.2;
+        symbol [ cellH %tmp.99 93 62 67 ];
+        %tmp.100 = self;
+        symbol [ cr %tmp.101 93 69 71 ];
+        %tmp.101 = getv function %tmp.100 :cr;
+        %tmp.102 = lgetv %w;
+        symbol [ w %tmp.102 93 72 73 ];
+        %tmp.103 = invoke %tmp.100 %tmp.101(%tmp.102);
+        invoke %tmp.94 %tmp.95(%tmp.96, %tmp.97, %tmp.98, %tmp.99, %tmp.103);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 94 16 ]
+        %tmp.104 = lgetv %dc;
+        symbol [ dc %tmp.104 94 16 18 ];
+        symbol [ setColor %tmp.105 94 19 27 ];
+        %tmp.105 = getv function %tmp.104 :setColor;
+        symbol [ Graphics %tmp.106 94 28 36 ];
+        %tmp.106 = getm $.Toybox.Graphics;
+        symbol [ COLOR_LT_GRAY %tmp.107 94 37 50 ];
+        %tmp.107 = getv %tmp.106 :COLOR_LT_GRAY;
+        symbol [ Graphics %tmp.108 94 52 60 ];
+        %tmp.108 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.109 94 61 78 ];
+        %tmp.109 = getv %tmp.108 :COLOR_TRANSPARENT;
+        invoke %tmp.104 %tmp.105(%tmp.107, %tmp.109);
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_90_19_95_12_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_85_12_95_12_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 97 12 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_36_100_8_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_36_100_8_stop" ]
+        %textY.13 = local;
+        symbol [ textY %textY.13 97 16 21 ];
+        %tmp.110 = lgetv %centerY;
+        symbol [ centerY %tmp.110 97 24 31 ];
+        %tmp.111 = lgetv %fontH.8;
+        symbol [ fontH %tmp.111 97 34 39 ];
+        %tmp.112 = 2;
+        %tmp.113 = div %tmp.111 %tmp.112;
+        %tmp.114 = sub %tmp.110 %tmp.113;
+        lputv %textY.13 %tmp.114;
+        symbol [ textY %textY.13 97 16 21 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 98 12 ]
+        %tmp.115 = lgetv %dc;
+        symbol [ dc %tmp.115 98 12 14 ];
+        symbol [ drawText %tmp.116 98 15 23 ];
+        %tmp.116 = getv function %tmp.115 :drawText;
+        %tmp.117 = lgetv %textX.11;
+        symbol [ textX %tmp.117 98 24 29 ];
+        %tmp.118 = lgetv %textY.13;
+        symbol [ textY %tmp.118 98 31 36 ];
+        symbol [ Graphics %tmp.119 98 38 46 ];
+        %tmp.119 = getm $.Toybox.Graphics;
+        symbol [ FONT_NUMBER_MILD %tmp.120 98 47 63 ];
+        %tmp.120 = getv %tmp.119 :FONT_NUMBER_MILD;
+        %tmp.121 = lgetv %digits;
+        symbol [ digits %tmp.121 99 16 22 ];
+        %tmp.122 = lgetv %i.9;
+        symbol [ i %tmp.122 99 23 24 ];
+        %tmp.123 = agetv %tmp.121 %tmp.122;
+        symbol [ toString %tmp.124 99 26 34 ];
+        %tmp.124 = getv function %tmp.123 :toString;
+        %tmp.125 = invoke %tmp.123 %tmp.124();
+        symbol [ Graphics %tmp.126 99 38 46 ];
+        %tmp.126 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.127 99 47 66 ];
+        %tmp.127 = getv %tmp.126 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.115 %tmp.116(%tmp.117, %tmp.118, %tmp.120, %tmp.125, %tmp.127);
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_36_100_8_stop:
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_8_100_8_for_incr:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 79 ]
+        %tmp.130 = lgetv %i.9;
+        symbol [ i %tmp.130 79 31 32 ];
+        %tmp.131 = add %tmp.130 1;
+        lputv %i.9 %tmp.131;
+        symbol [ i %i.9 79 31 32 ];
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_8_100_8_for_test;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_79_8_100_8_for_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 103 8 ]
+        %tmp.132 = lgetv %dc;
+        symbol [ dc %tmp.132 103 8 10 ];
+        symbol [ setColor %tmp.133 103 11 19 ];
+        %tmp.133 = getv function %tmp.132 :setColor;
+        symbol [ Graphics %tmp.134 103 20 28 ];
+        %tmp.134 = getm $.Toybox.Graphics;
+        symbol [ COLOR_DK_GRAY %tmp.135 103 29 42 ];
+        %tmp.135 = getv %tmp.134 :COLOR_DK_GRAY;
+        symbol [ Graphics %tmp.136 103 44 52 ];
+        %tmp.136 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.137 103 53 70 ];
+        %tmp.137 = getv %tmp.136 :COLOR_TRANSPARENT;
+        invoke %tmp.132 %tmp.133(%tmp.135, %tmp.137);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 104 8 ]
+        [ "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_start" "_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_stop" ]
+        %dotX.14 = local;
+        symbol [ dotX %dotX.14 104 12 16 ];
+        %tmp.138 = lgetv %startX.7;
+        symbol [ startX %tmp.138 104 19 25 ];
+        %tmp.139 = lgetv %cellW.1;
+        symbol [ cellW %tmp.139 104 28 33 ];
+        %tmp.140 = 2;
+        %tmp.141 = mul %tmp.139 %tmp.140;
+        %tmp.142 = add %tmp.138 %tmp.141;
+        %tmp.143 = lgetv %sep.4;
+        symbol [ sep %tmp.143 104 40 43 ];
+        %tmp.144 = 2;
+        %tmp.145 = div %tmp.143 %tmp.144;
+        %tmp.146 = add %tmp.142 %tmp.145;
+        lputv %dotX.14 %tmp.146;
+        symbol [ dotX %dotX.14 104 12 16 ];
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 105 8 ]
+        %tmp.147 = lgetv %dc;
+        symbol [ dc %tmp.147 105 8 10 ];
+        symbol [ drawText %tmp.148 105 11 19 ];
+        %tmp.148 = getv function %tmp.147 :drawText;
+        %tmp.149 = lgetv %dotX.14;
+        symbol [ dotX %tmp.149 105 20 24 ];
+        %tmp.150 = lgetv %centerY;
+        symbol [ centerY %tmp.150 105 26 33 ];
+        symbol [ Graphics %tmp.151 105 36 44 ];
+        %tmp.151 = getm $.Toybox.Graphics;
+        symbol [ getFontHeight %tmp.152 105 45 58 ];
+        %tmp.152 = getv function %tmp.151 :getFontHeight;
+        symbol [ Graphics %tmp.153 105 59 67 ];
+        %tmp.153 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.154 105 68 78 ];
+        %tmp.154 = getv %tmp.153 :FONT_XTINY;
+        %tmp.155 = invoke %tmp.151 %tmp.152(%tmp.154);
+        %tmp.156 = 2;
+        %tmp.157 = div %tmp.155 %tmp.156;
+        %tmp.158 = sub %tmp.150 %tmp.157;
+        symbol [ Graphics %tmp.159 106 12 20 ];
+        %tmp.159 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.160 106 21 31 ];
+        %tmp.160 = getv %tmp.159 :FONT_XTINY;
+        %tmp.161 = "-";
+        symbol [ Graphics %tmp.162 106 38 46 ];
+        %tmp.162 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.163 106 47 66 ];
+        %tmp.163 = getv %tmp.162 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.147 %tmp.148(%tmp.149, %tmp.158, %tmp.160, %tmp.161, %tmp.163);
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_66_61_107_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 111; @symbol_functiondef = [textVOffset,111,13,24]; @symbol_param<0> = [h,111,25,26]; ]
+    function textVOffset(h) {
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_111_28_113_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 112 8 ]
+        %tmp.1 = self;
+        symbol [ ih %tmp.2 112 17 19 ];
+        %tmp.2 = getv function %tmp.1 :ih;
+        %tmp.3 = lgetv %h;
+        symbol [ h %tmp.3 112 20 21 ];
+        %tmp.4 = invoke %tmp.1 %tmp.2(%tmp.3);
+        symbol [ Graphics %tmp.5 112 25 33 ];
+        %tmp.5 = getm $.Toybox.Graphics;
+        symbol [ getFontHeight %tmp.6 112 34 47 ];
+        %tmp.6 = getv function %tmp.5 :getFontHeight;
+        symbol [ Graphics %tmp.7 112 48 56 ];
+        %tmp.7 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.8 112 57 67 ];
+        %tmp.8 = getv %tmp.7 :FONT_XTINY;
+        %tmp.9 = invoke %tmp.5 %tmp.6(%tmp.8);
+        %tmp.10 = sub %tmp.4 %tmp.9;
+        %tmp.11 = 2;
+        %tmp.12 = div %tmp.10 %tmp.11;
+        symbol [ toNumber %tmp.13 112 75 83 ];
+        %tmp.13 = getv function %tmp.12 :toNumber;
+        %tmp.14 = invoke %tmp.12 %tmp.13();
+        ret %tmp.14;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_111_28_113_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 117; @symbol_functiondef = [accentColor,117,13,24]; ]
+    function accentColor() {
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_117_27_120_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 118 8 ]
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_118_8_118_43_if_stmt:
+        %tmp.1 = self;
+        symbol [ isAmoled %tmp.2 118 12 20 ];
+        %tmp.2 = getv function %tmp.1 :isAmoled;
+        %tmp.3 = invoke %tmp.1 %tmp.2();
+        bf %tmp.3 @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_118_8_118_43_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_118_8_118_43_if_true:
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_118_24_118_43_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 118 26 ]
+        %tmp.4 = 0x0044CC;
+        ret %tmp.4;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_118_24_118_43_stop:
+        goto @_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_118_8_118_43_if_end;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_118_8_118_43_if_end:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 119 8 ]
+        symbol [ Graphics %tmp.5 119 15 23 ];
+        %tmp.5 = getm $.Toybox.Graphics;
+        symbol [ COLOR_BLUE %tmp.6 119 24 34 ];
+        %tmp.6 = getv %tmp.5 :COLOR_BLUE;
+        ret %tmp.6;
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_117_27_120_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 124; @symbol_functiondef = [drawSelectedRow,124,13,28]; @symbol_param<0> = [dc,124,29,31]; @symbol_param<1> = [cx,124,33,35]; @symbol_param<2> = [y,124,37,38]; @symbol_param<3> = [w,124,40,41]; @symbol_param<4> = [h,124,43,44]; @symbol_param<5> = [label,124,46,51]; ]
+    function drawSelectedRow(dc, cx, y, w, h, label) {
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_124_53_129_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 125 8 ]
+        %tmp.1 = lgetv %dc;
+        symbol [ dc %tmp.1 125 8 10 ];
+        symbol [ setColor %tmp.2 125 11 19 ];
+        %tmp.2 = getv function %tmp.1 :setColor;
+        %tmp.3 = self;
+        symbol [ accentColor %tmp.4 125 20 31 ];
+        %tmp.4 = getv function %tmp.3 :accentColor;
+        %tmp.5 = invoke %tmp.3 %tmp.4();
+        symbol [ Graphics %tmp.6 125 35 43 ];
+        %tmp.6 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.7 125 44 61 ];
+        %tmp.7 = getv %tmp.6 :COLOR_TRANSPARENT;
+        invoke %tmp.1 %tmp.2(%tmp.5, %tmp.7);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 126 8 ]
+        %tmp.8 = lgetv %dc;
+        symbol [ dc %tmp.8 126 8 10 ];
+        symbol [ fillRoundedRectangle %tmp.9 126 11 31 ];
+        %tmp.9 = getv function %tmp.8 :fillRoundedRectangle;
+        %tmp.10 = lgetv %cx;
+        symbol [ cx %tmp.10 126 32 34 ];
+        %tmp.11 = self;
+        symbol [ hx %tmp.12 126 37 39 ];
+        %tmp.12 = getv function %tmp.11 :hx;
+        %tmp.13 = lgetv %w;
+        symbol [ w %tmp.13 126 40 41 ];
+        %tmp.14 = invoke %tmp.11 %tmp.12(%tmp.13);
+        %tmp.15 = sub %tmp.10 %tmp.14;
+        %tmp.16 = lgetv %y;
+        symbol [ y %tmp.16 126 44 45 ];
+        %tmp.17 = self;
+        symbol [ fw %tmp.18 126 47 49 ];
+        %tmp.18 = getv function %tmp.17 :fw;
+        %tmp.19 = lgetv %w;
+        symbol [ w %tmp.19 126 50 51 ];
+        %tmp.20 = invoke %tmp.17 %tmp.18(%tmp.19);
+        %tmp.21 = self;
+        symbol [ ih %tmp.22 126 54 56 ];
+        %tmp.22 = getv function %tmp.21 :ih;
+        %tmp.23 = lgetv %h;
+        symbol [ h %tmp.23 126 57 58 ];
+        %tmp.24 = invoke %tmp.21 %tmp.22(%tmp.23);
+        %tmp.25 = self;
+        symbol [ cr %tmp.26 126 61 63 ];
+        %tmp.26 = getv function %tmp.25 :cr;
+        %tmp.27 = lgetv %w;
+        symbol [ w %tmp.27 126 64 65 ];
+        %tmp.28 = invoke %tmp.25 %tmp.26(%tmp.27);
+        invoke %tmp.8 %tmp.9(%tmp.15, %tmp.16, %tmp.20, %tmp.24, %tmp.28);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 127 8 ]
+        %tmp.29 = lgetv %dc;
+        symbol [ dc %tmp.29 127 8 10 ];
+        symbol [ setColor %tmp.30 127 11 19 ];
+        %tmp.30 = getv function %tmp.29 :setColor;
+        symbol [ Graphics %tmp.31 127 20 28 ];
+        %tmp.31 = getm $.Toybox.Graphics;
+        symbol [ COLOR_WHITE %tmp.32 127 29 40 ];
+        %tmp.32 = getv %tmp.31 :COLOR_WHITE;
+        symbol [ Graphics %tmp.33 127 42 50 ];
+        %tmp.33 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.34 127 51 68 ];
+        %tmp.34 = getv %tmp.33 :COLOR_TRANSPARENT;
+        invoke %tmp.29 %tmp.30(%tmp.32, %tmp.34);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 128 8 ]
+        %tmp.35 = lgetv %dc;
+        symbol [ dc %tmp.35 128 8 10 ];
+        symbol [ drawText %tmp.36 128 11 19 ];
+        %tmp.36 = getv function %tmp.35 :drawText;
+        %tmp.37 = lgetv %cx;
+        symbol [ cx %tmp.37 128 20 22 ];
+        %tmp.38 = lgetv %y;
+        symbol [ y %tmp.38 128 24 25 ];
+        %tmp.39 = self;
+        symbol [ textVOffset %tmp.40 128 28 39 ];
+        %tmp.40 = getv function %tmp.39 :textVOffset;
+        %tmp.41 = lgetv %h;
+        symbol [ h %tmp.41 128 40 41 ];
+        %tmp.42 = invoke %tmp.39 %tmp.40(%tmp.41);
+        %tmp.43 = add %tmp.38 %tmp.42;
+        symbol [ Graphics %tmp.44 128 44 52 ];
+        %tmp.44 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.45 128 53 63 ];
+        %tmp.45 = getv %tmp.44 :FONT_XTINY;
+        %tmp.46 = lgetv %label;
+        symbol [ label %tmp.46 128 65 70 ];
+        symbol [ Graphics %tmp.47 128 72 80 ];
+        %tmp.47 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.48 128 81 100 ];
+        %tmp.48 = getv %tmp.47 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.35 %tmp.36(%tmp.37, %tmp.43, %tmp.45, %tmp.46, %tmp.48);
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_124_53_129_4_stop:
+    }
+    [ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 132; @symbol_functiondef = [drawNormalRow,132,13,26]; @symbol_param<0> = [dc,132,27,29]; @symbol_param<1> = [cx,132,31,33]; @symbol_param<2> = [y,132,35,36]; @symbol_param<3> = [h,132,38,39]; @symbol_param<4> = [label,132,41,46]; ]
+    function drawNormalRow(dc, cx, y, h, label) {
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_132_48_135_4_start:
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 133 8 ]
+        %tmp.1 = lgetv %dc;
+        symbol [ dc %tmp.1 133 8 10 ];
+        symbol [ setColor %tmp.2 133 11 19 ];
+        %tmp.2 = getv function %tmp.1 :setColor;
+        symbol [ Graphics %tmp.3 133 20 28 ];
+        %tmp.3 = getm $.Toybox.Graphics;
+        symbol [ COLOR_LT_GRAY %tmp.4 133 29 42 ];
+        %tmp.4 = getv %tmp.3 :COLOR_LT_GRAY;
+        symbol [ Graphics %tmp.5 133 44 52 ];
+        %tmp.5 = getm $.Toybox.Graphics;
+        symbol [ COLOR_TRANSPARENT %tmp.6 133 53 70 ];
+        %tmp.6 = getv %tmp.5 :COLOR_TRANSPARENT;
+        invoke %tmp.1 %tmp.2(%tmp.4, %tmp.6);
+[ "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc" 134 8 ]
+        %tmp.7 = lgetv %dc;
+        symbol [ dc %tmp.7 134 8 10 ];
+        symbol [ drawText %tmp.8 134 11 19 ];
+        %tmp.8 = getv function %tmp.7 :drawText;
+        %tmp.9 = lgetv %cx;
+        symbol [ cx %tmp.9 134 20 22 ];
+        %tmp.10 = lgetv %y;
+        symbol [ y %tmp.10 134 24 25 ];
+        %tmp.11 = self;
+        symbol [ textVOffset %tmp.12 134 28 39 ];
+        %tmp.12 = getv function %tmp.11 :textVOffset;
+        %tmp.13 = lgetv %h;
+        symbol [ h %tmp.13 134 40 41 ];
+        %tmp.14 = invoke %tmp.11 %tmp.12(%tmp.13);
+        %tmp.15 = add %tmp.10 %tmp.14;
+        symbol [ Graphics %tmp.16 134 44 52 ];
+        %tmp.16 = getm $.Toybox.Graphics;
+        symbol [ FONT_XTINY %tmp.17 134 53 63 ];
+        %tmp.17 = getv %tmp.16 :FONT_XTINY;
+        %tmp.18 = lgetv %label;
+        symbol [ label %tmp.18 134 65 70 ];
+        symbol [ Graphics %tmp.19 134 72 80 ];
+        %tmp.19 = getm $.Toybox.Graphics;
+        symbol [ TEXT_JUSTIFY_CENTER %tmp.20 134 81 100 ];
+        %tmp.20 = getv %tmp.19 :TEXT_JUSTIFY_CENTER;
+        invoke %tmp.7 %tmp.8(%tmp.9, %tmp.15, %tmp.17, %tmp.18, %tmp.20);
+_Users_simenfinjord_glidr5_garmin_app_source_LayoutHelper_mc_132_48_135_4_stop:
+    }
+}
+[ @file = "/Users/simenfinjord/glidr5/garmin-app/source/LayoutHelper.mc"; @line = 4; ]
+<init> {
+}

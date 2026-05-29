@@ -17,6 +17,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "2026-05d",
+    date: { no: "Mai 2026", en: "May 2026" },
+    title: { no: "Værstasjon, backup-oppdatering og funksjonsguide", en: "Weather station, backup overhaul & feature guide" },
+    items: [
+      { emoji: "🌡️", no: "Koble til din fysiske værstasjon (Netatmo, Davis, Ambient, Ecowitt, WUnderground, Open-Meteo, eller egendefinert HTTP) — data fylles inn automatisk når du legger inn dato og klokkeslett.", en: "Connect your physical weather station (Netatmo, Davis, Ambient, Ecowitt, WUnderground, Open-Meteo, or custom HTTP) — data fills in automatically when you set date and time." },
+      { emoji: "📊", no: "Google Sheets-backup: egne ark for Product Tests, Structure Tests, Grind Tests og per-utøver Race Ski Tests. Hver test er tydelig markert med fet header og alle 15 vær-/førefelter.", en: "Google Sheets backup: dedicated sheets for Product Tests, Structure Tests, Grind Tests and per-athlete Race Ski Tests. Each test has a bold header row and all 15 weather/conditions fields." },
+      { emoji: "🏁", no: "Backup: Race Preps viser nå produktnavn (ikke bare ID-er) og applikasjonsmetode.", en: "Backup: Race Preps now show product names (not just IDs) and application method." },
+      { emoji: "🔍", no: "Kombinasjonssøk støtter nå N produkter — trykk + for å legge til så mange du vil.", en: "Combination search now supports N products — tap + to add as many as you like." },
+      { emoji: "📄", no: "Ny funksjonsguide-PDF tilgjengelig på SA-admin-siden med animert forside, UI-skisseer og juridisk konkurransereservasjon.", en: "New Feature Guide PDF available on the SA admin page with animated cover, UI mockups and legal competitive reservation." },
+    ],
+  },
+  {
     version: "2026-05c",
     date: { no: "Mai 2026", en: "May 2026" },
     title: { no: "Raceprep-oppdatering, analyse-forbedringer og prisside", en: "Race Prep updates, analytics improvements and pricing page" },
@@ -84,7 +96,7 @@ export const RELEASES: Release[] = [
   },
 ];
 
-export const LATEST_VERSION = RELEASES[0].version;
+export const LATEST_VERSION = "2026-05d";
 const STORAGE_KEY = "glidr-whats-new-seen";
 
 export function getSeenVersion(): string | null {

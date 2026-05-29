@@ -500,7 +500,7 @@ _Users_simenfinjord_glidr5_garmin_app_source_QueueListDelegate_mc_87_19_97_12_st
 [ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 91 16 ]
         %tmp.51 = lgetv %codeView.4;
         symbol [ codeView %tmp.51 91 16 24 ];
-        %tmp.52 = "Enter session code";
+        %tmp.52 = "Start test in web app";
         symbol [ statusText ? 91 25 35 ];
         putv %tmp.51 :statusText %tmp.52;
 [ "/Users/simenfinjord/glidr5/garmin-app/source/QueueListDelegate.mc" 92 16 ]

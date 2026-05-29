@@ -100,6 +100,7 @@ type NavItem = {
   featureArea?: string;
   adminOnly?: boolean;
   section?: string; // i18n key for sidebar section heading
+  tourTarget?: string; // data-tour attribute for guided tour
 };
 
 const nav: NavItem[] = [
@@ -124,6 +125,7 @@ const nav: NavItem[] = [
     activeBg: "bg-green-50 dark:bg-green-900/20",
     permArea: "tests",
     section: "nav.sectionData",
+    tourTarget: "nav-tests",
   },
   {
     href: "/analytics",
@@ -134,6 +136,7 @@ const nav: NavItem[] = [
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
     permArea: "analytics",
+    tourTarget: "nav-analytics",
   },
   {
     href: "/suggestions",
@@ -154,6 +157,7 @@ const nav: NavItem[] = [
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
     permArea: "weather",
+    tourTarget: "nav-weather",
   },
   // ── Equipment ─────────────────────────────────────
   {
@@ -176,6 +180,7 @@ const nav: NavItem[] = [
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
     permArea: "products",
+    tourTarget: "nav-products",
   },
   {
     href: "/grinding",
@@ -206,6 +211,7 @@ const nav: NavItem[] = [
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
     permArea: "raceskis",
+    tourTarget: "nav-racepreps",
   },
   // ── System ────────────────────────────────────────
   {
@@ -615,6 +621,23 @@ export function AppShell({ children }: { children: ReactNode }) {
     enabled: isSuperAdmin,
   });
 
+  // Fetch current team data (for all users, to get teamLogo etc.)
+  const { data: myTeamList = [] } = useQuery<any[]>({
+    queryKey: ["/api/my-team-info"],
+    queryFn: async () => {
+      const res = await fetch("/api/teams", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user && !isSuperAdmin,
+    staleTime: 60_000,
+  });
+  const teamLogo: string | null = (() => {
+    const tid = user?.activeTeamId || user?.teamId;
+    const list = isSuperAdmin ? teams : myTeamList;
+    return (list.find((t: any) => t.id === tid)?.teamLogo as string | undefined) ?? null;
+  })();
+
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/inbox/unread-count"],
     enabled: !!user && (isSuperAdmin || isTeamAdmin),
@@ -825,6 +848,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <AppLink
                 href={item.href}
                 testId={item.testId}
+                dataTour={item.tourTarget}
                 title={sidebarCollapsed ? navLabel(item.href) : undefined}
                 className={cn(
                   "relative flex items-center gap-2 mx-1 rounded-md font-[450] transition-colors duration-100",
@@ -940,7 +964,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         ) : (
           <>
-            <GlidrIcon size={26} />
+            {teamLogo ? (
+              <img src={teamLogo} alt="Team logo" className="h-7 w-7 object-contain rounded" />
+            ) : (
+              <GlidrIcon size={26} />
+            )}
             <span
               className="font-bold tracking-[-0.3px] text-foreground"
               style={{ fontSize: `${14 * sidebarScale}px` }}
@@ -1046,6 +1074,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         onClick={() => setWhatsNewOpen(true)}
         className="relative h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
         title="Hva er nytt?"
+        data-tour="whats-new"
       >
         <Sparkles className="h-4 w-4" />
         <WhatsNewDot />
@@ -1150,7 +1179,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="flex items-center gap-2 shrink-0">
                 <GlidrLogo variant="dark" size={26} className="hidden sm:block dark:hidden" />
                 <GlidrLogo variant="white" size={26} className="hidden dark:sm:block" />
-                <GlidrIcon size={24} className="sm:hidden" />
+                {teamLogo ? (
+                  <img src={teamLogo} alt="Team logo" className="h-6 w-6 object-contain rounded sm:hidden" />
+                ) : (
+                  <GlidrIcon size={24} className="sm:hidden" />
+                )}
                 <div className={cn("h-1.5 w-1.5 rounded-full shrink-0", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
                 {isSuperAdmin && teams.length > 1 && (
                   <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>

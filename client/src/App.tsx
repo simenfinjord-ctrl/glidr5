@@ -45,6 +45,7 @@ import Inbox from "@/pages/inbox";
 import Demo from "@/pages/demo";
 import GetStarted from "@/pages/get-started";
 import OnboardingWizard from "@/components/onboarding-wizard";
+import { ProductTour, useTourCompleted } from "@/components/product-tour";
 
 import Login from "@/pages/login";
 import ForgotPassword from "@/pages/forgot-password";
@@ -103,6 +104,7 @@ function AuthGuard() {
   const { user, isLoading, isSuperAdmin, isStealthActive, userTeams, userTeamsLoading } = useAuth();
   const [location] = useLocation();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showTour, setShowTour] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -112,6 +114,13 @@ function AuthGuard() {
       // Small delay so the app renders first
       const t = setTimeout(() => setShowOnboarding(true), 800);
       return () => clearTimeout(t);
+    }
+    // Show product tour for users who haven't seen it (after onboarding completes or skips)
+    // Tour shows even for team admins - everyone benefits from it
+    if (!useTourCompleted()) {
+      // Delay slightly more than the onboarding wizard
+      const t2 = setTimeout(() => setShowTour(true), 2000);
+      return () => clearTimeout(t2);
     }
   }, [user?.id]);
 
@@ -179,6 +188,7 @@ function AuthGuard() {
     <>
       <Router />
       {showOnboarding && <OnboardingWizard onClose={() => setShowOnboarding(false)} />}
+      {showTour && <ProductTour onDone={() => setShowTour(false)} />}
     </>
   );
 }

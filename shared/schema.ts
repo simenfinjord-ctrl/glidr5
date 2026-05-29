@@ -210,6 +210,7 @@ export const teams = pgTable("teams", {
   notes: text("notes"),
   weatherStationType: text("weather_station_type"),
   weatherStationConfig: text("weather_station_config"), // JSON string
+  teamLogo: text("team_logo"),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });

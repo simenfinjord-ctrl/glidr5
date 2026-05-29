@@ -414,6 +414,7 @@ export async function registerRoutes(
     await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS notes TEXT`);
     await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS weather_station_type TEXT`);
     await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS weather_station_config TEXT`);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS team_logo TEXT`);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS plan_change_log (
         id SERIAL PRIMARY KEY,
@@ -780,6 +781,27 @@ export async function registerRoutes(
     } else {
       stopAutoBackup(id);
     }
+    res.json(updated);
+  });
+
+  app.put("/api/teams/:id/logo", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const u = req.user!;
+    if (u.isAdmin !== 1 && !(u.isTeamAdmin === 1 && u.teamId === id)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    const { logo } = req.body; // base64 data URL or null to remove
+    if (logo && typeof logo === "string") {
+      // Validate it's a base64 image
+      if (!logo.startsWith("data:image/")) {
+        return res.status(400).json({ error: "Must be a valid image data URL" });
+      }
+      // Rough size check: base64 is ~4/3 of original, cap at ~150KB
+      if (logo.length > 200000) {
+        return res.status(400).json({ error: "Logo must be under 150KB" });
+      }
+    }
+    const updated = await storage.updateTeam(id, { teamLogo: logo || null });
     res.json(updated);
   });
 

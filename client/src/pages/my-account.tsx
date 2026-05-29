@@ -18,6 +18,7 @@ import { type AccentColor, ACCENT_COLORS, ACCENT_NAV, getAccentColor, setAccentC
 import { cn, setGlidrDateFormat } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { useAppSettings } from "@/lib/app-settings";
+import { resetTour } from "@/components/product-tour";
 
 // ─── Preset avatars ────────────────────────────────────────────────────────────
 const PRESET_AVATARS = [
@@ -1257,6 +1258,24 @@ export default function MyAccount() {
                   {t("preferences.dateFormatAmerican")}
                 </button>
               </div>
+            </div>
+
+            <div className="rounded-xl bg-muted/50 px-4 py-3 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-medium">Guided Tour</div>
+                <div className="text-xs text-muted-foreground">Restart the step-by-step feature tour</div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs shrink-0"
+                onClick={() => {
+                  resetTour();
+                  window.location.reload();
+                }}
+              >
+                Restart tour
+              </Button>
             </div>
           </Card>
         );

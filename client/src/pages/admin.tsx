@@ -78,6 +78,7 @@ type ApiTeam = {
   max_tests?: number | null;
   max_products?: number | null;
   notes?: string | null;
+  teamLogo?: string | null;
 };
 
 function parsePermissions(permStr: string): UserPermissions {
@@ -3206,6 +3207,21 @@ export default function Admin() {
     },
   });
 
+  const saveLogoMutation = useMutation({
+    mutationFn: async ({ id, logo }: { id: number; logo: string | null }) => {
+      const res = await apiRequest("PUT", `/api/teams/${id}/logo`, { logo });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/my-team-info"] });
+      toast({ title: "Team logo saved" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
   const saveBackupSheetMutation = useMutation({
     mutationFn: async ({ id, url }: { id: number; url: string }) => {
       const res = await apiRequest("PUT", `/api/teams/${id}/backup-sheet`, { url });
@@ -3402,6 +3418,64 @@ export default function Admin() {
                 </div>
               )}
             </Card>
+
+            {/* Team Logo */}
+            {(isSuperAdmin || isTeamAdmin) && (
+              <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-team-logo">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-900/30">
+                    <Users className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Team Logo</h2>
+                    <p className="text-xs text-muted-foreground">Shown in the sidebar instead of the Glidr icon. Max 150 KB.</p>
+                  </div>
+                </div>
+                {(isSuperAdmin ? teams : teams.filter((t) => t.id === user?.teamId)).map((team) => (
+                  <div key={`logo-${team.id}`} className="space-y-3">
+                    {isSuperAdmin && teams.length > 1 && (
+                      <div className="text-xs font-semibold text-foreground/80">{team.name}</div>
+                    )}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {team.teamLogo && (
+                        <img src={team.teamLogo} alt="Current logo" className="h-12 w-12 object-contain rounded border border-border" />
+                      )}
+                      <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors">
+                        {team.teamLogo ? "Replace logo" : "Upload logo"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              const dataUrl = reader.result as string;
+                              saveLogoMutation.mutate({ id: team.id, logo: dataUrl });
+                            };
+                            reader.readAsDataURL(file);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                      {team.teamLogo && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs text-destructive hover:text-destructive"
+                          disabled={saveLogoMutation.isPending}
+                          onClick={() => saveLogoMutation.mutate({ id: team.id, logo: null })}
+                          data-testid={`button-remove-logo-${team.id}`}
+                        >
+                          Remove logo
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </Card>
+            )}
           </div>
         )}
 

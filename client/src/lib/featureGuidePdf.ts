@@ -517,10 +517,10 @@ ul.feat-list li::before {
     <div class="mockup-titlebar"><div class="dot"></div><div class="dot"></div>Test #38 — Ruka, Finland · 27 Nov 2025 · Glide · Jessie Diggins / Ben Ogden</div>
     <div class="mockup-body">
       <div class="mockup-row header"><span class="mockup-num">#</span><span class="mockup-prod">Product</span><span class="mockup-meth">Application</span><span class="mockup-rank">Feel</span><span class="mockup-res">0 km</span><span class="mockup-res">5 km</span></div>
-      <div class="mockup-row"><span class="mockup-num">1</span><span class="mockup-prod">Swix LF7</span><span class="mockup-meth">2 layers, iron 120°</span><span class="mockup-rank">⭐⭐⭐⭐</span><span class="mockup-res">+0.0</span><span class="mockup-res">+0.2</span></div>
-      <div class="mockup-row"><span class="mockup-num">2</span><span class="mockup-prod">Toko HF Blue</span><span class="mockup-meth">1 layer, iron</span><span class="mockup-rank">⭐⭐⭐</span><span class="mockup-res">+0.5</span><span class="mockup-res">+0.8</span></div>
-      <div class="mockup-row"><span class="mockup-num">3</span><span class="mockup-prod">Swix LF7 + Cera Nova X</span><span class="mockup-meth">2+1 layers, cork</span><span class="mockup-rank">⭐⭐⭐⭐⭐</span><span class="mockup-res" style="color:var(--violet)">−0.4</span><span class="mockup-res" style="color:var(--violet)">−0.5</span></div>
-      <div class="mockup-row"><span class="mockup-num">4</span><span class="mockup-prod">Toko NF Blue</span><span class="mockup-meth">2 layers, cork</span><span class="mockup-rank">⭐⭐⭐</span><span class="mockup-res">+0.3</span><span class="mockup-res">+0.6</span></div>
+      <div class="mockup-row"><span class="mockup-num">1</span><span class="mockup-prod">Swix PS6</span><span class="mockup-meth">2 layers, iron 120°</span><span class="mockup-rank">⭐⭐⭐⭐</span><span class="mockup-res">+0.0</span><span class="mockup-res">+0.2</span></div>
+      <div class="mockup-row"><span class="mockup-num">2</span><span class="mockup-prod">HWK C9</span><span class="mockup-meth">1 layer, iron</span><span class="mockup-rank">⭐⭐⭐</span><span class="mockup-res">+0.5</span><span class="mockup-res">+0.8</span></div>
+      <div class="mockup-row"><span class="mockup-num">3</span><span class="mockup-prod">Swix PS6 + Swix CG-250202</span><span class="mockup-meth">2+1 layers, cork</span><span class="mockup-rank">⭐⭐⭐⭐⭐</span><span class="mockup-res" style="color:var(--violet)">−0.4</span><span class="mockup-res" style="color:var(--violet)">−0.5</span></div>
+      <div class="mockup-row"><span class="mockup-num">4</span><span class="mockup-prod">Toko Jet Liquid Black</span><span class="mockup-meth">2 layers, cork</span><span class="mockup-rank">⭐⭐⭐</span><span class="mockup-res">+0.3</span><span class="mockup-res">+0.6</span></div>
     </div>
   </div>
 </div>
@@ -563,7 +563,7 @@ ul.feat-list li::before {
       <div class="m-bar" style="height:72%"></div>
     </div>
     <div class="m-bar-label">
-      <span>Swix LF7</span><span>Toko HF Blue</span><span>LF7+Cera NX</span><span>Toko NF Blue</span><span>Swix HF7</span>
+      <span>Swix PS6</span><span>HWK C9</span><span>PS6+CG-250202</span><span>Toko Jet Black</span><span>HWK UHX Warm</span>
     </div>
   </div>
 </div>

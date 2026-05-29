@@ -772,51 +772,73 @@ export async function buildTeamJsonExport(teamId: number): Promise<string> {
   const team = await storage.getTeam(teamId);
   const [
     allGroups, allTests, allWeather, allSeries,
-    allProducts, allArchivedProducts,
-    allAthletes, allGrindProfiles, allGrindingRecords, allGrindingSheets,
-    allTeamUsers, allStockChanges,
+    allProducts, allAthletes, allGrindProfiles,
+    allGrindingRecords, allGrindingSheets, allTeamUsers,
+    allLoginLogs, allActivities,
   ] = await Promise.all([
     storage.listGroups(teamId),
     storage.listAllTestsForTeam(teamId),
     storage.listAllWeatherForTeam(teamId),
     storage.listSeries('', true, teamId),
     storage.listProducts('', true, teamId),
-    storage.listArchivedProducts('', true, teamId),
     storage.listAthletes(0, true, teamId),
     storage.listGrindProfiles(teamId),
     storage.listGrindingRecords('', true, teamId),
     storage.listGrindingSheets('', true, teamId),
     storage.listUsers(teamId),
-    storage.listStockChanges(5000, teamId),
+    storage.listLoginLogs(teamId),
+    storage.listActivityLogs(5000, teamId),
   ]);
-  const racePrepsResult = await (pool as any).query(
-    `SELECT * FROM race_preps WHERE team_id = $1 ORDER BY date DESC`, [teamId]
-  );
-  const racePrepEntriesResult = await (pool as any).query(
-    `SELECT rpe.* FROM race_prep_entries rpe
-     JOIN race_preps rp ON rp.id = rpe.race_prep_id
-     WHERE rp.team_id = $1`, [teamId]
-  );
+
   const testIds = allTests.map((t: any) => t.id);
   const allEntries = testIds.length > 0 ? await storage.listAllEntriesForTests(testIds) : [];
+  const entriesByTest: Record<number, any[]> = {};
+  for (const e of allEntries) {
+    if (!entriesByTest[(e as any).testId]) entriesByTest[(e as any).testId] = [];
+    entriesByTest[(e as any).testId].push(e);
+  }
+
+  const allRaceSkis: any[] = [];
+  for (const ath of allAthletes) {
+    try {
+      const skis = await storage.listAllRaceSkisIncludingArchived(ath.id);
+      allRaceSkis.push(...skis.map((s: any) => ({ ...s, athleteName: ath.name })));
+    } catch {}
+  }
+  const allRaceSkiRegrinds: any[] = [];
+  for (const ski of allRaceSkis) {
+    try {
+      const rr = await storage.listRaceSkiRegrinds(ski.id);
+      allRaceSkiRegrinds.push(...rr.map((r: any) => ({ ...r, skiId: ski.skiId, athleteName: ski.athleteName, brand: ski.brand })));
+    } catch {}
+  }
+  const allTestSkiRegrinds: any[] = [];
+  for (const series of allSeries) {
+    try {
+      const rr = await storage.listTestSkiRegrinds(series.id);
+      allTestSkiRegrinds.push(...rr.map((r: any) => ({ ...r, seriesName: series.name })));
+    } catch {}
+  }
 
   return JSON.stringify({
     exportedAt: new Date().toISOString(),
     team: { id: team?.id, name: team?.name },
-    groups: allGroups,
     tests: allTests,
-    testEntries: allEntries,
+    entriesByTest,
     weather: allWeather,
-    products: [...allProducts, ...allArchivedProducts],
     series: allSeries,
+    products: allProducts,
+    users: allTeamUsers.map(({ password, ...rest }: any) => rest),
+    groups: allGroups,
+    loginLogs: allLoginLogs,
+    activities: allActivities,
     athletes: allAthletes,
-    racePreps: racePrepsResult.rows,
-    racePrepEntries: racePrepEntriesResult.rows,
-    grindProfiles: allGrindProfiles,
+    raceSkis: allRaceSkis,
     grindingRecords: allGrindingRecords,
     grindingSheets: allGrindingSheets,
-    stockChanges: allStockChanges,
-    teamUsers: allTeamUsers.map((u: any) => ({ id: u.id, name: u.name, email: u.email, role: u.isTeamAdmin ? 'admin' : 'member' })),
+    raceSkiRegrinds: allRaceSkiRegrinds,
+    testSkiRegrinds: allTestSkiRegrinds,
+    grindProfiles: allGrindProfiles,
   }, null, 2);
 }
 

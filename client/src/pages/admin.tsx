@@ -4187,36 +4187,9 @@ export default function Admin() {
                 <h2 className="text-sm font-semibold text-foreground">Google Drive Backup</h2>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
-                Download a complete JSON export or a PDF of the backup sheet at any time. You can also connect a
-                Google Shared Drive folder for fully automatic uploads every 30 minutes.
+                Connect a Google Shared Drive folder for fully automatic uploads every 30 minutes.
+                The same files as the Export Tools buttons (PDF + JSON) are saved automatically.
               </p>
-
-              {/* ── Always-available: manual download buttons ── */}
-              <div className="space-y-2 mb-4">
-                {teams.map((team) => (
-                  <div key={`dl-${team.id}`} className="rounded-xl border border-border bg-muted/20 p-3">
-                    <div className="text-xs font-medium text-foreground mb-2">{team.name}</div>
-                    <div className="flex flex-wrap gap-2">
-                      <a
-                        href={`/api/teams/${team.id}/export-json`}
-                        download
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        Download JSON
-                      </a>
-                      <a
-                        href={`/api/teams/${team.id}/export-pdf`}
-                        download
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        Download PDF
-                      </a>
-                    </div>
-                  </div>
-                ))}
-              </div>
 
               {/* ── Shared Drive auto-upload (Google Workspace only) ── */}
               <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20 p-3 mb-3 text-[11px] text-amber-800 dark:text-amber-300 space-y-1">

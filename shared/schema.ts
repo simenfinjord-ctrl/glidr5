@@ -208,6 +208,8 @@ export const teams = pgTable("teams", {
   maxTests: integer("max_tests"),
   maxProducts: integer("max_products"),
   notes: text("notes"),
+  weatherStationType: text("weather_station_type"),
+  weatherStationConfig: text("weather_station_config"), // JSON string
 });
 
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });

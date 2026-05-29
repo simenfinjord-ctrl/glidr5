@@ -412,6 +412,8 @@ export async function registerRoutes(
     await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS max_tests INTEGER`);
     await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS max_products INTEGER`);
     await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS notes TEXT`);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS weather_station_type TEXT`);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS weather_station_config TEXT`);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS plan_change_log (
         id SERIAL PRIMARY KEY,
@@ -1598,6 +1600,63 @@ export async function registerRoutes(
       });
     } catch (_) {}
     res.json({ ok: true });
+  });
+
+  // ── Weather station routes ─────────────────────────────────────────────────
+
+  // GET weather station config for current team
+  app.get("/api/weather-station/config", requireAuth, async (req, res) => {
+    const team = await storage.getTeam(getActiveTeamId(req));
+    res.json({
+      stationType: team?.weatherStationType ?? null,
+      connected: !!team?.weatherStationType,
+      stationLabel: team?.weatherStationType ?? null,
+    });
+  });
+
+  // Save weather station config (team admin only)
+  app.put("/api/weather-station/config", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ error: "Forbidden" });
+    const { stationType, config } = req.body;
+    await storage.updateTeam(getActiveTeamId(req), {
+      weatherStationType: stationType || null,
+      weatherStationConfig: config ? JSON.stringify(config) : null,
+    });
+    res.json({ ok: true });
+  });
+
+  // Test connection
+  app.post("/api/weather-station/test", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ error: "Forbidden" });
+    const { stationType, config } = req.body;
+    try {
+      const { fetchWeatherFromStation } = await import("./weatherStation");
+      const now = new Date();
+      const date = now.toISOString().slice(0, 10);
+      const time = now.toTimeString().slice(0, 5);
+      const result = await fetchWeatherFromStation(stationType, config, date, time);
+      res.json({ ok: true, sample: result });
+    } catch (err: any) {
+      res.status(400).json({ ok: false, error: err.message || "Connection failed" });
+    }
+  });
+
+  // Fetch weather for a specific date+time from configured station
+  app.get("/api/weather-station/fetch", requireAuth, async (req, res) => {
+    const team = await storage.getTeam(getActiveTeamId(req));
+    if (!team?.weatherStationType || !team?.weatherStationConfig) {
+      return res.status(404).json({ error: "No weather station configured" });
+    }
+    const { date, time } = req.query as { date: string; time: string };
+    if (!date || !time) return res.status(400).json({ error: "date and time required" });
+    try {
+      const { fetchWeatherFromStation } = await import("./weatherStation");
+      const config = JSON.parse(team.weatherStationConfig);
+      const result = await fetchWeatherFromStation(team.weatherStationType, config, date, time);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || "Fetch failed" });
+    }
   });
 
   app.get("/api/tests", requireAuth, async (req, res) => {

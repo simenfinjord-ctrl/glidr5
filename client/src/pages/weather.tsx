@@ -5,11 +5,12 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Thermometer, Droplets, Snowflake, MapPin, Cloud, Wind, Eye, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, Thermometer, Droplets, Snowflake, MapPin, Cloud, Wind, Eye, Star, Wifi, WifiOff } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
   Dialog,
@@ -159,6 +160,11 @@ function WeatherForm({
   const { toast } = useToast();
   const { queueMutation } = useOffline();
   const today = new Date().toISOString().slice(0, 10);
+  const [fetchingStation, setFetchingStation] = useState(false);
+
+  const { data: stationConfig } = useQuery<{ connected: boolean; stationType: string | null; stationLabel: string | null }>({
+    queryKey: ["/api/weather-station/config"],
+  });
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -325,6 +331,49 @@ function WeatherForm({
               )}
             />
           </div>
+          {stationConfig?.connected && (
+            <div className="mt-2 flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={fetchingStation}
+                onClick={async () => {
+                  const date = form.getValues("date");
+                  const time = form.getValues("time");
+                  if (!date || !time) {
+                    toast({ title: "Date and time required", variant: "destructive" });
+                    return;
+                  }
+                  setFetchingStation(true);
+                  try {
+                    const res = await apiRequest("GET", `/api/weather-station/fetch?date=${date}&time=${time}`);
+                    const result = await res.json();
+                    const filled: string[] = [];
+                    if (result.airTemperatureC != null) { form.setValue("airTemperatureC", result.airTemperatureC); filled.push("air temp"); }
+                    if (result.snowTemperatureC != null) { form.setValue("snowTemperatureC", result.snowTemperatureC); filled.push("snow temp"); }
+                    if (result.airHumidityPct != null) { form.setValue("airHumidityPct", result.airHumidityPct); filled.push("air humidity"); }
+                    if (result.snowHumidityPct != null) { form.setValue("snowHumidityPct", result.snowHumidityPct); filled.push("snow humidity"); }
+                    if (result.wind != null) { form.setValue("wind", result.wind); filled.push("wind"); }
+                    if (result.precipitation != null) { form.setValue("precipitation", result.precipitation); filled.push("precipitation"); }
+                    if (result.clouds != null) { form.setValue("clouds", result.clouds); filled.push("clouds"); }
+                    if (result.visibility != null) { form.setValue("visibility", result.visibility); filled.push("visibility"); }
+                    toast({
+                      title: t("weatherStation.fetchSuccess"),
+                      description: filled.length ? filled.join(", ") : "No data returned",
+                    });
+                  } catch (err) {
+                    toast({ title: t("weatherStation.testFailed"), variant: "destructive" });
+                  } finally {
+                    setFetchingStation(false);
+                  }
+                }}
+              >
+                <Wifi className="mr-1.5 h-3.5 w-3.5" />
+                {fetchingStation ? "Fetching…" : t("weatherStation.fetchFromStation")}
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="space-y-1">
@@ -632,6 +681,345 @@ function WeatherBadge({ label, value, colorClass }: { label: string; value: stri
   );
 }
 
+// ── Weather station config fields per type ────────────────────────────────────
+
+const STATION_TYPES = [
+  { value: "netatmo", labelKey: "weatherStation.netatmo" },
+  { value: "davis", labelKey: "weatherStation.davis" },
+  { value: "ambient", labelKey: "weatherStation.ambient" },
+  { value: "ecowitt", labelKey: "weatherStation.ecowitt" },
+  { value: "wunderground", labelKey: "weatherStation.wunderground" },
+  { value: "openmeteo", labelKey: "weatherStation.openmeteo" },
+  { value: "generic", labelKey: "weatherStation.generic" },
+] as const;
+
+type StationType = (typeof STATION_TYPES)[number]["value"];
+
+function StationFields({ stationType, config, onChange }: {
+  stationType: StationType;
+  config: Record<string, string>;
+  onChange: (key: string, value: string) => void;
+}) {
+  const { t } = useI18n();
+
+  const field = (key: string, labelKey: string, type: "text" | "password" = "text", placeholder?: string) => (
+    <div className="space-y-1" key={key}>
+      <label className="text-sm font-medium">{t(labelKey)}</label>
+      <Input
+        type={type}
+        value={config[key] ?? ""}
+        onChange={(e) => onChange(key, e.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+
+  if (stationType === "netatmo") return (
+    <div className="space-y-3">
+      {field("clientId", "weatherStation.clientId")}
+      {field("clientSecret", "weatherStation.clientSecret", "password")}
+      {field("username", "weatherStation.username")}
+      {field("password", "weatherStation.password", "password")}
+      {field("deviceId", "weatherStation.deviceId")}
+    </div>
+  );
+
+  if (stationType === "davis") return (
+    <div className="space-y-3">
+      {field("apiKey", "weatherStation.apiKey")}
+      {field("apiSecret", "weatherStation.apiSecret", "password")}
+      {field("stationId", "weatherStation.stationId")}
+    </div>
+  );
+
+  if (stationType === "ambient") return (
+    <div className="space-y-3">
+      {field("applicationKey", "weatherStation.applicationKey")}
+      {field("apiKey", "weatherStation.apiKey")}
+      {field("macAddress", "weatherStation.macAddress")}
+    </div>
+  );
+
+  if (stationType === "ecowitt") return (
+    <div className="space-y-3">
+      {field("applicationKey", "weatherStation.applicationKey")}
+      {field("apiKey", "weatherStation.apiKey")}
+      {field("mac", "weatherStation.macAddress")}
+    </div>
+  );
+
+  if (stationType === "wunderground") return (
+    <div className="space-y-3">
+      {field("apiKey", "weatherStation.apiKey")}
+      {field("stationId", "weatherStation.stationId")}
+    </div>
+  );
+
+  if (stationType === "openmeteo") return (
+    <div className="space-y-3">
+      {field("latitude", "weatherStation.latitude", "text", "e.g. 59.91")}
+      {field("longitude", "weatherStation.longitude", "text", "e.g. 10.75")}
+    </div>
+  );
+
+  if (stationType === "generic") return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <label className="text-sm font-medium">{t("weatherStation.urlTemplate")}</label>
+        <Input
+          value={config["urlTemplate"] ?? ""}
+          onChange={(e) => onChange("urlTemplate", e.target.value)}
+          placeholder="https://mystation.example.com/data?date={date}&time={time}"
+        />
+        <p className="text-xs text-muted-foreground">{t("weatherStation.urlTemplateHelp")}</p>
+      </div>
+      <div className="space-y-1">
+        <label className="text-sm font-medium">{t("weatherStation.authType")}</label>
+        <Select value={config["authType"] ?? "none"} onValueChange={(v) => onChange("authType", v)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">{t("weatherStation.authNone")}</SelectItem>
+            <SelectItem value="bearer">{t("weatherStation.authBearer")}</SelectItem>
+            <SelectItem value="basic">{t("weatherStation.authBasic")}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {config["authType"] === "bearer" && (
+        <div className="space-y-1">
+          <label className="text-sm font-medium">{t("weatherStation.bearerToken")}</label>
+          <Input
+            type="password"
+            value={config["bearerToken"] ?? ""}
+            onChange={(e) => onChange("bearerToken", e.target.value)}
+          />
+        </div>
+      )}
+      {config["authType"] === "basic" && (
+        <>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">{t("weatherStation.username")}</label>
+            <Input value={config["basicUsername"] ?? ""} onChange={(e) => onChange("basicUsername", e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">{t("weatherStation.password")}</label>
+            <Input type="password" value={config["basicPassword"] ?? ""} onChange={(e) => onChange("basicPassword", e.target.value)} />
+          </div>
+        </>
+      )}
+      <div className="space-y-2 pt-1">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("weatherStation.fieldMapping")}</p>
+        {(["fieldAirTemp", "fieldSnowTemp", "fieldAirHumidity", "fieldWind", "fieldPrecipitation"] as const).map((fk) => {
+          const configKey = fk === "fieldAirTemp" ? "fieldMap.airTemperatureC"
+            : fk === "fieldSnowTemp" ? "fieldMap.snowTemperatureC"
+            : fk === "fieldAirHumidity" ? "fieldMap.airHumidityPct"
+            : fk === "fieldWind" ? "fieldMap.wind"
+            : "fieldMap.precipitation";
+          return (
+            <div className="space-y-1" key={fk}>
+              <label className="text-sm font-medium">{t(`weatherStation.${fk}`)}</label>
+              <Input
+                value={config[configKey] ?? ""}
+                onChange={(e) => onChange(configKey, e.target.value)}
+                placeholder="e.g. data.temperature"
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  return null;
+}
+
+// For generic type, extract fieldMap.* keys into nested object
+function buildConfig(stationType: string, flat: Record<string, string>): Record<string, any> {
+  if (stationType !== "generic") return { ...flat };
+  const result: Record<string, any> = {};
+  const fieldMap: Record<string, string> = {};
+  for (const [k, v] of Object.entries(flat)) {
+    if (k.startsWith("fieldMap.")) {
+      fieldMap[k.replace("fieldMap.", "")] = v;
+    } else {
+      result[k] = v;
+    }
+  }
+  if (Object.keys(fieldMap).length) result.fieldMap = fieldMap;
+  return result;
+}
+
+function WeatherStationDialog() {
+  const { t } = useI18n();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [stationType, setStationType] = useState<StationType | "">("");
+  const [config, setConfig] = useState<Record<string, string>>({});
+  const [testing, setTesting] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const { data: stationStatus, refetch: refetchStatus } = useQuery<{
+    connected: boolean;
+    stationType: string | null;
+    stationLabel: string | null;
+  }>({ queryKey: ["/api/weather-station/config"] });
+
+  const handleConfigChange = (key: string, value: string) => {
+    setConfig((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleOpen = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen && stationStatus?.stationType) {
+      setStationType(stationStatus.stationType as StationType);
+    } else if (!isOpen) {
+      setConfig({});
+    }
+  };
+
+  const handleTest = async () => {
+    if (!stationType) return;
+    setTesting(true);
+    try {
+      // Build fieldMap for generic type
+      const builtConfig = buildConfig(stationType, config);
+      const res = await apiRequest("POST", "/api/weather-station/test", {
+        stationType,
+        config: builtConfig,
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: t("weatherStation.testSuccess"), description: JSON.stringify(data.sample) });
+      } else {
+        toast({ title: t("weatherStation.testFailed"), description: data.error, variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: t("weatherStation.testFailed"), description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!stationType) return;
+    setSaving(true);
+    try {
+      const builtConfig = buildConfig(stationType, config);
+      await apiRequest("PUT", "/api/weather-station/config", {
+        stationType,
+        config: builtConfig,
+      });
+      await refetchStatus();
+      toast({ title: t("weatherStation.connected") });
+      setOpen(false);
+    } catch (err) {
+      toast({ title: "Save failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setSaving(true);
+    try {
+      await apiRequest("PUT", "/api/weather-station/config", { stationType: null, config: null });
+      await refetchStatus();
+      toast({ title: t("weatherStation.disconnect") });
+      setOpen(false);
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          {stationStatus?.connected ? (
+            <>
+              <Wifi className="mr-1.5 h-4 w-4 text-emerald-500" />
+              <span className="hidden sm:inline">{t("weatherStation.connected")}</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="mr-1.5 h-4 w-4" />
+              <span className="hidden sm:inline">{t("weatherStation.connect")}</span>
+            </>
+          )}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {stationStatus?.connected ? t("weatherStation.connected") : t("weatherStation.connect")}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          {stationStatus?.connected && (
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+              <Wifi className="h-4 w-4 text-emerald-600" />
+              <span className="text-sm text-emerald-700">
+                {STATION_TYPES.find((s) => s.value === stationStatus.stationLabel)
+                  ? t(STATION_TYPES.find((s) => s.value === stationStatus.stationLabel)!.labelKey)
+                  : stationStatus.stationLabel}
+              </span>
+              <Badge variant="secondary" className="ml-auto text-emerald-700 bg-emerald-100">
+                {t("weatherStation.connected")}
+              </Badge>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium">{t("weatherStation.stationType")}</label>
+            <Select value={stationType} onValueChange={(v) => { setStationType(v as StationType); setConfig({}); }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a station type…" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATION_TYPES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>{t(s.labelKey)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {stationType && (
+            <StationFields
+              stationType={stationType as StationType}
+              config={config}
+              onChange={handleConfigChange}
+            />
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+            {stationStatus?.connected && (
+              <Button variant="destructive" size="sm" disabled={saving} onClick={handleDisconnect}>
+                <WifiOff className="mr-1.5 h-4 w-4" />
+                {t("weatherStation.disconnect")}
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              {stationType && (
+                <Button variant="outline" size="sm" disabled={testing} onClick={handleTest}>
+                  {testing ? "Testing…" : t("weatherStation.testConnection")}
+                </Button>
+              )}
+              {stationType && (
+                <Button size="sm" disabled={saving} onClick={handleSave}>
+                  {saving ? "Saving…" : t("weatherStation.save")}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function WeatherPage() {
   const { t } = useI18n();
   const { toast } = useToast();
@@ -690,13 +1078,15 @@ export default function WeatherPage() {
             </p>
           </div>
 
-          <Dialog
-            open={open}
-            onOpenChange={(v) => {
-              setOpen(v);
-              if (!v) setEditing(undefined);
-            }}
-          >
+          <div className="flex items-center gap-2">
+            {(user?.isTeamAdmin || user?.isAdmin) && <WeatherStationDialog />}
+            <Dialog
+              open={open}
+              onOpenChange={(v) => {
+                setOpen(v);
+                if (!v) setEditing(undefined);
+              }}
+            >
             <DialogTrigger asChild>
               <Button data-testid="button-add-weather" className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white">
                 <Plus className="mr-2 h-4 w-4" />
@@ -710,6 +1100,7 @@ export default function WeatherPage() {
               <WeatherForm initial={editing} onSaved={() => setOpen(false)} userGroups={userGroups} selectedGroup={effectiveGroup} onGroupChange={handleGroupChange} />
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3">

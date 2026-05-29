@@ -820,6 +820,24 @@ export async function buildTeamJsonExport(teamId: number): Promise<string> {
     } catch {}
   }
 
+  const racePrepsResult = await (pool as any).query(
+    `SELECT id, date, start_time, location, race_type, discipline,
+            products, method, structure, notes, tette,
+            product_ids, structure_ids, kick_product_ids,
+            weather_id, created_by_name, created_at
+     FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
+    [teamId]
+  );
+  const racePrepEntriesResult = await (pool as any).query(
+    `SELECT rpe.id, rpe.race_prep_id, rpe.athlete_name, rpe.ski_id,
+            rpe.ski_id_classic, rpe.ski_id_skating,
+            rpe.waxer_name, rpe.notes, rpe.created_at
+     FROM race_prep_entries rpe
+     JOIN race_preps rp ON rp.id = rpe.race_prep_id
+     WHERE rp.team_id = $1 ORDER BY rpe.race_prep_id, rpe.athlete_name`,
+    [teamId]
+  );
+
   return JSON.stringify({
     exportedAt: new Date().toISOString(),
     team: { id: team?.id, name: team?.name },
@@ -839,6 +857,8 @@ export async function buildTeamJsonExport(teamId: number): Promise<string> {
     raceSkiRegrinds: allRaceSkiRegrinds,
     testSkiRegrinds: allTestSkiRegrinds,
     grindProfiles: allGrindProfiles,
+    racePreps: racePrepsResult.rows,
+    racePrepEntries: racePrepEntriesResult.rows,
   }, null, 2);
 }
 
@@ -872,6 +892,7 @@ function buildExportHtml(data: {
   groups: any[]; athletes: any[]; raceSkis: any[]; raceSkiRegrinds: any[];
   testSkiRegrinds: any[]; grindProfiles: any[]; grindingRecords: any[];
   grindingSheets: any[]; activities: any[]; loginLogs: any[];
+  racePreps: any[]; racePrepEntries: any[];
 }): string {
   const productMap = new Map(data.products.map((p: any) => [p.id, p]));
   const raceSkiMap = new Map(data.raceSkis.map((s: any) => [s.id, s]));
@@ -1047,6 +1068,29 @@ function buildExportHtml(data: {
   }
 
   // Grinding records
+  // Race preps
+  if (data.racePreps.length > 0) {
+    body += htmlSection(`Race Preps (${data.racePreps.length})`, htmlTable(
+      ['Date', 'Start Time', 'Location', 'Race Type', 'Discipline', 'Glide Products', 'Structure', 'Method', 'Notes', 'Created By'],
+      data.racePreps.map((rp: any) => [
+        rp.date || '', rp.start_time || '', rp.location || '', rp.race_type || '',
+        rp.discipline || '', rp.products || '', rp.structure || '', rp.method || '',
+        rp.notes || '', rp.created_by_name || '',
+      ])
+    ));
+  }
+
+  // Race prep entries
+  if (data.racePrepEntries.length > 0) {
+    body += htmlSection(`Race Prep Entries (${data.racePrepEntries.length})`, htmlTable(
+      ['Race Prep ID', 'Athlete', 'Ski ID (Glide)', 'Ski ID (Classic)', 'Ski ID (Skating)', 'Waxer', 'Notes'],
+      data.racePrepEntries.map((e: any) => [
+        String(e.race_prep_id || ''), e.athlete_name || '', e.ski_id || '',
+        e.ski_id_classic || '', e.ski_id_skating || '', e.waxer_name || '', e.notes || '',
+      ])
+    ));
+  }
+
   if (data.grindingRecords.length > 0) {
     body += htmlSection(`Grinding Records (${data.grindingRecords.length})`, htmlTable(
       ['Date', 'Type', 'Stone', 'Notes', 'Group'],
@@ -1159,6 +1203,24 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
     } catch {}
   }
 
+  const racePrepsResult = await (pool as any).query(
+    `SELECT id, date, start_time, location, race_type, discipline,
+            products, method, structure, notes, tette,
+            product_ids, structure_ids, kick_product_ids,
+            weather_id, created_by_name, created_at
+     FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
+    [teamId]
+  );
+  const racePrepEntriesResult = await (pool as any).query(
+    `SELECT rpe.id, rpe.race_prep_id, rpe.athlete_name, rpe.ski_id,
+            rpe.ski_id_classic, rpe.ski_id_skating,
+            rpe.waxer_name, rpe.notes, rpe.created_at
+     FROM race_prep_entries rpe
+     JOIN race_preps rp ON rp.id = rpe.race_prep_id
+     WHERE rp.team_id = $1 ORDER BY rpe.race_prep_id, rpe.athlete_name`,
+    [teamId]
+  );
+
   const html = buildExportHtml({
     teamName: team?.name ?? 'Glidr',
     tests: allTests,
@@ -1177,6 +1239,8 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
     grindingSheets: allGrindingSheets,
     activities: allActivities,
     loginLogs: allLoginLogs,
+    racePreps: racePrepsResult.rows,
+    racePrepEntries: racePrepEntriesResult.rows,
   });
 
   const puppeteer = await import('puppeteer');

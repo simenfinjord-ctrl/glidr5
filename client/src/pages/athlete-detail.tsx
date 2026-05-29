@@ -745,7 +745,17 @@ export default function AthleteDetail() {
   const [raceCloudMin, setRaceCloudMin] = useState("");
   const [raceCloudMax, setRaceCloudMax] = useState("");
   const [showRaceWeatherFilters, setShowRaceWeatherFilters] = useState(false);
-  const [raceViewMode, setRaceViewMode] = useState<"card" | "compact">("card");
+  const [raceViewMode, setRaceViewMode] = useState<"card" | "compact">(() => {
+    try {
+      const v = localStorage.getItem("glidr-race-view-mode");
+      if (v === "compact" || v === "card") return v;
+    } catch {}
+    return "card";
+  });
+  function setRaceView(mode: "card" | "compact") {
+    setRaceViewMode(mode);
+    try { localStorage.setItem("glidr-race-view-mode", mode); } catch {}
+  }
 
   const testDates = useMemo(() => {
     const dates = [...new Set(raceSkiTests.map((t) => t.date))].sort((a, b) => b.localeCompare(a));
@@ -1681,14 +1691,14 @@ export default function AthleteDetail() {
               </h2>
               <div className="flex items-center rounded-lg border border-border bg-background/60 p-0.5">
                 <button
-                  onClick={() => setRaceViewMode("card")}
+                  onClick={() => setRaceView("card")}
                   className={cn("flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors", raceViewMode === "card" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
                   title="Card view"
                 >
                   <LayoutGrid className="h-3 w-3" />
                 </button>
                 <button
-                  onClick={() => setRaceViewMode("compact")}
+                  onClick={() => setRaceView("compact")}
                   className={cn("flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors", raceViewMode === "compact" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
                   title="Compact view"
                 >

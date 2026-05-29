@@ -15,23 +15,16 @@ function sanitizeSheetTitle(name: string): string {
 async function ensureSheet(sheets: any, spreadsheetId: string, title: string): Promise<number> {
   const meta = await sheets.spreadsheets.get({ spreadsheetId });
   const existing = meta.data.sheets?.find((s: any) => s.properties?.title === title);
-  if (existing) {
-    return existing.properties.sheetId;
-  }
+  if (existing) return existing.properties.sheetId;
   const resp = await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
-    requestBody: {
-      requests: [{ addSheet: { properties: { title } } }],
-    },
+    requestBody: { requests: [{ addSheet: { properties: { title } } }] },
   });
   return resp.data.replies[0].addSheet.properties.sheetId;
 }
 
 async function clearAndWrite(sheets: any, spreadsheetId: string, sheetTitle: string, rows: any[][]) {
-  await sheets.spreadsheets.values.clear({
-    spreadsheetId,
-    range: `'${sheetTitle}'!A:ZZ`,
-  });
+  await sheets.spreadsheets.values.clear({ spreadsheetId, range: `'${sheetTitle}'!A:ZZ` });
   if (rows.length > 0) {
     await sheets.spreadsheets.values.update({
       spreadsheetId,
@@ -42,14 +35,27 @@ async function clearAndWrite(sheets: any, spreadsheetId: string, sheetTitle: str
   }
 }
 
+// Apply bold formatting to specific rows by index within a sheet
+async function boldRows(sheets: any, spreadsheetId: string, sheetId: number, rowIndices: number[]) {
+  const requests = rowIndices.map(rowIndex => ({
+    repeatCell: {
+      range: { sheetId, startRowIndex: rowIndex, endRowIndex: rowIndex + 1, startColumnIndex: 0, endColumnIndex: 30 },
+      cell: { userEnteredFormat: { textFormat: { bold: true } } },
+      fields: 'userEnteredFormat.textFormat.bold',
+    },
+  }));
+  if (requests.length > 0) {
+    await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
+  }
+}
+
 type RoundResult = { result: number | null; rank: number | null };
 
 function parseResultsArray(resultsJson: string | null): RoundResult[] {
   if (!resultsJson) return [];
   try {
     const parsed = JSON.parse(resultsJson);
-    if (Array.isArray(parsed)) return parsed;
-    return [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch { return []; }
 }
 
@@ -57,9 +63,40 @@ function parseDistanceLabels(labelsJson: string | null): string[] {
   if (!labelsJson) return [];
   try {
     const parsed = JSON.parse(labelsJson);
-    if (Array.isArray(parsed)) return parsed;
-    return [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch { return []; }
+}
+
+// Reorder sheets in the spreadsheet to match a desired logical sequence
+async function reorderSheets(sheets: any, spreadsheetId: string, orderedTitles: string[]) {
+  try {
+    const meta = await sheets.spreadsheets.get({ spreadsheetId });
+    const sheetMap = new Map<string, number>();
+    for (const s of (meta.data.sheets || [])) {
+      if (s.properties?.title) sheetMap.set(s.properties.title, s.properties.sheetId);
+    }
+    const requests: any[] = [];
+    let index = 0;
+    for (const title of orderedTitles) {
+      const sheetId = sheetMap.get(title);
+      if (sheetId !== undefined) {
+        requests.push({ updateSheetProperties: { properties: { sheetId, index }, fields: 'index' } });
+        index++;
+      }
+    }
+    // Append any sheets not in our ordered list at the end
+    for (const [title, sheetId] of sheetMap.entries()) {
+      if (!orderedTitles.includes(title)) {
+        requests.push({ updateSheetProperties: { properties: { sheetId, index }, fields: 'index' } });
+        index++;
+      }
+    }
+    if (requests.length > 0) {
+      await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
+    }
+  } catch (err) {
+    console.warn('[Backup] Could not reorder sheets:', err);
+  }
 }
 
 export async function runBackupForTeam(teamId: number): Promise<{ success: boolean; error?: string }> {
@@ -72,8 +109,15 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
 
   try {
     const sheets = await getUncachableGoogleSheetClient();
+    const now = new Date().toISOString();
 
-    const [allGroups, allTests, allWeather, allSeries, allProducts, allArchivedProducts, allAthletes, allGrindProfiles, allGrindingRecords] = await Promise.all([
+    // ── Fetch all data ────────────────────────────────────────────────────────
+    const [
+      allGroups, allTests, allWeather, allSeries,
+      allProducts, allArchivedProducts,
+      allAthletes, allGrindProfiles, allGrindingRecords, allGrindingSheets,
+      allTeamUsers, allStockChanges,
+    ] = await Promise.all([
       storage.listGroups(teamId),
       storage.listAllTestsForTeam(teamId),
       storage.listAllWeatherForTeam(teamId),
@@ -83,14 +127,43 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       storage.listAthletes(0, true, teamId),
       storage.listGrindProfiles(teamId),
       storage.listGrindingRecords('', true, teamId),
+      storage.listGrindingSheets('', true, teamId),
+      storage.listUsers(teamId),
+      storage.listStockChanges(2000, teamId),
     ]);
 
+    // Full race prep data with all columns
     const racePrepsResult = await (pool as any).query(
-      `SELECT id, date, location, discipline, product_ids, structure_ids, kick_product_ids, weather_id, notes, created_at FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
+      `SELECT id, date, start_time, location, race_type, discipline,
+              products, method, structure, notes, tette,
+              product_ids, structure_ids, kick_product_ids,
+              weather_id, created_by_name, created_at
+       FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
       [teamId]
     );
     const allRacePreps = racePrepsResult.rows;
 
+    // Race prep entries per prep
+    const racePrepEntriesResult = await (pool as any).query(
+      `SELECT rpe.id, rpe.race_prep_id, rpe.athlete_name, rpe.ski_id,
+              rpe.ski_id_classic, rpe.ski_id_skating,
+              rpe.waxer_name, rpe.notes, rpe.created_at
+       FROM race_prep_entries rpe
+       JOIN race_preps rp ON rp.id = rpe.race_prep_id
+       WHERE rp.team_id = $1 ORDER BY rpe.race_prep_id, rpe.athlete_name`,
+      [teamId]
+    );
+    const racePrepEntriesByPrepId: Record<number, any[]> = {};
+    for (const e of racePrepEntriesResult.rows) {
+      if (!racePrepEntriesByPrepId[e.race_prep_id]) racePrepEntriesByPrepId[e.race_prep_id] = [];
+      racePrepEntriesByPrepId[e.race_prep_id].push(e);
+    }
+
+    // Weather lookup
+    const weatherById: Record<number, any> = {};
+    for (const w of allWeather) weatherById[(w as any).id] = w;
+
+    // Test entries
     const testIds = allTests.map((t: any) => t.id);
     const allEntries = await storage.listAllEntriesForTests(testIds);
     const entriesByTest: Record<number, any[]> = {};
@@ -101,23 +174,24 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
 
     const productsById: Record<number, any> = {};
     for (const p of allProducts) productsById[p.id] = p;
+    for (const p of allArchivedProducts) productsById[p.id] = p;
 
     const seriesById: Record<number, any> = {};
     for (const s of allSeries) seriesById[s.id] = s;
 
+    // Race skis + regrinds
     const allRaceSkis: any[] = [];
     for (const ath of allAthletes) {
       const skis = await storage.listAllRaceSkisIncludingArchived(ath.id);
       allRaceSkis.push(...skis.map(s => ({ ...s, athleteName: ath.name })));
     }
-
     const raceSkiRegrinds: Record<number, any[]> = {};
     for (const ski of allRaceSkis) {
-      const regrinds = await storage.listRaceSkiRegrinds(ski.id);
-      raceSkiRegrinds[ski.id] = regrinds;
+      raceSkiRegrinds[ski.id] = await storage.listRaceSkiRegrinds(ski.id);
     }
 
-    let groupNames = allGroups.map(g => g.name);
+    // ── Build group list ──────────────────────────────────────────────────────
+    let groupNames = allGroups.map((g: any) => g.name);
     if (groupNames.length === 0) {
       const scopeSet = new Set<string>();
       for (const t of allTests) if ((t as any).groupScope) scopeSet.add((t as any).groupScope);
@@ -126,76 +200,118 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       for (const s of allSeries) if ((s as any).groupScope) scopeSet.add((s as any).groupScope);
       groupNames = scopeSet.size > 0 ? Array.from(scopeSet) : ['default'];
     }
-
-    // Ensure any groupScope values present in actual data are included even when groups exist
+    // Include any groupScopes present in data but missing from groups list
     const extraScopes = new Set<string>();
     for (const t of allTests) if ((t as any).groupScope && !groupNames.includes((t as any).groupScope)) extraScopes.add((t as any).groupScope);
     for (const p of allProducts) if ((p as any).groupScope && !groupNames.includes((p as any).groupScope)) extraScopes.add((p as any).groupScope);
-    for (const w of allWeather) if ((w as any).groupScope && !groupNames.includes((w as any).groupScope)) extraScopes.add((w as any).groupScope);
-    for (const s of allSeries) if ((s as any).groupScope && !groupNames.includes((s as any).groupScope)) extraScopes.add((s as any).groupScope);
-    groupNames = [...groupNames, ...Array.from(extraScopes)];
+    groupNames = [...groupNames.sort(), ...Array.from(extraScopes).sort()];
 
-    for (const groupName of groupNames) {
-      const sheetTitle = sanitizeSheetTitle(`${groupName}`);
-      await ensureSheet(sheets, spreadsheetId, sheetTitle);
+    // ── Sheet title constants ─────────────────────────────────────────────────
+    const OVERVIEW_TITLE = '📋 Overview';
+    const TEAM_TITLE = '👥 Team Members';
+    const RACE_PREPS_TITLE = '🏁 Race Preps';
+    const GRINDS_TITLE = '⚙️ Grinds';
+    const STOCK_TITLE = '📦 Stock Changes';
+    const groupSheetTitles = groupNames.map(g => `📂 ${sanitizeSheetTitle(g)}`);
+    const athleteSheetTitles = allAthletes.map((a: any) => sanitizeSheetTitle(`🏃 ${a.name}`));
+
+    // Logical sheet order
+    const orderedTitles = [
+      OVERVIEW_TITLE,
+      TEAM_TITLE,
+      ...groupSheetTitles,
+      RACE_PREPS_TITLE,
+      ...athleteSheetTitles,
+      GRINDS_TITLE,
+      STOCK_TITLE,
+    ];
+
+    // Ensure all sheets exist
+    for (const title of orderedTitles) {
+      await ensureSheet(sheets, spreadsheetId, title);
+    }
+
+    // ── 1. GROUP SHEETS ───────────────────────────────────────────────────────
+    for (let gi = 0; gi < groupNames.length; gi++) {
+      const groupName = groupNames[gi];
+      const sheetTitle = groupSheetTitles[gi];
 
       const groupTests = allTests.filter((t: any) => t.groupScope === groupName);
       const groupWeather = allWeather.filter((w: any) => w.groupScope === groupName);
       const groupSeries = allSeries.filter((s: any) => s.groupScope === groupName);
       const groupProducts = allProducts.filter((p: any) => p.groupScope === groupName);
+      const groupArchivedProducts = allArchivedProducts.filter((p: any) => p.groupScope === groupName);
 
       const rows: any[][] = [];
+      const boldRowIndices: number[] = [];
 
-      rows.push(['GLIDR BACKUP — ' + team.name + ' — ' + groupName]);
-      rows.push(['Generated: ' + new Date().toISOString()]);
+      const h = (label: string) => { boldRowIndices.push(rows.length); rows.push([label]); };
+      const cols = (...headers: string[]) => { boldRowIndices.push(rows.length); rows.push(headers); };
+
+      rows.push([`GLIDR BACKUP — ${team.name} — Group: ${groupName}`]);
+      rows.push([`Generated: ${now}`]);
       rows.push([]);
 
-      rows.push(['=== PRODUCTS ===']);
-      rows.push(['ID', 'Category', 'Brand', 'Name', 'Stock', 'Archived']);
+      // Products
+      h('=== PRODUCTS ===');
+      cols('ID', 'Category', 'Brand', 'Name', 'Stock', 'Created By', 'Created At', 'Archived');
       for (const p of groupProducts) {
-        rows.push([p.id, p.category, p.brand, p.name, p.stockQuantity ?? 0, '']);
+        rows.push([p.id, p.category, p.brand, p.name, p.stockQuantity ?? 0, p.createdByName || '', p.createdAt || '', '']);
       }
-      const groupArchivedProducts = allArchivedProducts.filter((p: any) => p.groupScope === groupName);
       for (const p of groupArchivedProducts) {
-        rows.push([p.id, p.category, p.brand, p.name, p.stockQuantity ?? 0, 'Yes']);
+        rows.push([p.id, p.category, p.brand, p.name, p.stockQuantity ?? 0, p.createdByName || '', p.createdAt || '', 'Yes']);
       }
       rows.push([]);
 
-      rows.push(['=== TEST SKI SERIES ===']);
-      rows.push(['ID', 'Name', 'Type', 'Brand', 'Ski Type', 'Grind', 'Num Skis', 'Last Regrind', 'Archived']);
+      // Test ski series
+      h('=== TEST SKI SERIES ===');
+      cols('ID', 'Name', 'Type', 'Brand', 'Ski Type', 'Grind', 'Num Skis', 'Last Regrind', 'Archived');
       for (const s of groupSeries) {
         rows.push([s.id, s.name, s.type, s.brand || '', s.skiType || '', s.grind || '', s.numberOfSkis, s.lastRegrind || '', s.archivedAt ? 'Yes' : '']);
       }
       rows.push([]);
 
-      rows.push(['=== WEATHER ===']);
-      rows.push(['ID', 'Date', 'Time', 'Location', 'Snow Temp °C', 'Air Temp °C', 'Snow Humidity %', 'Air Humidity %', 'Clouds', 'Visibility', 'Wind', 'Precipitation', 'Snow Type', 'Artificial Snow', 'Natural Snow', 'Grain Size', 'Snow Humidity Type', 'Track Hardness', 'Test Quality']);
+      // Weather logs
+      h('=== WEATHER LOGS ===');
+      cols('ID', 'Date', 'Time', 'Location', 'Snow Temp °C', 'Air Temp °C', 'Snow Humidity %', 'Air Humidity %',
+        'Snow Type', 'Snow Humidity Type', 'Track Hardness', 'Artificial Snow', 'Natural Snow',
+        'Grain Size', 'Clouds', 'Visibility', 'Wind', 'Precipitation', 'Test Quality');
       for (const w of groupWeather) {
-        rows.push([w.id, w.date, w.time, w.location, w.snowTemperatureC, w.airTemperatureC, w.snowHumidityPct, w.airHumidityPct, w.clouds ?? '', w.visibility ?? '', w.wind ?? '', w.precipitation ?? '', w.snowType ?? '', w.artificialSnow ?? '', w.naturalSnow ?? '', w.grainSize ?? '', w.snowHumidityType ?? '', w.trackHardness ?? '', w.testQuality ?? '']);
+        rows.push([
+          w.id, w.date, w.time || '', w.location,
+          w.snowTemperatureC ?? '', w.airTemperatureC ?? '',
+          w.snowHumidityPct ?? '', w.airHumidityPct ?? '',
+          w.snowType ?? '', w.snowHumidityType ?? '', w.trackHardness ?? '',
+          w.artificialSnow ?? '', w.naturalSnow ?? '',
+          w.grainSize ?? '', w.clouds ?? '', w.visibility ?? '',
+          w.wind ?? '', w.precipitation ?? '', w.testQuality ?? '',
+        ]);
       }
       rows.push([]);
 
-      rows.push(['=== TESTS ===']);
+      // Tests (all types: Glide, Structure, Classic, Skating, Double Poling, Grind)
+      h('=== TESTS ===');
       for (const test of groupTests) {
         const entries = entriesByTest[test.id] || [];
-        const distLabels = parseDistanceLabels(test.distanceLabels);
-        const seriesName = test.seriesId && seriesById[test.seriesId] ? seriesById[test.seriesId].name : '';
+        const distLabels = parseDistanceLabels((test as any).distanceLabels);
+        const seriesName = (test as any).seriesId && seriesById[(test as any).seriesId] ? seriesById[(test as any).seriesId].name : '';
+        const w = (test as any).weatherId ? weatherById[(test as any).weatherId] : null;
 
-        rows.push([`--- Test #${test.id}: ${test.testName || test.location} ---`]);
-        rows.push(['Date', test.date, 'Location', test.location, 'Type', test.testType, 'Source', test.testSkiSource, 'Series', seriesName]);
-        if (test.notes) rows.push(['Notes', test.notes]);
+        boldRowIndices.push(rows.length);
+        rows.push([`--- Test #${test.id}: ${(test as any).testName || test.location} ---`]);
+        rows.push(['Date', test.date, 'Location', test.location, 'Type', (test as any).testType, 'Source', (test as any).testSkiSource, 'Series', seriesName]);
+        if (w) rows.push(['Weather', `Snow ${w.snowTemperatureC ?? '?'}°C`, `Air ${w.airTemperatureC ?? '?'}°C`, `Humidity ${w.snowHumidityPct ?? '?'}%`, `Type: ${w.snowType || '—'}`, `Track: ${w.trackHardness || '—'}`]);
+        if ((test as any).notes) rows.push(['Notes', (test as any).notes]);
 
-        const headerRow = ['Ski #', 'Product', 'Methodology', 'Feeling Rank'];
-        if (test.testType === 'Classic') headerRow.push('Kick Rank');
+        const headerRow = ['Ski #', 'Product', 'Application / Method', 'Feeling Rank'];
+        if ((test as any).testType === 'Classic') headerRow.push('Kick Rank');
         if (distLabels.length > 0) {
-          for (const label of distLabels) {
-            headerRow.push(`Result ${label}`);
-            headerRow.push(`Rank ${label}`);
-          }
+          for (const label of distLabels) { headerRow.push(`Result ${label}`); headerRow.push(`Rank ${label}`); }
         } else {
-          if (test.distanceLabel0km) { headerRow.push(`Result ${test.distanceLabel0km}`); headerRow.push(`Rank ${test.distanceLabel0km}`); }
-          if (test.distanceLabelXkm) { headerRow.push(`Result ${test.distanceLabelXkm}`); headerRow.push(`Rank ${test.distanceLabelXkm}`); }
+          if ((test as any).distanceLabel0km) { headerRow.push(`Result ${(test as any).distanceLabel0km}`); headerRow.push(`Rank ${(test as any).distanceLabel0km}`); }
+          if ((test as any).distanceLabelXkm) { headerRow.push(`Result ${(test as any).distanceLabelXkm}`); headerRow.push(`Rank ${(test as any).distanceLabelXkm}`); }
         }
+        boldRowIndices.push(rows.length);
         rows.push(headerRow);
 
         for (const entry of entries) {
@@ -209,15 +325,13 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
             try {
               const addIds = JSON.parse(entry.additionalProductIds);
               for (const aid of addIds) {
-                if (productsById[aid]) {
-                  productName += ` + ${productsById[aid].brand} ${productsById[aid].name}`;
-                }
+                if (productsById[aid]) productName += ` + ${productsById[aid].brand} ${productsById[aid].name}`;
               }
             } catch {}
           }
 
           const row: any[] = [entry.skiNumber, productName, entry.methodology || '', entry.feelingRank ?? ''];
-          if (test.testType === 'Classic') row.push(entry.kickRank ?? '');
+          if ((test as any).testType === 'Classic') row.push(entry.kickRank ?? '');
 
           if (distLabels.length > 0) {
             const rounds = parseResultsArray(entry.results);
@@ -231,10 +345,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
             if (rounds.length > 0) {
               row.push(rounds[0]?.result ?? '');
               row.push(rounds[0]?.rank ?? '');
-              if (rounds.length > 1) {
-                row.push(rounds[1]?.result ?? '');
-                row.push(rounds[1]?.rank ?? '');
-              }
+              if (rounds.length > 1) { row.push(rounds[1]?.result ?? ''); row.push(rounds[1]?.rank ?? ''); }
             } else {
               row.push(entry.result0kmCmBehind ?? '');
               row.push(entry.rank0km ?? '');
@@ -248,56 +359,136 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       }
 
       await clearAndWrite(sheets, spreadsheetId, sheetTitle, rows);
+      const meta2 = await sheets.spreadsheets.get({ spreadsheetId });
+      const sheetId2 = meta2.data.sheets?.find((s: any) => s.properties?.title === sheetTitle)?.properties?.sheetId;
+      if (sheetId2 !== undefined) {
+        await boldRows(sheets, spreadsheetId, sheetId2, boldRowIndices).catch(() => {});
+      }
     }
 
-    for (const athlete of allAthletes) {
-      const sheetTitle = sanitizeSheetTitle(`Athlete - ${athlete.name} (${athlete.id})`);
-      await ensureSheet(sheets, spreadsheetId, sheetTitle);
+    // ── 2. TEAM MEMBERS SHEET ─────────────────────────────────────────────────
+    await ensureSheet(sheets, spreadsheetId, TEAM_TITLE);
+    const teamRows: any[][] = [
+      [`TEAM MEMBERS — ${team.name}`],
+      [`Generated: ${now}`],
+      [],
+      ['ID', 'Name', 'Email', 'Role', 'Group Scope', 'Is Active', 'Is Blind Tester', 'Garmin Watch', 'Created At'],
+    ];
+    for (const u of allTeamUsers) {
+      const role = u.isAdmin ? 'Super Admin' : u.isTeamAdmin ? 'Team Admin' : 'Member';
+      teamRows.push([
+        u.id, u.name || '', u.email || '', role,
+        u.groupScope || '', u.isActive ? 'Yes' : 'No',
+        u.isBlindTester ? 'Yes' : 'No', u.garminWatch ? 'Yes' : 'No',
+        u.createdAt || '',
+      ]);
+    }
+    await clearAndWrite(sheets, spreadsheetId, TEAM_TITLE, teamRows);
+
+    // ── 3. RACE PREPS SHEET ───────────────────────────────────────────────────
+    await ensureSheet(sheets, spreadsheetId, RACE_PREPS_TITLE);
+    const rpRows: any[][] = [
+      [`RACE PREPS — ${team.name}`],
+      [`Generated: ${now}`],
+      [],
+    ];
+    const rpBoldRows: number[] = [0, 3];
+
+    for (const rp of allRacePreps) {
+      const w = rp.weather_id ? weatherById[rp.weather_id] : null;
+      const entries = racePrepEntriesByPrepId[rp.id] || [];
+
+      rpBoldRows.push(rpRows.length);
+      rpRows.push([`─── Race Prep #${rp.id} ───`]);
+      rpRows.push(['Date', rp.date || '', 'Start Time', rp.start_time || '', 'Location', rp.location || '']);
+      rpRows.push(['Race Type', rp.race_type || '', 'Discipline', rp.discipline || '', 'Tette', rp.tette || '']);
+      rpRows.push(['Glide Products', rp.products || '', 'Structure', rp.structure || '', 'Method', rp.method || '']);
+      rpRows.push(['Product IDs', rp.product_ids || '', 'Structure IDs', rp.structure_ids || '', 'Kick IDs', rp.kick_product_ids || '']);
+      if (w) {
+        rpRows.push(['Snow Temp', w.snowTemperatureC != null ? `${w.snowTemperatureC}°C` : '',
+          'Air Temp', w.airTemperatureC != null ? `${w.airTemperatureC}°C` : '',
+          'Snow Humidity', w.snowHumidityPct != null ? `${w.snowHumidityPct}%` : '']);
+        rpRows.push(['Snow Type', w.snowType || '', 'Track Hardness', w.trackHardness || '',
+          'Snow Humidity Type', w.snowHumidityType || '']);
+        if (w.wind || w.precipitation || w.artificialSnow) {
+          rpRows.push(['Wind', w.wind || '', 'Precipitation', w.precipitation || '',
+            'Artificial Snow', w.artificialSnow || '']);
+        }
+      }
+      if (rp.notes) rpRows.push(['Notes', rp.notes]);
+      rpRows.push(['Created By', rp.created_by_name || '', 'Created At', rp.created_at || '']);
+
+      if (entries.length > 0) {
+        rpBoldRows.push(rpRows.length);
+        rpRows.push(['  Athlete', 'Ski ID (Glide)', 'Ski ID (Classic)', 'Ski ID (Skating)', 'Waxer', 'Notes']);
+        for (const e of entries) {
+          rpRows.push([`  ${e.athlete_name}`, e.ski_id || '', e.ski_id_classic || '', e.ski_id_skating || '', e.waxer_name || '', e.notes || '']);
+        }
+      }
+      rpRows.push([]);
+    }
+    await clearAndWrite(sheets, spreadsheetId, RACE_PREPS_TITLE, rpRows);
+    const rpMeta = await sheets.spreadsheets.get({ spreadsheetId });
+    const rpSheetId = rpMeta.data.sheets?.find((s: any) => s.properties?.title === RACE_PREPS_TITLE)?.properties?.sheetId;
+    if (rpSheetId !== undefined) {
+      await boldRows(sheets, spreadsheetId, rpSheetId, rpBoldRows).catch(() => {});
+    }
+
+    // ── 4. ATHLETE SHEETS ─────────────────────────────────────────────────────
+    for (let ai = 0; ai < allAthletes.length; ai++) {
+      const athlete = allAthletes[ai];
+      const sheetTitle = athleteSheetTitles[ai];
 
       const athleteSkis = allRaceSkis.filter(s => s.athleteId === athlete.id);
       const athleteTests = allTests.filter((t: any) => t.testSkiSource === 'raceskis' && t.athleteId === athlete.id);
 
       const rows: any[][] = [];
+      const bolds: number[] = [];
+      const h = (label: string) => { bolds.push(rows.length); rows.push([label]); };
+      const cols = (...headers: string[]) => { bolds.push(rows.length); rows.push(headers); };
+
       rows.push([`ATHLETE: ${athlete.name}`]);
-      rows.push(['Team', athlete.team || '', 'Created', athlete.createdAt]);
+      rows.push(['Team', athlete.team || '', 'Created', athlete.createdAt || '']);
       rows.push([]);
 
-      rows.push(['=== RACE SKIS ===']);
-      rows.push(['ID', 'Ski ID', 'Serial', 'Brand', 'Discipline', 'Construction', 'Mold', 'Base', 'Grind', 'Heights', 'Year', 'Archived']);
+      h('=== RACE SKIS ===');
+      cols('ID', 'Ski ID', 'Serial', 'Brand', 'Discipline', 'Construction', 'Mold', 'Base', 'Grind', 'Heights', 'Year', 'Archived');
       for (const ski of athleteSkis) {
-        rows.push([ski.id, ski.skiId, ski.serialNumber || '', ski.brand || '', ski.discipline, ski.construction || '', ski.mold || '', ski.base || '', ski.grind || '', ski.heights || '', ski.year || '', ski.archivedAt ? 'Yes' : '']);
+        rows.push([ski.id, ski.skiId, ski.serialNumber || '', ski.brand || '', ski.discipline,
+          ski.construction || '', ski.mold || '', ski.base || '', ski.grind || '',
+          ski.heights || '', ski.year || '', ski.archivedAt ? 'Yes' : '']);
       }
       rows.push([]);
 
-      rows.push(['=== REGRIND HISTORY ===']);
-      rows.push(['Ski ID', 'Date', 'Grind Type', 'Stone', 'Pattern', 'Notes']);
+      h('=== REGRIND HISTORY ===');
+      cols('Ski ID', 'Date', 'Grind Type', 'Stone', 'Pattern', 'Notes');
       for (const ski of athleteSkis) {
-        const regrinds = raceSkiRegrinds[ski.id] || [];
-        for (const r of regrinds) {
+        for (const r of raceSkiRegrinds[ski.id] || []) {
           rows.push([ski.skiId, r.date, r.grindType, r.stone || '', r.pattern || '', r.notes || '']);
         }
       }
       rows.push([]);
 
-      rows.push(['=== RACE SKI TESTS ===']);
+      h('=== RACE SKI TESTS ===');
       for (const test of athleteTests) {
         const entries = entriesByTest[test.id] || [];
-        const distLabels = parseDistanceLabels(test.distanceLabels);
+        const distLabels = parseDistanceLabels((test as any).distanceLabels);
+        const w = (test as any).weatherId ? weatherById[(test as any).weatherId] : null;
 
-        rows.push([`--- Test #${test.id}: ${test.testName || test.location} ---`]);
-        rows.push(['Date', test.date, 'Location', test.location, 'Type', test.testType]);
+        bolds.push(rows.length);
+        rows.push([`--- Test #${test.id}: ${(test as any).testName || test.location} ---`]);
+        rows.push(['Date', test.date, 'Location', test.location, 'Type', (test as any).testType]);
+        if (w) rows.push(['Weather', `Snow ${w.snowTemperatureC ?? '?'}°C`, `Air ${w.airTemperatureC ?? '?'}°C`, `Type: ${w.snowType || '—'}`, `Track: ${w.trackHardness || '—'}`]);
 
         const headerRow = ['Ski #', 'Race Ski ID', 'Feeling Rank'];
-        if (test.testType === 'Classic') headerRow.push('Kick Rank');
+        if ((test as any).testType === 'Classic') headerRow.push('Kick Rank');
         if (distLabels.length > 0) {
-          for (const label of distLabels) {
-            headerRow.push(`Result ${label}`);
-            headerRow.push(`Rank ${label}`);
-          }
+          for (const label of distLabels) { headerRow.push(`Result ${label}`); headerRow.push(`Rank ${label}`); }
         } else {
-          if (test.distanceLabel0km) { headerRow.push(`Result ${test.distanceLabel0km}`); headerRow.push(`Rank ${test.distanceLabel0km}`); }
-          if (test.distanceLabelXkm) { headerRow.push(`Result ${test.distanceLabelXkm}`); headerRow.push(`Rank ${test.distanceLabelXkm}`); }
+          if ((test as any).distanceLabel0km) { headerRow.push(`Result ${(test as any).distanceLabel0km}`); headerRow.push(`Rank ${(test as any).distanceLabel0km}`); }
+          if ((test as any).distanceLabelXkm) { headerRow.push(`Result ${(test as any).distanceLabelXkm}`); headerRow.push(`Rank ${(test as any).distanceLabelXkm}`); }
         }
+        bolds.push(rows.length);
         rows.push(headerRow);
 
         for (const entry of entries) {
@@ -307,7 +498,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
             if (rs) skiLabel = `${rs.skiId} (${rs.brand || ''} ${rs.grind || ''})`;
           }
           const row: any[] = [entry.skiNumber, skiLabel, entry.feelingRank ?? ''];
-          if (test.testType === 'Classic') row.push(entry.kickRank ?? '');
+          if ((test as any).testType === 'Classic') row.push(entry.kickRank ?? '');
           if (distLabels.length > 0) {
             const rounds = parseResultsArray(entry.results);
             for (let ri = 0; ri < distLabels.length; ri++) {
@@ -318,17 +509,11 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
           } else {
             const rounds = parseResultsArray(entry.results);
             if (rounds.length > 0) {
-              row.push(rounds[0]?.result ?? '');
-              row.push(rounds[0]?.rank ?? '');
-              if (rounds.length > 1) {
-                row.push(rounds[1]?.result ?? '');
-                row.push(rounds[1]?.rank ?? '');
-              }
+              row.push(rounds[0]?.result ?? ''); row.push(rounds[0]?.rank ?? '');
+              if (rounds.length > 1) { row.push(rounds[1]?.result ?? ''); row.push(rounds[1]?.rank ?? ''); }
             } else {
-              row.push(entry.result0kmCmBehind ?? '');
-              row.push(entry.rank0km ?? '');
-              row.push(entry.resultXkmCmBehind ?? '');
-              row.push(entry.rankXkm ?? '');
+              row.push(entry.result0kmCmBehind ?? ''); row.push(entry.rank0km ?? '');
+              row.push(entry.resultXkmCmBehind ?? ''); row.push(entry.rankXkm ?? '');
             }
           }
           rows.push(row);
@@ -337,119 +522,120 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       }
 
       await clearAndWrite(sheets, spreadsheetId, sheetTitle, rows);
+      const athMeta = await sheets.spreadsheets.get({ spreadsheetId });
+      const athSheetId = athMeta.data.sheets?.find((s: any) => s.properties?.title === sheetTitle)?.properties?.sheetId;
+      if (athSheetId !== undefined) await boldRows(sheets, spreadsheetId, athSheetId, bolds).catch(() => {});
     }
 
-    // Grinds sheet — profiles + grinding records
-    const grindsTitle = 'Grinds';
-    await ensureSheet(sheets, spreadsheetId, grindsTitle);
+    // ── 5. GRINDS SHEET ───────────────────────────────────────────────────────
+    await ensureSheet(sheets, spreadsheetId, GRINDS_TITLE);
     const grindRows: any[][] = [
-      ['GLIDR GRIND DATA — ' + team.name],
-      ['Generated: ' + new Date().toISOString()],
+      [`GRINDS — ${team.name}`],
+      [`Generated: ${now}`],
       [],
       ['=== GRIND PROFILES ==='],
       ['ID', 'Name', 'Type', 'Stone', 'Pattern', 'Extra Params', 'Created By', 'Created At'],
     ];
+    const grindBolds = [0, 3, 4];
     for (const gp of allGrindProfiles) {
-      // Expand extra params to key=value pairs for readability
       let extraStr = '';
       if (gp.extraParams) {
-        try {
-          const ep = JSON.parse(gp.extraParams);
-          extraStr = Object.entries(ep).map(([k, v]) => `${k}: ${v}`).join(', ');
-        } catch { extraStr = gp.extraParams; }
+        try { extraStr = Object.entries(JSON.parse(gp.extraParams)).map(([k, v]) => `${k}: ${v}`).join(', '); }
+        catch { extraStr = gp.extraParams; }
       }
       grindRows.push([gp.id, gp.name, gp.grindType, gp.stone || '', gp.pattern || '', extraStr, gp.createdByName || '', gp.createdAt || '']);
     }
     grindRows.push([]);
+    grindBolds.push(grindRows.length);
     grindRows.push(['=== GRINDING RECORDS ===']);
-    grindRows.push(['ID', 'Date', 'Series/Scope', 'Grind Type', 'Stone', 'Notes', 'Created By', 'Created At']);
+    grindBolds.push(grindRows.length);
+    grindRows.push(['ID', 'Date', 'Group/Series', 'Grind Type', 'Stone', 'Notes', 'Created By', 'Created At']);
     for (const gr of allGrindingRecords) {
       grindRows.push([gr.id, gr.date, gr.groupScope || '', gr.grindType, gr.stone || '', gr.notes || '', gr.createdByName || '', gr.createdAt || '']);
     }
-    await clearAndWrite(sheets, spreadsheetId, grindsTitle, grindRows);
+    grindRows.push([]);
+    grindBolds.push(grindRows.length);
+    grindRows.push(['=== GRINDING SHEETS (LINKED) ===']);
+    grindBolds.push(grindRows.length);
+    grindRows.push(['ID', 'Name', 'URL', 'Group Scope', 'Created By', 'Created At']);
+    for (const gs of allGrindingSheets) {
+      grindRows.push([gs.id, gs.name, gs.url, gs.groupScope, gs.createdByName, gs.createdAt]);
+    }
+    await clearAndWrite(sheets, spreadsheetId, GRINDS_TITLE, grindRows);
+    const grindMeta = await sheets.spreadsheets.get({ spreadsheetId });
+    const grindSheetId = grindMeta.data.sheets?.find((s: any) => s.properties?.title === GRINDS_TITLE)?.properties?.sheetId;
+    if (grindSheetId !== undefined) await boldRows(sheets, spreadsheetId, grindSheetId, grindBolds).catch(() => {});
 
-    // Race Preps sheet
-    const racePrepsTitle = 'Race Preps';
-    await ensureSheet(sheets, spreadsheetId, racePrepsTitle);
-    const racePrepRows: any[][] = [
-      ['GLIDR RACE PREPS — ' + team.name],
-      ['Generated: ' + new Date().toISOString()],
+    // ── 6. STOCK CHANGES SHEET ────────────────────────────────────────────────
+    await ensureSheet(sheets, spreadsheetId, STOCK_TITLE);
+    const stockRows: any[][] = [
+      [`STOCK CHANGES — ${team.name}`],
+      [`Generated: ${now}`],
       [],
-      ['ID', 'Date', 'Location', 'Discipline', 'Product IDs', 'Structure IDs', 'Kick Product IDs', 'Weather ID', 'Notes', 'Created At'],
+      ['ID', 'Date', 'User', 'Action', 'Entity Type', 'Entity ID', 'Details', 'Group Scope'],
     ];
-    for (const rp of allRacePreps) {
-      racePrepRows.push([
-        rp.id,
-        rp.date || '',
-        rp.location || '',
-        rp.discipline || '',
-        rp.product_ids || '',
-        rp.structure_ids || '',
-        rp.kick_product_ids || '',
-        rp.weather_id || '',
-        rp.notes || '',
-        rp.created_at || '',
+    for (const sc of allStockChanges) {
+      stockRows.push([
+        sc.id, sc.createdAt, sc.userName || '', sc.action, sc.entityType,
+        sc.entityId ?? '', sc.details || '', (sc as any).groupScope || '',
       ]);
     }
-    await clearAndWrite(sheets, spreadsheetId, racePrepsTitle, racePrepRows);
+    await clearAndWrite(sheets, spreadsheetId, STOCK_TITLE, stockRows);
 
-    const overviewTitle = 'Overview';
-    await ensureSheet(sheets, spreadsheetId, overviewTitle);
-    const now = new Date().toISOString();
+    // ── 7. OVERVIEW SHEET ─────────────────────────────────────────────────────
+    await ensureSheet(sheets, spreadsheetId, OVERVIEW_TITLE);
+    const allTestEntries = allEntries.length;
     const overviewRows: any[][] = [
       ['GLIDR DATABASE BACKUP'],
-      ['Team', team.name],
-      ['Backup timestamp', now],
+      [`Team: ${team.name}`],
+      [`Last backup: ${now}`],
       [],
-      ['=== COUNTS ==='],
-      ['Tests', allTests.length],
+      ['=== DATA SUMMARY ==='],
+      ['Entity', 'Count'],
+      ['Tests (all types)', allTests.length],
+      ['Test entries', allTestEntries],
       ['Weather logs', allWeather.length],
       ['Products (active)', allProducts.length],
       ['Products (archived)', allArchivedProducts.length],
-      ['Series', allSeries.length],
+      ['Test ski series', allSeries.length],
       ['Athletes', allAthletes.length],
       ['Race skis', allRaceSkis.length],
       ['Race preps', allRacePreps.length],
+      ['Race prep entries', racePrepEntriesResult.rows.length],
       ['Grind profiles', allGrindProfiles.length],
+      ['Grinding records', allGrindingRecords.length],
+      ['Grinding sheets (linked)', allGrindingSheets.length],
+      ['Stock changes', allStockChanges.length],
+      ['Team members', allTeamUsers.length],
       [],
-      ['=== SHEETS IN THIS WORKBOOK ==='],
+      ['=== SHEET INDEX ==='],
+      ['Sheet', 'Contents'],
+      [OVERVIEW_TITLE, 'This summary page'],
+      [TEAM_TITLE, 'All team members and roles'],
+      ...groupSheetTitles.map((t, i) => [t, `Products, Test Ski Series, Weather, Tests for group "${groupNames[i]}"`]),
+      [RACE_PREPS_TITLE, 'All race preps with full details, weather and per-athlete entries'],
+      ...athleteSheetTitles.map((t, i) => [t, `Race skis, regrind history, race ski tests for ${(allAthletes[i] as any).name}`]),
+      [GRINDS_TITLE, 'Grind profiles, grinding records, linked grinding sheets'],
+      [STOCK_TITLE, 'Product stock change history'],
+      [],
+      ['=== GROUPS ==='],
+      ['Group Name', 'Tests', 'Products', 'Weather', 'Series'],
+      ...groupNames.map(g => [
+        g,
+        allTests.filter((t: any) => t.groupScope === g).length,
+        allProducts.filter((p: any) => p.groupScope === g).length,
+        allWeather.filter((w: any) => w.groupScope === g).length,
+        allSeries.filter((s: any) => s.groupScope === g).length,
+      ]),
     ];
-    for (const g of groupNames) {
-      overviewRows.push([`Group: ${g}`]);
-    }
-    for (const a of allAthletes) {
-      overviewRows.push([`Athlete: ${a.name}`]);
-    }
-    overviewRows.push(['Grinds']);
-    overviewRows.push(['Race Preps']);
-    await clearAndWrite(sheets, spreadsheetId, overviewTitle, overviewRows);
+    await clearAndWrite(sheets, spreadsheetId, OVERVIEW_TITLE, overviewRows);
 
-    // Bold header rows using batchUpdate
-    try {
-      const meta = await sheets.spreadsheets.get({ spreadsheetId });
-      const formatRequests: any[] = [];
-      for (const sheet of (meta.data.sheets || [])) {
-        const sheetId = sheet.properties?.sheetId;
-        if (sheetId === undefined) continue;
-        // Bold row 0 (first row) of every sheet
-        formatRequests.push({
-          repeatCell: {
-            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 26 },
-            cell: { userEnteredFormat: { textFormat: { bold: true }, textFormatRuns: undefined } },
-            fields: 'userEnteredFormat.textFormat.bold',
-          },
-        });
-      }
-      if (formatRequests.length > 0) {
-        await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: formatRequests } });
-      }
-    } catch (fmtErr) {
-      console.warn('[Backup] Could not apply bold formatting:', fmtErr);
-    }
+    // ── Reorder sheets logically ──────────────────────────────────────────────
+    await reorderSheets(sheets, spreadsheetId, orderedTitles);
 
-    await storage.updateTeam(teamId, { lastBackupAt: new Date().toISOString() });
-
+    await storage.updateTeam(teamId, { lastBackupAt: now });
     return { success: true };
+
   } catch (err: any) {
     console.error('[Backup] Error for team', teamId, err);
     return { success: false, error: err.message || 'Unknown error' };

@@ -4205,16 +4205,14 @@ export default function Admin() {
                         <Download className="h-3.5 w-3.5" />
                         Download JSON
                       </a>
-                      {team.backupSheetUrl && (
-                        <a
-                          href={`/api/teams/${team.id}/export-pdf`}
-                          download
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                          Download PDF
-                        </a>
-                      )}
+                      <a
+                        href={`/api/teams/${team.id}/export-pdf`}
+                        download
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Download PDF
+                      </a>
                     </div>
                   </div>
                 ))}

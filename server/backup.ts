@@ -827,6 +827,348 @@ function extractDriveFolderId(urlOrId: string): string {
   return m ? m[1] : urlOrId.trim();
 }
 
+// ── Server-side PDF generation (same content as admin "Download PDF" button) ──
+
+function esc(s: any): string {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function htmlTable(head: string[], rows: string[][], small = false): string {
+  const fs = small ? '6pt' : '7pt';
+  const ths = head.map(h => `<th>${esc(h)}</th>`).join('');
+  const trs = rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('');
+  return `<table style="font-size:${fs}"><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+}
+
+function htmlSection(title: string, content: string): string {
+  return `<div class="section"><h2>${esc(title)}</h2>${content}</div>`;
+}
+
+function buildExportHtml(data: {
+  teamName: string; tests: any[]; entriesByTest: Record<number, any[]>;
+  weather: any[]; series: any[]; products: any[]; users: any[];
+  groups: any[]; athletes: any[]; raceSkis: any[]; raceSkiRegrinds: any[];
+  testSkiRegrinds: any[]; grindProfiles: any[]; grindingRecords: any[];
+  grindingSheets: any[]; activities: any[]; loginLogs: any[];
+}): string {
+  const productMap = new Map(data.products.map((p: any) => [p.id, p]));
+  const raceSkiMap = new Map(data.raceSkis.map((s: any) => [s.id, s]));
+  const seriesMap  = new Map(data.series.map((s: any)  => [s.id, s]));
+  const athleteMap = new Map(data.athletes.map((a: any) => [a.id, a]));
+
+  const getProductLabel = (entry: any): string => {
+    if (entry.raceSkiId) {
+      const ski = raceSkiMap.get(entry.raceSkiId);
+      if (ski) return `${ski.athleteName} — ${ski.brand || ''} ${ski.skiId || ''}`.trim();
+    }
+    const main = productMap.get(entry.productId);
+    const parts: string[] = [];
+    if (main) parts.push(`${main.brand || ''} ${main.name}`.trim());
+    if (entry.additionalProductIds) {
+      try {
+        const ids = typeof entry.additionalProductIds === 'string'
+          ? JSON.parse(entry.additionalProductIds) : entry.additionalProductIds;
+        if (Array.isArray(ids)) {
+          for (const id of ids) {
+            const p = productMap.get(id);
+            if (p) parts.push(`${p.brand || ''} ${p.name}`.trim());
+          }
+        }
+      } catch {}
+    }
+    return parts.join(' + ') || '—';
+  };
+
+  const getEntryRounds = (entry: any, numRounds: number): { result: any; rank: any }[] => {
+    if (entry.results) {
+      try {
+        const parsed = typeof entry.results === 'string' ? JSON.parse(entry.results) : entry.results;
+        if (Array.isArray(parsed)) {
+          while (parsed.length < numRounds) parsed.push({ result: null, rank: null });
+          return parsed.slice(0, numRounds);
+        }
+      } catch {}
+    }
+    const rs = [{ result: entry.result0kmCmBehind ?? entry.result_0km_cm_behind, rank: entry.rank0km ?? entry.rank_0km }];
+    if (numRounds > 1) rs.push({ result: entry.resultXkmCmBehind ?? entry.result_xkm_cm_behind, rank: entry.rankXkm ?? entry.rank_xkm });
+    while (rs.length < numRounds) rs.push({ result: null, rank: null });
+    return rs;
+  };
+
+  let body = '';
+
+  // Users
+  body += htmlSection(`Users (${data.users.length})`, htmlTable(
+    ['Name', 'Email', 'Role', 'Group'],
+    data.users.map((u: any) => [u.name, u.email, (u.isAdmin || u.isAdmin === 1) ? 'Super Admin' : (u.isTeamAdmin || u.isTeamAdmin === 1) ? 'Team Admin' : 'Member', u.groupScope || ''])
+  ));
+
+  // Groups
+  body += htmlSection(`Groups (${data.groups.length})`, htmlTable(
+    ['ID', 'Name'],
+    data.groups.map((g: any) => [String(g.id), g.name])
+  ));
+
+  // Testski series
+  body += htmlSection(`Testski Series (${data.series.length})`, htmlTable(
+    ['Name', 'Type', 'Brand', 'Ski Type', 'Skis', 'Grind', 'Group'],
+    data.series.map((s: any) => [s.name, s.type, s.brand || '', s.skiType || '', String(s.numberOfSkis || ''), s.grind || '', s.groupScope])
+  ));
+
+  // Products
+  body += htmlSection(`Products (${data.products.length})`, htmlTable(
+    ['Brand', 'Name', 'Type', 'Group'],
+    data.products.map((p: any) => [p.brand || '', p.name, p.category || '', p.groupScope])
+  ));
+
+  // Athletes
+  if (data.athletes.length > 0) {
+    body += htmlSection(`Athletes (${data.athletes.length})`, htmlTable(
+      ['Name', 'Team'],
+      data.athletes.map((a: any) => [a.name, a.team || ''])
+    ));
+  }
+
+  // Race skis
+  if (data.raceSkis.length > 0) {
+    body += htmlSection(`Raceskis (${data.raceSkis.length})`, htmlTable(
+      ['Athlete', 'Ski ID', 'Brand', 'Discipline', 'Construction', 'Mold', 'Base', 'Grind', 'Year'],
+      data.raceSkis.map((s: any) => [s.athleteName || '', s.skiId || '', s.brand || '', s.discipline || '', s.construction || '', s.mold || '', s.base || '', s.grind || '', String(s.year || '')]),
+      true
+    ));
+  }
+
+  // Raceski regrinds
+  if (data.raceSkiRegrinds.length > 0) {
+    body += htmlSection(`Raceski Regrinds (${data.raceSkiRegrinds.length})`, htmlTable(
+      ['Athlete', 'Ski ID', 'Brand', 'Date', 'Grind Type', 'Stone', 'Pattern', 'Notes'],
+      data.raceSkiRegrinds.map((r: any) => [r.athleteName || '', r.skiId || '', r.brand || '', r.date || '', r.grindType || '', r.stone || '', r.pattern || '', r.notes || ''])
+    ));
+  }
+
+  // Testski series regrinds
+  if (data.testSkiRegrinds.length > 0) {
+    body += htmlSection(`Testski Series Regrinds (${data.testSkiRegrinds.length})`, htmlTable(
+      ['Series', 'Date', 'Grind Type', 'Stone', 'Pattern', 'Notes'],
+      data.testSkiRegrinds.map((r: any) => [r.seriesName || '', r.date || '', r.grindType || '', r.stone || '', r.pattern || '', r.notes || ''])
+    ));
+  }
+
+  // Tests with entries
+  const sortedTests = [...data.tests].sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
+  let testsHtml = '';
+  for (const test of sortedTests) {
+    const entries: any[] = data.entriesByTest[test.id] || [];
+    const seriesObj = seriesMap.get(test.seriesId);
+    const athleteObj = test.athleteId ? athleteMap.get(test.athleteId) : null;
+    const sourceName = test.testSkiSource === 'raceskis'
+      ? (athleteObj ? `Athlete: ${athleteObj.name}` : 'Raceskis')
+      : (seriesObj ? seriesObj.name : '');
+
+    let distanceLabels: string[] = [];
+    if (test.distanceLabels) {
+      try {
+        const p = typeof test.distanceLabels === 'string' ? JSON.parse(test.distanceLabels) : test.distanceLabels;
+        if (Array.isArray(p) && p.length > 0) distanceLabels = p;
+      } catch {}
+    }
+    if (distanceLabels.length === 0) {
+      distanceLabels = [test.distanceLabel0km || '0 km'];
+      if (test.distanceLabelXkm) distanceLabels.push(test.distanceLabelXkm);
+    }
+
+    const isClassic = test.testType === 'Classic';
+    const meta = [test.location ? `Location: ${test.location}` : null, test.notes ? `Notes: ${test.notes}` : null, `Group: ${test.groupScope}`].filter(Boolean).join('  ·  ');
+
+    const head = ['Rank', 'Ski', 'Product / Raceski', 'Method'];
+    for (const lbl of distanceLabels) { head.push(`${lbl} (cm)`); head.push('Rank'); }
+    if (isClassic) head.push('Kick');
+    head.push('Feeling');
+
+    const rows = entries
+      .map((e: any) => { const rounds = getEntryRounds(e, distanceLabels.length); return { e, rounds, firstRank: rounds[0]?.rank ?? 999 }; })
+      .sort((a: any, b: any) => a.firstRank - b.firstRank)
+      .map(({ e, rounds }: any) => {
+        const row: string[] = [rounds[0]?.rank != null ? String(rounds[0].rank) : '—', String(e.skiNumber || ''), getProductLabel(e), e.methodology || ''];
+        for (const rr of rounds) { row.push(rr.result != null ? String(rr.result) : '—'); row.push(rr.rank != null ? String(rr.rank) : '—'); }
+        if (isClassic) row.push(e.kickRank != null ? String(e.kickRank) : '—');
+        row.push(e.feelingRank != null ? String(e.feelingRank) : '—');
+        return row;
+      });
+
+    testsHtml += `<div class="test-block">
+      <div class="test-header">${esc(test.date)} — ${esc(test.testType)} — ${esc(sourceName)}</div>
+      <div class="test-meta">${esc(meta)}</div>
+      ${entries.length > 0 ? htmlTable(head, rows, true) : '<p class="no-entries">No entries</p>'}
+    </div>`;
+  }
+  body += htmlSection(`Tests with Results (${data.tests.length})`, testsHtml);
+
+  // Weather
+  if (data.weather.length > 0) {
+    body += htmlSection(`Weather Logs (${data.weather.length})`, htmlTable(
+      ['Date', 'Time', 'Location', 'Snow °C', 'Air °C', 'Snow Hum%', 'Air Hum%', 'Clouds', 'Wind', 'Precip.', 'Snow Type', 'Grain', 'Track', 'Group'],
+      data.weather.map((w: any) => {
+        const st = [w.artificialSnow ? `Art: ${w.artificialSnow}` : null, w.naturalSnow ? `Nat: ${w.naturalSnow}` : null].filter(Boolean).join(', ');
+        return [w.date || '', w.time || '', w.location || '', String(w.snowTemperatureC ?? ''), String(w.airTemperatureC ?? ''), String(w.snowHumidityPct ?? ''), String(w.airHumidityPct ?? ''), w.clouds != null ? `${w.clouds}/8` : '', w.wind || '', w.precipitation || '', st || '', w.grainSize || '', w.trackHardness || '', w.groupScope || ''];
+      }),
+      true
+    ));
+  }
+
+  // Grind profiles
+  if (data.grindProfiles.length > 0) {
+    body += htmlSection(`Grind Profiles (${data.grindProfiles.length})`, htmlTable(
+      ['Name', 'Type', 'Stone', 'Pattern', 'Extra Params'],
+      data.grindProfiles.map((gp: any) => [gp.name || '', gp.grindType || '', gp.stone || '', gp.pattern || '', gp.extraParams || ''])
+    ));
+  }
+
+  // Grinding records
+  if (data.grindingRecords.length > 0) {
+    body += htmlSection(`Grinding Records (${data.grindingRecords.length})`, htmlTable(
+      ['Date', 'Type', 'Stone', 'Notes', 'Group'],
+      data.grindingRecords.map((r: any) => [r.date || '', r.grindType || '', r.stone || '', r.notes || '', r.groupScope || ''])
+    ));
+  }
+
+  // Grinding sheets
+  if (data.grindingSheets.length > 0) {
+    body += htmlSection(`Grinding Sheets (${data.grindingSheets.length})`, htmlTable(
+      ['Name', 'URL', 'Group'],
+      data.grindingSheets.map((s: any) => [s.name || '', s.url || '', s.groupScope || ''])
+    ));
+  }
+
+  // Activity log
+  if (data.activities.length > 0) {
+    body += htmlSection(`Activity Log (${Math.min(data.activities.length, 500)})`, htmlTable(
+      ['Time', 'User', 'Action', 'Type', 'Details', 'Group'],
+      data.activities.slice(0, 500).map((a: any) => [a.createdAt ? new Date(a.createdAt).toLocaleString() : '', a.userName || '', a.action || '', a.entityType || '', a.details || '', a.groupScope || '']),
+      true
+    ));
+  }
+
+  // Login history
+  if (data.loginLogs.length > 0) {
+    body += htmlSection(`Login History (${data.loginLogs.length})`, htmlTable(
+      ['Name', 'Email', 'IP', 'Time'],
+      data.loginLogs.map((l: any) => [l.name || '', l.email || '', l.ipAddress || '—', l.loginAt ? new Date(l.loginAt).toLocaleString() : ''])
+    ));
+  }
+
+  const generatedAt = new Date().toLocaleString('no-NO', { dateStyle: 'short', timeStyle: 'short' });
+
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
+<style>
+@page { size: A4 landscape; margin: 1cm 1cm 1.2cm 1cm; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; font-size: 8pt; color: #111; }
+h1 { font-size: 14pt; margin-bottom: 3pt; }
+.subtitle { font-size: 7pt; color: #555; margin-bottom: 14pt; }
+.section { margin-bottom: 14pt; }
+h2 { font-size: 9.5pt; font-weight: bold; margin-bottom: 3pt; border-bottom: 1px solid #ccc; padding-bottom: 2pt; page-break-after: avoid; }
+.test-block { margin-bottom: 8pt; page-break-inside: avoid; }
+.test-header { font-size: 7.5pt; font-weight: bold; margin-bottom: 1pt; }
+.test-meta { font-size: 6pt; color: #555; margin-bottom: 2pt; }
+.no-entries { font-size: 6.5pt; color: #888; font-style: italic; }
+table { width: 100%; border-collapse: collapse; margin-top: 2pt; }
+th { background: #16a34a; color: white; text-align: left; padding: 2px 4px; }
+td { border-bottom: 1px solid #e8e8e8; padding: 2px 4px; }
+tr:nth-child(even) td { background: #f9fafb; }
+</style>
+</head><body>
+<h1>Glidr — Full Data Export</h1>
+<p class="subtitle">Generated ${generatedAt}  ·  ${esc(data.teamName)}  ·  ${data.tests.length} tests  ·  ${data.weather.length} weather logs</p>
+${body}
+</body></html>`;
+}
+
+export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
+  const team = await storage.getTeam(teamId);
+
+  const [
+    allGroups, allTests, allWeather, allSeries,
+    allProducts, allAthletes, allGrindProfiles,
+    allGrindingRecords, allGrindingSheets, allTeamUsers,
+    allLoginLogs, allActivities,
+  ] = await Promise.all([
+    storage.listGroups(teamId),
+    storage.listAllTestsForTeam(teamId),
+    storage.listAllWeatherForTeam(teamId),
+    storage.listSeries('', true, teamId),
+    storage.listProducts('', true, teamId),
+    storage.listAthletes(0, true, teamId),
+    storage.listGrindProfiles(teamId),
+    storage.listGrindingRecords('', true, teamId),
+    storage.listGrindingSheets('', true, teamId),
+    storage.listUsers(teamId),
+    storage.listLoginLogs(teamId),
+    storage.listActivityLogs(500, teamId),
+  ]);
+
+  const testIds = allTests.map((t: any) => t.id);
+  const allEntries = testIds.length > 0 ? await storage.listAllEntriesForTests(testIds) : [];
+  const entriesByTest: Record<number, any[]> = {};
+  for (const e of allEntries) {
+    if (!entriesByTest[e.testId]) entriesByTest[e.testId] = [];
+    entriesByTest[e.testId].push(e);
+  }
+
+  const allRaceSkis: any[] = [];
+  for (const ath of allAthletes) {
+    try {
+      const skis = await storage.listAllRaceSkisIncludingArchived(ath.id);
+      allRaceSkis.push(...skis.map((s: any) => ({ ...s, athleteName: ath.name })));
+    } catch {}
+  }
+  const allRaceSkiRegrinds: any[] = [];
+  for (const ski of allRaceSkis) {
+    try {
+      const rr = await storage.listRaceSkiRegrinds(ski.id);
+      allRaceSkiRegrinds.push(...rr.map((r: any) => ({ ...r, skiId: ski.skiId, athleteName: ski.athleteName, brand: ski.brand })));
+    } catch {}
+  }
+  const allTestSkiRegrinds: any[] = [];
+  for (const series of allSeries) {
+    try {
+      const rr = await storage.listTestSkiRegrinds(series.id);
+      allTestSkiRegrinds.push(...rr.map((r: any) => ({ ...r, seriesName: series.name })));
+    } catch {}
+  }
+
+  const html = buildExportHtml({
+    teamName: team?.name ?? 'Glidr',
+    tests: allTests,
+    entriesByTest,
+    weather: allWeather,
+    series: allSeries,
+    products: allProducts,
+    users: allTeamUsers,
+    groups: allGroups,
+    athletes: allAthletes,
+    raceSkis: allRaceSkis,
+    raceSkiRegrinds: allRaceSkiRegrinds,
+    testSkiRegrinds: allTestSkiRegrinds,
+    grindProfiles: allGrindProfiles,
+    grindingRecords: allGrindingRecords,
+    grindingSheets: allGrindingSheets,
+    activities: allActivities,
+    loginLogs: allLoginLogs,
+  });
+
+  const puppeteer = await import('puppeteer');
+  const browser = await puppeteer.default.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    const pdf = await page.pdf({ format: 'A4', landscape: true, printBackground: true, margin: { top: '1cm', bottom: '1cm', left: '1cm', right: '1cm' } });
+    return Buffer.from(pdf);
+  } finally {
+    await browser.close();
+  }
+}
+
 export async function runDriveBackupForTeam(teamId: number): Promise<{ success: boolean; error?: string }> {
   const team = await storage.getTeam(teamId);
   if (!team) return { success: false, error: 'Team not found' };
@@ -835,7 +1177,7 @@ export async function runDriveBackupForTeam(teamId: number): Promise<{ success: 
   const driveClient = getGoogleDriveClient();
   if (!driveClient) return { success: false, error: 'Google Drive not available (service account required)' };
 
-  const { drive, auth } = driveClient;
+  const { drive } = driveClient;
   const folderId = extractDriveFolderId(team.driveFolderId);
   const teamName = team.name.replace(/[^a-z0-9]/gi, '-').toLowerCase();
 
@@ -868,44 +1210,27 @@ export async function runDriveBackupForTeam(teamId: number): Promise<{ success: 
       jsonFileId = created.data.id!;
     }
 
-    // ── Export Sheet as PDF (if Sheet URL is configured) ──────────────────
+    // ── Generate full data PDF (same content as admin "Download PDF" button) ─
     let pdfFileId = team.drivePdfFileId ?? null;
-    if (team.backupSheetUrl) {
-      const spreadsheetId = team.backupSheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1];
-      if (spreadsheetId) {
-        try {
-          const authClient = await auth.getClient() as any;
-          const tokenResp = await authClient.getAccessToken();
-          const accessToken = tokenResp.token;
-          const pdfResp = await fetch(
-            `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=pdf&portrait=false&size=A4`,
-            { headers: { Authorization: `Bearer ${accessToken}` } }
-          );
-          if (pdfResp.ok) {
-            const pdfBuffer = Buffer.from(await pdfResp.arrayBuffer());
-
-            if (pdfFileId) {
-              await drive.files.update({
-                fileId: pdfFileId,
-                supportsAllDrives: true,
-                media: { mimeType: 'application/pdf', body: Readable.from([pdfBuffer]) },
-              });
-            } else {
-              const created = await drive.files.create({
-                supportsAllDrives: true,
-                requestBody: { name: pdfFilename, parents: [folderId] },
-                media: { mimeType: 'application/pdf', body: Readable.from([pdfBuffer]) },
-                fields: 'id',
-              });
-              pdfFileId = created.data.id!;
-            }
-          } else {
-            console.warn('[DriveBackup] PDF export failed:', pdfResp.status, await pdfResp.text());
-          }
-        } catch (pdfErr) {
-          console.warn('[DriveBackup] PDF export error (non-fatal):', pdfErr);
-        }
+    try {
+      const pdfBuffer = await buildTeamPdfBuffer(teamId);
+      if (pdfFileId) {
+        await drive.files.update({
+          fileId: pdfFileId,
+          supportsAllDrives: true,
+          media: { mimeType: 'application/pdf', body: Readable.from([pdfBuffer]) },
+        });
+      } else {
+        const created = await drive.files.create({
+          supportsAllDrives: true,
+          requestBody: { name: pdfFilename, parents: [folderId] },
+          media: { mimeType: 'application/pdf', body: Readable.from([pdfBuffer]) },
+          fields: 'id',
+        });
+        pdfFileId = created.data.id!;
       }
+    } catch (pdfErr) {
+      console.warn('[DriveBackup] PDF generation error (non-fatal):', pdfErr);
     }
 
     // ── Save file IDs to DB ────────────────────────────────────────────────

@@ -866,7 +866,7 @@ export async function registerRoutes(
     res.send(json);
   });
 
-  // ── Download Sheet as PDF ─────────────────────────────────────────────────
+  // ── Download full data PDF (same as admin "Download PDF" button) ─────────
   app.get("/api/teams/:id/export-pdf", requireAuth, async (req, res) => {
     const u = req.user!;
     const id = parseInt(req.params.id);
@@ -874,27 +874,18 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Admin access required" });
     }
     const team = await storage.getTeam(id);
-    if (!team?.backupSheetUrl) return res.status(400).json({ message: "No backup sheet configured" });
-    const spreadsheetId = team.backupSheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1];
-    if (!spreadsheetId) return res.status(400).json({ message: "Invalid sheet URL" });
-
-    const { getGoogleDriveClient } = await import('./googleSheets');
-    const driveClient = getGoogleDriveClient();
-    if (!driveClient) return res.status(503).json({ message: "Service account not configured" });
-
-    const authClient = await driveClient.auth.getClient() as any;
-    const tokenResp = await authClient.getAccessToken();
-    const pdfResp = await fetch(
-      `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=pdf&portrait=false&size=A4`,
-      { headers: { Authorization: `Bearer ${tokenResp.token}` } }
-    );
-    if (!pdfResp.ok) return res.status(502).json({ message: "PDF export failed" });
-
-    const filename = `glidr-${team.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-backup.pdf`;
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    const buf = Buffer.from(await pdfResp.arrayBuffer());
-    res.send(buf);
+    if (!team) return res.status(404).json({ message: "Team not found" });
+    try {
+      const { buildTeamPdfBuffer } = await import('./backup');
+      const pdfBuffer = await buildTeamPdfBuffer(id);
+      const filename = `glidr-${team.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-data.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(pdfBuffer);
+    } catch (err: any) {
+      console.error('[ExportPDF]', err);
+      res.status(500).json({ message: err.message || 'PDF generation failed' });
+    }
   });
 
   app.post("/api/teams/:id/backup", requireAuth, async (req, res) => {

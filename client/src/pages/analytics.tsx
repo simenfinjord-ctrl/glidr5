@@ -2935,16 +2935,46 @@ function RacedProductsTab({
                                   <p className="font-medium">{w.trackHardness}</p>
                                 </div>
                               )}
+                              {w.snowHumidityType && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Snøfukttype", "Snow humidity type")}</p>
+                                  <p className="font-medium capitalize">{w.snowHumidityType}</p>
+                                </div>
+                              )}
                               {w.wind && (
                                 <div>
                                   <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Vind", "Wind")}</p>
                                   <p className="font-medium">{w.wind}</p>
                                 </div>
                               )}
+                              {w.precipitation && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Nedbør", "Precipitation")}</p>
+                                  <p className="font-medium">{w.precipitation}</p>
+                                </div>
+                              )}
+                              {w.clouds != null && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Skydekke", "Clouds")}</p>
+                                  <p className="font-medium">{w.clouds}/8</p>
+                                </div>
+                              )}
                               {w.artificialSnow && (
                                 <div>
                                   <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Kunstig snø", "Artificial snow")}</p>
                                   <p className="font-medium">{w.artificialSnow}</p>
+                                </div>
+                              )}
+                              {w.naturalSnow && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Naturlig snø", "Natural snow")}</p>
+                                  <p className="font-medium">{w.naturalSnow}</p>
+                                </div>
+                              )}
+                              {w.grainSize && (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Kornstørrelse", "Grain size")}</p>
+                                  <p className="font-medium">{w.grainSize}</p>
                                 </div>
                               )}
                             </>

@@ -289,9 +289,25 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       }
       rows.push([]);
 
-      // Tests (all types: Glide, Structure, Classic, Skating, Double Poling, Grind)
-      h('=== TESTS ===');
+      // Tests — grouped by type, newest first within each type
+      const TEST_TYPE_ORDER = ['Glide', 'Structure', 'Classic', 'Skating', 'Double Poling', 'Grind'];
+      const testsByType: Record<string, any[]> = {};
       for (const test of groupTests) {
+        const type = (test as any).testType || 'Other';
+        if (!testsByType[type]) testsByType[type] = [];
+        testsByType[type].push(test);
+      }
+      // Sort newest first within each type
+      for (const type of Object.keys(testsByType)) {
+        testsByType[type].sort((a: any, b: any) => (b.date || '').localeCompare(a.date || ''));
+      }
+      // Collect all types: known order first, then any extras alphabetically
+      const typesPresent = [
+        ...TEST_TYPE_ORDER.filter(t => testsByType[t]?.length),
+        ...Object.keys(testsByType).filter(t => !TEST_TYPE_ORDER.includes(t) && testsByType[t]?.length).sort(),
+      ];
+
+      const writeTestBlock = (test: any) => {
         const entries = entriesByTest[test.id] || [];
         const distLabels = parseDistanceLabels((test as any).distanceLabels);
         const seriesName = (test as any).seriesId && seriesById[(test as any).seriesId] ? seriesById[(test as any).seriesId].name : '';
@@ -299,7 +315,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
 
         boldRowIndices.push(rows.length);
         rows.push([`--- Test #${test.id}: ${(test as any).testName || test.location} ---`]);
-        rows.push(['Date', test.date, 'Location', test.location, 'Type', (test as any).testType, 'Source', (test as any).testSkiSource, 'Series', seriesName]);
+        rows.push(['Date', test.date, 'Location', test.location, 'Source', (test as any).testSkiSource, 'Series', seriesName]);
         if (w) rows.push(['Weather', `Snow ${w.snowTemperatureC ?? '?'}°C`, `Air ${w.airTemperatureC ?? '?'}°C`, `Humidity ${w.snowHumidityPct ?? '?'}%`, `Type: ${w.snowType || '—'}`, `Track: ${w.trackHardness || '—'}`]);
         if ((test as any).notes) rows.push(['Notes', (test as any).notes]);
 
@@ -356,6 +372,12 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
           rows.push(row);
         }
         rows.push([]);
+      };
+
+      for (const type of typesPresent) {
+        const testsOfType = testsByType[type];
+        h(`=== ${type.toUpperCase()} TESTS (${testsOfType.length}) ===`);
+        for (const test of testsOfType) writeTestBlock(test);
       }
 
       await clearAndWrite(sheets, spreadsheetId, sheetTitle, rows);

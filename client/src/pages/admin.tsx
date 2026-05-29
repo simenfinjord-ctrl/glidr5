@@ -2729,6 +2729,8 @@ export default function Admin() {
       if (data.racePreps && data.racePreps.length > 0) {
         const resolveRpIds = (raw: string | null | undefined): string => {
           if (!raw) return "";
+          // Free text if any part is non-numeric
+          if (raw.split(",").some(p => isNaN(Number(p.trim())))) return raw;
           try {
             const ids: number[] = JSON.parse(raw);
             if (!Array.isArray(ids)) return raw;
@@ -2741,12 +2743,13 @@ export default function Admin() {
         y += 2;
         autoTable(doc, {
           startY: y,
-          head: [["Date", "Location", "Race Type", "Discipline", "Glide", "Structure", "Kick/Binder", "Application", "Notes", "Created By"]],
+          head: [["Date", "Location", "Race Type", "Discipline", "Glide", "Structure", "Kick", "Tette/Binder", "Application", "Notes", "Created By"]],
           body: data.racePreps.map((rp: any) => [
             rp.date || "", rp.location || "", rp.race_type || "", rp.discipline || "",
             resolveRpIds(rp.product_ids) || rp.products || "",
             resolveRpIds(rp.structure_ids) || rp.structure || "",
-            resolveRpIds(rp.kick_product_ids) || "",
+            rp.kick_product_ids || "",
+            rp.tette || "",
             rp.method || "", rp.notes || "", rp.created_by_name || "",
           ]),
           styles: { fontSize: 6.5 }, headStyles: hStyle, margin: { left: 14, right: 14 },

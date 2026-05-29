@@ -1072,6 +1072,8 @@ function buildExportHtml(data: {
   if (data.racePreps.length > 0) {
     const resolveRpIds = (raw: string | null | undefined): string => {
       if (!raw) return '';
+      // If value contains non-numeric parts it's free text — return as-is
+      if (raw.split(',').some(p => isNaN(Number(p.trim())))) return raw;
       try {
         const ids: number[] = JSON.parse(raw);
         if (!Array.isArray(ids)) return raw;
@@ -1079,12 +1081,13 @@ function buildExportHtml(data: {
       } catch { return raw || ''; }
     };
     body += htmlSection(`Race Preps (${data.racePreps.length})`, htmlTable(
-      ['Date', 'Location', 'Race Type', 'Discipline', 'Glide', 'Structure', 'Kick/Binder', 'Application', 'Notes', 'Created By'],
+      ['Date', 'Location', 'Race Type', 'Discipline', 'Glide', 'Structure', 'Kick', 'Tette/Binder', 'Application', 'Notes', 'Created By'],
       data.racePreps.map((rp: any) => [
         rp.date || '', rp.location || '', rp.race_type || '', rp.discipline || '',
         resolveRpIds(rp.product_ids) || rp.products || '',
         resolveRpIds(rp.structure_ids) || rp.structure || '',
-        resolveRpIds(rp.kick_product_ids) || '',
+        rp.kick_product_ids || '',
+        rp.tette || '',
         rp.method || '', rp.notes || '', rp.created_by_name || '',
       ])
     ));

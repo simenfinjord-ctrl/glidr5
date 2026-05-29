@@ -3278,9 +3278,13 @@ export default function Admin() {
       const res = await apiRequest("POST", `/api/teams/${id}/drive-backup`);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: "Drive backup completed" });
+      if (data?.pdfError) {
+        toast({ title: "Drive backup: JSON OK — PDF failed", description: data.pdfError, variant: "destructive" });
+      } else {
+        toast({ title: "Drive backup completed", description: "JSON and PDF uploaded successfully." });
+      }
     },
     onError: (e: Error) => {
       toast({ title: "Drive backup failed", description: e.message, variant: "destructive" });

@@ -1244,10 +1244,21 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
   });
 
   const puppeteer = await import('puppeteer');
-  const browser = await puppeteer.default.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  const browser = await puppeteer.default.launch({
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-first-run',
+      '--no-zygote',
+      '--single-process',
+    ],
+  });
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    page.setDefaultNavigationTimeout(60000);
+    await page.setContent(html, { waitUntil: 'domcontentloaded' });
     const pdf = await page.pdf({ format: 'A4', landscape: true, printBackground: true, margin: { top: '1cm', bottom: '1cm', left: '1cm', right: '1cm' } });
     return Buffer.from(pdf);
   } finally {
@@ -1255,7 +1266,7 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
   }
 }
 
-export async function runDriveBackupForTeam(teamId: number): Promise<{ success: boolean; error?: string }> {
+export async function runDriveBackupForTeam(teamId: number): Promise<{ success: boolean; error?: string; pdfError?: string }> {
   const team = await storage.getTeam(teamId);
   if (!team) return { success: false, error: 'Team not found' };
   if (!team.driveFolderId) return { success: false, error: 'No Drive folder configured' };
@@ -1298,6 +1309,7 @@ export async function runDriveBackupForTeam(teamId: number): Promise<{ success: 
 
     // ── Generate full data PDF (same content as admin "Download PDF" button) ─
     let pdfFileId = team.drivePdfFileId ?? null;
+    let pdfError: string | undefined;
     try {
       const pdfBuffer = await buildTeamPdfBuffer(teamId);
       if (pdfFileId) {
@@ -1315,8 +1327,9 @@ export async function runDriveBackupForTeam(teamId: number): Promise<{ success: 
         });
         pdfFileId = created.data.id!;
       }
-    } catch (pdfErr) {
-      console.warn('[DriveBackup] PDF generation error (non-fatal):', pdfErr);
+    } catch (pdfErr: any) {
+      pdfError = pdfErr?.message || 'PDF generation failed';
+      console.error('[DriveBackup] PDF generation error:', pdfErr);
     }
 
     // ── Save file IDs to DB ────────────────────────────────────────────────
@@ -1325,8 +1338,8 @@ export async function runDriveBackupForTeam(teamId: number): Promise<{ success: 
       drivePdfFileId: pdfFileId ?? undefined,
     } as any);
 
-    console.log(`[DriveBackup] Done for team ${teamId} — JSON: ${jsonFileId}, PDF: ${pdfFileId ?? 'skipped'}`);
-    return { success: true };
+    console.log(`[DriveBackup] Done for team ${teamId} — JSON: ${jsonFileId}, PDF: ${pdfFileId ?? 'failed'}`);
+    return { success: true, ...(pdfError ? { pdfError } : {}) };
 
   } catch (err: any) {
     console.error('[DriveBackup] Error for team', teamId, err);

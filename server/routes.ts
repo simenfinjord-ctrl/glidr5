@@ -822,7 +822,7 @@ export async function registerRoutes(
     const { runDriveBackupForTeam } = await import('./backup');
     const result = await runDriveBackupForTeam(id);
     if (result.success) {
-      res.json({ ok: true });
+      res.json({ ok: true, pdfError: result.pdfError ?? null });
     } else {
       res.status(500).json({ message: result.error || 'Drive backup failed' });
     }

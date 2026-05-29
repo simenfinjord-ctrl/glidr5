@@ -31,7 +31,7 @@ async function checkTeamLimit(teamId: number, resource: "users" | "groups" | "te
   return { allowed: current < limit, limit, current };
 }
 import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, watchSessions, watchQueue, teams, tests, testEntries, users, testSkiSeries, products, dailyWeather, raceSkis } from "@shared/schema";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq, and, sql, inArray } from "drizzle-orm";
 async function enforceTeamAreas(perms: Record<string, string>, teamId: number | undefined): Promise<Record<string, string>> {
   if (!teamId) return perms;
@@ -3862,6 +3862,23 @@ export async function registerRoutes(
       allTestSkiRegrinds.push(...regrinds.map((r) => ({ ...r, seriesName: series.name })));
     }
     const grindProfilesList = await storage.listGrindProfiles(teamId);
+    const racePrepsResult = await (pool as any).query(
+      `SELECT id, date, start_time, location, race_type, discipline,
+              products, method, structure, notes, tette,
+              product_ids, structure_ids, kick_product_ids,
+              weather_id, created_by_name, created_at
+       FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
+      [teamId]
+    );
+    const racePrepEntriesResult = await (pool as any).query(
+      `SELECT rpe.id, rpe.race_prep_id, rpe.athlete_name, rpe.ski_id,
+              rpe.ski_id_classic, rpe.ski_id_skating,
+              rpe.waxer_name, rpe.notes, rpe.created_at
+       FROM race_prep_entries rpe
+       JOIN race_preps rp ON rp.id = rpe.race_prep_id
+       WHERE rp.team_id = $1 ORDER BY rpe.race_prep_id, rpe.athlete_name`,
+      [teamId]
+    );
     res.json({
       tests: allTests,
       entriesByTest,
@@ -3879,6 +3896,8 @@ export async function registerRoutes(
       raceSkiRegrinds: allRaceSkiRegrinds,
       testSkiRegrinds: allTestSkiRegrinds,
       grindProfiles: grindProfilesList,
+      racePreps: racePrepsResult.rows,
+      racePrepEntries: racePrepEntriesResult.rows,
     });
   });
 

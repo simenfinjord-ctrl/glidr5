@@ -2726,6 +2726,41 @@ export default function Admin() {
         y = (doc as any).lastAutoTable.finalY + 10;
       }
 
+      if (data.racePreps && data.racePreps.length > 0) {
+        checkPage();
+        doc.setFontSize(13);
+        doc.text(`Race Preps (${data.racePreps.length})`, 14, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [["Date", "Start Time", "Location", "Race Type", "Discipline", "Glide Products", "Structure", "Method", "Notes", "Created By"]],
+          body: data.racePreps.map((rp: any) => [
+            rp.date || "", rp.start_time || "", rp.location || "", rp.race_type || "",
+            rp.discipline || "", rp.products || "", rp.structure || "", rp.method || "",
+            rp.notes || "", rp.created_by_name || "",
+          ]),
+          styles: { fontSize: 6.5 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      if (data.racePrepEntries && data.racePrepEntries.length > 0) {
+        checkPage();
+        doc.setFontSize(13);
+        doc.text(`Race Prep Entries (${data.racePrepEntries.length})`, 14, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y,
+          head: [["Race Prep ID", "Athlete", "Ski ID (Glide)", "Ski ID (Classic)", "Ski ID (Skating)", "Waxer", "Notes"]],
+          body: data.racePrepEntries.map((e: any) => [
+            String(e.race_prep_id || ""), e.athlete_name || "", e.ski_id || "",
+            e.ski_id_classic || "", e.ski_id_skating || "", e.waxer_name || "", e.notes || "",
+          ]),
+          styles: { fontSize: 7 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
       const productMap = new Map(data.products.map((p: any) => [p.id, p]));
       const seriesMap = new Map(data.series.map((s: any) => [s.id, s]));
       const raceSkiMap = new Map(data.raceSkis.map((s: any) => [s.id, s]));

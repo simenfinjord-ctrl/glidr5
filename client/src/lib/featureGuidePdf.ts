@@ -512,15 +512,15 @@ ul.feat-list li::before {
 
 <!-- Mockup: test entry table -->
 <div class="mockup-wrap">
-  <div class="mockup-label">Glidr — Test Entry View</div>
+  <div class="mockup-label">Glidr — Test Entry View · Ruka World Cup, Finland</div>
   <div class="mockup-screen">
-    <div class="mockup-titlebar"><div class="dot"></div><div class="dot"></div>Test #42 — Beitostølen · 15 Jan 2025 · Glide</div>
+    <div class="mockup-titlebar"><div class="dot"></div><div class="dot"></div>Test #38 — Ruka, Finland · 27 Nov 2025 · Glide · Jessie Diggins / Ben Ogden</div>
     <div class="mockup-body">
       <div class="mockup-row header"><span class="mockup-num">#</span><span class="mockup-prod">Product</span><span class="mockup-meth">Application</span><span class="mockup-rank">Feel</span><span class="mockup-res">0 km</span><span class="mockup-res">5 km</span></div>
-      <div class="mockup-row"><span class="mockup-num">1</span><span class="mockup-prod">Swix HF7</span><span class="mockup-meth">2 layers, cork</span><span class="mockup-rank">⭐⭐⭐⭐</span><span class="mockup-res">+0.0</span><span class="mockup-res">+0.1</span></div>
-      <div class="mockup-row"><span class="mockup-num">2</span><span class="mockup-prod">Toko HF Red</span><span class="mockup-meth">1 layer, iron</span><span class="mockup-rank">⭐⭐⭐</span><span class="mockup-res">+0.4</span><span class="mockup-res">+0.7</span></div>
-      <div class="mockup-row"><span class="mockup-num">3</span><span class="mockup-prod">Swix HF7 + Cera F</span><span class="mockup-meth">2+1 layers</span><span class="mockup-rank">⭐⭐⭐⭐⭐</span><span class="mockup-res" style="color:var(--violet)">−0.3</span><span class="mockup-res" style="color:var(--violet)">−0.4</span></div>
-      <div class="mockup-row"><span class="mockup-num">4</span><span class="mockup-prod">Rode HF</span><span class="mockup-meth">2 layers, cork</span><span class="mockup-rank">⭐⭐⭐</span><span class="mockup-res">+0.2</span><span class="mockup-res">+0.5</span></div>
+      <div class="mockup-row"><span class="mockup-num">1</span><span class="mockup-prod">Swix HF7X</span><span class="mockup-meth">2 layers, iron 120°</span><span class="mockup-rank">⭐⭐⭐⭐</span><span class="mockup-res">+0.0</span><span class="mockup-res">+0.2</span></div>
+      <div class="mockup-row"><span class="mockup-num">2</span><span class="mockup-prod">Toko HF 7.5 Red</span><span class="mockup-meth">1 layer, iron</span><span class="mockup-rank">⭐⭐⭐</span><span class="mockup-res">+0.5</span><span class="mockup-res">+0.8</span></div>
+      <div class="mockup-row"><span class="mockup-num">3</span><span class="mockup-prod">Swix HF7X + FC10</span><span class="mockup-meth">2+1 layers, cork</span><span class="mockup-rank">⭐⭐⭐⭐⭐</span><span class="mockup-res" style="color:var(--violet)">−0.4</span><span class="mockup-res" style="color:var(--violet)">−0.5</span></div>
+      <div class="mockup-row"><span class="mockup-num">4</span><span class="mockup-prod">Toko NF Liquid Blue</span><span class="mockup-meth">2 layers, cork</span><span class="mockup-rank">⭐⭐⭐</span><span class="mockup-res">+0.3</span><span class="mockup-res">+0.6</span></div>
     </div>
   </div>
 </div>
@@ -552,18 +552,18 @@ ul.feat-list li::before {
 
 <!-- Mockup: analytics bar chart -->
 <div class="mockup-wrap">
-  <div class="mockup-label">Glidr — Product Compare (Analytics)</div>
+  <div class="mockup-label">Glidr — Product Compare (Analytics) · US Ski Team — Ruka &amp; Falun 2025</div>
   <div class="mockup-screen">
-    <div class="mockup-titlebar"><div class="dot"></div><div class="dot"></div>Compare Products · 12 shared tests</div>
+    <div class="mockup-titlebar"><div class="dot"></div><div class="dot"></div>Compare Products · 18 shared tests · Cold &amp; Transformed Snow</div>
     <div class="mockup-analytics-bar">
-      <div class="m-bar" style="height:80%"></div>
+      <div class="m-bar" style="height:85%"></div>
       <div class="m-bar" style="height:55%;background:var(--violet3)"></div>
-      <div class="m-bar" style="height:95%"></div>
-      <div class="m-bar" style="height:40%;background:var(--violet3)"></div>
-      <div class="m-bar" style="height:70%"></div>
+      <div class="m-bar" style="height:98%"></div>
+      <div class="m-bar" style="height:42%;background:var(--violet3)"></div>
+      <div class="m-bar" style="height:72%"></div>
     </div>
     <div class="m-bar-label">
-      <span>Swix HF7</span><span>Toko HF</span><span>HF7+CeraF</span><span>Rode HF</span><span>Maplus HF</span>
+      <span>Swix HF7X</span><span>Toko HF 7.5</span><span>HF7X+FC10</span><span>Toko NF Blue</span><span>Swix GF7</span>
     </div>
   </div>
 </div>
@@ -580,18 +580,18 @@ ul.feat-list li::before {
 
 <!-- Mockup: weather grid -->
 <div class="mockup-wrap">
-  <div class="mockup-label">Glidr — Weather Entry</div>
+  <div class="mockup-label">Glidr — Weather Entry · Ruka World Cup</div>
   <div class="mockup-screen">
-    <div class="mockup-titlebar"><div class="dot"></div><div class="dot"></div>Beitostølen · 15 Jan 2025 · 09:30</div>
+    <div class="mockup-titlebar"><div class="dot"></div><div class="dot"></div>Ruka, Finland · 27 Nov 2025 · 08:45</div>
     <div class="mockup-weather-grid">
-      <div class="mockup-weather-cell"><div class="val">−8°C</div><div class="lbl">Snow Temp</div></div>
-      <div class="mockup-weather-cell"><div class="val">−5°C</div><div class="lbl">Air Temp</div></div>
-      <div class="mockup-weather-cell"><div class="val">62%</div><div class="lbl">Snow Hum.</div></div>
-      <div class="mockup-weather-cell"><div class="val">71%</div><div class="lbl">Air Hum.</div></div>
+      <div class="mockup-weather-cell"><div class="val">−12°C</div><div class="lbl">Snow Temp</div></div>
+      <div class="mockup-weather-cell"><div class="val">−8°C</div><div class="lbl">Air Temp</div></div>
+      <div class="mockup-weather-cell"><div class="val">44%</div><div class="lbl">Snow Hum.</div></div>
+      <div class="mockup-weather-cell"><div class="val">63%</div><div class="lbl">Air Hum.</div></div>
       <div class="mockup-weather-cell"><div class="val" style="font-size:.85rem">Transf.</div><div class="lbl">Snow Type</div></div>
-      <div class="mockup-weather-cell"><div class="val" style="font-size:.85rem">Moist</div><div class="lbl">Hum. Type</div></div>
+      <div class="mockup-weather-cell"><div class="val" style="font-size:.85rem">Dry</div><div class="lbl">Hum. Type</div></div>
       <div class="mockup-weather-cell"><div class="val" style="font-size:.85rem">Hard</div><div class="lbl">Track</div></div>
-      <div class="mockup-weather-cell"><div class="val">3/8</div><div class="lbl">Clouds</div></div>
+      <div class="mockup-weather-cell"><div class="val">2/8</div><div class="lbl">Clouds</div></div>
     </div>
   </div>
 </div>

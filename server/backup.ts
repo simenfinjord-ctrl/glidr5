@@ -341,33 +341,59 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
     };
 
     // Helper: build flat entry rows for a list of tests
+    // Each test gets a bold header row, then one entry row per ski entry.
+    // All 15 weather/conditions fields are included on every row.
+    const FLAT_COL_HEADER = [
+      // Test metadata
+      'Test ID', 'Date', 'Location', 'Test Name', 'Group', 'Series', 'Type', 'Notes',
+      // Entry data
+      'Ski #', 'Product', 'Application / Method', 'Feeling Rank', 'Kick Rank',
+      'Result 1', 'Rank 1', 'Result 2', 'Rank 2',
+      // Weather / conditions (all fields)
+      'Snow Temp °C', 'Air Temp °C', 'Snow Humidity %', 'Air Humidity %',
+      'Snow Type', 'Snow Humidity Type', 'Track Hardness',
+      'Artificial Snow', 'Natural Snow', 'Grain Size',
+      'Clouds (x/8)', 'Visibility', 'Wind', 'Precipitation', 'Test Quality',
+    ];
+
     const buildFlatTestRows = (tests: any[]): { rows: any[][], boldIndices: number[] } => {
       const rows: any[][] = [];
       const boldIndices: number[] = [];
+
+      // Global column header
       boldIndices.push(rows.length);
-      rows.push([
-        'Test ID', 'Date', 'Location', 'Test Name', 'Group', 'Series', 'Type',
-        'Ski #', 'Product', 'Application / Method', 'Feeling Rank', 'Kick Rank',
-        'Result 1', 'Rank 1', 'Result 2', 'Rank 2',
-        'Snow Temp °C', 'Air Temp °C', 'Snow Humidity %', 'Snow Type', 'Track Hardness',
-        'Notes',
-      ]);
+      rows.push(FLAT_COL_HEADER);
+
       const sortedTests = [...tests].sort((a: any, b: any) => (b.date || '').localeCompare(a.date || ''));
+
       for (const test of sortedTests) {
         const entries = entriesByTest[test.id] || [];
         const w = (test as any).weatherId ? weatherById[(test as any).weatherId] : null;
         const seriesName = (test as any).seriesId && seriesById[(test as any).seriesId] ? seriesById[(test as any).seriesId].name : '';
         const distLabels = parseDistanceLabels((test as any).distanceLabels);
-        if (entries.length === 0) {
-          rows.push([
-            test.id, test.date, test.location, (test as any).testName || '', (test as any).groupScope || '', seriesName, (test as any).testType,
-            '', '', '', '', '',
-            '', '', '', '',
-            w?.snowTemperatureC ?? '', w?.airTemperatureC ?? '', w?.snowHumidityPct ?? '', w?.snowType ?? '', w?.trackHardness ?? '',
-            (test as any).notes || '',
-          ]);
-        }
-        for (const entry of entries) {
+
+        // Weather columns helper — same for all entries of this test
+        const wCols = [
+          w?.snowTemperatureC ?? '', w?.airTemperatureC ?? '',
+          w?.snowHumidityPct ?? '', w?.airHumidityPct ?? '',
+          w?.snowType ?? '', w?.snowHumidityType ?? '', w?.trackHardness ?? '',
+          w?.artificialSnow ?? '', w?.naturalSnow ?? '', w?.grainSize ?? '',
+          w?.clouds ?? '', w?.visibility ?? '', w?.wind ?? '', w?.precipitation ?? '', w?.testQuality ?? '',
+        ];
+
+        // Bold test header row
+        boldIndices.push(rows.length);
+        rows.push([
+          `▶ Test #${test.id}`, test.date, test.location,
+          (test as any).testName || '', (test as any).groupScope || '', seriesName, (test as any).testType,
+          (test as any).notes || '',
+          // Entry columns blank on header row
+          '', '', '', '', '', '', '', '', '',
+          ...wCols,
+        ]);
+
+        // Entry rows
+        const writeEntry = (entry: any) => {
           let productName = '';
           if (entry.productId && productsById[entry.productId]) {
             const p = productsById[entry.productId];
@@ -383,7 +409,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
             } catch {}
           }
           const rounds = parseResultsArray(entry.results);
-          let res1 = '', rank1 = '', res2 = '', rank2 = '';
+          let res1: any = '', rank1: any = '', res2: any = '', rank2: any = '';
           if (distLabels.length > 0) {
             res1 = rounds[0]?.result ?? ''; rank1 = rounds[0]?.rank ?? '';
             res2 = rounds[1]?.result ?? ''; rank2 = rounds[1]?.rank ?? '';
@@ -395,14 +421,26 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
             res2 = entry.resultXkmCmBehind ?? ''; rank2 = entry.rankXkm ?? '';
           }
           rows.push([
-            test.id, test.date, test.location, (test as any).testName || '', (test as any).groupScope || '', seriesName, (test as any).testType,
-            entry.skiNumber, productName, entry.methodology || '', entry.feelingRank ?? '', entry.kickRank ?? '',
-            res1, rank1, res2, rank2,
-            w?.snowTemperatureC ?? '', w?.airTemperatureC ?? '', w?.snowHumidityPct ?? '', w?.snowType ?? '', w?.trackHardness ?? '',
+            test.id, test.date, test.location,
+            (test as any).testName || '', (test as any).groupScope || '', seriesName, (test as any).testType,
             (test as any).notes || '',
+            entry.skiNumber, productName, entry.methodology || '',
+            entry.feelingRank ?? '', entry.kickRank ?? '',
+            res1, rank1, res2, rank2,
+            ...wCols,
           ]);
+        };
+
+        if (entries.length === 0) {
+          // Test with no entries — still show the header row (already added above)
+        } else {
+          for (const entry of entries) writeEntry(entry);
         }
+
+        // Blank separator between tests
+        rows.push([]);
       }
+
       return { rows, boldIndices };
     };
 

@@ -404,30 +404,27 @@ export default function Suggestions() {
   const computed = useMemo(() => {
     const nFilters = activeFilterCount(filters);
 
+    // Require at least one filter — no input, no results
+    if (nFilters === 0) {
+      return { matchCount: 0, usingFallback: false, glideProducts: [], structureProducts: [], glideCombos: [], structureCombos: [] };
+    }
+
     // Step 1: Find matching weather → matching test IDs
     let matchingTestIds = new Set<number>();
     let usingFallback = false;
 
-    if (nFilters === 0) {
+    const matchingWeatherIds = new Set<number>();
+    for (const w of weather) {
+      if (weatherMatches(w, filters)) matchingWeatherIds.add(w.id);
+    }
+    for (const t of tests) {
+      if (t.weatherId && matchingWeatherIds.has(t.weatherId)) matchingTestIds.add(t.id);
+      // Tests without weather are skipped when filters are active
+    }
+    // Fallback: if 0 matches, use all tests but flag as fallback
+    if (matchingTestIds.size === 0) {
       matchingTestIds = new Set(tests.map((t) => t.id));
-    } else {
-      const matchingWeatherIds = new Set<number>();
-      for (const w of weather) {
-        if (weatherMatches(w, filters)) matchingWeatherIds.add(w.id);
-      }
-      for (const t of tests) {
-        if (t.weatherId && matchingWeatherIds.has(t.weatherId)) matchingTestIds.add(t.id);
-        // Also include tests without weather when no categorical/text filters are set
-        // (only numeric filters) — weather not logged doesn't mean conditions didn't match
-        else if (!t.weatherId && nFilters > 0) {
-          // skip tests with no weather if filters are set
-        }
-      }
-      // Fallback: if 0 matches, use all tests but flag as fallback
-      if (matchingTestIds.size === 0) {
-        matchingTestIds = new Set(tests.map((t) => t.id));
-        usingFallback = true;
-      }
+      usingFallback = true;
     }
 
     const matchCount = usingFallback ? 0 : matchingTestIds.size;
@@ -698,6 +695,12 @@ export default function Suggestions() {
           <Card className="fs-card rounded-2xl p-8 text-center">
             <Sparkles className="mx-auto h-10 w-10 text-violet-500 animate-pulse mb-3" />
             <p className="text-sm text-muted-foreground">Loading test data…</p>
+          </Card>
+        ) : !hasFilters ? (
+          <Card className="fs-card rounded-2xl p-10 text-center">
+            <ThermometerSnowflake className="mx-auto h-10 w-10 text-sky-400/60 mb-3" />
+            <p className="text-sm font-medium text-foreground mb-1">Fill in conditions to get suggestions</p>
+            <p className="text-xs text-muted-foreground">Enter at least one filter above — temperature, snow type, humidity or other conditions — to see which products and combinations have worked best in similar conditions.</p>
           </Card>
         ) : allEntries.length === 0 && allTestIds.length > 0 ? (
           <Card className="fs-card rounded-2xl p-8 text-center">

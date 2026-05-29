@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { User, Watch, RefreshCw, Copy, Check, KeyRound, Mail, Users, Shield, Smartphone, Eye, EyeOff, ToggleLeft, ToggleRight, AtSign, Pencil, Trash2, UserPlus, PanelLeft, PanelTop, Camera } from "lucide-react";
@@ -682,6 +683,9 @@ function DeleteAccountButton() {
 
   return (
     <div className="rounded-xl border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/10 p-4 space-y-3">
+      <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+        Your tests, products, and weather data will remain accessible to your team. Only your personal account info will be removed.
+      </div>
       <p className="text-sm font-medium text-red-700 dark:text-red-400">{t("account.deleteConfirmLabel")} <strong>DELETE</strong></p>
       <Input
         value={inputVal}
@@ -702,6 +706,39 @@ function DeleteAccountButton() {
         </button>
       </div>
     </div>
+  );
+}
+
+// ─── Download my data button ────────────────────────────────────────────────────
+function DownloadMyDataButton() {
+  const [downloading, setDownloading] = useState(false);
+  const { toast } = useToast();
+
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      const res = await fetch("/api/users/me/data-export", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to export data");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "glidr-my-data.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "Error", description: "Could not download data. Try again later.", variant: "destructive" });
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <Button variant="outline" size="sm" onClick={handleDownload} disabled={downloading}>
+      {downloading ? "Downloading…" : "Download my data"}
+    </Button>
   );
 }
 
@@ -1168,8 +1205,8 @@ export default function MyAccount() {
 
             <div className="rounded-xl bg-muted/50 px-4 py-3 space-y-3">
               <div>
-                <div className="text-sm font-medium">Accent Colour</div>
-                <div className="text-xs text-muted-foreground">Changes the primary colour throughout the app.</div>
+                <div className="text-sm font-medium">{t("account.accentColour")}</div>
+                <div className="text-xs text-muted-foreground">{t("account.accentColourDesc")}</div>
               </div>
               <div className="flex flex-wrap gap-2 pt-1">
                 {ACCENT_COLORS.map((c) => (
@@ -1288,12 +1325,12 @@ export default function MyAccount() {
             <Card className="p-5 space-y-4">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
                 <Watch className="h-4 w-4 text-sky-500" />
-                Team Watch
+                {t("account.teamWatch")}
               </h2>
 
               {/* Team PIN */}
               <div>
-                <p className="text-xs text-muted-foreground mb-1.5">Team ID</p>
+                <p className="text-xs text-muted-foreground mb-1.5">{t("account.teamId")}</p>
                 {teamCodesLoading ? (
                   <div className="h-12 bg-muted/50 rounded-lg animate-pulse" />
                 ) : (
@@ -1319,7 +1356,7 @@ export default function MyAccount() {
                         className="gap-1.5 text-xs"
                       >
                         <RefreshCw className={`h-3 w-3 ${pinRegenerating ? "animate-spin" : ""}`} />
-                        Regenerate
+                        {t("account.regenerate")}
                       </Button>
                     )}
                   </div>
@@ -1347,7 +1384,16 @@ export default function MyAccount() {
               <h2 className="text-base font-semibold">{t("account.dangerZone")}</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{t("account.dangerZoneDesc")}</p>
-            <DeleteAccountButton />
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-medium mb-2">{t("account.dataExport")}</p>
+                <p className="text-xs text-muted-foreground mb-2">{t("account.dataExportDesc")}</p>
+                <DownloadMyDataButton />
+              </div>
+              <div>
+                <DeleteAccountButton />
+              </div>
+            </div>
           </Card>
         );
 

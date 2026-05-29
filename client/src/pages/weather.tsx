@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useMemo } from "react";
 import { fmtDate } from "@/lib/utils";
 import { z } from "zod";

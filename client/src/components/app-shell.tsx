@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { ReactNode, useState, useEffect, useRef, useCallback } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useLocation } from "wouter";
@@ -1127,6 +1128,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <AppLink href="/contact" testId="link-contact" className="underline hover:text-foreground transition-colors">{t("shell.contact")}</AppLink>
             </div>
           </div>
+          <p className="mt-2 text-[10px] text-muted-foreground/50 text-center">
+            © 2025 Glidr. All rights reserved.
+          </p>
         </footer>
       </main>
       {mobileNavEnabled && <div className="sm:hidden"><MobileNav watchQueueCount={watchQueueCount} /></div>}

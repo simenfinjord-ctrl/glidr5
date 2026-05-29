@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 // Uses Resend REST API via native fetch — no extra package needed.
 
 function getApiKey(): string | null {

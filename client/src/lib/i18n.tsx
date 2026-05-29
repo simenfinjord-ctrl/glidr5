@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { createContext, useContext, ReactNode } from "react";
 import { useLanguage } from "@/lib/language";
 
@@ -236,6 +237,16 @@ const translations: Record<string, Record<string, string>> = {
     "tests.sortType": "By type",
     "tests.application": "Application",
     "tests.applicationPlaceholder": "e.g. 200c+wool",
+    "tests.roundLabel": "Round {n}",
+    "tests.appInputPlaceholder": "Application…",
+    "tests.structurePlaceholder": "e.g., 0.5mm",
+    "tests.productPlaceholder": "e.g., SG12",
+
+    // ── Search ─────────────────────────────────────────────────────────────────────
+    "search.placeholder": "Search tests, products, skis…",
+
+    // ── Race Ski ──────────────────────────────────────────────────────────────────
+    "raceski.searchPlaceholder": "Search serial number, ski ID, athlete…",
 
     // ── Preferences ───────────────────────────────────────────────────────────────
     "preferences.dateFormat": "Date format",
@@ -433,6 +444,8 @@ const translations: Record<string, Record<string, string>> = {
     "products.confirmDelete": "Delete this product and all its test entries?",
     "products.archived": "Product archived",
     "products.restored": "Product restored",
+    "products.searchPlaceholder": "Search products…",
+    "products.limitReached": "You've reached your plan's product limit. Upgrade to add more.",
 
     // ── Weather ───────────────────────────────────────────────────────────────
     "weather.title": "Weather",
@@ -817,6 +830,13 @@ const translations: Record<string, Record<string, string>> = {
     "account.navSubscription": "Subscription",
     "account.navTeamAdmin": "Team Admin",
     "account.navDangerZone": "Danger Zone",
+    "account.accentColour": "Accent Colour",
+    "account.accentColourDesc": "Changes the primary colour throughout the app.",
+    "account.teamWatch": "Team Watch",
+    "account.teamId": "Team ID",
+    "account.regenerate": "Regenerate",
+    "account.dataExport": "Data export",
+    "account.dataExportDesc": "Download a copy of your personal data (GDPR).",
     "team.title": "My Team",
     "team.name": "Name",
     "team.role": "Role",
@@ -1124,6 +1144,8 @@ const translations: Record<string, Record<string, string>> = {
     "onboarding.step.weather.airTemp": "Air temp",
     "onboarding.step.weather.humidity": "Humidity",
     "onboarding.step.weather.hardness": "Hardness",
+    "onboarding.step.weather.humidityExample": "Wet",
+    "onboarding.step.weather.hardnessExample": "Medium",
     "onboarding.step.tests.title": "Log your first test",
     "onboarding.step.tests.subtitle": "Pick a ski series, rank the results, save.",
     "onboarding.step.tests.body": "Go to «Tests» → «New test». Select your test ski series, link today's weather entry and fill in the results. Glidr supports glide tests, structure tests and more — with bracket mode for large groups.",
@@ -1428,6 +1450,16 @@ const translations: Record<string, Record<string, string>> = {
     "tests.sortType": "Etter type",
     "tests.application": "Applikasjon",
     "tests.applicationPlaceholder": "f.eks. 200c+ull",
+    "tests.roundLabel": "Runde {n}",
+    "tests.appInputPlaceholder": "Påføring…",
+    "tests.structurePlaceholder": "f.eks. 0,5mm",
+    "tests.productPlaceholder": "f.eks. SG12",
+
+    // ── Søk ───────────────────────────────────────────────────────────────────────
+    "search.placeholder": "Søk i tester, produkter, ski…",
+
+    // ── Raceski ───────────────────────────────────────────────────────────────────
+    "raceski.searchPlaceholder": "Søk serienummer, ski-ID, utøver…",
 
     // ── Preferanser ───────────────────────────────────────────────────────────────
     "preferences.dateFormat": "Datoformat",
@@ -1625,6 +1657,8 @@ const translations: Record<string, Record<string, string>> = {
     "products.confirmDelete": "Slett dette produktet og alle tilknyttede testoppføringer?",
     "products.archived": "Produkt arkivert",
     "products.restored": "Produkt gjenopprettet",
+    "products.searchPlaceholder": "Søk produkter…",
+    "products.limitReached": "Du har nådd produktgrensen for planen din. Oppgrader for å legge til flere.",
 
     // ── Vær ───────────────────────────────────────────────────────────────────
     "weather.title": "Vær",
@@ -2009,6 +2043,13 @@ const translations: Record<string, Record<string, string>> = {
     "account.navSubscription": "Abonnement",
     "account.navTeamAdmin": "Team Admin",
     "account.navDangerZone": "Faresone",
+    "account.accentColour": "Aksentfarge",
+    "account.accentColourDesc": "Endrer primærfargen i hele appen.",
+    "account.teamWatch": "Lagklokke",
+    "account.teamId": "Lag-ID",
+    "account.regenerate": "Regenerer",
+    "account.dataExport": "Dataeksport",
+    "account.dataExportDesc": "Last ned en kopi av dine personlige data (GDPR).",
     "team.title": "Mitt team",
     "team.name": "Navn",
     "team.role": "Rolle",
@@ -2274,6 +2315,8 @@ const translations: Record<string, Record<string, string>> = {
     "onboarding.step.weather.airTemp": "Lufttemp",
     "onboarding.step.weather.humidity": "Fuktighet",
     "onboarding.step.weather.hardness": "Sporhard",
+    "onboarding.step.weather.humidityExample": "Fuktig",
+    "onboarding.step.weather.hardnessExample": "Medium",
     "onboarding.step.tests.title": "Logg din første test",
     "onboarding.step.tests.subtitle": "Velg ski-serie, rank resultatene, lagre.",
     "onboarding.step.tests.body": "Gå til «Tester» → «Ny test». Velg test-ski-serien din, lenk til dagens værmåling og fyll inn resultatene. Glidr støtter glidetester, strukturtester og mer — med bracket-modus for store grupper.",

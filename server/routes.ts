@@ -11,7 +11,7 @@ import { r2Enabled, uploadToR2, getR2Url } from "./r2";
 
 /** Shared password validation: ≥7 chars, ≥1 digit, ≥1 special character */
 export function validatePassword(pw: string): string | null {
-  if (!pw || pw.length < 7) return "Password must be at least 7 characters.";
+  if (!pw || pw.length < 8) return "Password must be at least 8 characters.";
   if (!/[0-9]/.test(pw)) return "Password must contain at least one number.";
   if (!/[^A-Za-z0-9]/.test(pw)) return "Password must contain at least one special character.";
   return null;
@@ -2466,6 +2466,9 @@ export async function registerRoutes(
   // GET /api/tests/:id/attachments
   app.get("/api/tests/:id/attachments", requireAuth, async (req, res) => {
     const testId = parseInt(req.params.id);
+    const test = await storage.getTest(testId);
+    if (!test) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(test, req)) return res.status(403).json({ message: "Forbidden" });
     const { pool } = await import("./db");
     const result = await (pool as any).query(
       `SELECT id, test_id, filename, mime_type, created_at, uploaded_by_id FROM test_attachments WHERE test_id = $1 ORDER BY created_at DESC`,
@@ -2479,6 +2482,15 @@ export async function registerRoutes(
     const testId = parseInt(req.params.id);
     const { filename, mimeType, data } = req.body;
     if (!filename || !data) return res.status(400).json({ message: "filename and data required" });
+    const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "application/pdf"];
+    if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
+      return res.status(400).json({ message: "File type not allowed" });
+    }
+    // Check decoded size (base64 is ~4/3 of binary)
+    const approxBytes = Math.ceil((String(data).length * 3) / 4);
+    if (approxBytes > 5 * 1024 * 1024) {
+      return res.status(413).json({ message: "File too large (max 5 MB)" });
+    }
     const u = userInfo(req);
     const { pool } = await import("./db");
     const now = new Date().toISOString();
@@ -2514,9 +2526,12 @@ export async function registerRoutes(
   app.get("/api/attachments/:id", requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const { pool } = await import("./db");
-    const result = await (pool as any).query(`SELECT filename, mime_type, data, url FROM test_attachments WHERE id = $1`, [id]);
+    const result = await (pool as any).query(`SELECT filename, mime_type, data, url, test_id FROM test_attachments WHERE id = $1`, [id]);
     if (!result.rows[0]) return res.status(404).json({ message: "Not found" });
-    const { filename, mime_type, data, url } = result.rows[0];
+    const { filename, mime_type, data, url, test_id } = result.rows[0];
+    // Verify caller belongs to the same team as the parent test
+    const parentTest = await storage.getTest(test_id);
+    if (!parentTest || !verifyTeamOwnership(parentTest, req)) return res.status(403).json({ message: "Forbidden" });
 
     // R2 path: url column holds the object key; resolve to signed/public URL and redirect
     if (url) {
@@ -2959,6 +2974,12 @@ export async function registerRoutes(
   app.put("/api/users/:id/garmin-watch", requireAuth, async (req, res) => {
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const id = parseInt(req.params.id);
+    const targetUser = await storage.getUser(id);
+    if (!targetUser) return res.status(404).json({ message: "User not found" });
+    const u = req.user!;
+    if (u.isAdmin !== 1 && targetUser.teamId !== u.teamId) {
+      return res.status(403).json({ message: "Cannot modify users outside your team" });
+    }
     const { pool: p } = await import("./db");
     const enabled = !!req.body.enabled;
     await (p as any).query("UPDATE users SET garmin_watch = $1 WHERE id = $2", [enabled ? 1 : 0, id]);
@@ -3097,6 +3118,28 @@ export async function registerRoutes(
     // Update session
     (u as any).username = clean;
     return res.json({ ok: true, username: clean });
+  });
+
+  // GDPR data export
+  app.get("/api/users/me/data-export", requireAuth, async (req, res) => {
+    const u = req.user!;
+    try {
+      const { pool } = await import("./db");
+      const userRow = await (pool as any).query(`SELECT id, email, name, username, created_at FROM users WHERE id = $1`, [u.id]);
+      const testsRows = await (pool as any).query(`SELECT * FROM tests WHERE created_by_id = $1 ORDER BY date DESC`, [u.id]);
+      const entriesRows = await (pool as any).query(`SELECT * FROM test_entries WHERE test_id = ANY(SELECT id FROM tests WHERE created_by_id = $1)`, [u.id]);
+      const data = {
+        exportedAt: new Date().toISOString(),
+        user: userRow.rows[0] ?? null,
+        tests: testsRows.rows,
+        testEntries: entriesRows.rows,
+      };
+      res.setHeader("Content-Disposition", 'attachment; filename="glidr-my-data.json"');
+      res.setHeader("Content-Type", "application/json");
+      return res.send(JSON.stringify(data, null, 2));
+    } catch (err: any) {
+      return res.status(500).json({ message: "Failed to export data" });
+    }
   });
 
   // Update own profile preferences (dateFormat, etc.)
@@ -3599,8 +3642,10 @@ export async function registerRoutes(
   });
 
   // Public shareable link — no login required, token acts as the secret
-  const PRESENTATION_TOKEN = process.env.PRESENTATION_TOKEN ?? "diEoqG6D9VqLLnEeoaBi7MgHe7ANvBk5";
-  app.get(`/p/${PRESENTATION_TOKEN}`, async (_req, res) => {
+  const PRESENTATION_TOKEN = process.env.PRESENTATION_TOKEN ?? null;
+  app.get(`/p/:token`, async (req, res) => {
+    if (!PRESENTATION_TOKEN) return res.status(404).json({ message: "Not found" });
+    if (req.params.token !== PRESENTATION_TOKEN) return res.status(404).json({ message: "Not found" });
     const { readFileSync } = await import("fs");
     const { join } = await import("path");
     try {
@@ -5820,7 +5865,8 @@ export async function registerRoutes(
   });
 
   // Watch diagnostic endpoint — shows queue status, session state, and config
-  app.get("/api/watch/debug/:pin", async (req, res) => {
+  app.get("/api/watch/debug/:pin", requireAuth, async (req, res) => {
+    if (!req.user?.isAdmin) return res.status(403).json({ message: "Admin only" });
     const { pin } = req.params;
     const { pool } = await import("./db");
     const teamResult = await (pool as any).query(
@@ -6105,6 +6151,14 @@ export async function registerRoutes(
     const { imageBase64, mimeType } = req.body;
     if (!imageBase64 || !mimeType) {
       return res.status(400).json({ message: "imageBase64 and mimeType required" });
+    }
+    const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!ALLOWED_IMAGE_TYPES.includes(mimeType)) {
+      return res.status(400).json({ message: "Unsupported image type" });
+    }
+    const maxBase64Size = 4 * 1024 * 1024; // ~3MB decoded
+    if (!imageBase64 || imageBase64.length > maxBase64Size) {
+      return res.status(413).json({ message: "Image too large" });
     }
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {

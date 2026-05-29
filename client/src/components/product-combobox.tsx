@@ -11,6 +11,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 type TestType = "Glide" | "Structure" | "Classic" | "Skating" | "Double Poling";
 type ProductCategory = "Glide product" | "Topping product" | "Structure tool";
@@ -41,6 +42,7 @@ export function ProductCombobox({
   onChange: (productId: number) => void;
   testId: string;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
   const allowed = useMemo(() => {
@@ -67,7 +69,7 @@ export function ProductCombobox({
       </PopoverTrigger>
       <PopoverContent className="w-[min(380px,calc(100vw-2rem))] p-0" align="start">
         <Command>
-          <CommandInput data-testid={`${testId}-search`} placeholder="Search products…" />
+          <CommandInput data-testid={`${testId}-search`} placeholder={t("products.searchPlaceholder")} />
           <CommandList>
             <CommandEmpty>No matches.</CommandEmpty>
             <CommandGroup heading="Products">

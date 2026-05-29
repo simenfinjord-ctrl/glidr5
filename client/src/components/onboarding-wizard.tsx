@@ -70,8 +70,8 @@ export default function OnboardingWizard({ onClose }: { onClose: () => void }) {
             {[
               { label: t("onboarding.step.weather.snowTemp"), placeholder: "−4°C", color: "border-sky-200 bg-sky-50 dark:bg-sky-900/20" },
               { label: t("onboarding.step.weather.airTemp"), placeholder: "−2°C", color: "border-blue-200 bg-blue-50 dark:bg-blue-900/20" },
-              { label: t("onboarding.step.weather.humidity"), placeholder: "Fuktig", color: "border-cyan-200 bg-cyan-50 dark:bg-cyan-900/20" },
-              { label: t("onboarding.step.weather.hardness"), placeholder: "Medium", color: "border-amber-200 bg-amber-50 dark:bg-amber-900/20" },
+              { label: t("onboarding.step.weather.humidity"), placeholder: t("onboarding.step.weather.humidityExample"), color: "border-cyan-200 bg-cyan-50 dark:bg-cyan-900/20" },
+              { label: t("onboarding.step.weather.hardness"), placeholder: t("onboarding.step.weather.hardnessExample"), color: "border-amber-200 bg-amber-50 dark:bg-amber-900/20" },
             ].map((f) => (
               <div key={f.label} className={`rounded-lg border px-2.5 py-2 ${f.color}`}>
                 <div className="text-[10px] text-muted-foreground mb-0.5">{f.label}</div>

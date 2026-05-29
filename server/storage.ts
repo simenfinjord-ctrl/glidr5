@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { eq, and, sql, inArray, isNull, isNotNull } from "drizzle-orm";
 import { db } from "./db";
 import {

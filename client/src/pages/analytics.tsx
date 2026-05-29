@@ -1,6 +1,7 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft, FileDown, ChevronDown, ChevronRight } from "lucide-react";
+import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft, FileDown, ChevronDown, ChevronRight, ArrowRight } from "lucide-react";
 import React from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import {
@@ -27,6 +28,7 @@ import { useI18n } from "@/lib/i18n";
 import { pdfDocument, pdfSection, pdfCards, pdfTable, openPdfWindow } from "@/lib/pdf-layout";
 import { useAuth } from "@/lib/auth";
 import { useLanguage } from "@/lib/language";
+import { useLocation } from "wouter";
 
 type Test = {
   id: number;
@@ -1812,16 +1814,15 @@ function CombinationSearch({
   weatherById: Map<number, Weather>;
 }) {
   const { t } = useI18n();
-  const [p1Id, setP1Id] = useState<number | null>(null);
-  const [p2Id, setP2Id] = useState<number | null>(null);
-  const [open1, setOpen1] = useState(false);
-  const [open2, setOpen2] = useState(false);
+  const [, navigate] = useLocation();
+  const [productIds, setProductIds] = useState<number[]>([]);
+  const [addOpen, setAddOpen] = useState(false);
   const [expandedTestId, setExpandedTestId] = useState<number | null>(null);
 
   const stats = useMemo(() => {
-    if (!p1Id || !p2Id || p1Id === p2Id) return null;
+    if (productIds.length < 2) return null;
 
-    // Find entries where BOTH products appear on the same ski (same entry)
+    // Find entries where ALL selected products appear on the same ski (same entry)
     const combined: { entry: TestEntry; test: Test }[] = [];
     for (const entry of allEntries) {
       const ids: number[] = [];
@@ -1832,7 +1833,7 @@ function CombinationSearch({
           if (!isNaN(n)) ids.push(n);
         }
       }
-      if (ids.includes(p1Id) && ids.includes(p2Id)) {
+      if (productIds.every((pid) => ids.includes(pid))) {
         const test = testsById.get(entry.testId);
         if (test) combined.push({ entry, test });
       }
@@ -1874,21 +1875,14 @@ function CombinationSearch({
       .map(({ entry, test }) => ({ entry, test, rank: getRank(entry) }));
 
     return { count: combined.length, avgRank, wins, winRate, conditionStats, best, recentTests };
-  }, [p1Id, p2Id, allEntries, testsById, weatherById]);
+  }, [productIds, allEntries, testsById, weatherById]);
 
-  const p1 = p1Id ? productsById.get(p1Id) : null;
-  const p2 = p2Id ? productsById.get(p2Id) : null;
-
-  function ProductPicker({
-    value, onChange, open, onOpenChange, placeholder, exclude,
-  }: { value: number | null; onChange: (id: number) => void; open: boolean; onOpenChange: (v: boolean) => void; placeholder: string; exclude?: number | null }) {
-    const p = value ? productsById.get(value) : null;
+  function AddProductPicker() {
     return (
-      <Popover open={open} onOpenChange={onOpenChange}>
+      <Popover open={addOpen} onOpenChange={setAddOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="h-9 flex-1 min-w-0 justify-between bg-background/70">
-            <span className={cn("truncate text-sm", !p && "text-muted-foreground")}>{p ? `${p.brand} ${p.name}` : placeholder}</span>
-            <ChevronsUpDown className="h-4 w-4 opacity-60 shrink-0 ml-1" />
+          <Button variant="outline" size="sm" className="h-8 gap-1.5">
+            <span className="text-sm">+ Add product</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[min(380px,calc(100vw-2rem))] p-0" align="start">
@@ -1897,11 +1891,13 @@ function CombinationSearch({
             <CommandList>
               <CommandEmpty>No matches.</CommandEmpty>
               <CommandGroup>
-                {products.filter((p) => p.id !== exclude).map((p) => (
-                  <CommandItem key={p.id} value={`${p.brand} ${p.name}`} onSelect={() => { onChange(p.id); onOpenChange(false); }}>
+                {products.filter((p) => !productIds.includes(p.id)).map((p) => (
+                  <CommandItem key={p.id} value={`${p.brand} ${p.name}`} onSelect={() => {
+                    setProductIds([...productIds, p.id]);
+                    setAddOpen(false);
+                  }}>
                     <span className="truncate">{p.brand} {p.name}</span>
                     <span className="ml-auto text-xs text-muted-foreground">{p.category}</span>
-                    <Check className={cn("ml-2 h-4 w-4", value === p.id ? "opacity-100" : "opacity-0")} />
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -1919,23 +1915,40 @@ function CombinationSearch({
           <TrendingUp className="h-4 w-4 text-violet-600" />
         </div>
         <h2 className="text-base font-semibold">Combination search</h2>
-        <span className="text-xs text-muted-foreground">— find tests where two products were used together on the same ski</span>
+        <span className="text-xs text-muted-foreground">— find tests where all selected products were used together on the same ski</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <ProductPicker value={p1Id} onChange={setP1Id} open={open1} onOpenChange={setOpen1} placeholder="Product 1…" exclude={p2Id} />
-        <span className="text-sm font-bold text-muted-foreground">+</span>
-        <ProductPicker value={p2Id} onChange={setP2Id} open={open2} onOpenChange={setOpen2} placeholder="Product 2…" exclude={p1Id} />
-        {(p1Id || p2Id) && (
-          <Button variant="ghost" size="sm" onClick={() => { setP1Id(null); setP2Id(null); }}>
+        {productIds.map((pid) => {
+          const p = productsById.get(pid);
+          return (
+            <span key={pid} className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 dark:bg-violet-900/40 px-3 py-1 text-sm font-medium text-violet-800 dark:text-violet-200">
+              {p ? `${p.brand} ${p.name}` : `#${pid}`}
+              <button
+                onClick={() => setProductIds(productIds.filter((id) => id !== pid))}
+                className="ml-0.5 rounded-full hover:bg-violet-200 dark:hover:bg-violet-800 p-0.5 transition-colors"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          );
+        })}
+        <AddProductPicker />
+        {productIds.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setProductIds([])}>
             <X className="h-4 w-4" />
           </Button>
         )}
       </div>
 
-      {p1Id && p2Id && !stats && (
+      {productIds.length >= 2 && !stats && (
         <p className="text-sm text-muted-foreground">
-          No tests found where <strong>{p1?.brand} {p1?.name}</strong> and <strong>{p2?.brand} {p2?.name}</strong> were used together on the same ski.
+          No tests found where all selected products were used together on the same ski.
+        </p>
+      )}
+      {productIds.length < 2 && (
+        <p className="text-sm text-muted-foreground">
+          Select at least 2 products to search for tests where they were used together.
         </p>
       )}
 
@@ -2012,6 +2025,7 @@ function CombinationSearch({
                     <th className="text-left px-3 py-2 text-xs font-medium">Location</th>
                     <th className="text-center px-3 py-2 text-xs font-medium">Ski #</th>
                     <th className="text-center px-3 py-2 text-xs font-medium">Rank</th>
+                    <th className="w-8 px-2 py-2" />
                   </tr>
                 </thead>
                 <tbody>
@@ -2019,8 +2033,6 @@ function CombinationSearch({
                     const isExpanded = expandedTestId === entry.id;
                     const w = test.weatherId ? weatherById.get(test.weatherId) ?? null : null;
                     const methodologyParts = entry.methodology ? entry.methodology.split("|").map((s) => s.trim()) : [];
-                    const p1App = methodologyParts[0] ?? null;
-                    const p2App = methodologyParts[1] ?? null;
                     return (
                       <React.Fragment key={`${test.id}-${entry.id}-${i}`}>
                         <tr
@@ -2046,26 +2058,34 @@ function CombinationSearch({
                               )}>{rank}</span>
                             ) : <span className="text-muted-foreground">—</span>}
                           </td>
+                          <td className="px-2 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              title="Open test"
+                              onClick={() => navigate(`/tests/${test.id}`)}
+                              className="inline-flex items-center justify-center h-6 w-6 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
                         </tr>
                         {isExpanded && (
                           <tr className="border-t bg-muted/20">
-                            <td colSpan={5} className="px-4 py-3">
+                            <td colSpan={6} className="px-4 py-3">
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                 {/* Application / methodology */}
                                 <div className="space-y-1.5">
                                   <div className="font-semibold text-muted-foreground uppercase tracking-wide text-[10px]">Methodology</div>
-                                  {p1 && (
-                                    <div className="flex items-start gap-1.5">
-                                      <span className="font-medium shrink-0">{p1.brand} {p1.name}:</span>
-                                      <span className="text-muted-foreground">{p1App ? parseApplication(p1App).label || p1App : "—"}</span>
-                                    </div>
-                                  )}
-                                  {p2 && (
-                                    <div className="flex items-start gap-1.5">
-                                      <span className="font-medium shrink-0">{p2.brand} {p2.name}:</span>
-                                      <span className="text-muted-foreground">{p2App ? parseApplication(p2App).label || p2App : "—"}</span>
-                                    </div>
-                                  )}
+                                  {productIds.map((pid, idx) => {
+                                    const p = productsById.get(pid);
+                                    const appStr = methodologyParts[idx] ?? null;
+                                    if (!p) return null;
+                                    return (
+                                      <div key={pid} className="flex items-start gap-1.5">
+                                        <span className="font-medium shrink-0">{p.brand} {p.name}:</span>
+                                        <span className="text-muted-foreground">{appStr ? parseApplication(appStr).label || appStr : "—"}</span>
+                                      </div>
+                                    );
+                                  })}
                                   {entry.feelingRank != null && (
                                     <div className="flex items-center gap-1.5 pt-0.5">
                                       <span className="text-muted-foreground">Feeling rank:</span>
@@ -2303,7 +2323,7 @@ function getProductStats(
   return { product, totalTests: bestRankPerTest.size, totalWins, avgRank, winRate, performanceByMonth, testRanks };
 }
 
-function ProductCompare({
+export function ProductCompare({
   products,
   allEntries,
   productsById,
@@ -3484,16 +3504,6 @@ export default function Analytics() {
                 allEntries={filteredEntries}
                 productsById={productsById}
                 testsById={testsById}
-              />
-            </ErrorBoundary>
-            <ErrorBoundary label="Compare">
-              <ProductCompare
-                products={products}
-                allEntries={allEntries}
-                productsById={productsById}
-                testsById={testsById}
-                filteredTestIds={filteredTestIds}
-                weatherById={weatherById}
               />
             </ErrorBoundary>
             <ErrorBoundary label="Combination search">

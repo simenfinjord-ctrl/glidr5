@@ -1,9 +1,11 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { Fragment, useMemo, useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer, Droplets, Snowflake, ChevronDown, Archive, ArchiveRestore, MoreHorizontal, LayoutGrid, LayoutList, Table2 } from "lucide-react";
+import { ProductCompare } from "@/pages/analytics";
 import { EmptyState } from "@/components/empty-state";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -107,9 +109,11 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
       onSaved();
     },
     onError: (e) => {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      const isLimitError = msg.toLowerCase().includes("limit");
       toast({
         title: "Could not add product",
-        description: e instanceof Error ? e.message : "Unknown error",
+        description: isLimitError ? t("products.limitReached") : msg,
         variant: "destructive",
       });
     },
@@ -375,7 +379,7 @@ export default function Products() {
   const { user } = useAuth();
   const isAdmin = !!user?.isAdmin || !!user?.isTeamAdmin;
   const [open, setOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"products" | "storage" | "stock-changes" | "archived">("products");
+  const [viewMode, setViewMode] = useState<"products" | "storage" | "stock-changes" | "archived" | "compare">("products");
   const [productLayout, setProductLayout] = useState<"grid" | "list" | "table">("grid");
   const [stockChangeGroupFilter, setStockChangeGroupFilter] = useState("All");
   const [stockSort, setStockSort] = useState<"asc" | "desc" | "alpha">("asc");
@@ -413,6 +417,45 @@ export default function Products() {
     enabled: isAdmin,
   });
   const groupNames = apiGroups.map((g) => g.name);
+
+  // Data for Compare view
+  const { data: compareTests = [] } = useQuery<any[]>({
+    queryKey: ["/api/tests"],
+    enabled: viewMode === "compare",
+  });
+  const compareTestIds = useMemo(() => compareTests.map((t: any) => t.id), [compareTests]);
+  const { data: compareEntriesAll = [] } = useQuery<any[]>({
+    queryKey: ["/api/tests/entries/all-analytics", compareTestIds],
+    enabled: viewMode === "compare" && compareTestIds.length > 0,
+    queryFn: async () => {
+      const results = await Promise.all(
+        compareTestIds.map((id: number) =>
+          fetch(`/api/tests/${id}/entries`, { credentials: "include" }).then((r) => r.ok ? r.json() : [])
+        )
+      );
+      return results.flat();
+    },
+  });
+  const { data: compareWeatherAll = [] } = useQuery<any[]>({
+    queryKey: ["/api/weather"],
+    enabled: viewMode === "compare",
+  });
+  const compareProductsById = useMemo(() => {
+    const map = new Map<number, any>();
+    for (const p of products) map.set(p.id, p);
+    return map;
+  }, [products]);
+  const compareTestsById = useMemo(() => {
+    const map = new Map<number, any>();
+    for (const t of compareTests) map.set(t.id, t);
+    return map;
+  }, [compareTests]);
+  const compareWeatherById = useMemo(() => {
+    const map = new Map<number, any>();
+    for (const w of compareWeatherAll) map.set(w.id, w);
+    return map;
+  }, [compareWeatherAll]);
+  const compareFilteredTestIds = useMemo(() => new Set<number>(compareTests.map((t: any) => t.id)), [compareTests]);
 
   const uniqueGroups = useMemo(() => {
     const set = new Set<string>();
@@ -554,9 +597,9 @@ export default function Products() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl">{viewMode === "stock-changes" ? t("products.stockHistory") : viewMode === "storage" ? t("products.stock") : viewMode === "archived" ? "Archived Products" : t("products.title")}</h1>
+            <h1 className="text-2xl sm:text-3xl">{viewMode === "stock-changes" ? t("products.stockHistory") : viewMode === "storage" ? t("products.stock") : viewMode === "archived" ? "Archived Products" : viewMode === "compare" ? "Compare Products" : t("products.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-products-subtitle">
-              {viewMode === "stock-changes" ? `${stockChanges.length} log entries` : viewMode === "archived" ? `${filteredArchived.length} archived` : t("products.subtitle", { count: filtered.length })}
+              {viewMode === "stock-changes" ? `${stockChanges.length} log entries` : viewMode === "archived" ? `${filteredArchived.length} archived` : viewMode === "compare" ? "Compare product performance" : t("products.subtitle", { count: filtered.length })}
             </p>
           </div>
 
@@ -589,6 +632,15 @@ export default function Products() {
             >
               <History className="mr-2 h-4 w-4" />
               Stock Changes
+            </Button>
+            <Button
+              variant={viewMode === "compare" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode(viewMode === "compare" ? "products" : "compare")}
+              data-testid="button-toggle-compare"
+            >
+              <FlaskConical className="mr-2 h-4 w-4" />
+              Compare
             </Button>
             {(viewMode === "products" || viewMode === "archived") && (
               <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5 gap-0.5">
@@ -775,7 +827,16 @@ export default function Products() {
           </div>
         </Card>)}
 
-        {viewMode === "archived" ? (
+        {viewMode === "compare" ? (
+          <ProductCompare
+            products={products}
+            allEntries={compareEntriesAll}
+            productsById={compareProductsById}
+            testsById={compareTestsById}
+            filteredTestIds={compareFilteredTestIds}
+            weatherById={compareWeatherById}
+          />
+        ) : viewMode === "archived" ? (
           <div>
             {filteredArchived.length === 0 ? (
               <Card className="fs-card rounded-2xl">

@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
@@ -14,9 +15,6 @@ export async function hashPassword(plain: string): Promise<string> {
 }
 
 export async function verifyPassword(plain: string, hashed: string): Promise<boolean> {
-  if (!hashed.startsWith("$2")) {
-    return plain === hashed;
-  }
   return bcrypt.compare(plain, hashed);
 }
 
@@ -80,12 +78,16 @@ export async function setupAuth(app: Express) {
   const REMEMBER_ME_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
   const DEFAULT_MAX_AGE = 24 * 60 * 60 * 1000;
 
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) throw new Error("SESSION_SECRET environment variable is required");
+
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "glidr-dev-secret-change-me",
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     proxy: true,
     cookie: {
+      httpOnly: true,
       maxAge: DEFAULT_MAX_AGE,
       secure: process.env.SCREENSHOT_MODE === "1" ? false : true,
       sameSite: process.env.SCREENSHOT_MODE === "1" ? "lax" as const : "none" as const,

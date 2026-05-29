@@ -1,5 +1,7 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { getUncachableGoogleSheetClient } from './googleSheets';
 import { storage } from './storage';
+import { pool } from './db';
 
 function extractSpreadsheetId(url: string): string | null {
   const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
@@ -71,16 +73,23 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
   try {
     const sheets = await getUncachableGoogleSheetClient();
 
-    const [allGroups, allTests, allWeather, allSeries, allProducts, allAthletes, allGrindProfiles, allGrindingRecords] = await Promise.all([
+    const [allGroups, allTests, allWeather, allSeries, allProducts, allArchivedProducts, allAthletes, allGrindProfiles, allGrindingRecords] = await Promise.all([
       storage.listGroups(teamId),
       storage.listAllTestsForTeam(teamId),
       storage.listAllWeatherForTeam(teamId),
       storage.listSeries('', true, teamId),
       storage.listProducts('', true, teamId),
+      storage.listArchivedProducts('', true, teamId),
       storage.listAthletes(0, true, teamId),
       storage.listGrindProfiles(teamId),
       storage.listGrindingRecords('', true, teamId),
     ]);
+
+    const racePrepsResult = await (pool as any).query(
+      `SELECT id, date, location, discipline, product_ids, structure_ids, kick_product_ids, weather_id, notes, created_at FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
+      [teamId]
+    );
+    const allRacePreps = racePrepsResult.rows;
 
     const testIds = allTests.map((t: any) => t.id);
     const allEntries = await storage.listAllEntriesForTests(testIds);
@@ -142,9 +151,13 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       rows.push([]);
 
       rows.push(['=== PRODUCTS ===']);
-      rows.push(['ID', 'Category', 'Brand', 'Name', 'Stock']);
+      rows.push(['ID', 'Category', 'Brand', 'Name', 'Stock', 'Archived']);
       for (const p of groupProducts) {
-        rows.push([p.id, p.category, p.brand, p.name, p.stockQuantity ?? 0]);
+        rows.push([p.id, p.category, p.brand, p.name, p.stockQuantity ?? 0, '']);
+      }
+      const groupArchivedProducts = allArchivedProducts.filter((p: any) => p.groupScope === groupName);
+      for (const p of groupArchivedProducts) {
+        rows.push([p.id, p.category, p.brand, p.name, p.stockQuantity ?? 0, 'Yes']);
       }
       rows.push([]);
 
@@ -355,20 +368,49 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
     }
     await clearAndWrite(sheets, spreadsheetId, grindsTitle, grindRows);
 
+    // Race Preps sheet
+    const racePrepsTitle = 'Race Preps';
+    await ensureSheet(sheets, spreadsheetId, racePrepsTitle);
+    const racePrepRows: any[][] = [
+      ['GLIDR RACE PREPS — ' + team.name],
+      ['Generated: ' + new Date().toISOString()],
+      [],
+      ['ID', 'Date', 'Location', 'Discipline', 'Product IDs', 'Structure IDs', 'Kick Product IDs', 'Weather ID', 'Notes', 'Created At'],
+    ];
+    for (const rp of allRacePreps) {
+      racePrepRows.push([
+        rp.id,
+        rp.date || '',
+        rp.location || '',
+        rp.discipline || '',
+        rp.product_ids || '',
+        rp.structure_ids || '',
+        rp.kick_product_ids || '',
+        rp.weather_id || '',
+        rp.notes || '',
+        rp.created_at || '',
+      ]);
+    }
+    await clearAndWrite(sheets, spreadsheetId, racePrepsTitle, racePrepRows);
+
     const overviewTitle = 'Overview';
     await ensureSheet(sheets, spreadsheetId, overviewTitle);
+    const now = new Date().toISOString();
     const overviewRows: any[][] = [
-      ['GLIDR BACKUP OVERVIEW'],
+      ['GLIDR DATABASE BACKUP'],
       ['Team', team.name],
-      ['Last backup', new Date().toISOString()],
+      ['Backup timestamp', now],
       [],
-      ['Groups', groupNames.join(', ')],
-      ['Total tests', allTests.length],
-      ['Total weather logs', allWeather.length],
-      ['Total products', allProducts.length],
-      ['Total series', allSeries.length],
-      ['Total athletes', allAthletes.length],
-      ['Total race skis', allRaceSkis.length],
+      ['=== COUNTS ==='],
+      ['Tests', allTests.length],
+      ['Weather logs', allWeather.length],
+      ['Products (active)', allProducts.length],
+      ['Products (archived)', allArchivedProducts.length],
+      ['Series', allSeries.length],
+      ['Athletes', allAthletes.length],
+      ['Race skis', allRaceSkis.length],
+      ['Race preps', allRacePreps.length],
+      ['Grind profiles', allGrindProfiles.length],
       [],
       ['=== SHEETS IN THIS WORKBOOK ==='],
     ];
@@ -378,7 +420,32 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
     for (const a of allAthletes) {
       overviewRows.push([`Athlete: ${a.name}`]);
     }
+    overviewRows.push(['Grinds']);
+    overviewRows.push(['Race Preps']);
     await clearAndWrite(sheets, spreadsheetId, overviewTitle, overviewRows);
+
+    // Bold header rows using batchUpdate
+    try {
+      const meta = await sheets.spreadsheets.get({ spreadsheetId });
+      const formatRequests: any[] = [];
+      for (const sheet of (meta.data.sheets || [])) {
+        const sheetId = sheet.properties?.sheetId;
+        if (sheetId === undefined) continue;
+        // Bold row 0 (first row) of every sheet
+        formatRequests.push({
+          repeatCell: {
+            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 26 },
+            cell: { userEnteredFormat: { textFormat: { bold: true }, textFormatRuns: undefined } },
+            fields: 'userEnteredFormat.textFormat.bold',
+          },
+        });
+      }
+      if (formatRequests.length > 0) {
+        await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: formatRequests } });
+      }
+    } catch (fmtErr) {
+      console.warn('[Backup] Could not apply bold formatting:', fmtErr);
+    }
 
     await storage.updateTeam(teamId, { lastBackupAt: new Date().toISOString() });
 

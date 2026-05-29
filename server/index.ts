@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import * as Sentry from "@sentry/node";
 if (process.env.SENTRY_DSN) {
   Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.NODE_ENV ?? "development" });
@@ -120,6 +121,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Apply general rate limit to all /api routes
+  app.use("/api", generalApiLimit);
+
   await setupAuth(app);
   try {
     await seedDatabase();

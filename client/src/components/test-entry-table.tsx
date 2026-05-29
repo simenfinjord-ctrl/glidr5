@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -5,6 +6,7 @@ import { ProductCombobox } from "@/components/product-combobox";
 import { RaceSkiCombobox } from "@/components/raceski-combobox";
 import { PlusCircle, X, Plus, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 
 type TestType = "Glide" | "Structure" | "Grind" | "Classic" | "Skating" | "Double Poling";
 
@@ -121,6 +123,8 @@ export function TestEntryTable({
   grindProfiles?: GrindProfile[];
   visibleGrindCols?: string[];
 }) {
+  const { t } = useI18n();
+
   const roundRanks = useMemo(() => {
     return distanceLabels.map((_, roundIdx) => {
       const vals = rows
@@ -191,7 +195,7 @@ export function TestEntryTable({
                       onDistanceLabelsChange(next);
                     }}
                     className="h-7 w-24 text-xs bg-background"
-                    placeholder={`Round ${roundIdx + 1}`}
+                    placeholder={t("tests.roundLabel", { n: roundIdx + 1 })}
                     data-testid={`input-distance-label-${roundIdx}`}
                   />
                   {distanceLabels.length > 1 && (
@@ -351,7 +355,7 @@ export function TestEntryTable({
                           setRows(next);
                         }}
                         className="h-6 text-[11px] bg-background/60 border-dashed px-2"
-                        placeholder="Application…"
+                        placeholder={t("tests.appInputPlaceholder")}
                         data-testid={`input-application-0-${row.id}`}
                       />
                     </div>
@@ -407,7 +411,7 @@ export function TestEntryTable({
                               setRows(next);
                             }}
                             className="h-6 text-[11px] bg-background/60 border-dashed px-2"
-                            placeholder="Application…"
+                            placeholder={t("tests.appInputPlaceholder")}
                             data-testid={`input-application-${addIdx + 1}-${row.id}`}
                           />
                         </div>
@@ -484,7 +488,7 @@ export function TestEntryTable({
                             setRows(next);
                           }}
                           className="h-9 bg-background"
-                          placeholder="e.g., SG12"
+                          placeholder={t("tests.productPlaceholder")}
                           data-testid={`input-grind-stone-${row.id}`}
                         />
                       ) : col === "pattern" ? (
@@ -495,7 +499,7 @@ export function TestEntryTable({
                             setRows(next);
                           }}
                           className="h-9 bg-background"
-                          placeholder="e.g., 0.5mm"
+                          placeholder={t("tests.structurePlaceholder")}
                           data-testid={`input-grind-pattern-${row.id}`}
                         />
                       ) : (

@@ -1,7 +1,9 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Search, ListChecks, Package, Snowflake } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 import {
   CommandDialog, Command, CommandEmpty, CommandGroup,
   CommandInput, CommandItem, CommandList,
@@ -23,6 +25,7 @@ const TYPE_ICON = {
 const TYPE_LABEL = { test: "Tests", product: "Products", series: "Test Skis" };
 
 export function CommandSearch() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [, navigate] = useLocation();
@@ -71,7 +74,7 @@ export function CommandSearch() {
       <CommandDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setQuery(""); }}>
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder="Search tests, products, skis…"
+            placeholder={t("search.placeholder")}
             value={query}
             onValueChange={setQuery}
             data-testid="input-global-search"

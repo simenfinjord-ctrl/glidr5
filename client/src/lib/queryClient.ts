@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { setCachedData, getCachedData } from "./offline-db";
 

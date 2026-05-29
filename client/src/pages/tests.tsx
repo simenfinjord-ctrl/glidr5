@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { Fragment, useMemo, useState, useRef, useCallback } from "react";
 import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus, ChevronDown, Calendar } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -181,6 +182,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     rank0km: number | null;
     methodology: string;
     feelingRank: number | null;
+    applications: string[];
   }>>([]);
   const [editProducts, setEditProducts] = useState<Array<{
     skiNumber: number;
@@ -197,6 +199,11 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     setDragOver(false);
     setEditEntries([]);
     setEditProducts([]);
+    setEditDate("");
+    setEditLocation("");
+    setEditTestType("");
+    setEditTestName("");
+    setEditNotes("");
   }
 
   async function processFile(file: File) {
@@ -227,13 +234,18 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
       setEditTestType(data.testType || "Glide");
       setEditTestName(data.testName || "");
       setEditNotes(data.notes || "");
-      setEditEntries((data.entries || []).map((e: any) => ({
-        skiNumber: e.skiNumber,
-        result0kmCmBehind: e.result0kmCmBehind ?? null,
-        rank0km: e.rank0km ?? null,
-        methodology: e.methodology || "",
-        feelingRank: e.feelingRank ?? null,
-      })));
+      setEditEntries((data.entries || []).map((e: any) => {
+        const methodology = e.methodology || "";
+        const applications = methodology ? methodology.split("|") : [];
+        return {
+          skiNumber: e.skiNumber,
+          result0kmCmBehind: e.result0kmCmBehind ?? null,
+          rank0km: e.rank0km ?? null,
+          methodology,
+          feelingRank: e.feelingRank ?? null,
+          applications,
+        };
+      }));
       setEditProducts((data.products || []).map((p: any) => ({
         skiNumber: p.skiNumber,
         brand: p.brand || "",
@@ -270,7 +282,10 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         testType: editTestType || analysis.testType || "Glide",
         testName: editTestName || null,
         notes: editNotes || null,
-        entries: editEntries,
+        entries: editEntries.map((e) => ({
+          ...e,
+          methodology: e.applications.length > 0 ? e.applications.join("|") : e.methodology,
+        })),
         products: editProducts,
       };
       const res = await fetch("/api/tests/from-picture/create", {
@@ -509,7 +524,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                 <button
                   type="button"
                   className="text-xs text-primary hover:underline"
-                  onClick={() => setEditEntries((prev) => [...prev, { skiNumber: 0, result0kmCmBehind: null, rank0km: null, methodology: "", feelingRank: null }])}
+                  onClick={() => setEditEntries((prev) => [...prev, { skiNumber: 0, result0kmCmBehind: null, rank0km: null, methodology: "", feelingRank: null, applications: [] }])}
                 >
                   + Add row
                 </button>
@@ -517,52 +532,71 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               {editEntries.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic">No entries</p>
               ) : (
-                <div className="flex flex-col gap-1.5">
-                  <div className="grid gap-1 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold" style={{ gridTemplateColumns: "2rem 3rem 3rem 3rem 1fr 1.5rem" }}>
-                    <span>{t("tests.skiCol")}</span><span>{t("tests.resultCol")}</span><span>{t("common.rank")}</span><span>{t("tests.feelCol")}</span><span>{t("tests.methodCol")}</span><span></span>
+                <div className="flex flex-col gap-2">
+                  <div className="grid gap-1 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold" style={{ gridTemplateColumns: "2rem 3rem 3rem 3rem 1.5rem" }}>
+                    <span>{t("tests.skiCol")}</span><span>{t("tests.resultCol")}</span><span>{t("common.rank")}</span><span>{t("tests.feelCol")}</span><span></span>
                   </div>
-                  {editEntries.map((e, i) => (
-                    <div key={i} className="grid gap-1 items-center" style={{ gridTemplateColumns: "2rem 3rem 3rem 3rem 1fr 1.5rem" }}>
-                      <input
-                        type="number"
-                        value={e.skiNumber || ""}
-                        onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, skiNumber: parseInt(ev.target.value) || 0 } : r))}
-                        className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
-                      />
-                      <input
-                        type="number"
-                        value={e.result0kmCmBehind ?? ""}
-                        onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, result0kmCmBehind: ev.target.value !== "" ? parseFloat(ev.target.value) : null } : r))}
-                        className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
-                      />
-                      <input
-                        type="number"
-                        value={e.rank0km ?? ""}
-                        onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, rank0km: ev.target.value !== "" ? parseInt(ev.target.value) : null } : r))}
-                        className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
-                      />
-                      <input
-                        type="number"
-                        value={e.feelingRank ?? ""}
-                        onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, feelingRank: ev.target.value !== "" ? parseInt(ev.target.value) : null } : r))}
-                        className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
-                      />
-                      <input
-                        type="text"
-                        value={e.methodology}
-                        onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, methodology: ev.target.value } : r))}
-                        placeholder="method"
-                        className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setEditEntries((prev) => prev.filter((_, j) => j !== i))}
-                        className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-muted text-sm"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                  {editEntries.map((e, i) => {
+                    const skiProducts = editProducts.filter((p) => p.skiNumber === e.skiNumber);
+                    return (
+                      <div key={i} className="flex flex-col gap-1">
+                        <div className="grid gap-1 items-center" style={{ gridTemplateColumns: "2rem 3rem 3rem 3rem 1.5rem" }}>
+                          <input
+                            type="number"
+                            value={e.skiNumber || ""}
+                            onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, skiNumber: parseInt(ev.target.value) || 0 } : r))}
+                            className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
+                          />
+                          <input
+                            type="number"
+                            value={e.result0kmCmBehind ?? ""}
+                            onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, result0kmCmBehind: ev.target.value !== "" ? parseFloat(ev.target.value) : null } : r))}
+                            className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
+                          />
+                          <input
+                            type="number"
+                            value={e.rank0km ?? ""}
+                            onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, rank0km: ev.target.value !== "" ? parseInt(ev.target.value) : null } : r))}
+                            className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
+                          />
+                          <input
+                            type="number"
+                            value={e.feelingRank ?? ""}
+                            onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, feelingRank: ev.target.value !== "" ? parseInt(ev.target.value) : null } : r))}
+                            className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setEditEntries((prev) => prev.filter((_, j) => j !== i))}
+                            className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-muted text-sm"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {skiProducts.length > 0 && (
+                          <div className="flex flex-col gap-1 pl-2">
+                            {skiProducts.map((p, pi) => (
+                              <div key={pi} className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-muted-foreground min-w-0 truncate max-w-[80px]">{p.brand || "Product"}:</span>
+                                <input
+                                  type="text"
+                                  value={e.applications[pi] ?? ""}
+                                  onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => {
+                                    if (j !== i) return r;
+                                    const apps = [...r.applications];
+                                    apps[pi] = ev.target.value;
+                                    return { ...r, applications: apps };
+                                  }))}
+                                  placeholder={t("tests.appInputPlaceholder")}
+                                  className="h-6 flex-1 rounded border border-input bg-background px-1.5 text-xs"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

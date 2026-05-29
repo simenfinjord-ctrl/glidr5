@@ -1,3 +1,4 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
 // Google Sheets integration
 // Supports two auth modes:
 //   1. Service Account (Render / any host): set GOOGLE_SERVICE_ACCOUNT_JSON env var

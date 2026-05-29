@@ -11,6 +11,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 type RaceSkiOption = {
   id: number;
@@ -58,6 +59,7 @@ export function RaceSkiCombobox({
   onChange: (id: number | undefined) => void;
   testId: string;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
   const selected = useMemo(
@@ -84,7 +86,7 @@ export function RaceSkiCombobox({
         <Command>
           <CommandInput
             data-testid={`${testId}-search`}
-            placeholder="Search serial number, ski ID, athlete…"
+            placeholder={t("raceski.searchPlaceholder")}
           />
           <CommandList>
             <CommandEmpty>No matching skis.</CommandEmpty>

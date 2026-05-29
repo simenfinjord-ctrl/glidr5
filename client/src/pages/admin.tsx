@@ -2499,7 +2499,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
 
 export default function Admin() {
   const { t } = useI18n();
-  const { user, isSuperAdmin, canManage } = useAuth();
+  const { user, isSuperAdmin, isTeamAdmin, canManage } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [createOpen, setCreateOpen] = useState(false);

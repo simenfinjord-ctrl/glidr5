@@ -849,6 +849,54 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  // ── Download JSON export ──────────────────────────────────────────────────
+  app.get("/api/teams/:id/export-json", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const id = parseInt(req.params.id);
+    if (u.isAdmin !== 1 && !(u.isTeamAdmin === 1 && u.teamId === id)) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    const team = await storage.getTeam(id);
+    if (!team) return res.status(404).json({ message: "Not found" });
+    const { buildTeamJsonExport } = await import('./backup');
+    const json = await buildTeamJsonExport(id);
+    const filename = `glidr-${team.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-data.json`;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(json);
+  });
+
+  // ── Download Sheet as PDF ─────────────────────────────────────────────────
+  app.get("/api/teams/:id/export-pdf", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const id = parseInt(req.params.id);
+    if (u.isAdmin !== 1 && !(u.isTeamAdmin === 1 && u.teamId === id)) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    const team = await storage.getTeam(id);
+    if (!team?.backupSheetUrl) return res.status(400).json({ message: "No backup sheet configured" });
+    const spreadsheetId = team.backupSheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+    if (!spreadsheetId) return res.status(400).json({ message: "Invalid sheet URL" });
+
+    const { getGoogleDriveClient } = await import('./googleSheets');
+    const driveClient = getGoogleDriveClient();
+    if (!driveClient) return res.status(503).json({ message: "Service account not configured" });
+
+    const authClient = await driveClient.auth.getClient() as any;
+    const tokenResp = await authClient.getAccessToken();
+    const pdfResp = await fetch(
+      `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=pdf&portrait=false&size=A4`,
+      { headers: { Authorization: `Bearer ${tokenResp.token}` } }
+    );
+    if (!pdfResp.ok) return res.status(502).json({ message: "PDF export failed" });
+
+    const filename = `glidr-${team.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-backup.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    const buf = Buffer.from(await pdfResp.arrayBuffer());
+    res.send(buf);
+  });
+
   app.post("/api/teams/:id/backup", requireAuth, async (req, res) => {
     const u = req.user!;
     const id = parseInt(req.params.id);

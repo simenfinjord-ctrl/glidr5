@@ -4186,17 +4186,48 @@ export default function Admin() {
                 </div>
                 <h2 className="text-sm font-semibold text-foreground">Google Drive Backup</h2>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">
-                Every 30 minutes, Glidr uploads a full JSON export and a PDF of the Google Sheet to a folder in your Google Drive.
-                New files replace the old ones — no build-up of duplicates.
+              <p className="text-xs text-muted-foreground mb-3">
+                Download a complete JSON export or a PDF of the backup sheet at any time. You can also connect a
+                Google Shared Drive folder for fully automatic uploads every 30 minutes.
               </p>
-              <div className="rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50/40 dark:bg-blue-950/20 p-3 mb-4 text-[11px] text-blue-800 dark:text-blue-300 space-y-1">
-                <p className="font-semibold">How to set up:</p>
-                <ol className="list-decimal pl-4 space-y-1">
-                  <li>In <strong>Google Cloud Console</strong>, enable the <strong>Google Drive API</strong> for your project (same project as the service account).</li>
-                  <li>Go to <strong>Google Drive</strong>, create a new folder (e.g. "Glidr Backup").</li>
-                  <li>Right-click the folder → <strong>Share</strong> → add the service account email (shown in the green card above) with <strong>Editor</strong> access.</li>
-                  <li>Copy the folder URL (it looks like <code className="font-mono bg-blue-100 dark:bg-blue-900 px-1 rounded">https://drive.google.com/drive/folders/…</code>) and paste it below.</li>
+
+              {/* ── Always-available: manual download buttons ── */}
+              <div className="space-y-2 mb-4">
+                {teams.map((team) => (
+                  <div key={`dl-${team.id}`} className="rounded-xl border border-border bg-muted/20 p-3">
+                    <div className="text-xs font-medium text-foreground mb-2">{team.name}</div>
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={`/api/teams/${team.id}/export-json`}
+                        download
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Download JSON
+                      </a>
+                      {team.backupSheetUrl && (
+                        <a
+                          href={`/api/teams/${team.id}/export-pdf`}
+                          download
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Download PDF
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── Shared Drive auto-upload (Google Workspace only) ── */}
+              <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20 p-3 mb-3 text-[11px] text-amber-800 dark:text-amber-300 space-y-1">
+                <p className="font-semibold">⚠ Automatic Drive upload requires a Shared Drive (Google Workspace)</p>
+                <p>Google service accounts cannot store files in a personal My Drive. To use automatic upload you need a <strong>Shared Drive</strong> (available on Google Workspace / G Suite):</p>
+                <ol className="list-decimal pl-4 space-y-1 mt-1">
+                  <li>In Google Drive, create a <strong>Shared Drive</strong> (not a regular folder).</li>
+                  <li>Click <strong>Manage members</strong> → add the service account email (shown in the green card above) as <strong>Contributor</strong>.</li>
+                  <li>Copy the Shared Drive URL and paste it below.</li>
                 </ol>
               </div>
               <div className="space-y-3">
@@ -4206,11 +4237,11 @@ export default function Admin() {
                   const hasDriveFolder = !!(team as any).driveFolderId;
                   return (
                     <div key={`drive-${team.id}`} className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
-                      <div className="text-xs font-medium text-foreground">{team.name}</div>
+                      <div className="text-xs font-medium text-foreground">{team.name} — Shared Drive URL</div>
                       <div className="flex gap-2 items-center">
                         <input
                           className="flex-1 rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-mono"
-                          placeholder="https://drive.google.com/drive/folders/…"
+                          placeholder="https://drive.google.com/drive/folders/… (Shared Drive only)"
                           value={driveInputVal}
                           onChange={(e) => setDriveFolderInputs(prev => ({ ...prev, [team.id]: e.target.value }))}
                         />
@@ -4229,14 +4260,13 @@ export default function Admin() {
                           variant="outline"
                           disabled={!hasDriveFolder || runDriveBackupMutation.isPending}
                           onClick={() => runDriveBackupMutation.mutate(team.id)}
-                          title="Run Drive backup now"
                         >
                           {runDriveBackupMutation.isPending ? (
                             <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                           ) : (
                             <Download className="h-3.5 w-3.5" />
                           )}
-                          <span className="ml-1 text-xs">Backup now</span>
+                          <span className="ml-1 text-xs">Upload now</span>
                         </Button>
                         {hasDriveFolder && (
                           <a
@@ -4245,16 +4275,10 @@ export default function Admin() {
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
                           >
-                            Open folder ↗
+                            Open ↗
                           </a>
                         )}
                       </div>
-                      {hasDriveFolder && (
-                        <div className="text-[10px] text-muted-foreground">
-                          Files: <code className="font-mono">glidr-{team.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-data.json</code>{" "}
-                          &amp; <code className="font-mono">glidr-{team.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-backup.pdf</code>
-                        </div>
-                      )}
                     </div>
                   );
                 })}

@@ -766,6 +766,60 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
 
 // ── Google Drive backup ───────────────────────────────────────────────────────
 
+// ── Shared JSON export builder (used by Drive backup + download route) ───────
+
+export async function buildTeamJsonExport(teamId: number): Promise<string> {
+  const team = await storage.getTeam(teamId);
+  const [
+    allGroups, allTests, allWeather, allSeries,
+    allProducts, allArchivedProducts,
+    allAthletes, allGrindProfiles, allGrindingRecords, allGrindingSheets,
+    allTeamUsers, allStockChanges,
+  ] = await Promise.all([
+    storage.listGroups(teamId),
+    storage.listAllTestsForTeam(teamId),
+    storage.listAllWeatherForTeam(teamId),
+    storage.listSeries('', true, teamId),
+    storage.listProducts('', true, teamId),
+    storage.listArchivedProducts('', true, teamId),
+    storage.listAthletes(0, true, teamId),
+    storage.listGrindProfiles(teamId),
+    storage.listGrindingRecords('', true, teamId),
+    storage.listGrindingSheets('', true, teamId),
+    storage.listUsers(teamId),
+    storage.listStockChanges(5000, teamId),
+  ]);
+  const racePrepsResult = await (pool as any).query(
+    `SELECT * FROM race_preps WHERE team_id = $1 ORDER BY date DESC`, [teamId]
+  );
+  const racePrepEntriesResult = await (pool as any).query(
+    `SELECT rpe.* FROM race_prep_entries rpe
+     JOIN race_preps rp ON rp.id = rpe.race_prep_id
+     WHERE rp.team_id = $1`, [teamId]
+  );
+  const testIds = allTests.map((t: any) => t.id);
+  const allEntries = testIds.length > 0 ? await storage.listAllEntriesForTests(testIds) : [];
+
+  return JSON.stringify({
+    exportedAt: new Date().toISOString(),
+    team: { id: team?.id, name: team?.name },
+    groups: allGroups,
+    tests: allTests,
+    testEntries: allEntries,
+    weather: allWeather,
+    products: [...allProducts, ...allArchivedProducts],
+    series: allSeries,
+    athletes: allAthletes,
+    racePreps: racePrepsResult.rows,
+    racePrepEntries: racePrepEntriesResult.rows,
+    grindProfiles: allGrindProfiles,
+    grindingRecords: allGrindingRecords,
+    grindingSheets: allGrindingSheets,
+    stockChanges: allStockChanges,
+    teamUsers: allTeamUsers.map((u: any) => ({ id: u.id, name: u.name, email: u.email, role: u.isTeamAdmin ? 'admin' : 'member' })),
+  }, null, 2);
+}
+
 function extractDriveFolderId(urlOrId: string): string {
   // Accept full URL like https://drive.google.com/drive/folders/FOLDER_ID
   // or a bare folder ID
@@ -786,74 +840,27 @@ export async function runDriveBackupForTeam(teamId: number): Promise<{ success: 
   const teamName = team.name.replace(/[^a-z0-9]/gi, '-').toLowerCase();
 
   try {
-    // ── Build JSON export ──────────────────────────────────────────────────
-    const [
-      allGroups, allTests, allWeather, allSeries,
-      allProducts, allArchivedProducts,
-      allAthletes, allGrindProfiles, allGrindingRecords, allGrindingSheets,
-      allTeamUsers, allStockChanges,
-    ] = await Promise.all([
-      storage.listGroups(teamId),
-      storage.listAllTestsForTeam(teamId),
-      storage.listAllWeatherForTeam(teamId),
-      storage.listSeries('', true, teamId),
-      storage.listProducts('', true, teamId),
-      storage.listArchivedProducts('', true, teamId),
-      storage.listAthletes(0, true, teamId),
-      storage.listGrindProfiles(teamId),
-      storage.listGrindingRecords('', true, teamId),
-      storage.listGrindingSheets('', true, teamId),
-      storage.listUsers(teamId),
-      storage.listStockChanges(5000, teamId),
-    ]);
-
-    const racePrepsResult = await (pool as any).query(
-      `SELECT * FROM race_preps WHERE team_id = $1 ORDER BY date DESC`, [teamId]
-    );
-    const racePrepEntriesResult = await (pool as any).query(
-      `SELECT rpe.* FROM race_prep_entries rpe
-       JOIN race_preps rp ON rp.id = rpe.race_prep_id
-       WHERE rp.team_id = $1`, [teamId]
-    );
-
-    const testIds = allTests.map((t: any) => t.id);
-    const allEntries = testIds.length > 0 ? await storage.listAllEntriesForTests(testIds) : [];
-
-    const jsonPayload = JSON.stringify({
-      exportedAt: new Date().toISOString(),
-      team: { id: team.id, name: team.name },
-      groups: allGroups,
-      tests: allTests,
-      testEntries: allEntries,
-      weather: allWeather,
-      products: [...allProducts, ...allArchivedProducts],
-      series: allSeries,
-      athletes: allAthletes,
-      racePreps: racePrepsResult.rows,
-      racePrepEntries: racePrepEntriesResult.rows,
-      grindProfiles: allGrindProfiles,
-      grindingRecords: allGrindingRecords,
-      grindingSheets: allGrindingSheets,
-      stockChanges: allStockChanges,
-      teamUsers: allTeamUsers.map((u: any) => ({ id: u.id, name: u.name, email: u.email, role: u.isTeamAdmin ? 'admin' : 'member' })),
-    }, null, 2);
+    // ── Build JSON export using shared builder ─────────────────────────────
+    const jsonPayload = await buildTeamJsonExport(teamId);
 
     const jsonFilename = `glidr-${teamName}-data.json`;
     const pdfFilename = `glidr-${teamName}-backup.pdf`;
 
     // ── Upload / update JSON ───────────────────────────────────────────────
+    // supportsAllDrives: true is required for Shared Drives (service accounts
+    // cannot own files in personal My Drive — Shared Drives have no individual owner)
     const { Readable } = await import('stream');
 
     let jsonFileId = team.driveJsonFileId ?? null;
     if (jsonFileId) {
-      // Update existing file content
       await drive.files.update({
         fileId: jsonFileId,
+        supportsAllDrives: true,
         media: { mimeType: 'application/json', body: Readable.from([jsonPayload]) },
       });
     } else {
-      // Create new file in the shared folder
       const created = await drive.files.create({
+        supportsAllDrives: true,
         requestBody: { name: jsonFilename, parents: [folderId] },
         media: { mimeType: 'application/json', body: Readable.from([jsonPayload]) },
         fields: 'id',
@@ -867,7 +874,6 @@ export async function runDriveBackupForTeam(teamId: number): Promise<{ success: 
       const spreadsheetId = team.backupSheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1];
       if (spreadsheetId) {
         try {
-          // Export the Sheet as PDF using the service account token
           const authClient = await auth.getClient() as any;
           const tokenResp = await authClient.getAccessToken();
           const accessToken = tokenResp.token;
@@ -881,10 +887,12 @@ export async function runDriveBackupForTeam(teamId: number): Promise<{ success: 
             if (pdfFileId) {
               await drive.files.update({
                 fileId: pdfFileId,
+                supportsAllDrives: true,
                 media: { mimeType: 'application/pdf', body: Readable.from([pdfBuffer]) },
               });
             } else {
               const created = await drive.files.create({
+                supportsAllDrives: true,
                 requestBody: { name: pdfFilename, parents: [folderId] },
                 media: { mimeType: 'application/pdf', body: Readable.from([pdfBuffer]) },
                 fields: 'id',

@@ -1549,7 +1549,7 @@ const ALL_TABS: { id: TabId; labelKey: string; superAdminOnly?: boolean; icon: R
 ];
 
 function BackupStatusCard() {
-  const { data } = useQuery<{ available: boolean; mode: string }>({
+  const { data } = useQuery<{ available: boolean; mode: string; serviceAccountEmail?: string; driveAvailable?: boolean }>({
     queryKey: ["/api/backup/status"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     staleTime: 60_000,
@@ -1565,9 +1565,18 @@ function BackupStatusCard() {
           <div className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-800">
             <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">Google Sheets backup is ready ({label})</p>
-            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">Paste a Google Sheets URL below and make sure the sheet is shared with your service account email (Editor access).</p>
+            {data.serviceAccountEmail && (
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+                Service account: <code className="font-mono bg-emerald-100 dark:bg-emerald-900 px-1 rounded break-all">{data.serviceAccountEmail}</code>
+              </p>
+            )}
+            {data.driveAvailable && (
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-500 mt-1">
+                ✓ Google Drive backup is also available — share a Drive folder with the service account email above.
+              </p>
+            )}
           </div>
         </div>
       </Card>
@@ -1585,7 +1594,7 @@ function BackupStatusCard() {
           <p>To enable backup on Render, add a Google Service Account:</p>
           <ol className="list-decimal pl-4 space-y-1 text-[11px]">
             <li>Go to <strong>console.cloud.google.com</strong> → create or select a project</li>
-            <li>Enable the <strong>Google Sheets API</strong></li>
+            <li>Enable the <strong>Google Sheets API</strong> and <strong>Google Drive API</strong></li>
             <li>Go to <strong>IAM &amp; Admin → Service Accounts</strong> → create a service account</li>
             <li>Open the service account → <strong>Keys</strong> tab → <strong>Add Key → JSON</strong></li>
             <li>Copy the entire JSON file content</li>
@@ -3250,7 +3259,36 @@ export default function Admin() {
     },
   });
 
+  const saveDriveFolderMutation = useMutation({
+    mutationFn: async ({ id, url }: { id: number; url: string }) => {
+      const res = await apiRequest("PUT", `/api/teams/${id}/drive-folder`, { url });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      toast({ title: "Drive folder saved" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const runDriveBackupMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/teams/${id}/drive-backup`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      toast({ title: "Drive backup completed" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Drive backup failed", description: e.message, variant: "destructive" });
+    },
+  });
+
   const [backupSheetInputs, setBackupSheetInputs] = useState<Record<number, string>>({});
+  const [driveFolderInputs, setDriveFolderInputs] = useState<Record<number, string>>({});
 
   if (!user) return null;
 
@@ -4132,6 +4170,89 @@ export default function Admin() {
                       {team.lastBackupAt && (
                         <div className="text-[10px] text-muted-foreground">
                           Last backup: {new Date(team.lastBackupAt).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* ── Google Drive backup ── */}
+            <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
+                  <HardDrive className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h2 className="text-sm font-semibold text-foreground">Google Drive Backup</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Every 30 minutes, Glidr uploads a full JSON export and a PDF of the Google Sheet to a folder in your Google Drive.
+                New files replace the old ones — no build-up of duplicates.
+              </p>
+              <div className="rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50/40 dark:bg-blue-950/20 p-3 mb-4 text-[11px] text-blue-800 dark:text-blue-300 space-y-1">
+                <p className="font-semibold">How to set up:</p>
+                <ol className="list-decimal pl-4 space-y-1">
+                  <li>In <strong>Google Cloud Console</strong>, enable the <strong>Google Drive API</strong> for your project (same project as the service account).</li>
+                  <li>Go to <strong>Google Drive</strong>, create a new folder (e.g. "Glidr Backup").</li>
+                  <li>Right-click the folder → <strong>Share</strong> → add the service account email (shown in the green card above) with <strong>Editor</strong> access.</li>
+                  <li>Copy the folder URL (it looks like <code className="font-mono bg-blue-100 dark:bg-blue-900 px-1 rounded">https://drive.google.com/drive/folders/…</code>) and paste it below.</li>
+                </ol>
+              </div>
+              <div className="space-y-3">
+                {teams.map((team) => {
+                  const driveInputVal = driveFolderInputs[team.id] ?? (team as any).driveFolderId ?? '';
+                  const driveHasChanged = driveInputVal !== ((team as any).driveFolderId ?? '');
+                  const hasDriveFolder = !!(team as any).driveFolderId;
+                  return (
+                    <div key={`drive-${team.id}`} className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+                      <div className="text-xs font-medium text-foreground">{team.name}</div>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          className="flex-1 rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-mono"
+                          placeholder="https://drive.google.com/drive/folders/…"
+                          value={driveInputVal}
+                          onChange={(e) => setDriveFolderInputs(prev => ({ ...prev, [team.id]: e.target.value }))}
+                        />
+                        <Button
+                          size="sm"
+                          disabled={!driveHasChanged || saveDriveFolderMutation.isPending}
+                          onClick={() => {
+                            saveDriveFolderMutation.mutate({ id: team.id, url: driveInputVal });
+                            setDriveFolderInputs(prev => { const n = { ...prev }; delete n[team.id]; return n; });
+                          }}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={!hasDriveFolder || runDriveBackupMutation.isPending}
+                          onClick={() => runDriveBackupMutation.mutate(team.id)}
+                          title="Run Drive backup now"
+                        >
+                          {runDriveBackupMutation.isPending ? (
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Download className="h-3.5 w-3.5" />
+                          )}
+                          <span className="ml-1 text-xs">Backup now</span>
+                        </Button>
+                        {hasDriveFolder && (
+                          <a
+                            href={`https://drive.google.com/drive/folders/${(team as any).driveFolderId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
+                          >
+                            Open folder ↗
+                          </a>
+                        )}
+                      </div>
+                      {hasDriveFolder && (
+                        <div className="text-[10px] text-muted-foreground">
+                          Files: <code className="font-mono">glidr-{team.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-data.json</code>{" "}
+                          &amp; <code className="font-mono">glidr-{team.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-backup.pdf</code>
                         </div>
                       )}
                     </div>

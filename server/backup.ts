@@ -1,5 +1,5 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
-import { getUncachableGoogleSheetClient } from './googleSheets';
+import { getUncachableGoogleSheetClient, getGoogleDriveClient } from './googleSheets';
 import { storage } from './storage';
 import { pool } from './db';
 
@@ -764,6 +764,157 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
   }
 }
 
+// ── Google Drive backup ───────────────────────────────────────────────────────
+
+function extractDriveFolderId(urlOrId: string): string {
+  // Accept full URL like https://drive.google.com/drive/folders/FOLDER_ID
+  // or a bare folder ID
+  const m = urlOrId.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : urlOrId.trim();
+}
+
+export async function runDriveBackupForTeam(teamId: number): Promise<{ success: boolean; error?: string }> {
+  const team = await storage.getTeam(teamId);
+  if (!team) return { success: false, error: 'Team not found' };
+  if (!team.driveFolderId) return { success: false, error: 'No Drive folder configured' };
+
+  const driveClient = getGoogleDriveClient();
+  if (!driveClient) return { success: false, error: 'Google Drive not available (service account required)' };
+
+  const { drive, auth } = driveClient;
+  const folderId = extractDriveFolderId(team.driveFolderId);
+  const teamName = team.name.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+
+  try {
+    // ── Build JSON export ──────────────────────────────────────────────────
+    const [
+      allGroups, allTests, allWeather, allSeries,
+      allProducts, allArchivedProducts,
+      allAthletes, allGrindProfiles, allGrindingRecords, allGrindingSheets,
+      allTeamUsers, allStockChanges,
+    ] = await Promise.all([
+      storage.listGroups(teamId),
+      storage.listAllTestsForTeam(teamId),
+      storage.listAllWeatherForTeam(teamId),
+      storage.listSeries('', true, teamId),
+      storage.listProducts('', true, teamId),
+      storage.listArchivedProducts('', true, teamId),
+      storage.listAthletes(0, true, teamId),
+      storage.listGrindProfiles(teamId),
+      storage.listGrindingRecords('', true, teamId),
+      storage.listGrindingSheets('', true, teamId),
+      storage.listUsers(teamId),
+      storage.listStockChanges(5000, teamId),
+    ]);
+
+    const racePrepsResult = await (pool as any).query(
+      `SELECT * FROM race_preps WHERE team_id = $1 ORDER BY date DESC`, [teamId]
+    );
+    const racePrepEntriesResult = await (pool as any).query(
+      `SELECT rpe.* FROM race_prep_entries rpe
+       JOIN race_preps rp ON rp.id = rpe.race_prep_id
+       WHERE rp.team_id = $1`, [teamId]
+    );
+
+    const testIds = allTests.map((t: any) => t.id);
+    const allEntries = testIds.length > 0 ? await storage.listAllEntriesForTests(testIds) : [];
+
+    const jsonPayload = JSON.stringify({
+      exportedAt: new Date().toISOString(),
+      team: { id: team.id, name: team.name },
+      groups: allGroups,
+      tests: allTests,
+      testEntries: allEntries,
+      weather: allWeather,
+      products: [...allProducts, ...allArchivedProducts],
+      series: allSeries,
+      athletes: allAthletes,
+      racePreps: racePrepsResult.rows,
+      racePrepEntries: racePrepEntriesResult.rows,
+      grindProfiles: allGrindProfiles,
+      grindingRecords: allGrindingRecords,
+      grindingSheets: allGrindingSheets,
+      stockChanges: allStockChanges,
+      teamUsers: allTeamUsers.map((u: any) => ({ id: u.id, name: u.name, email: u.email, role: u.isTeamAdmin ? 'admin' : 'member' })),
+    }, null, 2);
+
+    const jsonFilename = `glidr-${teamName}-data.json`;
+    const pdfFilename = `glidr-${teamName}-backup.pdf`;
+
+    // ── Upload / update JSON ───────────────────────────────────────────────
+    const { Readable } = await import('stream');
+
+    let jsonFileId = team.driveJsonFileId ?? null;
+    if (jsonFileId) {
+      // Update existing file content
+      await drive.files.update({
+        fileId: jsonFileId,
+        media: { mimeType: 'application/json', body: Readable.from([jsonPayload]) },
+      });
+    } else {
+      // Create new file in the shared folder
+      const created = await drive.files.create({
+        requestBody: { name: jsonFilename, parents: [folderId] },
+        media: { mimeType: 'application/json', body: Readable.from([jsonPayload]) },
+        fields: 'id',
+      });
+      jsonFileId = created.data.id!;
+    }
+
+    // ── Export Sheet as PDF (if Sheet URL is configured) ──────────────────
+    let pdfFileId = team.drivePdfFileId ?? null;
+    if (team.backupSheetUrl) {
+      const spreadsheetId = team.backupSheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+      if (spreadsheetId) {
+        try {
+          // Export the Sheet as PDF using the service account token
+          const authClient = await auth.getClient() as any;
+          const tokenResp = await authClient.getAccessToken();
+          const accessToken = tokenResp.token;
+          const pdfResp = await fetch(
+            `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=pdf&portrait=false&size=A4`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          if (pdfResp.ok) {
+            const pdfBuffer = Buffer.from(await pdfResp.arrayBuffer());
+
+            if (pdfFileId) {
+              await drive.files.update({
+                fileId: pdfFileId,
+                media: { mimeType: 'application/pdf', body: Readable.from([pdfBuffer]) },
+              });
+            } else {
+              const created = await drive.files.create({
+                requestBody: { name: pdfFilename, parents: [folderId] },
+                media: { mimeType: 'application/pdf', body: Readable.from([pdfBuffer]) },
+                fields: 'id',
+              });
+              pdfFileId = created.data.id!;
+            }
+          } else {
+            console.warn('[DriveBackup] PDF export failed:', pdfResp.status, await pdfResp.text());
+          }
+        } catch (pdfErr) {
+          console.warn('[DriveBackup] PDF export error (non-fatal):', pdfErr);
+        }
+      }
+    }
+
+    // ── Save file IDs to DB ────────────────────────────────────────────────
+    await storage.updateTeam(teamId, {
+      driveJsonFileId: jsonFileId,
+      drivePdfFileId: pdfFileId ?? undefined,
+    } as any);
+
+    console.log(`[DriveBackup] Done for team ${teamId} — JSON: ${jsonFileId}, PDF: ${pdfFileId ?? 'skipped'}`);
+    return { success: true };
+
+  } catch (err: any) {
+    console.error('[DriveBackup] Error for team', teamId, err);
+    return { success: false, error: err.message || 'Unknown error' };
+  }
+}
+
 const backupIntervals: Record<number, NodeJS.Timeout> = {};
 
 export function startAutoBackup(teamId: number, intervalMs: number = 30 * 60 * 1000) {
@@ -775,6 +926,11 @@ export function startAutoBackup(teamId: number, intervalMs: number = 30 * 60 * 1
         console.log(`[Backup] Auto-backup starting for team ${teamId}`);
         const result = await runBackupForTeam(teamId);
         console.log(`[Backup] Auto-backup result for team ${teamId}:`, result.success ? 'OK' : result.error);
+        // Drive backup runs after Sheets so the PDF reflects the latest Sheet
+        if (team.driveFolderId) {
+          const driveResult = await runDriveBackupForTeam(teamId);
+          console.log(`[DriveBackup] Auto result for team ${teamId}:`, driveResult.success ? 'OK' : driveResult.error);
+        }
       }
     } catch (err) {
       console.error(`[Backup] Auto-backup failed for team ${teamId}:`, err);

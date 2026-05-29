@@ -101,3 +101,40 @@ export function isGoogleSheetsAvailable(): boolean {
   if (process.env.REPL_IDENTITY || process.env.WEB_REPL_RENEWAL) return true;
   return false;
 }
+
+/**
+ * Returns a Google Drive v3 client using the service account.
+ * Only available when GOOGLE_SERVICE_ACCOUNT_JSON is set.
+ * Scopes cover: creating/updating files in shared folders (drive.file),
+ * exporting Google Sheets as PDF (drive.readonly).
+ */
+export function getGoogleDriveClient() {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (!raw) return null;
+  try {
+    const key = JSON.parse(raw);
+    const auth = new google.auth.GoogleAuth({
+      credentials: key,
+      scopes: [
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/drive.readonly',
+      ],
+    });
+    return { drive: google.drive({ version: 'v3', auth }), auth };
+  } catch (err) {
+    console.error('[GoogleDrive] Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON:', err);
+    return null;
+  }
+}
+
+/**
+ * Returns the service account email, or null if not configured.
+ */
+export function getServiceAccountEmail(): string | null {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (!raw) return null;
+  try {
+    const key = JSON.parse(raw);
+    return key.client_email ?? null;
+  } catch { return null; }
+}

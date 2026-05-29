@@ -415,6 +415,9 @@ export async function registerRoutes(
     await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS weather_station_type TEXT`);
     await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS weather_station_config TEXT`);
     await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS team_logo TEXT`);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS drive_folder_id TEXT`);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS drive_json_file_id TEXT`);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS drive_pdf_file_id TEXT`);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS plan_change_log (
         id SERIAL PRIMARY KEY,
@@ -753,14 +756,16 @@ export async function registerRoutes(
 
   // Check whether Google Sheets backup is configured on this server
   app.get("/api/backup/status", requireAuth, async (_req, res) => {
-    const { isGoogleSheetsAvailable } = await import('./googleSheets');
+    const { isGoogleSheetsAvailable, getServiceAccountEmail } = await import('./googleSheets');
     const available = isGoogleSheetsAvailable();
     const mode = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
       ? 'service_account'
       : process.env.REPL_IDENTITY || process.env.WEB_REPL_RENEWAL
       ? 'replit'
       : 'none';
-    res.json({ available, mode });
+    const serviceAccountEmail = getServiceAccountEmail();
+    const driveAvailable = mode === 'service_account';
+    res.json({ available, mode, serviceAccountEmail, driveAvailable });
   });
 
   app.put("/api/teams/:id/backup-sheet", requireAuth, async (req, res) => {
@@ -782,6 +787,45 @@ export async function registerRoutes(
       stopAutoBackup(id);
     }
     res.json(updated);
+  });
+
+  // ── Google Drive backup folder ─────────────────────────────────────────────
+  app.put("/api/teams/:id/drive-folder", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const id = parseInt(req.params.id);
+    if (u.isAdmin !== 1 && !(u.isTeamAdmin === 1 && u.teamId === id)) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    const raw = req.body.url?.trim() || null;
+    let folderId: string | null = null;
+    if (raw) {
+      // Accept full URL or bare ID
+      const m = raw.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+      folderId = m ? m[1] : raw;
+    }
+    // Reset file IDs so they are recreated in the new folder
+    const updated = await storage.updateTeam(id, {
+      driveFolderId: folderId,
+      driveJsonFileId: null,
+      drivePdfFileId: null,
+    } as any);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
+  });
+
+  app.post("/api/teams/:id/drive-backup", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const id = parseInt(req.params.id);
+    if (u.isAdmin !== 1 && !(u.isTeamAdmin === 1 && u.teamId === id)) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    const { runDriveBackupForTeam } = await import('./backup');
+    const result = await runDriveBackupForTeam(id);
+    if (result.success) {
+      res.json({ ok: true });
+    } else {
+      res.status(500).json({ message: result.error || 'Drive backup failed' });
+    }
   });
 
   app.put("/api/teams/:id/logo", requireAuth, async (req, res) => {

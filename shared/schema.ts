@@ -211,6 +211,10 @@ export const teams = pgTable("teams", {
   weatherStationType: text("weather_station_type"),
   weatherStationConfig: text("weather_station_config"), // JSON string
   teamLogo: text("team_logo"),
+  // Google Drive backup
+  driveFolderId: text("drive_folder_id"),
+  driveJsonFileId: text("drive_json_file_id"),
+  drivePdfFileId: text("drive_pdf_file_id"),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });

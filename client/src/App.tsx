@@ -105,6 +105,7 @@ function AuthGuard() {
   const [location] = useLocation();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTour, setShowTour] = useState(false);
+  const tourAlreadyCompleted = useTourCompleted();
 
   useEffect(() => {
     if (!user) return;
@@ -117,12 +118,12 @@ function AuthGuard() {
     }
     // Show product tour for users who haven't seen it (after onboarding completes or skips)
     // Tour shows even for team admins - everyone benefits from it
-    if (!useTourCompleted()) {
+    if (!tourAlreadyCompleted) {
       // Delay slightly more than the onboarding wizard
       const t2 = setTimeout(() => setShowTour(true), 2000);
       return () => clearTimeout(t2);
     }
-  }, [user?.id]);
+  }, [user?.id, tourAlreadyCompleted]);
 
   const adminMode = isSuperAdmin && (() => { try { return localStorage.getItem("glidr-sa-admin-mode") === "true"; } catch { return false; } })();
 

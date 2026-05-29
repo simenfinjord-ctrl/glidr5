@@ -745,6 +745,7 @@ export default function AthleteDetail() {
   const [raceCloudMin, setRaceCloudMin] = useState("");
   const [raceCloudMax, setRaceCloudMax] = useState("");
   const [showRaceWeatherFilters, setShowRaceWeatherFilters] = useState(false);
+  const [raceViewMode, setRaceViewMode] = useState<"card" | "compact">("card");
 
   const testDates = useMemo(() => {
     const dates = [...new Set(raceSkiTests.map((t) => t.date))].sort((a, b) => b.localeCompare(a));
@@ -1678,6 +1679,22 @@ export default function AthleteDetail() {
                   ({filteredRaceHistory.length}{filteredRaceHistory.length !== raceHistory.length ? ` / ${raceHistory.length}` : ""})
                 </span>
               </h2>
+              <div className="flex items-center rounded-lg border border-border bg-background/60 p-0.5">
+                <button
+                  onClick={() => setRaceViewMode("card")}
+                  className={cn("flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors", raceViewMode === "card" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                  title="Card view"
+                >
+                  <LayoutGrid className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={() => setRaceViewMode("compact")}
+                  className={cn("flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors", raceViewMode === "compact" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                  title="Compact view"
+                >
+                  <List className="h-3 w-3" />
+                </button>
+              </div>
             </div>
             {/* Race history filter bar */}
             <div className="mb-3 space-y-2">
@@ -1872,7 +1889,61 @@ export default function AthleteDetail() {
                 </div>
               )}
             </div>
-            <div className="space-y-2">
+            {/* ── Compact table view ── */}
+            {raceViewMode === "compact" && filteredRaceHistory.length > 0 && (
+              <div className="rounded-xl border border-border overflow-hidden mb-2">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/40">
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Date</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Location</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Discipline</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Ski</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Glide</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Structure</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Kick / Tette</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Waxer</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRaceHistory.map((entry, i) => {
+                      const parseIds = (ids: string | null) =>
+                        ids ? ids.split(",").map(Number).filter(Boolean)
+                            .map(id => allProducts.find(p => p.id === id))
+                            .filter((p): p is typeof allProducts[0] => !!p)
+                        : [];
+                      const glide = parseIds(entry.productIds).map(p => `${p.brand} ${p.name}`).join(" + ");
+                      const struct = parseIds(entry.structureIds).map(p => `${p.brand} ${p.name}`).join(" + ");
+                      const kickIsText = entry.kickProductIds ? entry.kickProductIds.split(",").some(s => isNaN(Number(s.trim()))) : false;
+                      const kick = kickIsText ? (entry.kickProductIds ?? "") : parseIds(entry.kickProductIds).map(p => `${p.brand} ${p.name}`).join(" + ");
+                      const tette = entry.tette ?? "";
+                      const kickTette = [kick, tette].filter(Boolean).join(" / ");
+                      const skiDisplay = entry.discipline === "Skiathlon"
+                        ? [entry.skiIdClassic && `CL: ${entry.skiIdClassic}`, entry.skiIdSkating && `SK: ${entry.skiIdSkating}`].filter(Boolean).join(" · ")
+                        : (entry.skiId ?? "—");
+                      return (
+                        <tr key={entry.entryId} className={cn("border-b border-border last:border-0", i % 2 === 0 ? "bg-background" : "bg-muted/20")}>
+                          <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{fmtDate(entry.date)}</td>
+                          <td className="px-3 py-2 font-medium">{entry.location}</td>
+                          <td className="px-3 py-2">
+                            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1", DISCIPLINE_COLORS_DETAIL[entry.discipline] ?? "")}>
+                              {DISCIPLINE_LABEL_DETAIL[entry.discipline]?.en ?? entry.discipline}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 font-mono font-semibold">{skiDisplay}</td>
+                          <td className="px-3 py-2 text-muted-foreground max-w-[160px] truncate">{glide || "—"}</td>
+                          <td className="px-3 py-2 text-muted-foreground max-w-[120px] truncate">{struct || "—"}</td>
+                          <td className="px-3 py-2 text-muted-foreground max-w-[120px] truncate">{kickTette || "—"}</td>
+                          <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{entry.waxerName ?? "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className={cn(raceViewMode === "card" ? "space-y-2" : "hidden")}>
               {filteredRaceHistory.map((entry) => {
                 const rw = entry.weatherId ? raceWeatherById.get(entry.weatherId) : null;
 
@@ -2008,10 +2079,10 @@ export default function AthleteDetail() {
                   </Card>
                 );
               })}
-              {filteredRaceHistory.length === 0 && (
-                <p className="text-sm text-muted-foreground py-2">No races match the current filters.</p>
-              )}
             </div>
+            {filteredRaceHistory.length === 0 && (
+              <p className="text-sm text-muted-foreground py-2">No races match the current filters.</p>
+            )}
           </div>
         )}
 

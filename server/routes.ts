@@ -3733,8 +3733,8 @@ export async function registerRoutes(
     for (const p of profiles) {
       if (!p.name || !p.grindType) continue;
       const grindId = String(nextNum++).padStart(3, "0");
-      const stone = p.extraParams?.stone ?? null;
-      const pattern = p.extraParams?.pattern ?? null;
+      const stone = p.extraParams?.stone ?? "";
+      const pattern = p.extraParams?.pattern ?? "";
       const profile = await storage.createGrindProfile({
         name: p.name, grindType: p.grindType,
         stone, pattern,

@@ -39,6 +39,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient, OfflineError } from "@/lib/queryClient";
 import { useOffline } from "@/lib/offline-context";
 import { useI18n } from "@/lib/i18n";
+import { LocationAutocomplete } from "@/components/location-autocomplete";
 
 function snowTypeKey(v: string) {
   const map: Record<string, string> = { "Falling new": "snow.fallingNew", "New": "snow.new", "Irreg. dir. new": "snow.irregDirNew", "Irreg. dir. transf.": "snow.irregDirTransf", "Transformed": "snow.transformed" };
@@ -325,7 +326,12 @@ function WeatherForm({
                 <FormItem>
                   <FormLabel>{t("weather.location")}</FormLabel>
                   <FormControl>
-                    <Input {...field} data-testid="input-weather-location" placeholder={t("weather.locationPlaceholder")} />
+                    <LocationAutocomplete
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder={t("weather.locationPlaceholder")}
+                      data-testid="input-weather-location"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -1126,19 +1132,18 @@ export default function WeatherPage() {
         {/* Search + view toggle */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-            <input
-              type="text"
+            <LocationAutocomplete
               value={locationSearch}
-              onChange={(e) => setLocationSearch(e.target.value)}
+              onChange={setLocationSearch}
               placeholder="Search location…"
-              className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0"
+              searchMode
               data-testid="input-weather-search"
+              inputClassName="h-8 text-sm"
             />
             {locationSearch && (
               <button
                 onClick={() => setLocationSearch("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-3.5 w-3.5" />
               </button>

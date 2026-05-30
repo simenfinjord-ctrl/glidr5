@@ -3400,7 +3400,14 @@ export async function registerRoutes(
     const { pool: pg } = await import("./db");
     try {
       const result = await (pg as any).query(
-        `SELECT DISTINCT location FROM tests WHERE team_id = $1 AND location IS NOT NULL AND location != '' ORDER BY location`,
+        `SELECT DISTINCT location FROM (
+           SELECT location FROM tests       WHERE team_id = $1 AND location IS NOT NULL AND location != ''
+           UNION
+           SELECT location FROM weather     WHERE team_id = $1 AND location IS NOT NULL AND location != ''
+           UNION
+           SELECT location FROM race_preps  WHERE team_id = $1 AND location IS NOT NULL AND location != ''
+         ) AS all_locations
+         ORDER BY location`,
         [teamId]
       );
       const locations = result.rows.map((r: any) => r.location as string).filter(Boolean);

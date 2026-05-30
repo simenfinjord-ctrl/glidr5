@@ -17,6 +17,7 @@ import { useLanguage } from "@/lib/language";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { pdfDocument, pdfSection, pdfTable, pdfWeather, openPdfWindow } from "@/lib/pdf-layout";
+import { LocationAutocomplete } from "@/components/location-autocomplete";
 
 type Product = { id: number; category: string; brand: string; name: string };
 
@@ -1192,7 +1193,12 @@ function PrepFormDialog({
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium">{L("Lokasjon", "Location")} *</label>
-            <Input value={form.location} onChange={(e) => f("location", e.target.value)} placeholder={L("f.eks. Davos", "e.g. Davos")} />
+            <LocationAutocomplete
+              value={form.location}
+              onChange={(v) => f("location", v)}
+              placeholder={L("f.eks. Davos", "e.g. Davos")}
+              data-testid="input-raceprep-location"
+            />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium">{L("Renntype", "Race type")} *</label>
@@ -1434,12 +1440,12 @@ export default function RacePrep() {
         {/* Search & filters */}
         <div className="flex flex-wrap gap-3 items-end">
           <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              placeholder={L("Søk etter sted, renntype...", "Search by location, race type...")}
+            <LocationAutocomplete
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={setSearch}
+              placeholder={L("Søk etter sted, renntype...", "Search by location, race type...")}
+              searchMode
+              data-testid="input-raceprep-search"
             />
           </div>
           <Select value={disciplineFilter} onValueChange={setDisciplineFilter}>

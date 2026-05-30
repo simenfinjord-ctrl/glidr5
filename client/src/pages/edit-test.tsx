@@ -226,19 +226,29 @@ export default function EditTest() {
   const [entriesLoaded, setEntriesLoaded] = useState(false);
 
   const allGrindParamKeys = useMemo(() => {
-    const keys = new Set<string>(["stone", "pattern"]);
+    const keys = new Set<string>();
     for (const p of grindProfiles) {
+      // Only include stone/pattern if at least one profile actually has a value
+      if (p.stone) keys.add("stone");
+      if (p.pattern) keys.add("pattern");
       if (p.extraParams) {
         try {
           const parsed = JSON.parse(p.extraParams);
-          for (const k of Object.keys(parsed)) keys.add(k);
+          for (const [k, v] of Object.entries(parsed)) {
+            if (v) keys.add(k);
+          }
         } catch {}
       }
     }
-    return Array.from(keys);
+    // Preferred order: stone → pattern → rest
+    const ordered: string[] = [];
+    if (keys.has("stone")) ordered.push("stone");
+    if (keys.has("pattern")) ordered.push("pattern");
+    for (const k of keys) if (k !== "stone" && k !== "pattern") ordered.push(k);
+    return ordered;
   }, [grindProfiles]);
 
-  const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>(["stone", "pattern", "ra_value"]);
+  const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchemaEdit),

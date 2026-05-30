@@ -762,13 +762,17 @@ function GrindProfileDetailDialog({
 
   const tests = data?.tests ?? [];
 
-  // All toggleable column keys: "name" + "stone" + "pattern" + dynamic extra param keys from profile
+  // All toggleable column keys: only include stone/pattern if the profile actually has them
   const allCols = useMemo((): GrindCol[] => {
-    const base: GrindCol[] = ["name", "stone", "pattern"];
-    if (!profile) return base;
+    const cols: GrindCol[] = ["name"];
+    if (!profile) return cols;
+    if (profile.stone) cols.push("stone");
+    if (profile.pattern) cols.push("pattern");
     const extra = parseExtraParams(profile.extraParams);
-    const extraKeys = Object.keys(extra).filter((k) => k !== "stone" && k !== "pattern");
-    return [...base, ...extraKeys];
+    for (const [k, v] of Object.entries(extra)) {
+      if (v && k !== "stone" && k !== "pattern") cols.push(k);
+    }
+    return cols;
   }, [profile]);
 
   // "name" on by default; all others off
@@ -2927,18 +2931,19 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
     return Array.from(keys);
   }, [sortedEntries]);
 
-  // Available columns: "name" first (default on), then stone, pattern, extras — no "grindType" (it IS the name)
-  // Also show grindProfileId as "Grind-ID" if any entries have it
+  // Available columns: only include stone/pattern if at least one entry has a value
   const hasGrindProfileIds = sortedEntries.some((e) => e.grindProfileId != null);
+  const hasStone = sortedEntries.some((e) => e.grindStone);
+  const hasPattern = sortedEntries.some((e) => e.grindPattern);
   const allGrindCols = useMemo(
     () => [
       "name",
       ...(hasGrindProfileIds ? ["grindProfileId"] : []),
-      "grindStone",
-      "grindPattern",
+      ...(hasStone ? ["grindStone"] : []),
+      ...(hasPattern ? ["grindPattern"] : []),
       ...extraParamKeys,
     ],
-    [extraParamKeys, hasGrindProfileIds]
+    [extraParamKeys, hasGrindProfileIds, hasStone, hasPattern]
   );
 
   const colLabels: Record<string, string> = {

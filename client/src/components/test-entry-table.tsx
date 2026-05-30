@@ -109,7 +109,7 @@ export function TestEntryTable({
   raceSkis = [],
   skiLabels,
   grindProfiles = [],
-  visibleGrindCols = ["stone", "pattern", "ra_value"],
+  visibleGrindCols = [],
 }: {
   testType: TestType;
   products: Product[];

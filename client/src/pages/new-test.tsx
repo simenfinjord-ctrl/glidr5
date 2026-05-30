@@ -155,21 +155,29 @@ export default function NewTest() {
   const [duplicateApplied, setDuplicateApplied] = useState(false);
   const [runsheetOpen, setRunsheetOpen] = useState(false);
 
-  // Grind column visibility: compute from profiles once loaded, default all on
+  // Grind column visibility: only include stone/pattern if at least one profile uses them
   const allGrindParamKeys = useMemo(() => {
-    const keys = new Set<string>(["stone", "pattern"]);
+    const keys = new Set<string>();
     for (const p of grindProfiles) {
+      if (p.stone) keys.add("stone");
+      if (p.pattern) keys.add("pattern");
       if (p.extraParams) {
         try {
           const parsed = JSON.parse(p.extraParams);
-          for (const k of Object.keys(parsed)) keys.add(k);
+          for (const [k, v] of Object.entries(parsed)) {
+            if (v && k !== "stone" && k !== "pattern") keys.add(k);
+          }
         } catch {}
       }
     }
-    return Array.from(keys);
+    const ordered: string[] = [];
+    if (keys.has("stone")) ordered.push("stone");
+    if (keys.has("pattern")) ordered.push("pattern");
+    for (const k of keys) if (k !== "stone" && k !== "pattern") ordered.push(k);
+    return ordered;
   }, [grindProfiles]);
 
-  const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>(["stone", "pattern", "ra_value"]);
+  const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>([]);
 
   const userGroups = useMemo(() => {
     if (user?.isAdmin && groups.length > 0) {

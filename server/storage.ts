@@ -159,8 +159,8 @@ export interface IStorage {
   listAllEntriesForTests(testIds: number[]): Promise<TestEntry[]>;
   listAllWeatherForTeam(teamId: number): Promise<any[]>;
   listAthleteIdsForUser(userId: number): Promise<number[]>;
-  purgeOldActivityLogs(beforeDate: string): Promise<number>;
-  purgeOldLoginLogs(beforeDate: string): Promise<number>;
+  purgeOldActivityLogs(beforeDate: string, teamId?: number): Promise<number>;
+  purgeOldLoginLogs(beforeDate: string, teamId?: number): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -882,12 +882,25 @@ export class DatabaseStorage implements IStorage {
     return Array.from(new Set([...accessRows.map((r) => r.athleteId), ...createdByMe.map((a) => a.id)]));
   }
 
-  async purgeOldActivityLogs(beforeDate: string): Promise<number> {
-    const result = await db.delete(activityLogs).where(sql`${activityLogs.createdAt} < ${beforeDate}`).returning();
+  async purgeOldActivityLogs(beforeDate: string, teamId?: number): Promise<number> {
+    const condition = teamId
+      ? and(sql`${activityLogs.createdAt} < ${beforeDate}`, eq(activityLogs.teamId, teamId))
+      : sql`${activityLogs.createdAt} < ${beforeDate}`;
+    const result = await db.delete(activityLogs).where(condition).returning();
     return result.length;
   }
 
-  async purgeOldLoginLogs(beforeDate: string): Promise<number> {
+  async purgeOldLoginLogs(beforeDate: string, teamId?: number): Promise<number> {
+    // loginLogs has no teamId column — scope via user membership
+    if (teamId) {
+      const result = await db.delete(loginLogs).where(
+        and(
+          sql`${loginLogs.loginAt} < ${beforeDate}`,
+          sql`${loginLogs.userId} IN (SELECT id FROM users WHERE team_id = ${teamId})`
+        )
+      ).returning();
+      return result.length;
+    }
     const result = await db.delete(loginLogs).where(sql`${loginLogs.loginAt} < ${beforeDate}`).returning();
     return result.length;
   }

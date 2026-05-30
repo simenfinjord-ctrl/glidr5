@@ -835,8 +835,9 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
-  // Check whether Google Sheets backup is configured on this server
+  // Check whether Google Sheets backup is configured on this server — admins only
   app.get("/api/backup/status", requireAuth, async (_req, res) => {
+    if (!canManageTeam(_req)) return res.status(403).json({ message: "Admin access required" });
     const { isGoogleSheetsAvailable, getServiceAccountEmail } = await import('./googleSheets');
     const available = isGoogleSheetsAvailable();
     const mode = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
@@ -1663,7 +1664,9 @@ export async function registerRoutes(
 
   // Lightweight weather lookup used for filter dropdowns/maps — available to any
   // authenticated team member, regardless of whether they have weather permission.
+  // Athlete access users cannot see weather data.
   app.get("/api/weather/for-filtering", requireAuth, async (req, res) => {
+    if ((req.user as any).isAthleteAccess === 1) return res.json([]);
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
     const { pool } = await import("./db");
@@ -2849,7 +2852,14 @@ export async function registerRoutes(
   // GET comments for a test
   app.get("/api/tests/:id/comments", requireAuth, async (req, res) => {
     const testId = parseInt(req.params.id);
+    const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
     const { pool } = await import("./db");
+    // Verify test belongs to this team before returning comments
+    const testCheck = await (pool as any).query(
+      `SELECT id FROM tests WHERE id = $1 AND team_id = $2`, [testId, teamId]
+    );
+    if (!testCheck.rows.length) return res.status(404).json({ message: "Not found" });
     const result = await (pool as any).query(
       `SELECT id, test_id, user_id, user_name, content, created_at FROM test_comments WHERE test_id = $1 ORDER BY created_at ASC`,
       [testId]
@@ -2863,8 +2873,13 @@ export async function registerRoutes(
     const testId = parseInt(req.params.id);
     const content = String(req.body.content ?? "").trim();
     if (!content || content.length > 2000) return res.status(400).json({ message: "Invalid comment" });
-
     const { pool } = await import("./db");
+    // Verify test belongs to this team
+    const teamId = ((u as any).activeTeamId || u.teamId) as number;
+    const testCheck = await (pool as any).query(
+      `SELECT id FROM tests WHERE id = $1 AND team_id = $2`, [testId, teamId]
+    );
+    if (!testCheck.rows.length) return res.status(404).json({ message: "Not found" });
 
     const result = await (pool as any).query(
       `INSERT INTO test_comments (test_id, user_id, user_name, content) VALUES ($1,$2,$3,$4) RETURNING *`,
@@ -2960,9 +2975,22 @@ export async function registerRoutes(
         comments = commentsRes.rows;
       } catch { /* table doesn't exist yet — skip */ }
 
+      // Redact product information for blind testers and athlete access users
+      const shouldRedact = u.isBlindTester === 1 || (u as any).isAthleteAccess === 1;
+      const entries = shouldRedact
+        ? entriesRes.rows.map((e: any) => ({
+            ...e,
+            product_id: null,
+            product_name: null,
+            brand: null,
+            additional_product_ids: null,
+            methodology: null,
+          }))
+        : entriesRes.rows;
+
       return res.json({
         test: testRes.rows[0],
-        entries: entriesRes.rows,
+        entries,
         weather: weatherRes.rows[0] ?? null,
         comments,
       });
@@ -3870,6 +3898,7 @@ export async function registerRoutes(
 
   // Grind profile test history — returns tests whose entries match this profile's grind params
   app.get("/api/grind-profiles/:id/tests", requirePermission("grinding", "view"), async (req, res) => {
+    const isBlind = req.user!.isBlindTester === 1;
     const teamId = getActiveTeamId(req);
     const profileId = parseInt(req.params.id);
     const profile = await storage.getGrindProfile(profileId);
@@ -3925,9 +3954,10 @@ export async function registerRoutes(
           (e.grind_type && e.grind_type.trim().toLowerCase() === profile.grindType.trim().toLowerCase());
         entriesByTestId[e.test_id].push({
           id: e.id, testId: e.test_id, skiNumber: e.ski_number,
-          productId: e.product_id, additionalProductIds: e.additional_product_ids,
+          productId: isBlind ? null : e.product_id,
+          additionalProductIds: isBlind ? null : e.additional_product_ids,
           raceSkiId: e.race_ski_id, skiModel: e.ski_model, skiBrand: e.ski_brand,
-          methodology: e.methodology,
+          methodology: isBlind ? null : e.methodology,
           result0kmCmBehind: e.result_0km_cm_behind, rank0km: e.rank_0km,
           resultXkmCmBehind: e.result_xkm_cm_behind, rankXkm: e.rank_xkm,
           results: e.results, feelingRank: e.feeling_rank, kickRank: e.kick_rank,
@@ -4292,20 +4322,22 @@ export async function registerRoutes(
   });
 
   app.post("/api/admin/purge-activity-logs", requireAuth, async (req, res) => {
-    const u = userInfo(req);
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const beforeDate = req.body.beforeDate;
     if (!beforeDate) return res.status(400).json({ message: "beforeDate required" });
-    const count = await storage.purgeOldActivityLogs(beforeDate);
+    // Super admins purge only their active team; team admins always scoped to their team
+    const teamId = getActiveTeamId(req);
+    const count = await storage.purgeOldActivityLogs(beforeDate, teamId);
     res.json({ deleted: count });
   });
 
   app.post("/api/admin/purge-login-logs", requireAuth, async (req, res) => {
-    const u = userInfo(req);
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const beforeDate = req.body.beforeDate;
     if (!beforeDate) return res.status(400).json({ message: "beforeDate required" });
-    const count = await storage.purgeOldLoginLogs(beforeDate);
+    // Super admins purge only their active team; team admins always scoped to their team
+    const teamId = getActiveTeamId(req);
+    const count = await storage.purgeOldLoginLogs(beforeDate, teamId);
     res.json({ deleted: count });
   });
 
@@ -4973,6 +5005,11 @@ export async function registerRoutes(
     const { date, raceName, location, discipline, notes } = req.body;
     if (!date || !raceName) return res.status(400).json({ message: "date and raceName required" });
     const { pool } = await import("./db");
+    // Verify athlete belongs to this team
+    const athCheck = await (pool as any).query(
+      `SELECT id FROM athletes WHERE id = $1 AND team_id = $2`, [athleteId, teamId]
+    );
+    if (!athCheck.rows.length) return res.status(403).json({ message: "Forbidden" });
     const result = await (pool as any).query(
       `INSERT INTO athlete_race_calendar (athlete_id, team_id, date, race_name, location, discipline, notes, created_by_id, created_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
@@ -5190,7 +5227,18 @@ export async function registerRoutes(
        ORDER BY rp.date DESC`,
       [athleteId, teamId]
     );
-    return res.json(result.rows);
+    // Strip sensitive wax/product data for athlete access users
+    const rows = u.isAthleteAccess === 1
+      ? result.rows.map((r: any) => ({
+          ...r,
+          productIds: undefined,
+          structureIds: undefined,
+          kickProductIds: undefined,
+          method: undefined,
+          prepNotes: undefined,
+        }))
+      : result.rows;
+    return res.json(rows);
   });
 
   app.post("/api/race-skis/:id/archive", requirePermission("raceskis", "edit"), async (req, res) => {
@@ -5316,6 +5364,16 @@ export async function registerRoutes(
 
   app.delete("/api/test-ski-regrinds/:id", requirePermission("testskis", "edit"), async (req, res) => {
     const id = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    // Verify the regrind belongs to a series owned by this team
+    const check = await (pool as any).query(
+      `SELECT tsr.id FROM test_ski_regrinds tsr
+       JOIN test_ski_series tss ON tss.id = tsr.series_id
+       WHERE tsr.id = $1 AND tss.team_id = $2`,
+      [id, teamId]
+    );
+    if (!check.rows.length) return res.status(404).json({ message: "Not found" });
     const deleted = await storage.deleteTestSkiRegrind(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
     res.json({ ok: true });
@@ -5375,8 +5433,25 @@ export async function registerRoutes(
   // In-memory fallback if DB table doesn't exist yet
   const watchSessionsMemory = new Map<string, WatchSession>();
 
+  // Simple brute-force protection: track failed code lookups per IP
+  const watchCodeFailures = new Map<string, { count: number; resetAt: number }>();
+  const WATCH_MAX_FAILURES = 10;
+  const WATCH_FAILURE_WINDOW_MS = 5 * 60 * 1000; // 5-minute window
+  function watchRateLimit(ip: string): boolean {
+    const now = Date.now();
+    const entry = watchCodeFailures.get(ip);
+    if (!entry || now > entry.resetAt) {
+      watchCodeFailures.set(ip, { count: 1, resetAt: now + WATCH_FAILURE_WINDOW_MS });
+      return false; // not rate-limited
+    }
+    entry.count++;
+    return entry.count > WATCH_MAX_FAILURES;
+  }
+  function watchResetFailures(ip: string) { watchCodeFailures.delete(ip); }
+
   async function generateSessionCode(): Promise<string> {
-    const code = String(Math.floor(1000 + Math.random() * 9000));
+    // 6-digit code: 100 000 possibilities — much harder to brute-force than 4-digit
+    const code = String(Math.floor(100000 + Math.random() * 900000));
     return code;
   }
 
@@ -5631,9 +5706,12 @@ export async function registerRoutes(
   });
 
   app.get("/api/runsheet/watch/:code", async (req, res) => {
+    const ip = (req.ip ?? req.socket.remoteAddress ?? "unknown");
+    if (watchRateLimit(ip)) return res.status(429).json({ message: "Too many attempts. Try again in 5 minutes." });
     const code = req.params.code as string;
     const session = await getWatchSession(code);
     if (!session) return res.status(404).json({ message: "Invalid code" });
+    watchResetFailures(ip);
     const labels = session.skiLabels ?? {};
     const currentHeat = watchFindCurrentHeat(session.bracket);
     const diffs = watchCalcDiffs(session.bracket);
@@ -5652,9 +5730,12 @@ export async function registerRoutes(
   });
 
   app.post("/api/runsheet/watch/:code/result", async (req, res) => {
+    const ip = (req.ip ?? req.socket.remoteAddress ?? "unknown");
+    if (watchRateLimit(ip)) return res.status(429).json({ message: "Too many attempts. Try again in 5 minutes." });
     const code = req.params.code as string;
     const session = await getWatchSession(code);
     if (!session) return res.status(404).json({ message: "Invalid code" });
+    watchResetFailures(ip);
     const { roundIndex, heatIndex, winnerPair, loserDistance } = req.body;
     if (typeof roundIndex !== "number" || typeof heatIndex !== "number" || typeof winnerPair !== "number" || typeof loserDistance !== "number") {
       return res.status(400).json({ message: "Missing fields" });
@@ -5691,8 +5772,11 @@ export async function registerRoutes(
   });
 
   app.post("/api/runsheet/sessions/:code/apply", async (req, res) => {
+    const ip = (req.ip ?? req.socket.remoteAddress ?? "unknown");
+    if (watchRateLimit(ip)) return res.status(429).json({ message: "Too many attempts. Try again in 5 minutes." });
     const session = await getWatchSession(req.params.code as string);
     if (!session) return res.status(404).json({ message: "Invalid code" });
+    watchResetFailures(ip);
     if (!session.testId) return res.status(400).json({ message: "No test linked to this session" });
 
     const diffs = watchCalcDiffs(session.bracket);

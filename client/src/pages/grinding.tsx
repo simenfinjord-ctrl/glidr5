@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2, LayoutGrid, LayoutList, ExternalLink, Check, TrendingUp, Archive, RotateCcw } from "lucide-react";
+import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2, LayoutGrid, LayoutList, ExternalLink, Check, TrendingUp, Archive, RotateCcw, Link2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
@@ -1054,6 +1054,18 @@ const SNOW_HUMIDITY_TYPE_OPTIONS = ["Dry", "Moist", "Wet", "Very wet", "Slush"] 
 const GRAIN_SIZE_OPTIONS = ["Extra fine", "Very fine", "Fine", "Average", "Coarse", "Very coarse"] as const;
 const SNOW_STAGE_OPTIONS = ["Falling new", "New", "Irreg. dir. new", "Irreg. dir. transf.", "Transformed"] as const;
 
+// ─── Grind Links (quick-access URL buttons) ────────────────────────────────────
+
+type GrindLink = { id: string; name: string; url: string };
+const LINKS_KEY = "glidr-grind-links";
+
+function loadGrindLinks(): GrindLink[] {
+  try { return JSON.parse(localStorage.getItem(LINKS_KEY) ?? "[]"); } catch { return []; }
+}
+function saveGrindLinks(links: GrindLink[]) {
+  try { localStorage.setItem(LINKS_KEY, JSON.stringify(links)); } catch {}
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Grinding() {
@@ -1100,6 +1112,47 @@ export default function Grinding() {
     try { return (localStorage.getItem("glidr-grinds-view-mode") as "grid" | "list") || "grid"; } catch { return "grid"; }
   });
   const [grindSubTab, setGrindSubTab] = useState<"active" | "archived">("active");
+
+  // ── Quick-access links ──────────────────────────────────────────────────────
+  const [grindLinks, setGrindLinks] = useState<GrindLink[]>(() => loadGrindLinks());
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [editLink, setEditLink] = useState<GrindLink | null>(null);
+  const [linkName, setLinkName] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkEditMode, setLinkEditMode] = useState(false);
+
+  function openNewLinkDialog() {
+    setEditLink(null);
+    setLinkName("");
+    setLinkUrl("");
+    setLinkDialogOpen(true);
+  }
+  function openEditLinkDialog(link: GrindLink) {
+    setEditLink(link);
+    setLinkName(link.name);
+    setLinkUrl(link.url);
+    setLinkDialogOpen(true);
+  }
+  function saveLinkDialog() {
+    const name = linkName.trim();
+    const url = linkUrl.trim();
+    if (!name || !url) return;
+    const safeUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    let next: GrindLink[];
+    if (editLink) {
+      next = grindLinks.map((l) => l.id === editLink.id ? { ...l, name, url: safeUrl } : l);
+    } else {
+      next = [...grindLinks, { id: `${Date.now()}`, name, url: safeUrl }];
+    }
+    setGrindLinks(next);
+    saveGrindLinks(next);
+    setLinkDialogOpen(false);
+  }
+  function deleteLink(id: string) {
+    const next = grindLinks.filter((l) => l.id !== id);
+    setGrindLinks(next);
+    saveGrindLinks(next);
+  }
 
   const { data: allTests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
@@ -1373,6 +1426,73 @@ export default function Grinding() {
             )}
           </div>
         </div>
+
+        {/* ── Quick-access link bar ─────────────────────────────────────── */}
+        {(grindLinks.length > 0 || linkEditMode) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {grindLinks.map((link) => (
+              <div key={link.id} className="relative group/linkbtn flex items-center">
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:border-primary/60 hover:bg-primary/5 hover:text-primary",
+                    linkEditMode && "pr-14"
+                  )}
+                >
+                  <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  {link.name}
+                </a>
+                {linkEditMode && (
+                  <span className="absolute right-1 flex items-center gap-0.5">
+                    <button
+                      onClick={() => openEditLinkDialog(link)}
+                      className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      title="Edit"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={() => deleteLink(link.id)}
+                      className="rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={openNewLinkDialog}
+              className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+            >
+              <Plus className="h-3 w-3" />
+              Add link
+            </button>
+            <button
+              onClick={() => setLinkEditMode((v) => !v)}
+              className={cn(
+                "rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                linkEditMode
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {linkEditMode ? "Done" : <Pencil className="h-3 w-3" />}
+            </button>
+          </div>
+        )}
+        {grindLinks.length === 0 && !linkEditMode && (
+          <button
+            onClick={openNewLinkDialog}
+            className="self-start inline-flex items-center gap-1.5 rounded-full border border-dashed border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+          >
+            <Link2 className="h-3 w-3" />
+            Add spreadsheet link
+          </button>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 border-b border-border">
@@ -2063,6 +2183,45 @@ export default function Grinding() {
         onClose={() => setDetailOpen(false)}
       />
       {ConfirmDialog}
+
+      {/* Add / Edit link dialog */}
+      <Dialog open={linkDialogOpen} onOpenChange={(v) => { setLinkDialogOpen(v); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-primary" />
+              {editLink ? "Edit link" : "Add link"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 pt-1">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground">Button name</label>
+              <Input
+                value={linkName}
+                onChange={(e) => setLinkName(e.target.value)}
+                placeholder="e.g. Grind Log 2025"
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && saveLinkDialog()}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground">URL</label>
+              <Input
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/…"
+                onKeyDown={(e) => e.key === "Enter" && saveLinkDialog()}
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" size="sm" onClick={() => setLinkDialogOpen(false)}>Cancel</Button>
+              <Button size="sm" onClick={saveLinkDialog} disabled={!linkName.trim() || !linkUrl.trim()}>
+                {editLink ? "Save" : "Add"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

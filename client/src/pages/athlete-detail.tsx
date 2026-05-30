@@ -321,6 +321,7 @@ export default function AthleteDetail() {
     try { localStorage.setItem("glidr-raceski-test-columns", JSON.stringify(activeTestColumns)); } catch {}
   }, [activeTestColumns]);
 
+  const [pageTab, setPageTab] = useState<"garage" | "tests" | "races">("garage");
   const [testsExpanded, setTestsExpanded] = useState(true);
   const [testViewMode, setTestViewMode] = useState<"card" | "list">("card");
   const [expandedTestIds, setExpandedTestIds] = useState<Set<number>>(new Set());
@@ -1678,8 +1679,69 @@ export default function AthleteDetail() {
           </Card>
         )}
 
-        {/* Race History */}
-        {raceHistory.length > 0 && (
+        {/* ── Tab bar ─────────────────────────────────────────────────────── */}
+        <div
+          className="flex gap-1 border-b border-border overflow-x-auto"
+          style={{ backgroundColor: "hsl(var(--primary) / 0.06)" }}
+        >
+          <button
+            onClick={() => setPageTab("garage")}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              pageTab === "garage" ? "border-transparent" : "border-transparent text-muted-foreground hover:text-foreground/80"
+            }`}
+            style={pageTab === "garage" ? { borderColor: "hsl(var(--primary))", color: "hsl(var(--primary))" } : undefined}
+          >
+            <Warehouse className="h-4 w-4" />
+            {language === "no" ? "Garasje" : "Garage"}
+            {skis.length > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-medium"
+                style={{ backgroundColor: "hsl(var(--primary) / 0.12)", color: "hsl(var(--primary))" }}>
+                {skis.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setPageTab("tests")}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              pageTab === "tests" ? "border-transparent" : "border-transparent text-muted-foreground hover:text-foreground/80"
+            }`}
+            style={pageTab === "tests" ? { borderColor: "hsl(var(--primary))", color: "hsl(var(--primary))" } : undefined}
+          >
+            <BarChart2 className="h-4 w-4" />
+            {language === "no" ? "Tester" : "Tests"}
+            {raceSkiTests.length > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-medium"
+                style={{ backgroundColor: "hsl(var(--primary) / 0.12)", color: "hsl(var(--primary))" }}>
+                {raceSkiTests.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setPageTab("races")}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              pageTab === "races" ? "border-transparent" : "border-transparent text-muted-foreground hover:text-foreground/80"
+            }`}
+            style={pageTab === "races" ? { borderColor: "hsl(var(--primary))", color: "hsl(var(--primary))" } : undefined}
+          >
+            <Flag className="h-4 w-4" />
+            {language === "no" ? "Renn" : "Race Prep"}
+            {raceHistory.length > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-medium"
+                style={{ backgroundColor: "hsl(var(--primary) / 0.12)", color: "hsl(var(--primary))" }}>
+                {raceHistory.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* ── Race History tab ─────────────────────────────────────────────── */}
+        {pageTab === "races" && raceHistory.length === 0 && (
+          <div className="text-center py-10 text-muted-foreground text-sm">
+            <Flag className="h-8 w-8 mx-auto mb-2 opacity-30" />
+            <p>{language === "no" ? "Ingen rennhistorikk ennå." : "No race history yet."}</p>
+          </div>
+        )}
+        {pageTab === "races" && raceHistory.length > 0 && (
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -2096,7 +2158,8 @@ export default function AthleteDetail() {
           </div>
         )}
 
-        {/* Ski Garage */}
+        {/* ── Garage tab ───────────────────────────────────────────────────── */}
+        {pageTab === "garage" && (
         <Collapsible open={skiGarageOpen} onOpenChange={setSkiGarageOpen} data-testid="section-ski-garage">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CollapsibleTrigger asChild>
@@ -2415,9 +2478,11 @@ export default function AthleteDetail() {
           raceSkiTests={raceSkiTests}
           raceHistory={raceHistory}
         />
+        )} {/* end garage tab */}
 
-        {/* Race Ski Tests Section */}
-        <div className="border-t border-border/40 pt-4" data-testid="section-race-ski-tests">
+        {/* ── Tests tab ────────────────────────────────────────────────────── */}
+        {pageTab === "tests" && (
+        <div className="pt-1" data-testid="section-race-ski-tests">
           {/* Offline banner */}
           {!isOnline && (
             <div className="mb-3 flex items-center gap-2 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 px-4 py-2.5 text-sm text-yellow-800 dark:text-yellow-200">
@@ -3308,20 +3373,7 @@ export default function AthleteDetail() {
             </div>
           )}
         </div>
-
-        {/* Race Calendar */}
-        {hasAthleteAccess && athleteId && (
-          <RaceCalendarSection
-            athleteId={athleteId}
-            raceSkiTests={raceSkiTests}
-            isReadOnly={isAthletePortal}
-          />
-        )}
-
-        {/* Audit Log */}
-        {canManage && athleteId && (
-          <AuditLogSection athleteId={athleteId} skis={skis} />
-        )}
+        )} {/* end tests tab */}
       </div>
 
       {/* CSV Import Dialog */}

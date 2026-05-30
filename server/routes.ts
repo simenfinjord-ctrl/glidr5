@@ -5450,8 +5450,7 @@ export async function registerRoutes(
   function watchResetFailures(ip: string) { watchCodeFailures.delete(ip); }
 
   async function generateSessionCode(): Promise<string> {
-    // 6-digit code: 100 000 possibilities — much harder to brute-force than 4-digit
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const code = String(Math.floor(1000 + Math.random() * 9000));
     return code;
   }
 

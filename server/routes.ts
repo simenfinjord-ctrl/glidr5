@@ -376,6 +376,10 @@ export async function registerRoutes(
       INSERT INTO app_settings (key, value) VALUES ('commercialization_enabled', 'false') ON CONFLICT (key) DO NOTHING;
     `);
     await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_athlete_access INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_athlete_id INTEGER;
+    `);
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS invitations (
         id SERIAL PRIMARY KEY,
         team_id INTEGER NOT NULL,
@@ -1818,6 +1822,17 @@ export async function registerRoutes(
       // Team Admin / Super Admin: see all tests in their active team
       const all = await storage.listAllTestsForTeam(teamId);
       for (const t of all) { result.push(t); seenIds.add(t.id); }
+    } else if ((req.user as any).isAthleteAccess === 1) {
+      const linkedAthleteId = (req.user as any).linkedAthleteId;
+      if (linkedAthleteId) {
+        const allTeamTests = await storage.listAllTestsForTeam(teamId);
+        for (const t of allTeamTests) {
+          if (!seenIds.has(t.id) && (t as any).testSkiSource === "raceskis" && (t as any).athleteId === linkedAthleteId) {
+            result.push(t);
+            seenIds.add(t.id);
+          }
+        }
+      }
     } else {
       // Non-raceski tests: only visible when 'tests' permission is granted
       // Retroactive: losing permission removes access to all previous tests too
@@ -3061,6 +3076,8 @@ export async function registerRoutes(
       if (existingUn.rows.length === 0) break;
       finalUsername = `${usernameToSet}${suffix++}`;
     }
+    const isAthleteAccess = req.body.isAthleteAccess ? 1 : 0;
+    const linkedAthleteId = req.body.linkedAthleteId ? parseInt(req.body.linkedAthleteId) : null;
     const created = await storage.createUser({
       email: req.body.email,
       password: hashedPw,
@@ -3072,6 +3089,8 @@ export async function registerRoutes(
       permissions: JSON.stringify(sanitizedPerms),
       teamId,
       isBlindTester: req.body.isBlindTester ? 1 : 0,
+      isAthleteAccess,
+      linkedAthleteId,
       language: req.body.language || "no",
       createdAt: new Date().toISOString(),
     } as any);
@@ -3670,6 +3689,8 @@ export async function registerRoutes(
   });
 
   app.put("/api/grind-profiles/:id", requirePermission("grinding", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
     const id = parseInt(req.params.id);
     const existing = await storage.getGrindProfile(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
@@ -3678,15 +3699,33 @@ export async function registerRoutes(
     if (!name || !grindType || !stone || !pattern) {
       return res.status(400).json({ message: "name, grindType, stone, and pattern are required" });
     }
+    // Compute diff before updating
+    const newExtraParams = extraParams ? JSON.stringify(extraParams) : null;
+    const diffFields: { field: string; from: any; to: any }[] = [];
+    if (existing.name !== name) diffFields.push({ field: "name", from: existing.name, to: name });
+    if (existing.grindType !== grindType) diffFields.push({ field: "grindType", from: existing.grindType, to: grindType });
+    if (existing.stone !== stone) diffFields.push({ field: "stone", from: existing.stone, to: stone });
+    if (existing.pattern !== pattern) diffFields.push({ field: "pattern", from: existing.pattern, to: pattern });
+    if ((existing.notes ?? null) !== (notes ?? null)) diffFields.push({ field: "notes", from: existing.notes ?? null, to: notes ?? null });
+    if ((existing.extraParams ?? null) !== newExtraParams) diffFields.push({ field: "extraParams", from: existing.extraParams ?? null, to: newExtraParams });
     const updated = await storage.updateGrindProfile(id, {
       name,
       grindType,
       stone,
       pattern,
-      extraParams: extraParams ? JSON.stringify(extraParams) : null,
+      extraParams: newExtraParams,
       notes: notes ?? null,
     });
     if (!updated) return res.status(404).json({ message: "Not found" });
+    if (!isIncognito(req)) try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "updated",
+        entityType: "grind_profile", entityId: id,
+        details: JSON.stringify({ changes: diffFields }),
+        createdAt: new Date().toISOString(),
+        groupScope: u.groupScope.split(",")[0].trim(), teamId,
+      });
+    } catch (_) {}
     res.json(updated);
   });
 
@@ -3728,16 +3767,29 @@ export async function registerRoutes(
   });
 
   app.delete("/api/grind-profiles/:id", requirePermission("grinding", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
     const id = parseInt(req.params.id);
     const existing = await storage.getGrindProfile(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
     if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
     const deleted = await storage.deleteGrindProfile(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
+    if (!isIncognito(req)) try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "deleted",
+        entityType: "grind_profile", entityId: id,
+        details: `Deleted grind profile: ${existing.name}`,
+        createdAt: new Date().toISOString(),
+        groupScope: u.groupScope.split(",")[0].trim(), teamId,
+      });
+    } catch (_) {}
     res.json({ ok: true });
   });
 
   app.patch("/api/grind-profiles/:id/archive", requirePermission("grinding", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
     const id = parseInt(req.params.id);
     const existing = await storage.getGrindProfile(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
@@ -3745,7 +3797,39 @@ export async function registerRoutes(
     const archived = req.body.archived === true ? 1 : 0;
     const updated = await storage.updateGrindProfile(id, { archived } as any);
     if (!updated) return res.status(404).json({ message: "Not found" });
+    if (!isIncognito(req)) try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name,
+        action: archived === 1 ? "archived" : "restored",
+        entityType: "grind_profile", entityId: id,
+        details: `${archived === 1 ? "Archived" : "Restored"} grind profile: ${existing.name}`,
+        createdAt: new Date().toISOString(),
+        groupScope: u.groupScope.split(",")[0].trim(), teamId,
+      });
+    } catch (_) {}
     res.json(updated);
+  });
+
+  // Grind profile change log — returns activity log entries for this profile
+  app.get("/api/grind-profiles/:id/changes", requirePermission("grinding", "view"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const profileId = parseInt(req.params.id);
+    const { pool: pgChanges } = await import("./db");
+    const result = await (pgChanges as any).query(
+      `SELECT id, user_id, user_name, action, details, created_at
+       FROM activity_logs
+       WHERE team_id = $1 AND entity_type = 'grind_profile' AND entity_id = $2
+       ORDER BY created_at DESC LIMIT 100`,
+      [teamId, profileId]
+    );
+    res.json(result.rows.map((r: any) => ({
+      id: r.id,
+      userId: r.user_id,
+      userName: r.user_name,
+      action: r.action,
+      details: r.details,
+      createdAt: r.created_at,
+    })));
   });
 
   // Grind profile test history — returns tests whose entries match this profile's grind params
@@ -3889,6 +3973,14 @@ export async function registerRoutes(
     const u = userInfo(req);
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const teamId = getActiveTeamId(req);
+    if (!isIncognito(req)) try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "exported_full_data",
+        entityType: "team", entityId: teamId,
+        details: `Full data export`, createdAt: new Date().toISOString(),
+        groupScope: u.groupScope.split(",")[0].trim(), teamId,
+      });
+    } catch (_) {}
     const [allTests, allWeather, allSeries, allProducts, allUsers, allGroups, allLoginLogs, allActivities, allAthletes] = await Promise.all([
       storage.listAllTestsForTeam(teamId),
       storage.listAllWeatherForTeam(teamId),
@@ -3962,6 +4054,22 @@ export async function registerRoutes(
       racePreps: racePrepsResult.rows,
       racePrepEntries: racePrepEntriesResult.rows,
     });
+  });
+
+  app.post("/api/log-export", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const { exportType, details } = req.body;
+    if (!isIncognito(req)) try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: `exported_${exportType || "unknown"}`,
+        entityType: "team", entityId: teamId,
+        details: details || exportType || "export",
+        createdAt: new Date().toISOString(),
+        groupScope: u.groupScope.split(",")[0].trim(), teamId,
+      });
+    } catch (_) {}
+    res.json({ ok: true });
   });
 
   app.post("/api/admin/import", requireAuth, async (req, res) => {
@@ -4641,6 +4749,11 @@ export async function registerRoutes(
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
     const list = await storage.listAthletes(u.id, u.isScopeAdmin, teamId);
+    // Athlete access users can only see their own athlete
+    if ((req.user as any).isAthleteAccess === 1) {
+      const linkedId = (req.user as any).linkedAthleteId;
+      return res.json(list.filter((a: any) => a.id === linkedId));
+    }
     res.json(list);
   });
 

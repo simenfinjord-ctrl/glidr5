@@ -347,6 +347,12 @@ function getTeamDisabledAreas(teams: ApiTeam[], teamId: number, isSuperAdmin: bo
   }
 }
 
+const ATHLETE_ACCESS_PERMISSIONS: UserPermissions = {
+  dashboard: "view", tests: "view", testskis: "view", products: "none",
+  weather: "none", analytics: "view", grinding: "none",
+  raceskis: "view", suggestions: "view",
+} as UserPermissions;
+
 function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: () => void; allGroups: ApiGroup[]; defaultTeamId: number; teams: ApiTeam[] }) {
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
@@ -354,10 +360,16 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
   const [perms, setPerms] = useState<UserPermissions>({ ...DEFAULT_PERMISSIONS });
   const [doSendWelcomeEmail, setDoSendWelcomeEmail] = useState(true);
   const [selectedTeamId, setSelectedTeamId] = useState(defaultTeamId);
+  const [isAthleteAccess, setIsAthleteAccess] = useState(false);
+  const [linkedAthleteId, setLinkedAthleteId] = useState<number | null>(null);
   const teamChanged = selectedTeamId !== defaultTeamId;
   const { data: teamGroups } = useQuery<ApiGroup[]>({
     queryKey: [`/api/groups?teamScope=${selectedTeamId}`],
     enabled: teamChanged && isSuperAdmin,
+  });
+  const { data: athletes = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/athletes"],
+    enabled: true,
   });
   const effectiveGroups = teamChanged && teamGroups ? teamGroups : allGroups;
   const groupNames = effectiveGroups.filter((g) => g.teamId === selectedTeamId).map((g) => g.name);
@@ -370,7 +382,7 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
 
   const mutation = useMutation({
     mutationFn: async (data: z.infer<typeof userSchema>) => {
-      const res = await apiRequest("POST", "/api/users", { ...data, sendWelcomeEmail: doSendWelcomeEmail });
+      const res = await apiRequest("POST", "/api/users", { ...data, sendWelcomeEmail: doSendWelcomeEmail, isAthleteAccess, linkedAthleteId });
       return res.json();
     },
     onSuccess: () => {
@@ -437,10 +449,20 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
           <FormItem>
             <FormLabel>Role</FormLabel>
             <Select
-              value={form.watch("isAdmin") ? "superadmin" : form.watch("isTeamAdmin") ? "teamadmin" : "member"}
+              value={form.watch("isAdmin") ? "superadmin" : form.watch("isTeamAdmin") ? "teamadmin" : isAthleteAccess ? "athleteaccess" : "member"}
               onValueChange={(v) => {
                 form.setValue("isAdmin", v === "superadmin");
                 form.setValue("isTeamAdmin", v === "teamadmin");
+                if (v === "athleteaccess") {
+                  setIsAthleteAccess(true);
+                  form.setValue("isAdmin", false);
+                  form.setValue("isTeamAdmin", false);
+                  setPerms(ATHLETE_ACCESS_PERMISSIONS);
+                  form.setValue("permissions", JSON.stringify(ATHLETE_ACCESS_PERMISSIONS));
+                } else {
+                  setIsAthleteAccess(false);
+                  setLinkedAthleteId(null);
+                }
               }}
             >
               <FormControl><SelectTrigger data-testid="select-user-role"><SelectValue /></SelectTrigger></FormControl>
@@ -448,18 +470,37 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
                 <SelectItem value="member">Member</SelectItem>
                 <SelectItem value="teamadmin">Team Admin</SelectItem>
                 {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
+                <SelectItem value="athleteaccess">Athlete Access</SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />
           </FormItem>
         )} />
-        <PermissionsMatrix
-          value={perms}
-          onChange={(p) => { setPerms(p); form.setValue("permissions", JSON.stringify(p)); }}
-          testIdPrefix="select-create-perm"
-          onPresetApplied={(blind) => form.setValue("isBlindTester", blind)}
-          disabledAreas={getTeamDisabledAreas(teams, selectedTeamId, isSuperAdmin)}
-        />
+        {isAthleteAccess && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Linked Athlete</label>
+            <Select
+              value={linkedAthleteId ? String(linkedAthleteId) : ""}
+              onValueChange={(v) => setLinkedAthleteId(v ? parseInt(v) : null)}
+            >
+              <SelectTrigger><SelectValue placeholder="Select athlete..." /></SelectTrigger>
+              <SelectContent>
+                {athletes.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {!isAthleteAccess && (
+          <PermissionsMatrix
+            value={perms}
+            onChange={(p) => { setPerms(p); form.setValue("permissions", JSON.stringify(p)); }}
+            testIdPrefix="select-create-perm"
+            onPresetApplied={(blind) => form.setValue("isBlindTester", blind)}
+            disabledAreas={getTeamDisabledAreas(teams, selectedTeamId, isSuperAdmin)}
+          />
+        )}
         <FormField control={form.control} name="isBlindTester" render={({ field }) => (
           <FormItem>
             <div className="flex items-center gap-3">
@@ -1635,7 +1676,7 @@ type UserHistoryData = {
 };
 
 function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser | null; open: boolean; onClose: () => void }) {
-  const [historyTab, setHistoryTab] = useState<"logins" | "activity" | "passwords">("logins");
+  const [historyTab, setHistoryTab] = useState<"logins" | "activity" | "passwords" | "exports">("logins");
 
   const { data, isLoading } = useQuery<UserHistoryData>({
     queryKey: ["/api/admin/users", targetUser?.id, "history"],
@@ -1670,6 +1711,7 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
                 { id: "logins", label: `Logins (${loginLogs.length})` },
                 { id: "activity", label: `Activity (${activityLogs.length})` },
                 { id: "passwords", label: `Password Changes (${passwordChanges.length})` },
+                { id: "exports", label: `Exports (${activityLogs.filter((l) => l.action?.startsWith("exported_")).length})` },
               ] as const).map((t) => (
                 <button
                   key={t.id}
@@ -1772,6 +1814,34 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
                 </div>
               )
             )}
+
+            {historyTab === "exports" && (() => {
+              const exportLogs = activityLogs.filter((l) => l.action?.startsWith("exported_"));
+              return exportLogs.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No export events recorded yet.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <th className="pb-2 pr-3">Date/Time</th>
+                        <th className="pb-2 pr-3">Who</th>
+                        <th className="pb-2">Type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {exportLogs.map((l) => (
+                        <tr key={l.id} className="border-b border-border/30">
+                          <td className="py-1.5 pr-3 tabular-nums text-muted-foreground">{new Date(l.createdAt).toLocaleString()}</td>
+                          <td className="py-1.5 pr-3 font-medium">{l.userName}</td>
+                          <td className="py-1.5 text-muted-foreground">{l.details || l.action}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
           </div>
         )}
       </DialogContent>
@@ -3020,6 +3090,12 @@ export default function Admin() {
         data.testSkiRegrinds?.length ? `${data.testSkiRegrinds.length} series regrinds` : null,
       ].filter(Boolean).join(", ");
       toast({ title: "PDF exported", description: sections });
+      fetch("/api/log-export", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exportType: "pdf_report", details: "Admin PDF export" }),
+      }).catch(() => {});
       try {
         await apiRequest("POST", "/api/action-log", { action: "pdf_download", details: "Full data export" });
         queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/login-logs") });
@@ -4628,6 +4704,12 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
       }
 
       XLSX.writeFile(wb, "glidr-export.xlsx");
+      fetch("/api/log-export", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exportType: "excel_export", details: "Admin Excel export" }),
+      }).catch(() => {});
       toast({ title: "Excel exported" });
     } catch (err: any) {
       toast({ title: "Export failed", description: err.message, variant: "destructive" });

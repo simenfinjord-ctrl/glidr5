@@ -35,6 +35,8 @@ type User = {
   teamEnabledAreas?: string[] | null;
   avatarUrl?: string | null;
   dateFormat?: 'european' | 'american';
+  isAthleteAccess?: boolean;
+  linkedAthleteId?: number | null;
 };
 
 export function useAuth() {
@@ -75,6 +77,11 @@ export function useAuth() {
   const can = (area: keyof UserPermissions | string, level: PermissionLevel = "view"): boolean => {
     if (!user) return false;
     if (user.isAdmin) return true;
+    if (user.isAthleteAccess) {
+      // Only allow tests, raceskis, dashboard, analytics, suggestions
+      const allowed = ["tests", "raceskis", "dashboard", "analytics", "suggestions"];
+      if (!allowed.includes(area as string)) return false;
+    }
     // garmin_watch: team feature + per-user flag required
     if (area === "garmin_watch") {
       if (user.teamEnabledAreas && !user.teamEnabledAreas.includes("garmin_watch")) return false;
@@ -89,6 +96,7 @@ export function useAuth() {
     return true;
   };
 
+  const isAthleteAccess = !!user?.isAthleteAccess;
   const isSuperAdmin = !!user?.isAdmin;
   const isTeamAdmin = !!user?.isTeamAdmin;
   const canManage = isSuperAdmin || isTeamAdmin;
@@ -124,6 +132,7 @@ export function useAuth() {
     isTeamAdmin,
     canManage,
     isBlindTester,
+    isAthleteAccess,
     toggleIncognito,
     toggleStealth,
     isViewingOtherTeam,

@@ -304,7 +304,7 @@ export async function setupAuth(app: Express) {
       const dfRow = await pool.query(`SELECT date_format FROM users WHERE id = $1`, [safe.id]);
       if (dfRow.rows[0]?.date_format) dateFormat = dfRow.rows[0].date_format;
     } catch {}
-    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat });
+    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat, isAthleteAccess: !!(safe as any).isAthleteAccess, linkedAthleteId: (safe as any).linkedAthleteId ?? null });
   });
 
   app.post("/api/auth/incognito", (req, res) => {

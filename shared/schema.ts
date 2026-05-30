@@ -247,6 +247,8 @@ export const users = pgTable("users", {
   incognito: integer("incognito").notNull().default(0),
   stealth: integer("stealth").notNull().default(0),
   avatarUrl: text("avatar_url"),
+  isAthleteAccess: integer("is_athlete_access").notNull().default(0),
+  linkedAthleteId: integer("linked_athlete_id"),
   createdAt: text("created_at"),
 });
 

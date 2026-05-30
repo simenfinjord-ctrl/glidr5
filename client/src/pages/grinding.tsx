@@ -1034,8 +1034,78 @@ function GrindProfileDetailDialog({
             })}
           </div>
         )}
+
+        {/* ── Change history ─────────────────────────────────── */}
+        <GrindProfileHistory profileId={profile?.id ?? null} open={open} />
+
       </DialogContent>
     </Dialog>
+  );
+}
+
+function GrindProfileHistory({ profileId, open }: { profileId: number | null; open: boolean }) {
+  const { data: changes = [], isLoading } = useQuery<{
+    id: number; userName: string; action: string; details: string; createdAt: string;
+  }[]>({
+    queryKey: [`/api/grind-profiles/${profileId}/changes`],
+    queryFn: async () => {
+      const res = await fetch(`/api/grind-profiles/${profileId}/changes`, { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+    enabled: open && profileId != null,
+    staleTime: 10000,
+  });
+
+  if (isLoading || changes.length === 0) return null;
+
+  const ACTION_LABEL: Record<string, string> = {
+    created: "Created",
+    updated: "Updated",
+    deleted: "Deleted",
+    archived: "Archived",
+    restored: "Restored",
+    duplicated: "Duplicated",
+  };
+  const ACTION_COLOR: Record<string, string> = {
+    created: "text-emerald-600",
+    updated: "text-blue-600",
+    deleted: "text-destructive",
+    archived: "text-amber-600",
+    restored: "text-indigo-600",
+    duplicated: "text-violet-600",
+  };
+
+  return (
+    <div className="mt-4 border-t border-border pt-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Change history</div>
+      <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1">
+        {changes.map((c) => {
+          let diffSummary: string | null = null;
+          if (c.action === "updated" && c.details) {
+            try {
+              const { changes: diffs } = JSON.parse(c.details);
+              if (Array.isArray(diffs) && diffs.length > 0) {
+                diffSummary = diffs.map((d: any) => `${d.field}: "${d.from}" → "${d.to}"`).join(", ");
+              }
+            } catch {}
+          }
+          const dt = new Date(c.createdAt);
+          const label = dt.toLocaleDateString("no-NO", { year: "numeric", month: "short", day: "numeric" })
+            + " " + dt.toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" });
+          return (
+            <div key={c.id} className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-1.5 text-xs">
+              <span className={cn("mt-0.5 font-semibold shrink-0", ACTION_COLOR[c.action] ?? "text-foreground")}>
+                {ACTION_LABEL[c.action] ?? c.action}
+              </span>
+              <div className="min-w-0 flex-1 text-muted-foreground">
+                {diffSummary && <span className="block truncate">{diffSummary}</span>}
+              </div>
+              <span className="shrink-0 text-muted-foreground/70">{c.userName} · {label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

@@ -3719,8 +3719,8 @@ export async function registerRoutes(
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
     const { name, grindType, stone, pattern, extraParams, notes } = req.body;
-    if (!name || !grindType || !stone || !pattern) {
-      return res.status(400).json({ message: "name, grindType, stone, and pattern are required" });
+    if (!name || !grindType) {
+      return res.status(400).json({ message: "name and grindType are required" });
     }
     const { pool: pg2 } = await import("./db");
     const maxRow = await (pg2 as any).query(
@@ -3760,8 +3760,8 @@ export async function registerRoutes(
     if (!existing) return res.status(404).json({ message: "Not found" });
     if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
     const { name, grindType, stone, pattern, extraParams, notes } = req.body;
-    if (!name || !grindType || !stone || !pattern) {
-      return res.status(400).json({ message: "name, grindType, stone, and pattern are required" });
+    if (!name || !grindType) {
+      return res.status(400).json({ message: "name and grindType are required" });
     }
     // Compute diff before updating
     const newExtraParams = extraParams ? JSON.stringify(extraParams) : null;

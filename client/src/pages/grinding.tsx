@@ -468,16 +468,28 @@ function GrindProfilesTable({
   onArchive?: (p: GrindProfile) => void;
 }) {
   const { t } = useI18n();
-  // Discover all extra param keys across all profiles (excluding stone/pattern already shown)
+  // Discover all param keys that are actually used by at least one profile.
+  // Stone and Pattern are treated the same as any other param — only shown if present.
   const allExtraKeys = useMemo(() => {
-    const keys = new Set<string>();
+    const keyCounts = new Map<string, number>();
     for (const p of profiles) {
+      // Legacy dedicated columns
+      if (p.stone) keyCounts.set("stone", (keyCounts.get("stone") ?? 0) + 1);
+      if (p.pattern) keyCounts.set("pattern", (keyCounts.get("pattern") ?? 0) + 1);
+      // extraParams JSON
       const extra = parseExtraParams(p.extraParams);
-      for (const k of Object.keys(extra)) {
-        if (!["stone", "pattern"].includes(k)) keys.add(k);
+      for (const [k, v] of Object.entries(extra)) {
+        if (v) keyCounts.set(k, (keyCounts.get(k) ?? 0) + 1);
       }
     }
-    return Array.from(keys);
+    // Preferred order: stone → pattern → everything else
+    const ordered: string[] = [];
+    if (keyCounts.has("stone")) ordered.push("stone");
+    if (keyCounts.has("pattern")) ordered.push("pattern");
+    for (const k of keyCounts.keys()) {
+      if (k !== "stone" && k !== "pattern") ordered.push(k);
+    }
+    return ordered;
   }, [profiles]);
 
   return (
@@ -489,10 +501,8 @@ function GrindProfilesTable({
               <th className="px-3 py-2.5">Name</th>
               <th className="px-3 py-2.5">ID</th>
               <th className="px-3 py-2.5">Type</th>
-              <th className="px-3 py-2.5">Stone</th>
-              <th className="px-3 py-2.5">Pattern</th>
               {allExtraKeys.map((k) => (
-                <th key={k} className="px-3 py-2.5">{k === "ra_value" ? "RA-Value" : k}</th>
+                <th key={k} className="px-3 py-2.5 capitalize">{k === "ra_value" ? "RA-Value" : k}</th>
               ))}
               <th className="px-3 py-2.5">Notes</th>
               <th className="px-3 py-2.5">{t("grinding.addedBy")}</th>
@@ -523,11 +533,12 @@ function GrindProfilesTable({
                       {profile.grindType}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-muted-foreground text-xs">{profile.stone || "—"}</td>
-                  <td className="px-3 py-2 text-muted-foreground text-xs">{profile.pattern || "—"}</td>
-                  {allExtraKeys.map((k) => (
-                    <td key={k} className="px-3 py-2 text-muted-foreground text-xs">{extra[k] ?? "—"}</td>
-                  ))}
+                  {allExtraKeys.map((k) => {
+                    const val = k === "stone" ? (extra[k] ?? profile.stone)
+                              : k === "pattern" ? (extra[k] ?? profile.pattern)
+                              : extra[k];
+                    return <td key={k} className="px-3 py-2 text-muted-foreground text-xs">{val || "—"}</td>;
+                  })}
                   <td className="px-3 py-2 text-xs text-muted-foreground max-w-[200px]">
                     {profile.notes ? (
                       <span className="italic">{profile.notes}</span>

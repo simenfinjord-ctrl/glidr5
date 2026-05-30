@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
+import { SkeletonCards } from "@/components/skeleton-card";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn, fmtDate, fmtDateShort } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -1057,6 +1059,7 @@ const SNOW_STAGE_OPTIONS = ["Falling new", "New", "Irreg. dir. new", "Irreg. dir
 export default function Grinding() {
   const { t, language } = useI18n();
   const { toast } = useToast();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
   const [tab, setTab] = useState<"tests" | "grinds" | "analytics">("tests");
 
   const [filterSeason, setFilterSeason] = useState<string>("All");
@@ -1101,7 +1104,7 @@ export default function Grinding() {
   const { data: allTests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather/for-filtering"] });
-  const { data: grindProfiles = [] } = useQuery<GrindProfile[]>({ queryKey: ["/api/grind-profiles"] });
+  const { data: grindProfiles = [], isLoading: grindProfilesLoading } = useQuery<GrindProfile[]>({ queryKey: ["/api/grind-profiles"] });
   const { data: archivedProfiles = [] } = useQuery<GrindProfile[]>({
     queryKey: ["/api/grind-profiles", "archived"],
     queryFn: () => fetch("/api/grind-profiles?archived=true", { credentials: "include" }).then(r => r.json()),
@@ -1965,7 +1968,8 @@ export default function Grinding() {
             </div>
 
             {/* Active profiles */}
-            {grindSubTab === "active" && (
+            {grindSubTab === "active" && grindProfilesLoading && <SkeletonCards count={4} />}
+            {grindSubTab === "active" && !grindProfilesLoading && (
               grindProfiles.length === 0 ? (
                 <Card className="fs-card rounded-2xl p-8 text-center">
                   <Trophy className="mx-auto h-10 w-10 text-muted-foreground/50 mb-3" />
@@ -1980,9 +1984,9 @@ export default function Grinding() {
                   profiles={filteredProfiles}
                   onViewResults={(profile) => { setDetailProfile(profile); setDetailOpen(true); }}
                   onEdit={(profile) => { setEditProfile(profile); setGrindDialogOpen(true); }}
-                  onDuplicate={(profile) => { if (confirm(`Duplicate "${profile.name}"?`)) duplicateProfileMutation.mutate(profile.id); }}
-                  onDelete={(profile) => { if (confirm(`Delete "${profile.name}"? This cannot be undone.`)) deleteProfileMutation.mutate(profile.id); }}
-                  onArchive={(profile) => { if (confirm(`Archive "${profile.name}"? It will be moved to the archive and can be restored later.`)) archiveProfileMutation.mutate({ id: profile.id, archived: true }); }}
+                  onDuplicate={async (profile) => { if (await confirm({ title: `Duplicate "${profile.name}"?`, confirmLabel: "Duplicate" })) duplicateProfileMutation.mutate(profile.id); }}
+                  onDelete={async (profile) => { if (await confirm({ title: `Delete "${profile.name}"?`, description: "This cannot be undone.", confirmLabel: "Delete", variant: "destructive" })) deleteProfileMutation.mutate(profile.id); }}
+                  onArchive={async (profile) => { if (await confirm({ title: `Archive "${profile.name}"?`, description: "It will be moved to the archive and can be restored later.", confirmLabel: "Archive" })) archiveProfileMutation.mutate({ id: profile.id, archived: true }); }}
                 />
               ) : (
                 <div className="flex flex-col gap-3">
@@ -1992,9 +1996,9 @@ export default function Grinding() {
                       profile={profile}
                       onViewResults={() => { setDetailProfile(profile); setDetailOpen(true); }}
                       onEdit={() => { setEditProfile(profile); setGrindDialogOpen(true); }}
-                      onDuplicate={() => { if (confirm(`Duplicate "${profile.name}"?`)) duplicateProfileMutation.mutate(profile.id); }}
-                      onDelete={() => { if (confirm(`Delete "${profile.name}"? This cannot be undone.`)) deleteProfileMutation.mutate(profile.id); }}
-                      onArchive={() => { if (confirm(`Archive "${profile.name}"? It will be moved to the archive and can be restored later.`)) archiveProfileMutation.mutate({ id: profile.id, archived: true }); }}
+                      onDuplicate={async () => { if (await confirm({ title: `Duplicate "${profile.name}"?`, confirmLabel: "Duplicate" })) duplicateProfileMutation.mutate(profile.id); }}
+                      onDelete={async () => { if (await confirm({ title: `Delete "${profile.name}"?`, description: "This cannot be undone.", confirmLabel: "Delete", variant: "destructive" })) deleteProfileMutation.mutate(profile.id); }}
+                      onArchive={async () => { if (await confirm({ title: `Archive "${profile.name}"?`, description: "It will be moved to the archive and can be restored later.", confirmLabel: "Archive" })) archiveProfileMutation.mutate({ id: profile.id, archived: true }); }}
                     />
                   ))}
                 </div>
@@ -2017,8 +2021,8 @@ export default function Grinding() {
                   profiles={filteredArchivedProfiles}
                   onViewResults={(profile) => { setDetailProfile(profile); setDetailOpen(true); }}
                   onEdit={(profile) => { setEditProfile(profile); setGrindDialogOpen(true); }}
-                  onDuplicate={(profile) => { if (confirm(`Duplicate "${profile.name}"?`)) duplicateProfileMutation.mutate(profile.id); }}
-                  onDelete={(profile) => { if (confirm(`Delete "${profile.name}"? This cannot be undone.`)) deleteProfileMutation.mutate(profile.id); }}
+                  onDuplicate={async (profile) => { if (await confirm({ title: `Duplicate "${profile.name}"?`, confirmLabel: "Duplicate" })) duplicateProfileMutation.mutate(profile.id); }}
+                  onDelete={async (profile) => { if (await confirm({ title: `Delete "${profile.name}"?`, description: "This cannot be undone.", confirmLabel: "Delete", variant: "destructive" })) deleteProfileMutation.mutate(profile.id); }}
                   onArchive={(profile) => archiveProfileMutation.mutate({ id: profile.id, archived: false })}
                 />
               ) : (
@@ -2029,8 +2033,8 @@ export default function Grinding() {
                       profile={profile}
                       onViewResults={() => { setDetailProfile(profile); setDetailOpen(true); }}
                       onEdit={() => { setEditProfile(profile); setGrindDialogOpen(true); }}
-                      onDuplicate={() => { if (confirm(`Duplicate "${profile.name}"?`)) duplicateProfileMutation.mutate(profile.id); }}
-                      onDelete={() => { if (confirm(`Delete "${profile.name}"? This cannot be undone.`)) deleteProfileMutation.mutate(profile.id); }}
+                      onDuplicate={async () => { if (await confirm({ title: `Duplicate "${profile.name}"?`, confirmLabel: "Duplicate" })) duplicateProfileMutation.mutate(profile.id); }}
+                      onDelete={async () => { if (await confirm({ title: `Delete "${profile.name}"?`, description: "This cannot be undone.", confirmLabel: "Delete", variant: "destructive" })) deleteProfileMutation.mutate(profile.id); }}
                       onArchive={() => archiveProfileMutation.mutate({ id: profile.id, archived: false })}
                     />
                   ))}
@@ -2058,6 +2062,7 @@ export default function Grinding() {
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
       />
+      {ConfirmDialog}
     </AppShell>
   );
 }

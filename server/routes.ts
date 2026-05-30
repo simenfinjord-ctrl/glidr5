@@ -646,7 +646,7 @@ export async function registerRoutes(
     const like = `%${q.toLowerCase()}%`;
     const { pool } = await import("./db");
 
-    const [testsRes, productsRes, skisRes] = await Promise.all([
+    const [testsRes, productsRes, skisRes, athletesRes, grindRes, weatherRes] = await Promise.all([
       (pool as any).query(
         `SELECT id, test_name, location, date, test_type FROM tests
          WHERE team_id = $1 AND (LOWER(test_name) LIKE $2 OR LOWER(location) LIKE $2)
@@ -663,6 +663,28 @@ export async function registerRoutes(
         `SELECT tss.id, tss.name FROM test_ski_series tss
          WHERE tss.team_id = $1 AND LOWER(tss.name) LIKE $2
          ORDER BY tss.name LIMIT 5`,
+        [teamId, like]
+      ),
+      (pool as any).query(
+        `SELECT a.id, a.name, a.team FROM athletes a
+         INNER JOIN athlete_access aa ON aa.athlete_id = a.id
+         WHERE a.team_id = $1 AND LOWER(a.name) LIKE $2
+         UNION
+         SELECT a.id, a.name, a.team FROM athletes a
+         WHERE a.team_id = $1 AND a.created_by_id = $3 AND LOWER(a.name) LIKE $2
+         LIMIT 6`,
+        [teamId, like, u.id]
+      ),
+      (pool as any).query(
+        `SELECT id, name, grind_type, stone FROM grind_profiles
+         WHERE team_id = $1 AND archived = 0 AND (LOWER(name) LIKE $2 OR LOWER(grind_type) LIKE $2)
+         ORDER BY id DESC LIMIT 6`,
+        [teamId, like]
+      ),
+      (pool as any).query(
+        `SELECT id, location, date, snow_temperature_c, air_temperature_c FROM daily_weather
+         WHERE team_id = $1 AND LOWER(location) LIKE $2
+         ORDER BY date DESC LIMIT 5`,
         [teamId, like]
       ),
     ]);
@@ -688,6 +710,27 @@ export async function registerRoutes(
         title: r.name,
         subtitle: "Test ski series",
         href: `/testskis`,
+      })),
+      ...athletesRes.rows.map((r: any) => ({
+        type: "athlete" as const,
+        id: r.id,
+        title: r.name,
+        subtitle: r.team ? `Team: ${r.team}` : "Athlete",
+        href: `/raceskis/${r.id}`,
+      })),
+      ...grindRes.rows.map((r: any) => ({
+        type: "grind" as const,
+        id: r.id,
+        title: r.name,
+        subtitle: `${r.grind_type}${r.stone ? ` · ${r.stone}` : ""}`,
+        href: `/grinding?tab=grinds`,
+      })),
+      ...weatherRes.rows.map((r: any) => ({
+        type: "weather" as const,
+        id: r.id,
+        title: r.location,
+        subtitle: `${r.date}${r.snow_temperature_c != null ? ` · Snow ${r.snow_temperature_c}°C` : ""}`,
+        href: `/weather`,
       })),
     ];
 

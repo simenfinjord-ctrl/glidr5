@@ -8,7 +8,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Thermometer, Droplets, Snowflake, MapPin, Cloud, Wind, Eye, Star, Wifi, WifiOff, LayoutGrid, List, Search, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
+import { AppLink } from "@/components/app-link";
 import { EmptyState } from "@/components/empty-state";
+import { SkeletonCards } from "@/components/skeleton-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -1048,7 +1050,7 @@ export default function WeatherPage() {
     try { localStorage.setItem(WEATHER_VIEW_MODE_KEY, mode); } catch {}
   }
 
-  const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
+  const { data: weather = [], isLoading: weatherLoading } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
   const { data: groups = [] } = useQuery<{ id: number; name: string }[]>({ queryKey: ["/api/groups"] });
 
   const userGroups = useMemo(() => {
@@ -1285,12 +1287,18 @@ export default function WeatherPage() {
 
         {/* ── Card view ── */}
         <div className={cn("grid grid-cols-1 gap-3", viewMode !== "card" && "hidden")}>
-          {weather.length === 0 ? (
+          {weatherLoading && <SkeletonCards count={5} />}
+          {!weatherLoading && weather.length === 0 ? (
             <Card className="fs-card rounded-2xl" data-testid="empty-weather">
               <EmptyState
                 icon={Cloud}
                 title={t("weather.noEntries")}
-                description="Add your first weather entry using the button above."
+                description={t("weather.noEntriesDesc")}
+                action={
+                  <AppLink href="/weather/new">
+                    <Button size="sm" variant="outline"><Plus className="mr-1.5 h-3.5 w-3.5" />{t("weather.newEntry")}</Button>
+                  </AppLink>
+                }
               />
             </Card>
           ) : (

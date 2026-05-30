@@ -55,6 +55,7 @@ import { useOffline } from "@/lib/offline-context";
 import { useTheme } from "@/lib/theme";
 import { AppLink } from "@/components/app-link";
 import { CommandSearch } from "@/components/command-search";
+import { useGlobalShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { MobileNav, useMobileNav } from "@/components/mobile-nav";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -542,6 +543,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
   const { theme, toggle: toggleTheme } = useTheme();
   const { t } = useI18n();
+  useGlobalShortcuts();
   const [reportOpen, setReportOpen] = useState(false);
   const { commercializationEnabled } = useAppSettings();
   const [sidebarOpen, setSidebarOpen] = useState(false);

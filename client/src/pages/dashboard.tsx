@@ -845,6 +845,46 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Insight bar — last test + tests missing weather */}
+        {!isBlindTester && (() => {
+          const sortedTests = [...tests].sort((a, b) => b.date.localeCompare(a.date));
+          const lastTest = sortedTests[0];
+          const noWeather = sortedTests.filter((t) => !t.weatherId);
+          if (!lastTest && noWeather.length === 0) return null;
+          return (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {lastTest && (
+                <AppLink href={`/tests/${lastTest.id}`}>
+                  <Card className="fs-card rounded-2xl p-4 flex items-center gap-3 cursor-pointer hover:shadow-md transition-shadow">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+                      <ListChecks className="h-5 w-5 text-emerald-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t("dashboard.lastTest")}</div>
+                      <div className="truncate text-sm font-semibold text-foreground">{lastTest.testName || lastTest.location}</div>
+                      <div className="text-xs text-muted-foreground">{fmtDate(lastTest.date)} · {lastTest.testType}</div>
+                    </div>
+                  </Card>
+                </AppLink>
+              )}
+              {noWeather.length > 0 && (
+                <AppLink href="/weather/new">
+                  <Card className="fs-card rounded-2xl p-4 flex items-center gap-3 cursor-pointer hover:shadow-md transition-shadow border-amber-200/80">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-900/20">
+                      <CloudSun className="h-5 w-5 text-amber-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t("dashboard.missingWeather")}</div>
+                      <div className="text-sm font-semibold text-foreground">{noWeather.length} {noWeather.length === 1 ? t("dashboard.missingWeatherSingular") : t("dashboard.missingWeatherPlural")}</div>
+                      <div className="text-xs text-amber-600">{t("dashboard.missingWeatherCta")}</div>
+                    </div>
+                  </Card>
+                </AppLink>
+              )}
+            </div>
+          );
+        })()}
+
         {isWidgetEnabled("today-tests") && todayTests.length > 0 && (
           <Card className="fs-card rounded-2xl border-emerald-200 p-4" data-testid="card-today-tests">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">

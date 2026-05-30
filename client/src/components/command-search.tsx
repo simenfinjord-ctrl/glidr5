@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Search, ListChecks, Package, Snowflake } from "lucide-react";
+import { ListChecks, Package, Snowflake, User, Wrench, CloudSun } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import {
   CommandDialog, Command, CommandEmpty, CommandGroup,
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/command";
 
 type SearchResult = {
-  type: "test" | "product" | "series";
+  type: "test" | "product" | "series" | "athlete" | "grind" | "weather";
   id: number;
   title: string;
   subtitle: string;
@@ -21,8 +21,19 @@ const TYPE_ICON = {
   test: ListChecks,
   product: Package,
   series: Snowflake,
+  athlete: User,
+  grind: Wrench,
+  weather: CloudSun,
 };
-const TYPE_LABEL = { test: "Tests", product: "Products", series: "Test Skis" };
+const TYPE_LABEL: Record<SearchResult["type"], string> = {
+  test: "Tests",
+  product: "Products",
+  series: "Test Skis",
+  athlete: "Athletes",
+  grind: "Grind Profiles",
+  weather: "Weather",
+};
+const TYPE_ORDER: SearchResult["type"][] = ["athlete", "test", "series", "product", "grind", "weather"];
 
 export function CommandSearch() {
   const { t } = useI18n();
@@ -58,7 +69,7 @@ export function CommandSearch() {
     staleTime: 5000,
   });
 
-  const grouped = (["test", "product", "series"] as const).map((type) => ({
+  const grouped = TYPE_ORDER.map((type) => ({
     type,
     items: results.filter((r) => r.type === type),
   })).filter((g) => g.items.length > 0);

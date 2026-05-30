@@ -1166,27 +1166,57 @@ export default function Tests() {
                 </Select>
               </div>
               {/* 3. Date range */}
-              <div className="flex items-center gap-1">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] text-muted-foreground px-1">Date from:</span>
-                  <div className="relative h-9 w-[130px]">
-                    <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)}
-                      className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden"
-                      title="Fra dato" data-testid="input-filter-date-from" />
-                    <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
-                      {filterDateFrom ? fmtDate(filterDateFrom) : <span className="text-muted-foreground text-xs">—</span>}
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1">
+                  {[
+                    { label: t("tests.preset7d"), days: 7 },
+                    { label: t("tests.preset30d"), days: 30 },
+                    { label: t("tests.presetSeason"), days: null },
+                  ].map(({ label, days }) => {
+                    const today = new Date();
+                    const presetFrom = days !== null
+                      ? new Date(today.getTime() - days * 86400000).toISOString().split("T")[0]
+                      : `${today.getFullYear() - (today.getMonth() < 4 ? 1 : 0)}-05-01`;
+                    const presetTo = today.toISOString().split("T")[0];
+                    const active = filterDateFrom === presetFrom && filterDateTo === presetTo;
+                    return (
+                      <button
+                        key={label}
+                        onClick={() => { setFilterDateFrom(presetFrom); setFilterDateTo(presetTo); }}
+                        className={cn(
+                          "h-6 rounded-full border px-2 text-[10px] font-medium transition-colors",
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background text-muted-foreground hover:border-primary/60 hover:text-foreground"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] text-muted-foreground px-1">Date from:</span>
+                    <div className="relative h-9 w-[130px]">
+                      <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)}
+                        className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden"
+                        title="Fra dato" data-testid="input-filter-date-from" />
+                      <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
+                        {filterDateFrom ? fmtDate(filterDateFrom) : <span className="text-muted-foreground text-xs">—</span>}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <span className="text-muted-foreground text-xs shrink-0 mt-4">–</span>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] text-muted-foreground px-1">Date to:</span>
-                  <div className="relative h-9 w-[130px]">
-                    <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)}
-                      className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden"
-                      title="Til dato" data-testid="input-filter-date-to" />
-                    <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
-                      {filterDateTo ? fmtDate(filterDateTo) : <span className="text-muted-foreground text-xs">—</span>}
+                  <span className="text-muted-foreground text-xs shrink-0 mt-4">–</span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] text-muted-foreground px-1">Date to:</span>
+                    <div className="relative h-9 w-[130px]">
+                      <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)}
+                        className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden"
+                        title="Til dato" data-testid="input-filter-date-to" />
+                      <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
+                        {filterDateTo ? fmtDate(filterDateTo) : <span className="text-muted-foreground text-xs">—</span>}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1773,7 +1803,16 @@ export default function Tests() {
           <div className={cn("grid gap-3", twoColLayout ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1")}>
             {filtered.length === 0 ? (
               <Card className="fs-card rounded-2xl" data-testid="empty-tests">
-                <EmptyState icon={Trophy} title={t("tests.noTests")} description="No tests match the current filters." />
+                <EmptyState
+                  icon={Trophy}
+                  title={t("tests.noTests")}
+                  description={tests.length === 0 ? t("tests.noTestsCreate") : t("tests.noTestsFilter")}
+                  action={tests.length === 0 ? (
+                    <AppLink href="/tests/new">
+                      <Button size="sm" variant="outline"><Plus className="mr-1.5 h-3.5 w-3.5" />{t("tests.newTest")}</Button>
+                    </AppLink>
+                  ) : undefined}
+                />
               </Card>
             ) : (
               filtered.map((t) => {

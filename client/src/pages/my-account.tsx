@@ -1538,7 +1538,7 @@ export default function MyAccount() {
   return (
     <AppShell>
       <div data-testid="text-my-account-title">
-        <h1 className="text-2xl sm:text-3xl flex items-center gap-3 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-3 mb-6">
           <User className="h-7 w-7 text-blue-500" />
           {t("account.title")}
         </h1>

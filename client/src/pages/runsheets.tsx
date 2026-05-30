@@ -108,7 +108,7 @@ export default function Runsheets() {
     <AppShell>
       <div className="flex flex-col gap-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl flex items-center gap-3" data-testid="text-runsheets-title">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-3" data-testid="text-runsheets-title">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50">
               <ClipboardList className="h-5 w-5 text-teal-600" />
             </div>

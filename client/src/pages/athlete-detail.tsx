@@ -1520,7 +1520,7 @@ export default function AthleteDetail() {
           </div>
           <div className="flex items-center gap-3">
             <BarChart2 className="h-5 w-5 text-muted-foreground" />
-            <h1 className="text-2xl sm:text-3xl" data-testid="text-analytics-heading">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-analytics-heading">
               {athlete.name} — Analytics
             </h1>
           </div>
@@ -1561,7 +1561,7 @@ export default function AthleteDetail() {
         {/* Athlete header */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl" data-testid="text-athlete-name">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-athlete-name">
               {athlete.name}
             </h1>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">

@@ -179,7 +179,7 @@ export default function MyTeam() {
         {/* Header */}
         <div className="flex items-center gap-3">
           <Users className="h-7 w-7 text-green-500 shrink-0" />
-          <h1 className="text-2xl sm:text-3xl font-semibold">My Team</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">My Team</h1>
           {!isLoading && (
             <span className="ml-1 text-sm text-muted-foreground">
               {filtered.length}/{members.length}

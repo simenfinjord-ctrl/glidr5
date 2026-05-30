@@ -1045,7 +1045,7 @@ export default function Tests() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl">{t("tests.title")}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("tests.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-tests-subtitle">
               {t("tests.subtitle", { count: filtered.length, hasFilters })}
             </p>

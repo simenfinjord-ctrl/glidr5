@@ -385,7 +385,7 @@ export default function NewTest() {
               </Button>
             </a>
             <div>
-              <h1 className="text-2xl sm:text-3xl">{duplicateId ? t("newTest.duplicateTest") : initialType === "Grind" ? t("newTest.newGrindTest") : t("newTest.title")}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{duplicateId ? t("newTest.duplicateTest") : initialType === "Grind" ? t("newTest.newGrindTest") : t("newTest.title")}</h1>
               <p
                 className="mt-1 text-sm text-muted-foreground"
                 data-testid="text-newtest-subtitle"

@@ -164,7 +164,7 @@ export default function SeriesDetail() {
             </Button>
           </AppLink>
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl" data-testid="text-series-title">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-series-title">
               {series.name}
             </h1>
             <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", series.type === "Glide" ? "fs-badge-glide" : series.type === "Structure" ? "fs-badge-structure" : "fs-badge-topping")}>

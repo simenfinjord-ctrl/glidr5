@@ -133,8 +133,8 @@ export default function WatchQueue() {
             <Watch className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">{t("watchQueue.title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("watchQueue.subtitle")}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("watchQueue.title")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("watchQueue.subtitle")}</p>
           </div>
         </div>
 

@@ -477,7 +477,7 @@ export default function EditTest() {
               </Button>
             </a>
             <div>
-              <h1 className="text-2xl sm:text-3xl">{t("newTest.editTitle")}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("newTest.editTitle")}</h1>
               <p className="mt-1 text-sm text-muted-foreground" data-testid="text-edit-test-subtitle">
                 Update test details and results.
               </p>

@@ -597,7 +597,7 @@ export default function Products() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl">{viewMode === "stock-changes" ? t("products.stockHistory") : viewMode === "storage" ? t("products.stock") : viewMode === "archived" ? "Archived Products" : viewMode === "compare" ? "Compare Products" : t("products.title")}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{viewMode === "stock-changes" ? t("products.stockHistory") : viewMode === "storage" ? t("products.stock") : viewMode === "archived" ? "Archived Products" : viewMode === "compare" ? "Compare Products" : t("products.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-products-subtitle">
               {viewMode === "stock-changes" ? `${stockChanges.length} log entries` : viewMode === "archived" ? `${filteredArchived.length} archived` : viewMode === "compare" ? "Compare product performance" : t("products.subtitle", { count: filtered.length })}
             </p>

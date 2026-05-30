@@ -1425,7 +1425,7 @@ export default function RacePrep() {
           <div className="flex items-center gap-2.5">
             <Flag className="h-6 w-6 text-primary" />
             <div>
-              <h1 className="text-2xl font-bold">Race Prep</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Race Prep</h1>
               <p className="text-sm text-muted-foreground">{L("Planlegg renn og smørevalg", "Plan races and waxing choices")}</p>
             </div>
           </div>

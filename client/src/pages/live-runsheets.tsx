@@ -366,7 +366,7 @@ export default function LiveRunsheets() {
     <AppShell>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl sm:text-3xl flex items-center gap-3" data-testid="text-live-runsheets-title">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-3" data-testid="text-live-runsheets-title">
             <Radio className="h-7 w-7 text-green-500" />
             {t("liveRunsheets.title")}
           </h1>

@@ -1080,7 +1080,7 @@ export default function TestDetail() {
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl" data-testid="text-test-title">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-test-title">
               {(test as any).testName || test.location}
             </h1>
             <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", testTypeBadgeClass)} data-testid="badge-test-type">

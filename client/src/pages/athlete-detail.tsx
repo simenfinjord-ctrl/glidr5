@@ -2160,6 +2160,7 @@ export default function AthleteDetail() {
 
         {/* ── Garage tab ───────────────────────────────────────────────────── */}
         {pageTab === "garage" && (
+        <>
         <Collapsible open={skiGarageOpen} onOpenChange={setSkiGarageOpen} data-testid="section-ski-garage">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CollapsibleTrigger asChild>
@@ -2478,6 +2479,7 @@ export default function AthleteDetail() {
           raceSkiTests={raceSkiTests}
           raceHistory={raceHistory}
         />
+        </>
         )} {/* end garage tab */}
 
         {/* ── Tests tab ────────────────────────────────────────────────────── */}

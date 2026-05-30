@@ -1205,6 +1205,7 @@ export default function WeatherPage() {
                     <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Air Hum</th>
                     <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Conditions</th>
                     <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Quality</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">Added by</th>
                     <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
@@ -1252,6 +1253,9 @@ export default function WeatherPage() {
                         ) : (
                           <span className="text-xs text-muted-foreground/40">—</span>
                         )}
+                      </td>
+                      <td className="px-3 py-2.5 hidden xl:table-cell">
+                        <span className="text-xs text-muted-foreground truncate max-w-[120px] block">{w.createdByName}</span>
                       </td>
                       <td className="px-3 py-2.5 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -1368,9 +1372,12 @@ export default function WeatherPage() {
                       )}
                     </div>
 
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <Eye className="h-3 w-3 text-muted-foreground/50 shrink-0" />
                       <span className="text-xs text-muted-foreground">
-                        <span className="text-foreground/70">{w.createdByName}</span> · {w.groupScope}
+                        <span className="font-medium text-foreground/70">{w.createdByName}</span>
+                        <span className="mx-1 opacity-40">·</span>
+                        {w.groupScope}
                       </span>
                     </div>
                   </div>

@@ -1,11 +1,11 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useMemo } from "react";
-import { fmtDate } from "@/lib/utils";
+import { fmtDate, cn } from "@/lib/utils";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Thermometer, Droplets, Snowflake, MapPin, Cloud, Wind, Eye, Star, Wifi, WifiOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Thermometer, Droplets, Snowflake, MapPin, Cloud, Wind, Eye, Star, Wifi, WifiOff, LayoutGrid, List, Search, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/empty-state";
@@ -142,6 +142,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const WEATHER_LAST_GROUP_KEY = "glidr-weather-last-group";
+const WEATHER_VIEW_MODE_KEY = "glidr-weather-view-mode";
 
 function WeatherForm({
   initial,
@@ -1027,6 +1028,19 @@ export default function WeatherPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Weather | undefined>();
   const [confirmDelete, setConfirmDelete] = useState<Weather | undefined>();
+  const [viewMode, setViewMode] = useState<"card" | "list">(() => {
+    try {
+      const v = localStorage.getItem(WEATHER_VIEW_MODE_KEY);
+      if (v === "list" || v === "card") return v;
+    } catch {}
+    return "card";
+  });
+  const [locationSearch, setLocationSearch] = useState("");
+
+  function setView(mode: "card" | "list") {
+    setViewMode(mode);
+    try { localStorage.setItem(WEATHER_VIEW_MODE_KEY, mode); } catch {}
+  }
 
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
   const { data: groups = [] } = useQuery<{ id: number; name: string }[]>({ queryKey: ["/api/groups"] });
@@ -1047,6 +1061,12 @@ export default function WeatherPage() {
     if (selectedGroup && userGroups.includes(selectedGroup)) return selectedGroup;
     return userGroups[0] ?? "";
   }, [selectedGroup, userGroups]);
+
+  const filteredWeather = useMemo(() => {
+    if (!locationSearch.trim()) return weather;
+    const q = locationSearch.trim().toLowerCase();
+    return weather.filter((w) => w.location.toLowerCase().includes(q));
+  }, [weather, locationSearch]);
 
   const handleGroupChange = (group: string) => {
     setSelectedGroup(group);
@@ -1103,7 +1123,159 @@ export default function WeatherPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3">
+        {/* Search + view toggle */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              value={locationSearch}
+              onChange={(e) => setLocationSearch(e.target.value)}
+              placeholder="Search location…"
+              className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0"
+              data-testid="input-weather-search"
+            />
+            {locationSearch && (
+              <button
+                onClick={() => setLocationSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center rounded-md border border-border overflow-hidden">
+            <button
+              onClick={() => setView("card")}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 h-8 text-xs font-medium transition-colors",
+                viewMode === "card"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+              title="Card view"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Cards</span>
+            </button>
+            <button
+              onClick={() => setView("list")}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 h-8 text-xs font-medium transition-colors",
+                viewMode === "list"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+              title="List view"
+            >
+              <List className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">List</span>
+            </button>
+          </div>
+        </div>
+
+        {/* No results from search */}
+        {weather.length > 0 && filteredWeather.length === 0 && (
+          <Card className="fs-card rounded-2xl">
+            <EmptyState
+              icon={Search}
+              title="No results"
+              description={`No weather entries found for "${locationSearch}".`}
+            />
+          </Card>
+        )}
+
+        {/* ── List view ── */}
+        {viewMode === "list" && filteredWeather.length > 0 && (
+          <Card className="fs-card rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40">
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Location</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Snow °C</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Air °C</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Snow Hum</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Air Hum</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Conditions</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Quality</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredWeather.map((w) => (
+                    <tr key={w.id} className="hover:bg-muted/30 transition-colors" data-testid={`row-weather-${w.id}`}>
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                        <div>{fmtDate(w.date)}</div>
+                        <div className="text-[10px] opacity-60">{w.time}</div>
+                      </td>
+                      <td className="px-3 py-2.5 font-medium text-foreground max-w-[140px] truncate">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="h-3 w-3 text-violet-500 shrink-0" />
+                          <span className="truncate">{w.location}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-mono text-xs font-semibold text-emerald-600 dark:text-emerald-400">{w.snowTemperatureC}°</td>
+                      <td className="px-3 py-2.5 text-right font-mono text-xs font-semibold text-sky-600 dark:text-sky-400">{w.airTemperatureC}°</td>
+                      <td className="px-3 py-2.5 text-right text-xs text-muted-foreground hidden sm:table-cell">{w.snowHumidityPct}%</td>
+                      <td className="px-3 py-2.5 text-right text-xs text-muted-foreground hidden sm:table-cell">{w.airHumidityPct}%</td>
+                      <td className="px-3 py-2.5 hidden md:table-cell">
+                        <div className="flex flex-wrap gap-1">
+                          {w.trackHardness && (
+                            <span className="rounded-full bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 text-[10px] text-rose-700 dark:text-rose-400 ring-1 ring-rose-200 dark:ring-rose-800">
+                              {w.trackHardness}
+                            </span>
+                          )}
+                          {w.snowHumidityType && (
+                            <span className="rounded-full bg-indigo-50 dark:bg-indigo-900/20 px-1.5 py-0.5 text-[10px] text-indigo-700 dark:text-indigo-400 ring-1 ring-indigo-200 dark:ring-indigo-800">
+                              {w.snowHumidityType}
+                            </span>
+                          )}
+                          {w.wind && (
+                            <span className="rounded-full bg-teal-50 dark:bg-teal-900/20 px-1.5 py-0.5 text-[10px] text-teal-700 dark:text-teal-400 ring-1 ring-teal-200 dark:ring-teal-800">
+                              💨 {w.wind}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-right hidden lg:table-cell">
+                        {w.testQuality != null ? (
+                          <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-amber-500">
+                            <Star className="h-3 w-3" />{w.testQuality}/10
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/40">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            data-testid={`button-edit-weather-${w.id}`}
+                            onClick={() => { setEditing(w); setOpen(true); }}
+                            className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            data-testid={`button-delete-weather-${w.id}`}
+                            onClick={() => setConfirmDelete(w)}
+                            className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground/50 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+
+        {/* ── Card view ── */}
+        <div className={cn("grid grid-cols-1 gap-3", viewMode !== "card" && "hidden")}>
           {weather.length === 0 ? (
             <Card className="fs-card rounded-2xl" data-testid="empty-weather">
               <EmptyState
@@ -1113,7 +1285,7 @@ export default function WeatherPage() {
               />
             </Card>
           ) : (
-            weather.map((w) => (
+            filteredWeather.map((w) => (
               <Card
                 key={w.id}
                 className="fs-card rounded-2xl p-4 transition-all duration-200 hover:shadow-lg hover:shadow-violet-500/5"

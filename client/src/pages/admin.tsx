@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 type ApiUser = {
@@ -507,25 +508,16 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
             <FormMessage />
           </FormItem>
         )} />
-        <div>
-          <label
-            className={cn(
-              "inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-all",
-              doSendWelcomeEmail
-                ? "border-blue-300 bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:border-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
-                : "border-border bg-muted/30 text-muted-foreground hover:bg-background/50"
-            )}
-            data-testid="checkbox-send-welcome-email"
-          >
-            <input
-              type="checkbox"
-              checked={doSendWelcomeEmail}
-              onChange={(e) => setDoSendWelcomeEmail(e.target.checked)}
-              className="sr-only"
-            />
-            <Mail className="h-3.5 w-3.5" />
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5" data-testid="checkbox-send-welcome-email">
+          <label htmlFor="toggle-welcome-email" className="flex cursor-pointer items-center gap-2 text-sm select-none">
+            <Mail className="h-3.5 w-3.5 text-muted-foreground" />
             {t("admin.sendWelcomeEmail")}
           </label>
+          <Switch
+            id="toggle-welcome-email"
+            checked={doSendWelcomeEmail}
+            onCheckedChange={setDoSendWelcomeEmail}
+          />
         </div>
         <div className="flex justify-end">
           <Button type="submit" data-testid="button-create-user" disabled={mutation.isPending}>Create</Button>

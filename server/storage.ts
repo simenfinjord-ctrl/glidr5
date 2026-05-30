@@ -106,7 +106,7 @@ export interface IStorage {
   updateGrindingSheet(id: number, data: Partial<InsertGrindingSheet>): Promise<GrindingSheet | undefined>;
   deleteGrindingSheet(id: number): Promise<boolean>;
 
-  listGrindProfiles(teamId: number): Promise<GrindProfile[]>;
+  listGrindProfiles(teamId: number, includeArchived?: boolean): Promise<GrindProfile[]>;
   getGrindProfile(id: number): Promise<GrindProfile | undefined>;
   createGrindProfile(p: InsertGrindProfile): Promise<GrindProfile>;
   updateGrindProfile(id: number, data: Partial<InsertGrindProfile>): Promise<GrindProfile | undefined>;
@@ -627,8 +627,11 @@ export class DatabaseStorage implements IStorage {
 
   // --- Grind Profiles ---
 
-  async listGrindProfiles(teamId: number): Promise<GrindProfile[]> {
-    return db.select().from(grindProfiles).where(eq(grindProfiles.teamId, teamId)).orderBy(sql`${grindProfiles.id} desc`);
+  async listGrindProfiles(teamId: number, includeArchived = false): Promise<GrindProfile[]> {
+    const condition = includeArchived
+      ? and(eq(grindProfiles.teamId, teamId), eq(grindProfiles.archived, 1))
+      : and(eq(grindProfiles.teamId, teamId), eq(grindProfiles.archived, 0));
+    return db.select().from(grindProfiles).where(condition).orderBy(sql`${grindProfiles.id} desc`);
   }
 
   async getGrindProfile(id: number): Promise<GrindProfile | undefined> {

@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2, LayoutGrid, LayoutList, ExternalLink, Check, TrendingUp } from "lucide-react";
+import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2, LayoutGrid, LayoutList, ExternalLink, Check, TrendingUp, Archive, RotateCcw } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
@@ -87,6 +87,7 @@ type GrindProfile = {
   createdByName: string;
   teamId: number;
   createdAt: string;
+  archived?: number;
 };
 
 type RoundResult = { result: number | null; rank: number | null };
@@ -445,12 +446,14 @@ function GrindProfilesTable({
   onEdit,
   onDuplicate,
   onDelete,
+  onArchive,
 }: {
   profiles: GrindProfile[];
   onViewResults: (p: GrindProfile) => void;
   onEdit: (p: GrindProfile) => void;
   onDuplicate: (p: GrindProfile) => void;
   onDelete: (p: GrindProfile) => void;
+  onArchive?: (p: GrindProfile) => void;
 }) {
   const { t } = useI18n();
   // Discover all extra param keys across all profiles (excluding stone/pattern already shown)
@@ -525,15 +528,26 @@ function GrindProfilesTable({
                       <Button variant="ghost" size="sm" onClick={() => onViewResults(profile)} title="View test results" data-testid={`button-view-results-grind-profile-list-${profile.id}`}>
                         <BarChart2 className="h-3.5 w-3.5 text-violet-600" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => onDuplicate(profile)} title="Duplicate" data-testid={`button-duplicate-grind-profile-list-${profile.id}`}>
-                        <Copy className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => onEdit(profile)} title="Edit" data-testid={`button-edit-grind-profile-list-${profile.id}`}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => onDelete(profile)} title="Delete" data-testid={`button-delete-grind-profile-list-${profile.id}`}>
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
+                      {profile.archived ? (
+                        <Button variant="ghost" size="sm" onClick={() => onArchive?.(profile)} title="Restore from archive" data-testid={`button-unarchive-grind-profile-list-${profile.id}`}>
+                          <RotateCcw className="h-3.5 w-3.5 text-emerald-600" />
+                        </Button>
+                      ) : (
+                        <>
+                          <Button variant="ghost" size="sm" onClick={() => onDuplicate(profile)} title="Duplicate" data-testid={`button-duplicate-grind-profile-list-${profile.id}`}>
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => onEdit(profile)} title="Edit" data-testid={`button-edit-grind-profile-list-${profile.id}`}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => onArchive?.(profile)} title="Archive" data-testid={`button-archive-grind-profile-list-${profile.id}`}>
+                            <Archive className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => onDelete(profile)} title="Delete" data-testid={`button-delete-grind-profile-list-${profile.id}`}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -552,12 +566,14 @@ function GrindProfileCard({
   onDuplicate,
   onDelete,
   onViewResults,
+  onArchive,
 }: {
   profile: GrindProfile;
   onEdit: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
   onViewResults: () => void;
+  onArchive?: () => void;
 }) {
   const { t } = useI18n();
   const { toast } = useToast();
@@ -668,21 +684,32 @@ function GrindProfileCard({
           <Button variant="ghost" size="sm" onClick={onViewResults} data-testid={`button-view-results-grind-profile-${profile.id}`} title="View test results">
             <BarChart2 className="h-4 w-4 text-violet-600" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onDuplicate} data-testid={`button-duplicate-grind-profile-${profile.id}`} title="Duplicate profile">
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onEdit} data-testid={`button-edit-grind-profile-${profile.id}`} title="Edit profile">
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onDelete}
-            data-testid={`button-delete-grind-profile-${profile.id}`}
-            title="Delete profile"
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+          {profile.archived ? (
+            <Button variant="ghost" size="sm" onClick={onArchive} data-testid={`button-unarchive-grind-profile-${profile.id}`} title="Restore from archive">
+              <RotateCcw className="h-4 w-4 text-emerald-600" />
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" onClick={onDuplicate} data-testid={`button-duplicate-grind-profile-${profile.id}`} title="Duplicate profile">
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onEdit} data-testid={`button-edit-grind-profile-${profile.id}`} title="Edit profile">
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onArchive} data-testid={`button-archive-grind-profile-${profile.id}`} title="Archive profile">
+                <Archive className="h-4 w-4 text-muted-foreground" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onDelete}
+                data-testid={`button-delete-grind-profile-${profile.id}`}
+                title="Delete profile"
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </Card>
@@ -1069,11 +1096,17 @@ export default function Grinding() {
   const [grindViewMode, setGrindViewMode] = useState<"grid" | "list">(() => {
     try { return (localStorage.getItem("glidr-grinds-view-mode") as "grid" | "list") || "grid"; } catch { return "grid"; }
   });
+  const [grindSubTab, setGrindSubTab] = useState<"active" | "archived">("active");
 
   const { data: allTests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather/for-filtering"] });
   const { data: grindProfiles = [] } = useQuery<GrindProfile[]>({ queryKey: ["/api/grind-profiles"] });
+  const { data: archivedProfiles = [] } = useQuery<GrindProfile[]>({
+    queryKey: ["/api/grind-profiles", "archived"],
+    queryFn: () => fetch("/api/grind-profiles?archived=true", { credentials: "include" }).then(r => r.json()),
+    enabled: grindSubTab === "archived",
+  });
 
   const allProfileParamKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -1128,6 +1161,20 @@ export default function Grinding() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/grind-profiles"] });
       toast({ title: t("grinding.duplicated") });
+    },
+    onError: (e: Error) => {
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
+    },
+  });
+
+  const archiveProfileMutation = useMutation({
+    mutationFn: async ({ id, archived }: { id: number; archived: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/grind-profiles/${id}/archive`, { archived });
+      return res.json();
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/grind-profiles"] });
+      toast({ title: vars.archived ? "Profile archived" : "Profile restored" });
     },
     onError: (e: Error) => {
       toast({ title: t("common.error"), description: e.message, variant: "destructive" });
@@ -1244,6 +1291,18 @@ export default function Grinding() {
     );
   }, [grindProfiles, grindSearch]);
 
+  const filteredArchivedProfiles = useMemo(() => {
+    if (!grindSearch.trim()) return archivedProfiles;
+    const q = grindSearch.toLowerCase();
+    return archivedProfiles.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.grindType.toLowerCase().includes(q) ||
+        p.stone.toLowerCase().includes(q) ||
+        p.pattern.toLowerCase().includes(q)
+    );
+  }, [archivedProfiles, grindSearch]);
+
   const grindHighlight = useMemo(() => {
     const map = new Map<string, typeof GRIND_COMPARE_COLORS[number]>();
     filterGrinds.forEach((name, i) => {
@@ -1259,6 +1318,7 @@ export default function Grinding() {
   function getTabSubtitle() {
     if (tab === "tests") return `${filtered.length} grind test${filtered.length !== 1 ? "s" : ""}${hasFilters ? " matching filters" : " total"}`;
     if (tab === "analytics") return `Analytics — ${grindProfiles.length} profiles, ${grindTests.length} tests`;
+    if (grindSubTab === "archived") return `${filteredArchivedProfiles.length} archived profile${filteredArchivedProfiles.length !== 1 ? "s" : ""}${grindSearch ? " matching search" : ""}`;
     return `${filteredProfiles.length} grind profile${filteredProfiles.length !== 1 ? "s" : ""}${grindSearch ? " matching search" : " total"}`;
   }
 
@@ -1839,6 +1899,27 @@ export default function Grinding() {
         {/* Grinds tab */}
         {tab === "grinds" && (
           <div className="flex flex-col gap-4">
+            {/* Sub-tabs: Active / Archived */}
+            <div className="flex gap-1 border-b border-border">
+              <button
+                onClick={() => setGrindSubTab("active")}
+                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${grindSubTab === "active" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}
+              >
+                <Trophy className="h-4 w-4" />
+                Active
+                {grindProfiles.length > 0 && (
+                  <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">{grindProfiles.length}</span>
+                )}
+              </button>
+              <button
+                onClick={() => setGrindSubTab("archived")}
+                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${grindSubTab === "archived" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}
+              >
+                <Archive className="h-4 w-4" />
+                Archived
+              </button>
+            </div>
+
             {/* Search bar + view toggle */}
             <div className="flex items-center gap-2">
               <div className="relative max-w-sm flex-1">
@@ -1883,51 +1964,78 @@ export default function Grinding() {
               </div>
             </div>
 
-            {/* Profile list */}
-            {grindProfiles.length === 0 ? (
-              <Card className="fs-card rounded-2xl p-8 text-center">
-                <Trophy className="mx-auto h-10 w-10 text-muted-foreground/50 mb-3" />
-                <div className="text-sm text-muted-foreground">{t("grinding.noProfiles")}</div>
-              </Card>
-            ) : filteredProfiles.length === 0 ? (
-              <Card className="fs-card rounded-2xl p-6 text-center">
-                <div className="text-sm text-muted-foreground">No grind profiles match your search.</div>
-              </Card>
-            ) : grindViewMode === "list" ? (
-              <GrindProfilesTable
-                profiles={filteredProfiles}
-                onViewResults={(profile) => { setDetailProfile(profile); setDetailOpen(true); }}
-                onEdit={(profile) => { setEditProfile(profile); setGrindDialogOpen(true); }}
-                onDuplicate={(profile) => { if (confirm(`Duplicate "${profile.name}"?`)) duplicateProfileMutation.mutate(profile.id); }}
-                onDelete={(profile) => { if (confirm(`Delete "${profile.name}"? This cannot be undone.`)) deleteProfileMutation.mutate(profile.id); }}
-              />
-            ) : (
-              <div className="flex flex-col gap-3">
-                {filteredProfiles.map((profile) => (
-                  <GrindProfileCard
-                    key={profile.id}
-                    profile={profile}
-                    onViewResults={() => {
-                      setDetailProfile(profile);
-                      setDetailOpen(true);
-                    }}
-                    onEdit={() => {
-                      setEditProfile(profile);
-                      setGrindDialogOpen(true);
-                    }}
-                    onDuplicate={() => {
-                      if (confirm(`Duplicate "${profile.name}"?`)) {
-                        duplicateProfileMutation.mutate(profile.id);
-                      }
-                    }}
-                    onDelete={() => {
-                      if (confirm(`Delete "${profile.name}"? This cannot be undone.`)) {
-                        deleteProfileMutation.mutate(profile.id);
-                      }
-                    }}
-                  />
-                ))}
-              </div>
+            {/* Active profiles */}
+            {grindSubTab === "active" && (
+              grindProfiles.length === 0 ? (
+                <Card className="fs-card rounded-2xl p-8 text-center">
+                  <Trophy className="mx-auto h-10 w-10 text-muted-foreground/50 mb-3" />
+                  <div className="text-sm text-muted-foreground">{t("grinding.noProfiles")}</div>
+                </Card>
+              ) : filteredProfiles.length === 0 ? (
+                <Card className="fs-card rounded-2xl p-6 text-center">
+                  <div className="text-sm text-muted-foreground">No grind profiles match your search.</div>
+                </Card>
+              ) : grindViewMode === "list" ? (
+                <GrindProfilesTable
+                  profiles={filteredProfiles}
+                  onViewResults={(profile) => { setDetailProfile(profile); setDetailOpen(true); }}
+                  onEdit={(profile) => { setEditProfile(profile); setGrindDialogOpen(true); }}
+                  onDuplicate={(profile) => { if (confirm(`Duplicate "${profile.name}"?`)) duplicateProfileMutation.mutate(profile.id); }}
+                  onDelete={(profile) => { if (confirm(`Delete "${profile.name}"? This cannot be undone.`)) deleteProfileMutation.mutate(profile.id); }}
+                  onArchive={(profile) => { if (confirm(`Archive "${profile.name}"? It will be moved to the archive and can be restored later.`)) archiveProfileMutation.mutate({ id: profile.id, archived: true }); }}
+                />
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {filteredProfiles.map((profile) => (
+                    <GrindProfileCard
+                      key={profile.id}
+                      profile={profile}
+                      onViewResults={() => { setDetailProfile(profile); setDetailOpen(true); }}
+                      onEdit={() => { setEditProfile(profile); setGrindDialogOpen(true); }}
+                      onDuplicate={() => { if (confirm(`Duplicate "${profile.name}"?`)) duplicateProfileMutation.mutate(profile.id); }}
+                      onDelete={() => { if (confirm(`Delete "${profile.name}"? This cannot be undone.`)) deleteProfileMutation.mutate(profile.id); }}
+                      onArchive={() => { if (confirm(`Archive "${profile.name}"? It will be moved to the archive and can be restored later.`)) archiveProfileMutation.mutate({ id: profile.id, archived: true }); }}
+                    />
+                  ))}
+                </div>
+              )
+            )}
+
+            {/* Archived profiles */}
+            {grindSubTab === "archived" && (
+              archivedProfiles.length === 0 ? (
+                <Card className="fs-card rounded-2xl p-8 text-center">
+                  <Archive className="mx-auto h-10 w-10 text-muted-foreground/50 mb-3" />
+                  <div className="text-sm text-muted-foreground">No archived grind profiles.</div>
+                </Card>
+              ) : filteredArchivedProfiles.length === 0 ? (
+                <Card className="fs-card rounded-2xl p-6 text-center">
+                  <div className="text-sm text-muted-foreground">No archived profiles match your search.</div>
+                </Card>
+              ) : grindViewMode === "list" ? (
+                <GrindProfilesTable
+                  profiles={filteredArchivedProfiles}
+                  onViewResults={(profile) => { setDetailProfile(profile); setDetailOpen(true); }}
+                  onEdit={(profile) => { setEditProfile(profile); setGrindDialogOpen(true); }}
+                  onDuplicate={(profile) => { if (confirm(`Duplicate "${profile.name}"?`)) duplicateProfileMutation.mutate(profile.id); }}
+                  onDelete={(profile) => { if (confirm(`Delete "${profile.name}"? This cannot be undone.`)) deleteProfileMutation.mutate(profile.id); }}
+                  onArchive={(profile) => archiveProfileMutation.mutate({ id: profile.id, archived: false })}
+                />
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {filteredArchivedProfiles.map((profile) => (
+                    <GrindProfileCard
+                      key={profile.id}
+                      profile={profile}
+                      onViewResults={() => { setDetailProfile(profile); setDetailOpen(true); }}
+                      onEdit={() => { setEditProfile(profile); setGrindDialogOpen(true); }}
+                      onDuplicate={() => { if (confirm(`Duplicate "${profile.name}"?`)) duplicateProfileMutation.mutate(profile.id); }}
+                      onDelete={() => { if (confirm(`Delete "${profile.name}"? This cannot be undone.`)) deleteProfileMutation.mutate(profile.id); }}
+                      onArchive={() => archiveProfileMutation.mutate({ id: profile.id, archived: false })}
+                    />
+                  ))}
+                </div>
+              )
             )}
           </div>
         )}

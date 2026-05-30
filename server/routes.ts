@@ -314,6 +314,7 @@ export async function registerRoutes(
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_pattern TEXT;
       ALTER TABLE grind_profiles ADD COLUMN IF NOT EXISTS grind_id TEXT;
       ALTER TABLE grind_profiles ADD COLUMN IF NOT EXISTS notes TEXT;
+      ALTER TABLE grind_profiles ADD COLUMN IF NOT EXISTS archived INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS grind_profile_id INTEGER;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS is_paused INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
@@ -3583,7 +3584,8 @@ export async function registerRoutes(
   // Grind Profiles
   app.get("/api/grind-profiles", requirePermission("grinding", "view"), async (req, res) => {
     const teamId = getActiveTeamId(req);
-    const profiles = await storage.listGrindProfiles(teamId);
+    const includeArchived = req.query.archived === "true";
+    const profiles = await storage.listGrindProfiles(teamId, includeArchived);
     res.json(profiles);
   });
 
@@ -3690,6 +3692,17 @@ export async function registerRoutes(
     const deleted = await storage.deleteGrindProfile(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
     res.json({ ok: true });
+  });
+
+  app.patch("/api/grind-profiles/:id/archive", requirePermission("grinding", "edit"), async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getGrindProfile(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
+    const archived = req.body.archived === true ? 1 : 0;
+    const updated = await storage.updateGrindProfile(id, { archived } as any);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
   });
 
   // Grind profile test history — returns tests whose entries match this profile's grind params

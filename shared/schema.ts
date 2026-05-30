@@ -471,6 +471,7 @@ export const grindProfiles = pgTable("grind_profiles", {
   createdByName: text("created_by_name").notNull(),
   teamId: integer("team_id").notNull().default(1),
   createdAt: text("created_at").notNull(),
+  archived: integer("archived").notNull().default(0),
 });
 
 export const insertGrindProfileSchema = createInsertSchema(grindProfiles).omit({ id: true });

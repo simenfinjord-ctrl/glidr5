@@ -2408,6 +2408,14 @@ export default function AthleteDetail() {
           </CollapsibleContent>
         </Collapsible>
 
+        {/* Smart Ski Suggestions */}
+        <SkiSuggestionsSection
+          athleteId={athleteId!}
+          skis={skis}
+          raceSkiTests={raceSkiTests}
+          raceHistory={raceHistory}
+        />
+
         {/* Race Ski Tests Section */}
         <div className="border-t border-border/40 pt-4" data-testid="section-race-ski-tests">
           {/* Offline banner */}
@@ -3879,6 +3887,555 @@ export default function AthleteDetail() {
         </DialogContent>
       </Dialog>
     </AppShell>
+  );
+}
+
+// ─── Ski Suggestions Section ─────────────────────────────────────────────────
+
+const SNOW_STAGE_OPTS = ["Falling new", "New", "Irreg. dir. new", "Irreg. dir. transf.", "Transformed"] as const;
+const TRACK_HARDNESS_OPTS = ["Very soft", "Soft", "Medium hard", "Hard", "Very hard", "Ice"] as const;
+const SNOW_HUM_TYPE_OPTS = ["Dry", "Moist", "Wet", "Very wet", "Slush"] as const;
+const GRAIN_SIZE_OPTS = ["Extra fine", "Very fine", "Fine", "Average", "Coarse", "Very coarse"] as const;
+
+function SkiSuggestionsSection({
+  athleteId,
+  skis,
+  raceSkiTests,
+  raceHistory,
+}: {
+  athleteId: number;
+  skis: RaceSki[];
+  raceSkiTests: RaceSkiTest[];
+  raceHistory: AthleteRaceHistory[];
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [discipline, setDiscipline] = useState<"Classic" | "Skating">("Classic");
+
+  // Weather filter state
+  const [sfSnowMin, setSfSnowMin] = useState("");
+  const [sfSnowMax, setSfSnowMax] = useState("");
+  const [sfAirMin, setSfAirMin] = useState("");
+  const [sfAirMax, setSfAirMax] = useState("");
+  const [sfAirHumMin, setSfAirHumMin] = useState("");
+  const [sfAirHumMax, setSfAirHumMax] = useState("");
+  const [sfSnowHumMin, setSfSnowHumMin] = useState("");
+  const [sfSnowHumMax, setSfSnowHumMax] = useState("");
+  const [sfSnowType, setSfSnowType] = useState("");
+  const [sfTrackHardness, setSfTrackHardness] = useState("");
+  const [sfArtSnow, setSfArtSnow] = useState("");
+  const [sfNatSnow, setSfNatSnow] = useState("");
+  const [sfSnowHumType, setSfSnowHumType] = useState("");
+  const [sfGrainSize, setSfGrainSize] = useState("");
+  const [sfPrecip, setSfPrecip] = useState("");
+  const [sfWind, setSfWind] = useState("");
+  const [sfVisibility, setSfVisibility] = useState("");
+  const [sfCloudMin, setSfCloudMin] = useState("");
+  const [sfCloudMax, setSfCloudMax] = useState("");
+
+  const hasFilters = !!(sfSnowMin || sfSnowMax || sfAirMin || sfAirMax ||
+    sfAirHumMin || sfAirHumMax || sfSnowHumMin || sfSnowHumMax ||
+    sfSnowType || sfTrackHardness || sfArtSnow || sfNatSnow ||
+    sfSnowHumType || sfGrainSize || sfPrecip || sfWind || sfVisibility ||
+    sfCloudMin || sfCloudMax);
+
+  // Fetch entries for all race ski tests (lazy — only when section is open)
+  const testIds = useMemo(() => raceSkiTests.map((t) => t.id), [raceSkiTests]);
+  const { data: allEntries = [] } = useQuery<TestEntry[]>({
+    queryKey: [`/api/raceski-suggestions-entries/${athleteId}`, testIds],
+    queryFn: async () => {
+      if (testIds.length === 0) return [];
+      const results = await Promise.all(
+        testIds.map((id) => fetch(`/api/tests/${id}/entries`, { credentials: "include" }).then((r) => r.json()))
+      );
+      return results.flat();
+    },
+    enabled: open && testIds.length > 0,
+    staleTime: 60_000,
+  });
+
+  // Build a weather map from the tests that have weatherId
+  const weatherIds = useMemo(() => {
+    const ids = new Set(raceSkiTests.map((t) => t.weatherId).filter((id): id is number => id != null));
+    return Array.from(ids);
+  }, [raceSkiTests]);
+
+  const { data: weatherDetails = [] } = useQuery<WeatherItem[]>({
+    queryKey: ["/api/weather/for-filtering"],
+  });
+
+  const weatherById = useMemo(() => {
+    const map = new Map<number, WeatherItem>();
+    for (const w of weatherDetails) map.set(w.id, w);
+    return map;
+  }, [weatherDetails]);
+
+  // How many race history entries used each ski (by skiId string)
+  const raceUsesBySkiId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of raceHistory) {
+      const ids = discipline === "Classic"
+        ? [r.skiIdClassic, r.skiId].filter(Boolean) as string[]
+        : [r.skiIdSkating, r.skiId].filter(Boolean) as string[];
+      for (const id of ids) {
+        map.set(id, (map.get(id) ?? 0) + 1);
+      }
+    }
+    return map;
+  }, [raceHistory, discipline]);
+
+  // Compute suggestions
+  const suggestions = useMemo(() => {
+    if (!hasFilters) return null;
+
+    // Filter skis by discipline
+    const disciplineSkis = skis.filter(
+      (s) => !s.archivedAt && (s.discipline === discipline || s.discipline === "Skiathlon")
+    );
+    if (disciplineSkis.length === 0) return { skis: [], matchingTestCount: 0 };
+
+    const skiIdSet = new Set(disciplineSkis.map((s) => s.id));
+
+    // Filter tests by discipline type
+    const disciplineTests = raceSkiTests.filter((t) =>
+      discipline === "Classic"
+        ? t.testType === "Classic" || t.testType === "Skiathlon"
+        : t.testType === "Skating" || t.testType === "Skiathlon"
+    );
+
+    // Parse filter values
+    const toF = (v: string) => v !== "" ? parseFloat(v) : null;
+    const snowMin = toF(sfSnowMin); const snowMax = toF(sfSnowMax);
+    const airMin = toF(sfAirMin);   const airMax = toF(sfAirMax);
+    const ahMin = toF(sfAirHumMin); const ahMax = toF(sfAirHumMax);
+    const shMin = toF(sfSnowHumMin); const shMax = toF(sfSnowHumMax);
+    const clMin = toF(sfCloudMin);  const clMax = toF(sfCloudMax);
+
+    const autoSwap = (a: number | null, b: number | null): [number | null, number | null] =>
+      a != null && b != null && a > b ? [b, a] : [a, b];
+    const [effSnowMin, effSnowMax] = autoSwap(snowMin, snowMax);
+    const [effAirMin, effAirMax] = autoSwap(airMin, airMax);
+
+    // Find tests whose weather matches ALL set filters
+    const matchingTests = disciplineTests.filter((test) => {
+      if (!test.weatherId) return false;
+      const w = weatherById.get(test.weatherId);
+      if (!w) return false;
+      if (effSnowMin != null && (w.snowTemperatureC == null || w.snowTemperatureC < effSnowMin)) return false;
+      if (effSnowMax != null && (w.snowTemperatureC == null || w.snowTemperatureC > effSnowMax)) return false;
+      if (effAirMin != null && (w.airTemperatureC == null || w.airTemperatureC < effAirMin)) return false;
+      if (effAirMax != null && (w.airTemperatureC == null || w.airTemperatureC > effAirMax)) return false;
+      if (ahMin != null && (w.airHumidityPct == null || w.airHumidityPct < ahMin)) return false;
+      if (ahMax != null && (w.airHumidityPct == null || w.airHumidityPct > ahMax)) return false;
+      if (shMin != null && (w.snowHumidityPct == null || w.snowHumidityPct < shMin)) return false;
+      if (shMax != null && (w.snowHumidityPct == null || w.snowHumidityPct > shMax)) return false;
+      if (sfSnowType && !(w.snowType ?? "").toLowerCase().includes(sfSnowType.toLowerCase())) return false;
+      if (sfTrackHardness && !(w.trackHardness ?? "").toLowerCase().includes(sfTrackHardness.toLowerCase())) return false;
+      if (sfArtSnow && !(w.artificialSnow ?? "").toLowerCase().includes(sfArtSnow.toLowerCase())) return false;
+      if (sfNatSnow && !(w.naturalSnow ?? "").toLowerCase().includes(sfNatSnow.toLowerCase())) return false;
+      if (sfSnowHumType && !(w.snowHumidityType ?? "").toLowerCase().includes(sfSnowHumType.toLowerCase())) return false;
+      if (sfGrainSize && !(w.grainSize ?? "").toLowerCase().includes(sfGrainSize.toLowerCase())) return false;
+      if (sfPrecip && !(w.precipitation ?? "").toLowerCase().includes(sfPrecip.toLowerCase())) return false;
+      if (sfWind && !(w.wind ?? "").toLowerCase().includes(sfWind.toLowerCase())) return false;
+      if (sfVisibility && !(w.visibility ?? "").toLowerCase().includes(sfVisibility.toLowerCase())) return false;
+      if (clMin != null && (w.clouds == null || w.clouds < clMin)) return false;
+      if (clMax != null && (w.clouds == null || w.clouds > clMax)) return false;
+      return true;
+    });
+
+    const matchingTestIds = new Set(matchingTests.map((t) => t.id));
+
+    // Aggregate per ski
+    const statsMap = new Map<number, { ranks: number[]; results: number[]; feelings: number[]; tests: Set<number> }>();
+    for (const entry of allEntries) {
+      if (!matchingTestIds.has(entry.testId)) continue;
+      if (!entry.raceSkiId || !skiIdSet.has(entry.raceSkiId)) continue;
+      let s = statsMap.get(entry.raceSkiId);
+      if (!s) { s = { ranks: [], results: [], feelings: [], tests: new Set() }; statsMap.set(entry.raceSkiId, s); }
+      s.tests.add(entry.testId);
+      if (entry.rank0km != null) s.ranks.push(entry.rank0km);
+      if (entry.result0kmCmBehind != null) s.results.push(entry.result0kmCmBehind);
+      if (entry.feelingRank != null) s.feelings.push(entry.feelingRank);
+    }
+
+    const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+
+    const scored = disciplineSkis.map((ski) => {
+      const s = statsMap.get(ski.id);
+      const ranks = s?.ranks ?? [];
+      const results = s?.results ?? [];
+      const feelings = s?.feelings ?? [];
+      const testCount = s?.tests.size ?? 0;
+      return {
+        ski,
+        testCount,
+        entryCount: ranks.length,
+        avgRank: avg(ranks),
+        avgResult: avg(results),
+        avgFeeling: avg(feelings),
+        wins: ranks.filter((r) => r === 1).length,
+        top3: ranks.filter((r) => r <= 3).length,
+        raceUses: raceUsesBySkiId.get(ski.skiId) ?? 0,
+      };
+    });
+
+    // Sort: skis with test data first (by avgRank asc), then no data
+    const withData = scored.filter((s) => s.avgRank != null).sort((a, b) => (a.avgRank ?? 99) - (b.avgRank ?? 99));
+    const noData = scored.filter((s) => s.avgRank == null).sort((a, b) => b.raceUses - a.raceUses);
+
+    return { skis: [...withData, ...noData], matchingTestCount: matchingTests.length };
+  }, [hasFilters, skis, discipline, raceSkiTests, allEntries, weatherById, raceUsesBySkiId,
+    sfSnowMin, sfSnowMax, sfAirMin, sfAirMax, sfAirHumMin, sfAirHumMax, sfSnowHumMin, sfSnowHumMax,
+    sfSnowType, sfTrackHardness, sfArtSnow, sfNatSnow, sfSnowHumType, sfGrainSize, sfPrecip,
+    sfWind, sfVisibility, sfCloudMin, sfCloudMax]);
+
+  function clearFilters() {
+    setSfSnowMin(""); setSfSnowMax(""); setSfAirMin(""); setSfAirMax("");
+    setSfAirHumMin(""); setSfAirHumMax(""); setSfSnowHumMin(""); setSfSnowHumMax("");
+    setSfSnowType(""); setSfTrackHardness(""); setSfArtSnow(""); setSfNatSnow("");
+    setSfSnowHumType(""); setSfGrainSize(""); setSfPrecip(""); setSfWind("");
+    setSfVisibility(""); setSfCloudMin(""); setSfCloudMax("");
+  }
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} data-testid="section-ski-suggestions">
+      <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-4">
+        <CollapsibleTrigger asChild>
+          <button className="flex items-center gap-2 cursor-pointer select-none group" data-testid="toggle-ski-suggestions">
+            <Snowflake className="h-4 w-4 text-sky-500" />
+            <h2 className="text-lg font-semibold">{t("suggestions.skiTitle")}</h2>
+            {open ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform" />
+            )}
+          </button>
+        </CollapsibleTrigger>
+        {hasFilters && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+          >
+            <X className="h-3 w-3" />
+            {t("common.clearFilters") || "Clear filters"}
+          </button>
+        )}
+      </div>
+
+      <CollapsibleContent>
+        <div className="mt-4 flex flex-col gap-5">
+          <p className="text-sm text-muted-foreground">{t("suggestions.skiSubtitle")}</p>
+
+          {/* Discipline toggle */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-foreground">{t("suggestions.discipline")}:</span>
+            <div className="flex rounded-lg overflow-hidden border border-border">
+              <button
+                type="button"
+                onClick={() => setDiscipline("Classic")}
+                className={cn(
+                  "px-4 py-1.5 text-sm font-medium transition-colors",
+                  discipline === "Classic" ? "bg-sky-500 text-white" : "text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {t("suggestions.classic")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDiscipline("Skating")}
+                className={cn(
+                  "px-4 py-1.5 text-sm font-medium transition-colors",
+                  discipline === "Skating" ? "bg-emerald-500 text-white" : "text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {t("suggestions.skating")}
+              </button>
+            </div>
+          </div>
+
+          {/* Full weather filter panel */}
+          <Card className="fs-card rounded-2xl p-4">
+            <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <Snowflake className="h-3.5 w-3.5 text-sky-500" />
+              {t("suggestions.weatherParams")}
+              {hasFilters && (
+                <button type="button" onClick={clearFilters} className="ml-auto text-xs text-muted-foreground hover:text-foreground normal-case tracking-normal font-normal flex items-center gap-1">
+                  <X className="h-3 w-3" />{t("common.clearFilters") || "Clear"}
+                </button>
+              )}
+            </div>
+
+            {/* Temperature & Humidity */}
+            <div className="space-y-4">
+              <div>
+                <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Temperature &amp; Humidity
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" />
+                      <span className="text-xs text-muted-foreground">{t("suggestions.snowTemp")}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Input type="number" className="h-8 text-xs" placeholder="Min" value={sfSnowMin} onChange={e => setSfSnowMin(e.target.value)} />
+                      <span className="text-xs text-muted-foreground">–</span>
+                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={sfSnowMax} onChange={e => setSfSnowMax(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="h-2 w-2 rounded-full bg-blue-500 inline-block" />
+                      <span className="text-xs text-muted-foreground">{t("suggestions.airTemp")}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Input type="number" className="h-8 text-xs" placeholder="Min" value={sfAirMin} onChange={e => setSfAirMin(e.target.value)} />
+                      <span className="text-xs text-muted-foreground">–</span>
+                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={sfAirMax} onChange={e => setSfAirMax(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="h-2 w-2 rounded-full bg-violet-500 inline-block" />
+                      <span className="text-xs text-muted-foreground">{t("suggestions.airHumidity")}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Input type="number" className="h-8 text-xs" placeholder="Min" value={sfAirHumMin} onChange={e => setSfAirHumMin(e.target.value)} />
+                      <span className="text-xs text-muted-foreground">–</span>
+                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={sfAirHumMax} onChange={e => setSfAirHumMax(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="h-2 w-2 rounded-full bg-amber-500 inline-block" />
+                      <span className="text-xs text-muted-foreground">{t("suggestions.snowHumidity")}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Input type="number" className="h-8 text-xs" placeholder="Min" value={sfSnowHumMin} onChange={e => setSfSnowHumMin(e.target.value)} />
+                      <span className="text-xs text-muted-foreground">–</span>
+                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={sfSnowHumMax} onChange={e => setSfSnowHumMax(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="h-2 w-2 rounded-full bg-sky-400 inline-block" />
+                      <span className="text-xs text-muted-foreground">{t("suggestions.cloudCover")}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Input type="number" className="h-8 text-xs" placeholder="Min" value={sfCloudMin} onChange={e => setSfCloudMin(e.target.value)} />
+                      <span className="text-xs text-muted-foreground">–</span>
+                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={sfCloudMax} onChange={e => setSfCloudMax(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Snow type */}
+              <div>
+                <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t("suggestions.snowType")}
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="h-2 w-2 rounded-full bg-indigo-500 inline-block" />
+                      <span className="text-xs text-muted-foreground">{t("suggestions.artificialSnow")}</span>
+                    </div>
+                    <Select value={sfArtSnow || "__any__"} onValueChange={v => setSfArtSnow(v === "__any__" ? "" : v)}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__any__">— Any —</SelectItem>
+                        {SNOW_STAGE_OPTS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="h-2 w-2 rounded-full bg-teal-500 inline-block" />
+                      <span className="text-xs text-muted-foreground">{t("suggestions.naturalSnow")}</span>
+                    </div>
+                    <Select value={sfNatSnow || "__any__"} onValueChange={v => setSfNatSnow(v === "__any__" ? "" : v)}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__any__">— Any —</SelectItem>
+                        {SNOW_STAGE_OPTS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="h-2 w-2 rounded-full bg-cyan-500 inline-block" />
+                      <span className="text-xs text-muted-foreground">{t("suggestions.snowHumidityType")}</span>
+                    </div>
+                    <Select value={sfSnowHumType || "__any__"} onValueChange={v => setSfSnowHumType(v === "__any__" ? "" : v)}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__any__">— Any —</SelectItem>
+                        {SNOW_HUM_TYPE_OPTS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="h-2 w-2 rounded-full bg-lime-500 inline-block" />
+                      <span className="text-xs text-muted-foreground">{t("suggestions.grainSize")}</span>
+                    </div>
+                    <Select value={sfGrainSize || "__any__"} onValueChange={v => setSfGrainSize(v === "__any__" ? "" : v)}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__any__">— Any —</SelectItem>
+                        {GRAIN_SIZE_OPTS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Snow & Track */}
+              <div>
+                <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t("weather.snowType")} &amp; {t("weather.trackHardness") || "Track"}
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
+                      <span className="text-xs text-muted-foreground">{t("suggestions.trackHardness")}</span>
+                    </div>
+                    <Select value={sfTrackHardness || "__any__"} onValueChange={v => setSfTrackHardness(v === "__any__" ? "" : v)}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__any__">— Any —</SelectItem>
+                        {TRACK_HARDNESS_OPTS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="h-2 w-2 rounded-full bg-blue-400 inline-block" />
+                      <span className="text-xs text-muted-foreground">{t("suggestions.precipitation")}</span>
+                    </div>
+                    <Input className="h-8 text-xs" placeholder="e.g. Snow" value={sfPrecip} onChange={e => setSfPrecip(e.target.value)} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="h-2 w-2 rounded-full bg-slate-400 inline-block" />
+                      <span className="text-xs text-muted-foreground">{t("suggestions.wind")}</span>
+                    </div>
+                    <Input className="h-8 text-xs" placeholder="e.g. NW 3m/s" value={sfWind} onChange={e => setSfWind(e.target.value)} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="h-2 w-2 rounded-full bg-gray-400 inline-block" />
+                      <span className="text-xs text-muted-foreground">{t("suggestions.visibility")}</span>
+                    </div>
+                    <Input className="h-8 text-xs" placeholder="e.g. Good" value={sfVisibility} onChange={e => setSfVisibility(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Results */}
+          {!hasFilters ? (
+            <p className="text-sm text-muted-foreground italic">{t("suggestions.setFilters")}</p>
+          ) : suggestions && suggestions.matchingTestCount === 0 ? (
+            <Card className="fs-card rounded-2xl p-6 text-center">
+              <Snowflake className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+              <p className="text-sm text-muted-foreground">{t("suggestions.noMatchingTests")}</p>
+            </Card>
+          ) : suggestions ? (
+            <div className="flex flex-col gap-3">
+              {/* Matching tests count */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Filter className="h-3.5 w-3.5" />
+                <span>
+                  <span className="font-semibold text-foreground">{suggestions.matchingTestCount}</span>{" "}
+                  {t("suggestions.matchingTests").toLowerCase()}
+                </span>
+              </div>
+
+              {suggestions.skis.filter(s => s.avgRank != null).length === 0 ? (
+                <Card className="fs-card rounded-2xl p-6 text-center">
+                  <p className="text-sm text-muted-foreground">{t("suggestions.noMatchingTests")}</p>
+                </Card>
+              ) : (
+                <Card className="fs-card rounded-2xl overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/30">
+                          <th className="px-3 py-2.5">#</th>
+                          <th className="px-3 py-2.5">{t("raceskis.skiId")}</th>
+                          <th className="px-3 py-2.5">Brand</th>
+                          <th className="px-3 py-2.5">{t("raceskis.grind")}</th>
+                          <th className="px-3 py-2.5">{t("suggestions.avgRank")}</th>
+                          <th className="px-3 py-2.5">{t("suggestions.wins")}</th>
+                          <th className="px-3 py-2.5">{t("suggestions.top3")}</th>
+                          <th className="px-3 py-2.5">{t("suggestions.nTests")}</th>
+                          <th className="px-3 py-2.5">{t("suggestions.avgResult")}</th>
+                          <th className="px-3 py-2.5">{t("suggestions.raceUses")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {suggestions.skis.map((s, idx) => {
+                          const isTop = idx === 0 && s.avgRank != null;
+                          return (
+                            <tr
+                              key={s.ski.id}
+                              className={cn(
+                                "border-b border-border/40 transition-colors",
+                                isTop ? "bg-emerald-50/60 dark:bg-emerald-950/20" : "hover:bg-muted/20",
+                                s.avgRank == null && "opacity-50"
+                              )}
+                            >
+                              <td className="px-3 py-2 text-xs text-muted-foreground font-mono">
+                                {s.avgRank != null ? (
+                                  <span className={cn("font-bold", isTop ? "text-emerald-600" : "text-foreground")}>
+                                    {idx + 1}
+                                  </span>
+                                ) : "—"}
+                              </td>
+                              <td className="px-3 py-2 font-semibold">
+                                <AppLink href={`/raceskis/${s.ski.athleteId}`}>
+                                  <span className="hover:text-primary transition-colors">{s.ski.skiId}</span>
+                                </AppLink>
+                              </td>
+                              <td className="px-3 py-2 text-xs text-muted-foreground">{s.ski.brand ?? "—"}</td>
+                              <td className="px-3 py-2 text-xs text-muted-foreground">{s.ski.grind ?? "—"}</td>
+                              <td className="px-3 py-2">
+                                {s.avgRank != null ? (
+                                  <span className={cn(
+                                    "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold",
+                                    s.avgRank <= 1.5 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                                      : s.avgRank <= 3 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                                        : "bg-muted text-muted-foreground"
+                                  )}>
+                                    {s.avgRank.toFixed(1)}
+                                  </span>
+                                ) : "—"}
+                              </td>
+                              <td className="px-3 py-2 text-xs">{s.wins > 0 ? <span className="font-bold text-emerald-600">{s.wins}</span> : "—"}</td>
+                              <td className="px-3 py-2 text-xs">{s.top3 > 0 ? s.top3 : "—"}</td>
+                              <td className="px-3 py-2 text-xs text-muted-foreground">{s.testCount > 0 ? s.testCount : "—"}</td>
+                              <td className="px-3 py-2 text-xs text-muted-foreground">
+                                {s.avgResult != null ? `${s.avgResult.toFixed(1)} cm` : "—"}
+                              </td>
+                              <td className="px-3 py-2 text-xs text-muted-foreground">{s.raceUses > 0 ? s.raceUses : "—"}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

@@ -226,15 +226,8 @@ function GrindProfileForm({
       }
       return result;
     }
-    // New profile: start with stone/pattern/ra_value defaults + any team custom keys
-    const defaults = new Set(["stone", "pattern", "ra_value"]);
-    const teamCustomKeys = allProfileParamKeys.filter((k) => !defaults.has(k));
-    return [
-      { key: "stone", value: "" },
-      { key: "pattern", value: "" },
-      { key: "ra_value", value: "" },
-      ...teamCustomKeys.map((k) => ({ key: k, value: "" })),
-    ];
+    // New profile: start empty — user adds only the params they need
+    return [];
   };
 
   const [params, setParams] = useState<ParamRow[]>(initParams);

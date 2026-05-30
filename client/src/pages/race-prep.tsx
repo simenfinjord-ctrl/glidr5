@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { useLanguage } from "@/lib/language";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { cn } from "@/lib/utils";
+import { cn, fmtDate as fmtDateGlobal } from "@/lib/utils";
 import { pdfDocument, pdfSection, pdfTable, pdfWeather, openPdfWindow } from "@/lib/pdf-layout";
 import { LocationAutocomplete } from "@/components/location-autocomplete";
 
@@ -145,12 +145,10 @@ const DISCIPLINE_COLORS: Record<string, string> = {
   Skiathlon: "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 ring-violet-200 dark:ring-violet-800",
 };
 
-function fmtDate(d: string, lang: string) {
-  try {
-    return new Date(d).toLocaleDateString(lang === "en" ? "en-GB" : "nb-NO", { dateStyle: "medium" });
-  } catch {
-    return d;
-  }
+// fmtDate delegates to the global formatter which respects the user's
+// european / american date-format preference set in My Account → Preferences.
+function fmtDate(d: string, _lang?: string) {
+  return fmtDateGlobal(d);
 }
 
 const TRACK_HARDNESS_OPTIONS = ["Very soft", "Soft", "Medium hard", "Hard", "Very hard", "Ice"] as const;

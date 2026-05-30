@@ -32,6 +32,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { fmtDate } from "@/lib/utils";
 import { TestEntryTable, type EntryRow, type RoundResult, type RaceSkiOption, type GrindProfile, cleanAdditionalIds } from "@/components/test-entry-table";
 import { RunsheetDialog, type BracketResult } from "@/components/runsheet-dialog";
 
@@ -720,7 +721,7 @@ export default function NewTest() {
                                 value={String(w.id)}
                                 data-testid={`option-weather-${w.id}`}
                               >
-                                {w.date} · {w.location} · {w.time} · Air {w.airTemperatureC}°C
+                                {fmtDate(w.date)} · {w.location} · {w.time} · Air {w.airTemperatureC}°C
                               </SelectItem>
                             ))}
                           </SelectContent>

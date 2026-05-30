@@ -646,51 +646,84 @@ export async function registerRoutes(
     const q = String(req.query.q ?? "").trim();
     if (q.length < 2) return res.json([]);
     const u = req.user!;
-    const teamId = u.activeTeamId || u.teamId;
+    const uu = u as any;
+    const teamId = uu.activeTeamId || u.teamId;
     const like = `%${q.toLowerCase()}%`;
     const { pool } = await import("./db");
+    const perms = parsePermissions(getEffectivePermissionsStr(req), u.isAdmin === 1, u.isTeamAdmin === 1);
+    const isAthleteAccess = uu.isAthleteAccess === 1;
+    const isBlind = u.isBlindTester === 1;
 
     const [testsRes, productsRes, skisRes, athletesRes, grindRes, weatherRes] = await Promise.all([
-      (pool as any).query(
-        `SELECT id, test_name, location, date, test_type FROM tests
-         WHERE team_id = $1 AND (LOWER(test_name) LIKE $2 OR LOWER(location) LIKE $2)
-         ORDER BY date DESC LIMIT 8`,
-        [teamId, like]
-      ),
-      (pool as any).query(
-        `SELECT id, brand, name, category FROM products
-         WHERE team_id = $1 AND (LOWER(brand) LIKE $2 OR LOWER(name) LIKE $2)
-         ORDER BY brand, name LIMIT 8`,
-        [teamId, like]
-      ),
-      (pool as any).query(
-        `SELECT tss.id, tss.name FROM test_ski_series tss
-         WHERE tss.team_id = $1 AND LOWER(tss.name) LIKE $2
-         ORDER BY tss.name LIMIT 5`,
-        [teamId, like]
-      ),
-      (pool as any).query(
-        `SELECT a.id, a.name, a.team FROM athletes a
-         INNER JOIN athlete_access aa ON aa.athlete_id = a.id
-         WHERE a.team_id = $1 AND LOWER(a.name) LIKE $2
-         UNION
-         SELECT a.id, a.name, a.team FROM athletes a
-         WHERE a.team_id = $1 AND a.created_by_id = $3 AND LOWER(a.name) LIKE $2
-         LIMIT 6`,
-        [teamId, like, u.id]
-      ),
-      (pool as any).query(
-        `SELECT id, name, grind_type, stone FROM grind_profiles
-         WHERE team_id = $1 AND archived = 0 AND (LOWER(name) LIKE $2 OR LOWER(grind_type) LIKE $2)
-         ORDER BY id DESC LIMIT 6`,
-        [teamId, like]
-      ),
-      (pool as any).query(
-        `SELECT id, location, date, snow_temperature_c, air_temperature_c FROM daily_weather
-         WHERE team_id = $1 AND LOWER(location) LIKE $2
-         ORDER BY date DESC LIMIT 5`,
-        [teamId, like]
-      ),
+      // Tests: always filter by team; athlete access users only see their raceski tests
+      isAthleteAccess
+        ? (pool as any).query(
+            `SELECT id, test_name, location, date, test_type FROM tests
+             WHERE team_id = $1 AND athlete_id = $4 AND test_ski_source = 'raceskis'
+             AND (LOWER(test_name) LIKE $2 OR LOWER(location) LIKE $2)
+             ORDER BY date DESC LIMIT 8`,
+            [teamId, like, u.id, uu.linkedAthleteId]
+          )
+        : (pool as any).query(
+            `SELECT id, test_name, location, date, test_type FROM tests
+             WHERE team_id = $1 AND (LOWER(test_name) LIKE $2 OR LOWER(location) LIKE $2)
+             ORDER BY date DESC LIMIT 8`,
+            [teamId, like]
+          ),
+      // Products: hide from blind testers and athlete access users
+      (!isBlind && !isAthleteAccess && perms.products !== "none")
+        ? (pool as any).query(
+            `SELECT id, brand, name, category FROM products
+             WHERE team_id = $1 AND (LOWER(brand) LIKE $2 OR LOWER(name) LIKE $2)
+             ORDER BY brand, name LIMIT 8`,
+            [teamId, like]
+          )
+        : Promise.resolve({ rows: [] }),
+      // Test ski series: hide from athlete access users
+      (!isAthleteAccess && perms.testskis !== "none")
+        ? (pool as any).query(
+            `SELECT tss.id, tss.name FROM test_ski_series tss
+             WHERE tss.team_id = $1 AND LOWER(tss.name) LIKE $2
+             ORDER BY tss.name LIMIT 5`,
+            [teamId, like]
+          )
+        : Promise.resolve({ rows: [] }),
+      // Athletes: athlete access users only see their own
+      (perms.raceskis !== "none")
+        ? isAthleteAccess
+          ? (pool as any).query(
+              `SELECT id, name, team FROM athletes WHERE id = $1 AND LOWER(name) LIKE $2 LIMIT 1`,
+              [uu.linkedAthleteId, like]
+            )
+          : (pool as any).query(
+              `SELECT a.id, a.name, a.team FROM athletes a
+               INNER JOIN athlete_access aa ON aa.athlete_id = a.id
+               WHERE a.team_id = $1 AND LOWER(a.name) LIKE $2
+               UNION
+               SELECT a.id, a.name, a.team FROM athletes a
+               WHERE a.team_id = $1 AND a.created_by_id = $3 AND LOWER(a.name) LIKE $2
+               LIMIT 6`,
+              [teamId, like, u.id]
+            )
+        : Promise.resolve({ rows: [] }),
+      // Grind profiles: hide from athlete access users and users without grinding permission
+      (!isAthleteAccess && perms.grinding !== "none")
+        ? (pool as any).query(
+            `SELECT id, name, grind_type, stone FROM grind_profiles
+             WHERE team_id = $1 AND archived = 0 AND (LOWER(name) LIKE $2 OR LOWER(grind_type) LIKE $2)
+             ORDER BY id DESC LIMIT 6`,
+            [teamId, like]
+          )
+        : Promise.resolve({ rows: [] }),
+      // Weather: hide from athlete access users and users without weather permission
+      (!isAthleteAccess && perms.weather !== "none")
+        ? (pool as any).query(
+            `SELECT id, location, date, snow_temperature_c, air_temperature_c FROM daily_weather
+             WHERE team_id = $1 AND LOWER(location) LIKE $2
+             ORDER BY date DESC LIMIT 5`,
+            [teamId, like]
+          )
+        : Promise.resolve({ rows: [] }),
     ]);
 
     const results = [
@@ -3026,7 +3059,8 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Grinding access required" });
     }
     const entries = await storage.listEntries(testId);
-    if (req.user!.isBlindTester === 1) {
+    const shouldRedact = req.user!.isBlindTester === 1 || (req.user as any).isAthleteAccess === 1;
+    if (shouldRedact) {
       const redacted = entries.map((e: any) => ({
         ...e,
         productId: null,
@@ -3136,6 +3170,8 @@ export async function registerRoutes(
     if (req.body.isActive !== undefined) data.isActive = req.body.isActive ? 1 : 0;
     if (u.isAdmin === 1 && req.body.teamId !== undefined) data.teamId = req.body.teamId;
     if (req.body.isBlindTester !== undefined) data.isBlindTester = req.body.isBlindTester ? 1 : 0;
+    if (req.body.isAthleteAccess !== undefined) data.isAthleteAccess = req.body.isAthleteAccess ? 1 : 0;
+    if (req.body.linkedAthleteId !== undefined) data.linkedAthleteId = req.body.linkedAthleteId ? parseInt(req.body.linkedAthleteId) : null;
     const updated = await storage.updateUser(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });
     const { password, ...safe } = updated;
@@ -4918,6 +4954,8 @@ export async function registerRoutes(
     const athleteId = parseInt(req.params.id);
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
+    // Athlete access users may only view their own linked athlete
+    if (u.isAthleteAccess === 1 && u.linkedAthleteId !== athleteId) return res.status(403).json({ message: "Forbidden" });
     const { pool } = await import("./db");
     const result = await (pool as any).query(
       `SELECT id, athlete_id AS "athleteId", team_id AS "teamId", date, race_name AS "raceName",
@@ -4961,6 +4999,24 @@ export async function registerRoutes(
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
     const { pool } = await import("./db");
+    // Athlete Access users: only see race preps they participated in
+    if (u.isAthleteAccess === 1 && u.linkedAthleteId) {
+      const result = await (pool as any).query(
+        `SELECT rp.id, rp.team_id AS "teamId", rp.date, rp.start_time AS "startTime", rp.location,
+                rp.race_type AS "raceType", rp.discipline,
+                rp.product_ids AS "productIds", rp.structure_ids AS "structureIds",
+                rp.kick_product_ids AS "kickProductIds", rp.tette,
+                rp.weather_id AS "weatherId",
+                rp.created_by_name AS "createdByName", rp.created_at AS "createdAt"
+         FROM race_preps rp
+         INNER JOIN race_prep_entries rpe ON rpe.race_prep_id = rp.id AND rpe.athlete_id = $1
+         WHERE rp.team_id = $2
+         ORDER BY rp.date DESC`,
+        [u.linkedAthleteId, teamId]
+      );
+      // Strip product/method/structure/notes from response for athlete access
+      return res.json(result.rows.map((r: any) => ({ ...r, products: undefined, method: undefined, structure: undefined, notes: undefined })));
+    }
     const result = await (pool as any).query(
       `SELECT id, team_id AS "teamId", date, start_time AS "startTime", location, race_type AS "raceType", discipline,
               products, method, structure, notes,
@@ -5012,8 +5068,18 @@ export async function registerRoutes(
     return res.json({ ok: true });
   });
 
+  // Helper: verify a race_prep row belongs to the active team. Returns the prep row or null.
+  async function getRacePrepForTeam(id: number, teamId: number): Promise<{ id: number } | null> {
+    const { pool: pgRp } = await import("./db");
+    const r = await (pgRp as any).query(`SELECT id FROM race_preps WHERE id=$1 AND team_id=$2`, [id, teamId]);
+    return r.rows.length ? r.rows[0] : null;
+  }
+
   app.get("/api/race-preps/:id/entries", requirePermission("raceprep", "view"), async (req, res) => {
+    const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
     const id = parseInt(req.params.id);
+    if (!await getRacePrepForTeam(id, teamId)) return res.status(403).json({ message: "Forbidden" });
     const { pool } = await import("./db");
     const result = await (pool as any).query(
       `SELECT id, race_prep_id AS "racePrepId", athlete_id AS "athleteId", athlete_name AS "athleteName",
@@ -5028,10 +5094,15 @@ export async function registerRoutes(
   app.post("/api/race-preps/:id/entries", requirePermission("raceprep", "edit"), async (req, res) => {
     const u = req.user as any;
     if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
+    const teamId = u.activeTeamId || u.teamId;
     const racePrepId = parseInt(req.params.id);
+    if (!await getRacePrepForTeam(racePrepId, teamId)) return res.status(403).json({ message: "Forbidden" });
     const { athleteId, athleteName } = req.body;
     if (!athleteId || !athleteName) return res.status(400).json({ message: "athleteId and athleteName required" });
     const { pool } = await import("./db");
+    // Verify athlete belongs to same team
+    const athRow = await (pool as any).query(`SELECT id FROM athletes WHERE id=$1 AND team_id=$2`, [athleteId, teamId]);
+    if (!athRow.rows.length) return res.status(403).json({ message: "Athlete not in this team" });
     const existing = await (pool as any).query(
       `SELECT id FROM race_prep_entries WHERE race_prep_id=$1 AND athlete_id=$2`,
       [racePrepId, athleteId]
@@ -5047,13 +5118,18 @@ export async function registerRoutes(
 
   app.put("/api/race-preps/:id/entries/:eid", requirePermission("raceprep", "view"), async (req, res) => {
     const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
+    const prepId = parseInt(req.params.id);
     const eid = parseInt(req.params.eid);
+    if (!await getRacePrepForTeam(prepId, teamId)) return res.status(403).json({ message: "Forbidden" });
     const { skiId, skiIdClassic, skiIdSkating, notes } = req.body;
     const { pool } = await import("./db");
     const entryRes = await (pool as any).query(
-      `SELECT waxer_id AS "waxerId" FROM race_prep_entries WHERE id=$1`, [eid]
+      `SELECT waxer_id AS "waxerId", race_prep_id AS "racePrepId" FROM race_prep_entries WHERE id=$1`, [eid]
     );
     if (!entryRes.rows.length) return res.status(404).json({ message: "Not found" });
+    // Verify entry belongs to the same race prep
+    if (entryRes.rows[0].racePrepId !== prepId) return res.status(403).json({ message: "Forbidden" });
     const waxerId = entryRes.rows[0].waxerId;
     const isAdmin = u.isTeamAdmin === 1 || u.isAdmin === 1;
     if (!isAdmin && waxerId !== null && waxerId !== u.id) return res.status(403).json({ message: "You can only update your own entries" });
@@ -5070,9 +5146,13 @@ export async function registerRoutes(
   app.delete("/api/race-preps/:id/entries/:eid", requirePermission("raceprep", "edit"), async (req, res) => {
     const u = req.user as any;
     if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
+    const teamId = u.activeTeamId || u.teamId;
+    const prepId = parseInt(req.params.id);
     const eid = parseInt(req.params.eid);
+    if (!await getRacePrepForTeam(prepId, teamId)) return res.status(403).json({ message: "Forbidden" });
     const { pool } = await import("./db");
-    await (pool as any).query(`DELETE FROM race_prep_entries WHERE id=$1`, [eid]);
+    // Verify entry belongs to this race prep before deleting
+    await (pool as any).query(`DELETE FROM race_prep_entries WHERE id=$1 AND race_prep_id=$2`, [eid, prepId]);
     return res.json({ ok: true });
   });
 
@@ -5080,6 +5160,8 @@ export async function registerRoutes(
     const athleteId = parseInt(req.params.id);
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
+    // Athlete access users may only view their own linked athlete
+    if (u.isAthleteAccess === 1 && u.linkedAthleteId !== athleteId) return res.status(403).json({ message: "Forbidden" });
     const { pool } = await import("./db");
     const result = await (pool as any).query(
       `SELECT

@@ -195,10 +195,12 @@ function GrindProfileForm({
   onDone,
   editProfile,
   allProfileParamKeys = [],
+  lastProfile,
 }: {
   onDone: () => void;
   editProfile?: GrindProfile;
   allProfileParamKeys?: string[];
+  lastProfile?: GrindProfile;
 }) {
   const { t } = useI18n();
   const { toast } = useToast();
@@ -226,7 +228,22 @@ function GrindProfileForm({
       }
       return result;
     }
-    // New profile: start empty — user adds only the params they need
+    // New profile: suggest params from the most recent profile (keys + values as starting point)
+    if (lastProfile) {
+      const parsed = parseExtraParams(lastProfile.extraParams ?? null);
+      const result: ParamRow[] = Object.entries(parsed).map(([key, value]) => ({ key, value }));
+      const existingKeys = new Set(result.map((p) => p.key));
+      // Backward compat: include stone/pattern from legacy columns if not in extraParams
+      if (!existingKeys.has("stone") && lastProfile.stone) {
+        result.unshift({ key: "stone", value: lastProfile.stone });
+        existingKeys.add("stone");
+      }
+      if (!existingKeys.has("pattern") && lastProfile.pattern) {
+        const si = result.findIndex((p) => p.key === "stone");
+        result.splice(si >= 0 ? si + 1 : 0, 0, { key: "pattern", value: lastProfile.pattern });
+      }
+      return result;
+    }
     return [];
   };
 
@@ -1241,6 +1258,12 @@ export default function Grinding() {
     return Array.from(keys);
   }, [grindProfiles]);
 
+  // Most recently created active profile — used as parameter suggestions for new profiles
+  const lastGrindProfile = useMemo(() => {
+    if (!grindProfiles.length) return undefined;
+    return [...grindProfiles].sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0];
+  }, [grindProfiles]);
+
   const grindTests = useMemo(() => allTests.filter((t) => t.testType === "Grind"), [allTests]);
 
   const grindTestIds = grindTests.map((t) => t.id);
@@ -1482,6 +1505,7 @@ export default function Grinding() {
                     key={editProfile ? `edit-${editProfile.id}` : "create"}
                     editProfile={editProfile}
                     allProfileParamKeys={allProfileParamKeys}
+                    lastProfile={editProfile ? undefined : lastGrindProfile}
                     onDone={() => { setGrindDialogOpen(false); setEditProfile(undefined); }}
                   />
                 </DialogContent>

@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2, LayoutGrid, LayoutList, ExternalLink, Check, TrendingUp, Archive, RotateCcw, Link2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2, LayoutGrid, LayoutList, ExternalLink, Check, TrendingUp, Archive, RotateCcw, Link2, Upload } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
@@ -1124,6 +1124,180 @@ function saveGrindLinks(links: GrindLink[]) {
 
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
+// ── Data from the spreadsheet image ─────────────────────────────────────────
+const PRESET_GRIND_DATA = `Brand\tGrind\tRa\tRa/Rq\tRq\tRsk\tRku\tRsm\tRk\tNotes
+Atomic\tAM8W\t2.7
+Atomic\tAM8\t2.7
+Atomic\tAW9\t4
+Atomic\tAW7\t2.3
+Fischer\tC3-1\t2.1
+Fischer\tC8-1\t2.6
+Fischer\tP11-2\t5.7\t1.19\t6.7\t-0.35\t2.3\t436\t19\t372
+Fischer\tP11-1\t3.7
+Fischer\tP5-1\t4.4\t1.24\t5.49\t-1.1\t3.32\t533\t7.5\t275
+Madshus\tAW9\t4.54\t1.21\t5.5\t-0.31\t2.63
+Madshus\tM62\t3.73\t1.22\t4.56\t-0.3\t2.64
+Madshus\tM61 Blue\t3.73\t1.2\t4.48\t-0.29\t2.54\t442\t13.38
+Rossignol\tRC5\t2
+Rossignol\tA6B\t3.3
+Rossignol\tRU2\t2.8
+Rossignol\tRUW10\t4\t1.23\t4.9\t-0.37\t2.75\t433\t12.6\tLower in other tests
+Rossignol\tA11\t4.25\t1.19\t2.92\t-0.46\t2.17\t\t\tw/ hand structure
+Rossignol\tRW10\t4\t1.19\t4.74\t-0.31\t2.26\t408\t14.65
+Rossignol\tA30\t7.68\t1.18\t9.05\t-0.14\t2.16
+Rossignol\tA36\t4.24\t1.18\t5.03\t-0.03\t2.15
+Rossignol\tRW692\t7.7\t1.21\t9.35\t-0.65\t2.73\t807\t23.4
+Salomon\tSL27\t2.2
+Salomon\tSL22\t2.4
+Salomon\tSL21\t4
+Salomon\tSL34\t6.79\t1.24\t8.44\t-1.07\t3.32\t460\t9.1
+Salomon\tSL31\t4.66\t1.17\t5.46\t-0.23\t2.1\t340\t9.8
+Salomon\tT11\t4.12\t1.2\t4.93\t-0.23\t2.35\t299\t13.22
+USA\tOlos Uni\t3.2
+USA\t12/9\t2.91
+USA\tGio2\t2.3\t1.27\t2.92\t-0.46\t3.3\t\t\tHas testing higher
+USA\tOly9 B\t6.15\t1.12\t6.91\t-0.2\t1.78\t553\t16.6\tBrown stone
+USA\tOly9 W\t4.35\t1.18\t5.12\t-0.13\t2.15\t502\t14.12\tWhite stone`;
+
+type ParsedGrindRow = {
+  name: string;
+  grindType: string;
+  extraParams: Record<string, string>;
+  notes: string;
+};
+
+function parseGrindTSV(raw: string): ParsedGrindRow[] {
+  const lines = raw.split(/\r?\n/).filter((l) => l.trim());
+  if (!lines.length) return [];
+
+  // Detect header row: if first row contains "brand" or "name" (case-insensitive)
+  const firstCells = lines[0].split("\t").map((c) => c.trim().toLowerCase());
+  const isHeader = firstCells.some((c) => ["brand", "name", "grind", "ra"].includes(c));
+  const headers = isHeader ? lines[0].split("\t").map((c) => c.trim()) : ["Brand", "Grind", "Ra", "Ra/Rq", "Rq", "Rsk", "Rku", "Rsm", "Rk", "Notes"];
+  const dataLines = isHeader ? lines.slice(1) : lines;
+
+  const brandIdx = headers.findIndex((h) => h.toLowerCase() === "brand");
+  const grindIdx = headers.findIndex((h) => h.toLowerCase() === "grind");
+  const nameIdx = headers.findIndex((h) => h.toLowerCase() === "name");
+  const notesIdx = headers.findIndex((h) => h.toLowerCase() === "notes");
+  const paramHeaders = headers
+    .map((h, i) => ({ h, i }))
+    .filter(({ i }) => i !== brandIdx && i !== grindIdx && i !== nameIdx && i !== notesIdx);
+
+  const rows: ParsedGrindRow[] = [];
+  for (const line of dataLines) {
+    const cells = line.split("\t");
+    let name = "";
+    if (brandIdx >= 0 && grindIdx >= 0) {
+      const brand = (cells[brandIdx] ?? "").trim();
+      const grind = (cells[grindIdx] ?? "").trim();
+      name = [brand, grind].filter(Boolean).join(" ");
+    } else if (nameIdx >= 0) {
+      name = (cells[nameIdx] ?? "").trim();
+    }
+    if (!name) continue;
+
+    const extraParams: Record<string, string> = {};
+    for (const { h, i } of paramHeaders) {
+      const val = (cells[i] ?? "").trim();
+      if (val) extraParams[h] = val;
+    }
+    const notes = notesIdx >= 0 ? (cells[notesIdx] ?? "").trim() : "";
+    rows.push({ name, grindType: "Universal", extraParams, notes });
+  }
+  return rows;
+}
+
+function GrindBulkImportDialog({
+  open,
+  onOpenChange,
+  onImported,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onImported: () => void;
+}) {
+  const { toast } = useToast();
+  const [raw, setRaw] = useState(PRESET_GRIND_DATA);
+  const [importing, setImporting] = useState(false);
+
+  const preview = useMemo(() => parseGrindTSV(raw), [raw]);
+
+  const handleImport = async () => {
+    if (!preview.length) return;
+    setImporting(true);
+    try {
+      const res = await apiRequest("POST", "/api/grind-profiles/bulk", { profiles: preview });
+      const data = await res.json();
+      toast({ title: `${data.created} profiler importert`, variant: "default" });
+      onImported();
+      onOpenChange(false);
+    } catch {
+      toast({ title: "Import feilet", variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Importer slipeprofiler</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Lim inn data fra et regneark (Tab-separert). Kolonnene <strong>Brand</strong> og <strong>Grind</strong> brukes som profilnavn. Alle numeriske kolonner lagres som parametre. Grind type settes til <strong>Universal</strong> med mindre du endrer i forhåndsvisningen.
+        </p>
+        <Textarea
+          className="font-mono text-xs min-h-[140px]"
+          value={raw}
+          onChange={(e) => setRaw(e.target.value)}
+          placeholder={"Brand\tGrind\tRa\tNotes\nAtomic\tAM8W\t2.7"}
+        />
+        {preview.length > 0 && (
+          <div className="overflow-auto max-h-64 border rounded-lg text-xs">
+            <table className="w-full">
+              <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-2 py-1.5 text-left">Navn</th>
+                  <th className="px-2 py-1.5 text-left">Type</th>
+                  <th className="px-2 py-1.5 text-left">Parametre</th>
+                  <th className="px-2 py-1.5 text-left">Notater</th>
+                </tr>
+              </thead>
+              <tbody>
+                {preview.map((r, i) => (
+                  <tr key={i} className="border-t border-border/40">
+                    <td className="px-2 py-1 font-medium">{r.name}</td>
+                    <td className="px-2 py-1 text-muted-foreground">{r.grindType}</td>
+                    <td className="px-2 py-1 text-muted-foreground">
+                      {Object.entries(r.extraParams).map(([k, v]) => `${k}: ${v}`).join(" · ") || "—"}
+                    </td>
+                    <td className="px-2 py-1 text-muted-foreground">{r.notes || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-sm text-muted-foreground">{preview.length} profiler klar til import</span>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+            <Button
+              className="bg-violet-600 hover:bg-violet-700 text-white"
+              onClick={handleImport}
+              disabled={!preview.length || importing}
+            >
+              {importing ? "Importerer…" : `Importer ${preview.length}`}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Grinding() {
   const { t, language } = useI18n();
   const { toast } = useToast();
@@ -1161,6 +1335,7 @@ export default function Grinding() {
   // Grind profiles state
   const [grindSearch, setGrindSearch] = useState("");
   const [grindDialogOpen, setGrindDialogOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [editProfile, setEditProfile] = useState<GrindProfile | undefined>();
   const [detailProfile, setDetailProfile] = useState<GrindProfile | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -1462,6 +1637,15 @@ export default function Grinding() {
               </AppLink>
             )}
             {tab === "grinds" && (
+              <>
+              <Button
+                variant="outline"
+                className="text-violet-700 border-violet-300 hover:bg-violet-50"
+                onClick={() => setBulkImportOpen(true)}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Importer
+              </Button>
               <Dialog open={grindDialogOpen} onOpenChange={(v) => { setGrindDialogOpen(v); if (!v) setEditProfile(undefined); }}>
                 <DialogTrigger asChild>
                   <Button
@@ -1486,6 +1670,7 @@ export default function Grinding() {
                   />
                 </DialogContent>
               </Dialog>
+              </>
             )}
           </div>
         </div>
@@ -2285,6 +2470,11 @@ export default function Grinding() {
           </div>
         </DialogContent>
       </Dialog>
+      <GrindBulkImportDialog
+        open={bulkImportOpen}
+        onOpenChange={setBulkImportOpen}
+        onImported={() => queryClient.invalidateQueries({ queryKey: ["/api/grind-profiles"] })}
+      />
     </AppShell>
   );
 }

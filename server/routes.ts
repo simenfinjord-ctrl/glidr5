@@ -3715,6 +3715,41 @@ export async function registerRoutes(
     res.json(profiles);
   });
 
+  // Bulk import: accepts an array of profile objects
+  app.post("/api/grind-profiles/bulk", requirePermission("grinding", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const profiles: Array<{ name: string; grindType: string; extraParams?: Record<string, string>; notes?: string }> = req.body.profiles;
+    if (!Array.isArray(profiles) || profiles.length === 0) {
+      return res.status(400).json({ message: "profiles array required" });
+    }
+    const { pool: pgBulk } = await import("./db");
+    const maxRow = await (pgBulk as any).query(
+      `SELECT grind_id FROM grind_profiles WHERE team_id = $1 AND grind_id IS NOT NULL ORDER BY grind_id DESC LIMIT 1`,
+      [teamId]
+    );
+    let nextNum = maxRow.rows.length > 0 ? parseInt(maxRow.rows[0].grind_id) + 1 : 1;
+    const created: any[] = [];
+    for (const p of profiles) {
+      if (!p.name || !p.grindType) continue;
+      const grindId = String(nextNum++).padStart(3, "0");
+      const stone = p.extraParams?.stone ?? null;
+      const pattern = p.extraParams?.pattern ?? null;
+      const profile = await storage.createGrindProfile({
+        name: p.name, grindType: p.grindType,
+        stone, pattern,
+        extraParams: p.extraParams ? JSON.stringify(p.extraParams) : null,
+        grindId,
+        notes: p.notes ?? null,
+        createdByName: u.name,
+        teamId,
+        createdAt: new Date().toISOString(),
+      });
+      created.push(profile);
+    }
+    res.json({ created: created.length });
+  });
+
   app.post("/api/grind-profiles", requirePermission("grinding", "edit"), async (req, res) => {
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);

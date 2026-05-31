@@ -102,7 +102,7 @@ const LABELS: Record<string, Record<Lang, string>> = {
   colCm:            { en: "cm",                        no: "cm" },
   exportedBy:       { en: "Exported by",               no: "Eksportert av" },
   confidential:     { en: "This document is intended for team members only.", no: "Dette dokumentet er kun for teammedlemmer." },
-  tagline:          { en: "What we did yesterday is not good enough today.",  no: "Det vi gjorde i går, er ikke godt nok i dag." },
+  tagline:          { en: "What we did today is not good enough tomorrow.",  no: "Det vi gjorde i dag, er ikke godt nok i morgen." },
 };
 
 function tx(key: string, lang: Lang): string {

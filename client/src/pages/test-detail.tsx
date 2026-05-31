@@ -821,7 +821,7 @@ export default function TestDetail() {
     doc.setFont("helvetica", "italic");
     doc.setTextColor(160, 160, 160);
     doc.text(
-      isNo ? "Det vi gjorde i går, er ikke godt nok i dag." : "What we did yesterday is not good enough today.",
+      isNo ? "Det vi gjorde i dag, er ikke godt nok i morgen." : "What we did today is not good enough tomorrow.",
       pageW - 14, 24, { align: "right" },
     );
 

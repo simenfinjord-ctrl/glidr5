@@ -127,8 +127,8 @@ function drawCover(doc: jsPDF, lang: "no" | "en") {
   // Tagline
   const [line1, line2] =
     lang === "no"
-      ? ["Det vi gjorde i går,", "er ikke godt nok i dag."]
-      : ["What we did yesterday", "is not good enough today."];
+      ? ["Det vi gjorde i dag,", "er ikke godt nok i morgen."]
+      : ["What we did today", "is not good enough tomorrow."];
   text(doc, line1, MARGIN, 96, [255, 255, 255], 26, true);
   text(doc, line2, MARGIN, 109, [255, 255, 255], 26, true);
 
@@ -208,37 +208,45 @@ function drawChallenge(doc: jsPDF, lang: "no" | "en") {
     lang === "no"
       ? [
           {
-            title: "📋 Notater på papir og Excel",
-            desc: "Testresultater spres over regneark, notisblokker og minnepinner. Ingenting er søkbart. Neste sesong er det borte.",
+            badge: "01",
+            title: "Notater pa papir og Excel",
+            desc: "Testresultater spres over regneark, notisblokker og minnepinner. Ingenting er sokbart. Neste sesong er det borte.",
           },
           {
-            title: "🧠 Kunnskap forsvinner",
-            desc: "Når en slipertekniker slutter, forsvinner alt vedkommende har lært. Det nye laget starter fra null.",
+            badge: "02",
+            title: "Kunnskap forsvinner",
+            desc: "Nar en slipertekniker slutter, forsvinner alt vedkommende har laert. Det nye laget starter fra null.",
           },
           {
-            title: "🎲 Magefølelse styrer beslutningene",
-            desc: "Uten data er det umulig å si med sikkerhet hva som fungerte sist gang — og hva som vil fungere i morgen.",
+            badge: "03",
+            title: "Magefolelse styrer beslutningene",
+            desc: "Uten data er det umulig a si med sikkerhet hva som fungerte sist gang — og hva som vil fungere i morgen.",
           },
           {
-            title: "🔁 Ingen systematisk forbedring",
-            desc: "Teamet gjentar de samme feilene sesong etter sesong, fordi det ikke finnes noe system for å lære av dem.",
+            badge: "04",
+            title: "Ingen systematisk forbedring",
+            desc: "Teamet gjentar de samme feilene sesong etter sesong, fordi det ikke finnes noe system for a laere av dem.",
           },
         ]
       : [
           {
-            title: "📋 Paper notes and Excel",
+            badge: "01",
+            title: "Paper notes and Excel",
             desc: "Test results spread across spreadsheets, notepads and USB drives. Nothing is searchable. Next season it's gone.",
           },
           {
-            title: "🧠 Knowledge disappears",
+            badge: "02",
+            title: "Knowledge disappears",
             desc: "When a grinding technician leaves, everything they learned goes with them. The new team starts from zero.",
           },
           {
-            title: "🎲 Gut feeling drives decisions",
+            badge: "03",
+            title: "Gut feeling drives decisions",
             desc: "Without data it's impossible to say with certainty what worked last time — and what will work tomorrow.",
           },
           {
-            title: "🔁 No systematic improvement",
+            badge: "04",
+            title: "No systematic improvement",
             desc: "The team repeats the same mistakes season after season, because there's no system for learning from them.",
           },
         ];
@@ -251,13 +259,15 @@ function drawChallenge(doc: jsPDF, lang: "no" | "en") {
 
     // Card white bg
     rRect(doc, cx, cy, cardW, cardH, 3, [255, 255, 255]);
-    // Red left accent
+    // Red left accent bar
     filledRect(doc, cx, cy + 3, 3, cardH - 6, RED_500);
-
+    // Badge number circle (red)
+    circle(doc, cx + 12, cy + 10, 5, RED_500);
+    text(doc, pp.badge, cx + 12, cy + 13, [255, 255, 255], 7, true, "center");
     // Title
-    text(doc, pp.title, cx + 7, cy + 10, TEXT_DARK, 10, true);
+    text(doc, pp.title, cx + 21, cy + 13, TEXT_DARK, 10, true);
     // Description
-    multilineText(doc, pp.desc, cx + 7, cy + 18, TEXT_MID, 8.5, false, cardW - 12, 4.5);
+    multilineText(doc, pp.desc, cx + 7, cy + 21, TEXT_MID, 8.5, false, cardW - 12, 4.5);
   });
 
   // Bottom banner
@@ -456,16 +466,29 @@ function drawFeatures(doc: jsPDF, lang: "no" | "en") {
           },
         ];
 
+  const garminBadge = lang === "no" ? "KUN GLIDR" : "ONLY GLIDR";
+
   features.forEach((feat, i) => {
     const col = i % 2;
     const row = Math.floor(i / 2);
     const cx = MARGIN + col * (cardW + 6);
     const cy = 44 + row * (cardH + 5);
+    const isGarmin = feat.title.toLowerCase().includes("garmin");
 
-    rRect(doc, cx, cy, cardW, cardH, 3, [255, 255, 255]);
+    // Card bg — slightly tinted for Garmin
+    rRect(doc, cx, cy, cardW, cardH, 3, isGarmin ? [239, 246, 255] : [255, 255, 255]);
     filledRect(doc, cx, cy + 3, 3, cardH - 6, feat.color);
 
     text(doc, feat.title, cx + 7, cy + 11, TEXT_DARK, 10, true);
+
+    // "Kun Glidr" badge for Garmin
+    if (isGarmin) {
+      const badgeText = garminBadge;
+      const bw = badgeText.length * 1.8 + 4;
+      rRect(doc, cx + cardW - bw - 4, cy + 4, bw, 6, 1.5, [59, 130, 246]);
+      text(doc, badgeText, cx + cardW - bw / 2 - 4, cy + 8.5, [255, 255, 255], 5.5, true, "center");
+    }
+
     multilineText(doc, feat.desc, cx + 7, cy + 18, TEXT_MID, 8, false, cardW - 12, 4.2);
   });
 
@@ -658,8 +681,8 @@ function drawPlatform(doc: jsPDF, lang: "no" | "en") {
   // Big quote
   const [q1, q2] =
     lang === "no"
-      ? ["Det vi gjorde i går,", "er ikke godt nok i dag."]
-      : ["What we did yesterday", "is not good enough today."];
+      ? ["Det vi gjorde i dag,", "er ikke godt nok i morgen."]
+      : ["What we did today", "is not good enough tomorrow."];
   text(doc, q1, MARGIN, 36, [255, 255, 255], 26, true);
   text(doc, q2, MARGIN, 49, [255, 255, 255], 26, true);
 

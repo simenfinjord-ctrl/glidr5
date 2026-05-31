@@ -3511,30 +3511,6 @@ export default function Admin() {
               <StatCard label={t("admin.statActivities")} value={stats.activityCount} icon={Activity} color="teal" testId="stat-activities" />
             </div>
 
-            {isSuperAdmin && (
-              <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50">
-                      <FileText className="h-4 w-4 text-amber-600" />
-                    </div>
-                    <div>
-                      <h2 className="text-sm font-semibold text-foreground">Customer Presentation</h2>
-                      <p className="text-xs text-muted-foreground">Super Admin only</p>
-                    </div>
-                  </div>
-                  <a
-                    href="/api/admin/presentation"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors cursor-pointer"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    Open presentation
-                  </a>
-                </div>
-              </Card>
-            )}
 
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-recent-activity">
               <div className="flex items-center gap-2 mb-4">
@@ -4516,6 +4492,30 @@ export default function Admin() {
                 </div>
               </div>
             </Card>
+            <Card className="fs-card rounded-2xl p-6">
+              <div className="flex items-start gap-4">
+                <div className="rounded-xl bg-amber-100 dark:bg-amber-900/30 p-3">
+                  <FileText className="h-6 w-6 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-semibold mb-1">Glidr Customer Presentation</h2>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    The full interactive HTML pitch deck. Switch between Norwegian and English with the language toggle. Includes feature overview, workflow, security, pricing and CTA slides. Opens in a new tab.
+                  </p>
+                  <a
+                    href="/api/admin/presentation"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white">
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Åpne presentasjon / Open presentation
+                    </Button>
+                  </a>
+                </div>
+              </div>
+            </Card>
+
             <Card className="fs-card rounded-2xl p-6">
               <h3 className="font-semibold mb-3">Document Contents</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">

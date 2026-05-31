@@ -456,46 +456,59 @@
         </div>
       </div>
 
-      <!-- Feature 2: Analytics / product comparison -->
+      <!-- Feature 2: Grinding analytics / profile comparison -->
       <div class="bg-white rounded-2xl border border-zinc-100 overflow-hidden">
-        <div class="bg-white border-b border-zinc-100 p-4">
+        <div class="bg-zinc-900 border-b border-zinc-800 p-4">
+          <!-- Header -->
           <div class="flex items-center justify-between mb-3">
-            <span class="text-[10px] text-zinc-500 font-medium">Swix HF10 · 14 tests</span>
-            <span class="text-[9px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">Win rate 71%</span>
+            <span class="text-[10px] text-zinc-400 font-medium uppercase tracking-wide" data-no="Slipeanalyse · Sammenlign" data-en="Grinding analytics · Compare">Slipeanalyse · Sammenlign</span>
+            <span class="text-[9px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">2 profiler</span>
           </div>
-          <!-- Bar chart mockup -->
-          <div class="space-y-2">
-            <div>
-              <div class="flex justify-between text-[9px] text-zinc-400 mb-0.5"><span>Swix HF10</span><span class="text-emerald-600 font-semibold">#1 · 10×</span></div>
-              <div class="h-2.5 bg-zinc-100 rounded-full overflow-hidden"><div class="h-full bg-emerald-500 rounded-full" style="width:71%"></div></div>
+          <!-- Side-by-side stat cards -->
+          <div class="grid grid-cols-2 gap-1.5 mb-2">
+            <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg px-2 py-1.5">
+              <div class="flex items-center gap-1 mb-1"><div class="w-1.5 h-1.5 rounded-full bg-blue-500"></div><span class="text-[9px] text-blue-400 font-semibold">Fischer Diamond</span></div>
+              <div class="grid grid-cols-2 gap-x-2 text-[8px] text-zinc-400">
+                <span>Tester</span><span class="text-white font-medium text-right">14</span>
+                <span>Vinn%</span><span class="text-emerald-400 font-bold text-right">43%</span>
+                <span>Avg rang</span><span class="text-emerald-400 font-bold text-right">1.8 ★</span>
+              </div>
             </div>
-            <div>
-              <div class="flex justify-between text-[9px] text-zinc-400 mb-0.5"><span>Rode Cera F</span><span>#2 · 6×</span></div>
-              <div class="h-2.5 bg-zinc-100 rounded-full overflow-hidden"><div class="h-full bg-zinc-300 rounded-full" style="width:43%"></div></div>
-            </div>
-            <div>
-              <div class="flex justify-between text-[9px] text-zinc-400 mb-0.5"><span>Toko NF Pro</span><span>#3 · 4×</span></div>
-              <div class="h-2.5 bg-zinc-100 rounded-full overflow-hidden"><div class="h-full bg-zinc-200 rounded-full" style="width:29%"></div></div>
-            </div>
-            <div>
-              <div class="flex justify-between text-[9px] text-zinc-400 mb-0.5"><span>Rex HF Pro</span><span>#4 · 2×</span></div>
-              <div class="h-2.5 bg-zinc-100 rounded-full overflow-hidden"><div class="h-full bg-zinc-100 rounded-full border border-zinc-200" style="width:14%"></div></div>
+            <div class="bg-orange-500/10 border border-orange-500/30 rounded-lg px-2 py-1.5">
+              <div class="flex items-center gap-1 mb-1"><div class="w-1.5 h-1.5 rounded-full bg-orange-500"></div><span class="text-[9px] text-orange-400 font-semibold">Rossignol Race</span></div>
+              <div class="grid grid-cols-2 gap-x-2 text-[8px] text-zinc-400">
+                <span>Tester</span><span class="text-white font-medium text-right">11</span>
+                <span>Vinn%</span><span class="text-zinc-300 font-bold text-right">27%</span>
+                <span>Avg rang</span><span class="text-zinc-300 font-bold text-right">2.4</span>
+              </div>
             </div>
           </div>
-          <div class="mt-3 grid grid-cols-3 gap-1.5">
-            <div class="bg-zinc-50 rounded-lg p-1.5 text-center"><p class="text-[9px] text-zinc-400">Conditions</p><p class="text-[10px] font-semibold text-zinc-700">−2 to −6°C</p></div>
-            <div class="bg-zinc-50 rounded-lg p-1.5 text-center"><p class="text-[9px] text-zinc-400">Snow</p><p class="text-[10px] font-semibold text-zinc-700">New / fine</p></div>
-            <div class="bg-emerald-50 rounded-lg p-1.5 text-center"><p class="text-[9px] text-emerald-600">Best pick</p><p class="text-[10px] font-semibold text-emerald-700">HF10</p></div>
+          <!-- Head-to-head score -->
+          <div class="bg-zinc-800 rounded-lg px-3 py-2 flex items-center gap-2">
+            <span class="text-[9px] text-zinc-400" data-no="Head-to-head" data-en="Head-to-head">Head-to-head</span>
+            <div class="flex-1 flex items-center gap-1.5">
+              <span class="text-blue-400 font-bold text-xs">7</span>
+              <div class="flex-1 h-1.5 bg-zinc-700 rounded-full overflow-hidden flex">
+                <div class="h-full bg-blue-500 rounded-l-full" style="width:58%"></div>
+                <div class="h-full bg-orange-500 rounded-r-full" style="width:33%"></div>
+              </div>
+              <span class="text-orange-400 font-bold text-xs">4</span>
+            </div>
+          </div>
+          <!-- Best condition pill -->
+          <div class="mt-2 bg-emerald-500/10 border border-emerald-500/25 rounded-lg px-2 py-1 flex items-center gap-1.5">
+            <span class="text-[9px] text-yellow-400">🏆</span>
+            <span class="text-[9px] text-emerald-400 font-medium" data-no="Fischer best i: −10 til −5°C · Nypudersnø" data-en="Fischer best in: −10 to −5°C · Fresh powder">Fischer best i: −10 til −5°C · Nypudersnø</span>
           </div>
         </div>
         <div class="p-4">
           <div class="flex items-center gap-2 mb-1.5">
-            <div class="w-6 h-6 bg-amber-50 rounded-md flex items-center justify-center">
-              <svg class="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10"/></svg>
+            <div class="w-6 h-6 bg-violet-50 rounded-md flex items-center justify-center">
+              <svg class="w-3 h-3 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
             </div>
-            <h3 class="text-xs font-bold text-zinc-900" data-no="Produktanalyse" data-en="Product analytics">Produktanalyse</h3>
+            <h3 class="text-xs font-bold text-zinc-900" data-no="Slipe- og produktanalyse" data-en="Grinding & product analytics">Slipe- og produktanalyse</h3>
           </div>
-          <p class="text-[11px] text-zinc-500 leading-relaxed" data-no="Se hvilke produkter som vinner — og under hvilke forhold. Mønstre som er usynlige i Excel, er tydelige i Glidr." data-en="See which products win — and under what conditions. Patterns invisible in Excel are clear in Glidr.">Se hvilke produkter som vinner — og under hvilke forhold. Mønstre som er usynlige i Excel, er tydelige i Glidr.</p>
+          <p class="text-[11px] text-zinc-500 leading-relaxed" data-no="Sammenlign slipeprofiler og produkter head-to-head. Se nøyaktig under hvilke betingelser hver slip presterer best." data-en="Compare grind profiles and products head-to-head. See exactly under which conditions each profile performs best.">Sammenlign slipeprofiler og produkter head-to-head. Se nøyaktig under hvilke betingelser hver slip presterer best.</p>
         </div>
       </div>
 
@@ -801,6 +814,73 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SIDE 5b: UTVIKLING — "Det vi gjorde i går…"               -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page bg-zinc-900 flex flex-col justify-between p-16 print:p-12 overflow-hidden relative">
+  <!-- Subtle background accent -->
+  <div class="absolute inset-0 pointer-events-none" style="background: radial-gradient(ellipse at 80% 20%, rgba(16,185,129,0.08) 0%, transparent 60%)"></div>
+
+  <div class="relative z-10">
+    <p class="text-xs font-semibold text-emerald-500 uppercase tracking-widest mb-6" data-no="Glidr er en utviklingsplattform" data-en="Glidr is a development platform">Glidr er en utviklingsplattform</p>
+
+    <h2 class="text-5xl font-bold text-white leading-tight mb-4 max-w-3xl">
+      <span data-no="Det vi gjorde i går,<br/>er ikke godt nok i dag." data-en="What we did yesterday<br/>is not good enough today.">Det vi gjorde i går,<br/>er ikke godt nok i dag.</span>
+    </h2>
+    <p class="text-xl text-zinc-400 mb-12 max-w-2xl leading-relaxed" data-no="Glidr er ikke bare et registreringsverktøy — det er motoren som gjør at teamet ditt kontinuerlig forbedrer seg, sesong etter sesong." data-en="Glidr is not just a logging tool — it is the engine that drives your team to continuously improve, season after season.">Glidr er ikke bare et registreringsverktøy — det er motoren som gjør at teamet ditt kontinuerlig forbedrer seg, sesong etter sesong.</p>
+
+    <div class="grid grid-cols-3 gap-5 mb-10">
+      <!-- Pillar 1: Institutional memory -->
+      <div class="bg-zinc-800 border border-zinc-700 rounded-2xl p-6 flex flex-col gap-3">
+        <div class="w-10 h-10 bg-emerald-500/15 rounded-xl flex items-center justify-center">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        </div>
+        <h3 class="font-bold text-white text-base" data-no="Institusjonell hukommelse" data-en="Institutional memory">Institusjonell hukommelse</h3>
+        <p class="text-sm text-zinc-400 leading-relaxed" data-no="Ingenting glemmes. Alle tester, alle betingelser, alle beslutninger er søkbare og tilgjengelige — selv etter at folk slutter på laget." data-en="Nothing is forgotten. Every test, every condition, every decision is searchable and available — even after people leave the team.">Ingenting glemmes. Alle tester, alle betingelser, alle beslutninger er søkbare og tilgjengelige — selv etter at folk slutter på laget.</p>
+        <div class="mt-auto pt-3 border-t border-zinc-700">
+          <p class="text-xs text-emerald-400 font-medium" data-no="→ Det sliperteamet lærte i 2022, er tilgjengelig i 2026." data-en="→ What the wax team learned in 2022 is available in 2026.">→ Det sliperteamet lærte i 2022, er tilgjengelig i 2026.</p>
+        </div>
+      </div>
+
+      <!-- Pillar 2: Grinding analytics as continuous improvement -->
+      <div class="bg-zinc-800 border border-zinc-700 rounded-2xl p-6 flex flex-col gap-3 ring-1 ring-emerald-500/30">
+        <div class="w-10 h-10 bg-emerald-500/15 rounded-xl flex items-center justify-center">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        </div>
+        <h3 class="font-bold text-white text-base" data-no="Slipeanalyse som utvikling" data-en="Grinding analytics as improvement">Slipeanalyse som utvikling</h3>
+        <p class="text-sm text-zinc-400 leading-relaxed" data-no="Sammenlign slipere på tvers av tester og sesonger. Se hvem som presterer best i hvilke betingelser — og lær av det til neste gang." data-en="Compare grinders across tests and seasons. See who performs best in which conditions — and learn from it for next time.">Sammenlign slipere på tvers av tester og sesonger. Se hvem som presterer best i hvilke betingelser — og lær av det til neste gang.</p>
+        <div class="mt-auto pt-3 border-t border-zinc-700">
+          <p class="text-xs text-emerald-400 font-medium" data-no="→ Fra magefølelse til systematisk forbedring." data-en="→ From gut feeling to systematic improvement.">→ Fra magefølelse til systematisk forbedring.</p>
+        </div>
+      </div>
+
+      <!-- Pillar 3: Pattern recognition across seasons -->
+      <div class="bg-zinc-800 border border-zinc-700 rounded-2xl p-6 flex flex-col gap-3">
+        <div class="w-10 h-10 bg-emerald-500/15 rounded-xl flex items-center justify-center">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <h3 class="font-bold text-white text-base" data-no="Mønstre på tvers av sesonger" data-en="Patterns across seasons">Mønstre på tvers av sesonger</h3>
+        <p class="text-sm text-zinc-400 leading-relaxed" data-no="Hva fungerer i −12°C tørr nysnø? Hvilken struktur vinner alltid i sporet? Svarene finnes i dataene — Glidr hjelper deg å finne dem." data-en="What works in −12°C dry new snow? Which structure always wins in the track? The answers are in your data — Glidr helps you find them.">Hva fungerer i −12°C tørr nysnø? Hvilken struktur vinner alltid i sporet? Svarene finnes i dataene — Glidr hjelper deg å finne dem.</p>
+        <div class="mt-auto pt-3 border-t border-zinc-700">
+          <p class="text-xs text-emerald-400 font-medium" data-no="→ Gjentakbar suksess, ikke tilfeldige seire." data-en="→ Repeatable success, not random wins.">→ Gjentakbar suksess, ikke tilfeldige seire.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom quote / emphasis bar -->
+    <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl px-6 py-4 flex items-center gap-4">
+      <div class="w-1 h-12 bg-emerald-500 rounded-full flex-shrink-0"></div>
+      <p class="text-sm text-zinc-300 leading-relaxed">
+        <strong class="text-white" data-no="Vinnerteam er lærende team." data-en="Winning teams are learning teams.">Vinnerteam er lærende team.</strong>
+        <span data-no=" Glidr gjør det mulig å lære systematisk — ikke bare huske, men forstå hva som fungerer og bygge videre på det." data-en=" Glidr makes it possible to learn systematically — not just remember, but understand what works and build on it."> Glidr gjør det mulig å lære systematisk — ikke bare huske, men forstå hva som fungerer og bygge videre på det.</span>
+      </p>
+    </div>
+  </div>
+
+  <p class="text-zinc-600 text-xs text-right mt-6 relative z-10">© 2026 Glidr · <span data-no="Konfidensielt" data-en="Confidential">Konfidensielt</span></p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════ -->
 <!-- SIDE 6: PRISER (hentes dynamisk)                          -->
 <!-- ═══════════════════════════════════════════════════════════ -->
 <div class="page bg-zinc-50 flex flex-col justify-between p-16 print:p-12">
@@ -837,15 +917,15 @@
   <div>
     <p class="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-6" data-no="Kom i gang" data-en="Get started">Kom i gang</p>
     <h2 class="text-5xl font-bold text-white mb-6 leading-tight">
-      <span data-no="De beste lagene<br/>vinner ikke på flaks.<br/>De vinner på data." data-en="The best teams<br/>don't win on luck.<br/>They win on data.">De beste lagene<br/>vinner ikke på flaks.<br/>De vinner på data.</span>
+      <span data-no="Start jobben med<br/>å bli bedre i dag.<br/>Ikke neste sesong." data-en="Start the work<br/>of getting better today.<br/>Not next season.">Start jobben med<br/>å bli bedre i dag.<br/>Ikke neste sesong.</span>
     </h2>
-    <p class="text-xl text-zinc-400 mb-8 max-w-lg leading-relaxed" data-no="Prøv Glidr gratis i 14 dager. Ingen kredittkort. Full tilgang til alle funksjoner fra første dag." data-en="Try Glidr free for 14 days. No credit card. Full access to every feature from day one.">
-      Prøv Glidr gratis i 14 dager. Ingen kredittkort. Full tilgang til alle funksjoner fra første dag.
+    <p class="text-xl text-zinc-400 mb-8 max-w-lg leading-relaxed" data-no="Det vi gjorde i går, er ikke godt nok i dag. Med Glidr har teamet ditt ryggraden som trengs for å faktisk forbedre seg — test for test, sesong etter sesong." data-en="What we did yesterday is not good enough today. With Glidr your team has the backbone it needs to actually improve — test by test, season after season.">
+      Det vi gjorde i går, er ikke godt nok i dag. Med Glidr har teamet ditt ryggraden som trengs for å faktisk forbedre seg — test for test, sesong etter sesong.
     </p>
     <div class="bg-zinc-800 border border-zinc-700 rounded-2xl p-5 mb-8 max-w-lg">
       <p class="text-sm text-zinc-300 leading-relaxed">
-        <span class="text-emerald-400 font-semibold" data-no="Har dere spesifikke behov?" data-en="Have specific requirements?">Har dere spesifikke behov?</span>
-        <span data-no=" Vi utvikler løpende, og mange av dagens funksjoner kom direkte fra brukerne. Ta gjerne kontakt." data-en=" We build continuously, and many of today's features came straight from users. Just get in touch."> Vi utvikler løpende, og mange av dagens funksjoner kom direkte fra brukerne. Ta gjerne kontakt.</span>
+        <span class="text-emerald-400 font-semibold" data-no="Prøv gratis i 14 dager." data-en="Try free for 14 days.">Prøv gratis i 14 dager.</span>
+        <span data-no=" Ingen kredittkort. Full tilgang til alle funksjoner fra første dag. Vi utvikler løpende — mange funksjoner kom direkte fra brukerne." data-en=" No credit card. Full access to all features from day one. We build continuously — many features came straight from users."> Ingen kredittkort. Full tilgang til alle funksjoner fra første dag. Vi utvikler løpende — mange funksjoner kom direkte fra brukerne.</span>
       </p>
     </div>
 

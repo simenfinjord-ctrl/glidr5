@@ -66,6 +66,48 @@ type Series = {
 };
 
 type RoundResult = { result: number | null; rank: number | null };
+type Lang = "no" | "en";
+
+// ── Translations ─────────────────────────────────────────────
+const LABELS: Record<string, Record<Lang, string>> = {
+  appTitle:         { en: "GLIDR — Test Report",      no: "GLIDR — Testrapport" },
+  generated:        { en: "Generated",                 no: "Generert" },
+  group:            { en: "Group",                     no: "Gruppe" },
+  date:             { en: "Date",                      no: "Dato" },
+  series:           { en: "Series",                    no: "Serie" },
+  createdBy:        { en: "Created by",                no: "Opprettet av" },
+  notes:            { en: "Notes",                     no: "Notater" },
+  weatherTitle:     { en: "Weather Conditions",        no: "Vær- og føreforhold" },
+  snowTemp:         { en: "Snow Temp",                 no: "Snøtemp" },
+  airTemp:          { en: "Air Temp",                  no: "Lufttemp" },
+  snowHumDoser:     { en: "Snow Hum (Doser)",          no: "Snøfukt (Doser)" },
+  airHumidity:      { en: "Air Humidity",              no: "Luftfuktighet" },
+  clouds:           { en: "Clouds",                    no: "Skyer" },
+  visibility:       { en: "Visibility",                no: "Sikt" },
+  wind:             { en: "Wind",                      no: "Vind" },
+  precipitation:    { en: "Precipitation",             no: "Nedbør" },
+  artSnow:          { en: "Art. Snow",                 no: "Kunstsnø" },
+  natSnow:          { en: "Nat. Snow",                 no: "Natursnø" },
+  grain:            { en: "Grain",                     no: "Kornstørrelse" },
+  snowHumType:      { en: "Snow Hum Type",             no: "Snøfukttype" },
+  track:            { en: "Track",                     no: "Spor" },
+  quality:          { en: "Quality",                   no: "Kvalitet" },
+  resultsTitle:     { en: "Results",                   no: "Resultater" },
+  colRank:          { en: "Rank",                      no: "Rang" },
+  colSki:           { en: "Ski #",                     no: "Ski #" },
+  colProduct:       { en: "Product",                   no: "Produkt" },
+  colMethod:        { en: "Method",                    no: "Metode" },
+  colFeeling:       { en: "Feeling",                   no: "Følelse" },
+  colKick:          { en: "Kick",                      no: "Feste" },
+  colCm:            { en: "cm",                        no: "cm" },
+  exportedBy:       { en: "Exported by",               no: "Eksportert av" },
+  confidential:     { en: "This document is intended for team members only.", no: "Dette dokumentet er kun for teammedlemmer." },
+  tagline:          { en: "What we did yesterday is not good enough today.",  no: "Det vi gjorde i går, er ikke godt nok i dag." },
+};
+
+function tx(key: string, lang: Lang): string {
+  return LABELS[key]?.[lang] ?? LABELS[key]?.["en"] ?? key;
+}
 
 function getDistanceLabels(test: Test): string[] {
   if (test.distanceLabels) {
@@ -95,11 +137,11 @@ function getEntryRounds(entry: TestEntry, numRounds: number): RoundResult[] {
   return results;
 }
 
-function applyExportFooter(doc: jsPDF, exportedBy: string, teamName?: string) {
+function applyExportFooter(doc: jsPDF, exportedBy: string, lang: Lang, teamName?: string) {
   const pageCount = (doc.internal as any).getNumberOfPages ? (doc.internal as any).getNumberOfPages() : 1;
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
-  const dateStr = new Date().toLocaleString();
+  const dateStr = new Date().toLocaleString(lang === "no" ? "nb-NO" : "en-GB");
   for (let pg = 1; pg <= pageCount; pg++) {
     doc.setPage(pg);
     doc.setFontSize(7);
@@ -109,9 +151,9 @@ function applyExportFooter(doc: jsPDF, exportedBy: string, teamName?: string) {
     doc.setDrawColor(200, 200, 200);
     doc.line(14, ph - 9, pw - 14, ph - 9);
     // Left: who exported + date
-    doc.text(`Exported by: ${exportedBy}${teamName ? `  ·  ${teamName}` : ""}  ·  ${dateStr}`, 14, ph - 5);
+    doc.text(`${tx("exportedBy", lang)}: ${exportedBy}${teamName ? `  ·  ${teamName}` : ""}  ·  ${dateStr}`, 14, ph - 5);
     // Right: confidentiality notice
-    doc.text("This document is intended for team members only.", pw - 14, ph - 5, { align: "right" });
+    doc.text(tx("confidential", lang), pw - 14, ph - 5, { align: "right" });
     // Reset
     doc.setTextColor(0, 0, 0);
     doc.setDrawColor(0, 0, 0);
@@ -126,19 +168,30 @@ export function generateTestPDF(
   weather: Weather | null,
   exportedBy: string = "Unknown",
   teamName?: string,
+  lang: Lang = "en",
 ) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
 
+  // ── Header ──
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
-  doc.text("GLIDR — Test Report", 14, 18);
+  doc.text(tx("appTitle", lang), 14, 18);
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
-  doc.text(`Generated ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`, 14, 24);
-  doc.text(`Group: ${test.groupScope}`, pageWidth - 14, 18, { align: "right" });
+  doc.text(
+    `${tx("generated", lang)} ${new Date().toLocaleDateString(lang === "no" ? "nb-NO" : "en-GB")} ${new Date().toLocaleTimeString(lang === "no" ? "nb-NO" : "en-GB", { hour: "2-digit", minute: "2-digit" })}`,
+    14, 24,
+  );
+  doc.text(`${tx("group", lang)}: ${test.groupScope}`, pageWidth - 14, 18, { align: "right" });
+
+  // Tagline — development platform branding
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "italic");
+  doc.setTextColor(160, 160, 160);
+  doc.text(tx("tagline", lang), pageWidth - 14, 24, { align: "right" });
 
   doc.setDrawColor(200);
   doc.line(14, 27, pageWidth - 14, 27);
@@ -155,20 +208,24 @@ export function generateTestPDF(
   doc.setFont("helvetica", "normal");
   doc.setTextColor(60);
   const series = seriesById.get(test.seriesId);
-  doc.text(`Date: ${test.date}  |  Series: ${series?.name ?? "—"}  |  Created by: ${test.createdByName}`, 14, y);
+  doc.text(
+    `${tx("date", lang)}: ${test.date}  |  ${tx("series", lang)}: ${series?.name ?? "—"}  |  ${tx("createdBy", lang)}: ${test.createdByName}`,
+    14, y,
+  );
   y += 5;
 
   if (test.notes) {
-    doc.text(`Notes: ${test.notes}`, 14, y);
+    doc.text(`${tx("notes", lang)}: ${test.notes}`, 14, y);
     y += 5;
   }
 
+  // ── Weather ──
   if (weather) {
     y += 3;
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0);
-    doc.text("Weather Conditions", 14, y);
+    doc.text(tx("weatherTitle", lang), 14, y);
     y += 6;
 
     doc.setFontSize(9);
@@ -176,21 +233,21 @@ export function generateTestPDF(
     doc.setTextColor(60);
 
     const weatherRows: string[][] = [
-      ["Snow Temp", `${weather.snowTemperatureC}°C`, "Air Temp", `${weather.airTemperatureC}°C`],
-      ["Snow Hum (Doser)", `${weather.snowHumidityPct}%`, "Air Humidity", `${weather.airHumidityPct}%rH`],
+      [tx("snowTemp", lang), `${weather.snowTemperatureC}°C`, tx("airTemp", lang), `${weather.airTemperatureC}°C`],
+      [tx("snowHumDoser", lang), `${weather.snowHumidityPct}%`, tx("airHumidity", lang), `${weather.airHumidityPct}%rH`],
     ];
 
     const extras: string[] = [];
-    if (weather.clouds != null) extras.push(`Clouds: ${weather.clouds}/8`);
-    if (weather.visibility) extras.push(`Visibility: ${weather.visibility}`);
-    if (weather.wind) extras.push(`Wind: ${weather.wind}`);
-    if (weather.precipitation) extras.push(`Precipitation: ${weather.precipitation}`);
-    if (weather.artificialSnow) extras.push(`Art. Snow: ${weather.artificialSnow}`);
-    if (weather.naturalSnow) extras.push(`Nat. Snow: ${weather.naturalSnow}`);
-    if (weather.grainSize) extras.push(`Grain: ${weather.grainSize}`);
-    if (weather.snowHumidityType) extras.push(`Snow Hum Type: ${weather.snowHumidityType}`);
-    if (weather.trackHardness) extras.push(`Track: ${weather.trackHardness}`);
-    if (weather.testQuality != null) extras.push(`Quality: ${weather.testQuality}/10`);
+    if (weather.clouds != null) extras.push(`${tx("clouds", lang)}: ${weather.clouds}/8`);
+    if (weather.visibility) extras.push(`${tx("visibility", lang)}: ${weather.visibility}`);
+    if (weather.wind) extras.push(`${tx("wind", lang)}: ${weather.wind}`);
+    if (weather.precipitation) extras.push(`${tx("precipitation", lang)}: ${weather.precipitation}`);
+    if (weather.artificialSnow) extras.push(`${tx("artSnow", lang)}: ${weather.artificialSnow}`);
+    if (weather.naturalSnow) extras.push(`${tx("natSnow", lang)}: ${weather.naturalSnow}`);
+    if (weather.grainSize) extras.push(`${tx("grain", lang)}: ${weather.grainSize}`);
+    if (weather.snowHumidityType) extras.push(`${tx("snowHumType", lang)}: ${weather.snowHumidityType}`);
+    if (weather.trackHardness) extras.push(`${tx("track", lang)}: ${weather.trackHardness}`);
+    if (weather.testQuality != null) extras.push(`${tx("quality", lang)}: ${weather.testQuality}/10`);
 
     autoTable(doc, {
       startY: y,
@@ -216,11 +273,12 @@ export function generateTestPDF(
     }
   }
 
+  // ── Results table ──
   y += 4;
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(0);
-  doc.text("Results", 14, y);
+  doc.text(tx("resultsTitle", lang), 14, y);
   y += 2;
 
   const distLabels = getDistanceLabels(test);
@@ -236,14 +294,19 @@ export function generateTestPDF(
     return aRank - bRank;
   });
 
-  const headers = ["Rank", "Ski #", "Product", "Method"];
+  const headers = [
+    tx("colRank", lang),
+    tx("colSki", lang),
+    tx("colProduct", lang),
+    tx("colMethod", lang),
+  ];
   for (const label of distLabels) {
-    headers.push(`${label || "Round"} (cm)`);
-    headers.push(`Rank`);
+    headers.push(`${label || "Round"} (${tx("colCm", lang)})`);
+    headers.push(tx("colRank", lang));
   }
-  headers.push("Feeling");
+  headers.push(tx("colFeeling", lang));
   const isClassic = test.testType === "Classic";
-  if (isClassic) headers.push("Kick");
+  if (isClassic) headers.push(tx("colKick", lang));
 
   const body = sortedEntries.map((entry) => {
     const prod = entry.productId ? productsById.get(entry.productId) : null;
@@ -310,7 +373,7 @@ export function generateTestPDF(
     },
   });
 
-  applyExportFooter(doc, exportedBy, teamName);
+  applyExportFooter(doc, exportedBy, lang, teamName);
 
   doc.save(`glidr-test-${test.location}-${test.date}.pdf`);
 }

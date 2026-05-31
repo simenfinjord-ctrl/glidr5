@@ -550,7 +550,8 @@ export default function TestDetail() {
   const id = params?.id;
   const testId = id ? parseInt(id) : NaN;
   const { isBlindTester, isSuperAdmin, can } = useAuth();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const lang = language === "no" ? "no" : "en";
   const hasWatchAccess = can("garmin_watch");
   const canEditTests = can("tests", "edit");
   const [hideDetailsState, setHideDetails] = useState(false);
@@ -798,93 +799,145 @@ export default function TestDetail() {
     }
     const { test: pdfTest, entries: pdfEntries, weather: pdfWeather, comments: pdfComments } = await res.json();
 
-    const doc = new jsPDF();
+    const isNo = lang === "no";
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
 
-    // Header
-    doc.setFontSize(20);
+    // ── Header ──
+    doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text(pdfTest.test_name || pdfTest.location, 14, 20);
+    doc.text(isNo ? "GLIDR — Testrapport" : "GLIDR — Test Report", 14, 18);
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100);
-    doc.text(`${pdfTest.date}  ·  ${pdfTest.test_type}  ·  ${pdfTest.location}`, 14, 28);
-    if (pdfTest.series_name) doc.text(`Series: ${pdfTest.series_name}`, 14, 34);
+    doc.text(
+      `${isNo ? "Generert" : "Generated"} ${new Date().toLocaleDateString(isNo ? "nb-NO" : "en-GB")} ${new Date().toLocaleTimeString(isNo ? "nb-NO" : "en-GB", { hour: "2-digit", minute: "2-digit" })}`,
+      14, 24,
+    );
+    // Development platform tagline (right side)
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(160, 160, 160);
+    doc.text(
+      isNo ? "Det vi gjorde i går, er ikke godt nok i dag." : "What we did yesterday is not good enough today.",
+      pageW - 14, 24, { align: "right" },
+    );
 
-    let y = pdfTest.series_name ? 44 : 38;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(14, 27, pageW - 14, 27);
 
-    // Weather
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0);
+    doc.text(`${pdfTest.location} — ${pdfTest.test_type} Test`, 14, 35);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(60);
+    doc.text(`${isNo ? "Dato" : "Date"}: ${pdfTest.date}  |  ${isNo ? "Serie" : "Series"}: ${pdfTest.series_name ?? "—"}  |  ${isNo ? "Opprettet av" : "Created by"}: ${pdfTest.created_by_name ?? "—"}`, 14, 42);
+
+    let y = 50;
+
+    // ── Weather ──
     if (pdfWeather) {
-      doc.setFontSize(12);
+      doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(0);
-      doc.text("Weather conditions", 14, y);
+      doc.text(isNo ? "Vær- og føreforhold" : "Weather Conditions", 14, y);
       y += 6;
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(80);
       const wx = [
-        pdfWeather.air_temperature_c != null ? `Air: ${pdfWeather.air_temperature_c}°C` : null,
-        pdfWeather.snow_temperature_c != null ? `Snow: ${pdfWeather.snow_temperature_c}°C` : null,
-        pdfWeather.air_humidity_pct != null ? `Air humidity: ${pdfWeather.air_humidity_pct}%` : null,
-        pdfWeather.snow_humidity_pct != null ? `Snow humidity: ${pdfWeather.snow_humidity_pct}%` : null,
-        pdfWeather.snow_type ? `Snow type: ${pdfWeather.snow_type}` : null,
-      ].filter(Boolean).join("   ");
-      doc.text(wx, 14, y);
+        pdfWeather.air_temperature_c != null ? `${isNo ? "Lufttemp" : "Air Temp"}: ${pdfWeather.air_temperature_c}°C` : null,
+        pdfWeather.snow_temperature_c != null ? `${isNo ? "Snøtemp" : "Snow Temp"}: ${pdfWeather.snow_temperature_c}°C` : null,
+        pdfWeather.air_humidity_pct != null ? `${isNo ? "Luftfuktighet" : "Air Humidity"}: ${pdfWeather.air_humidity_pct}%rH` : null,
+        pdfWeather.snow_humidity_pct != null ? `${isNo ? "Snøfukt (Doser)" : "Snow Hum (Doser)"}: ${pdfWeather.snow_humidity_pct}%` : null,
+        pdfWeather.snow_type ? `${isNo ? "Snøtype" : "Snow Type"}: ${pdfWeather.snow_type}` : null,
+        pdfWeather.track_hardness ? `${isNo ? "Spor" : "Track"}: ${pdfWeather.track_hardness}` : null,
+      ].filter(Boolean).join("   |   ");
+      doc.text(wx as string, 14, y);
       y += 10;
     }
 
-    // Results table
-    doc.setFontSize(12);
+    // ── Results table ──
+    doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0);
-    doc.text("Results", 14, y);
-    y += 4;
+    doc.text(isNo ? "Resultater" : "Results", 14, y);
+    y += 2;
 
     autoTable(doc, {
       startY: y,
-      head: [["Rank", "Ski #", "Product", "Methodology", "Result"]],
+      head: [[
+        isNo ? "Rang" : "Rank",
+        "Ski #",
+        isNo ? "Produkt" : "Product",
+        isNo ? "Metode" : "Methodology",
+        isNo ? "Resultat (cm)" : "Result (cm)",
+      ]],
       body: pdfEntries.map((e: any) => [
         e.rank0km ?? "—",
         e.ski_number,
         e.brand ? `${e.brand} ${e.product_name}` : "—",
         e.methodology || "—",
-        e.result0km_cm_behind != null ? `${e.result0km_cm_behind} cm` : "—",
+        e.result0km_cm_behind != null ? `${e.result0km_cm_behind}` : "—",
       ]),
-      styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: [24, 24, 27], textColor: 255 },
-      alternateRowStyles: { fillColor: [248, 248, 248] },
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: "bold", fontSize: 8 },
+      alternateRowStyles: { fillColor: [241, 245, 249] },
       margin: { left: 14, right: 14 },
+      didParseCell: (data) => {
+        if (data.section === "body" && data.column.index === 0) {
+          const rank = data.cell.raw;
+          if (rank === 1) { data.cell.styles.textColor = [16, 185, 129]; data.cell.styles.fontStyle = "bold"; }
+          else if (rank === 2) { data.cell.styles.textColor = [22, 163, 74]; data.cell.styles.fontStyle = "bold"; }
+          else if (rank === 3) { data.cell.styles.textColor = [245, 158, 11]; data.cell.styles.fontStyle = "bold"; }
+        }
+      },
     });
 
-    // Comments
+    // ── Comments ──
     if (pdfComments.length > 0) {
       const finalY = (doc as any).lastAutoTable?.finalY ?? 200;
-      doc.setFontSize(12);
+      doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(0);
-      doc.text("Comments", 14, finalY + 10);
+      doc.text(isNo ? "Kommentarer" : "Comments", 14, finalY + 10);
       let cy = finalY + 18;
       for (const c of pdfComments) {
         doc.setFontSize(8);
         doc.setFont("helvetica", "bold");
+        doc.setTextColor(0);
         doc.text(`${c.user_name}`, 14, cy);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(80);
         const lines = doc.splitTextToSize(c.content, pageW - 28);
         doc.text(lines, 14, cy + 5);
-        cy += 5 + lines.length * 5 + 4;
+        cy += 5 + (lines as string[]).length * 5 + 4;
         doc.setTextColor(0);
       }
     }
 
-    // Footer
-    doc.setFontSize(8);
-    doc.setTextColor(150);
-    doc.text(`Generated by Glidr · ${new Date().toLocaleDateString()}`, 14, doc.internal.pageSize.getHeight() - 10);
+    // ── Footer ──
+    const pgCount = (doc.internal as any).getNumberOfPages ? (doc.internal as any).getNumberOfPages() : 1;
+    const dateStr = new Date().toLocaleString(isNo ? "nb-NO" : "en-GB");
+    for (let pg = 1; pg <= pgCount; pg++) {
+      doc.setPage(pg);
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(130, 130, 130);
+      doc.setDrawColor(200, 200, 200);
+      doc.line(14, pageH - 9, pageW - 14, pageH - 9);
+      doc.text(`${isNo ? "Eksportert av" : "Exported by"}: ${pdfTest.created_by_name ?? "—"}  ·  ${dateStr}`, 14, pageH - 5);
+      doc.text(isNo ? "Dette dokumentet er kun for teammedlemmer." : "This document is intended for team members only.", pageW - 14, pageH - 5, { align: "right" });
+      doc.setTextColor(0, 0, 0);
+      doc.setDrawColor(0, 0, 0);
+    }
 
-    doc.save(`${pdfTest.test_name || pdfTest.location}-${pdfTest.date}.pdf`);
+    doc.save(`glidr-test-${pdfTest.location}-${pdfTest.date}.pdf`);
     } catch (err: any) {
       toast({ title: "PDF failed", description: err?.message ?? "Unknown error", variant: "destructive" });
     } finally {

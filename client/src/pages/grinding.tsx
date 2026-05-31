@@ -2510,6 +2510,7 @@ function GrindingAnalytics({
   grindProfiles: GrindProfile[];
   weatherById: Map<number, Weather>;
 }) {
+  const { t } = useI18n();
   const [view, setView] = useState<AnalyticsView>("overview");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -2535,11 +2536,26 @@ function GrindingAnalytics({
       const weatherSamples = testsForProfile.map((t) => t.weatherId ? weatherById.get(t.weatherId) : null).filter((w): w is Weather => w != null);
       const avgAirTemp = weatherSamples.length > 0 ? weatherSamples.reduce((a, w) => a + (w.airTemperatureC ?? 0), 0) / weatherSamples.length : null;
       const avgSnowTemp = weatherSamples.length > 0 ? weatherSamples.reduce((a, w) => a + (w.snowTemperatureC ?? 0), 0) / weatherSamples.length : null;
+
+      // Best individual results: entries sorted by rank asc
+      const bestRank = ranks.length > 0 ? Math.min(...ranks) : null;
+      const bestTests = entries
+        .filter((e) => e.rank0km !== null && e.rank0km === bestRank)
+        .map((e) => {
+          const test = testsForProfile.find((t) => t.id === e.testId);
+          if (!test) return null;
+          const w = test.weatherId ? weatherById.get(test.weatherId) : null;
+          return { date: test.date, location: test.location, rank: e.rank0km as number, result: e.result0kmCmBehind, snowTemp: w?.snowTemperatureC ?? null, snowType: w?.snowType ?? null, trackHardness: w?.trackHardness ?? null, airTemp: w?.airTemperatureC ?? null };
+        })
+        .filter((x): x is NonNullable<typeof x> => x !== null)
+        .sort((a, b) => b.date.localeCompare(a.date));
+
       return {
         profile, testCount: testsForProfile.length, entryCount: entries.length,
         wins, top3, avgRank, avgResult, avgFeeling, avgAirTemp, avgSnowTemp,
         winRate: ranks.length > 0 ? (wins / ranks.length) * 100 : null,
         top3Rate: ranks.length > 0 ? (top3 / ranks.length) * 100 : null,
+        bestRank, bestTests,
       };
     }).sort((a, b) => {
       if (b.winRate !== null && a.winRate !== null) return b.winRate - a.winRate;
@@ -2676,13 +2692,13 @@ function GrindingAnalytics({
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Tester", value: totalTests },
-          { label: "Entries", value: totalEntries },
-          { label: "Profiler", value: grindProfiles.length },
-          { label: "Med data", value: profilesWithData },
+          { key: "grinding.analytics.totalTests", value: totalTests },
+          { key: "grinding.analytics.entries", value: totalEntries },
+          { key: "grinding.analytics.profiles", value: grindProfiles.length },
+          { key: "grinding.analytics.withData", value: profilesWithData },
         ].map((c) => (
-          <Card key={c.label} className="fs-card rounded-2xl p-4">
-            <p className="text-xs text-muted-foreground mb-1">{c.label}</p>
+          <Card key={c.key} className="fs-card rounded-2xl p-4">
+            <p className="text-xs text-muted-foreground mb-1">{t(c.key)}</p>
             <p className="text-2xl font-bold text-primary">{c.value}</p>
           </Card>
         ))}
@@ -2692,7 +2708,7 @@ function GrindingAnalytics({
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[180px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Søk slipeprofil…" className="pl-9 h-8 text-sm" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("grinding.analytics.searchPlaceholder")} className="pl-9 h-8 text-sm" />
           {search && (
             <button type="button" onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               <X className="h-3.5 w-3.5" />
@@ -2703,12 +2719,12 @@ function GrindingAnalytics({
           <button
             onClick={() => setTypeFilter("all")}
             className={cn("px-2.5 py-1 rounded-full text-xs font-medium border transition-colors", typeFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground")}>
-            Alle
+            {t("grinding.analytics.filterAll")}
           </button>
-          {grindTypes.map((t) => (
-            <button key={t} onClick={() => setTypeFilter(typeFilter === t ? "all" : t)}
-              className={cn("px-2.5 py-1 rounded-full text-xs font-medium border transition-colors", typeFilter === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground")}>
-              {t}
+          {grindTypes.map((gt) => (
+            <button key={gt} onClick={() => setTypeFilter(typeFilter === gt ? "all" : gt)}
+              className={cn("px-2.5 py-1 rounded-full text-xs font-medium border transition-colors", typeFilter === gt ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground")}>
+              {gt}
             </button>
           ))}
         </div>
@@ -2717,7 +2733,7 @@ function GrindingAnalytics({
       {/* ── Selected profiles chips ── */}
       {selectedIds.size > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-muted-foreground font-medium">Valgt:</span>
+          <span className="text-xs text-muted-foreground font-medium">{t("grinding.analytics.selected")}</span>
           {selectedStats.map((s) => {
             const color = colorByProfileId.get(s.profile.id)!;
             return (
@@ -2732,11 +2748,11 @@ function GrindingAnalytics({
           })}
           {selectedIds.size >= 2 && (
             <button type="button" onClick={() => setView("compare")} className="ml-1 text-xs text-primary hover:underline underline-offset-2">
-              Sammenlign →
+              {t("grinding.analytics.compareAction")}
             </button>
           )}
           <button type="button" onClick={() => setSelectedIds(new Set())} className="ml-auto text-xs text-muted-foreground hover:text-foreground">
-            Fjern alle
+            {t("grinding.analytics.clearAll")}
           </button>
         </div>
       )}
@@ -2746,7 +2762,7 @@ function GrindingAnalytics({
         {(["overview", "compare", "conditions"] as AnalyticsView[]).map((v) => (
           <button key={v} type="button" onClick={() => setView(v)}
             className={cn("px-3 py-1.5 rounded-lg text-sm font-medium transition-colors", view === v ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}>
-            {v === "overview" ? "Oversikt" : v === "compare" ? "Sammenlign" : "Betingelser"}
+            {t(`grinding.analytics.tab${v.charAt(0).toUpperCase() + v.slice(1)}`)}
           </button>
         ))}
       </div>
@@ -2756,26 +2772,26 @@ function GrindingAnalytics({
         <Card className="fs-card rounded-2xl p-4">
           <h2 className="font-semibold text-base flex items-center gap-2 mb-3">
             <BarChart2 className="h-4 w-4 text-primary" />
-            Alle slipeprofiler
-            <span className="text-xs font-normal text-muted-foreground ml-1">— klikk en rad for detaljer · ☑ for å sammenligne</span>
+            {t("grinding.analytics.allProfiles")}
+            <span className="text-xs font-normal text-muted-foreground ml-1">{t("grinding.analytics.tableHint")}</span>
           </h2>
           {filteredStats.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">Ingen profiler funnet</p>
+            <p className="text-sm text-muted-foreground text-center py-6">{t("grinding.analytics.noProfilesFound")}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
                     <th className="w-6 py-2 pr-2" />
-                    <th className="text-left py-2 pr-3 font-medium text-muted-foreground text-xs">Profil</th>
-                    <th className="text-left py-2 pr-3 font-medium text-muted-foreground text-xs">Type</th>
-                    <th className="text-right py-2 pr-3 font-medium text-muted-foreground text-xs">Tester</th>
-                    <th className="text-right py-2 pr-3 font-medium text-muted-foreground text-xs">Entries</th>
-                    <th className="text-right py-2 pr-3 font-medium text-muted-foreground text-xs">Seiere</th>
-                    <th className="text-right py-2 pr-3 font-medium text-muted-foreground text-xs">Vinn%</th>
-                    <th className="text-right py-2 pr-3 font-medium text-muted-foreground text-xs">Top3%</th>
-                    <th className="text-right py-2 pr-3 font-medium text-muted-foreground text-xs">Avg rank</th>
-                    <th className="text-right py-2 font-medium text-muted-foreground text-xs">Avg snø°C</th>
+                    <th className="text-left py-2 pr-3 font-medium text-muted-foreground text-xs">{t("grinding.analytics.colProfile")}</th>
+                    <th className="text-left py-2 pr-3 font-medium text-muted-foreground text-xs">{t("common.type")}</th>
+                    <th className="text-right py-2 pr-3 font-medium text-muted-foreground text-xs">{t("grinding.testCount")}</th>
+                    <th className="text-right py-2 pr-3 font-medium text-muted-foreground text-xs">{t("grinding.analytics.entries")}</th>
+                    <th className="text-right py-2 pr-3 font-medium text-muted-foreground text-xs">{t("grinding.analytics.colWins")}</th>
+                    <th className="text-right py-2 pr-3 font-medium text-muted-foreground text-xs">{t("grinding.analytics.colWinPct")}</th>
+                    <th className="text-right py-2 pr-3 font-medium text-muted-foreground text-xs">{t("grinding.analytics.colTop3Pct")}</th>
+                    <th className="text-right py-2 pr-3 font-medium text-muted-foreground text-xs">{t("grinding.avgRank")}</th>
+                    <th className="text-right py-2 font-medium text-muted-foreground text-xs">{t("grinding.analytics.colAvgSnowTemp")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2835,44 +2851,76 @@ function GrindingAnalytics({
                         {/* Inline expanded detail row */}
                         {isFocused && (
                           <tr key={`${s.profile.id}-detail`} className="bg-muted/20">
-                            <td colSpan={10} className="px-2 pb-3 pt-1">
+                            <td colSpan={10} className="px-2 pb-4 pt-1">
+                              {/* Stat cards */}
                               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 mb-3">
                                 {[
-                                  { label: "Tester", value: focusStat?.testCount ?? 0 },
-                                  { label: "Entries", value: focusStat?.entryCount ?? 0 },
-                                  { label: "Seiere", value: focusStat?.wins ?? 0, hi: (focusStat?.wins ?? 0) > 0 },
-                                  { label: "Vinn%", value: fmtPct(focusStat?.winRate ?? null), hi: (focusStat?.winRate ?? 0) >= 20 },
-                                  { label: "Top3%", value: fmtPct(focusStat?.top3Rate ?? null) },
-                                  { label: "Avg rank", value: fmt1(focusStat?.avgRank ?? null), hi: (focusStat?.avgRank ?? 99) <= 2 },
-                                  { label: "Avg resultat", value: fmt1(focusStat?.avgResult ?? null) },
-                                  { label: "Avg feeling", value: fmt1(focusStat?.avgFeeling ?? null) },
-                                  { label: "Avg luft°C", value: fmt1(focusStat?.avgAirTemp ?? null) },
-                                  { label: "Avg snø°C", value: fmt1(focusStat?.avgSnowTemp ?? null) },
+                                  { key: "grinding.testCount", value: focusStat?.testCount ?? 0 },
+                                  { key: "grinding.analytics.entries", value: focusStat?.entryCount ?? 0 },
+                                  { key: "grinding.analytics.colWins", value: focusStat?.wins ?? 0, hi: (focusStat?.wins ?? 0) > 0 },
+                                  { key: "grinding.analytics.colWinPct", value: fmtPct(focusStat?.winRate ?? null), hi: (focusStat?.winRate ?? 0) >= 20 },
+                                  { key: "grinding.analytics.colTop3Pct", value: fmtPct(focusStat?.top3Rate ?? null) },
+                                  { key: "grinding.avgRank", value: fmt1(focusStat?.avgRank ?? null), hi: (focusStat?.avgRank ?? 99) <= 2 },
+                                  { key: "grinding.analytics.bestRank", value: focusStat?.bestRank ?? "—", hi: (focusStat?.bestRank ?? 99) === 1 },
+                                  { key: "grinding.analytics.avgResultLabel", value: fmt1(focusStat?.avgResult ?? null) },
+                                  { key: "grinding.analytics.avgFeelingLabel", value: fmt1(focusStat?.avgFeeling ?? null) },
+                                  { key: "grinding.analytics.avgSnowTempLabel", value: fmt1(focusStat?.avgSnowTemp ?? null) },
                                 ].map((item) => (
-                                  <div key={item.label} className="rounded-lg bg-background/60 px-2.5 py-2">
-                                    <p className="text-[10px] text-muted-foreground">{item.label}</p>
+                                  <div key={item.key} className="rounded-lg bg-background/60 px-2.5 py-2">
+                                    <p className="text-[10px] text-muted-foreground">{t(item.key)}</p>
                                     <p className={cn("text-base font-bold", item.hi ? "text-primary" : "")}>{String(item.value)}</p>
                                   </div>
                                 ))}
                               </div>
+
+                              {/* Best results — specific tests where this grind hit its best rank */}
+                              {focusStat && focusStat.bestTests.length > 0 && (
+                                <div className="mb-3">
+                                  <p className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
+                                    <Trophy className="h-3 w-3 text-yellow-500" />
+                                    {t("grinding.analytics.bestResults")}
+                                    <span className="font-normal">— {t("grinding.analytics.bestRank").toLowerCase()} {focusStat.bestRank}</span>
+                                  </p>
+                                  <div className="flex flex-col gap-1">
+                                    {focusStat.bestTests.slice(0, 3).map((bt, i) => (
+                                      <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg bg-yellow-500/5 border border-yellow-500/20 px-2.5 py-1.5 text-xs">
+                                        <span className="text-yellow-500 font-bold">🥇</span>
+                                        <span className="font-medium tabular-nums">{bt.date.slice(0, 10)}</span>
+                                        <span className="text-muted-foreground truncate max-w-[120px]">{bt.location}</span>
+                                        {bt.snowTemp !== null && <span className="text-muted-foreground">{bt.snowTemp.toFixed(1)}°C</span>}
+                                        {bt.snowType && <span className="rounded-full bg-muted px-1.5 py-0.5">{bt.snowType}</span>}
+                                        {bt.trackHardness && <span className="rounded-full bg-muted px-1.5 py-0.5">{bt.trackHardness}</span>}
+                                        {bt.result !== null && <span className="text-muted-foreground">{bt.result > 0 ? `+${bt.result}` : bt.result} cm</span>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
                               {/* Recent tests */}
                               {focusTests.length > 0 && (
                                 <div className="flex flex-col gap-1">
-                                  <p className="text-xs font-medium text-muted-foreground mb-1">Siste tester</p>
+                                  <p className="text-xs font-semibold text-muted-foreground mb-1">{t("grinding.analytics.recentTests")}</p>
                                   {focusTests.slice(0, 5).map((test) => {
                                     const ents = focusEntries.filter((e) => e.testId === test.id);
                                     const rs = ents.map((e) => e.rank0km).filter((r): r is number => r !== null);
                                     const w = test.weatherId ? weatherById.get(test.weatherId) : null;
                                     const wins2 = rs.filter((r) => r === 1).length;
+                                    const bestR = rs.length > 0 ? Math.min(...rs) : null;
                                     const avgR2 = avg(rs);
                                     return (
                                       <div key={test.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-background/50 px-2.5 py-1.5 text-xs">
                                         <span className="font-medium tabular-nums">{test.date.slice(0, 10)}</span>
                                         <span className="text-muted-foreground truncate max-w-[120px]">{test.location}</span>
-                                        {w && <span className="text-muted-foreground">{w.snowTemperatureC.toFixed(1)}°C snø</span>}
-                                        {w?.snowType && <span className="text-muted-foreground">{w.snowType}</span>}
+                                        {w && <span className="text-muted-foreground">{w.snowTemperatureC.toFixed(1)}°C</span>}
+                                        {w?.snowType && <span className="rounded-full bg-muted px-1.5 py-0.5">{w.snowType}</span>}
                                         {wins2 > 0 && <span className="text-yellow-500 font-bold">🥇{wins2 > 1 ? `×${wins2}` : ""}</span>}
-                                        {avgR2 !== null && <span className="text-muted-foreground">rank {avgR2.toFixed(1)}</span>}
+                                        {bestR !== null && avgR2 !== null && (
+                                          <span className="text-muted-foreground">
+                                            {t("grinding.analytics.minRank")} {bestR}
+                                            {bestR !== avgR2 ? ` · avg ${avgR2.toFixed(1)}` : ""}
+                                          </span>
+                                        )}
                                       </div>
                                     );
                                   })}
@@ -2897,9 +2945,9 @@ function GrindingAnalytics({
           {selectedIds.size < 2 ? (
             <Card className="fs-card rounded-2xl p-8 text-center">
               <BarChart2 className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="font-medium mb-1">Velg 2–4 profiler for å sammenligne</p>
-              <p className="text-sm text-muted-foreground">Hak av profilene i Oversikt-fanen og kom tilbake hit</p>
-              <button type="button" onClick={() => setView("overview")} className="mt-3 text-sm text-primary hover:underline">Gå til Oversikt →</button>
+              <p className="font-medium mb-1">{t("grinding.analytics.selectToCompare")}</p>
+              <p className="text-sm text-muted-foreground">{t("grinding.analytics.checkInOverview")}</p>
+              <button type="button" onClick={() => setView("overview")} className="mt-3 text-sm text-primary hover:underline">{t("grinding.analytics.goToOverview")}</button>
             </Card>
           ) : (
             <>
@@ -2907,13 +2955,13 @@ function GrindingAnalytics({
               <Card className="fs-card rounded-2xl p-4">
                 <h2 className="font-semibold text-base flex items-center gap-2 mb-4">
                   <BarChart2 className="h-4 w-4 text-primary" />
-                  Statistikk side-om-side
+                  {t("grinding.analytics.sideBySide")}
                 </h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border">
-                        <th className="text-left py-2 pr-4 font-medium text-muted-foreground text-xs w-32">Metrikk</th>
+                        <th className="text-left py-2 pr-4 font-medium text-muted-foreground text-xs w-36">{t("grinding.analytics.metric")}</th>
                         {selectedStats.map((s) => {
                           const color = colorByProfileId.get(s.profile.id!);
                           return (
@@ -2929,38 +2977,34 @@ function GrindingAnalytics({
                     </thead>
                     <tbody>
                       {[
-                        { label: "Tester", fn: (s: typeof selectedStats[number]) => String(s.testCount) },
-                        { label: "Entries", fn: (s: typeof selectedStats[number]) => String(s.entryCount) },
-                        { label: "Seiere", fn: (s: typeof selectedStats[number]) => String(s.wins) },
-                        { label: "Vinn%", fn: (s: typeof selectedStats[number]) => fmtPct(s.winRate) },
-                        { label: "Top3%", fn: (s: typeof selectedStats[number]) => fmtPct(s.top3Rate) },
-                        { label: "Avg rank", fn: (s: typeof selectedStats[number]) => fmt1(s.avgRank), lowerBetter: true },
-                        { label: "Avg resultat (cm)", fn: (s: typeof selectedStats[number]) => fmt1(s.avgResult), lowerBetter: true },
-                        { label: "Avg feeling", fn: (s: typeof selectedStats[number]) => fmt1(s.avgFeeling), lowerBetter: true },
-                        { label: "Avg luft°C", fn: (s: typeof selectedStats[number]) => fmt1(s.avgAirTemp) },
-                        { label: "Avg snø°C", fn: (s: typeof selectedStats[number]) => fmt1(s.avgSnowTemp) },
+                        { key: "grinding.testCount", fn: (s: typeof selectedStats[number]) => String(s.testCount) },
+                        { key: "grinding.analytics.entries", fn: (s: typeof selectedStats[number]) => String(s.entryCount) },
+                        { key: "grinding.analytics.colWins", fn: (s: typeof selectedStats[number]) => String(s.wins) },
+                        { key: "grinding.analytics.colWinPct", fn: (s: typeof selectedStats[number]) => fmtPct(s.winRate) },
+                        { key: "grinding.analytics.colTop3Pct", fn: (s: typeof selectedStats[number]) => fmtPct(s.top3Rate) },
+                        { key: "grinding.analytics.bestRank", fn: (s: typeof selectedStats[number]) => s.bestRank !== null ? String(s.bestRank) : "—", lowerBetter: true },
+                        { key: "grinding.avgRank", fn: (s: typeof selectedStats[number]) => fmt1(s.avgRank), lowerBetter: true },
+                        { key: "grinding.analytics.avgResultLabel", fn: (s: typeof selectedStats[number]) => fmt1(s.avgResult), lowerBetter: true },
+                        { key: "grinding.analytics.avgFeelingLabel", fn: (s: typeof selectedStats[number]) => fmt1(s.avgFeeling), lowerBetter: true },
+                        { key: "grinding.analytics.avgAirTempLabel", fn: (s: typeof selectedStats[number]) => fmt1(s.avgAirTemp) },
+                        { key: "grinding.analytics.avgSnowTempLabel", fn: (s: typeof selectedStats[number]) => fmt1(s.avgSnowTemp) },
                       ].map((row) => {
-                        // Find best numeric value
-                        const values = selectedStats.map((s) => {
-                          const v = parseFloat(row.fn(s));
-                          return isNaN(v) ? null : v;
-                        });
+                        const values = selectedStats.map((s) => { const v = parseFloat(row.fn(s)); return isNaN(v) ? null : v; });
                         const bestVal = values.some((v) => v !== null)
                           ? (row.lowerBetter
                             ? Math.min(...values.filter((v): v is number => v !== null))
                             : Math.max(...values.filter((v): v is number => v !== null)))
                           : null;
                         return (
-                          <tr key={row.label} className="border-b border-border/40">
-                            <td className="py-2 pr-4 text-xs text-muted-foreground">{row.label}</td>
+                          <tr key={row.key} className="border-b border-border/40">
+                            <td className="py-2 pr-4 text-xs text-muted-foreground">{t(row.key)}</td>
                             {selectedStats.map((s) => {
                               const color = colorByProfileId.get(s.profile.id!);
                               const rawVal = parseFloat(row.fn(s));
                               const isBest = !isNaN(rawVal) && rawVal === bestVal && selectedStats.length > 1;
                               return (
                                 <td key={s.profile.id} className={cn("py-2 px-3 text-right tabular-nums text-sm", isBest ? cn("font-bold", color?.text) : "")}>
-                                  {row.fn(s)}
-                                  {isBest && <span className="ml-1 text-[10px]">★</span>}
+                                  {row.fn(s)}{isBest && <span className="ml-1 text-[10px]">★</span>}
                                 </td>
                               );
                             })}
@@ -2983,16 +3027,15 @@ function GrindingAnalytics({
                   <Card key={`${h2h.idA}-${h2h.idB}`} className="fs-card rounded-2xl p-4">
                     <h2 className="font-semibold text-base flex items-center gap-2 mb-4">
                       <TrendingUp className="h-4 w-4 text-primary" />
-                      Head-to-head
+                      {t("grinding.analytics.headToHead")}
                       <span className={cn("font-semibold ml-1", colorA?.text)}>{nameA}</span>
-                      <span className="text-muted-foreground text-sm">vs</span>
+                      <span className="text-muted-foreground text-sm">{t("grinding.analytics.vs")}</span>
                       <span className={cn("font-semibold", colorB?.text)}>{nameB}</span>
                     </h2>
                     {h2h.sharedTests === 0 ? (
-                      <p className="text-sm text-muted-foreground">Disse profilene har ikke vært i samme test ennå.</p>
+                      <p className="text-sm text-muted-foreground">{t("grinding.analytics.noSharedTests")}</p>
                     ) : (
                       <>
-                        {/* Score bar */}
                         <div className="flex items-center gap-3 mb-4">
                           <div className="flex-1 text-center">
                             <p className={cn("text-3xl font-bold", colorA?.text)}>{h2h.aWins}</p>
@@ -3000,7 +3043,7 @@ function GrindingAnalytics({
                           </div>
                           <div className="text-center">
                             <p className="text-lg font-bold text-muted-foreground">{h2h.tied}</p>
-                            <p className="text-xs text-muted-foreground">Likt</p>
+                            <p className="text-xs text-muted-foreground">{t("grinding.analytics.tied")}</p>
                           </div>
                           <div className="flex-1 text-center">
                             <p className={cn("text-3xl font-bold", colorB?.text)}>{h2h.bWins}</p>
@@ -3014,36 +3057,30 @@ function GrindingAnalytics({
                             {h2h.bWins > 0 && <div className={cn("h-full transition-all", colorB?.dot)} style={{ width: `${(h2h.bWins / total) * 100}%` }} />}
                           </div>
                         )}
-                        <div className="flex gap-4 text-xs text-muted-foreground mb-4">
-                          <span>{h2h.sharedTests} felles {h2h.sharedTests === 1 ? "test" : "tester"}</span>
-                          <span>Avg rank {nameA}: <strong className={colorA?.text}>{fmt1(h2h.aAvgRank)}</strong></span>
-                          <span>Avg rank {nameB}: <strong className={colorB?.text}>{fmt1(h2h.bAvgRank)}</strong></span>
+                        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-4">
+                          <span>{h2h.sharedTests} {h2h.sharedTests === 1 ? t("grinding.analytics.sharedTestsSingular") : t("grinding.analytics.sharedTestsPlural")}</span>
+                          <span>{t("grinding.analytics.avgRankOf", { name: nameA })} <strong className={colorA?.text}>{fmt1(h2h.aAvgRank)}</strong></span>
+                          <span>{t("grinding.analytics.avgRankOf", { name: nameB })} <strong className={colorB?.text}>{fmt1(h2h.bAvgRank)}</strong></span>
                         </div>
-                        {/* Matchup list */}
                         <div className="overflow-x-auto">
                           <table className="w-full text-xs">
                             <thead>
                               <tr className="border-b border-border">
-                                <th className="text-left py-1.5 pr-3 font-medium text-muted-foreground">Dato</th>
-                                <th className="text-left py-1.5 pr-3 font-medium text-muted-foreground">Sted</th>
+                                <th className="text-left py-1.5 pr-3 font-medium text-muted-foreground">{t("common.date")}</th>
+                                <th className="text-left py-1.5 pr-3 font-medium text-muted-foreground">{t("common.location")}</th>
                                 <th className={cn("text-right py-1.5 pr-3 font-medium", colorA?.text)}>{nameA}</th>
                                 <th className={cn("text-right py-1.5 font-medium", colorB?.text)}>{nameB}</th>
                               </tr>
                             </thead>
                             <tbody>
                               {h2h.matchups.map((m) => {
-                                const aWon = m.aRank < m.bRank;
-                                const bWon = m.bRank < m.aRank;
+                                const aWon = m.aRank < m.bRank, bWon = m.bRank < m.aRank;
                                 return (
                                   <tr key={m.testId} className="border-b border-border/30">
                                     <td className="py-1.5 pr-3 tabular-nums">{m.date.slice(0, 10)}</td>
                                     <td className="py-1.5 pr-3 text-muted-foreground">{m.location}</td>
-                                    <td className={cn("py-1.5 pr-3 text-right tabular-nums font-medium", aWon ? colorA?.text : "text-muted-foreground")}>
-                                      {aWon ? "★ " : ""}{m.aRank}
-                                    </td>
-                                    <td className={cn("py-1.5 text-right tabular-nums font-medium", bWon ? colorB?.text : "text-muted-foreground")}>
-                                      {bWon ? "★ " : ""}{m.bRank}
-                                    </td>
+                                    <td className={cn("py-1.5 pr-3 text-right tabular-nums font-medium", aWon ? colorA?.text : "text-muted-foreground")}>{aWon ? "★ " : ""}{m.aRank}</td>
+                                    <td className={cn("py-1.5 text-right tabular-nums font-medium", bWon ? colorB?.text : "text-muted-foreground")}>{bWon ? "★ " : ""}{m.bRank}</td>
                                   </tr>
                                 );
                               })}
@@ -3069,8 +3106,8 @@ function GrindingAnalytics({
           return (
             <Card className="fs-card rounded-2xl p-8 text-center">
               <Snowflake className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="font-medium mb-1">Ingen data ennå</p>
-              <p className="text-sm text-muted-foreground">Profiler trenger minst 3 entries med rankdata for betingelsesanalyse</p>
+              <p className="font-medium mb-1">{t("grinding.analytics.noData")}</p>
+              <p className="text-sm text-muted-foreground">{t("grinding.analytics.needMoreEntries")}</p>
             </Card>
           );
         }
@@ -3081,7 +3118,20 @@ function GrindingAnalytics({
               if (!cond) return null;
               const color = colorByProfileId.get(s.profile.id!) ?? { bg: "bg-primary/10", text: "text-primary", border: "border-primary/30", dot: "bg-primary" };
 
-              function renderCondGroup(title: string, icon: React.ReactNode, dataMap: Map<string, number[]>, order?: string[]) {
+              // Find overall best condition label per dimension
+              function bestLabel(dataMap: Map<string, number[]>): string | null {
+                let best: string | null = null, bestA = 99;
+                for (const [lbl, ranks] of dataMap.entries()) {
+                  const a = avg(ranks);
+                  if (a !== null && a < bestA) { bestA = a; best = lbl; }
+                }
+                return best;
+              }
+              const bestSnowType = bestLabel(cond.bySnowType);
+              const bestSnowTemp = bestLabel(cond.bySnowTemp);
+              const bestTrack = bestLabel(cond.byTrack);
+
+              function renderCondGroup(titleKey: string, icon: React.ReactNode, dataMap: Map<string, number[]>, order?: string[]) {
                 if (dataMap.size === 0) return null;
                 const entries2 = order
                   ? order.filter((k) => dataMap.has(k)).map((k) => [k, dataMap.get(k)!] as [string, number[]])
@@ -3089,28 +3139,41 @@ function GrindingAnalytics({
                 if (entries2.length === 0) return null;
                 const bestAvg = Math.min(...entries2.map(([, rs]) => avg(rs) ?? 99));
                 return (
-                  <div className="mb-3">
-                    <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1 mb-1.5">{icon}{title}</p>
-                    <div className="flex flex-col gap-1">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1 mb-2">{icon}{t(titleKey)}</p>
+                    <div className="flex flex-col gap-1.5">
                       {entries2.map(([label, ranks]) => {
                         const a = avg(ranks);
+                        const minR = Math.min(...ranks);
                         const isBest = a !== null && Math.abs(a - bestAvg) < 0.01;
                         return (
-                          <div key={label} className="flex items-center gap-2 text-xs">
-                            <span className="w-28 shrink-0 text-muted-foreground truncate">{label}</span>
-                            <div className="flex-1 h-4 bg-muted/40 rounded-full overflow-hidden">
-                              <div
-                                className={cn("h-full rounded-full transition-all", isBest ? color.dot : "bg-muted-foreground/30")}
-                                style={{ width: a !== null ? `${Math.max(5, 100 - (a - 1) * 12)}%` : "0%" }}
-                              />
+                          <div key={label} className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className={cn("w-28 shrink-0 truncate font-medium", isBest ? color.text : "text-muted-foreground")}>{label}</span>
+                              <div className="flex-1 h-3 bg-muted/40 rounded-full overflow-hidden">
+                                <div
+                                  className={cn("h-full rounded-full transition-all", isBest ? color.dot : "bg-muted-foreground/25")}
+                                  style={{ width: a !== null ? `${Math.max(5, 100 - (a - 1) * 12)}%` : "0%" }}
+                                />
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className={cn("w-10 text-right tabular-nums font-semibold", isBest ? color.text : "text-muted-foreground")}>
+                                  {a !== null ? a.toFixed(1) : "—"}
+                                </span>
+                                {minR < (a ?? 99) && (
+                                  <span className="text-yellow-500 text-[10px] font-bold w-8 text-right tabular-nums">
+                                    🥇{minR}
+                                  </span>
+                                )}
+                                <span className="text-muted-foreground/60 text-[10px] w-6 text-right">({ranks.length})</span>
+                              </div>
                             </div>
-                            <span className={cn("w-12 text-right tabular-nums font-medium shrink-0", isBest ? color.text : "text-muted-foreground")}>
-                              {a !== null ? `${a.toFixed(1)}` : "—"}
-                            </span>
-                            <span className="text-muted-foreground shrink-0">({ranks.length})</span>
                           </div>
                         );
                       })}
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {t("grinding.analytics.avgRankLabel")} = {t("grinding.analytics.avgRankLabel").toLowerCase()} · 🥇 = {t("grinding.analytics.minRank").toLowerCase()}
+                      </p>
                     </div>
                   </div>
                 );
@@ -3118,18 +3181,31 @@ function GrindingAnalytics({
 
               return (
                 <Card key={s.profile.id} className="fs-card rounded-2xl p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className={cn("w-3 h-3 rounded-full shrink-0", color.dot)} />
-                    <h2 className={cn("font-semibold text-base", color.text)}>{s.profile.name}</h2>
-                    <span className="text-xs text-muted-foreground">{s.profile.grindType} · {s.entryCount} entries · avg rank {fmt1(s.avgRank)}</span>
+                  <div className="flex flex-wrap items-start gap-2 mb-4">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className={cn("w-3 h-3 rounded-full shrink-0", color.dot)} />
+                      <h2 className={cn("font-semibold text-base truncate", color.text)}>{s.profile.name}</h2>
+                      <span className="text-xs text-muted-foreground shrink-0">{s.profile.grindType} · {s.entryCount} entries</span>
+                    </div>
+                    {/* Best conditions summary pill */}
+                    {(bestSnowType || bestSnowTemp || bestTrack) && (
+                      <div className={cn("flex flex-wrap items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border", color.bg, color.border)}>
+                        <Trophy className="h-3 w-3 text-yellow-500 shrink-0" />
+                        <span className={cn("font-medium", color.text)}>{t("grinding.analytics.bestConditions")}:</span>
+                        {bestSnowType && <span className="text-muted-foreground">{bestSnowType}</span>}
+                        {bestSnowTemp && <span className="text-muted-foreground">{bestSnowTemp}</span>}
+                        {bestTrack && <span className="text-muted-foreground">{bestTrack}</span>}
+                      </div>
+                    )}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {renderCondGroup("Snøtype", <Snowflake className="h-3 w-3" />, cond.bySnowType)}
-                    {renderCondGroup("Snøtemperatur", <Thermometer className="h-3 w-3" />, cond.bySnowTemp, TEMP_BUCKET_ORDER)}
-                    {renderCondGroup("Sporhardhet", <Wind className="h-3 w-3" />, cond.byTrack)}
-                  </div>
-                  {cond.bySnowType.size === 0 && cond.bySnowTemp.size === 0 && cond.byTrack.size === 0 && (
-                    <p className="text-sm text-muted-foreground">Ikke nok rankdata med værdata knyttet til testene.</p>
+                  {cond.bySnowType.size === 0 && cond.bySnowTemp.size === 0 && cond.byTrack.size === 0 ? (
+                    <p className="text-sm text-muted-foreground">{t("grinding.analytics.noWeatherRankData")}</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {renderCondGroup("grinding.analytics.snowType", <Snowflake className="h-3 w-3" />, cond.bySnowType)}
+                      {renderCondGroup("grinding.analytics.snowTemp", <Thermometer className="h-3 w-3" />, cond.bySnowTemp, TEMP_BUCKET_ORDER)}
+                      {renderCondGroup("grinding.analytics.trackHardness", <Wind className="h-3 w-3" />, cond.byTrack)}
+                    </div>
                   )}
                 </Card>
               );

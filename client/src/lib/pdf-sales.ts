@@ -701,7 +701,7 @@ function drawPlatform(doc: jsPDF, lang: "no" | "en") {
           {
             title: "Institusjonell hukommelse",
             body: "Ingenting glemmes. Alle tester, alle betingelser, alle beslutninger er søkbare og tilgjengelige — selv etter at folk slutter på laget.",
-            arrow: "→ Det sliperteamet lærte i 2022, er tilgjengelig i 2026.",
+            arrow: "→ Det smøreteamet lærte i 2022, er tilgjengelig i 2026.",
           },
           {
             title: "Slipeanalyse som utvikling",

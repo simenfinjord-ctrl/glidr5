@@ -18,6 +18,7 @@ import type { UserPermissions, PermissionLevel } from "@shared/schema";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { generateFeatureGuidePDF } from "@/lib/featureGuidePdf";
+import { generateSalesPDF } from "@/lib/pdf-sales";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
@@ -4539,6 +4540,36 @@ export default function Admin() {
                     {item}
                   </div>
                 ))}
+              </div>
+            </Card>
+
+            <Card className="fs-card rounded-2xl p-6">
+              <div className="flex items-start gap-4">
+                <div className="rounded-xl bg-emerald-100 dark:bg-emerald-900/30 p-3">
+                  <FileText className="h-6 w-6 text-emerald-600" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-semibold mb-1">Glidr Sales Brochure</h2>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    A professional 7-page sales PDF presenting Glidr's value proposition, key features, analytics capabilities, and the development platform narrative. Use this when introducing Glidr to potential customers or new team members. Available in Norwegian and English.
+                  </p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Button
+                      onClick={() => generateSalesPDF("no")}
+                      className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Last ned salgsbrosjyre (NO)
+                    </Button>
+                    <Button
+                      onClick={() => generateSalesPDF("en")}
+                      variant="outline"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Download sales brochure (EN)
+                    </Button>
+                  </div>
+                </div>
               </div>
             </Card>
           </div>

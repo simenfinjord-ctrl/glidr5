@@ -2942,7 +2942,17 @@ export default function Admin() {
       const seriesMap = new Map(data.series.map((s: any) => [s.id, s]));
       const raceSkiMap = new Map(data.raceSkis.map((s: any) => [s.id, s]));
       const athleteMap = new Map(data.athletes.map((a: any) => [a.id, a]));
+      const grindProfileMap = new Map((data.grindProfiles || []).map((gp: any) => [gp.id, gp]));
+
       const getProductLabel = (entry: any, forAthleteTest = false) => {
+        // Grind profile entry
+        if (entry.grindProfileId) {
+          const gp = grindProfileMap.get(entry.grindProfileId);
+          if (gp) {
+            const parts = [gp.name, gp.grindType, gp.stone, gp.pattern].filter(Boolean);
+            return parts.join(" · ");
+          }
+        }
         if (entry.raceSkiId) {
           const ski = raceSkiMap.get(entry.raceSkiId);
           // For athlete tests the athlete name is already in the heading — omit it here
@@ -2971,161 +2981,178 @@ export default function Admin() {
         return parts.join(" + ") || entry.freeTextProduct || "—";
       };
 
+      const sortedTests = [...data.tests].sort((a: any, b: any) => (a.date || "").localeCompare(b.date || ""));
+      const grindTests = sortedTests.filter((t: any) => t.testType === "Grind" || t.testType === "Grinding");
+      const otherTests = sortedTests.filter((t: any) => t.testType !== "Grind" && t.testType !== "Grinding");
+
+      const renderTestBlock = (testsToRender: any[]) => {
+        for (const test of testsToRender) {
+          const entries: any[] = data.entriesByTest[test.id] || [];
+          const seriesObj = seriesMap.get(test.seriesId);
+          const athleteObj = test.athleteId ? athleteMap.get(test.athleteId) : null;
+          const isAthleteTest = test.testSkiSource === "raceskis" && !!athleteObj;
+          const sourceName = isAthleteTest
+            ? athleteObj!.name
+            : (seriesObj ? seriesObj.name : "");
+          const isClassic = test.testType === "Classic";
+          const isGrind = test.testType === "Grind" || test.testType === "Grinding";
+          const linkedWeather = test.weatherId ? weatherById.get(test.weatherId) : null;
+
+          checkPage(50);
+
+          // ── Test heading ──
+          doc.setFontSize(11);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(30, 41, 59);
+          const headingLine = isAthleteTest
+            ? `${test.date}  ·  ${test.testType}  ·  ${test.location || ""}  ·  Athlete: ${sourceName}`
+            : `${test.date}  ·  ${test.testType}  ·  ${test.location || ""}${sourceName ? `  ·  ${sourceName}` : ""}`;
+          doc.text(headingLine, 14, y);
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(0, 0, 0);
+          y += 5;
+
+          // ── Meta ──
+          doc.setFontSize(7.5);
+          doc.setTextColor(100, 100, 100);
+          const metaParts = [
+            `Group: ${test.groupScope}`,
+            test.createdByName ? `Created by: ${test.createdByName}` : null,
+            test.notes ? `Notes: ${test.notes}` : null,
+          ].filter(Boolean);
+          doc.text(metaParts.join("  |  "), 14, y);
+          y += 4;
+
+          // ── Weather inline ──
+          if (linkedWeather) {
+            doc.setFontSize(7.5);
+            doc.setTextColor(14, 116, 144);
+            doc.setFont("helvetica", "bold");
+            doc.text("Weather/Conditions: ", 14, y);
+            doc.setFont("helvetica", "normal");
+            const wxLine = renderWeatherLine(linkedWeather);
+            const wxLines = doc.splitTextToSize(wxLine, 240);
+            doc.text(wxLines, 46, y);
+            doc.setTextColor(0, 0, 0);
+            y += wxLines.length * 4 + 1;
+          }
+
+          // ── Grind parameters ──
+          const grindEntries = entries.filter((e: any) => e.grindType || e.grindStone || e.grindPattern || e.grindExtraParams || e.grindProfileId);
+          if (grindEntries.length > 0) {
+            const uniqueParams = [...new Map(grindEntries.map((e: any) => {
+              const key = [e.grindType, e.grindStone, e.grindPattern, e.grindExtraParams, e.grindProfileId].join("|");
+              return [key, e];
+            })).values()];
+            for (const e of uniqueParams) {
+              const gp = e.grindProfileId ? grindProfileMap.get(e.grindProfileId) : null;
+              const grindParts = [
+                (gp?.grindType || e.grindType) ? `Type: ${gp?.grindType || e.grindType}` : null,
+                (gp?.stone || e.grindStone) ? `Stone: ${gp?.stone || e.grindStone}` : null,
+                (gp?.pattern || e.grindPattern) ? `Pattern: ${gp?.pattern || e.grindPattern}` : null,
+                e.grindExtraParams ? `Extra: ${e.grindExtraParams}` : null,
+              ].filter(Boolean).join("  ·  ");
+              if (grindParts) {
+                doc.setFontSize(7.5);
+                doc.setTextColor(80, 80, 80);
+                doc.setFont("helvetica", "bold");
+                doc.text("Grind params: ", 14, y);
+                doc.setFont("helvetica", "normal");
+                doc.text(grindParts, 38, y);
+                doc.setTextColor(0, 0, 0);
+                y += 4;
+              }
+            }
+          }
+
+          y += 1;
+
+          if (entries.length > 0) {
+            let distanceLabels: string[] = [];
+            if (test.distanceLabels) {
+              try {
+                const parsed = typeof test.distanceLabels === "string" ? JSON.parse(test.distanceLabels) : test.distanceLabels;
+                if (Array.isArray(parsed) && parsed.length > 0) distanceLabels = parsed;
+              } catch {}
+            }
+            if (distanceLabels.length === 0) {
+              distanceLabels = [test.distanceLabel0km || "0 km"];
+              if (test.distanceLabelXkm) distanceLabels.push(test.distanceLabelXkm);
+            }
+
+            const productColLabel = isGrind ? "Grind Profile" : (isAthleteTest ? "Ski (brand/ID)" : "Product / Raceski");
+            const head = ["Rank", "Ski #", productColLabel, "Method"];
+            for (const label of distanceLabels) {
+              head.push(`${label} (cm)`);
+              head.push("Rank");
+            }
+            if (isClassic) head.push("Kick");
+            head.push("Feeling");
+
+            const body = entries
+              .map((e: any) => {
+                const rounds = getEntryRounds(e, distanceLabels.length);
+                return { entry: e, rounds, firstRank: rounds[0]?.rank ?? 999 };
+              })
+              .sort((a: any, b: any) => a.firstRank - b.firstRank)
+              .map(({ entry: e, rounds }: any) => {
+                const row: (string | number)[] = [
+                  rounds[0]?.rank ?? "—",
+                  e.skiNumber || "",
+                  getProductLabel(e, isAthleteTest),
+                  e.methodology || "",
+                ];
+                for (const rr of rounds) {
+                  row.push(rr.result != null ? String(rr.result) : "—");
+                  row.push(rr.rank != null ? String(rr.rank) : "—");
+                }
+                if (isClassic) row.push(e.kickRank != null ? String(e.kickRank) : "—");
+                row.push(e.feelingRank != null ? String(e.feelingRank) : "—");
+                return row;
+              });
+
+            autoTable(doc, {
+              startY: y, head: [head], body,
+              styles: { fontSize: 7 },
+              headStyles: { ...hStyle, fontSize: 7 },
+              margin: { left: 14, right: 14 },
+              didParseCell: (data: any) => {
+                if (data.section === "body" && data.column.index === 0) {
+                  const rank = data.cell.raw;
+                  if (rank === 1) { data.cell.styles.textColor = [16, 185, 129]; data.cell.styles.fontStyle = "bold"; }
+                  else if (rank === 2) { data.cell.styles.textColor = [22, 163, 74]; data.cell.styles.fontStyle = "bold"; }
+                  else if (rank === 3) { data.cell.styles.textColor = [245, 158, 11]; data.cell.styles.fontStyle = "bold"; }
+                }
+              },
+            });
+            y = (doc as any).lastAutoTable.finalY + 8;
+          } else {
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.text("No entries recorded.", 14, y);
+            doc.setTextColor(0, 0, 0);
+            y += 6;
+          }
+        }
+      };
+
       checkPage();
       doc.setFontSize(16);
       doc.text(`Tests with Results (${data.tests.length})`, 14, y);
       y += 8;
 
-      const sortedTests = [...data.tests].sort((a: any, b: any) => (a.date || "").localeCompare(b.date || ""));
+      // Render regular tests first
+      if (otherTests.length > 0) renderTestBlock(otherTests);
 
-      for (const test of sortedTests) {
-        const entries: any[] = data.entriesByTest[test.id] || [];
-        const seriesObj = seriesMap.get(test.seriesId);
-        const athleteObj = test.athleteId ? athleteMap.get(test.athleteId) : null;
-        const isAthleteTest = test.testSkiSource === "raceskis" && !!athleteObj;
-        const sourceName = isAthleteTest
-          ? athleteObj!.name
-          : (seriesObj ? seriesObj.name : "");
-        const isClassic = test.testType === "Classic";
-        const linkedWeather = test.weatherId ? weatherById.get(test.weatherId) : null;
-
-        checkPage(50);
-
-        // ── Test heading ──
-        doc.setFontSize(11);
+      // Grind tests in their own section
+      if (grindTests.length > 0) {
+        checkPage();
+        doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(30, 41, 59);
-        const headingLine = isAthleteTest
-          ? `${test.date}  ·  ${test.testType}  ·  ${test.location || ""}  ·  Athlete: ${sourceName}`
-          : `${test.date}  ·  ${test.testType}  ·  ${test.location || ""}${sourceName ? `  ·  ${sourceName}` : ""}`;
-        doc.text(headingLine, 14, y);
+        doc.text(`Grind Tests (${grindTests.length})`, 14, y);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(0, 0, 0);
-        y += 5;
-
-        // ── Meta line (created by, group, notes) ──
-        doc.setFontSize(7.5);
-        doc.setTextColor(100, 100, 100);
-        const metaParts = [
-          `Group: ${test.groupScope}`,
-          test.createdByName ? `Created by: ${test.createdByName}` : null,
-          test.notes ? `Notes: ${test.notes}` : null,
-        ].filter(Boolean);
-        doc.text(metaParts.join("  |  "), 14, y);
-        y += 4;
-
-        // ── Weather inline ──
-        if (linkedWeather) {
-          doc.setFontSize(7.5);
-          doc.setTextColor(14, 116, 144);
-          doc.setFont("helvetica", "bold");
-          doc.text("Weather/Conditions: ", 14, y);
-          doc.setFont("helvetica", "normal");
-          const wxLine = renderWeatherLine(linkedWeather);
-          const wxLines = doc.splitTextToSize(wxLine, 250);
-          doc.text(wxLines, 32, y);
-          doc.setTextColor(0, 0, 0);
-          y += wxLines.length * 4 + 1;
-        }
-
-        // ── Grind parameters inline (for grind test entries) ──
-        const grindEntries = entries.filter((e: any) => e.grindType || e.grindStone || e.grindPattern || e.grindExtraParams || e.grindProfileId);
-        if (grindEntries.length > 0) {
-          const uniqueParams = [...new Map(grindEntries.map((e: any) => {
-            const key = [e.grindType, e.grindStone, e.grindPattern, e.grindExtraParams].join("|");
-            return [key, e];
-          })).values()];
-          if (uniqueParams.length > 0) {
-            doc.setFontSize(7.5);
-            doc.setTextColor(80, 80, 80);
-            for (const e of uniqueParams) {
-              const grindParts = [
-                e.grindType ? `Type: ${e.grindType}` : null,
-                e.grindStone ? `Stone: ${e.grindStone}` : null,
-                e.grindPattern ? `Pattern: ${e.grindPattern}` : null,
-                e.grindExtraParams ? `Extra: ${e.grindExtraParams}` : null,
-              ].filter(Boolean).join("  ·  ");
-              if (grindParts) {
-                doc.setFont("helvetica", "bold");
-                doc.text("Grind params: ", 14, y);
-                doc.setFont("helvetica", "normal");
-                doc.text(grindParts, 42, y);
-                y += 4;
-              }
-            }
-            doc.setTextColor(0, 0, 0);
-          }
-        }
-
-        y += 1;
-
-        if (entries.length > 0) {
-          let distanceLabels: string[] = [];
-          if (test.distanceLabels) {
-            try {
-              const parsed = typeof test.distanceLabels === "string" ? JSON.parse(test.distanceLabels) : test.distanceLabels;
-              if (Array.isArray(parsed) && parsed.length > 0) distanceLabels = parsed;
-            } catch {}
-          }
-          if (distanceLabels.length === 0) {
-            distanceLabels = [test.distanceLabel0km || "0 km"];
-            if (test.distanceLabelXkm) distanceLabels.push(test.distanceLabelXkm);
-          }
-
-          // For athlete tests: show ski brand/ID in Product col, omit athlete name (already in heading)
-          const productColLabel = isAthleteTest ? "Ski (brand/ID)" : "Product / Raceski";
-          const head = ["Rank", "Ski #", productColLabel, "Method"];
-          for (const label of distanceLabels) {
-            head.push(`${label} (cm)`);
-            head.push("Rank");
-          }
-          if (isClassic) head.push("Kick");
-          head.push("Feeling");
-
-          const body = entries
-            .map((e: any) => {
-              const rounds = getEntryRounds(e, distanceLabels.length);
-              return { entry: e, rounds, firstRank: rounds[0]?.rank ?? 999 };
-            })
-            .sort((a: any, b: any) => a.firstRank - b.firstRank)
-            .map(({ entry: e, rounds }: any) => {
-              const row: (string | number)[] = [
-                rounds[0]?.rank ?? "—",
-                e.skiNumber || "",
-                getProductLabel(e, isAthleteTest),
-                e.methodology || "",
-              ];
-              for (const rr of rounds) {
-                row.push(rr.result != null ? String(rr.result) : "—");
-                row.push(rr.rank != null ? String(rr.rank) : "—");
-              }
-              if (isClassic) row.push(e.kickRank != null ? String(e.kickRank) : "—");
-              row.push(e.feelingRank != null ? String(e.feelingRank) : "—");
-              return row;
-            });
-
-          autoTable(doc, {
-            startY: y, head: [head], body,
-            styles: { fontSize: 7 },
-            headStyles: { ...hStyle, fontSize: 7 },
-            margin: { left: 14, right: 14 },
-            didParseCell: (data: any) => {
-              if (data.section === "body" && data.column.index === 0) {
-                const rank = data.cell.raw;
-                if (rank === 1) { data.cell.styles.textColor = [16, 185, 129]; data.cell.styles.fontStyle = "bold"; }
-                else if (rank === 2) { data.cell.styles.textColor = [22, 163, 74]; data.cell.styles.fontStyle = "bold"; }
-                else if (rank === 3) { data.cell.styles.textColor = [245, 158, 11]; data.cell.styles.fontStyle = "bold"; }
-              }
-            },
-          });
-          y = (doc as any).lastAutoTable.finalY + 8;
-        } else {
-          doc.setFontSize(8);
-          doc.setTextColor(150, 150, 150);
-          doc.text("No entries recorded.", 14, y);
-          doc.setTextColor(0, 0, 0);
-          y += 6;
-        }
+        y += 8;
+        renderTestBlock(grindTests);
       }
       y += 4;
 
@@ -3162,8 +3189,15 @@ export default function Admin() {
         y += 2;
         autoTable(doc, {
           startY: y,
-          head: [["Name", "Type", "Stone", "Pattern", "Extra Params", "Created By"]],
-          body: data.grindProfiles.map((gp: any) => [gp.name || "", gp.grindType || "", gp.stone || "", gp.pattern || "", gp.extraParams || "", gp.createdByName || ""]),
+          head: [["ID", "Name", "Type", "Stone", "Pattern", "Extra Params", "Notes", "Created By"]],
+          body: data.grindProfiles.map((gp: any) => {
+            let extras = "";
+            if (gp.extraParams) {
+              try { extras = Object.entries(JSON.parse(gp.extraParams)).map(([k, v]) => `${k}: ${v}`).join(", "); }
+              catch { extras = gp.extraParams; }
+            }
+            return [gp.grindId || gp.id, gp.name || "", gp.grindType || "", gp.stone || "", gp.pattern || "", extras, gp.notes || "", gp.createdByName || ""];
+          }),
           styles: { fontSize: 7 }, headStyles: hStyle, margin: { left: 14, right: 14 },
         });
         y = (doc as any).lastAutoTable.finalY + 10;
@@ -3176,8 +3210,11 @@ export default function Admin() {
         y += 2;
         autoTable(doc, {
           startY: y,
-          head: [["Date", "Type", "Stone", "Notes", "Created By", "Group"]],
-          body: data.grindingRecords.map((r: any) => [r.date || "", r.grindType || "", r.stone || "", r.notes || "", r.createdByName || "", r.groupScope || ""]),
+          head: [["Date", "Series", "Type", "Stone", "Notes", "Created By", "Group"]],
+          body: data.grindingRecords.map((r: any) => {
+            const series = r.seriesId ? seriesMap.get(r.seriesId) : null;
+            return [r.date || "", series?.name || (r.seriesId ? `#${r.seriesId}` : "—"), r.grindType || "", r.stone || "", r.notes || "", r.createdByName || "", r.groupScope || ""];
+          }),
           styles: { fontSize: 7 }, headStyles: hStyle, margin: { left: 14, right: 14 },
         });
         y = (doc as any).lastAutoTable.finalY + 10;

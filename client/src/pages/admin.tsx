@@ -2795,67 +2795,139 @@ export default function Admin() {
       if (data.racePreps && data.racePreps.length > 0) {
         const resolveRpIds = (raw: string | null | undefined): string => {
           if (!raw) return "";
-          // Free text if any part is non-numeric
           if (raw.split(",").some(p => isNaN(Number(p.trim())))) return raw;
-          // Parse as comma-separated numeric IDs
           const ids = raw.split(",").map(p => parseInt(p.trim())).filter(n => !isNaN(n));
           const resolved = ids.map(id => { const p = earlyProductMap.get(id); return p ? `${p.brand || ""} ${p.name}`.trim() : ""; }).filter(Boolean).join(" + ");
           return resolved || raw;
         };
-        checkPage();
-        doc.setFontSize(13);
-        doc.text(`Race Preps (${data.racePreps.length})`, 14, y);
-        y += 2;
-        autoTable(doc, {
-          startY: y,
-          head: [["Date", "Location", "Race Type", "Discipline", "Glide", "Structure", "Kick", "Tette/Binder", "Application", "Notes", "Created By"]],
-          body: data.racePreps.map((rp: any) => [
-            rp.date || "", rp.location || "", rp.race_type || "", rp.discipline || "",
-            resolveRpIds(rp.product_ids) || rp.products || "",
-            resolveRpIds(rp.structure_ids) || rp.structure || "",
-            resolveRpIds(rp.kick_product_ids) || "",
-            rp.tette || "",
-            rp.method || "", rp.notes || "", rp.created_by_name || "",
-          ]),
-          styles: { fontSize: 6.5 }, headStyles: hStyle, margin: { left: 14, right: 14 },
-        });
-        y = (doc as any).lastAutoTable.finalY + 10;
-      }
 
-      if (data.racePrepEntries && data.racePrepEntries.length > 0) {
+        // Group entries by race prep ID
+        const entriesByRpId = new Map<number, any[]>();
+        for (const e of (data.racePrepEntries || [])) {
+          const id = e.race_prep_id;
+          if (!entriesByRpId.has(id)) entriesByRpId.set(id, []);
+          entriesByRpId.get(id)!.push(e);
+        }
+
         checkPage();
-        doc.setFontSize(13);
-        doc.text(`Race Prep Entries (${data.racePrepEntries.length})`, 14, y);
-        y += 2;
-        autoTable(doc, {
-          startY: y,
-          head: [["Race Prep ID", "Athlete", "Ski ID (Glide)", "Ski ID (Classic)", "Ski ID (Skating)", "Waxer", "Notes"]],
-          body: data.racePrepEntries.map((e: any) => [
-            String(e.race_prep_id || ""), e.athlete_name || "", e.ski_id || "",
-            e.ski_id_classic || "", e.ski_id_skating || "", e.waxer_name || "", e.notes || "",
-          ]),
-          styles: { fontSize: 7 }, headStyles: hStyle, margin: { left: 14, right: 14 },
-        });
-        y = (doc as any).lastAutoTable.finalY + 10;
+        doc.setFontSize(16);
+        doc.text(`Race Preparations (${data.racePreps.length})`, 14, y);
+        y += 8;
+
+        const sortedRacePreps = [...data.racePreps].sort((a: any, b: any) => (a.date || "").localeCompare(b.date || ""));
+
+        for (const rp of sortedRacePreps) {
+          checkPage(40);
+
+          const glideStr = resolveRpIds(rp.product_ids) || rp.products || "—";
+          const structStr = resolveRpIds(rp.structure_ids) || rp.structure || "—";
+          const kickStr = resolveRpIds(rp.kick_product_ids) || "—";
+          const linkedWx = rp.weather_id ? weatherById.get(rp.weather_id) : null;
+
+          // ── Race prep heading ──
+          doc.setFontSize(10);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(30, 41, 59);
+          doc.text(`${rp.date}  ·  ${rp.location || "—"}  ·  ${rp.race_type || "—"}  ·  ${rp.discipline || "—"}`, 14, y);
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(0, 0, 0);
+          y += 5;
+
+          // ── Products block ──
+          doc.setFontSize(7.5);
+          const prodLines: [string, string][] = [
+            ["Glid:", glideStr],
+            ["Struktur:", structStr],
+          ];
+          if (kickStr !== "—") prodLines.push(["Kick:", kickStr]);
+          if (rp.tette) prodLines.push(["Tette/Binder:", rp.tette]);
+          if (rp.method) prodLines.push(["Applikasjon:", rp.method]);
+          if (rp.notes) prodLines.push(["Notater:", rp.notes]);
+          if (rp.created_by_name) prodLines.push(["Opprettet av:", rp.created_by_name]);
+
+          for (const [label, val] of prodLines) {
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(80, 80, 80);
+            doc.text(label, 16, y);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(0, 0, 0);
+            const valLines = doc.splitTextToSize(val, 220);
+            doc.text(valLines, 50, y);
+            y += valLines.length * 4;
+          }
+
+          // ── Inline weather ──
+          if (linkedWx) {
+            doc.setFontSize(7.5);
+            doc.setTextColor(14, 116, 144);
+            doc.setFont("helvetica", "bold");
+            doc.text("Vær/Føre:", 16, y);
+            doc.setFont("helvetica", "normal");
+            const wxStr = renderWeatherLine(linkedWx);
+            const wxLines = doc.splitTextToSize(wxStr, 220);
+            doc.text(wxLines, 50, y);
+            doc.setTextColor(0, 0, 0);
+            y += wxLines.length * 4;
+          }
+
+          y += 1;
+
+          // ── Athletes / startlist ──
+          const rpEntries = entriesByRpId.get(rp.id) || [];
+          if (rpEntries.length > 0) {
+            const isSkating = rp.discipline === "Skating";
+            const head = ["Løper", isSkating ? "Ski (Skating)" : "Ski (Klassisk)", "Glid-ski", "Vokser", "Notater"];
+            autoTable(doc, {
+              startY: y,
+              head: [head],
+              body: rpEntries.map((e: any) => [
+                e.athlete_name || "—",
+                isSkating ? (e.ski_id_skating || e.ski_id || "—") : (e.ski_id_classic || e.ski_id || "—"),
+                e.ski_id || "—",
+                e.waxer_name || "—",
+                e.notes || "",
+              ]),
+              styles: { fontSize: 7.5 },
+              headStyles: { ...hStyle, fontSize: 7.5 },
+              margin: { left: 16, right: 14 },
+            });
+            y = (doc as any).lastAutoTable.finalY + 3;
+          } else {
+            doc.setFontSize(7.5);
+            doc.setTextColor(150, 150, 150);
+            doc.text("Ingen løpere registrert.", 16, y);
+            doc.setTextColor(0, 0, 0);
+            y += 4;
+          }
+
+          y += 6;
+        }
       }
 
       const productMap = new Map(data.products.map((p: any) => [p.id, p]));
       const seriesMap = new Map(data.series.map((s: any) => [s.id, s]));
       const raceSkiMap = new Map(data.raceSkis.map((s: any) => [s.id, s]));
       const athleteMap = new Map(data.athletes.map((a: any) => [a.id, a]));
+      const weatherById = new Map((data.weather || []).map((w: any) => [w.id, w]));
 
-      const getProductLabel = (entry: any) => {
+      const getProductLabel = (entry: any, forAthleteTest = false) => {
         if (entry.raceSkiId) {
           const ski = raceSkiMap.get(entry.raceSkiId);
-          if (ski) return `${ski.athleteName} — ${ski.brand || ""} ${ski.skiId || ""}`.trim();
+          // For athlete tests the athlete name is already in the heading — omit it here
+          if (ski) return forAthleteTest
+            ? `${ski.brand || ""} ${ski.skiId || ""}`.trim()
+            : `${ski.athleteName} — ${ski.brand || ""} ${ski.skiId || ""}`.trim();
         }
         const mainProduct = productMap.get(entry.productId);
         const parts: string[] = [];
         if (mainProduct) parts.push(`${mainProduct.brand || ""} ${mainProduct.name}`.trim());
+        if (entry.freeTextProduct && !mainProduct) parts.push(entry.freeTextProduct);
         if (entry.additionalProductIds) {
           try {
-            const addIds = typeof entry.additionalProductIds === "string"
-              ? JSON.parse(entry.additionalProductIds) : entry.additionalProductIds;
+            const raw = entry.additionalProductIds;
+            const addIds = typeof raw === "string"
+              ? (raw.startsWith("[") ? JSON.parse(raw) : raw.split(",").map(Number).filter((n: number) => !isNaN(n)))
+              : raw;
             if (Array.isArray(addIds)) {
               for (const id of addIds) {
                 const p = productMap.get(id);
@@ -2864,7 +2936,40 @@ export default function Admin() {
             }
           } catch {}
         }
-        return parts.join(" + ") || "—";
+        return parts.join(" + ") || entry.freeTextProduct || "—";
+      };
+
+      const getEntryRounds = (entry: any, numRounds: number) => {
+        if (entry.results) {
+          try {
+            const parsed = typeof entry.results === "string" ? JSON.parse(entry.results) : entry.results;
+            if (Array.isArray(parsed)) {
+              while (parsed.length < numRounds) parsed.push({ result: null, rank: null });
+              return parsed.slice(0, numRounds);
+            }
+          } catch {}
+        }
+        const results = [{ result: entry.result0kmCmBehind ?? entry.result_0km_cm_behind, rank: entry.rank0km ?? entry.rank_0km }];
+        if (numRounds > 1) results.push({ result: entry.resultXkmCmBehind ?? entry.result_xkm_cm_behind, rank: entry.rankXkm ?? entry.rank_xkm });
+        while (results.length < numRounds) results.push({ result: null, rank: null });
+        return results;
+      };
+
+      const renderWeatherLine = (w: any): string => {
+        const parts: string[] = [];
+        if (w.snowTemperatureC != null) parts.push(`Snø: ${w.snowTemperatureC}°C`);
+        if (w.airTemperatureC != null) parts.push(`Luft: ${w.airTemperatureC}°C`);
+        if (w.snowHumidityPct != null) parts.push(`Snøfukt: ${w.snowHumidityPct}%`);
+        if (w.airHumidityPct != null) parts.push(`Luftfukt: ${w.airHumidityPct}%rH`);
+        const snowType = [w.artificialSnow ? `Kunstsnø: ${w.artificialSnow}` : null, w.naturalSnow ? `Natursnø: ${w.naturalSnow}` : null].filter(Boolean).join(", ");
+        if (snowType) parts.push(snowType);
+        if (w.trackHardness) parts.push(`Spor: ${w.trackHardness}`);
+        if (w.grainSize) parts.push(`Korn: ${w.grainSize}`);
+        if (w.wind) parts.push(`Vind: ${w.wind}`);
+        if (w.clouds != null) parts.push(`Skyer: ${w.clouds}/8`);
+        if (w.precipitation) parts.push(`Nedbør: ${w.precipitation}`);
+        if (w.testQuality != null) parts.push(`Testkvalitet: ${w.testQuality}/10`);
+        return parts.join("  ·  ");
       };
 
       checkPage();
@@ -2878,26 +2983,82 @@ export default function Admin() {
         const entries: any[] = data.entriesByTest[test.id] || [];
         const seriesObj = seriesMap.get(test.seriesId);
         const athleteObj = test.athleteId ? athleteMap.get(test.athleteId) : null;
-        const sourceName = test.testSkiSource === "raceskis"
-          ? (athleteObj ? `Athlete: ${athleteObj.name}` : "Raceskis")
+        const isAthleteTest = test.testSkiSource === "raceskis" && !!athleteObj;
+        const sourceName = isAthleteTest
+          ? athleteObj!.name
           : (seriesObj ? seriesObj.name : "");
         const isClassic = test.testType === "Classic";
+        const linkedWeather = test.weatherId ? weatherById.get(test.weatherId) : null;
 
         checkPage(50);
 
+        // ── Test heading ──
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
-        doc.text(`${test.date} — ${test.testType} — ${sourceName}`, 14, y);
+        doc.setTextColor(30, 41, 59);
+        const headingLine = isAthleteTest
+          ? `${test.date}  ·  ${test.testType}  ·  ${test.location || ""}  ·  Utøver: ${sourceName}`
+          : `${test.date}  ·  ${test.testType}  ·  ${test.location || ""}${sourceName ? `  ·  ${sourceName}` : ""}`;
+        doc.text(headingLine, 14, y);
         doc.setFont("helvetica", "normal");
+        doc.setTextColor(0, 0, 0);
+        y += 5;
+
+        // ── Meta line (created by, group, notes) ──
+        doc.setFontSize(7.5);
+        doc.setTextColor(100, 100, 100);
+        const metaParts = [
+          `Gruppe: ${test.groupScope}`,
+          test.createdByName ? `Opprettet av: ${test.createdByName}` : null,
+          test.notes ? `Notater: ${test.notes}` : null,
+        ].filter(Boolean);
+        doc.text(metaParts.join("  |  "), 14, y);
         y += 4;
-        doc.setFontSize(8);
-        const meta = [
-          test.location ? `Location: ${test.location}` : null,
-          test.notes ? `Notes: ${test.notes}` : null,
-          `Group: ${test.groupScope}`,
-        ].filter(Boolean).join("  |  ");
-        doc.text(meta, 14, y);
-        y += 4;
+
+        // ── Weather inline ──
+        if (linkedWeather) {
+          doc.setFontSize(7.5);
+          doc.setTextColor(14, 116, 144);
+          doc.setFont("helvetica", "bold");
+          doc.text("Vær/Føre: ", 14, y);
+          doc.setFont("helvetica", "normal");
+          const wxLine = renderWeatherLine(linkedWeather);
+          const wxLines = doc.splitTextToSize(wxLine, 250);
+          doc.text(wxLines, 32, y);
+          doc.setTextColor(0, 0, 0);
+          y += wxLines.length * 4 + 1;
+        }
+
+        // ── Grind parameters inline (for grind test entries) ──
+        const grindEntries = entries.filter((e: any) => e.grindType || e.grindStone || e.grindPattern || e.grindExtraParams || e.grindProfileId);
+        if (grindEntries.length > 0) {
+          const uniqueParams = [...new Map(grindEntries.map((e: any) => {
+            const key = [e.grindType, e.grindStone, e.grindPattern, e.grindExtraParams].join("|");
+            return [key, e];
+          })).values()];
+          if (uniqueParams.length > 0) {
+            doc.setFontSize(7.5);
+            doc.setTextColor(80, 80, 80);
+            for (const e of uniqueParams) {
+              const grindParts = [
+                e.grindType ? `Type: ${e.grindType}` : null,
+                e.grindStone ? `Stein: ${e.grindStone}` : null,
+                e.grindPattern ? `Mønster: ${e.grindPattern}` : null,
+                e.grindExtraParams ? `Ekstra: ${e.grindExtraParams}` : null,
+              ].filter(Boolean).join("  ·  ");
+              if (grindParts) {
+                doc.setFont("helvetica", "bold");
+                doc.text("Slipeparametre: ", 14, y);
+                doc.setFont("helvetica", "normal");
+                doc.text(grindParts, 42, y);
+                y += 4;
+              }
+            }
+            doc.setTextColor(0, 0, 0);
+          }
+        }
+
+        y += 1;
 
         if (entries.length > 0) {
           let distanceLabels: string[] = [];
@@ -2912,29 +3073,15 @@ export default function Admin() {
             if (test.distanceLabelXkm) distanceLabels.push(test.distanceLabelXkm);
           }
 
-          const getEntryRounds = (entry: any, numRounds: number) => {
-            if (entry.results) {
-              try {
-                const parsed = typeof entry.results === "string" ? JSON.parse(entry.results) : entry.results;
-                if (Array.isArray(parsed)) {
-                  while (parsed.length < numRounds) parsed.push({ result: null, rank: null });
-                  return parsed.slice(0, numRounds);
-                }
-              } catch {}
-            }
-            const results = [{ result: entry.result0kmCmBehind ?? entry.result_0km_cm_behind, rank: entry.rank0km ?? entry.rank_0km }];
-            if (numRounds > 1) results.push({ result: entry.resultXkmCmBehind ?? entry.result_xkm_cm_behind, rank: entry.rankXkm ?? entry.rank_xkm });
-            while (results.length < numRounds) results.push({ result: null, rank: null });
-            return results;
-          };
-
-          const head = ["Rank", "Ski", "Product / Raceski", "Method"];
+          // For athlete tests: show ski brand/ID in Product col, omit athlete name (already in heading)
+          const productColLabel = isAthleteTest ? "Ski (merke/ID)" : "Produkt / Raceski";
+          const head = ["Rang", "Ski #", productColLabel, "Metode"];
           for (const label of distanceLabels) {
             head.push(`${label} (cm)`);
-            head.push("Rank");
+            head.push("Rang");
           }
-          if (isClassic) head.push("Kick");
-          head.push("Feeling");
+          if (isClassic) head.push("Feste");
+          head.push("Følelse");
 
           const body = entries
             .map((e: any) => {
@@ -2946,7 +3093,7 @@ export default function Admin() {
               const row: (string | number)[] = [
                 rounds[0]?.rank ?? "—",
                 e.skiNumber || "",
-                getProductLabel(e),
+                getProductLabel(e, isAthleteTest),
                 e.methodology || "",
               ];
               for (const rr of rounds) {
@@ -2960,12 +3107,24 @@ export default function Admin() {
 
           autoTable(doc, {
             startY: y, head: [head], body,
-            styles: { fontSize: 7 }, headStyles: hStyle, margin: { left: 14, right: 14 },
+            styles: { fontSize: 7 },
+            headStyles: { ...hStyle, fontSize: 7 },
+            margin: { left: 14, right: 14 },
+            didParseCell: (data: any) => {
+              if (data.section === "body" && data.column.index === 0) {
+                const rank = data.cell.raw;
+                if (rank === 1) { data.cell.styles.textColor = [16, 185, 129]; data.cell.styles.fontStyle = "bold"; }
+                else if (rank === 2) { data.cell.styles.textColor = [22, 163, 74]; data.cell.styles.fontStyle = "bold"; }
+                else if (rank === 3) { data.cell.styles.textColor = [245, 158, 11]; data.cell.styles.fontStyle = "bold"; }
+              }
+            },
           });
           y = (doc as any).lastAutoTable.finalY + 8;
         } else {
           doc.setFontSize(8);
-          doc.text("No entries", 14, y);
+          doc.setTextColor(150, 150, 150);
+          doc.text("Ingen entries registrert.", 14, y);
+          doc.setTextColor(0, 0, 0);
           y += 6;
         }
       }

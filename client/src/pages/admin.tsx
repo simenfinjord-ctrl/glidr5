@@ -2673,6 +2673,9 @@ export default function Admin() {
         throw new Error(`Response parse failed (${rawText.length} chars): ${parseErr.message}`);
       }
 
+      // Build product map early — needed for race prep ID resolution below
+      const earlyProductMap = new Map<number, any>((data.products ?? []).map((p: any) => [p.id, p]));
+
       const doc = new jsPDF({ orientation: "landscape" });
       let y = 15;
       const pageH = doc.internal.pageSize.getHeight();
@@ -2794,11 +2797,10 @@ export default function Admin() {
           if (!raw) return "";
           // Free text if any part is non-numeric
           if (raw.split(",").some(p => isNaN(Number(p.trim())))) return raw;
-          try {
-            const ids: number[] = JSON.parse(raw);
-            if (!Array.isArray(ids)) return raw;
-            return ids.map(id => { const p = productMap.get(id); return p ? `${p.brand || ""} ${p.name}`.trim() : `#${id}`; }).filter(Boolean).join(" + ");
-          } catch { return raw || ""; }
+          // Parse as comma-separated numeric IDs
+          const ids = raw.split(",").map(p => parseInt(p.trim())).filter(n => !isNaN(n));
+          const resolved = ids.map(id => { const p = earlyProductMap.get(id); return p ? `${p.brand || ""} ${p.name}`.trim() : ""; }).filter(Boolean).join(" + ");
+          return resolved || raw;
         };
         checkPage();
         doc.setFontSize(13);
@@ -2811,7 +2813,7 @@ export default function Admin() {
             rp.date || "", rp.location || "", rp.race_type || "", rp.discipline || "",
             resolveRpIds(rp.product_ids) || rp.products || "",
             resolveRpIds(rp.structure_ids) || rp.structure || "",
-            rp.kick_product_ids || "",
+            resolveRpIds(rp.kick_product_ids) || "",
             rp.tette || "",
             rp.method || "", rp.notes || "", rp.created_by_name || "",
           ]),

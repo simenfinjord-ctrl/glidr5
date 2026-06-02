@@ -17,6 +17,9 @@ if (!process.env.DATABASE_URL) {
 export const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+  max: 10,               // maks 10 samtidige DB-tilkoblinger
+  idleTimeoutMillis: 30000,   // frigjør idle-tilkoblinger etter 30 sek
+  connectionTimeoutMillis: 5000, // feil etter 5 sek hvis ingen ledig tilkobling
 });
 
 export const db = drizzle(pool, { schema });

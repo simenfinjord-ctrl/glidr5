@@ -2673,8 +2673,42 @@ export default function Admin() {
         throw new Error(`Response parse failed (${rawText.length} chars): ${parseErr.message}`);
       }
 
-      // Build product map early — needed for race prep ID resolution below
+      // Build lookup maps early — used in both race prep and tests sections below
       const earlyProductMap = new Map<number, any>((data.products ?? []).map((p: any) => [p.id, p]));
+      const weatherById = new Map<number, any>((data.weather ?? []).map((w: any) => [w.id, w]));
+
+      const renderWeatherLine = (w: any): string => {
+        const parts: string[] = [];
+        if (w.snowTemperatureC != null) parts.push(`Snø: ${w.snowTemperatureC}°C`);
+        if (w.airTemperatureC != null) parts.push(`Luft: ${w.airTemperatureC}°C`);
+        if (w.snowHumidityPct != null) parts.push(`Snøfukt: ${w.snowHumidityPct}%`);
+        if (w.airHumidityPct != null) parts.push(`Luftfukt: ${w.airHumidityPct}%rH`);
+        const snowType = [w.artificialSnow ? `Kunstsnø: ${w.artificialSnow}` : null, w.naturalSnow ? `Natursnø: ${w.naturalSnow}` : null].filter(Boolean).join(", ");
+        if (snowType) parts.push(snowType);
+        if (w.trackHardness) parts.push(`Spor: ${w.trackHardness}`);
+        if (w.grainSize) parts.push(`Korn: ${w.grainSize}`);
+        if (w.wind) parts.push(`Vind: ${w.wind}`);
+        if (w.clouds != null) parts.push(`Skyer: ${w.clouds}/8`);
+        if (w.precipitation) parts.push(`Nedbør: ${w.precipitation}`);
+        if (w.testQuality != null) parts.push(`Testkvalitet: ${w.testQuality}/10`);
+        return parts.join("  ·  ");
+      };
+
+      const getEntryRounds = (entry: any, numRounds: number) => {
+        if (entry.results) {
+          try {
+            const parsed = typeof entry.results === "string" ? JSON.parse(entry.results) : entry.results;
+            if (Array.isArray(parsed)) {
+              while (parsed.length < numRounds) parsed.push({ result: null, rank: null });
+              return parsed.slice(0, numRounds);
+            }
+          } catch {}
+        }
+        const results = [{ result: entry.result0kmCmBehind ?? entry.result_0km_cm_behind, rank: entry.rank0km ?? entry.rank_0km }];
+        if (numRounds > 1) results.push({ result: entry.resultXkmCmBehind ?? entry.result_xkm_cm_behind, rank: entry.rankXkm ?? entry.rank_xkm });
+        while (results.length < numRounds) results.push({ result: null, rank: null });
+        return results;
+      };
 
       const doc = new jsPDF({ orientation: "landscape" });
       let y = 15;
@@ -2908,8 +2942,6 @@ export default function Admin() {
       const seriesMap = new Map(data.series.map((s: any) => [s.id, s]));
       const raceSkiMap = new Map(data.raceSkis.map((s: any) => [s.id, s]));
       const athleteMap = new Map(data.athletes.map((a: any) => [a.id, a]));
-      const weatherById = new Map((data.weather || []).map((w: any) => [w.id, w]));
-
       const getProductLabel = (entry: any, forAthleteTest = false) => {
         if (entry.raceSkiId) {
           const ski = raceSkiMap.get(entry.raceSkiId);
@@ -2937,39 +2969,6 @@ export default function Admin() {
           } catch {}
         }
         return parts.join(" + ") || entry.freeTextProduct || "—";
-      };
-
-      const getEntryRounds = (entry: any, numRounds: number) => {
-        if (entry.results) {
-          try {
-            const parsed = typeof entry.results === "string" ? JSON.parse(entry.results) : entry.results;
-            if (Array.isArray(parsed)) {
-              while (parsed.length < numRounds) parsed.push({ result: null, rank: null });
-              return parsed.slice(0, numRounds);
-            }
-          } catch {}
-        }
-        const results = [{ result: entry.result0kmCmBehind ?? entry.result_0km_cm_behind, rank: entry.rank0km ?? entry.rank_0km }];
-        if (numRounds > 1) results.push({ result: entry.resultXkmCmBehind ?? entry.result_xkm_cm_behind, rank: entry.rankXkm ?? entry.rank_xkm });
-        while (results.length < numRounds) results.push({ result: null, rank: null });
-        return results;
-      };
-
-      const renderWeatherLine = (w: any): string => {
-        const parts: string[] = [];
-        if (w.snowTemperatureC != null) parts.push(`Snø: ${w.snowTemperatureC}°C`);
-        if (w.airTemperatureC != null) parts.push(`Luft: ${w.airTemperatureC}°C`);
-        if (w.snowHumidityPct != null) parts.push(`Snøfukt: ${w.snowHumidityPct}%`);
-        if (w.airHumidityPct != null) parts.push(`Luftfukt: ${w.airHumidityPct}%rH`);
-        const snowType = [w.artificialSnow ? `Kunstsnø: ${w.artificialSnow}` : null, w.naturalSnow ? `Natursnø: ${w.naturalSnow}` : null].filter(Boolean).join(", ");
-        if (snowType) parts.push(snowType);
-        if (w.trackHardness) parts.push(`Spor: ${w.trackHardness}`);
-        if (w.grainSize) parts.push(`Korn: ${w.grainSize}`);
-        if (w.wind) parts.push(`Vind: ${w.wind}`);
-        if (w.clouds != null) parts.push(`Skyer: ${w.clouds}/8`);
-        if (w.precipitation) parts.push(`Nedbør: ${w.precipitation}`);
-        if (w.testQuality != null) parts.push(`Testkvalitet: ${w.testQuality}/10`);
-        return parts.join("  ·  ");
       };
 
       checkPage();

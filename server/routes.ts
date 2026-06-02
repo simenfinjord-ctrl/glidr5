@@ -4041,10 +4041,10 @@ export async function registerRoutes(
   app.get("/api/admin/presentation", requireAuth, async (req, res) => {
     const u = req.user!;
     if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
-    const { readFileSync } = await import("fs");
+    const { readFile } = await import("fs/promises");
     const { join } = await import("path");
     try {
-      const html = readFileSync(join(process.cwd(), "glidr-presentasjon.html"), "utf-8");
+      const html = await readFile(join(process.cwd(), "glidr-presentasjon.html"), "utf-8");
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "no-store");
       res.send(html);
@@ -4058,10 +4058,10 @@ export async function registerRoutes(
   app.get(`/p/:token`, async (req, res) => {
     if (!PRESENTATION_TOKEN) return res.status(404).json({ message: "Not found" });
     if (req.params.token !== PRESENTATION_TOKEN) return res.status(404).json({ message: "Not found" });
-    const { readFileSync } = await import("fs");
+    const { readFile } = await import("fs/promises");
     const { join } = await import("path");
     try {
-      const html = readFileSync(join(process.cwd(), "glidr-presentasjon.html"), "utf-8");
+      const html = await readFile(join(process.cwd(), "glidr-presentasjon.html"), "utf-8");
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "no-store");
       res.send(html);
@@ -4100,23 +4100,37 @@ export async function registerRoutes(
       if (!entriesByTest[e.testId]) entriesByTest[e.testId] = [];
       entriesByTest[e.testId].push(e);
     }
-    const allRaceSkis: any[] = [];
-    for (const ath of allAthletes) {
-      const skis = await storage.listAllRaceSkisIncludingArchived(ath.id);
-      allRaceSkis.push(...skis.map((s) => ({ ...s, athleteName: ath.name })));
-    }
-    const grindingRecords = await storage.listGrindingRecords(u.groupScope, true, teamId);
-    const grindingSheetsList = await storage.listGrindingSheets(u.groupScope, true, teamId);
-    const allRaceSkiRegrinds: any[] = [];
-    for (const ski of allRaceSkis) {
-      const regrinds = await storage.listRaceSkiRegrinds(ski.id);
-      allRaceSkiRegrinds.push(...regrinds.map((r) => ({ ...r, skiId: ski.skiId, athleteName: ski.athleteName, brand: ski.brand })));
-    }
-    const allTestSkiRegrinds: any[] = [];
-    for (const series of allSeries) {
-      const regrinds = await storage.listTestSkiRegrinds(series.id);
-      allTestSkiRegrinds.push(...regrinds.map((r) => ({ ...r, seriesName: series.name })));
-    }
+    // Parallell henting av race-ski per atlet (unngår N+1 sekvensiell loop)
+    const allRaceSkisNested = await Promise.all(
+      allAthletes.map((ath: any) =>
+        storage.listAllRaceSkisIncludingArchived(ath.id)
+          .then((skis) => skis.map((s) => ({ ...s, athleteName: ath.name })))
+      )
+    );
+    const allRaceSkis: any[] = allRaceSkisNested.flat();
+
+    const [grindingRecords, grindingSheetsList] = await Promise.all([
+      storage.listGrindingRecords(u.groupScope, true, teamId),
+      storage.listGrindingSheets(u.groupScope, true, teamId),
+    ]);
+
+    // Parallell henting av regrinds (unngår N+1)
+    const [raceSkiRegrindsNested, testSkiRegrindsNested] = await Promise.all([
+      Promise.all(
+        allRaceSkis.map((ski: any) =>
+          storage.listRaceSkiRegrinds(ski.id)
+            .then((rs) => rs.map((r) => ({ ...r, skiId: ski.skiId, athleteName: ski.athleteName, brand: ski.brand })))
+        )
+      ),
+      Promise.all(
+        allSeries.map((series: any) =>
+          storage.listTestSkiRegrinds(series.id)
+            .then((rs) => rs.map((r) => ({ ...r, seriesName: series.name })))
+        )
+      ),
+    ]);
+    const allRaceSkiRegrinds: any[] = raceSkiRegrindsNested.flat();
+    const allTestSkiRegrinds: any[] = testSkiRegrindsNested.flat();
     const grindProfilesList = await storage.listGrindProfiles(teamId);
     const racePrepsResult = await (pool as any).query(
       `SELECT id, date, start_time, location, race_type, discipline,

@@ -23,6 +23,24 @@ declare module "http" {
   }
 }
 
+// ── Process-level crash protection ─────────────────────────────────────────
+// Hindrer at én ubehandlet feil krasjer hele Node-prosessen
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection] Ubehandlet promise-avvisning:", reason);
+  // Logg til Sentry hvis konfigurert, men krasj IKKE
+  if (process.env.SENTRY_DSN) {
+    try { (Sentry as any).captureException(reason); } catch (_) {}
+  }
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException] Ubehandlet feil — prosessen fortsetter:", err);
+  if (process.env.SENTRY_DSN) {
+    try { (Sentry as any).captureException(err); } catch (_) {}
+  }
+  // Ikke exit — Render/Fly restarter allikevel ved ekte crash
+});
+
 // ── Security headers ────────────────────────────────────────────────────────
 app.use(helmet({
   contentSecurityPolicy: false, // Disabled — React app uses inline scripts
@@ -178,8 +196,8 @@ app.use((req, res, next) => {
             await fetch(`${selfUrl}/api/health`);
             log("Keep-alive ping sent", "keepalive");
           } catch (_) {}
-        }, 10 * 60 * 1000);
-        log(`Keep-alive enabled – pinging ${selfUrl}/api/health every 10 min`, "keepalive");
+        }, 5 * 60 * 1000);
+        log(`Keep-alive enabled – pinging ${selfUrl}/api/health every 5 min`, "keepalive");
       }
     },
   );

@@ -520,6 +520,21 @@ export async function registerRoutes(
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS ski_id_classic TEXT;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS ski_id_skating TEXT;
       ALTER TABLE products ADD COLUMN IF NOT EXISTS archived_at TEXT;
+
+      -- Performance indexes on high-frequency query columns
+      CREATE INDEX IF NOT EXISTS tests_team_id_idx          ON tests(team_id);
+      CREATE INDEX IF NOT EXISTS tests_created_by_id_idx    ON tests(created_by_id);
+      CREATE INDEX IF NOT EXISTS test_entries_test_id_idx   ON test_entries(test_id);
+      CREATE INDEX IF NOT EXISTS products_team_id_idx       ON products(team_id);
+      CREATE INDEX IF NOT EXISTS daily_weather_team_id_idx  ON daily_weather(team_id);
+      CREATE INDEX IF NOT EXISTS activity_logs_team_id_idx  ON activity_logs(team_id);
+      CREATE INDEX IF NOT EXISTS activity_logs_user_id_idx  ON activity_logs(user_id);
+      CREATE INDEX IF NOT EXISTS login_logs_user_id_idx     ON login_logs(user_id);
+      CREATE INDEX IF NOT EXISTS race_skis_athlete_id_idx   ON race_skis(athlete_id);
+      CREATE INDEX IF NOT EXISTS athlete_access_user_id_idx ON athlete_access(user_id);
+      CREATE INDEX IF NOT EXISTS grinding_records_team_id_idx ON grinding_records(team_id);
+      CREATE INDEX IF NOT EXISTS grind_profiles_team_id_idx   ON grind_profiles(team_id);
+      CREATE INDEX IF NOT EXISTS race_preps_team_id_idx       ON race_preps(team_id);
     `);
   }
 
@@ -4451,13 +4466,13 @@ export async function registerRoutes(
     const [loginResult, activityResult] = await Promise.all([
       (pg as any).query(
         `SELECT id, user_id, email, name, login_at, ip_address, action, details
-         FROM login_logs WHERE user_id = $1 AND login_at >= NOW() - INTERVAL '${days} days' ORDER BY login_at DESC LIMIT 200`,
-        [targetId]
+         FROM login_logs WHERE user_id = $1 AND login_at >= NOW() - ($2 * INTERVAL '1 day') ORDER BY login_at DESC LIMIT 200`,
+        [targetId, days]
       ),
       (pg as any).query(
         `SELECT id, user_id, user_name, action, entity_type, entity_id, details, created_at, team_id
-         FROM activity_logs WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${days} days' ORDER BY created_at DESC LIMIT 200`,
-        [targetId]
+         FROM activity_logs WHERE user_id = $1 AND created_at >= NOW() - ($2 * INTERVAL '1 day') ORDER BY created_at DESC LIMIT 200`,
+        [targetId, days]
       ),
     ]);
 
@@ -4496,13 +4511,13 @@ export async function registerRoutes(
     const [loginResult, activityResult] = await Promise.all([
       (pg as any).query(
         `SELECT id, user_id, email, name, login_at, ip_address, action, details
-         FROM login_logs WHERE user_id = $1 AND login_at >= NOW() - INTERVAL '${days} days' ORDER BY login_at DESC LIMIT 200`,
-        [targetId]
+         FROM login_logs WHERE user_id = $1 AND login_at >= NOW() - ($2 * INTERVAL '1 day') ORDER BY login_at DESC LIMIT 200`,
+        [targetId, days]
       ),
       (pg as any).query(
         `SELECT id, user_id, user_name, action, entity_type, entity_id, details, created_at, team_id
-         FROM activity_logs WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${days} days' ORDER BY created_at DESC LIMIT 200`,
-        [targetId]
+         FROM activity_logs WHERE user_id = $1 AND created_at >= NOW() - ($2 * INTERVAL '1 day') ORDER BY created_at DESC LIMIT 200`,
+        [targetId, days]
       ),
     ]);
 
@@ -5486,6 +5501,23 @@ export async function registerRoutes(
   const watchCodeFailures = new Map<string, { count: number; resetAt: number }>();
   const WATCH_MAX_FAILURES = 10;
   const WATCH_FAILURE_WINDOW_MS = 5 * 60 * 1000; // 5-minute window
+
+  // Periodisk opprydding av utløpte oppføringer — hindrer ubegrenset vekst
+  const watchCleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [ip, entry] of watchCodeFailures.entries()) {
+      if (now > entry.resetAt) watchCodeFailures.delete(ip);
+    }
+    for (const [code, session] of watchSessionsMemory.entries()) {
+      // Fjern sesjoner eldre enn 24 timer
+      if (now - new Date(session.createdAt).getTime() > 24 * 3600 * 1000) {
+        watchSessionsMemory.delete(code);
+      }
+    }
+  }, 10 * 60 * 1000); // kjør hvert 10. minutt
+  // Rydd opp ved prosessavslutning
+  process.once("SIGTERM", () => clearInterval(watchCleanupInterval));
+
   function watchRateLimit(ip: string): boolean {
     const now = Date.now();
     const entry = watchCodeFailures.get(ip);
@@ -7389,14 +7421,14 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
     if (pwErr) return res.status(400).json({ message: pwErr });
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
     const now = new Date().toISOString();
+    // Atomisk: merk som brukt og hent user_id i én operasjon — hindrer race-condition
     const rows = await db.execute(sql`
-      SELECT * FROM password_reset_tokens
-      WHERE token_hash = ${tokenHash} AND used = 0 AND expires_at > ${now} LIMIT 1
+      UPDATE password_reset_tokens SET used = 1
+      WHERE token_hash = ${tokenHash} AND used = 0 AND expires_at > ${now}
+      RETURNING id, user_id
     `);
     const record = ((rows as any).rows ?? rows)[0];
     if (!record) return res.status(400).json({ message: "Invalid or expired reset link. Please request a new one." });
-    // Mark token used
-    await db.execute(sql`UPDATE password_reset_tokens SET used = 1 WHERE id = ${record.id}`);
     // Update password + unlock account
     const hashed = await hashPassword(password);
     await db.execute(sql`
@@ -7474,6 +7506,13 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
   app.post("/api/auth/2fa/login-verify", twoFaLimit, async (req, res, next) => {
     const pendingUserId = (req.session as any).pending2faUserId;
     if (!pendingUserId) return res.status(400).json({ message: "No pending 2FA verification. Please log in again." });
+    // Sjekk at 2FA-pendingen ikke er utløpt (maks 10 minutter)
+    const pendingAt = (req.session as any).pending2faAt;
+    if (!pendingAt || Date.now() - pendingAt > 10 * 60 * 1000) {
+      delete (req.session as any).pending2faUserId;
+      delete (req.session as any).pending2faAt;
+      return res.status(400).json({ message: "2FA session expired. Please log in again." });
+    }
     const { code } = req.body;
     if (!code) return res.status(400).json({ message: "Verification code is required." });
     const userRows = await db.execute(sql`

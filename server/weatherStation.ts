@@ -32,7 +32,7 @@ function getPath(obj: any, path: string): any {
 
 async function fetchNetatmo(config: any, date: string, time: string): Promise<WeatherReading> {
   // Get access token
-  const tokenRes = await fetch("https://api.netatmo.com/oauth2/token", {
+  const tokenRes = await fetch("https://api.netatmo.com/oauth2/token", { signal: AbortSignal.timeout(12000),
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -57,7 +57,7 @@ async function fetchNetatmo(config: any, date: string, time: string): Promise<We
     optimize: "false",
     real_time: "false",
   });
-  const dataRes = await fetch(`https://api.netatmo.com/api/getmeasure?${params}`, {
+  const dataRes = await fetch(`https://api.netatmo.com/api/getmeasure?${params}`, { signal: AbortSignal.timeout(12000),
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!dataRes.ok) throw new Error(`Netatmo data failed: ${dataRes.status}`);
@@ -90,7 +90,7 @@ async function fetchDavis(config: any, date: string, time: string): Promise<Weat
   const paramStr = Object.keys(params).sort().map(k => `${k}${params[k]}`).join("");
   const signature = crypto.createHmac("sha256", config.apiSecret).update(paramStr).digest("hex");
   const qs = new URLSearchParams({ ...params, "api-signature": signature }).toString();
-  const res = await fetch(`https://api.weatherlink.com/v2/historic/${config.stationId}?${qs}`);
+  const res = await fetch(`https://api.weatherlink.com/v2/historic/${config.stationId}?${qs}`, { signal: AbortSignal.timeout(12000) });
   if (!res.ok) throw new Error(`Davis API failed: ${res.status}`);
   const data = await res.json();
   const sensors = data.sensors || [];
@@ -112,7 +112,8 @@ async function fetchAmbientWeather(config: any, date: string, time: string): Pro
   const target = toUnix(date, time);
   const endDate = new Date((target + 3600) * 1000).toISOString();
   const res = await fetch(
-    `https://api.ambientweather.net/v1/devices/${config.macAddress}?applicationKey=${config.applicationKey}&apiKey=${config.apiKey}&endDate=${encodeURIComponent(endDate)}&limit=24`
+    `https://api.ambientweather.net/v1/devices/${config.macAddress}?applicationKey=${config.applicationKey}&apiKey=${config.apiKey}&endDate=${encodeURIComponent(endDate)}&limit=24`,
+    { signal: AbortSignal.timeout(12000) }
   );
   if (!res.ok) throw new Error(`Ambient Weather API failed: ${res.status}`);
   const data = await res.json();
@@ -130,7 +131,7 @@ async function fetchAmbientWeather(config: any, date: string, time: string): Pro
 
 async function fetchEcowitt(config: any, date: string, time: string): Promise<WeatherReading> {
   const dateStr = date; // YYYY-MM-DD
-  const res = await fetch("https://api.ecowitt.net/api/v3/device/history", {
+  const res = await fetch("https://api.ecowitt.net/api/v3/device/history", { signal: AbortSignal.timeout(12000),
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -166,7 +167,8 @@ async function fetchEcowitt(config: any, date: string, time: string): Promise<We
 async function fetchWeatherUnderground(config: any, date: string, time: string): Promise<WeatherReading> {
   const dateCompact = date.replace(/-/g, "");
   const res = await fetch(
-    `https://api.weather.com/v2/pws/history/hourly?stationId=${config.stationId}&format=json&units=m&date=${dateCompact}&apiKey=${config.apiKey}&numericPrecision=decimal`
+    `https://api.weather.com/v2/pws/history/hourly?stationId=${config.stationId}&format=json&units=m&date=${dateCompact}&apiKey=${config.apiKey}&numericPrecision=decimal`,
+    { signal: AbortSignal.timeout(12000) }
   );
   if (!res.ok) throw new Error(`Weather Underground API failed: ${res.status}`);
   const data = await res.json();
@@ -186,7 +188,8 @@ async function fetchWeatherUnderground(config: any, date: string, time: string):
 
 async function fetchOpenMeteo(config: any, date: string, time: string): Promise<WeatherReading> {
   const res = await fetch(
-    `https://archive-api.open-meteo.com/v1/archive?latitude=${config.latitude}&longitude=${config.longitude}&start_date=${date}&end_date=${date}&hourly=temperature_2m,relativehumidity_2m,windspeed_10m,precipitation,cloudcover&timezone=auto`
+    `https://archive-api.open-meteo.com/v1/archive?latitude=${config.latitude}&longitude=${config.longitude}&start_date=${date}&end_date=${date}&hourly=temperature_2m,relativehumidity_2m,windspeed_10m,precipitation,cloudcover&timezone=auto`,
+    { signal: AbortSignal.timeout(12000) }
   );
   if (!res.ok) throw new Error(`Open-Meteo API failed: ${res.status}`);
   const data = await res.json();
@@ -218,7 +221,7 @@ async function fetchGenericHttp(config: any, date: string, time: string): Promis
     headers["Authorization"] = `Basic ${Buffer.from(`${config.basicUsername}:${config.basicPassword}`).toString("base64")}`;
   }
 
-  const res = await fetch(url, { headers });
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(12000) });
   if (!res.ok) throw new Error(`Generic HTTP fetch failed: ${res.status}`);
   const data = await res.json();
 

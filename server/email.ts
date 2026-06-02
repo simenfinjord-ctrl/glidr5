@@ -70,6 +70,9 @@ async function sendEmail(payload: {
 }): Promise<void> {
   const apiKey = getApiKey();
   if (!apiKey) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("[email] RESEND_API_KEY mangler i produksjon — e-post kan ikke sendes");
+    }
     console.warn("[email] No API key — set RESEND_API_KEY or SMTP_PASS.");
     console.log(`[email] Would have sent "${payload.subject}" to ${payload.to}`);
     return;
@@ -90,6 +93,7 @@ async function sendEmail(payload: {
       "Content-Type": "application/json",
     },
     body,
+    signal: AbortSignal.timeout(10000),
   });
 
   if (!res.ok) {

@@ -34,11 +34,13 @@ process.on("unhandledRejection", (reason) => {
 });
 
 process.on("uncaughtException", (err) => {
-  console.error("[uncaughtException] Ubehandlet feil — prosessen fortsetter:", err);
+  console.error("[uncaughtException] Kritisk ubehandlet feil — avslutter prosessen:", err);
   if (process.env.SENTRY_DSN) {
     try { (Sentry as any).captureException(err); } catch (_) {}
   }
-  // Ikke exit — Render/Fly restarter allikevel ved ekte crash
+  // Avslutt prosessen — Render restarter automatisk.
+  // Fortsette etter uncaughtException er farlig (udefinert tilstand).
+  process.exit(1);
 });
 
 // ── Security headers ────────────────────────────────────────────────────────
@@ -191,13 +193,24 @@ app.use((req, res, next) => {
 
       if (process.env.NODE_ENV === "production") {
         const selfUrl = process.env.RENDER_EXTERNAL_URL || `https://glidr.onrender.com`;
-        setInterval(async () => {
+        const keepAliveId = setInterval(async () => {
           try {
-            await fetch(`${selfUrl}/api/health`);
+            await fetch(`${selfUrl}/api/health`, { signal: AbortSignal.timeout(8000) });
             log("Keep-alive ping sent", "keepalive");
           } catch (_) {}
         }, 5 * 60 * 1000);
         log(`Keep-alive enabled – pinging ${selfUrl}/api/health every 5 min`, "keepalive");
+
+        // Rydd opp ved graceful shutdown
+        process.once("SIGTERM", async () => {
+          clearInterval(keepAliveId);
+          try {
+            const { stopAllAutoBackups } = await import("./backup");
+            stopAllAutoBackups?.();
+          } catch (_) {}
+          log("SIGTERM mottatt — rydder opp og avslutter", "shutdown");
+          httpServer.close(() => process.exit(0));
+        });
       }
     },
   );

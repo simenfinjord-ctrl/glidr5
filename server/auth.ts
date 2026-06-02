@@ -216,6 +216,7 @@ export async function setupAuth(app: Express) {
       if (totpEnabled) {
         // Store pending user ID — login will complete after 2FA verification
         (req.session as any).pending2faUserId = user.id;
+        (req.session as any).pending2faAt = Date.now(); // brukes for utløpskontroll
         if (req.body.rememberMe) (req.session as any).pending2faRememberMe = true;
         await new Promise<void>((resolve) => req.session.save(() => resolve()));
         return res.status(200).json({ requires2fa: true });

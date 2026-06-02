@@ -1389,6 +1389,12 @@ export function stopAutoBackup(teamId: number) {
   }
 }
 
+export function stopAllAutoBackups() {
+  for (const teamId of Object.keys(backupIntervals).map(Number)) {
+    stopAutoBackup(teamId);
+  }
+}
+
 export async function initAutoBackups() {
   try {
     const teams = await storage.listTeams();

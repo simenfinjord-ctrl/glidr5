@@ -798,27 +798,29 @@ export async function buildTeamJsonExport(teamId: number): Promise<string> {
     entriesByTest[(e as any).testId].push(e);
   }
 
-  const allRaceSkis: any[] = [];
-  for (const ath of allAthletes) {
-    try {
-      const skis = await storage.listAllRaceSkisIncludingArchived(ath.id);
-      allRaceSkis.push(...skis.map((s: any) => ({ ...s, athleteName: ath.name })));
-    } catch {}
-  }
-  const allRaceSkiRegrinds: any[] = [];
-  for (const ski of allRaceSkis) {
-    try {
-      const rr = await storage.listRaceSkiRegrinds(ski.id);
-      allRaceSkiRegrinds.push(...rr.map((r: any) => ({ ...r, skiId: ski.skiId, athleteName: ski.athleteName, brand: ski.brand })));
-    } catch {}
-  }
-  const allTestSkiRegrinds: any[] = [];
-  for (const series of allSeries) {
-    try {
-      const rr = await storage.listTestSkiRegrinds(series.id);
-      allTestSkiRegrinds.push(...rr.map((r: any) => ({ ...r, seriesName: series.name })));
-    } catch {}
-  }
+  const allRaceSkisNested = await Promise.all(
+    allAthletes.map((ath: any) =>
+      storage.listAllRaceSkisIncludingArchived(ath.id)
+        .then((skis: any[]) => skis.map((s: any) => ({ ...s, athleteName: ath.name })))
+        .catch(() => [] as any[])
+    )
+  );
+  const allRaceSkis: any[] = allRaceSkisNested.flat();
+
+  const [raceSkiRegrindsNested, testSkiRegrindsNested] = await Promise.all([
+    Promise.all(allRaceSkis.map((ski: any) =>
+      storage.listRaceSkiRegrinds(ski.id)
+        .then((rs: any[]) => rs.map((r: any) => ({ ...r, skiId: ski.skiId, athleteName: ski.athleteName, brand: ski.brand })))
+        .catch(() => [] as any[])
+    )),
+    Promise.all(allSeries.map((series: any) =>
+      storage.listTestSkiRegrinds(series.id)
+        .then((rs: any[]) => rs.map((r: any) => ({ ...r, seriesName: series.name })))
+        .catch(() => [] as any[])
+    )),
+  ]);
+  const allRaceSkiRegrinds: any[] = raceSkiRegrindsNested.flat();
+  const allTestSkiRegrinds: any[] = testSkiRegrindsNested.flat();
 
   const racePrepsResult = await (pool as any).query(
     `SELECT id, date, start_time, location, race_type, discipline,
@@ -894,23 +896,42 @@ function buildExportHtml(data: {
   grindingSheets: any[]; activities: any[]; loginLogs: any[];
   racePreps: any[]; racePrepEntries: any[];
 }): string {
-  const productMap = new Map(data.products.map((p: any) => [p.id, p]));
-  const raceSkiMap = new Map(data.raceSkis.map((s: any) => [s.id, s]));
-  const seriesMap  = new Map(data.series.map((s: any)  => [s.id, s]));
-  const athleteMap = new Map(data.athletes.map((a: any) => [a.id, a]));
+  const productMap     = new Map(data.products.map((p: any)     => [p.id, p]));
+  const raceSkiMap     = new Map(data.raceSkis.map((s: any)     => [s.id, s]));
+  const seriesMap      = new Map(data.series.map((s: any)       => [s.id, s]));
+  const athleteMap     = new Map(data.athletes.map((a: any)     => [a.id, a]));
+  const grindProfileMap = new Map(data.grindProfiles.map((gp: any) => [gp.id, gp]));
+  const weatherById    = new Map(data.weather.map((w: any)      => [w.id, w]));
 
-  const getProductLabel = (entry: any): string => {
+  const resolveIds = (raw: string | null | undefined): string => {
+    if (!raw) return '';
+    if (raw.split(',').some((p: string) => isNaN(Number(p.trim())))) return raw;
+    const ids = raw.split(',').map((p: string) => parseInt(p.trim())).filter((n: number) => !isNaN(n));
+    const resolved = ids.map((id: number) => { const p = productMap.get(id); return p ? `${p.brand || ''} ${p.name}`.trim() : ''; }).filter(Boolean).join(' + ');
+    return resolved || raw;
+  };
+
+  const getProductLabel = (entry: any, forAthleteTest = false): string => {
+    if (entry.grindProfileId) {
+      const gp = grindProfileMap.get(entry.grindProfileId);
+      if (gp) return [gp.name, gp.grindType, gp.stone, gp.pattern].filter(Boolean).join(' · ');
+    }
     if (entry.raceSkiId) {
       const ski = raceSkiMap.get(entry.raceSkiId);
-      if (ski) return `${ski.athleteName} — ${ski.brand || ''} ${ski.skiId || ''}`.trim();
+      if (ski) return forAthleteTest
+        ? `${ski.brand || ''} ${ski.skiId || ''}`.trim()
+        : `${ski.athleteName} — ${ski.brand || ''} ${ski.skiId || ''}`.trim();
     }
     const main = productMap.get(entry.productId);
     const parts: string[] = [];
     if (main) parts.push(`${main.brand || ''} ${main.name}`.trim());
+    if (entry.freeTextProduct && !main) parts.push(entry.freeTextProduct);
     if (entry.additionalProductIds) {
       try {
-        const ids = typeof entry.additionalProductIds === 'string'
-          ? JSON.parse(entry.additionalProductIds) : entry.additionalProductIds;
+        const raw = entry.additionalProductIds;
+        const ids = typeof raw === 'string'
+          ? (raw.startsWith('[') ? JSON.parse(raw) : raw.split(',').map(Number).filter((n: number) => !isNaN(n)))
+          : raw;
         if (Array.isArray(ids)) {
           for (const id of ids) {
             const p = productMap.get(id);
@@ -919,7 +940,24 @@ function buildExportHtml(data: {
         }
       } catch {}
     }
-    return parts.join(' + ') || '—';
+    return parts.join(' + ') || entry.freeTextProduct || '—';
+  };
+
+  const renderWeatherLine = (w: any): string => {
+    const parts: string[] = [];
+    if (w.snowTemperatureC != null) parts.push(`Snow: ${w.snowTemperatureC}°C`);
+    if (w.airTemperatureC != null) parts.push(`Air: ${w.airTemperatureC}°C`);
+    if (w.snowHumidityPct != null) parts.push(`Snow hum: ${w.snowHumidityPct}%`);
+    if (w.airHumidityPct != null) parts.push(`Air hum: ${w.airHumidityPct}%rH`);
+    const st = [w.artificialSnow ? `Art. snow: ${w.artificialSnow}` : null, w.naturalSnow ? `Nat. snow: ${w.naturalSnow}` : null].filter(Boolean).join(', ');
+    if (st) parts.push(st);
+    if (w.trackHardness) parts.push(`Track: ${w.trackHardness}`);
+    if (w.grainSize) parts.push(`Grain: ${w.grainSize}`);
+    if (w.wind) parts.push(`Wind: ${w.wind}`);
+    if (w.clouds != null) parts.push(`Clouds: ${w.clouds}/8`);
+    if (w.precipitation) parts.push(`Precip: ${w.precipitation}`);
+    if (w.testQuality != null) parts.push(`Quality: ${w.testQuality}/10`);
+    return parts.join('  ·  ');
   };
 
   const getEntryRounds = (entry: any, numRounds: number): { result: any; rank: any }[] => {
@@ -999,53 +1037,96 @@ function buildExportHtml(data: {
 
   // Tests with entries
   const sortedTests = [...data.tests].sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
-  let testsHtml = '';
-  for (const test of sortedTests) {
-    const entries: any[] = data.entriesByTest[test.id] || [];
-    const seriesObj = seriesMap.get(test.seriesId);
-    const athleteObj = test.athleteId ? athleteMap.get(test.athleteId) : null;
-    const sourceName = test.testSkiSource === 'raceskis'
-      ? (athleteObj ? `Athlete: ${athleteObj.name}` : 'Raceskis')
-      : (seriesObj ? seriesObj.name : '');
+  const grindTests  = sortedTests.filter((t: any) => t.testType === 'Grind' || t.testType === 'Grinding');
+  const otherTests  = sortedTests.filter((t: any) => t.testType !== 'Grind' && t.testType !== 'Grinding');
 
-    let distanceLabels: string[] = [];
-    if (test.distanceLabels) {
-      try {
-        const p = typeof test.distanceLabels === 'string' ? JSON.parse(test.distanceLabels) : test.distanceLabels;
-        if (Array.isArray(p) && p.length > 0) distanceLabels = p;
-      } catch {}
+  const renderTestsHtml = (tests: any[]): string => {
+    let html = '';
+    for (const test of tests) {
+      const entries: any[] = data.entriesByTest[test.id] || [];
+      const seriesObj   = seriesMap.get(test.seriesId);
+      const athleteObj  = test.athleteId ? athleteMap.get(test.athleteId) : null;
+      const isAthleteTest = test.testSkiSource === 'raceskis' && !!athleteObj;
+      const isGrind     = test.testType === 'Grind' || test.testType === 'Grinding';
+      const sourceName  = isAthleteTest ? athleteObj.name : (seriesObj ? seriesObj.name : '');
+      const linkedWeather = test.weatherId ? weatherById.get(test.weatherId) : null;
+
+      let distanceLabels: string[] = [];
+      if (test.distanceLabels) {
+        try {
+          const p = typeof test.distanceLabels === 'string' ? JSON.parse(test.distanceLabels) : test.distanceLabels;
+          if (Array.isArray(p) && p.length > 0) distanceLabels = p;
+        } catch {}
+      }
+      if (distanceLabels.length === 0) {
+        distanceLabels = [test.distanceLabel0km || '0 km'];
+        if (test.distanceLabelXkm) distanceLabels.push(test.distanceLabelXkm);
+      }
+
+      const isClassic = test.testType === 'Classic';
+      const heading = isAthleteTest
+        ? `${esc(test.date)} — ${esc(test.testType)} — ${esc(test.location || '')} — Athlete: ${esc(sourceName)}`
+        : `${esc(test.date)} — ${esc(test.testType)} — ${esc(test.location || '')}${sourceName ? ` — ${esc(sourceName)}` : ''}`;
+
+      const metaParts = [`Group: ${test.groupScope}`, test.createdByName ? `Created by: ${test.createdByName}` : null, test.notes ? `Notes: ${test.notes}` : null].filter(Boolean);
+
+      const weatherHtml = linkedWeather
+        ? `<div class="test-weather">Weather/Conditions: ${esc(renderWeatherLine(linkedWeather))}</div>`
+        : '';
+
+      // Grind parameters inline
+      const grindEntries = entries.filter((e: any) => e.grindType || e.grindStone || e.grindPattern || e.grindExtraParams || e.grindProfileId);
+      let grindParamsHtml = '';
+      if (grindEntries.length > 0) {
+        const seen = new Set<string>();
+        for (const e of grindEntries) {
+          const gp = e.grindProfileId ? grindProfileMap.get(e.grindProfileId) : null;
+          const parts = [
+            (gp?.grindType || e.grindType) ? `Type: ${gp?.grindType || e.grindType}` : null,
+            (gp?.stone || e.grindStone) ? `Stone: ${gp?.stone || e.grindStone}` : null,
+            (gp?.pattern || e.grindPattern) ? `Pattern: ${gp?.pattern || e.grindPattern}` : null,
+            e.grindExtraParams ? `Extra: ${e.grindExtraParams}` : null,
+          ].filter(Boolean).join('  ·  ');
+          if (parts && !seen.has(parts)) {
+            seen.add(parts);
+            grindParamsHtml += `<div class="test-grind">Grind params: ${esc(parts)}</div>`;
+          }
+        }
+      }
+
+      const productColLabel = isGrind ? 'Grind Profile' : (isAthleteTest ? 'Ski (brand/ID)' : 'Product / Raceski');
+      const head = ['Rank', 'Ski #', productColLabel, 'Method'];
+      for (const lbl of distanceLabels) { head.push(`${lbl} (cm)`); head.push('Rank'); }
+      if (isClassic) head.push('Kick');
+      head.push('Feeling');
+
+      const rows = entries
+        .map((e: any) => { const rounds = getEntryRounds(e, distanceLabels.length); return { e, rounds, firstRank: rounds[0]?.rank ?? 999 }; })
+        .sort((a: any, b: any) => a.firstRank - b.firstRank)
+        .map(({ e, rounds }: any) => {
+          const row: string[] = [rounds[0]?.rank != null ? String(rounds[0].rank) : '—', String(e.skiNumber || ''), getProductLabel(e, isAthleteTest), e.methodology || ''];
+          for (const rr of rounds) { row.push(rr.result != null ? String(rr.result) : '—'); row.push(rr.rank != null ? String(rr.rank) : '—'); }
+          if (isClassic) row.push(e.kickRank != null ? String(e.kickRank) : '—');
+          row.push(e.feelingRank != null ? String(e.feelingRank) : '—');
+          return row;
+        });
+
+      html += `<div class="test-block">
+        <div class="test-header">${heading}</div>
+        <div class="test-meta">${esc(metaParts.join('  |  '))}</div>
+        ${weatherHtml}${grindParamsHtml}
+        ${entries.length > 0 ? htmlTable(head, rows, true) : '<p class="no-entries">No entries</p>'}
+      </div>`;
     }
-    if (distanceLabels.length === 0) {
-      distanceLabels = [test.distanceLabel0km || '0 km'];
-      if (test.distanceLabelXkm) distanceLabels.push(test.distanceLabelXkm);
-    }
+    return html;
+  };
 
-    const isClassic = test.testType === 'Classic';
-    const meta = [test.location ? `Location: ${test.location}` : null, test.notes ? `Notes: ${test.notes}` : null, `Group: ${test.groupScope}`].filter(Boolean).join('  ·  ');
-
-    const head = ['Rank', 'Ski', 'Product / Raceski', 'Method'];
-    for (const lbl of distanceLabels) { head.push(`${lbl} (cm)`); head.push('Rank'); }
-    if (isClassic) head.push('Kick');
-    head.push('Feeling');
-
-    const rows = entries
-      .map((e: any) => { const rounds = getEntryRounds(e, distanceLabels.length); return { e, rounds, firstRank: rounds[0]?.rank ?? 999 }; })
-      .sort((a: any, b: any) => a.firstRank - b.firstRank)
-      .map(({ e, rounds }: any) => {
-        const row: string[] = [rounds[0]?.rank != null ? String(rounds[0].rank) : '—', String(e.skiNumber || ''), getProductLabel(e), e.methodology || ''];
-        for (const rr of rounds) { row.push(rr.result != null ? String(rr.result) : '—'); row.push(rr.rank != null ? String(rr.rank) : '—'); }
-        if (isClassic) row.push(e.kickRank != null ? String(e.kickRank) : '—');
-        row.push(e.feelingRank != null ? String(e.feelingRank) : '—');
-        return row;
-      });
-
-    testsHtml += `<div class="test-block">
-      <div class="test-header">${esc(test.date)} — ${esc(test.testType)} — ${esc(sourceName)}</div>
-      <div class="test-meta">${esc(meta)}</div>
-      ${entries.length > 0 ? htmlTable(head, rows, true) : '<p class="no-entries">No entries</p>'}
-    </div>`;
+  if (otherTests.length > 0) {
+    body += htmlSection(`Tests with Results (${otherTests.length})`, renderTestsHtml(otherTests));
   }
-  body += htmlSection(`Tests with Results (${data.tests.length})`, testsHtml);
+  if (grindTests.length > 0) {
+    body += htmlSection(`Grind Tests (${grindTests.length})`, renderTestsHtml(grindTests));
+  }
 
   // Weather
   if (data.weather.length > 0) {
@@ -1062,52 +1143,67 @@ function buildExportHtml(data: {
   // Grind profiles
   if (data.grindProfiles.length > 0) {
     body += htmlSection(`Grind Profiles (${data.grindProfiles.length})`, htmlTable(
-      ['Name', 'Type', 'Stone', 'Pattern', 'Extra Params'],
-      data.grindProfiles.map((gp: any) => [gp.name || '', gp.grindType || '', gp.stone || '', gp.pattern || '', gp.extraParams || ''])
+      ['ID', 'Name', 'Type', 'Stone', 'Pattern', 'Extra Params', 'Notes', 'Created By'],
+      data.grindProfiles.map((gp: any) => {
+        let extras = '';
+        if (gp.extraParams) {
+          try { extras = Object.entries(JSON.parse(gp.extraParams)).map(([k, v]) => `${k}: ${v}`).join(', '); }
+          catch { extras = gp.extraParams; }
+        }
+        return [gp.grindId || String(gp.id), gp.name || '', gp.grindType || '', gp.stone || '', gp.pattern || '', extras, gp.notes || '', gp.createdByName || ''];
+      })
     ));
   }
 
-  // Grinding records
-  // Race preps
+  // Race preps — grouped with entries
   if (data.racePreps.length > 0) {
-    const resolveRpIds = (raw: string | null | undefined): string => {
-      if (!raw) return '';
-      // If value contains non-numeric parts it's free text — return as-is
-      if (raw.split(',').some(p => isNaN(Number(p.trim())))) return raw;
-      try {
-        const ids: number[] = JSON.parse(raw);
-        if (!Array.isArray(ids)) return raw;
-        return ids.map(id => { const p = productMap.get(id); return p ? `${p.brand || ''} ${p.name}`.trim() : `#${id}`; }).filter(Boolean).join(' + ');
-      } catch { return raw || ''; }
-    };
-    body += htmlSection(`Race Preps (${data.racePreps.length})`, htmlTable(
-      ['Date', 'Location', 'Race Type', 'Discipline', 'Glide', 'Structure', 'Kick', 'Tette/Binder', 'Application', 'Notes', 'Created By'],
-      data.racePreps.map((rp: any) => [
-        rp.date || '', rp.location || '', rp.race_type || '', rp.discipline || '',
-        resolveRpIds(rp.product_ids) || rp.products || '',
-        resolveRpIds(rp.structure_ids) || rp.structure || '',
-        rp.kick_product_ids || '',
-        rp.tette || '',
-        rp.method || '', rp.notes || '', rp.created_by_name || '',
-      ])
-    ));
-  }
-
-  // Race prep entries
-  if (data.racePrepEntries.length > 0) {
-    body += htmlSection(`Race Prep Entries (${data.racePrepEntries.length})`, htmlTable(
-      ['Race Prep ID', 'Athlete', 'Ski ID (Glide)', 'Ski ID (Classic)', 'Ski ID (Skating)', 'Waxer', 'Notes'],
-      data.racePrepEntries.map((e: any) => [
-        String(e.race_prep_id || ''), e.athlete_name || '', e.ski_id || '',
-        e.ski_id_classic || '', e.ski_id_skating || '', e.waxer_name || '', e.notes || '',
-      ])
-    ));
+    const entriesByRpId = new Map<number, any[]>();
+    for (const e of data.racePrepEntries) {
+      if (!entriesByRpId.has(e.race_prep_id)) entriesByRpId.set(e.race_prep_id, []);
+      entriesByRpId.get(e.race_prep_id)!.push(e);
+    }
+    let rpHtml = '';
+    const sortedRps = [...data.racePreps].sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
+    for (const rp of sortedRps) {
+      const glide   = resolveIds(rp.product_ids) || rp.products || '—';
+      const struct  = resolveIds(rp.structure_ids) || rp.structure || '—';
+      const kick    = resolveIds(rp.kick_product_ids) || '—';
+      const rpEntries = entriesByRpId.get(rp.id) || [];
+      const isSkating = rp.discipline === 'Skating';
+      const linkedWx  = rp.weather_id ? weatherById.get(rp.weather_id) : null;
+      const details = [
+        `<strong>Glide:</strong> ${esc(glide)}`,
+        `<strong>Structure:</strong> ${esc(struct)}`,
+        kick !== '—' ? `<strong>Kick:</strong> ${esc(kick)}` : null,
+        rp.tette ? `<strong>Binder:</strong> ${esc(rp.tette)}` : null,
+        rp.method ? `<strong>Application:</strong> ${esc(rp.method)}` : null,
+        rp.notes ? `<strong>Notes:</strong> ${esc(rp.notes)}` : null,
+        rp.created_by_name ? `<strong>Created by:</strong> ${esc(rp.created_by_name)}` : null,
+        linkedWx ? `<strong>Weather/Conditions:</strong> ${esc(renderWeatherLine(linkedWx))}` : null,
+      ].filter(Boolean).join('  ·  ');
+      const athleteRows = rpEntries.map((e: any) => [
+        e.athlete_name || '—',
+        isSkating ? (e.ski_id_skating || e.ski_id || '—') : (e.ski_id_classic || e.ski_id || '—'),
+        e.ski_id || '—',
+        e.waxer_name || '—',
+        e.notes || '',
+      ]);
+      rpHtml += `<div class="test-block">
+        <div class="test-header">${esc(rp.date)} — ${esc(rp.location || '—')} — ${esc(rp.race_type || '—')} — ${esc(rp.discipline || '—')}</div>
+        <div class="test-meta">${details}</div>
+        ${rpEntries.length > 0 ? htmlTable(['Athlete', isSkating ? 'Ski (Skating)' : 'Ski (Classic)', 'Glide Ski', 'Waxer', 'Notes'], athleteRows, true) : '<p class="no-entries">No athletes registered.</p>'}
+      </div>`;
+    }
+    body += htmlSection(`Race Preparations (${data.racePreps.length})`, rpHtml);
   }
 
   if (data.grindingRecords.length > 0) {
     body += htmlSection(`Grinding Records (${data.grindingRecords.length})`, htmlTable(
-      ['Date', 'Type', 'Stone', 'Notes', 'Group'],
-      data.grindingRecords.map((r: any) => [r.date || '', r.grindType || '', r.stone || '', r.notes || '', r.groupScope || ''])
+      ['Date', 'Series', 'Type', 'Stone', 'Notes', 'Created By', 'Group'],
+      data.grindingRecords.map((r: any) => {
+        const series = r.seriesId ? seriesMap.get(r.seriesId) : null;
+        return [r.date || '', series?.name || (r.seriesId ? `#${r.seriesId}` : '—'), r.grindType || '', r.stone || '', r.notes || '', r.createdByName || '', r.groupScope || ''];
+      })
     ));
   }
 
@@ -1150,6 +1246,8 @@ h2 { font-size: 9.5pt; font-weight: bold; margin-bottom: 3pt; border-bottom: 1px
 .test-block { margin-bottom: 8pt; page-break-inside: avoid; }
 .test-header { font-size: 7.5pt; font-weight: bold; margin-bottom: 1pt; }
 .test-meta { font-size: 6pt; color: #555; margin-bottom: 2pt; }
+.test-weather { font-size: 6pt; color: #0e7490; margin-bottom: 2pt; }
+.test-grind { font-size: 6pt; color: #555; font-style: italic; margin-bottom: 2pt; }
 .no-entries { font-size: 6.5pt; color: #888; font-style: italic; }
 table { width: 100%; border-collapse: collapse; margin-top: 2pt; }
 th { background: #16a34a; color: white; text-align: left; padding: 2px 4px; }
@@ -1194,27 +1292,29 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
     entriesByTest[e.testId].push(e);
   }
 
-  const allRaceSkis: any[] = [];
-  for (const ath of allAthletes) {
-    try {
-      const skis = await storage.listAllRaceSkisIncludingArchived(ath.id);
-      allRaceSkis.push(...skis.map((s: any) => ({ ...s, athleteName: ath.name })));
-    } catch {}
-  }
-  const allRaceSkiRegrinds: any[] = [];
-  for (const ski of allRaceSkis) {
-    try {
-      const rr = await storage.listRaceSkiRegrinds(ski.id);
-      allRaceSkiRegrinds.push(...rr.map((r: any) => ({ ...r, skiId: ski.skiId, athleteName: ski.athleteName, brand: ski.brand })));
-    } catch {}
-  }
-  const allTestSkiRegrinds: any[] = [];
-  for (const series of allSeries) {
-    try {
-      const rr = await storage.listTestSkiRegrinds(series.id);
-      allTestSkiRegrinds.push(...rr.map((r: any) => ({ ...r, seriesName: series.name })));
-    } catch {}
-  }
+  const allRaceSkisNested = await Promise.all(
+    allAthletes.map((ath: any) =>
+      storage.listAllRaceSkisIncludingArchived(ath.id)
+        .then((skis: any[]) => skis.map((s: any) => ({ ...s, athleteName: ath.name })))
+        .catch(() => [] as any[])
+    )
+  );
+  const allRaceSkis: any[] = allRaceSkisNested.flat();
+
+  const [raceSkiRegrindsNested, testSkiRegrindsNested] = await Promise.all([
+    Promise.all(allRaceSkis.map((ski: any) =>
+      storage.listRaceSkiRegrinds(ski.id)
+        .then((rs: any[]) => rs.map((r: any) => ({ ...r, skiId: ski.skiId, athleteName: ski.athleteName, brand: ski.brand })))
+        .catch(() => [] as any[])
+    )),
+    Promise.all(allSeries.map((series: any) =>
+      storage.listTestSkiRegrinds(series.id)
+        .then((rs: any[]) => rs.map((r: any) => ({ ...r, seriesName: series.name })))
+        .catch(() => [] as any[])
+    )),
+  ]);
+  const allRaceSkiRegrinds: any[] = raceSkiRegrindsNested.flat();
+  const allTestSkiRegrinds: any[] = testSkiRegrindsNested.flat();
 
   const racePrepsResult = await (pool as any).query(
     `SELECT id, date, start_time, location, race_type, discipline,

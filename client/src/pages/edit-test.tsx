@@ -252,10 +252,6 @@ export default function EditTest() {
   const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>([]);
   const [manualWeatherOpen, setManualWeatherOpen] = useState(false);
 
-  const handleWeatherCreated = useCallback((id: number) => {
-    form.setValue("weatherId", String(id));
-  }, [form]);
-
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchemaEdit),
     defaultValues: test
@@ -348,6 +344,10 @@ export default function EditTest() {
       });
     });
   }, [grindProfiles, entriesLoaded]);
+
+  const handleWeatherCreated = useCallback((id: number) => {
+    form.setValue("weatherId", String(id));
+  }, [form]);
 
   const watchSeriesId = form.watch("seriesId");
   useEffect(() => {

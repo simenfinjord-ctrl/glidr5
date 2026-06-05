@@ -157,10 +157,6 @@ export default function NewTest() {
   const [runsheetOpen, setRunsheetOpen] = useState(false);
   const [manualWeatherOpen, setManualWeatherOpen] = useState(false);
 
-  const handleWeatherCreated = useCallback((id: number) => {
-    form.setValue("weatherId", String(id));
-  }, [form]);
-
   // Grind column visibility: only include stone/pattern if at least one profile uses them
   const allGrindParamKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -211,6 +207,10 @@ export default function NewTest() {
       groupScope: userGroups[0] ?? "",
     },
   });
+
+  const handleWeatherCreated = useCallback((id: number) => {
+    form.setValue("weatherId", String(id));
+  }, [form]);
 
   const watchSeriesId = form.watch("seriesId");
   const watchDate = form.watch("date");

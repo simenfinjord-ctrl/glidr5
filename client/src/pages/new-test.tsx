@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ChevronLeft, Save, Sparkles, ClipboardList } from "lucide-react";
+import { ChevronLeft, Save, Sparkles, ClipboardList, CloudSun } from "lucide-react";
 import { useOffline } from "@/lib/offline-context";
 import { OfflineError } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
@@ -35,6 +35,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { fmtDate } from "@/lib/utils";
 import { TestEntryTable, type EntryRow, type RoundResult, type RaceSkiOption, type GrindProfile, cleanAdditionalIds } from "@/components/test-entry-table";
 import { RunsheetDialog, type BracketResult } from "@/components/runsheet-dialog";
+import { ManualWeatherDialog } from "@/components/manual-weather-dialog";
 
 type TestType = "Glide" | "Structure" | "Grind" | "Classic" | "Skating" | "Double Poling";
 
@@ -154,6 +155,11 @@ export default function NewTest() {
 
   const [duplicateApplied, setDuplicateApplied] = useState(false);
   const [runsheetOpen, setRunsheetOpen] = useState(false);
+  const [manualWeatherOpen, setManualWeatherOpen] = useState(false);
+
+  const handleWeatherCreated = useCallback((id: number) => {
+    form.setValue("weatherId", String(id));
+  }, [form]);
 
   // Grind column visibility: only include stone/pattern if at least one profile uses them
   const allGrindParamKeys = useMemo(() => {
@@ -698,7 +704,17 @@ export default function NewTest() {
                     name="weatherId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t("newTest.weather")}</FormLabel>
+                        <div className="flex items-center justify-between mb-1">
+                          <FormLabel className="mb-0">{t("newTest.weather")}</FormLabel>
+                          <button
+                            type="button"
+                            onClick={() => setManualWeatherOpen(true)}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <CloudSun className="h-3 w-3" />
+                            {t("newTest.addManualWeather") ?? "+ Add manual"}
+                          </button>
+                        </div>
                         <Select
                           value={field.value ?? "__auto__"}
                           onValueChange={(v) => {
@@ -870,6 +886,15 @@ export default function NewTest() {
             description: t("newTest.runsheetAppliedDesc"),
           });
         }}
+      />
+
+      <ManualWeatherDialog
+        open={manualWeatherOpen}
+        onClose={() => setManualWeatherOpen(false)}
+        onCreated={handleWeatherCreated}
+        defaultDate={form.getValues("date")}
+        defaultLocation={form.getValues("location")}
+        defaultGroupScope={form.getValues("groupScope")}
       />
     </AppShell>
   );

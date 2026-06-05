@@ -151,7 +151,8 @@ export function ManualWeatherDialog({ open, onClose, onCreated, defaultDate, def
         testQuality: values.testQuality ?? null,
         groupScope: defaultGroupScope ?? user?.groupScope?.split(",")[0].trim() ?? "",
       };
-      const res = await apiRequest("POST", "/api/weather", payload);
+      // Use /for-test endpoint — requires test edit permission (not weather edit permission)
+      const res = await apiRequest("POST", "/api/weather/for-test", payload);
       return res.json();
     },
     onSuccess: (data) => {

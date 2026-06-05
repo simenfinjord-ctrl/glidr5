@@ -376,7 +376,7 @@ export default function Suggestions() {
 
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
-  const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather"] });
+  const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather/for-filtering"] });
 
   const allTestIds = useMemo(() => tests.map((t) => t.id), [tests]);
   const { data: allEntries = [], isLoading: entriesLoading } = useQuery<TestEntry[]>({

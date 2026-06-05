@@ -1686,7 +1686,7 @@ export async function registerRoutes(
     const teamId = getActiveTeamId(req);
     const { pool } = await import("./db");
     const result = await (pool as any).query(
-      `SELECT id, date, location,
+      `SELECT id, date, time, location,
               air_temperature_c AS "airTemperatureC",
               snow_temperature_c AS "snowTemperatureC",
               air_humidity_pct AS "airHumidityPct",
@@ -1697,6 +1697,7 @@ export async function registerRoutes(
               grain_size AS "grainSize",
               snow_humidity_type AS "snowHumidityType",
               track_hardness AS "trackHardness",
+              test_quality AS "testQuality",
               snow_type AS "snowType"
        FROM daily_weather
        WHERE team_id = $1`,
@@ -1751,6 +1752,40 @@ export async function registerRoutes(
         details: `Weather: ${req.body.date} ${req.body.location}`, createdAt: new Date().toISOString(), groupScope, teamId,
       });
     } catch (_) {}
+    res.json(result);
+  });
+
+  // Create weather record from test creation/edit context — requires test edit permission, not weather permission
+  app.post("/api/weather/for-test", requirePermission("tests", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const now = new Date().toISOString();
+    const groupScope = req.body.groupScope?.trim() || resolveCreateGroupScope(req);
+    const result = await storage.createWeather({
+      date: req.body.date,
+      time: req.body.time,
+      location: req.body.location.trim(),
+      snowTemperatureC: req.body.snowTemperatureC,
+      airTemperatureC: req.body.airTemperatureC,
+      snowHumidityPct: req.body.snowHumidityPct,
+      airHumidityPct: req.body.airHumidityPct,
+      clouds: req.body.clouds ?? null,
+      visibility: req.body.visibility?.trim() || null,
+      wind: req.body.wind?.trim() || null,
+      precipitation: req.body.precipitation?.trim() || null,
+      artificialSnow: req.body.artificialSnow || null,
+      naturalSnow: req.body.naturalSnow || null,
+      grainSize: req.body.grainSize || null,
+      snowHumidityType: req.body.snowHumidityType || null,
+      trackHardness: req.body.trackHardness || null,
+      testQuality: req.body.testQuality ?? null,
+      snowType: req.body.snowType?.trim() || null,
+      createdAt: now,
+      createdById: u.id,
+      createdByName: u.name,
+      groupScope,
+      teamId,
+    });
     res.json(result);
   });
 

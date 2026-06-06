@@ -1246,18 +1246,22 @@ export default function TestDetail() {
                   </div>
                   <div className="mt-1 text-lg font-bold text-sky-700">{weather.airTemperatureC}°C</div>
                 </div>
-                <div className="rounded-xl fs-gradient-amber px-3 py-3 ring-1 ring-amber-500/10" data-testid="text-weather-snow-humidity">
-                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-amber-300/70">
-                    <Droplets className="h-3 w-3" /> Snow humidity
+                {weather.snowHumidityPct != null && (
+                  <div className="rounded-xl fs-gradient-amber px-3 py-3 ring-1 ring-amber-500/10" data-testid="text-weather-snow-humidity">
+                    <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-amber-300/70">
+                      <Droplets className="h-3 w-3" /> Snow humidity
+                    </div>
+                    <div className="mt-1 text-lg font-bold text-amber-300">{weather.snowHumidityPct}%</div>
                   </div>
-                  <div className="mt-1 text-lg font-bold text-amber-300">{weather.snowHumidityPct}%</div>
-                </div>
-                <div className="rounded-xl fs-gradient-violet px-3 py-3 ring-1 ring-violet-500/10" data-testid="text-weather-air-humidity">
-                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-violet-700/70">
-                    <Droplets className="h-3 w-3" /> Air humidity
+                )}
+                {weather.airHumidityPct != null && (
+                  <div className="rounded-xl fs-gradient-violet px-3 py-3 ring-1 ring-violet-500/10" data-testid="text-weather-air-humidity">
+                    <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-violet-700/70">
+                      <Droplets className="h-3 w-3" /> Air humidity
+                    </div>
+                    <div className="mt-1 text-lg font-bold text-violet-700">{weather.airHumidityPct}%rH</div>
                   </div>
-                  <div className="mt-1 text-lg font-bold text-violet-700">{weather.airHumidityPct}%rH</div>
-                </div>
+                )}
               </div>
 
               {(weather.clouds != null || weather.visibility || weather.wind || weather.precipitation) && (

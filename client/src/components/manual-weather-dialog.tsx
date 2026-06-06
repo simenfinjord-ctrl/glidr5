@@ -50,8 +50,8 @@ const schema = z.object({
   location: z.string().min(1),
   snowTemperatureC: z.coerce.number(),
   airTemperatureC: z.coerce.number(),
-  snowHumidityPct: z.coerce.number().min(0).max(100),
-  airHumidityPct: z.coerce.number().min(0).max(100),
+  snowHumidityPct: z.preprocess((v) => v === "" || v == null ? null : Number(v), z.number().min(0).max(100).nullable()),
+  airHumidityPct: z.preprocess((v) => v === "" || v == null ? null : Number(v), z.number().min(0).max(100).nullable()),
   clouds: z.coerce.number().min(0).max(8).nullable().optional(),
   visibility: z.string().optional(),
   wind: z.string().optional(),
@@ -93,8 +93,8 @@ export function ManualWeatherDialog({ open, onClose, onCreated, defaultDate, def
       location: defaultLocation ?? "",
       snowTemperatureC: 0,
       airTemperatureC: 0,
-      snowHumidityPct: 0,
-      airHumidityPct: 0,
+      snowHumidityPct: null,
+      airHumidityPct: null,
       clouds: null,
       visibility: "",
       wind: "",
@@ -117,8 +117,8 @@ export function ManualWeatherDialog({ open, onClose, onCreated, defaultDate, def
         location: defaultLocation ?? "",
         snowTemperatureC: 0,
         airTemperatureC: 0,
-        snowHumidityPct: 0,
-        airHumidityPct: 0,
+        snowHumidityPct: null,
+        airHumidityPct: null,
         clouds: null,
         visibility: "",
         wind: "",
@@ -228,14 +228,28 @@ export function ManualWeatherDialog({ open, onClose, onCreated, defaultDate, def
                 <FormField control={form.control} name="snowHumidityPct" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("weather.snowHumidity")}</FormLabel>
-                    <FormControl><Input type="number" min={0} max={100} step="0.1" {...field} /></FormControl>
+                    <FormControl>
+                      <Input
+                        type="number" min={0} max={100} step="0.1"
+                        placeholder="—"
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="airHumidityPct" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("weather.airHumidity")}</FormLabel>
-                    <FormControl><Input type="number" min={0} max={100} step="0.1" {...field} /></FormControl>
+                    <FormControl>
+                      <Input
+                        type="number" min={0} max={100} step="0.1"
+                        placeholder="—"
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

@@ -521,6 +521,10 @@ export async function registerRoutes(
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS ski_id_skating TEXT;
       ALTER TABLE products ADD COLUMN IF NOT EXISTS archived_at TEXT;
 
+      -- Make humidity fields nullable so manual weather entry can omit them
+      ALTER TABLE daily_weather ALTER COLUMN snow_humidity_pct DROP NOT NULL;
+      ALTER TABLE daily_weather ALTER COLUMN air_humidity_pct DROP NOT NULL;
+
       -- Performance indexes on high-frequency query columns
       CREATE INDEX IF NOT EXISTS tests_team_id_idx          ON tests(team_id);
       CREATE INDEX IF NOT EXISTS tests_created_by_id_idx    ON tests(created_by_id);
@@ -1767,8 +1771,8 @@ export async function registerRoutes(
       location: req.body.location.trim(),
       snowTemperatureC: req.body.snowTemperatureC,
       airTemperatureC: req.body.airTemperatureC,
-      snowHumidityPct: req.body.snowHumidityPct,
-      airHumidityPct: req.body.airHumidityPct,
+      snowHumidityPct: req.body.snowHumidityPct ?? null,
+      airHumidityPct: req.body.airHumidityPct ?? null,
       clouds: req.body.clouds ?? null,
       visibility: req.body.visibility?.trim() || null,
       wind: req.body.wind?.trim() || null,

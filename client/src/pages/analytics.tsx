@@ -39,6 +39,9 @@ type Test = {
   weatherId: number | null;
   groupScope: string;
   createdAt: string;
+  distanceLabel0km: string | null;
+  distanceLabelXkm: string | null;
+  distanceLabels: string | null;
 };
 
 type TestEntry = {
@@ -2800,6 +2803,286 @@ type RacedProductStat = {
   usages: { prep: any; role: "glide" | "structure" | "kick"; weather: Weather | null }[];
 };
 
+// ─── Durability Analysis ─────────────────────────────────────────────────────
+function DurabilityAnalysis({
+  products,
+  tests,
+  allEntries,
+  productsById,
+  testsById,
+}: {
+  products: Product[];
+  tests: Test[];
+  allEntries: TestEntry[];
+  productsById: Map<number, Product>;
+  testsById: Map<number, Test>;
+}) {
+  const [minTests, setMinTests] = React.useState(2);
+  const [sortBy, setSortBy] = React.useState<"name" | "trend" | "count">("trend");
+
+  // Build distance labels for each test
+  function getLabels(test: Test): string[] {
+    if (test.distanceLabels) {
+      try {
+        const p = JSON.parse(test.distanceLabels);
+        if (Array.isArray(p) && p.length > 0) return p;
+      } catch {}
+    }
+    const ls = [test.distanceLabel0km || "0 km"];
+    if (test.distanceLabelXkm) ls.push(test.distanceLabelXkm);
+    return ls;
+  }
+
+  // Get ranks per round from an entry
+  function getRounds(entry: TestEntry, n: number): (number | null)[] {
+    if (entry.results) {
+      try {
+        const p = JSON.parse(entry.results);
+        if (Array.isArray(p)) {
+          return Array.from({ length: n }, (_, i) => p[i]?.rank ?? null);
+        }
+      } catch {}
+    }
+    const res: (number | null)[] = [entry.rank0km ?? null];
+    while (res.length < n) res.push(null);
+    return res;
+  }
+
+  // For each product, aggregate rank at each round position
+  const productStats = useMemo(() => {
+    // Only use multi-round tests
+    const multiRoundTests = tests.filter((t) => {
+      const labels = getLabels(t);
+      return labels.length > 1;
+    });
+
+    // Map: productId → round index → list of ranks
+    const ranksByProduct = new Map<number, Map<number, number[]>>();
+    const labelsByRound = new Map<number, Map<string, number>>(); // round index → label → count
+
+    for (const test of multiRoundTests) {
+      const labels = getLabels(test);
+      const n = labels.length;
+
+      // Collect label names per round
+      labels.forEach((lbl, i) => {
+        if (!labelsByRound.has(i)) labelsByRound.set(i, new Map());
+        const m = labelsByRound.get(i)!;
+        m.set(lbl, (m.get(lbl) ?? 0) + 1);
+      });
+
+      const entries = allEntries.filter((e) => e.testId === test.id);
+      for (const entry of entries) {
+        if (!entry.productId) continue;
+        const rounds = getRounds(entry, n);
+
+        if (!ranksByProduct.has(entry.productId)) ranksByProduct.set(entry.productId, new Map());
+        const productRounds = ranksByProduct.get(entry.productId)!;
+
+        rounds.forEach((rank, i) => {
+          if (rank == null) return;
+          if (!productRounds.has(i)) productRounds.set(i, []);
+          productRounds.get(i)!.push(rank);
+        });
+      }
+    }
+
+    // Number of rounds
+    const maxRound = Math.max(0, ...Array.from(labelsByRound.keys()));
+    const numRounds = maxRound + 1;
+
+    // Most common label per round
+    const roundLabels = Array.from({ length: numRounds }, (_, i) => {
+      const m = labelsByRound.get(i);
+      if (!m || m.size === 0) return `Round ${i + 1}`;
+      return [...m.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    });
+
+    // Build result per product
+    const results: {
+      productId: number;
+      name: string;
+      roundAvgRanks: (number | null)[];
+      count: number;
+      trend: number | null; // last avg - first avg (positive = degrades, negative = improves)
+    }[] = [];
+
+    for (const [productId, productRounds] of ranksByProduct.entries()) {
+      const product = productsById.get(productId);
+      if (!product) continue;
+
+      const roundAvgRanks = Array.from({ length: numRounds }, (_, i) => {
+        const ranks = productRounds.get(i) ?? [];
+        if (ranks.length === 0) return null;
+        return ranks.reduce((a, b) => a + b, 0) / ranks.length;
+      });
+
+      const firstRound = roundAvgRanks[0];
+      const lastRound = roundAvgRanks[numRounds - 1];
+      const trend = firstRound != null && lastRound != null ? lastRound - firstRound : null;
+
+      // Count = number of multi-round test entries for this product
+      const count = productRounds.get(0)?.length ?? 0;
+
+      results.push({
+        productId,
+        name: `${product.brand} ${product.name}`,
+        roundAvgRanks,
+        count,
+        trend,
+      });
+    }
+
+    return { results, roundLabels, numRounds };
+  }, [tests, allEntries, productsById]);
+
+  const multiRoundCount = useMemo(
+    () => tests.filter((t) => { const ls = getLabels(t); return ls.length > 1; }).length,
+    [tests]
+  );
+
+  const filtered = useMemo(() => {
+    return productStats.results
+      .filter((r) => r.count >= minTests)
+      .sort((a, b) => {
+        if (sortBy === "name") return a.name.localeCompare(b.name);
+        if (sortBy === "count") return b.count - a.count;
+        // Sort by trend: most improved first (negative trend = better), then unknown
+        if (a.trend == null && b.trend == null) return 0;
+        if (a.trend == null) return 1;
+        if (b.trend == null) return -1;
+        return a.trend - b.trend;
+      });
+  }, [productStats, minTests, sortBy]);
+
+  if (multiRoundCount === 0) {
+    return (
+      <Card className="fs-card rounded-2xl p-6 text-center text-muted-foreground">
+        <p className="text-sm">No multi-round tests found.</p>
+        <p className="text-xs mt-1">Create tests with multiple distance rounds (e.g. 0 km + 30 km) to see durability analysis.</p>
+      </Card>
+    );
+  }
+
+  const { roundLabels, numRounds } = productStats;
+
+  return (
+    <div className="space-y-4">
+      <Card className="fs-card rounded-2xl p-4 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
+          <div>
+            <h2 className="text-base font-semibold mb-0.5">Durability — Performance over distance</h2>
+            <p className="text-xs text-muted-foreground">
+              Average rank at each distance across {multiRoundCount} multi-round {multiRoundCount === 1 ? "test" : "tests"}.
+              Trend = rank change from start to finish (negative = improves, positive = degrades).
+            </p>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span>Min. appearances:</span>
+              <select
+                value={minTests}
+                onChange={(e) => setMinTests(Number(e.target.value))}
+                className="rounded border border-border bg-background px-1.5 py-0.5 text-xs"
+              >
+                {[1, 2, 3, 5].map((n) => <option key={n} value={n}>{n}+</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span>Sort:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="rounded border border-border bg-background px-1.5 py-0.5 text-xs"
+              >
+                <option value="trend">Best durability first</option>
+                <option value="count">Most tests first</option>
+                <option value="name">Name A–Z</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {filtered.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No products with {minTests}+ multi-round appearances. Try lowering the minimum.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground w-48">Product</th>
+                  {roundLabels.map((lbl, i) => (
+                    <th key={i} className="text-center px-3 py-2 font-medium text-muted-foreground">
+                      {lbl}
+                    </th>
+                  ))}
+                  <th className="text-center px-3 py-2 font-medium text-muted-foreground">Trend</th>
+                  <th className="text-center px-3 py-2 font-medium text-muted-foreground">Tests</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((row) => {
+                  const trendColor = row.trend == null
+                    ? "text-muted-foreground"
+                    : row.trend < -0.3 ? "text-emerald-600 font-semibold"
+                    : row.trend < 0.3 ? "text-muted-foreground"
+                    : row.trend < 1 ? "text-amber-500"
+                    : "text-red-500 font-semibold";
+
+                  return (
+                    <tr key={row.productId} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                      <td className="px-3 py-2 font-medium truncate max-w-[180px]" title={row.name}>
+                        {row.name}
+                      </td>
+                      {row.roundAvgRanks.map((avg, i) => (
+                        <td key={i} className="text-center px-3 py-2">
+                          {avg != null ? (
+                            <span className={cn(
+                              "inline-block rounded-full px-2 py-0.5 text-xs font-medium",
+                              avg <= 1.5 ? "bg-emerald-50 text-emerald-700" :
+                              avg <= 2.5 ? "bg-green-50 text-green-600" :
+                              avg <= 3.5 ? "bg-amber-50 text-amber-600" :
+                              "bg-red-50 text-red-500"
+                            )}>
+                              {avg.toFixed(1)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      ))}
+                      <td className={cn("text-center px-3 py-2 font-medium", trendColor)}>
+                        {row.trend != null ? (
+                          <span title={row.trend < 0 ? "Improves over distance" : row.trend > 0 ? "Degrades over distance" : "Stable"}>
+                            {row.trend > 0 ? "+" : ""}{row.trend.toFixed(2)}
+                          </span>
+                        ) : "—"}
+                      </td>
+                      <td className="text-center px-3 py-2 text-muted-foreground text-xs">
+                        {row.count}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground border-t border-border pt-3">
+          <span>Legend — Trend (rank change start → finish):</span>
+          <span className="text-emerald-600 font-medium">Negative = improves</span>
+          <span className="text-muted-foreground">≈ 0 = stable</span>
+          <span className="text-amber-500">Slightly worse</span>
+          <span className="text-red-500 font-medium">Positive = degrades significantly</span>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 function RacedProductsTab({
   racePreps,
   racedProductStats,
@@ -3246,6 +3529,7 @@ export default function Analytics() {
     { id: "products", label: t("analytics.products"), icon: <Search className="h-4 w-4" /> },
     { id: "compare", label: t("analytics.compare"), icon: <TrendingUp className="h-4 w-4" /> },
     { id: "conditions", label: t("analytics.conditions"), icon: <Snowflake className="h-4 w-4" /> },
+    { id: "durability", label: t("analytics.durability") || "Durability", icon: <TrendingUp className="h-4 w-4 rotate-90" /> },
     { id: "racedproducts", label: "Raced Products", icon: <Trophy className="h-4 w-4" /> },
   ];
 
@@ -3609,6 +3893,18 @@ export default function Analytics() {
               )}
             </Card>
           </>
+        )}
+
+        {activeTab === "durability" && (
+          <ErrorBoundary label="Durability">
+            <DurabilityAnalysis
+              products={products}
+              tests={tests}
+              allEntries={allEntries}
+              productsById={productsById}
+              testsById={testsById}
+            />
+          </ErrorBoundary>
         )}
 
         {activeTab === "racedproducts" && (

@@ -279,7 +279,19 @@ export default function NewTest() {
     }
     if (selected && testSkiSource !== "raceskis" && !duplicateApplied && !duplicateId) {
       const n = selected.numberOfSkis || 8;
-      setRows(makeRows(n, distanceLabels.length));
+      setRows((prev) => {
+        if (n === prev.length) return prev; // same count — keep all data
+        if (n > prev.length) {
+          // Add blank rows at the end, preserve existing
+          const extra = makeRows(n - prev.length, distanceLabels.length).map((r, i) => ({
+            ...r,
+            skiNumber: prev.length + i + 1,
+          }));
+          return [...prev, ...extra];
+        }
+        // Fewer skis — trim from the end
+        return prev.slice(0, n);
+      });
     }
   }, [watchSeriesId, series, form]);
 

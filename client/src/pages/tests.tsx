@@ -937,10 +937,14 @@ export default function Tests() {
       if (effAirMax != null && (!w || (w.airTemperatureC ?? null) == null || w.airTemperatureC! > effAirMax)) return false;
       if (effSnowMin != null && (!w || (w.snowTemperatureC ?? null) == null || w.snowTemperatureC! < effSnowMin)) return false;
       if (effSnowMax != null && (!w || (w.snowTemperatureC ?? null) == null || w.snowTemperatureC! > effSnowMax)) return false;
-      if (filterAirHumMin && (!w || w.airHumidityPct < parseFloat(filterAirHumMin))) return false;
-      if (filterAirHumMax && (!w || w.airHumidityPct > parseFloat(filterAirHumMax))) return false;
-      if (filterSnowHumMin && (!w || w.snowHumidityPct < parseFloat(filterSnowHumMin))) return false;
-      if (filterSnowHumMax && (!w || w.snowHumidityPct > parseFloat(filterSnowHumMax))) return false;
+      // Humidity + cloud — auto-swap inverted ranges
+      const [effAirHumMin, effAirHumMax] = (() => { const a = filterAirHumMin ? parseFloat(filterAirHumMin) : null, b = filterAirHumMax ? parseFloat(filterAirHumMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
+      const [effSnowHumMin, effSnowHumMax] = (() => { const a = filterSnowHumMin ? parseFloat(filterSnowHumMin) : null, b = filterSnowHumMax ? parseFloat(filterSnowHumMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
+      const [effCloudMin, effCloudMax] = (() => { const a = filterCloudMin !== "" ? parseFloat(filterCloudMin) : null, b = filterCloudMax !== "" ? parseFloat(filterCloudMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
+      if (effAirHumMin != null && (!w || (w.airHumidityPct ?? null) == null || w.airHumidityPct! < effAirHumMin)) return false;
+      if (effAirHumMax != null && (!w || (w.airHumidityPct ?? null) == null || w.airHumidityPct! > effAirHumMax)) return false;
+      if (effSnowHumMin != null && (!w || (w.snowHumidityPct ?? null) == null || w.snowHumidityPct! < effSnowHumMin)) return false;
+      if (effSnowHumMax != null && (!w || (w.snowHumidityPct ?? null) == null || w.snowHumidityPct! > effSnowHumMax)) return false;
       if (filterTrackHardness && !(w?.trackHardness ?? "").toLowerCase().includes(filterTrackHardness.toLowerCase())) return false;
       if (filterSnowHumidityType && !(w?.snowHumidityType ?? "").toLowerCase().includes(filterSnowHumidityType.toLowerCase())) return false;
       if (filterGrainSize && !(w?.grainSize ?? "").toLowerCase().includes(filterGrainSize.toLowerCase())) return false;
@@ -949,8 +953,8 @@ export default function Tests() {
       if (filterPrecipitation && !(w?.precipitation ?? "").toLowerCase().includes(filterPrecipitation.toLowerCase())) return false;
       if (filterWind && !(w?.wind ?? "").toLowerCase().includes(filterWind.toLowerCase())) return false;
       if (filterVisibility && !(w?.visibility ?? "").toLowerCase().includes(filterVisibility.toLowerCase())) return false;
-      if (filterCloudMin !== "" && (!w || (w.clouds ?? 999) < parseFloat(filterCloudMin))) return false;
-      if (filterCloudMax !== "" && (!w || (w.clouds ?? -999) > parseFloat(filterCloudMax))) return false;
+      if (effCloudMin != null && (!w || (w.clouds ?? 999) < effCloudMin)) return false;
+      if (effCloudMax != null && (!w || (w.clouds ?? -999) > effCloudMax)) return false;
 
       return true;
     });

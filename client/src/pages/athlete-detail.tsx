@@ -4069,6 +4069,9 @@ function SkiSuggestionsSection({
       a != null && b != null && a > b ? [b, a] : [a, b];
     const [effSnowMin, effSnowMax] = autoSwap(snowMin, snowMax);
     const [effAirMin, effAirMax] = autoSwap(airMin, airMax);
+    const [effAhMin, effAhMax] = autoSwap(ahMin, ahMax);
+    const [effShMin, effShMax] = autoSwap(shMin, shMax);
+    const [effClMin, effClMax] = autoSwap(clMin, clMax);
 
     // Find tests whose weather matches ALL set filters
     const matchingTests = disciplineTests.filter((test) => {
@@ -4079,10 +4082,10 @@ function SkiSuggestionsSection({
       if (effSnowMax != null && (w.snowTemperatureC == null || w.snowTemperatureC > effSnowMax)) return false;
       if (effAirMin != null && (w.airTemperatureC == null || w.airTemperatureC < effAirMin)) return false;
       if (effAirMax != null && (w.airTemperatureC == null || w.airTemperatureC > effAirMax)) return false;
-      if (ahMin != null && (w.airHumidityPct == null || w.airHumidityPct < ahMin)) return false;
-      if (ahMax != null && (w.airHumidityPct == null || w.airHumidityPct > ahMax)) return false;
-      if (shMin != null && (w.snowHumidityPct == null || w.snowHumidityPct < shMin)) return false;
-      if (shMax != null && (w.snowHumidityPct == null || w.snowHumidityPct > shMax)) return false;
+      if (effAhMin != null && (w.airHumidityPct == null || w.airHumidityPct < effAhMin)) return false;
+      if (effAhMax != null && (w.airHumidityPct == null || w.airHumidityPct > effAhMax)) return false;
+      if (effShMin != null && (w.snowHumidityPct == null || w.snowHumidityPct < effShMin)) return false;
+      if (effShMax != null && (w.snowHumidityPct == null || w.snowHumidityPct > effShMax)) return false;
       if (sfSnowType && !(w.snowType ?? "").toLowerCase().includes(sfSnowType.toLowerCase())) return false;
       if (sfTrackHardness && !(w.trackHardness ?? "").toLowerCase().includes(sfTrackHardness.toLowerCase())) return false;
       if (sfArtSnow && !(w.artificialSnow ?? "").toLowerCase().includes(sfArtSnow.toLowerCase())) return false;
@@ -4092,8 +4095,8 @@ function SkiSuggestionsSection({
       if (sfPrecip && !(w.precipitation ?? "").toLowerCase().includes(sfPrecip.toLowerCase())) return false;
       if (sfWind && !(w.wind ?? "").toLowerCase().includes(sfWind.toLowerCase())) return false;
       if (sfVisibility && !(w.visibility ?? "").toLowerCase().includes(sfVisibility.toLowerCase())) return false;
-      if (clMin != null && (w.clouds == null || w.clouds < clMin)) return false;
-      if (clMax != null && (w.clouds == null || w.clouds > clMax)) return false;
+      if (effClMin != null && (w.clouds == null || w.clouds < effClMin)) return false;
+      if (effClMax != null && (w.clouds == null || w.clouds > effClMax)) return false;
       return true;
     });
 

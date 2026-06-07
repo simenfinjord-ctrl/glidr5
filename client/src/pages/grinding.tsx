@@ -1537,15 +1537,18 @@ export default function Grinding() {
         const airMax = wfAirTempMax !== "" ? parseFloat(wfAirTempMax) : null;
         const snowMin = wfSnowTempMin !== "" ? parseFloat(wfSnowTempMin) : null;
         const snowMax = wfSnowTempMax !== "" ? parseFloat(wfSnowTempMax) : null;
-        const airHumMin = wfAirHumMin !== "" ? parseFloat(wfAirHumMin) : null;
-        const airHumMax = wfAirHumMax !== "" ? parseFloat(wfAirHumMax) : null;
-        const snowHumMin = wfSnowHumMin !== "" ? parseFloat(wfSnowHumMin) : null;
-        const snowHumMax = wfSnowHumMax !== "" ? parseFloat(wfSnowHumMax) : null;
-        const cloudMin = wfCloudMin !== "" ? parseFloat(wfCloudMin) : null;
-        const cloudMax = wfCloudMax !== "" ? parseFloat(wfCloudMax) : null;
-        // For each range: auto-swap if user enters min > max (handles negative temp confusion)
+        const airHumMinRaw = wfAirHumMin !== "" ? parseFloat(wfAirHumMin) : null;
+        const airHumMaxRaw = wfAirHumMax !== "" ? parseFloat(wfAirHumMax) : null;
+        const snowHumMinRaw = wfSnowHumMin !== "" ? parseFloat(wfSnowHumMin) : null;
+        const snowHumMaxRaw = wfSnowHumMax !== "" ? parseFloat(wfSnowHumMax) : null;
+        const cloudMinRaw = wfCloudMin !== "" ? parseFloat(wfCloudMin) : null;
+        const cloudMaxRaw = wfCloudMax !== "" ? parseFloat(wfCloudMax) : null;
+        // Auto-swap all inverted ranges
         const [effAirMin, effAirMax] = airMin != null && airMax != null && airMin > airMax ? [airMax, airMin] : [airMin, airMax];
         const [effSnowMin, effSnowMax] = snowMin != null && snowMax != null && snowMin > snowMax ? [snowMax, snowMin] : [snowMin, snowMax];
+        const [airHumMin, airHumMax] = airHumMinRaw != null && airHumMaxRaw != null && airHumMinRaw > airHumMaxRaw ? [airHumMaxRaw, airHumMinRaw] : [airHumMinRaw, airHumMaxRaw];
+        const [snowHumMin, snowHumMax] = snowHumMinRaw != null && snowHumMaxRaw != null && snowHumMinRaw > snowHumMaxRaw ? [snowHumMaxRaw, snowHumMinRaw] : [snowHumMinRaw, snowHumMaxRaw];
+        const [cloudMin, cloudMax] = cloudMinRaw != null && cloudMaxRaw != null && cloudMinRaw > cloudMaxRaw ? [cloudMaxRaw, cloudMinRaw] : [cloudMinRaw, cloudMaxRaw];
         const air = w.airTemperatureC ?? null;
         const snow = w.snowTemperatureC ?? null;
         if (effAirMin != null && (air == null || air < effAirMin)) return false;

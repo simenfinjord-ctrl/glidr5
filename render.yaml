@@ -18,6 +18,14 @@ services:
         fromDatabase:
           name: glidr-db
           property: connectionString
+      # Vision model for "Add from picture" scanning.
+      # Set this in the Render dashboard (Environment tab) to your OpenAI key.
+      # Without it, scanning falls back to the weaker free Groq model.
+      - key: OPENAI_API_KEY
+        sync: false
+      # Optional free fallback model (console.groq.com)
+      - key: GROQ_API_KEY
+        sync: false
 
 databases:
   - name: glidr-db

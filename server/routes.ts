@@ -6805,9 +6805,10 @@ export async function registerRoutes(
       return res.status(413).json({ message: "Image too large" });
     }
     const groqKey = process.env.GROQ_API_KEY;
-    const openaiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    // Accept a standard OPENAI_API_KEY (e.g. on Render) or the Replit-managed key.
+    const openaiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
     if (!groqKey && !openaiKey) {
-      return res.status(500).json({ message: "No vision model configured (set AI_INTEGRATIONS_OPENAI_API_KEY or GROQ_API_KEY)" });
+      return res.status(500).json({ message: "No vision model configured (set OPENAI_API_KEY or GROQ_API_KEY)" });
     }
 
     // ── Load team's product database for server-side matching ──────────────

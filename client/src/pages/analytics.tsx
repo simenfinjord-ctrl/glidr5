@@ -2804,6 +2804,8 @@ type RacedProductStat = {
 };
 
 // ─── Durability Analysis ─────────────────────────────────────────────────────
+const DURABILITY_CHART_COLORS = ["#10b981","#3b82f6","#f59e0b","#ef4444","#8b5cf6","#f97316"];
+
 function DurabilityAnalysis({
   products,
   tests,
@@ -2819,6 +2821,9 @@ function DurabilityAnalysis({
 }) {
   const [minTests, setMinTests] = React.useState(2);
   const [sortBy, setSortBy] = React.useState<"name" | "trend" | "count">("trend");
+  const [search, setSearch] = React.useState("");
+  const [compareMode, setCompareMode] = React.useState(false);
+  const [selectedIds, setSelectedIds] = React.useState<number[]>([]);
 
   // Build distance labels for each test
   function getLabels(test: Test): string[] {
@@ -2942,8 +2947,10 @@ function DurabilityAnalysis({
   );
 
   const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return productStats.results
       .filter((r) => r.count >= minTests)
+      .filter((r) => !q || r.name.toLowerCase().includes(q))
       .sort((a, b) => {
         if (sortBy === "name") return a.name.localeCompare(b.name);
         if (sortBy === "count") return b.count - a.count;
@@ -2953,7 +2960,43 @@ function DurabilityAnalysis({
         if (b.trend == null) return -1;
         return a.trend - b.trend;
       });
-  }, [productStats, minTests, sortBy]);
+  }, [productStats, minTests, sortBy, search]);
+
+  // Toggle a product in/out of comparison selection (max 6)
+  function toggleSelect(productId: number) {
+    setSelectedIds((prev) => {
+      if (prev.includes(productId)) return prev.filter((id) => id !== productId);
+      if (prev.length >= 6) return prev;
+      return [...prev, productId];
+    });
+  }
+
+  // Chart data: one data point per round label
+  const chartData = useMemo(() => {
+    if (selectedIds.length === 0) return [];
+    const { roundLabels, numRounds } = productStats;
+    return Array.from({ length: numRounds }, (_, i) => {
+      const point: Record<string, string | number | null> = { label: roundLabels[i] };
+      for (const id of selectedIds) {
+        const row = productStats.results.find((r) => r.productId === id);
+        point[String(id)] = row?.roundAvgRanks[i] ?? null;
+      }
+      return point;
+    });
+  }, [selectedIds, productStats]);
+
+  const maxRankInChart = useMemo(() => {
+    let max = 1;
+    for (const id of selectedIds) {
+      const row = productStats.results.find((r) => r.productId === id);
+      if (row) {
+        for (const v of row.roundAvgRanks) {
+          if (v != null && v > max) max = v;
+        }
+      }
+    }
+    return max;
+  }, [selectedIds, productStats]);
 
   if (multiRoundCount === 0) {
     return (
@@ -2968,8 +3011,124 @@ function DurabilityAnalysis({
 
   return (
     <div className="space-y-4">
+      {/* ── Top controls bar ── */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[160px] max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search products…"
+            className="w-full rounded-md border border-border bg-background pl-8 pr-8 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Min appearances */}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span>Min:</span>
+          <select
+            value={minTests}
+            onChange={(e) => setMinTests(Number(e.target.value))}
+            className="rounded border border-border bg-background px-1.5 py-1 text-xs"
+          >
+            {[1, 2, 3, 5].map((n) => <option key={n} value={n}>{n}+</option>)}
+          </select>
+        </div>
+
+        {/* Sort */}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span>Sort:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="rounded border border-border bg-background px-1.5 py-1 text-xs"
+          >
+            <option value="trend">Best durability</option>
+            <option value="count">Most tests</option>
+            <option value="name">Name A–Z</option>
+          </select>
+        </div>
+
+        {/* Compare toggle */}
+        <Button
+          variant={compareMode ? "default" : "outline"}
+          size="sm"
+          className="ml-auto h-7 px-3 text-xs gap-1.5"
+          onClick={() => {
+            setCompareMode((v) => !v);
+            if (compareMode) setSelectedIds([]);
+          }}
+        >
+          <TrendingUp className="h-3.5 w-3.5" />
+          Compare
+          {compareMode && selectedIds.length > 0 && (
+            <span className="ml-1 rounded-full bg-background/20 px-1.5 py-0.5 text-[10px] font-semibold leading-none">
+              {selectedIds.length}
+            </span>
+          )}
+        </Button>
+      </div>
+
+      {/* ── Chart panel (compare mode, ≥1 selected) ── */}
+      {compareMode && selectedIds.length >= 1 && (
+        <Card className="fs-card rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold">Rank over distance</h3>
+            <span className="text-xs text-muted-foreground">Lower rank = better performance</span>
+          </div>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis
+                reversed
+                domain={[0, maxRankInChart + 0.5]}
+                tick={{ fontSize: 11 }}
+                tickFormatter={(v: number) => v.toFixed(1)}
+              />
+              <Tooltip
+                formatter={(value: number, name: string) => {
+                  const row = productStats.results.find((r) => String(r.productId) === name);
+                  return [value != null ? value.toFixed(2) : "—", row?.name ?? name];
+                }}
+                labelFormatter={(label) => `Distance: ${label}`}
+              />
+              <Legend
+                formatter={(value: string) => {
+                  const row = productStats.results.find((r) => String(r.productId) === value);
+                  return row?.name ?? value;
+                }}
+              />
+              {selectedIds.map((id, idx) => (
+                <Line
+                  key={id}
+                  type="monotone"
+                  dataKey={String(id)}
+                  stroke={DURABILITY_CHART_COLORS[idx % DURABILITY_CHART_COLORS.length]}
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                  connectNulls
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
+
+      {/* ── Table card ── */}
       <Card className="fs-card rounded-2xl p-4 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
+        <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
           <div>
             <h2 className="text-base font-semibold mb-0.5">Durability — Performance over distance</h2>
             <p className="text-xs text-muted-foreground">
@@ -2977,44 +3136,23 @@ function DurabilityAnalysis({
               Trend = rank change from start to finish (negative = improves, positive = degrades).
             </p>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>Min. appearances:</span>
-              <select
-                value={minTests}
-                onChange={(e) => setMinTests(Number(e.target.value))}
-                className="rounded border border-border bg-background px-1.5 py-0.5 text-xs"
-              >
-                {[1, 2, 3, 5].map((n) => <option key={n} value={n}>{n}+</option>)}
-              </select>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>Sort:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="rounded border border-border bg-background px-1.5 py-0.5 text-xs"
-              >
-                <option value="trend">Best durability first</option>
-                <option value="count">Most tests first</option>
-                <option value="name">Name A–Z</option>
-              </select>
-            </div>
-          </div>
         </div>
 
         {filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            No products with {minTests}+ multi-round appearances. Try lowering the minimum.
+          <p className="text-sm text-muted-foreground text-center py-6">
+            {search
+              ? `No products matching "${search}" with ${minTests}+ appearances.`
+              : `No products with ${minTests}+ multi-round appearances. Try lowering the minimum.`}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
+                  {compareMode && <th className="w-8 px-2 py-2" />}
                   <th className="text-left px-3 py-2 font-medium text-muted-foreground w-48">Product</th>
                   {roundLabels.map((lbl, i) => (
-                    <th key={i} className="text-center px-3 py-2 font-medium text-muted-foreground">
+                    <th key={i} className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">
                       {lbl}
                     </th>
                   ))}
@@ -3024,17 +3162,58 @@ function DurabilityAnalysis({
               </thead>
               <tbody>
                 {filtered.map((row) => {
-                  const trendColor = row.trend == null
-                    ? "text-muted-foreground"
-                    : row.trend < -0.3 ? "text-emerald-600 font-semibold"
-                    : row.trend < 0.3 ? "text-muted-foreground"
-                    : row.trend < 1 ? "text-amber-500"
-                    : "text-red-500 font-semibold";
+                  const isSelected = selectedIds.includes(row.productId);
+                  const selectedIdx = selectedIds.indexOf(row.productId);
+                  const accentColor = isSelected ? DURABILITY_CHART_COLORS[selectedIdx % DURABILITY_CHART_COLORS.length] : undefined;
+
+                  const trendBadge = (() => {
+                    if (row.trend == null) return <span className="text-muted-foreground">—</span>;
+                    if (row.trend < -0.3) return (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700"
+                        title="Improves over distance">
+                        ▼ {Math.abs(row.trend).toFixed(2)}
+                      </span>
+                    );
+                    if (row.trend < 0.3) return (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                        title="Stable">
+                        → {row.trend.toFixed(2)}
+                      </span>
+                    );
+                    return (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-600"
+                        title="Degrades over distance">
+                        ▲ +{row.trend.toFixed(2)}
+                      </span>
+                    );
+                  })();
 
                   return (
-                    <tr key={row.productId} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                    <tr
+                      key={row.productId}
+                      className={cn(
+                        "border-b border-border/50 transition-colors",
+                        isSelected ? "bg-muted/40" : "hover:bg-muted/20",
+                        compareMode && "cursor-pointer"
+                      )}
+                      style={isSelected && accentColor ? { borderLeft: `3px solid ${accentColor}` } : undefined}
+                      onClick={compareMode ? () => toggleSelect(row.productId) : undefined}
+                    >
+                      {compareMode && (
+                        <td className="px-2 py-2 text-center">
+                          <input
+                            type="checkbox"
+                            readOnly
+                            checked={isSelected}
+                            className="h-3.5 w-3.5 rounded border-border accent-primary"
+                            onClick={(e) => { e.stopPropagation(); toggleSelect(row.productId); }}
+                          />
+                        </td>
+                      )}
                       <td className="px-3 py-2 font-medium truncate max-w-[180px]" title={row.name}>
-                        {row.name}
+                        {isSelected && accentColor ? (
+                          <span style={{ color: accentColor }}>{row.name}</span>
+                        ) : row.name}
                       </td>
                       {row.roundAvgRanks.map((avg, i) => (
                         <td key={i} className="text-center px-3 py-2">
@@ -3053,12 +3232,8 @@ function DurabilityAnalysis({
                           )}
                         </td>
                       ))}
-                      <td className={cn("text-center px-3 py-2 font-medium", trendColor)}>
-                        {row.trend != null ? (
-                          <span title={row.trend < 0 ? "Improves over distance" : row.trend > 0 ? "Degrades over distance" : "Stable"}>
-                            {row.trend > 0 ? "+" : ""}{row.trend.toFixed(2)}
-                          </span>
-                        ) : "—"}
+                      <td className="text-center px-3 py-2">
+                        {trendBadge}
                       </td>
                       <td className="text-center px-3 py-2 text-muted-foreground text-xs">
                         {row.count}
@@ -3071,12 +3246,15 @@ function DurabilityAnalysis({
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground border-t border-border pt-3">
-          <span>Legend — Trend (rank change start → finish):</span>
-          <span className="text-emerald-600 font-medium">Negative = improves</span>
-          <span className="text-muted-foreground">≈ 0 = stable</span>
-          <span className="text-amber-500">Slightly worse</span>
-          <span className="text-red-500 font-medium">Positive = degrades significantly</span>
+        {/* Legend */}
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground border-t border-border pt-3">
+          <span className="font-medium">Trend:</span>
+          <span className="text-emerald-700 font-medium">▼ Negative = improves</span>
+          <span>→ ≈ 0 = stable</span>
+          <span className="text-red-500 font-medium">▲ Positive = degrades</span>
+          {compareMode && (
+            <span className="ml-auto text-muted-foreground">Select up to 6 products to compare</span>
+          )}
         </div>
       </Card>
     </div>

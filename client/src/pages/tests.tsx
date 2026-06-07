@@ -132,15 +132,30 @@ function RankBadge({ rank }: { rank: number | null }) {
 
 // ── Add from picture ─────────────────────────────────────────────────────────
 
-type PictureAnalysis = {
+// A group as returned by the analyze endpoint.
+type PictureGroup = {
+  seriesName: string | null;
   date: string | null;
   location: string | null;
   testType: string | null;
-  testName: string | null;
   notes: string | null;
   weather: Record<string, any> | null;
-  products: Array<{ skiNumber: number; category: string; brand: string; name: string }>;
-  entries: Array<{ skiNumber: number; result0kmCmBehind: number | null; rank0km: number | null; methodology: string; feelingRank: number | null; kickRank: number | null }>;
+  products: Array<{ skiNumber: number; brand: string; name: string; matchedDbIndex?: number | null }>;
+  entries: Array<{ skiNumber: number; methodology: string; results: Array<{ result: number | null; rank: number | null }> }>;
+};
+
+// An editable group held in component state.
+type EditableGroup = {
+  seriesName: string;
+  date: string;
+  location: string;
+  testType: string;
+  testName: string;
+  notes: string;
+  numRounds: number;
+  weather: Record<string, any> | null;
+  products: Array<{ skiNumber: number; brand: string; name: string; category: string }>;
+  entries: Array<{ skiNumber: number; methodology: string; results: Array<number | null>; feelingRank: number | null }>;
 };
 
 function toBase64(file: File): Promise<string> {
@@ -156,6 +171,39 @@ function toBase64(file: File): Promise<string> {
   });
 }
 
+// Map a raw analyze group into an editable group.
+function toEditableGroup(g: PictureGroup): EditableGroup {
+  const entries = (g.entries || []).map((e) => ({
+    skiNumber: e.skiNumber,
+    methodology: e.methodology || "",
+    results: (e.results || []).map((r) => (r?.result ?? null)),
+    feelingRank: null as number | null,
+  }));
+  // Number of rounds = max number of result columns across entries (at least 1).
+  const numRounds = Math.max(1, ...entries.map((e) => e.results.length), 1);
+  // Normalize every entry's results array to numRounds length.
+  for (const e of entries) {
+    while (e.results.length < numRounds) e.results.push(null);
+  }
+  return {
+    seriesName: g.seriesName || "",
+    date: g.date || "",
+    location: g.location || "",
+    testType: g.testType || "Glide",
+    testName: "",
+    notes: g.notes || "",
+    numRounds,
+    weather: g.weather || null,
+    products: (g.products || []).map((p) => ({
+      skiNumber: p.skiNumber,
+      brand: p.brand || "",
+      name: p.name || "",
+      category: "",
+    })),
+    entries,
+  };
+}
+
 function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
@@ -166,44 +214,29 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   type Step = "upload" | "analyzing" | "review" | "creating" | "done" | "error";
   const [step, setStep] = useState<Step>("upload");
   const [dragOver, setDragOver] = useState(false);
-  const [analysis, setAnalysis] = useState<PictureAnalysis | null>(null);
-  const [createdTestId, setCreatedTestId] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
 
-  // Editable fields
-  const [editDate, setEditDate] = useState("");
-  const [editLocation, setEditLocation] = useState("");
-  const [editTestType, setEditTestType] = useState("");
-  const [editTestName, setEditTestName] = useState("");
-  const [editNotes, setEditNotes] = useState("");
-  const [editEntries, setEditEntries] = useState<Array<{
-    skiNumber: number;
-    result0kmCmBehind: number | null;
-    rank0km: number | null;
-    methodology: string;
-    feelingRank: number | null;
-    applications: string[];
-  }>>([]);
-  const [editProducts, setEditProducts] = useState<Array<{
-    skiNumber: number;
-    brand: string;
-    name: string;
-    category: string;
-  }>>([]);
+  // Multi-group editable state
+  const [groups, setGroups] = useState<EditableGroup[]>([]);
+  const [activeGroupIdx, setActiveGroupIdx] = useState(0);
+
+  // Creation progress / results
+  const [createdTestIds, setCreatedTestIds] = useState<number[]>([]);
+  const [creatingProgress, setCreatingProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
 
   function reset() {
     setStep("upload");
-    setAnalysis(null);
-    setCreatedTestId(null);
     setErrorMsg("");
     setDragOver(false);
-    setEditEntries([]);
-    setEditProducts([]);
-    setEditDate("");
-    setEditLocation("");
-    setEditTestType("");
-    setEditTestName("");
-    setEditNotes("");
+    setGroups([]);
+    setActiveGroupIdx(0);
+    setCreatedTestIds([]);
+    setCreatingProgress({ current: 0, total: 0 });
+  }
+
+  // Immutable update of the active group.
+  function updateActiveGroup(updater: (g: EditableGroup) => EditableGroup) {
+    setGroups((prev) => prev.map((g, i) => (i === activeGroupIdx ? updater(g) : g)));
   }
 
   async function processFile(file: File) {
@@ -228,30 +261,15 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         setStep("error");
         return;
       }
-      setAnalysis(data as PictureAnalysis);
-      setEditDate(data.date || "");
-      setEditLocation(data.location || "");
-      setEditTestType(data.testType || "Glide");
-      setEditTestName(data.testName || "");
-      setEditNotes(data.notes || "");
-      setEditEntries((data.entries || []).map((e: any) => {
-        const methodology = e.methodology || "";
-        const applications = methodology ? methodology.split("|") : [];
-        return {
-          skiNumber: e.skiNumber,
-          result0kmCmBehind: e.result0kmCmBehind ?? null,
-          rank0km: e.rank0km ?? null,
-          methodology,
-          feelingRank: e.feelingRank ?? null,
-          applications,
-        };
-      }));
-      setEditProducts((data.products || []).map((p: any) => ({
-        skiNumber: p.skiNumber,
-        brand: p.brand || "",
-        name: p.name || "",
-        category: p.category || "",
-      })));
+      // Server now returns an array of groups; tolerate a single object too.
+      const rawGroups: PictureGroup[] = Array.isArray(data) ? data : (data ? [data] : []);
+      if (rawGroups.length === 0) {
+        setErrorMsg("No test data found in image");
+        setStep("error");
+        return;
+      }
+      setGroups(rawGroups.map(toEditableGroup));
+      setActiveGroupIdx(0);
       setStep("review");
     } catch (e: any) {
       setErrorMsg(e.message || t("tests.unknownError"));
@@ -271,48 +289,74 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     if (file) processFile(file);
   }, []);
 
-  async function handleCreate() {
-    if (!analysis) return;
+  async function handleCreateAll() {
+    if (groups.length === 0) return;
     setStep("creating");
+    setCreatedTestIds([]);
+    const created: number[] = [];
     try {
-      const payload = {
-        ...analysis,
-        date: editDate || analysis.date || new Date().toISOString().slice(0, 10),
-        location: editLocation || analysis.location || "Unknown",
-        testType: editTestType || analysis.testType || "Glide",
-        testName: editTestName || null,
-        notes: editNotes || null,
-        entries: editEntries.map((e) => ({
-          ...e,
-          methodology: e.applications.length > 0 ? e.applications.join("|") : e.methodology,
-        })),
-        products: editProducts,
-      };
-      const res = await fetch("/api/tests/from-picture/create", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setErrorMsg(data.message || t("tests.createError"));
-        setStep("error");
-        return;
+      for (let i = 0; i < groups.length; i++) {
+        setCreatingProgress({ current: i + 1, total: groups.length });
+        const g = groups[i];
+        const distanceLabels =
+          g.numRounds > 1
+            ? Array.from({ length: g.numRounds }, (_, r) => `Round ${r + 1}`)
+            : null;
+        const payload = {
+          seriesName: g.seriesName || null,
+          date: g.date || new Date().toISOString().slice(0, 10),
+          location: g.location || "Unknown",
+          testType: g.testType || "Glide",
+          testName: g.testName || null,
+          notes: g.notes || null,
+          weather: g.weather || null,
+          distanceLabels,
+          products: g.products,
+          entries: g.entries.map((e) => ({
+            skiNumber: e.skiNumber,
+            methodology: e.methodology,
+            results: e.results.map((r) => ({ result: r ?? null, rank: null as number | null })),
+            feelingRank: e.feelingRank,
+          })),
+        };
+        const res = await fetch("/api/tests/from-picture/create", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const base = data.message || t("tests.createError");
+          setErrorMsg(
+            created.length > 0
+              ? `${base} (${created.length} of ${groups.length} test(s) created successfully)`
+              : base
+          );
+          setStep("error");
+          return;
+        }
+        created.push(data.testId);
       }
-      setCreatedTestId(data.testId);
+      setCreatedTestIds(created);
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       queryClient.invalidateQueries({ queryKey: ["/api/series"] });
       setStep("done");
     } catch (e: any) {
-      setErrorMsg(e.message || t("tests.unknownError"));
+      const base = e.message || t("tests.unknownError");
+      setErrorMsg(
+        created.length > 0
+          ? `${base} (${created.length} of ${groups.length} test(s) created successfully)`
+          : base
+      );
       setStep("error");
     }
   }
 
-  const weatherFields = analysis?.weather
-    ? Object.entries(analysis.weather).filter(([, v]) => v != null && v !== "")
+  const activeGroup: EditableGroup | null = groups[activeGroupIdx] ?? null;
+  const weatherFields = activeGroup?.weather
+    ? Object.entries(activeGroup.weather).filter(([, v]) => v != null && v !== "")
     : [];
 
   return (
@@ -377,8 +421,34 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         )}
 
         {/* ── Review step ── */}
-        {step === "review" && analysis && (
+        {step === "review" && activeGroup && (
           <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto pr-1">
+            {/* Group tabs (multi-group only) */}
+            {groups.length > 1 && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex flex-wrap gap-1.5">
+                  {groups.map((g, gi) => (
+                    <button
+                      key={gi}
+                      type="button"
+                      onClick={() => setActiveGroupIdx(gi)}
+                      className={cn(
+                        "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                        gi === activeGroupIdx
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/70"
+                      )}
+                    >
+                      {g.seriesName || `Group ${gi + 1}`}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {groups.length} groups detected — review each, then create all.
+                </p>
+              </div>
+            )}
+
             <p className="text-sm text-muted-foreground">Review and edit the extracted data before saving.</p>
 
             {/* Basic info */}
@@ -387,11 +457,11 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-muted-foreground">Date</label>
-                  <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-8 text-sm mt-0.5" />
+                  <Input type="date" value={activeGroup.date} onChange={(e) => updateActiveGroup((g) => ({ ...g, date: e.target.value }))} className="h-8 text-sm mt-0.5" />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Type</label>
-                  <Select value={editTestType} onValueChange={setEditTestType}>
+                  <Select value={activeGroup.testType} onValueChange={(v) => updateActiveGroup((g) => ({ ...g, testType: v }))}>
                     <SelectTrigger className="h-8 text-sm mt-0.5">
                       <SelectValue />
                     </SelectTrigger>
@@ -401,24 +471,23 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                       <SelectItem value="Classic">{t("tests.classic")}</SelectItem>
                       <SelectItem value="Skating">{t("tests.skating")}</SelectItem>
                       <SelectItem value="Double Poling">{t("tests.doublePole")}</SelectItem>
+                      <SelectItem value="Grind">Grind</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Location</label>
-                <Input value={editLocation} onChange={(e) => setEditLocation(e.target.value)} className="h-8 text-sm mt-0.5" />
+                <Input value={activeGroup.location} onChange={(e) => updateActiveGroup((g) => ({ ...g, location: e.target.value }))} className="h-8 text-sm mt-0.5" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Test name (optional)</label>
-                <Input value={editTestName} onChange={(e) => setEditTestName(e.target.value)} placeholder="e.g. Morning glide test" className="h-8 text-sm mt-0.5" />
+                <Input value={activeGroup.testName} onChange={(e) => updateActiveGroup((g) => ({ ...g, testName: e.target.value }))} placeholder="e.g. Morning glide test" className="h-8 text-sm mt-0.5" />
               </div>
-              {editNotes && (
-                <div>
-                  <label className="text-xs text-muted-foreground">Notes</label>
-                  <p className="text-xs text-foreground mt-0.5 leading-relaxed">{editNotes}</p>
-                </div>
-              )}
+              <div>
+                <label className="text-xs text-muted-foreground">Notes (optional)</label>
+                <Input value={activeGroup.notes} onChange={(e) => updateActiveGroup((g) => ({ ...g, notes: e.target.value }))} className="h-8 text-sm mt-0.5" />
+              </div>
             </div>
 
             {/* Weather */}
@@ -439,23 +508,23 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             <div className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("tests.products", { n: editProducts.length })}
+                  {t("tests.products", { n: activeGroup.products.length })}
                 </p>
                 <button
                   type="button"
                   className="text-xs text-primary hover:underline"
-                  onClick={() => setEditProducts((prev) => [...prev, { skiNumber: 0, brand: "", name: "", category: "" }])}
+                  onClick={() => updateActiveGroup((g) => ({ ...g, products: [...g.products, { skiNumber: 0, brand: "", name: "", category: "" }] }))}
                 >
                   + {t("tests.addProduct")}
                 </button>
               </div>
-              {editProducts.length === 0 ? (
+              {activeGroup.products.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic">{t("tests.noProducts")}</p>
               ) : (
                 <div className="flex flex-col gap-1.5">
                   {(() => {
                     // Group products by skiNumber; preserve original indices for editing
-                    const indexed = editProducts.map((p, i) => ({ ...p, _i: i }));
+                    const indexed = activeGroup.products.map((p, i) => ({ ...p, _i: i }));
                     const grouped = new Map<number, typeof indexed>();
                     for (const p of indexed) {
                       const key = p.skiNumber || 0;
@@ -472,9 +541,10 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                           value={skiNum || ""}
                           onChange={(e) => {
                             const n = parseInt(e.target.value) || 0;
-                            setEditProducts((prev) =>
-                              prev.map((r, j) => group.some((g) => g._i === j) ? { ...r, skiNumber: n } : r)
-                            );
+                            updateActiveGroup((g) => ({
+                              ...g,
+                              products: g.products.map((r, j) => group.some((gp) => gp._i === j) ? { ...r, skiNumber: n } : r),
+                            }));
                           }}
                           placeholder="#"
                           className="h-7 w-12 rounded border border-input bg-background px-1.5 text-xs text-center flex-shrink-0"
@@ -488,20 +558,20 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                             <input
                               type="text"
                               value={p.brand}
-                              onChange={(e) => setEditProducts((prev) => prev.map((r, j) => j === p._i ? { ...r, brand: e.target.value } : r))}
+                              onChange={(e) => updateActiveGroup((g) => ({ ...g, products: g.products.map((r, j) => j === p._i ? { ...r, brand: e.target.value } : r) }))}
                               placeholder={t("tests.brandPlaceholder")}
                               className="h-7 w-20 rounded border border-input bg-background px-1.5 text-xs flex-shrink-0"
                             />
                             <input
                               type="text"
                               value={p.name}
-                              onChange={(e) => setEditProducts((prev) => prev.map((r, j) => j === p._i ? { ...r, name: e.target.value } : r))}
+                              onChange={(e) => updateActiveGroup((g) => ({ ...g, products: g.products.map((r, j) => j === p._i ? { ...r, name: e.target.value } : r) }))}
                               placeholder={t("tests.namePlaceholder")}
                               className="h-7 w-24 rounded border border-input bg-background px-1.5 text-xs flex-shrink-0"
                             />
                             <button
                               type="button"
-                              onClick={() => setEditProducts((prev) => prev.filter((_, j) => j !== p._i))}
+                              onClick={() => updateActiveGroup((g) => ({ ...g, products: g.products.filter((_, j) => j !== p._i) }))}
                               className="h-7 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-muted text-sm flex-shrink-0"
                             >
                               ×
@@ -519,85 +589,106 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             <div className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Results ({editEntries.length} entries)
+                  Results ({activeGroup.entries.length} entries)
                 </p>
                 <button
                   type="button"
                   className="text-xs text-primary hover:underline"
-                  onClick={() => setEditEntries((prev) => [...prev, { skiNumber: 0, result0kmCmBehind: null, rank0km: null, methodology: "", feelingRank: null, applications: [] }])}
+                  onClick={() => updateActiveGroup((g) => ({
+                    ...g,
+                    entries: [...g.entries, { skiNumber: 0, methodology: "", results: Array.from({ length: g.numRounds }, () => null), feelingRank: null }],
+                  }))}
                 >
                   + Add row
                 </button>
               </div>
-              {editEntries.length === 0 ? (
+              {activeGroup.entries.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic">No entries</p>
               ) : (
-                <div className="flex flex-col gap-2">
-                  <div className="grid gap-1 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold" style={{ gridTemplateColumns: "2rem 3rem 3rem 3rem 1.5rem" }}>
-                    <span>{t("tests.skiCol")}</span><span>{t("tests.resultCol")}</span><span>{t("common.rank")}</span><span>{t("tests.feelCol")}</span><span></span>
-                  </div>
-                  {editEntries.map((e, i) => {
-                    const skiProducts = editProducts.filter((p) => p.skiNumber === e.skiNumber);
-                    return (
-                      <div key={i} className="flex flex-col gap-1">
-                        <div className="grid gap-1 items-center" style={{ gridTemplateColumns: "2rem 3rem 3rem 3rem 1.5rem" }}>
-                          <input
-                            type="number"
-                            value={e.skiNumber || ""}
-                            onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, skiNumber: parseInt(ev.target.value) || 0 } : r))}
-                            className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
-                          />
-                          <input
-                            type="number"
-                            value={e.result0kmCmBehind ?? ""}
-                            onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, result0kmCmBehind: ev.target.value !== "" ? parseFloat(ev.target.value) : null } : r))}
-                            className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
-                          />
-                          <input
-                            type="number"
-                            value={e.rank0km ?? ""}
-                            onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, rank0km: ev.target.value !== "" ? parseInt(ev.target.value) : null } : r))}
-                            className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
-                          />
-                          <input
-                            type="number"
-                            value={e.feelingRank ?? ""}
-                            onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => j === i ? { ...r, feelingRank: ev.target.value !== "" ? parseInt(ev.target.value) : null } : r))}
-                            className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setEditEntries((prev) => prev.filter((_, j) => j !== i))}
-                            className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-muted text-sm"
-                          >
-                            ×
-                          </button>
-                        </div>
-                        {skiProducts.length > 0 && (
-                          <div className="flex flex-col gap-1 pl-2">
-                            {skiProducts.map((p, pi) => (
-                              <div key={pi} className="flex items-center gap-1.5">
-                                <span className="text-[10px] text-muted-foreground min-w-0 truncate max-w-[80px]">{p.brand || "Product"}:</span>
+                (() => {
+                  const numRounds = activeGroup.numRounds;
+                  const resultColsTemplate = Array.from({ length: numRounds }, () => "3rem").join(" ");
+                  const gridTemplate = `2rem ${resultColsTemplate} 3rem 1.5rem`;
+                  return (
+                    <div className="flex flex-col gap-2">
+                      <div className="grid gap-1 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold" style={{ gridTemplateColumns: gridTemplate }}>
+                        <span>{t("tests.skiCol")}</span>
+                        {Array.from({ length: numRounds }, (_, r) => (
+                          <span key={r}>{numRounds > 1 ? `R${r + 1}` : t("tests.resultCol")}</span>
+                        ))}
+                        <span>{t("tests.feelCol")}</span>
+                        <span></span>
+                      </div>
+                      {activeGroup.entries.map((e, i) => {
+                        const skiProducts = activeGroup.products.filter((p) => p.skiNumber === e.skiNumber);
+                        return (
+                          <div key={i} className="flex flex-col gap-1">
+                            <div className="grid gap-1 items-center" style={{ gridTemplateColumns: gridTemplate }}>
+                              <input
+                                type="number"
+                                value={e.skiNumber || ""}
+                                onChange={(ev) => updateActiveGroup((g) => ({ ...g, entries: g.entries.map((r, j) => j === i ? { ...r, skiNumber: parseInt(ev.target.value) || 0 } : r) }))}
+                                className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
+                              />
+                              {Array.from({ length: numRounds }, (_, r) => (
+                                <input
+                                  key={r}
+                                  type="number"
+                                  value={e.results[r] ?? ""}
+                                  onChange={(ev) => updateActiveGroup((g) => ({
+                                    ...g,
+                                    entries: g.entries.map((row, j) => {
+                                      if (j !== i) return row;
+                                      const results = [...row.results];
+                                      while (results.length < numRounds) results.push(null);
+                                      results[r] = ev.target.value !== "" ? parseFloat(ev.target.value) : null;
+                                      return { ...row, results };
+                                    }),
+                                  }))}
+                                  className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
+                                />
+                              ))}
+                              <input
+                                type="number"
+                                value={e.feelingRank ?? ""}
+                                onChange={(ev) => updateActiveGroup((g) => ({ ...g, entries: g.entries.map((r, j) => j === i ? { ...r, feelingRank: ev.target.value !== "" ? parseInt(ev.target.value) : null } : r) }))}
+                                className="h-7 w-full rounded border border-input bg-background px-1 text-xs text-center"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => updateActiveGroup((g) => ({ ...g, entries: g.entries.filter((_, j) => j !== i) }))}
+                                className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-muted text-sm"
+                              >
+                                ×
+                              </button>
+                            </div>
+                            {skiProducts.length > 0 && (
+                              <div className="flex items-center gap-1.5 pl-2 flex-wrap">
+                                {/* Products on this ski — read-only chips */}
+                                {skiProducts.map((p, pi) => (
+                                  <Fragment key={pi}>
+                                    {pi > 0 && <span className="text-[10px] font-bold text-muted-foreground">+</span>}
+                                    <span className="rounded bg-muted/60 px-1.5 py-0.5 text-[10px] text-foreground/80 truncate max-w-[120px]">
+                                      {[p.brand, p.name].filter(Boolean).join(" ") || "Product"}
+                                    </span>
+                                  </Fragment>
+                                ))}
+                                {/* Single application/temperature input per ski pair */}
                                 <input
                                   type="text"
-                                  value={e.applications[pi] ?? ""}
-                                  onChange={(ev) => setEditEntries((prev) => prev.map((r, j) => {
-                                    if (j !== i) return r;
-                                    const apps = [...r.applications];
-                                    apps[pi] = ev.target.value;
-                                    return { ...r, applications: apps };
-                                  }))}
+                                  value={e.methodology}
+                                  onChange={(ev) => updateActiveGroup((g) => ({ ...g, entries: g.entries.map((r, j) => j === i ? { ...r, methodology: ev.target.value } : r) }))}
                                   placeholder={t("tests.appInputPlaceholder")}
-                                  className="h-6 flex-1 rounded border border-input bg-background px-1.5 text-xs"
+                                  className="h-6 flex-1 min-w-[60px] rounded border border-input bg-background px-1.5 text-xs"
                                 />
                               </div>
-                            ))}
+                            )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()
               )}
             </div>
 
@@ -605,8 +696,8 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               <Button variant="outline" className="flex-1" onClick={reset}>
                 Re-upload
               </Button>
-              <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={handleCreate}>
-                Create test
+              <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={handleCreateAll}>
+                {groups.length > 1 ? "Create all" : "Create test"}
               </Button>
             </div>
           </div>
@@ -616,25 +707,42 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         {step === "creating" && (
           <div className="flex flex-col items-center gap-4 py-8">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-sm font-medium">Creating test…</p>
+            <p className="text-sm font-medium">
+              {creatingProgress.total > 1
+                ? `Creating test ${creatingProgress.current} of ${creatingProgress.total}…`
+                : "Creating test…"}
+            </p>
           </div>
         )}
 
         {/* ── Done step ── */}
-        {step === "done" && createdTestId && (
+        {step === "done" && createdTestIds.length > 0 && (
           <div className="flex flex-col items-center gap-4 py-6">
             <CheckCircle2 className="h-12 w-12 text-green-500" />
-            <p className="text-base font-semibold">Test created!</p>
+            <p className="text-base font-semibold">
+              {createdTestIds.length === 1
+                ? "Test created!"
+                : `${createdTestIds.length} tests created!`}
+            </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => { reset(); onOpenChange(false); }}>
                 Close
               </Button>
-              <Button
-                className="bg-green-600 hover:bg-green-700 text-white"
-                onClick={() => { reset(); onOpenChange(false); navigate(`/tests/${createdTestId}`); }}
-              >
-                View test
-              </Button>
+              {createdTestIds.length === 1 ? (
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => { const id = createdTestIds[0]; reset(); onOpenChange(false); navigate(`/tests/${id}`); }}
+                >
+                  View test
+                </Button>
+              ) : (
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => { reset(); onOpenChange(false); navigate(`/tests`); }}
+                >
+                  View tests
+                </Button>
+              )}
             </div>
           </div>
         )}

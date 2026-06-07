@@ -6808,53 +6808,92 @@ export async function registerRoutes(
     if (!apiKey) {
       return res.status(500).json({ message: "GROQ_API_KEY not configured on server. Get a free key at console.groq.com" });
     }
-    const prompt = `You are analyzing an image of a ski test result sheet or similar test document. Extract all relevant data and return ONLY raw JSON — no markdown, no explanation, no code block.
 
-Return a JSON object with this exact structure (use null for missing values):
+    // ── Load team's product list to include in the prompt ──────────────────
+    let productListForPrompt = "";
+    let dbProducts: { id: number; brand: string; name: string }[] = [];
+    try {
+      const teamIdForMatch = getActiveTeamId(req);
+      const { pool } = await import("./db");
+      const dbRows = await (pool as any).query(
+        `SELECT id, brand, name FROM products WHERE team_id = $1 ORDER BY brand, name`,
+        [teamIdForMatch]
+      );
+      dbProducts = dbRows.rows;
+      if (dbProducts.length > 0) {
+        productListForPrompt = `\n\nTEAM PRODUCT DATABASE (match product names from the image against these — use the exact brand and name from this list when you find a match):\n` +
+          dbProducts.map((p, i) => `${i + 1}. ${p.brand} ${p.name}`).join("\n");
+      }
+    } catch (_) { /* best-effort */ }
+
+    const prompt = `You are analyzing a handwritten ski wax test result sheet. Extract all data and return ONLY raw JSON — no markdown, no explanation, no code block.
+
+=== NOTATION GUIDE (read carefully) ===
+
+DATE: Often written as DD/MM or DD/MM/YY at the top. Convert to YYYY-MM-DD. If year is missing, use the most recent plausible year.
+
+LOCATION: Usually a city/resort name near the date (e.g. "Bad Gastein", "Beitostølen", "Ruka").
+
+WEATHER: May appear as abbreviations near the date, e.g. "L: -10" = air temp -10°C, "S: -8" = snow temp -8°C, "22%" = snow humidity. The user enters weather manually so extract only what is clearly visible.
+
+SKI GROUPS: The sheet may be divided into groups like "Blå 1", "Blå 2", "Rød" etc. — these are different test ski series. Each group is a separate test.
+
+PRODUCT NOTATION PER SKI PAIR:
+- The number at the START of a line is the ski pair number (1, 2, 3 …)
+- After the ski number comes the product name, then often a temperature in °C (e.g. "LDR White 180°" = product "LDR White" applied at 180°C — put the temperature in methodology as "180°C")
+- "+" means TWO SEPARATE products on the SAME ski pair. List each as a separate entry with the same skiNumber.
+- "–ii–" or "--ii--" or "—ii—" means "same product(s) as the ski pair directly above this one". Copy the product(s) from the previous ski pair. Only the part AFTER a "+" is different.
+- Example: ski 3 is "–ii– + FFC 34 m/ull" → same base product as ski 2, PLUS a second product "FFC 34 m/ull"
+
+RESULTS:
+- Numbers on the RIGHT side of the line are test results in cm (cm behind the leader). 0 = winner.
+- If there are TWO columns of results, that means TWO rounds of testing. Return both in the "results" array.
+- If there is only ONE column, return a single entry in results.
+
+PRODUCT MATCHING: Match abbreviated product names to the team database provided. E.g. "LDR White" → "Vauhti Race LDR White Powder", "Date Cold" → match best product with "Date" and "Cold" in name, "SIX" → "Vauhti SIX", "WM25" → product containing "WM25". Use the EXACT brand and name from the database when you find a match (score ≥ 0.4 token overlap).${productListForPrompt}
+
+=== OUTPUT FORMAT ===
+
+Return an array — one object per ski GROUP (series). Each object:
 {
+  "seriesName": "Blå 1" or "Rød" or null,
   "date": "YYYY-MM-DD or null",
   "location": "location name or null",
-  "testType": "Glide" or "Structure" or "Classic" or "Skating" or "Double Poling" or null,
-  "testName": "test name or null",
+  "testType": "Glide" or "Structure" or "Classic" or "Skating" or "Double Poling" or "Grind" or null,
   "notes": "any notes or null",
   "weather": {
     "airTemperatureC": number or null,
     "snowTemperatureC": number or null,
-    "airHumidityPct": number 0-100 or null,
     "snowHumidityPct": number 0-100 or null,
-    "snowType": "string or null",
-    "artificialSnow": "string or null",
-    "naturalSnow": "string or null",
-    "grainSize": "string or null",
-    "snowHumidityType": "dry" or "moist" or "wet" or null,
-    "trackHardness": "soft" or "medium" or "hard" or null,
-    "testQuality": integer 1-5 or null,
-    "wind": "string or null",
-    "clouds": integer 0-100 or null,
-    "precipitation": "string or null",
-    "visibility": "string or null"
+    "airHumidityPct": number 0-100 or null
   },
   "products": [
     {
       "skiNumber": integer,
-      "category": "Ski" or "Wax" or "Binding" or "Boot" or "Other",
-      "brand": "brand name",
-      "name": "product/model name"
+      "brand": "exact brand from database or best guess",
+      "name": "exact product name from database or best guess",
+      "matchedDbIndex": integer (1-based index from the product list above) or null
     }
   ],
-
-IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rode Cera HF + Rex LP" or "Swix HF7 / Toko Red"), list each as a SEPARATE object in the products array with the SAME skiNumber. Do NOT merge them into a single product name with "+" or "/". Example: ski 3 has "Rode Cera HF + Rex HF" → two entries: {skiNumber:3, brand:"Rode", name:"Cera HF"} and {skiNumber:3, brand:"Rex", name:"HF"}.
   "entries": [
     {
       "skiNumber": integer,
-      "result0kmCmBehind": number or null,
-      "rank0km": integer or null,
-      "methodology": "string or empty string",
-      "feelingRank": integer or null,
-      "kickRank": integer or null
+      "methodology": "application temperature e.g. '180°C' or empty string",
+      "results": [
+        { "result": number or null, "rank": null }
+      ]
     }
   ]
-}`;
+}
+
+IMPORTANT:
+- Return a JSON ARRAY (multiple groups possible). If only one group, return array with one element.
+- ranks in results should be null — the app calculates ranks automatically.
+- If a ski pair has "+ product", list the additional product as a second entry in "products" with the same skiNumber.
+- "–ii–" lines: look at the previous ski pair's products and copy them, then add any extra product after "+".
+- results array length = number of columns on the right side (1 or 2 usually).
+- Weather is shared across all groups on the same sheet unless written separately per group.`;
+
     try {
       const response = await fetch(
         "https://api.groq.com/openai/v1/chat/completions",
@@ -6879,7 +6918,7 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
               },
             ],
             temperature: 0,
-            max_tokens: 4096,
+            max_tokens: 6000,
           }),
         }
       );
@@ -6890,37 +6929,35 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
       const data = await response.json() as any;
       const text = (data.choices?.[0]?.message?.content || "").trim();
       try {
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+        // Accept both array and single object response
+        const jsonMatch = text.match(/[\[{][\s\S]*[\]}]/);
+        let parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+        if (!Array.isArray(parsed)) parsed = [parsed];
 
-        // ── Fuzzy-match AI product names against the team's product database ──
-        // When handwriting is unclear the AI may misspell brand/name. We compare
-        // the combined "brand name" string against every DB product and substitute
-        // the best match when the token-overlap score is ≥ 0.5.
-        try {
-          const teamIdForMatch = getActiveTeamId(req);
-          const { pool } = await import("./db");
-          const dbRows = await (pool as any).query(
-            `SELECT id, brand, name FROM products WHERE team_id = $1`,
-            [teamIdForMatch]
-          );
-          const dbProducts: { id: number; brand: string; name: string }[] = dbRows.rows;
+        // ── Fuzzy-match any unmatched product names against the team DB ──────
+        // This is a fallback for products the AI couldn't match via the prompt.
+        if (dbProducts.length > 0) {
+          const norm = (s: string) =>
+            s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+          const tokenSet = (s: string): Set<string> =>
+            new Set(norm(s).split(" ").filter(Boolean));
+          const fuzzyScore = (a: string, b: string): number => {
+            const ta = tokenSet(a); const tb = tokenSet(b);
+            if (ta.size === 0 || tb.size === 0) return 0;
+            let hits = 0;
+            for (const t of ta) if (tb.has(t)) hits++;
+            return hits / Math.max(ta.size, tb.size);
+          };
 
-          if (dbProducts.length > 0 && Array.isArray(parsed.products)) {
-            const norm = (s: string) =>
-              s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-            const tokenSet = (s: string): Set<string> =>
-              new Set(norm(s).split(" ").filter(Boolean));
-            const fuzzyScore = (a: string, b: string): number => {
-              const ta = tokenSet(a);
-              const tb = tokenSet(b);
-              if (ta.size === 0 || tb.size === 0) return 0;
-              let hits = 0;
-              for (const t of ta) if (tb.has(t)) hits++;
-              return hits / Math.max(ta.size, tb.size);
-            };
-
-            parsed.products = (parsed.products as any[]).map((p: any) => {
+          for (const group of parsed) {
+            if (!Array.isArray(group.products)) continue;
+            group.products = group.products.map((p: any) => {
+              // If AI already matched via matchedDbIndex, use it
+              if (p.matchedDbIndex && dbProducts[p.matchedDbIndex - 1]) {
+                const db = dbProducts[p.matchedDbIndex - 1];
+                return { ...p, brand: db.brand, name: db.name };
+              }
+              // Otherwise fuzzy-match
               const aiStr = `${p.brand || ""} ${p.name || ""}`.trim();
               let bestScore = 0;
               let bestMatch: { id: number; brand: string; name: string } | null = null;
@@ -6928,14 +6965,12 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
                 const score = fuzzyScore(aiStr, `${dp.brand} ${dp.name}`);
                 if (score > bestScore) { bestScore = score; bestMatch = dp; }
               }
-              if (bestMatch && bestScore >= 0.5) {
+              if (bestMatch && bestScore >= 0.4) {
                 return { ...p, brand: bestMatch.brand, name: bestMatch.name };
               }
               return p;
             });
           }
-        } catch (_) {
-          // fuzzy matching is best-effort — never fail the whole request
         }
 
         return res.json(parsed);
@@ -6962,14 +6997,52 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
       location: string;
       testType: string;
       testName?: string | null;
+      seriesName?: string | null;
       notes?: string | null;
       weather?: Record<string, any> | null;
       products?: Array<{ skiNumber: number; category: string; brand: string; name: string }>;
       entries?: Array<Record<string, any>>;
+      distanceLabels?: string[] | null;
     };
 
-    // 1. Find or create "From picture - no series available" series for this team
-    const SERIES_NAME = "From picture - no series available";
+    // ── Competition ranking helper (dense competition style: 1,1,3) ──────────
+    const competitionRanks = (vals: Array<{ key: number; v: number }>): Map<number, number> => {
+      const sorted = [...vals].sort((a, b) => a.v - b.v);
+      const ranks = new Map<number, number>();
+      let prev: number | null = null;
+      let currentRank = 1;
+      for (let i = 0; i < sorted.length; i++) {
+        const item = sorted[i];
+        if (prev !== null && item.v !== prev) currentRank = i + 1;
+        ranks.set(item.key, currentRank);
+        prev = item.v;
+      }
+      return ranks;
+    };
+
+    // Determine number of rounds from the entries' results arrays
+    const numRounds = Math.max(
+      1,
+      ...(body.entries || []).map((e: any) => Array.isArray(e.results) ? e.results.length : 1)
+    );
+
+    // Compute ranks per round across all entries (server is source of truth)
+    const computedRanksPerRound: Array<Map<number, number>> = [];
+    for (let r = 0; r < numRounds; r++) {
+      const vals: Array<{ key: number; v: number }> = [];
+      (body.entries || []).forEach((e: any, idx: number) => {
+        const result = Array.isArray(e.results)
+          ? (e.results[r]?.result ?? null)
+          : (r === 0 ? (e.result0kmCmBehind ?? null) : null);
+        if (result != null && !isNaN(Number(result))) {
+          vals.push({ key: idx, v: Number(result) });
+        }
+      });
+      computedRanksPerRound.push(competitionRanks(vals));
+    }
+
+    // 1. Find or create series — use AI-detected series name if provided
+    const SERIES_NAME = body.seriesName?.trim() || "From picture - no series available";
     let seriesId: number;
     const existingSeriesRows = await (pool as any).query(
       `SELECT id FROM test_ski_series WHERE name = $1 AND team_id = $2 AND archived_at IS NULL LIMIT 1`,
@@ -7088,39 +7161,26 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
       }
     }
 
-    // 3. Create weather if data is present
-    let weatherId: number | null = null;
-    const w = body.weather;
-    if (w && (w.airTemperatureC != null || w.snowTemperatureC != null)) {
-      const createdWeather = await storage.createWeather({
-        date: body.date,
-        time: "",
-        location: body.location?.trim() || "Unknown",
-        airTemperatureC: w.airTemperatureC ?? 0,
-        snowTemperatureC: w.snowTemperatureC ?? 0,
-        airHumidityPct: w.airHumidityPct ?? 0,
-        snowHumidityPct: w.snowHumidityPct ?? 0,
-        clouds: w.clouds ?? null,
-        visibility: w.visibility?.trim() || null,
-        wind: w.wind?.trim() || null,
-        precipitation: w.precipitation?.trim() || null,
-        artificialSnow: w.artificialSnow || null,
-        naturalSnow: w.naturalSnow || null,
-        grainSize: w.grainSize || null,
-        snowHumidityType: w.snowHumidityType || null,
-        trackHardness: w.trackHardness || null,
-        testQuality: w.testQuality ?? null,
-        snowType: w.snowType?.trim() || null,
-        createdAt: now,
-        createdById: u.id,
-        createdByName: u.name,
-        groupScope,
-        teamId,
-      });
-      weatherId = createdWeather.id;
+    // 3. Weather: NOT auto-created from the picture.
+    // Users enter weather manually (more reliable than reading handwritten temps),
+    // then link it on the test edit page via "Add manual weather".
+    // The AI-extracted weather is still shown in the review UI as a reference.
+    const weatherId: number | null = null;
+
+    // 4. Build distance labels for multi-round tests
+    let distanceLabel0km: string | null = null;
+    let distanceLabelXkm: string | null = null;
+    let distanceLabelsJson: string | null = null;
+    if (numRounds > 1) {
+      const labels = (Array.isArray(body.distanceLabels) && body.distanceLabels.length === numRounds)
+        ? body.distanceLabels
+        : Array.from({ length: numRounds }, (_, i) => i === 0 ? "Round 1" : `Round ${i + 1}`);
+      distanceLabel0km = labels[0] ?? null;
+      distanceLabelXkm = labels[1] ?? null;
+      distanceLabelsJson = JSON.stringify(labels);
     }
 
-    // 4. Create test
+    // 5. Create test
     const test = await storage.createTest({
       date: body.date,
       location: body.location?.trim() || "Unknown",
@@ -7131,9 +7191,9 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
       athleteId: null,
       testSkiSource: "series",
       notes: body.notes?.trim() || null,
-      distanceLabel0km: null,
-      distanceLabelXkm: null,
-      distanceLabels: null,
+      distanceLabel0km,
+      distanceLabelXkm,
+      distanceLabels: distanceLabelsJson,
       grindParameters: null,
       createdAt: now,
       createdById: u.id,
@@ -7142,12 +7202,25 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
       teamId,
     });
 
-    // 5. Create entries
-    for (const e of (body.entries || [])) {
+    // 6. Create entries — with computed ranks per round
+    for (let idx = 0; idx < (body.entries || []).length; idx++) {
+      const e: any = body.entries![idx];
       const skiNum = Number(e.skiNumber);
       const allPids = entryProductsMap.get(skiNum) ?? [];
       const primaryId = allPids[0] ?? null;
       const additionalIds = allPids.length > 1 ? allPids.slice(1).join(",") : null;
+
+      // Build per-round results with computed ranks
+      const roundResults: Array<{ result: number | null; rank: number | null }> = [];
+      for (let r = 0; r < numRounds; r++) {
+        const rawResult = Array.isArray(e.results)
+          ? (e.results[r]?.result ?? null)
+          : (r === 0 ? (e.result0kmCmBehind ?? null) : null);
+        const result = rawResult != null && !isNaN(Number(rawResult)) ? Number(rawResult) : null;
+        const rank = result != null ? (computedRanksPerRound[r]?.get(idx) ?? null) : null;
+        roundResults.push({ result, rank });
+      }
+
       await storage.createEntry({
         testId: test.id,
         skiNumber: e.skiNumber,
@@ -7155,11 +7228,11 @@ IMPORTANT for products: If a ski entry has multiple products combined (e.g. "Rod
         freeTextProduct: null,
         additionalProductIds: additionalIds,
         methodology: e.methodology || "",
-        result0kmCmBehind: e.result0kmCmBehind ?? null,
-        rank0km: e.rank0km ?? null,
-        resultXkmCmBehind: e.resultXkmCmBehind ?? null,
-        rankXkm: e.rankXkm ?? null,
-        results: e.results || null,
+        result0kmCmBehind: roundResults[0]?.result ?? null,
+        rank0km: roundResults[0]?.rank ?? null,
+        resultXkmCmBehind: roundResults[1]?.result ?? null,
+        rankXkm: roundResults[1]?.rank ?? null,
+        results: numRounds > 1 ? JSON.stringify(roundResults) : null,
         feelingRank: e.feelingRank ?? null,
         kickRank: e.kickRank ?? null,
         grindType: e.grindType || null,

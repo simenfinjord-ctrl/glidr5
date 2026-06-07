@@ -18,12 +18,14 @@ services:
         fromDatabase:
           name: glidr-db
           property: connectionString
-      # Vision model for "Add from picture" scanning.
-      # Set this in the Render dashboard (Environment tab) to your OpenAI key.
-      # Without it, scanning falls back to the weaker free Groq model.
+      # Vision model for "Add from picture" scanning. Priority: OpenAI → Gemini → Groq.
+      # FREE option (recommended): get a Gemini key at aistudio.google.com/apikey
+      - key: GEMINI_API_KEY
+        sync: false
+      # Paid option (best quality): your OpenAI key
       - key: OPENAI_API_KEY
         sync: false
-      # Optional free fallback model (console.groq.com)
+      # Free fallback, no setup needed (console.groq.com)
       - key: GROQ_API_KEY
         sync: false
 

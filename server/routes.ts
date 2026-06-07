@@ -6807,8 +6807,9 @@ export async function registerRoutes(
     const groqKey = process.env.GROQ_API_KEY;
     // Accept a standard OPENAI_API_KEY (e.g. on Render) or the Replit-managed key.
     const openaiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-    if (!groqKey && !openaiKey) {
-      return res.status(500).json({ message: "No vision model configured (set OPENAI_API_KEY or GROQ_API_KEY)" });
+    const hasGemini = !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
+    if (!groqKey && !openaiKey && !hasGemini) {
+      return res.status(500).json({ message: "No vision model configured (set GEMINI_API_KEY, OPENAI_API_KEY or GROQ_API_KEY)" });
     }
 
     // ── Load team's product database for server-side matching ──────────────
@@ -6892,8 +6893,9 @@ RULES:
 - Read each result number carefully and keep it on the SAME line/pair it was written next to. Do not shift results up or down between pairs.
 - Weather is shared across groups on the same sheet unless written separately.`;
 
-    // Call a vision model. Prefer OpenAI (much better at handwriting OCR);
-    // fall back to Groq's free llama-4 if OpenAI is unavailable or errors.
+    // Vision model priority: OpenAI (paid, best) → Gemini (free key, strong) →
+    // Groq llama-4-maverick (free, no setup). Each is tried in turn on failure.
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     const dataUrl = `data:${mimeType};base64,${imageBase64}`;
     const callOpenAI = async (): Promise<string> => {
       const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || "https://api.openai.com/v1";
@@ -6918,12 +6920,37 @@ RULES:
       const j = await r.json() as any;
       return (j.choices?.[0]?.message?.content || "").trim();
     };
+    const callGemini = async (): Promise<string> => {
+      const model = "gemini-2.0-flash";
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: prompt },
+                { inline_data: { mime_type: mimeType, data: imageBase64 } },
+              ],
+            }],
+            generationConfig: { temperature: 0, maxOutputTokens: 8000 },
+          }),
+          signal: AbortSignal.timeout(60000),
+        }
+      );
+      if (!r.ok) throw new Error(`Gemini ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      const j = await r.json() as any;
+      const parts = j.candidates?.[0]?.content?.parts ?? [];
+      return parts.map((p: any) => p.text || "").join("").trim();
+    };
     const callGroq = async (): Promise<string> => {
       const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${groqKey}` },
         body: JSON.stringify({
-          model: "meta-llama/llama-4-scout-17b-16e-instruct",
+          // Maverick (128 experts) — stronger than scout, still free on Groq.
+          model: "meta-llama/llama-4-maverick-17b-128e-instruct",
           messages: [{
             role: "user",
             content: [
@@ -6947,6 +6974,10 @@ RULES:
       if (openaiKey) {
         try { text = await callOpenAI(); }
         catch (e: any) { lastErr = e?.message || "OpenAI failed"; }
+      }
+      if (!text && geminiKey) {
+        try { text = await callGemini(); }
+        catch (e: any) { lastErr = e?.message || lastErr || "Gemini failed"; }
       }
       if (!text && groqKey) {
         try { text = await callGroq(); }

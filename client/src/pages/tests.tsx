@@ -797,7 +797,7 @@ export default function Tests() {
       if (allTestIds.length === 0) return [];
       const results = await Promise.all(
         allTestIds.map((id) =>
-          fetch(`/api/tests/${id}/entries`, { credentials: "include" }).then((r) => r.json())
+          fetch(`/api/tests/${id}/entries`, { credentials: "include" }).then((r) => r.ok ? r.json() : [])
         )
       );
       return results.flat();

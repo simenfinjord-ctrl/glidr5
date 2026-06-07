@@ -404,14 +404,19 @@ export default function NewTest() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <a href={returnTo} data-testid="button-back-tests">
-              <Button asChild variant="secondary" size="sm">
-                <span className="inline-flex items-center">
-                  <ChevronLeft className="mr-1 h-4 w-4" />
-                  {initialType === "Grind" ? t("nav.grinding") : t("nav.tests")}
-                </span>
-              </Button>
-            </a>
+            <Button
+              variant="secondary"
+              size="sm"
+              data-testid="button-back-tests"
+              onClick={() => {
+                const dirty = form.formState.isDirty || rows.some(r => r.productId || r.methodology || r.roundResults.some(rr => rr.result != null || rr.rank != null));
+                if (dirty && !window.confirm(t("newTest.confirmLeave") ?? "You have unsaved changes. Leave anyway?")) return;
+                setLocation(returnTo);
+              }}
+            >
+              <ChevronLeft className="mr-1 h-4 w-4" />
+              {initialType === "Grind" ? t("nav.grinding") : t("nav.tests")}
+            </Button>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{duplicateId ? t("newTest.duplicateTest") : initialType === "Grind" ? t("newTest.newGrindTest") : t("newTest.title")}</h1>
               <p
@@ -460,9 +465,10 @@ export default function NewTest() {
               type="submit"
               form="new-test-form"
               data-testid="button-save-test"
+              disabled={saveMutation.isPending}
             >
               <Save className="mr-2 h-4 w-4" />
-              {t("common.save")}
+              {saveMutation.isPending ? (t("common.saving") ?? "Saving…") : t("common.save")}
             </Button>
           </div>
         </div>

@@ -273,6 +273,7 @@ const translations: Record<string, Record<string, string>> = {
 
     // ── New / Edit Test ────────────────────────────────────────────────────────
     "newTest.title": "New test",
+    "newTest.confirmLeave": "You have unsaved changes. Leave anyway?",
     "newTest.editTitle": "Edit test",
     "newTest.type": "Test type",
     "newTest.name": "Test name",
@@ -1623,6 +1624,7 @@ const translations: Record<string, Record<string, string>> = {
 
     // ── Ny / Rediger test ─────────────────────────────────────────────────────
     "newTest.title": "Ny test",
+    "newTest.confirmLeave": "Du har ulagrede endringer. Forlat likevel?",
     "newTest.editTitle": "Rediger test",
     "newTest.type": "Testtype",
     "newTest.name": "Testnavn",

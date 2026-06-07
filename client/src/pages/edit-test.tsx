@@ -486,14 +486,19 @@ export default function EditTest() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <a href={`/tests/${testId}`} data-testid="button-back-test-detail">
-              <Button asChild variant="secondary" size="sm">
-                <span className="inline-flex items-center">
-                  <ChevronLeft className="mr-1 h-4 w-4" />
-                  {t("common.back")}
-                </span>
-              </Button>
-            </a>
+            <Button
+              variant="secondary"
+              size="sm"
+              data-testid="button-back-test-detail"
+              onClick={() => {
+                const dirty = form.formState.isDirty || entriesLoaded;
+                if (dirty && !window.confirm(t("newTest.confirmLeave") ?? "You have unsaved changes. Leave anyway?")) return;
+                setLocation(`/tests/${testId}`);
+              }}
+            >
+              <ChevronLeft className="mr-1 h-4 w-4" />
+              {t("common.back")}
+            </Button>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("newTest.editTitle")}</h1>
               <p className="mt-1 text-sm text-muted-foreground" data-testid="text-edit-test-subtitle">

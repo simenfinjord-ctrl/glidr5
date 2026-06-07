@@ -588,8 +588,14 @@ export default function TestDetail() {
     if (touchStartX.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     if (Math.abs(dx) > 60) {
-      if (dx > 0 && prevId) navigate(`/tests/${prevId}`);
-      if (dx < 0 && nextId) navigate(`/tests/${nextId}`);
+      // Don't navigate if focus is inside a text field or an open dialog
+      const active = document.activeElement;
+      const inTextField = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
+      const inDialog = !!document.querySelector('[role="dialog"]');
+      if (!inTextField && !inDialog) {
+        if (dx > 0 && prevId) navigate(`/tests/${prevId}`);
+        if (dx < 0 && nextId) navigate(`/tests/${nextId}`);
+      }
     }
     touchStartX.current = null;
   };

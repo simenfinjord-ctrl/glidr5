@@ -421,7 +421,7 @@ function WeatherForm({
                 <FormItem>
                   <FormLabel>{t("weather.snowHumidity")}</FormLabel>
                   <FormControl>
-                    <Input {...field} type="number" inputMode="numeric" data-testid="input-weather-snowhum" />
+                    <Input {...field} type="number" inputMode="numeric" min={0} max={100} data-testid="input-weather-snowhum" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -434,7 +434,7 @@ function WeatherForm({
                 <FormItem>
                   <FormLabel>{t("weather.airHumidity")}</FormLabel>
                   <FormControl>
-                    <Input {...field} type="number" inputMode="numeric" data-testid="input-weather-airhum" />
+                    <Input {...field} type="number" inputMode="numeric" min={0} max={100} data-testid="input-weather-airhum" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -1123,7 +1123,7 @@ export default function WeatherPage() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-3xl max-h-[90vh]">
               <DialogHeader>
-                <DialogTitle>{editing ? t("weather.addEntry") : t("weather.addEntry")}</DialogTitle>
+                <DialogTitle>{editing ? (t("weather.editEntry") ?? "Edit weather") : t("weather.addEntry")}</DialogTitle>
               </DialogHeader>
               <WeatherForm initial={editing} onSaved={() => setOpen(false)} userGroups={userGroups} selectedGroup={effectiveGroup} onGroupChange={handleGroupChange} />
             </DialogContent>

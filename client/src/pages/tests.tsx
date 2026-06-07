@@ -1,5 +1,5 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
-import { Fragment, useMemo, useState, useRef, useCallback } from "react";
+import { Fragment, useMemo, useState, useRef, useCallback, useEffect } from "react";
 import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus, ChevronDown, Calendar } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -308,12 +308,113 @@ function CreateProductForm({
   );
 }
 
+// Brand input + searchable product-name dropdown for one product on a ski pair.
+// Brand is free text (with a datalist of known brands). The name field is only
+// enabled once a brand is entered, then it suggests matching DB products.
+// Picking a suggestion sets the exact brand+name from the database (matched).
+function ProductPicker({
+  brand,
+  name,
+  matched,
+  products,
+  onChange,
+}: {
+  brand: string;
+  name: string;
+  matched: boolean;
+  products: Product[];
+  onChange: (next: { brand: string; name: string; matched: boolean }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const datalistId = useMemo(() => `brands-${Math.random().toString(36).slice(2)}`, []);
+
+  const brands = useMemo(
+    () => Array.from(new Set(products.map((p) => p.brand).filter(Boolean))).sort(),
+    [products]
+  );
+  const brandKey = brand.trim().toLowerCase();
+
+  // Suggestions require a brand. Match products whose brand relates to the typed
+  // brand, then filter by the typed name fragment.
+  const suggestions = useMemo(() => {
+    if (!brandKey) return [];
+    const nameKey = name.trim().toLowerCase();
+    return products
+      .filter((p) => {
+        const pb = p.brand.toLowerCase();
+        return pb.includes(brandKey) || brandKey.includes(pb);
+      })
+      .filter((p) => !nameKey || p.name.toLowerCase().includes(nameKey))
+      .slice(0, 8);
+  }, [products, brandKey, name]);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  return (
+    <>
+      <input
+        list={datalistId}
+        type="text"
+        value={brand}
+        onChange={(e) => onChange({ brand: e.target.value, name, matched: false })}
+        placeholder="Brand"
+        className={cn(
+          "h-7 w-20 rounded border bg-background px-1.5 text-xs flex-shrink-0",
+          matched ? "border-input" : "border-red-400 text-red-600 dark:text-red-400"
+        )}
+      />
+      <datalist id={datalistId}>
+        {brands.map((b) => <option key={b} value={b} />)}
+      </datalist>
+      <div className="relative flex-shrink-0" ref={wrapRef}>
+        <input
+          type="text"
+          value={name}
+          disabled={!brandKey}
+          onFocus={() => { if (brandKey) setOpen(true); }}
+          onChange={(e) => { onChange({ brand, name: e.target.value, matched: false }); if (brandKey) setOpen(true); }}
+          placeholder={brandKey ? "Search product…" : "Brand first"}
+          className={cn(
+            "h-7 w-28 rounded border bg-background px-1.5 text-xs",
+            matched ? "border-input" : "border-red-400 text-red-600 dark:text-red-400",
+            !brandKey && "opacity-60 cursor-not-allowed"
+          )}
+        />
+        {open && suggestions.length > 0 && (
+          <div className="absolute z-50 left-0 top-full mt-0.5 w-48 max-h-44 overflow-y-auto rounded-md border border-border bg-popover shadow-lg">
+            {suggestions.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); onChange({ brand: p.brand, name: p.name, matched: true }); setOpen(false); }}
+                className="block w-full text-left px-2 py-1 text-xs hover:bg-muted"
+              >
+                <span className="text-muted-foreground">{p.brand}</span> {p.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
+
+  // Team product database — used for the searchable name dropdown
+  const { data: dbProducts = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
 
   type Step = "upload" | "analyzing" | "review" | "creating" | "done" | "error";
   const [step, setStep] = useState<Step>("upload");
@@ -661,7 +762,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                 <button
                   type="button"
                   className="text-xs text-primary hover:underline"
-                  onClick={() => updateActiveGroup((g) => ({ ...g, products: [...g.products, { skiNumber: 0, brand: "", name: "", category: "" }] }))}
+                  onClick={() => updateActiveGroup((g) => ({ ...g, products: [...g.products, { skiNumber: 0, brand: "", name: "", category: "", matched: false }] }))}
                 >
                   + {t("tests.addProduct")}
                 </button>
@@ -703,27 +804,17 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                             {pos > 0 && (
                               <span className="text-xs font-bold text-muted-foreground px-0.5">+</span>
                             )}
-                            <input
-                              type="text"
-                              value={p.brand}
-                              onChange={(e) => updateActiveGroup((g) => ({ ...g, products: g.products.map((r, j) => j === p._i ? { ...r, brand: e.target.value, matched: false } : r) }))}
-                              placeholder={t("tests.brandPlaceholder")}
-                              className={cn(
-                                "h-7 w-20 rounded border bg-background px-1.5 text-xs flex-shrink-0",
-                                p.matched ? "border-input" : "border-red-400 text-red-600 dark:text-red-400"
-                              )}
+                            <ProductPicker
+                              brand={p.brand}
+                              name={p.name}
+                              matched={p.matched}
+                              products={dbProducts}
+                              onChange={(next) => updateActiveGroup((g) => ({
+                                ...g,
+                                products: g.products.map((r, j) => j === p._i ? { ...r, ...next } : r),
+                              }))}
                             />
-                            <input
-                              type="text"
-                              value={p.name}
-                              onChange={(e) => updateActiveGroup((g) => ({ ...g, products: g.products.map((r, j) => j === p._i ? { ...r, name: e.target.value, matched: false } : r) }))}
-                              placeholder={t("tests.namePlaceholder")}
-                              className={cn(
-                                "h-7 w-24 rounded border bg-background px-1.5 text-xs flex-shrink-0",
-                                p.matched ? "border-input" : "border-red-400 text-red-600 dark:text-red-400"
-                              )}
-                            />
-                            {!p.matched && (
+                            {!p.matched && (p.brand || p.name) && (
                               <button
                                 type="button"
                                 onClick={() => setCreateProductFor(p._i)}
@@ -742,6 +833,15 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                             </button>
                           </Fragment>
                         ))}
+                        {/* Add another product to THIS ski pair */}
+                        <button
+                          type="button"
+                          onClick={() => updateActiveGroup((g) => ({ ...g, products: [...g.products, { skiNumber: skiNum, brand: "", name: "", category: "", matched: false }] }))}
+                          title="Add another product to this ski pair"
+                          className="h-7 px-1.5 flex items-center justify-center rounded border border-dashed border-border text-muted-foreground hover:text-primary hover:border-primary text-[11px] font-medium flex-shrink-0"
+                        >
+                          + product
+                        </button>
                       </div>
                     ));
                   })()}

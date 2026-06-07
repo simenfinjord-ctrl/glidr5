@@ -6834,7 +6834,7 @@ DATE: Often written as DD/MM or DD/MM/YY at the top. Convert to YYYY-MM-DD. If y
 
 LOCATION: Usually a city/resort name near the date (e.g. "Bad Gastein", "Beitostølen", "Ruka").
 
-WEATHER: May appear as abbreviations near the date, e.g. "L: -10" = air temp -10°C, "S: -8" = snow temp -8°C, "22%" = snow humidity. The user enters weather manually so extract only what is clearly visible.
+WEATHER: Extract all weather data you can find anywhere on the sheet. It may be abbreviated near the date or in a separate section. Common notations: "L: -10" or "Luft: -10" = air temp -10°C; "S: -8" or "Snø: -8" = snow temp -8°C; a lone "22%" near the temps = snow humidity; "L: -10°" with a degree sign is still air temp. Norwegian abbreviations: L/Luft = air, S/Snø = snow. Also capture wind, clouds, precipitation and snow type if written. Leave fields null when not present — do not guess.
 
 SKI GROUPS: The sheet may be divided into groups like "Blå 1", "Blå 2", "Rød" etc. — these are different test ski series. Each group is a separate test.
 
@@ -6865,7 +6865,11 @@ Return an array — one object per ski GROUP (series). Each object:
     "airTemperatureC": number or null,
     "snowTemperatureC": number or null,
     "snowHumidityPct": number 0-100 or null,
-    "airHumidityPct": number 0-100 or null
+    "airHumidityPct": number 0-100 or null,
+    "snowType": "string or null",
+    "wind": "string or null",
+    "clouds": integer 0-8 or null,
+    "precipitation": "string or null"
   },
   "products": [
     {
@@ -6955,7 +6959,7 @@ IMPORTANT:
               // If AI already matched via matchedDbIndex, use it
               if (p.matchedDbIndex && dbProducts[p.matchedDbIndex - 1]) {
                 const db = dbProducts[p.matchedDbIndex - 1];
-                return { ...p, brand: db.brand, name: db.name };
+                return { ...p, brand: db.brand, name: db.name, matched: true };
               }
               // Otherwise fuzzy-match
               const aiStr = `${p.brand || ""} ${p.name || ""}`.trim();
@@ -6966,10 +6970,18 @@ IMPORTANT:
                 if (score > bestScore) { bestScore = score; bestMatch = dp; }
               }
               if (bestMatch && bestScore >= 0.4) {
-                return { ...p, brand: bestMatch.brand, name: bestMatch.name };
+                return { ...p, brand: bestMatch.brand, name: bestMatch.name, matched: true };
               }
-              return p;
+              // No confident match — flag so the UI can offer "Create product"
+              return { ...p, matched: false };
             });
+          }
+        } else {
+          // No products in DB yet — nothing matched
+          for (const group of parsed) {
+            if (Array.isArray(group.products)) {
+              group.products = group.products.map((p: any) => ({ ...p, matched: false }));
+            }
           }
         }
 
@@ -7161,11 +7173,41 @@ IMPORTANT:
       }
     }
 
-    // 3. Weather: NOT auto-created from the picture.
-    // Users enter weather manually (more reliable than reading handwritten temps),
-    // then link it on the test edit page via "Add manual weather".
-    // The AI-extracted weather is still shown in the review UI as a reference.
-    const weatherId: number | null = null;
+    // 3. Create weather only if the user kept/confirmed weather data in review.
+    // The client sends weather: null when the user doesn't want a weather record;
+    // when the image clearly contains weather (other sheet layouts), it is passed
+    // through and created here, linked to the test.
+    let weatherId: number | null = null;
+    const w = body.weather;
+    if (w && (w.airTemperatureC != null || w.snowTemperatureC != null ||
+              w.airHumidityPct != null || w.snowHumidityPct != null)) {
+      const createdWeather = await storage.createWeather({
+        date: body.date,
+        time: w.time?.trim() || "",
+        location: body.location?.trim() || "Unknown",
+        airTemperatureC: w.airTemperatureC ?? 0,
+        snowTemperatureC: w.snowTemperatureC ?? 0,
+        airHumidityPct: w.airHumidityPct ?? null,
+        snowHumidityPct: w.snowHumidityPct ?? null,
+        clouds: w.clouds ?? null,
+        visibility: w.visibility?.trim() || null,
+        wind: w.wind?.trim() || null,
+        precipitation: w.precipitation?.trim() || null,
+        artificialSnow: w.artificialSnow || null,
+        naturalSnow: w.naturalSnow || null,
+        grainSize: w.grainSize || null,
+        snowHumidityType: w.snowHumidityType || null,
+        trackHardness: w.trackHardness || null,
+        testQuality: w.testQuality ?? null,
+        snowType: w.snowType?.trim() || null,
+        createdAt: now,
+        createdById: u.id,
+        createdByName: u.name,
+        groupScope,
+        teamId,
+      });
+      weatherId = createdWeather.id;
+    }
 
     // 4. Build distance labels for multi-round tests
     let distanceLabel0km: string | null = null;

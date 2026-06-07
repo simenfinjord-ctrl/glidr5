@@ -2,6 +2,7 @@
 import { Fragment, useMemo, useState, useRef, useCallback } from "react";
 import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus, ChevronDown, Calendar } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/empty-state";
@@ -140,8 +141,20 @@ type PictureGroup = {
   testType: string | null;
   notes: string | null;
   weather: Record<string, any> | null;
-  products: Array<{ skiNumber: number; brand: string; name: string; matchedDbIndex?: number | null }>;
+  products: Array<{ skiNumber: number; brand: string; name: string; matched?: boolean; matchedDbIndex?: number | null }>;
   entries: Array<{ skiNumber: number; methodology: string; results: Array<{ result: number | null; rank: number | null }> }>;
+};
+
+// Editable weather kept in component state.
+type EditableWeather = {
+  airTemperatureC: number | null;
+  snowTemperatureC: number | null;
+  airHumidityPct: number | null;
+  snowHumidityPct: number | null;
+  snowType: string | null;
+  wind: string | null;
+  clouds: number | null;
+  precipitation: string | null;
 };
 
 // An editable group held in component state.
@@ -153,8 +166,9 @@ type EditableGroup = {
   testName: string;
   notes: string;
   numRounds: number;
-  weather: Record<string, any> | null;
-  products: Array<{ skiNumber: number; brand: string; name: string; category: string }>;
+  createWeather: boolean;
+  weather: EditableWeather;
+  products: Array<{ skiNumber: number; brand: string; name: string; category: string; matched: boolean }>;
   entries: Array<{ skiNumber: number; methodology: string; results: Array<number | null>; feelingRank: number | null }>;
 };
 
@@ -185,6 +199,19 @@ function toEditableGroup(g: PictureGroup): EditableGroup {
   for (const e of entries) {
     while (e.results.length < numRounds) e.results.push(null);
   }
+  const w = g.weather || {};
+  const weather: EditableWeather = {
+    airTemperatureC: w.airTemperatureC ?? null,
+    snowTemperatureC: w.snowTemperatureC ?? null,
+    airHumidityPct: w.airHumidityPct ?? null,
+    snowHumidityPct: w.snowHumidityPct ?? null,
+    snowType: w.snowType ?? null,
+    wind: w.wind ?? null,
+    clouds: w.clouds ?? null,
+    precipitation: w.precipitation ?? null,
+  };
+  // Default to creating weather only when the image actually contained temps.
+  const hasWeather = weather.airTemperatureC != null || weather.snowTemperatureC != null;
   return {
     seriesName: g.seriesName || "",
     date: g.date || "",
@@ -193,15 +220,92 @@ function toEditableGroup(g: PictureGroup): EditableGroup {
     testName: "",
     notes: g.notes || "",
     numRounds,
-    weather: g.weather || null,
+    createWeather: hasWeather,
+    weather,
     products: (g.products || []).map((p) => ({
       skiNumber: p.skiNumber,
       brand: p.brand || "",
       name: p.name || "",
       category: "",
+      matched: p.matched === true,
     })),
     entries,
   };
+}
+
+// Inline form to create a product that the scan couldn't match in the database.
+// Mirrors the "Add product" form on the Products page (category / brand / name).
+function CreateProductForm({
+  initialBrand,
+  initialName,
+  defaultCategory,
+  onCreated,
+  onCancel,
+}: {
+  initialBrand: string;
+  initialName: string;
+  defaultCategory: string;
+  onCreated: (brand: string, name: string) => void;
+  onCancel: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [category, setCategory] = useState(defaultCategory);
+  const [brand, setBrand] = useState(initialBrand);
+  const [name, setName] = useState(initialName);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function submit() {
+    if (!brand.trim() || !name.trim()) { setErr("Brand and name are required"); return; }
+    setSaving(true);
+    setErr("");
+    try {
+      await apiRequest("POST", "/api/products", { category, brand: brand.trim(), name: name.trim() });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      onCreated(brand.trim(), name.trim());
+    } catch (e: any) {
+      setErr(e?.message || "Could not create product");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-red-300 bg-red-50/50 dark:bg-red-950/20 p-2.5 flex flex-col gap-2">
+      <p className="text-[11px] font-semibold text-red-600 dark:text-red-400">Create product not in database</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-[10px] text-muted-foreground">Category</label>
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Glide product">Glide product</SelectItem>
+              <SelectItem value="Topping product">Topping product</SelectItem>
+              <SelectItem value="Structure tool">Structure tool</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div />
+        <div>
+          <label className="text-[10px] text-muted-foreground">Brand</label>
+          <input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="e.g. Swix"
+            className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs mt-0.5" />
+        </div>
+        <div>
+          <label className="text-[10px] text-muted-foreground">Name</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. HS10"
+            className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs mt-0.5" />
+        </div>
+      </div>
+      {err && <p className="text-[11px] text-red-600">{err}</p>}
+      <div className="flex gap-2 justify-end">
+        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={onCancel}>Cancel</Button>
+        <Button type="button" size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white" onClick={submit} disabled={saving}>
+          {saving ? "Creating…" : "Create product"}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
@@ -224,6 +328,9 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   const [createdTestIds, setCreatedTestIds] = useState<number[]>([]);
   const [creatingProgress, setCreatingProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
 
+  // Which product (by index within the active group) is being created inline
+  const [createProductFor, setCreateProductFor] = useState<number | null>(null);
+
   function reset() {
     setStep("upload");
     setErrorMsg("");
@@ -232,6 +339,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     setActiveGroupIdx(0);
     setCreatedTestIds([]);
     setCreatingProgress({ current: 0, total: 0 });
+    setCreateProductFor(null);
   }
 
   // Immutable update of the active group.
@@ -309,7 +417,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
           testType: g.testType || "Glide",
           testName: g.testName || null,
           notes: g.notes || null,
-          weather: g.weather || null,
+          weather: g.createWeather ? g.weather : null,
           distanceLabels,
           products: g.products,
           entries: g.entries.map((e) => ({
@@ -355,9 +463,18 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   }
 
   const activeGroup: EditableGroup | null = groups[activeGroupIdx] ?? null;
-  const weatherFields = activeGroup?.weather
-    ? Object.entries(activeGroup.weather).filter(([, v]) => v != null && v !== "")
-    : [];
+
+  // Mark every product (across all groups) with this brand+name as matched —
+  // called after a product is created via the inline "Create product" form.
+  function markProductMatched(brand: string, name: string) {
+    const key = `${brand}|${name}`.toLowerCase();
+    setGroups((prev) => prev.map((g) => ({
+      ...g,
+      products: g.products.map((p) =>
+        `${p.brand}|${p.name}`.toLowerCase() === key ? { ...p, matched: true } : p
+      ),
+    })));
+  }
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
@@ -431,7 +548,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                     <button
                       key={gi}
                       type="button"
-                      onClick={() => setActiveGroupIdx(gi)}
+                      onClick={() => { setActiveGroupIdx(gi); setCreateProductFor(null); }}
                       className={cn(
                         "rounded-full px-3 py-1 text-xs font-medium transition-colors",
                         gi === activeGroupIdx
@@ -490,19 +607,50 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               </div>
             </div>
 
-            {/* Weather */}
-            {weatherFields.length > 0 && (
-              <div className="rounded-lg border border-border p-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Weather</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {weatherFields.map(([key, val]) => (
-                    <span key={key} className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] text-foreground/80">
-                      {key.replace(/([A-Z])/g, " $1").toLowerCase()}: <strong>{String(val)}</strong>
-                    </span>
-                  ))}
-                </div>
+            {/* Weather — editable, created only if toggle on */}
+            <div className="rounded-lg border border-border p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weather</p>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={activeGroup.createWeather}
+                    onChange={(e) => updateActiveGroup((g) => ({ ...g, createWeather: e.target.checked }))}
+                  />
+                  Create weather record
+                </label>
               </div>
-            )}
+              {activeGroup.createWeather ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div>
+                    <label className="text-[10px] text-muted-foreground">Snow °C</label>
+                    <input type="number" step="0.1" value={activeGroup.weather.snowTemperatureC ?? ""}
+                      onChange={(e) => updateActiveGroup((g) => ({ ...g, weather: { ...g.weather, snowTemperatureC: e.target.value !== "" ? parseFloat(e.target.value) : null } }))}
+                      className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground">Air °C</label>
+                    <input type="number" step="0.1" value={activeGroup.weather.airTemperatureC ?? ""}
+                      onChange={(e) => updateActiveGroup((g) => ({ ...g, weather: { ...g.weather, airTemperatureC: e.target.value !== "" ? parseFloat(e.target.value) : null } }))}
+                      className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground">Snow hum %</label>
+                    <input type="number" min={0} max={100} value={activeGroup.weather.snowHumidityPct ?? ""}
+                      onChange={(e) => updateActiveGroup((g) => ({ ...g, weather: { ...g.weather, snowHumidityPct: e.target.value !== "" ? parseFloat(e.target.value) : null } }))}
+                      className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground">Air hum %</label>
+                    <input type="number" min={0} max={100} value={activeGroup.weather.airHumidityPct ?? ""}
+                      onChange={(e) => updateActiveGroup((g) => ({ ...g, weather: { ...g.weather, airHumidityPct: e.target.value !== "" ? parseFloat(e.target.value) : null } }))}
+                      className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs" />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Weather entered manually later. Enable to save the values read from the image.</p>
+              )}
+            </div>
 
             {/* Products — editable, grouped by ski number */}
             <div className="rounded-lg border border-border p-3">
@@ -558,17 +706,33 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                             <input
                               type="text"
                               value={p.brand}
-                              onChange={(e) => updateActiveGroup((g) => ({ ...g, products: g.products.map((r, j) => j === p._i ? { ...r, brand: e.target.value } : r) }))}
+                              onChange={(e) => updateActiveGroup((g) => ({ ...g, products: g.products.map((r, j) => j === p._i ? { ...r, brand: e.target.value, matched: false } : r) }))}
                               placeholder={t("tests.brandPlaceholder")}
-                              className="h-7 w-20 rounded border border-input bg-background px-1.5 text-xs flex-shrink-0"
+                              className={cn(
+                                "h-7 w-20 rounded border bg-background px-1.5 text-xs flex-shrink-0",
+                                p.matched ? "border-input" : "border-red-400 text-red-600 dark:text-red-400"
+                              )}
                             />
                             <input
                               type="text"
                               value={p.name}
-                              onChange={(e) => updateActiveGroup((g) => ({ ...g, products: g.products.map((r, j) => j === p._i ? { ...r, name: e.target.value } : r) }))}
+                              onChange={(e) => updateActiveGroup((g) => ({ ...g, products: g.products.map((r, j) => j === p._i ? { ...r, name: e.target.value, matched: false } : r) }))}
                               placeholder={t("tests.namePlaceholder")}
-                              className="h-7 w-24 rounded border border-input bg-background px-1.5 text-xs flex-shrink-0"
+                              className={cn(
+                                "h-7 w-24 rounded border bg-background px-1.5 text-xs flex-shrink-0",
+                                p.matched ? "border-input" : "border-red-400 text-red-600 dark:text-red-400"
+                              )}
                             />
+                            {!p.matched && (
+                              <button
+                                type="button"
+                                onClick={() => setCreateProductFor(p._i)}
+                                title="This product is not in your database — create it"
+                                className="h-7 px-1.5 flex items-center justify-center rounded bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 text-[10px] font-semibold flex-shrink-0"
+                              >
+                                + Create
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => updateActiveGroup((g) => ({ ...g, products: g.products.filter((_, j) => j !== p._i) }))}
@@ -581,6 +745,32 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                       </div>
                     ));
                   })()}
+
+                  {/* Inline create-product form for the selected unmatched product */}
+                  {createProductFor != null && activeGroup.products[createProductFor] && (
+                    <CreateProductForm
+                      initialBrand={activeGroup.products[createProductFor].brand}
+                      initialName={activeGroup.products[createProductFor].name}
+                      defaultCategory={activeGroup.testType === "Structure" ? "Structure tool" : "Glide product"}
+                      onCreated={(brand, name) => {
+                        const idx = createProductFor;
+                        // Set the originating row to the created values + matched,
+                        // then mark any other identical rows across all groups.
+                        setGroups((prev) => prev.map((grp, gi) => gi === activeGroupIdx
+                          ? { ...grp, products: grp.products.map((r, j) => j === idx ? { ...r, brand, name, matched: true } : r) }
+                          : grp));
+                        markProductMatched(brand, name);
+                        setCreateProductFor(null);
+                      }}
+                      onCancel={() => setCreateProductFor(null)}
+                    />
+                  )}
+
+                  {activeGroup.products.some((p) => !p.matched) && (
+                    <p className="text-[11px] text-red-500 mt-1">
+                      Products in red are not in your database. Click "+ Create" to add them.
+                    </p>
+                  )}
                 </div>
               )}
             </div>

@@ -6949,8 +6949,9 @@ RULES:
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${groqKey}` },
         body: JSON.stringify({
-          // Maverick (128 experts) — stronger than scout, still free on Groq.
-          model: "meta-llama/llama-4-maverick-17b-128e-instruct",
+          // Groq's free vision model. (Maverick exists but isn't on all accounts;
+          // scout is universally available. For real quality use Gemini above.)
+          model: process.env.GROQ_VISION_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct",
           messages: [{
             role: "user",
             content: [

@@ -6804,9 +6804,10 @@ export async function registerRoutes(
     if (!imageBase64 || imageBase64.length > maxBase64Size) {
       return res.status(413).json({ message: "Image too large" });
     }
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ message: "GROQ_API_KEY not configured on server. Get a free key at console.groq.com" });
+    const groqKey = process.env.GROQ_API_KEY;
+    const openaiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    if (!groqKey && !openaiKey) {
+      return res.status(500).json({ message: "No vision model configured (set AI_INTEGRATIONS_OPENAI_API_KEY or GROQ_API_KEY)" });
     }
 
     // ── Load team's product database for server-side matching ──────────────
@@ -6852,90 +6853,141 @@ CRITICAL: Do NOT confuse the application temperature (right after the product, w
 
 PRODUCT NAMES: Transcribe the product name EXACTLY as written on the paper — do NOT guess, expand, or substitute names. Write what you literally see (e.g. "LDR White", "Date Cold", "SIX", "WM25", "PC100"). The system matches these to the database afterwards — your only job is accurate transcription. NEVER replace a product with a different product name.
 
+HOW MANY RESULT COLUMNS / ROUNDS: Look carefully at the right side. Count the distinct vertical columns of result numbers. MOST sheets have exactly ONE result column = ONE round → each ski's "results" has exactly one number. Only output more than one result per ski if you clearly see TWO OR MORE separate, aligned number columns on the right. Do NOT invent extra rounds. When unsure, use one.
+
 === OUTPUT FORMAT ===
 
-Return an array — one object per ski GROUP (series). Each object:
-{
-  "seriesName": "Blå 1" or "Rød" or null,
-  "date": "YYYY-MM-DD or null",
-  "location": "location name or null",
-  "testType": "Glide" or "Structure" or "Classic" or "Skating" or "Double Poling" or "Grind" or null,
-  "notes": "any notes or null",
-  "weather": {
-    "airTemperatureC": number or null,
-    "snowTemperatureC": number or null,
-    "snowHumidityPct": number 0-100 or null,
-    "airHumidityPct": number 0-100 or null,
-    "snowType": "string or null",
-    "wind": "string or null",
-    "clouds": integer 0-8 or null,
-    "precipitation": "string or null"
-  },
-  "products": [
-    {
-      "skiNumber": integer,
-      "brand": "brand if written, else empty string",
-      "name": "product name EXACTLY as written on paper"
-    }
-  ],
-  "entries": [
-    {
-      "skiNumber": integer,
-      "methodology": "application temperature e.g. '180°C' or empty string",
-      "results": [
-        { "result": number or null, "rank": null }
-      ]
-    }
-  ]
-}
+Return a JSON ARRAY — one object per ski GROUP (series). Process the sheet ROW BY ROW. For each ski-pair line, produce ONE object inside "skis" that keeps that pair's number, product(s), application and result TOGETHER (this prevents mixing up which result belongs to which pair).
 
-IMPORTANT:
-- Return a JSON ARRAY (multiple groups possible). If only one group, return array with one element.
-- ranks in results should be null — the app calculates ranks automatically.
-- If a ski pair has "+ product", list the additional product as a second entry in "products" with the same skiNumber.
-- "–ii–" lines: look at the previous ski pair's products and copy them, then add any extra product after "+".
-- results array length = number of columns on the right side (1 or 2 usually).
-- Weather is shared across all groups on the same sheet unless written separately per group.`;
+[
+  {
+    "seriesName": "Blå 1" or "Rød" or null,
+    "date": "YYYY-MM-DD or null",
+    "location": "location name or null",
+    "testType": "Glide" | "Structure" | "Classic" | "Skating" | "Double Poling" | "Grind" | null,
+    "notes": "any notes or null",
+    "weather": {
+      "airTemperatureC": number|null, "snowTemperatureC": number|null,
+      "snowHumidityPct": number|null, "airHumidityPct": number|null,
+      "snowType": string|null, "wind": string|null, "clouds": integer|null, "precipitation": string|null
+    },
+    "skis": [
+      {
+        "skiNumber": 1,
+        "products": [ { "brand": "", "name": "LDR White" } ],
+        "application": "180°C",
+        "results": [70]
+      }
+    ]
+  }
+]
+
+RULES:
+- ONE object in "skis" per ski-pair line, in top-to-bottom order.
+- "results" is an array of the FAR-RIGHT numbers for that pair, left-to-right, one per round. Usually a single number, e.g. [70]. The application temperature is NEVER in results.
+- "application" = the temperature right after the product name (e.g. "180°C"). Empty string if none.
+- "products": one entry per product. For "A + B" put two entries. For "–ii–" copy the product(s) from the ski directly above, then add anything after "+".
+- Transcribe product names EXACTLY as written — never substitute.
+- Read each result number carefully and keep it on the SAME line/pair it was written next to. Do not shift results up or down between pairs.
+- Weather is shared across groups on the same sheet unless written separately.`;
+
+    // Call a vision model. Prefer OpenAI (much better at handwriting OCR);
+    // fall back to Groq's free llama-4 if OpenAI is unavailable or errors.
+    const dataUrl = `data:${mimeType};base64,${imageBase64}`;
+    const callOpenAI = async (): Promise<string> => {
+      const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || "https://api.openai.com/v1";
+      const r = await fetch(`${baseURL.replace(/\/$/, "")}/chat/completions`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${openaiKey}` },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: [{
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
+            ],
+          }],
+          temperature: 0,
+          max_tokens: 6000,
+        }),
+        signal: AbortSignal.timeout(60000),
+      });
+      if (!r.ok) throw new Error(`OpenAI ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      const j = await r.json() as any;
+      return (j.choices?.[0]?.message?.content || "").trim();
+    };
+    const callGroq = async (): Promise<string> => {
+      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${groqKey}` },
+        body: JSON.stringify({
+          model: "meta-llama/llama-4-scout-17b-16e-instruct",
+          messages: [{
+            role: "user",
+            content: [
+              { type: "image_url", image_url: { url: dataUrl } },
+              { type: "text", text: prompt },
+            ],
+          }],
+          temperature: 0,
+          max_tokens: 6000,
+        }),
+        signal: AbortSignal.timeout(60000),
+      });
+      if (!r.ok) throw new Error(`Groq ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      const j = await r.json() as any;
+      return (j.choices?.[0]?.message?.content || "").trim();
+    };
 
     try {
-      const response = await fetch(
-        "https://api.groq.com/openai/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "authorization": `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: "meta-llama/llama-4-scout-17b-16e-instruct",
-            messages: [
-              {
-                role: "user",
-                content: [
-                  {
-                    type: "image_url",
-                    image_url: { url: `data:${mimeType};base64,${imageBase64}` },
-                  },
-                  { type: "text", text: prompt },
-                ],
-              },
-            ],
-            temperature: 0,
-            max_tokens: 6000,
-          }),
-        }
-      );
-      if (!response.ok) {
-        const errText = await response.text();
-        return res.status(500).json({ message: `AI error: ${errText.slice(0, 300)}` });
+      let text = "";
+      let lastErr = "";
+      if (openaiKey) {
+        try { text = await callOpenAI(); }
+        catch (e: any) { lastErr = e?.message || "OpenAI failed"; }
       }
-      const data = await response.json() as any;
-      const text = (data.choices?.[0]?.message?.content || "").trim();
+      if (!text && groqKey) {
+        try { text = await callGroq(); }
+        catch (e: any) { lastErr = e?.message || lastErr || "Groq failed"; }
+      }
+      if (!text) {
+        return res.status(500).json({ message: `AI error: ${lastErr || "no response"}` });
+      }
       try {
         // Accept both array and single object response
         const jsonMatch = text.match(/[\[{][\s\S]*[\]}]/);
         let parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
         if (!Array.isArray(parsed)) parsed = [parsed];
+
+        // ── Transform row-based "skis" into products[] + entries[] ──────────
+        // The model outputs one self-contained object per ski pair (number +
+        // products + application + result) which keeps results aligned to the
+        // right pair. We flatten that into the shape the rest of the flow expects.
+        for (const group of parsed) {
+          if (Array.isArray(group.skis)) {
+            const products: any[] = [];
+            const entries: any[] = [];
+            for (const ski of group.skis) {
+              const skiNumber = ski.skiNumber;
+              for (const p of (ski.products || [])) {
+                products.push({ skiNumber, brand: p.brand || "", name: p.name || "" });
+              }
+              const resultsArr = Array.isArray(ski.results) ? ski.results : [];
+              entries.push({
+                skiNumber,
+                methodology: ski.application || "",
+                results: (resultsArr.length > 0 ? resultsArr : [null]).map((v: any) => ({
+                  result: (v === null || v === undefined || isNaN(Number(v))) ? null : Number(v),
+                  rank: null,
+                })),
+              });
+            }
+            group.products = products;
+            group.entries = entries;
+            delete group.skis;
+          }
+        }
 
         // ── Deterministic product matching against the team DB ──────────────
         // The AI transcribes names literally; we match here using containment

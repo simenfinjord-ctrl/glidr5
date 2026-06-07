@@ -251,6 +251,7 @@ export default function EditTest() {
 
   const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>([]);
   const [manualWeatherOpen, setManualWeatherOpen] = useState(false);
+  const [weatherDefaults, setWeatherDefaults] = useState<{ date?: string; time?: string; location?: string; groupScope?: string }>({});
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchemaEdit),
@@ -775,7 +776,15 @@ export default function EditTest() {
                           <FormLabel className="mb-0">{t("newTest.weather")}</FormLabel>
                           <button
                             type="button"
-                            onClick={() => setManualWeatherOpen(true)}
+                            onClick={() => {
+                              setWeatherDefaults({
+                                date: form.getValues("date"),
+                                time: form.getValues("startTime"),
+                                location: form.getValues("location"),
+                                groupScope: form.getValues("groupScope"),
+                              });
+                              setManualWeatherOpen(true);
+                            }}
                             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                           >
                             <CloudSun className="h-3 w-3" />
@@ -923,9 +932,7 @@ export default function EditTest() {
         open={manualWeatherOpen}
         onClose={() => setManualWeatherOpen(false)}
         onCreated={handleWeatherCreated}
-        defaultDate={form.getValues("date")}
-        defaultLocation={form.getValues("location")}
-        defaultGroupScope={form.getValues("groupScope")}
+        defaults={weatherDefaults}
       />
     </AppShell>
   );

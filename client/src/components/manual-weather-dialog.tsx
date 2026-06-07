@@ -70,13 +70,17 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onCreated: (weatherId: number) => void;
-  defaultDate?: string;
-  defaultLocation?: string;
-  defaultGroupScope?: string;
+  /** Snapshot of test form values captured at click time */
+  defaults?: {
+    date?: string;
+    time?: string;
+    location?: string;
+    groupScope?: string;
+  };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export function ManualWeatherDialog({ open, onClose, onCreated, defaultDate, defaultLocation, defaultGroupScope }: Props) {
+export function ManualWeatherDialog({ open, onClose, onCreated, defaults }: Props) {
   const { t } = useI18n();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -85,50 +89,41 @@ export function ManualWeatherDialog({ open, onClose, onCreated, defaultDate, def
   const todayStr = now.toISOString().slice(0, 10);
   const timeStr = now.toTimeString().slice(0, 5);
 
+  const blankValues = {
+    snowTemperatureC: 0 as number,
+    airTemperatureC: 0 as number,
+    snowHumidityPct: null as null,
+    airHumidityPct: null as null,
+    clouds: null as null,
+    visibility: "",
+    wind: "",
+    precipitation: "",
+    artificialSnow: "",
+    naturalSnow: "",
+    grainSize: "",
+    snowHumidityType: "",
+    trackHardness: "",
+    testQuality: null as null,
+  };
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      date: defaultDate ?? todayStr,
-      time: timeStr,
-      location: defaultLocation ?? "",
-      snowTemperatureC: 0,
-      airTemperatureC: 0,
-      snowHumidityPct: null,
-      airHumidityPct: null,
-      clouds: null,
-      visibility: "",
-      wind: "",
-      precipitation: "",
-      artificialSnow: "",
-      naturalSnow: "",
-      grainSize: "",
-      snowHumidityType: "",
-      trackHardness: "",
-      testQuality: null,
+      date: defaults?.date ?? todayStr,
+      time: defaults?.time ?? timeStr,
+      location: defaults?.location ?? "",
+      ...blankValues,
     },
   });
 
-  // Reset form with new defaults when dialog opens
+  // Reset form with the latest defaults snapshot every time the dialog opens
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen) {
       form.reset({
-        date: defaultDate ?? todayStr,
-        time: timeStr,
-        location: defaultLocation ?? "",
-        snowTemperatureC: 0,
-        airTemperatureC: 0,
-        snowHumidityPct: null,
-        airHumidityPct: null,
-        clouds: null,
-        visibility: "",
-        wind: "",
-        precipitation: "",
-        artificialSnow: "",
-        naturalSnow: "",
-        grainSize: "",
-        snowHumidityType: "",
-        trackHardness: "",
-        testQuality: null,
+        date: defaults?.date ?? todayStr,
+        time: defaults?.time ?? timeStr,
+        location: defaults?.location ?? "",
+        ...blankValues,
       });
     } else {
       onClose();
@@ -149,7 +144,7 @@ export function ManualWeatherDialog({ open, onClose, onCreated, defaultDate, def
         precipitation: values.precipitation || null,
         clouds: values.clouds ?? null,
         testQuality: values.testQuality ?? null,
-        groupScope: defaultGroupScope ?? user?.groupScope?.split(",")[0].trim() ?? "",
+        groupScope: defaults?.groupScope ?? user?.groupScope?.split(",")[0].trim() ?? "",
       };
       // Use /for-test endpoint — requires test edit permission (not weather edit permission)
       const res = await apiRequest("POST", "/api/weather/for-test", payload);

@@ -156,6 +156,7 @@ export default function NewTest() {
   const [duplicateApplied, setDuplicateApplied] = useState(false);
   const [runsheetOpen, setRunsheetOpen] = useState(false);
   const [manualWeatherOpen, setManualWeatherOpen] = useState(false);
+  const [weatherDefaults, setWeatherDefaults] = useState<{ date?: string; time?: string; location?: string; groupScope?: string }>({});
 
   // Grind column visibility: only include stone/pattern if at least one profile uses them
   const allGrindParamKeys = useMemo(() => {
@@ -708,7 +709,15 @@ export default function NewTest() {
                           <FormLabel className="mb-0">{t("newTest.weather")}</FormLabel>
                           <button
                             type="button"
-                            onClick={() => setManualWeatherOpen(true)}
+                            onClick={() => {
+                              setWeatherDefaults({
+                                date: form.getValues("date"),
+                                time: form.getValues("startTime"),
+                                location: form.getValues("location"),
+                                groupScope: form.getValues("groupScope"),
+                              });
+                              setManualWeatherOpen(true);
+                            }}
                             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                           >
                             <CloudSun className="h-3 w-3" />
@@ -892,9 +901,7 @@ export default function NewTest() {
         open={manualWeatherOpen}
         onClose={() => setManualWeatherOpen(false)}
         onCreated={handleWeatherCreated}
-        defaultDate={form.getValues("date")}
-        defaultLocation={form.getValues("location")}
-        defaultGroupScope={form.getValues("groupScope")}
+        defaults={weatherDefaults}
       />
     </AppShell>
   );

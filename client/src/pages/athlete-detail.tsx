@@ -818,10 +818,13 @@ export default function AthleteDetail() {
         if (airMax != null && (w.airTemperatureC == null || w.airTemperatureC > airMax)) return false;
         if (snowMin != null && (w.snowTemperatureC == null || w.snowTemperatureC < snowMin)) return false;
         if (snowMax != null && (w.snowTemperatureC == null || w.snowTemperatureC > snowMax)) return false;
-        if (testAirHumMin && (w.airHumidityPct == null || w.airHumidityPct < parseFloat(testAirHumMin))) return false;
-        if (testAirHumMax && (w.airHumidityPct == null || w.airHumidityPct > parseFloat(testAirHumMax))) return false;
-        if (testSnowHumMin && (w.snowHumidityPct == null || w.snowHumidityPct < parseFloat(testSnowHumMin))) return false;
-        if (testSnowHumMax && (w.snowHumidityPct == null || w.snowHumidityPct > parseFloat(testSnowHumMax))) return false;
+        const [tAhMin, tAhMax] = (() => { const a = testAirHumMin ? parseFloat(testAirHumMin) : null, b = testAirHumMax ? parseFloat(testAirHumMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
+        const [tShMin, tShMax] = (() => { const a = testSnowHumMin ? parseFloat(testSnowHumMin) : null, b = testSnowHumMax ? parseFloat(testSnowHumMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
+        const [tClMin, tClMax] = (() => { const a = testCloudMin !== "" ? parseFloat(testCloudMin) : null, b = testCloudMax !== "" ? parseFloat(testCloudMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
+        if (tAhMin != null && (w.airHumidityPct == null || w.airHumidityPct < tAhMin)) return false;
+        if (tAhMax != null && (w.airHumidityPct == null || w.airHumidityPct > tAhMax)) return false;
+        if (tShMin != null && (w.snowHumidityPct == null || w.snowHumidityPct < tShMin)) return false;
+        if (tShMax != null && (w.snowHumidityPct == null || w.snowHumidityPct > tShMax)) return false;
         if (testArtSnow && !(w?.artificialSnow ?? "").toLowerCase().includes(testArtSnow.toLowerCase())) return false;
         if (testNatSnow && !(w?.naturalSnow ?? "").toLowerCase().includes(testNatSnow.toLowerCase())) return false;
         if (testTrackHardness && !(w?.trackHardness ?? "").toLowerCase().includes(testTrackHardness.toLowerCase())) return false;
@@ -830,8 +833,8 @@ export default function AthleteDetail() {
         if (testPrecipitation && !(w?.precipitation ?? "").toLowerCase().includes(testPrecipitation.toLowerCase())) return false;
         if (testWind && !(w?.wind ?? "").toLowerCase().includes(testWind.toLowerCase())) return false;
         if (testVisibility && !(w?.visibility ?? "").toLowerCase().includes(testVisibility.toLowerCase())) return false;
-        if (testCloudMin !== "" && (w?.clouds == null || w.clouds < parseFloat(testCloudMin))) return false;
-        if (testCloudMax !== "" && (w?.clouds == null || w.clouds > parseFloat(testCloudMax))) return false;
+        if (tClMin != null && (w?.clouds == null || w.clouds < tClMin)) return false;
+        if (tClMax != null && (w?.clouds == null || w.clouds > tClMax)) return false;
         return true;
       });
     }
@@ -887,10 +890,13 @@ export default function AthleteDetail() {
         if (airMax != null && (w.airTemperatureC == null || w.airTemperatureC > airMax)) return false;
         if (snowMin != null && (w.snowTemperatureC == null || w.snowTemperatureC < snowMin)) return false;
         if (snowMax != null && (w.snowTemperatureC == null || w.snowTemperatureC > snowMax)) return false;
-        if (raceAirHumMin && (w.airHumidityPct == null || w.airHumidityPct < parseFloat(raceAirHumMin))) return false;
-        if (raceAirHumMax && (w.airHumidityPct == null || w.airHumidityPct > parseFloat(raceAirHumMax))) return false;
-        if (raceSnowHumMin && (w.snowHumidityPct == null || w.snowHumidityPct < parseFloat(raceSnowHumMin))) return false;
-        if (raceSnowHumMax && (w.snowHumidityPct == null || w.snowHumidityPct > parseFloat(raceSnowHumMax))) return false;
+        const [rAhMin, rAhMax] = (() => { const a = raceAirHumMin ? parseFloat(raceAirHumMin) : null, b = raceAirHumMax ? parseFloat(raceAirHumMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
+        const [rShMin, rShMax] = (() => { const a = raceSnowHumMin ? parseFloat(raceSnowHumMin) : null, b = raceSnowHumMax ? parseFloat(raceSnowHumMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
+        const [rClMin, rClMax] = (() => { const a = raceCloudMin !== "" ? parseFloat(raceCloudMin) : null, b = raceCloudMax !== "" ? parseFloat(raceCloudMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
+        if (rAhMin != null && (w.airHumidityPct == null || w.airHumidityPct < rAhMin)) return false;
+        if (rAhMax != null && (w.airHumidityPct == null || w.airHumidityPct > rAhMax)) return false;
+        if (rShMin != null && (w.snowHumidityPct == null || w.snowHumidityPct < rShMin)) return false;
+        if (rShMax != null && (w.snowHumidityPct == null || w.snowHumidityPct > rShMax)) return false;
         if (raceSnowType && !(w.snowType ?? "").toLowerCase().includes(raceSnowType.toLowerCase())) return false;
         if (raceTrackHardness && !(w.trackHardness ?? "").toLowerCase().includes(raceTrackHardness.toLowerCase())) return false;
         if (raceArtSnow && !(w?.artificialSnow ?? "").toLowerCase().includes(raceArtSnow.toLowerCase())) return false;
@@ -900,8 +906,8 @@ export default function AthleteDetail() {
         if (racePrecipitation && !(w?.precipitation ?? "").toLowerCase().includes(racePrecipitation.toLowerCase())) return false;
         if (raceWind && !(w?.wind ?? "").toLowerCase().includes(raceWind.toLowerCase())) return false;
         if (raceVisibility && !(w?.visibility ?? "").toLowerCase().includes(raceVisibility.toLowerCase())) return false;
-        if (raceCloudMin !== "" && (w?.clouds == null || w.clouds < parseFloat(raceCloudMin))) return false;
-        if (raceCloudMax !== "" && (w?.clouds == null || w.clouds > parseFloat(raceCloudMax))) return false;
+        if (rClMin != null && (w?.clouds == null || w.clouds < rClMin)) return false;
+        if (rClMax != null && (w?.clouds == null || w.clouds > rClMax)) return false;
         return true;
       });
     }

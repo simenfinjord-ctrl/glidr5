@@ -1382,15 +1382,23 @@ export default function RacePrep() {
       if (hasWeatherFilter) {
         const w = prep.weatherId ? weatherById.get(prep.weatherId) : null;
         if (!w) return false;
-        if (wfSnowTempMin !== "" && (w.snowTemperatureC ?? 999) < parseFloat(wfSnowTempMin)) return false;
-        if (wfSnowTempMax !== "" && (w.snowTemperatureC ?? -999) > parseFloat(wfSnowTempMax)) return false;
-        if (wfAirTempMin !== "" && (w.airTemperatureC ?? 999) < parseFloat(wfAirTempMin)) return false;
-        if (wfAirTempMax !== "" && (w.airTemperatureC ?? -999) > parseFloat(wfAirTempMax)) return false;
+        // Auto-swap all inverted ranges (common with negative temperatures)
+        const swap = (a: number | null, b: number | null): [number | null, number | null] =>
+          a != null && b != null && a > b ? [b, a] : [a, b];
+        const [snMin, snMax] = swap(wfSnowTempMin !== "" ? parseFloat(wfSnowTempMin) : null, wfSnowTempMax !== "" ? parseFloat(wfSnowTempMax) : null);
+        const [aiMin, aiMax] = swap(wfAirTempMin !== "" ? parseFloat(wfAirTempMin) : null, wfAirTempMax !== "" ? parseFloat(wfAirTempMax) : null);
+        const [ahMin, ahMax] = swap(wfAirHumMin !== "" ? parseFloat(wfAirHumMin) : null, wfAirHumMax !== "" ? parseFloat(wfAirHumMax) : null);
+        const [shMin, shMax] = swap(wfSnowHumMin !== "" ? parseFloat(wfSnowHumMin) : null, wfSnowHumMax !== "" ? parseFloat(wfSnowHumMax) : null);
+        const [clMin, clMax] = swap(wfCloudMin !== "" ? parseFloat(wfCloudMin) : null, wfCloudMax !== "" ? parseFloat(wfCloudMax) : null);
+        if (snMin != null && (w.snowTemperatureC == null || w.snowTemperatureC < snMin)) return false;
+        if (snMax != null && (w.snowTemperatureC == null || w.snowTemperatureC > snMax)) return false;
+        if (aiMin != null && (w.airTemperatureC == null || w.airTemperatureC < aiMin)) return false;
+        if (aiMax != null && (w.airTemperatureC == null || w.airTemperatureC > aiMax)) return false;
         if (wfTrackHardness && !(w.trackHardness ?? "").toLowerCase().includes(wfTrackHardness.toLowerCase())) return false;
-        if (wfAirHumMin !== "" && (w.airHumidityPct ?? 999) < parseFloat(wfAirHumMin)) return false;
-        if (wfAirHumMax !== "" && (w.airHumidityPct ?? -999) > parseFloat(wfAirHumMax)) return false;
-        if (wfSnowHumMin !== "" && (w.snowHumidityPct ?? 999) < parseFloat(wfSnowHumMin)) return false;
-        if (wfSnowHumMax !== "" && (w.snowHumidityPct ?? -999) > parseFloat(wfSnowHumMax)) return false;
+        if (ahMin != null && (w.airHumidityPct == null || w.airHumidityPct < ahMin)) return false;
+        if (ahMax != null && (w.airHumidityPct == null || w.airHumidityPct > ahMax)) return false;
+        if (shMin != null && (w.snowHumidityPct == null || w.snowHumidityPct < shMin)) return false;
+        if (shMax != null && (w.snowHumidityPct == null || w.snowHumidityPct > shMax)) return false;
         if (wfArtSnow && !(w.artificialSnow ?? "").toLowerCase().includes(wfArtSnow.toLowerCase())) return false;
         if (wfNatSnow && !(w.naturalSnow ?? "").toLowerCase().includes(wfNatSnow.toLowerCase())) return false;
         if (wfSnowHumidityType && !(w.snowHumidityType ?? "").toLowerCase().includes(wfSnowHumidityType.toLowerCase())) return false;
@@ -1398,8 +1406,8 @@ export default function RacePrep() {
         if (wfPrecipitation && !(w.precipitation ?? "").toLowerCase().includes(wfPrecipitation.toLowerCase())) return false;
         if (wfWind && !(w.wind ?? "").toLowerCase().includes(wfWind.toLowerCase())) return false;
         if (wfVisibility && !(w.visibility ?? "").toLowerCase().includes(wfVisibility.toLowerCase())) return false;
-        if (wfCloudMin !== "" && (w.clouds ?? 999) < parseFloat(wfCloudMin)) return false;
-        if (wfCloudMax !== "" && (w.clouds ?? -999) > parseFloat(wfCloudMax)) return false;
+        if (clMin != null && (w.clouds == null || w.clouds < clMin)) return false;
+        if (clMax != null && (w.clouds == null || w.clouds > clMax)) return false;
       }
       return true;
     });

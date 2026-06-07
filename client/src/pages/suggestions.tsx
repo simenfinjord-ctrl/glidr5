@@ -111,7 +111,9 @@ function toNum(s: string): number | null {
 }
 
 function inRange(val: number, minStr: string, maxStr: string): boolean {
-  const min = toNum(minStr); const max = toNum(maxStr);
+  let min = toNum(minStr); let max = toNum(maxStr);
+  // Auto-swap inverted ranges (common with negative temperatures: user types -3 then -5)
+  if (min !== null && max !== null && min > max) { const tmp = min; min = max; max = tmp; }
   if (min !== null && val < min) return false;
   if (max !== null && val > max) return false;
   return true;

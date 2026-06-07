@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -116,18 +117,23 @@ export function ManualWeatherDialog({ open, onClose, onCreated, defaults }: Prop
     },
   });
 
-  // Reset form with the latest defaults snapshot every time the dialog opens
-  const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen) {
+  // Reset form with the latest defaults snapshot every time the dialog opens.
+  // Must use useEffect (not onOpenChange) because onOpenChange is only fired by
+  // user interaction — not when the parent sets open=true programmatically.
+  useEffect(() => {
+    if (open) {
       form.reset({
         date: defaults?.date ?? todayStr,
         time: defaults?.time ?? timeStr,
         location: defaults?.location ?? "",
         ...blankValues,
       });
-    } else {
-      onClose();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) onClose();
   };
 
   const mutation = useMutation({

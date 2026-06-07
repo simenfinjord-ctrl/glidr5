@@ -6809,8 +6809,10 @@ export async function registerRoutes(
       return res.status(500).json({ message: "GROQ_API_KEY not configured on server. Get a free key at console.groq.com" });
     }
 
-    // ── Load team's product list to include in the prompt ──────────────────
-    let productListForPrompt = "";
+    // ── Load team's product database for server-side matching ──────────────
+    // We do NOT put the product list in the prompt — weak vision models tend to
+    // collapse every product onto one DB entry. The AI transcribes names literally;
+    // matching is done deterministically here.
     let dbProducts: { id: number; brand: string; name: string }[] = [];
     try {
       const teamIdForMatch = getActiveTeamId(req);
@@ -6820,10 +6822,6 @@ export async function registerRoutes(
         [teamIdForMatch]
       );
       dbProducts = dbRows.rows;
-      if (dbProducts.length > 0) {
-        productListForPrompt = `\n\nTEAM PRODUCT DATABASE (match product names from the image against these — use the exact brand and name from this list when you find a match):\n` +
-          dbProducts.map((p, i) => `${i + 1}. ${p.brand} ${p.name}`).join("\n");
-      }
     } catch (_) { /* best-effort */ }
 
     const prompt = `You are analyzing a handwritten ski wax test result sheet. Extract all data and return ONLY raw JSON — no markdown, no explanation, no code block.
@@ -6838,19 +6836,21 @@ WEATHER: Extract all weather data you can find anywhere on the sheet. It may be 
 
 SKI GROUPS: The sheet may be divided into groups like "Blå 1", "Blå 2", "Rød" etc. — these are different test ski series. Each group is a separate test.
 
-PRODUCT NOTATION PER SKI PAIR:
-- The number at the START of a line is the ski pair number (1, 2, 3 …)
-- After the ski number comes the product name, then often a temperature in °C (e.g. "LDR White 180°" = product "LDR White" applied at 180°C — put the temperature in methodology as "180°C")
-- "+" means TWO SEPARATE products on the SAME ski pair. List each as a separate entry with the same skiNumber.
-- "–ii–" or "--ii--" or "—ii—" means "same product(s) as the ski pair directly above this one". Copy the product(s) from the previous ski pair. Only the part AFTER a "+" is different.
-- Example: ski 3 is "–ii– + FFC 34 m/ull" → same base product as ski 2, PLUS a second product "FFC 34 m/ull"
+EACH SKI-PAIR LINE HAS THIS EXACT STRUCTURE (left to right):
+[ski number] [product name] [APPLICATION temperature] ............ [RESULT column(s)]
 
-RESULTS:
-- Numbers on the RIGHT side of the line are test results in cm (cm behind the leader). 0 = winner.
-- If there are TWO columns of results, that means TWO rounds of testing. Return both in the "results" array.
-- If there is only ONE column, return a single entry in results.
+1. SKI NUMBER: the number at the very START of the line (1, 2, 3 …).
+2. PRODUCT NAME: the words after the ski number.
+3. APPLICATION TEMPERATURE: the number written IMMEDIATELY AFTER the product name, usually with a degree sign (e.g. "180°", "170°", "200°"). This is ALWAYS the application/iron temperature — NEVER a result. Put it in "methodology" as e.g. "180°C". A product line like "LDR White 180°" = product "LDR White", methodology "180°C".
+4. RESULT COLUMN(S): the number(s) at the FAR RIGHT of the line, clearly separated from the product by a gap. These are the test results in cm behind the leader (0 = winner). Each separate column to the right = one distance/round. If there are 2 right-hand columns, that is 2 rounds → return 2 elements in "results". If 1 column → 1 element.
 
-PRODUCT MATCHING: Match abbreviated product names to the team database provided. E.g. "LDR White" → "Vauhti Race LDR White Powder", "Date Cold" → match best product with "Date" and "Cold" in name, "SIX" → "Vauhti SIX", "WM25" → product containing "WM25". Use the EXACT brand and name from the database when you find a match (score ≥ 0.4 token overlap).${productListForPrompt}
+CRITICAL: Do NOT confuse the application temperature (right after the product, with °) with a result. The application number has a degree sign and sits next to the product; the result sits far right with a gap. If a line is "PC100 200° ... 200", then 200° is methodology "200°C" and the far-right 200 is the result.
+
+"+" NOTATION: "+" means TWO SEPARATE products on the SAME ski pair (each may have its own application temp). List each as a separate product object with the same skiNumber. The methodology may then contain both temps.
+
+"–ii–" / "--ii--" / "—ii—" NOTATION: means "same product(s) as the ski pair directly ABOVE this one". Copy the product(s) from the previous ski pair. Only the part written AFTER a "+" is new. Example: ski 3 = "–ii– + FFC 34 m/ull" → same base product as ski 2, PLUS a second product "FFC 34 m/ull".
+
+PRODUCT NAMES: Transcribe the product name EXACTLY as written on the paper — do NOT guess, expand, or substitute names. Write what you literally see (e.g. "LDR White", "Date Cold", "SIX", "WM25", "PC100"). The system matches these to the database afterwards — your only job is accurate transcription. NEVER replace a product with a different product name.
 
 === OUTPUT FORMAT ===
 
@@ -6874,9 +6874,8 @@ Return an array — one object per ski GROUP (series). Each object:
   "products": [
     {
       "skiNumber": integer,
-      "brand": "exact brand from database or best guess",
-      "name": "exact product name from database or best guess",
-      "matchedDbIndex": integer (1-based index from the product list above) or null
+      "brand": "brand if written, else empty string",
+      "name": "product name EXACTLY as written on paper"
     }
   ],
   "entries": [
@@ -6938,41 +6937,56 @@ IMPORTANT:
         let parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
         if (!Array.isArray(parsed)) parsed = [parsed];
 
-        // ── Fuzzy-match any unmatched product names against the team DB ──────
-        // This is a fallback for products the AI couldn't match via the prompt.
+        // ── Deterministic product matching against the team DB ──────────────
+        // The AI transcribes names literally; we match here using containment
+        // scoring: how much of the (short) scanned name is found in a DB product.
         if (dbProducts.length > 0) {
           const norm = (s: string) =>
             s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-          const tokenSet = (s: string): Set<string> =>
-            new Set(norm(s).split(" ").filter(Boolean));
-          const fuzzyScore = (a: string, b: string): number => {
-            const ta = tokenSet(a); const tb = tokenSet(b);
-            if (ta.size === 0 || tb.size === 0) return 0;
+          const tokenize = (s: string): string[] =>
+            norm(s).split(" ").filter(Boolean);
+          // A token is "distinctive" if it contains a digit (e.g. wm25, pc100, r30)
+          const isDistinctive = (t: string) => /\d/.test(t);
+
+          // Returns containment score 0..1, or -1 if a distinctive token mismatched.
+          const matchScore = (scanned: string, dbName: string): number => {
+            const ta = tokenize(scanned);
+            const tb = new Set(tokenize(dbName));
+            if (ta.length === 0 || tb.size === 0) return 0;
             let hits = 0;
-            for (const t of ta) if (tb.has(t)) hits++;
-            return hits / Math.max(ta.size, tb.size);
+            for (const t of ta) {
+              if (tb.has(t)) {
+                hits++;
+              } else if (isDistinctive(t)) {
+                // A distinctive token (e.g. "wm25") that is NOT in the DB product
+                // is a hard mismatch — prevents WM25 matching WM30.
+                return -1;
+              }
+            }
+            return hits / ta.length; // containment: fraction of scanned tokens found
           };
 
           for (const group of parsed) {
             if (!Array.isArray(group.products)) continue;
             group.products = group.products.map((p: any) => {
-              // If AI already matched via matchedDbIndex, use it
-              if (p.matchedDbIndex && dbProducts[p.matchedDbIndex - 1]) {
-                const db = dbProducts[p.matchedDbIndex - 1];
-                return { ...p, brand: db.brand, name: db.name, matched: true };
-              }
-              // Otherwise fuzzy-match
-              const aiStr = `${p.brand || ""} ${p.name || ""}`.trim();
+              const scanned = `${p.brand || ""} ${p.name || ""}`.trim();
+              if (!scanned) return { ...p, matched: false };
               let bestScore = 0;
+              let secondScore = 0;
               let bestMatch: { id: number; brand: string; name: string } | null = null;
               for (const dp of dbProducts) {
-                const score = fuzzyScore(aiStr, `${dp.brand} ${dp.name}`);
-                if (score > bestScore) { bestScore = score; bestMatch = dp; }
+                const score = matchScore(scanned, `${dp.brand} ${dp.name}`);
+                if (score > bestScore) { secondScore = bestScore; bestScore = score; bestMatch = dp; }
+                else if (score > secondScore) { secondScore = score; }
               }
-              if (bestMatch && bestScore >= 0.4) {
-                return { ...p, brand: bestMatch.brand, name: bestMatch.name, matched: true };
+              // Require strong containment AND that the match is not ambiguous
+              // (clearly better than the runner-up, unless it's a near-perfect match).
+              const confident = bestMatch != null && bestScore >= 0.6 &&
+                (bestScore >= 0.99 || bestScore - secondScore >= 0.25);
+              if (confident && bestMatch) {
+                return { brand: bestMatch.brand, name: bestMatch.name, skiNumber: p.skiNumber, matched: true };
               }
-              // No confident match — flag so the UI can offer "Create product"
+              // No confident match — keep literal transcription, flag for "Create product"
               return { ...p, matched: false };
             });
           }

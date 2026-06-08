@@ -2181,7 +2181,7 @@ export default function AthleteDetail() {
                   : false;
                 const kickProducts = kickIsText ? [] : parseProductIds(entry.kickProductIds);
                 const kickText = kickIsText ? entry.kickProductIds : null;
-                const hasProducts = glideProducts.length > 0 || structureProducts.length > 0 || kickProducts.length > 0 || !!kickText;
+                const hasProducts = glideProducts.length > 0 || structureProducts.length > 0 || kickProducts.length > 0 || !!kickText || !!entry.tette;
 
                 // Ski-pair editing: anyone with access to this athlete may register the ski pair.
                 // (Viewing this page already requires athlete access; the server re-checks.)
@@ -2260,6 +2260,11 @@ export default function AthleteDetail() {
                           {kickText && (
                             <span className="inline-flex items-center rounded-lg bg-orange-50 dark:bg-orange-900/20 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-800">
                               {kickText}
+                            </span>
+                          )}
+                          {entry.tette && (
+                            <span className="inline-flex items-center rounded-lg bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-800">
+                              {language === "no" ? "Tette" : "Binder"}: {entry.tette}
                             </span>
                           )}
                           {entry.method && (

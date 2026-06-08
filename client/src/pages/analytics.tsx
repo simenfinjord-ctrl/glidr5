@@ -2800,8 +2800,27 @@ type RacedProductStat = {
   structureCount: number;
   kickCount: number;
   total: number;
-  usages: { prep: any; role: "glide" | "structure" | "kick"; weather: Weather | null }[];
+  usages: { prep: any; role: "glide" | "structure" | "kick"; weather: Weather | null; application: string }[];
 };
+
+type RacedCombination = {
+  key: string;
+  products: { product: Product; application: string }[]; // representative apps from first usage
+  count: number;
+  usages: { prep: any; weather: Weather | null; products: { product: Product; application: string }[] }[];
+};
+
+// Parse a productApps JSON string into a Map<productId, application>.
+function parseAppsMap(appsJson: string | null | undefined): Map<number, string> {
+  const m = new Map<number, string>();
+  if (appsJson) {
+    try {
+      const arr = JSON.parse(appsJson);
+      if (Array.isArray(arr)) for (const x of arr) if (x && typeof x.productId === "number") m.set(x.productId, x.application || "");
+    } catch {}
+  }
+  return m;
+}
 
 // ─── Durability Analysis ─────────────────────────────────────────────────────
 const DURABILITY_CHART_COLORS = ["#10b981","#3b82f6","#f59e0b","#ef4444","#8b5cf6","#f97316"];
@@ -3264,23 +3283,63 @@ function DurabilityAnalysis({
 function RacedProductsTab({
   racePreps,
   racedProductStats,
+  racedCombinations,
   lang,
   roleFilter,
 }: {
   racePreps: any[];
   racedProductStats: RacedProductStat[];
+  racedCombinations: RacedCombination[];
   lang: string;
   roleFilter: string;
 }) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [expandedCombo, setExpandedCombo] = useState<Set<string>>(new Set());
+  const [view, setView] = useState<"products" | "combinations">("products");
+  // Conditions filter — find which products/combos were raced in a given føre
+  const [snowMin, setSnowMin] = useState("");
+  const [snowMax, setSnowMax] = useState("");
+  const [snowTypeFilter, setSnowTypeFilter] = useState("");
   const L = (no: string, en: string) => lang === "en" ? en : no;
 
-  // Apply role filter from analytics header (All / Glide / Structure)
+  const hasCondFilter = snowMin !== "" || snowMax !== "" || snowTypeFilter !== "";
+  const weatherMatches = (w: Weather | null): boolean => {
+    if (!hasCondFilter) return true;
+    if (!w) return false;
+    const lo = snowMin !== "" ? parseFloat(snowMin) : null;
+    const hi = snowMax !== "" ? parseFloat(snowMax) : null;
+    const [a, b] = lo != null && hi != null && lo > hi ? [hi, lo] : [lo, hi];
+    if (a != null && (w.snowTemperatureC == null || w.snowTemperatureC < a)) return false;
+    if (b != null && (w.snowTemperatureC == null || w.snowTemperatureC > b)) return false;
+    if (snowTypeFilter && !(w.snowType ?? "").toLowerCase().includes(snowTypeFilter.toLowerCase())) return false;
+    return true;
+  };
+
+  // Apply role filter from analytics header (All / Glide / Structure) + conditions filter
   const visibleStats = useMemo(() => {
-    if (roleFilter === "Glide") return racedProductStats.filter(s => s.glideCount > 0).map(s => ({ ...s, usages: s.usages.filter(u => u.role === "glide") }));
-    if (roleFilter === "Structure") return racedProductStats.filter(s => s.structureCount > 0).map(s => ({ ...s, usages: s.usages.filter(u => u.role === "structure") }));
-    return racedProductStats;
-  }, [racedProductStats, roleFilter]);
+    let stats = racedProductStats;
+    if (roleFilter === "Glide") stats = racedProductStats.filter(s => s.glideCount > 0).map(s => ({ ...s, usages: s.usages.filter(u => u.role === "glide") }));
+    else if (roleFilter === "Structure") stats = racedProductStats.filter(s => s.structureCount > 0).map(s => ({ ...s, usages: s.usages.filter(u => u.role === "structure") }));
+    if (hasCondFilter) {
+      stats = stats
+        .map(s => ({ ...s, usages: s.usages.filter(u => weatherMatches(u.weather)) }))
+        .filter(s => s.usages.length > 0)
+        .map(s => ({ ...s, total: s.usages.length }));
+    }
+    return stats;
+  }, [racedProductStats, roleFilter, snowMin, snowMax, snowTypeFilter]);
+
+  const visibleCombos = useMemo(() => {
+    if (!hasCondFilter) return racedCombinations;
+    return racedCombinations
+      .map(c => ({ ...c, usages: c.usages.filter(u => weatherMatches(u.weather)) }))
+      .filter(c => c.usages.length > 0)
+      .map(c => ({ ...c, count: c.usages.length }));
+  }, [racedCombinations, snowMin, snowMax, snowTypeFilter]);
+
+  function toggleCombo(key: string) {
+    setExpandedCombo(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  }
 
   function toggle(id: number) {
     setExpanded(prev => {
@@ -3302,6 +3361,40 @@ function RacedProductsTab({
 
   return (
     <div className="space-y-4 p-1">
+      {/* View toggle + conditions filter */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center rounded-lg border border-border bg-background p-0.5">
+          <button onClick={() => setView("products")} className={cn("rounded-md px-3 py-1 text-xs font-medium transition-colors", view === "products" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+            {L("Produkter", "Products")}
+          </button>
+          <button onClick={() => setView("combinations")} className={cn("rounded-md px-3 py-1 text-xs font-medium transition-colors", view === "combinations" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+            {L("Kombinasjoner", "Combinations")}
+          </button>
+        </div>
+        <div className="flex items-center gap-1.5 ml-auto flex-wrap">
+          <Snowflake className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">{L("Føre:", "Conditions:")}</span>
+          <input type="number" value={snowMin} onChange={(e) => setSnowMin(e.target.value)} placeholder={L("Snø min", "Snow min")} className="h-7 w-20 rounded border border-input bg-background px-1.5 text-xs" />
+          <span className="text-xs text-muted-foreground">–</span>
+          <input type="number" value={snowMax} onChange={(e) => setSnowMax(e.target.value)} placeholder={L("Snø max", "Snow max")} className="h-7 w-20 rounded border border-input bg-background px-1.5 text-xs" />
+          <input type="text" value={snowTypeFilter} onChange={(e) => setSnowTypeFilter(e.target.value)} placeholder={L("Snøtype", "Snow type")} className="h-7 w-28 rounded border border-input bg-background px-1.5 text-xs" />
+          {hasCondFilter && (
+            <button onClick={() => { setSnowMin(""); setSnowMax(""); setSnowTypeFilter(""); }} className="text-xs text-muted-foreground hover:text-foreground underline">
+              {L("Nullstill", "Clear")}
+            </button>
+          )}
+        </div>
+      </div>
+      {hasCondFilter && (
+        <p className="text-xs text-amber-600 dark:text-amber-400">
+          {L("Viser kun produkter/kombinasjoner som har vært kjørt på dette føret.", "Showing only products/combinations raced in these conditions.")}
+        </p>
+      )}
+
+      {view === "combinations" ? (
+        <RacedCombinationsList combos={visibleCombos} expanded={expandedCombo} toggle={toggleCombo} L={L} fmtD={fmtD} lang={lang} />
+      ) : (
+      <>
       <p className="text-sm text-muted-foreground">
         {L(`${racePreps.length} rennprep-er · ${visibleStats.length} produkter`, `${racePreps.length} race preps · ${visibleStats.length} products`)}
       </p>
@@ -3309,7 +3402,9 @@ function RacedProductsTab({
         <Card className="p-8 text-center">
           <Trophy className="h-8 w-8 mx-auto mb-2 opacity-30 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            {L("Ingen produkter registrert i rennprep ennå.", "No products recorded in race preps yet.")}
+            {hasCondFilter
+              ? L("Ingen produkter kjørt på dette føret.", "No products raced in these conditions.")
+              : L("Ingen produkter registrert i rennprep ennå.", "No products recorded in race preps yet.")}
           </p>
         </Card>
       ) : (
@@ -3357,6 +3452,12 @@ function RacedProductsTab({
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Rolle", "Role")}</p>
                             <p className="font-medium">{ROLE_LABEL[u.role]}</p>
                           </div>
+                          {u.application && (
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Applikasjon", "Application")}</p>
+                              <p className="font-medium">{u.application}</p>
+                            </div>
+                          )}
                           {/* Weather fields */}
                           {w && (
                             <>
@@ -3457,6 +3558,94 @@ function RacedProductsTab({
           })}
         </div>
       )}
+      </>
+      )}
+    </div>
+  );
+}
+
+// ─── Raced combinations list ─────────────────────────────────────────────────
+function RacedCombinationsList({
+  combos, expanded, toggle, L, fmtD, lang,
+}: {
+  combos: RacedCombination[];
+  expanded: Set<string>;
+  toggle: (key: string) => void;
+  L: (no: string, en: string) => string;
+  fmtD: (d: string) => string;
+  lang: string;
+}) {
+  if (combos.length === 0) {
+    return (
+      <Card className="p-8 text-center">
+        <Layers className="h-8 w-8 mx-auto mb-2 opacity-30 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">{L("Ingen kombinasjoner (2+ produkter) kjørt.", "No combinations (2+ products) raced.")}</p>
+      </Card>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-muted-foreground">{L(`${combos.length} kombinasjoner`, `${combos.length} combinations`)}</p>
+      {combos.map((c) => {
+        const isOpen = expanded.has(c.key);
+        return (
+          <div key={c.key} className="rounded-xl border border-border overflow-hidden">
+            <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors text-left" onClick={() => toggle(c.key)}>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+              <div className="flex-1 min-w-0 flex flex-wrap items-center gap-1.5">
+                {c.products.map(({ product: p, application }, i) => (
+                  <span key={p.id} className="inline-flex items-center text-xs">
+                    {i > 0 && <span className="mx-1 text-muted-foreground font-bold">+</span>}
+                    <span className="font-semibold">{p.brand} {p.name}</span>
+                    {application && <span className="ml-1 text-muted-foreground">({application})</span>}
+                  </span>
+                ))}
+              </div>
+              <span className="font-bold text-foreground text-sm shrink-0">{c.count}×</span>
+            </button>
+            {isOpen && (
+              <div className="border-t border-border divide-y divide-border/50">
+                {c.usages.map((u, i) => {
+                  const p = u.prep; const w = u.weather;
+                  return (
+                    <div key={i} className="px-4 py-3 bg-muted/10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 text-sm">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Dato / Sted", "Date / Location")}</p>
+                        <p className="font-medium">{fmtD(p.date)} — {p.location}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Renntype", "Race type")}</p>
+                        <p className="font-medium">{p.raceType} <span className="text-muted-foreground text-xs">({p.discipline})</span></p>
+                      </div>
+                      {w?.snowTemperatureC != null && (
+                        <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Snøtemp", "Snow temp")}</p><p className="font-medium">{w.snowTemperatureC}°C</p></div>
+                      )}
+                      {w?.airTemperatureC != null && (
+                        <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Lufttemp", "Air temp")}</p><p className="font-medium">{w.airTemperatureC}°C</p></div>
+                      )}
+                      {w?.snowType && (
+                        <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Snøtype", "Snow type")}</p><p className="font-medium">{w.snowType}</p></div>
+                      )}
+                      {w?.trackHardness && (
+                        <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Sporhardhet", "Track hardness")}</p><p className="font-medium">{w.trackHardness}</p></div>
+                      )}
+                      {/* Products + applications used in this race */}
+                      <div className="sm:col-span-2 md:col-span-3">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Produkter + applikasjon", "Products + application")}</p>
+                        <p className="font-medium">
+                          {u.products.map((pp, j) => (
+                            <span key={pp.product.id}>{j > 0 ? " + " : ""}{pp.product.brand} {pp.product.name}{pp.application ? ` (${pp.application})` : ""}</span>
+                          ))}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -3767,8 +3956,9 @@ export default function Analytics() {
   const racedProductStats = useMemo(() => {
     const counts = new Map<number, RacedProductStat>();
 
-    const addIds = (idsStr: string | null, type: "glide" | "structure" | "kick", prep: any) => {
+    const addIds = (idsStr: string | null, appsJson: string | null, type: "glide" | "structure" | "kick", prep: any) => {
       if (!idsStr) return;
+      const apps = parseAppsMap(appsJson);
       for (const idStr of idsStr.split(",")) {
         const id = parseInt(idStr);
         if (isNaN(id)) continue;
@@ -3780,18 +3970,37 @@ export default function Analytics() {
         else existing.kickCount++;
         existing.total++;
         const weather = prep.weatherId ? (weatherById.get(prep.weatherId) ?? null) : null;
-        existing.usages.push({ prep, role: type, weather });
+        existing.usages.push({ prep, role: type, weather, application: apps.get(id) || "" });
         counts.set(id, existing);
       }
     };
 
     for (const prep of racePreps) {
-      addIds(prep.productIds, "glide", prep);
-      addIds(prep.structureIds, "structure", prep);
-      addIds(prep.kickProductIds, "kick", prep);
+      addIds(prep.productIds, prep.productApps, "glide", prep);
+      addIds(prep.structureIds, prep.structureApps, "structure", prep);
+      addIds(prep.kickProductIds, null, "kick", prep);
     }
 
     return Array.from(counts.values()).sort((a, b) => b.total - a.total);
+  }, [racePreps, productsById, weatherById]);
+
+  // Raced combinations: products used TOGETHER (2+) on the same race prep.
+  const racedCombinations = useMemo(() => {
+    const combos = new Map<string, RacedCombination>();
+    for (const prep of racePreps) {
+      const ids = (prep.productIds || "").split(",").map((s: string) => parseInt(s)).filter((n: number) => !isNaN(n));
+      const products = ids.map((id: number) => productsById.get(id)).filter(Boolean) as Product[];
+      if (products.length < 2) continue;
+      const apps = parseAppsMap(prep.productApps);
+      const withApps = products.map((p) => ({ product: p, application: apps.get(p.id) || "" }));
+      const key = [...products.map((p) => p.id)].sort((a, b) => a - b).join(",");
+      const weather = prep.weatherId ? (weatherById.get(prep.weatherId) ?? null) : null;
+      const existing = combos.get(key) ?? { key, products: withApps, count: 0, usages: [] };
+      existing.count++;
+      existing.usages.push({ prep, weather, products: withApps });
+      combos.set(key, existing);
+    }
+    return Array.from(combos.values()).sort((a, b) => b.count - a.count);
   }, [racePreps, productsById, weatherById]);
 
   return (
@@ -4089,6 +4298,7 @@ export default function Analytics() {
           <RacedProductsTab
             racePreps={racePreps}
             racedProductStats={racedProductStats}
+            racedCombinations={racedCombinations}
             lang={lang}
             roleFilter={testTypeFilter}
           />

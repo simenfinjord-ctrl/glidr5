@@ -249,6 +249,8 @@ function CreateProductForm({
   onCancel: () => void;
 }) {
   const queryClient = useQueryClient();
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [category, setCategory] = useState(defaultCategory);
   const [brand, setBrand] = useState(initialBrand);
   const [name, setName] = useState(initialName);
@@ -256,7 +258,7 @@ function CreateProductForm({
   const [err, setErr] = useState("");
 
   async function submit() {
-    if (!brand.trim() || !name.trim()) { setErr("Brand and name are required"); return; }
+    if (!brand.trim() || !name.trim()) { setErr(L("Merke og navn er påkrevd", "Brand and name are required")); return; }
     setSaving(true);
     setErr("");
     try {
@@ -264,7 +266,7 @@ function CreateProductForm({
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       onCreated(brand.trim(), name.trim());
     } catch (e: any) {
-      setErr(e?.message || "Could not create product");
+      setErr(e?.message || L("Kunne ikke opprette produkt", "Could not create product"));
     } finally {
       setSaving(false);
     }
@@ -272,36 +274,36 @@ function CreateProductForm({
 
   return (
     <div className="rounded-lg border border-red-300 bg-red-50/50 dark:bg-red-950/20 p-2.5 flex flex-col gap-2">
-      <p className="text-[11px] font-semibold text-red-600 dark:text-red-400">Create product not in database</p>
+      <p className="text-[11px] font-semibold text-red-600 dark:text-red-400">{L("Opprett produkt som ikke finnes i databasen", "Create product not in database")}</p>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] text-muted-foreground">Category</label>
+          <label className="text-[10px] text-muted-foreground">{L("Kategori", "Category")}</label>
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger className="h-7 text-xs mt-0.5"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="Glide product">Glide product</SelectItem>
-              <SelectItem value="Topping product">Topping product</SelectItem>
-              <SelectItem value="Structure tool">Structure tool</SelectItem>
+              <SelectItem value="Glide product">{L("Glidprodukt", "Glide product")}</SelectItem>
+              <SelectItem value="Topping product">{L("Toppingprodukt", "Topping product")}</SelectItem>
+              <SelectItem value="Structure tool">{L("Strukturverktøy", "Structure tool")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div />
         <div>
-          <label className="text-[10px] text-muted-foreground">Brand</label>
-          <input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="e.g. Swix"
+          <label className="text-[10px] text-muted-foreground">{L("Merke", "Brand")}</label>
+          <input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder={L("f.eks. Swix", "e.g. Swix")}
             className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs mt-0.5" />
         </div>
         <div>
-          <label className="text-[10px] text-muted-foreground">Name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. HS10"
+          <label className="text-[10px] text-muted-foreground">{L("Navn", "Name")}</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={L("f.eks. HS10", "e.g. HS10")}
             className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs mt-0.5" />
         </div>
       </div>
       {err && <p className="text-[11px] text-red-600">{err}</p>}
       <div className="flex gap-2 justify-end">
-        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={onCancel}>Cancel</Button>
+        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={onCancel}>{L("Avbryt", "Cancel")}</Button>
         <Button type="button" size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white" onClick={submit} disabled={saving}>
-          {saving ? "Creating…" : "Create product"}
+          {saving ? L("Oppretter…", "Creating…") : L("Opprett produkt", "Create product")}
         </Button>
       </div>
     </div>
@@ -327,6 +329,8 @@ function ProductPicker({
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const datalistId = useMemo(() => `brands-${Math.random().toString(36).slice(2)}`, []);
 
   const brands = useMemo(
@@ -364,7 +368,7 @@ function ProductPicker({
         type="text"
         value={brand}
         onChange={(e) => onChange({ brand: e.target.value, name, matched: false })}
-        placeholder="Brand"
+        placeholder={L("Merke", "Brand")}
         className={cn(
           "h-7 w-20 rounded border bg-background px-1.5 text-xs flex-shrink-0",
           matched ? "border-input" : "border-red-400 text-red-600 dark:text-red-400"
@@ -380,7 +384,7 @@ function ProductPicker({
           disabled={!brandKey}
           onFocus={() => { if (brandKey) setOpen(true); }}
           onChange={(e) => { onChange({ brand, name: e.target.value, matched: false }); if (brandKey) setOpen(true); }}
-          placeholder={brandKey ? "Search product…" : "Brand first"}
+          placeholder={brandKey ? L("Søk produkt…", "Search product…") : L("Merke først", "Brand first")}
           className={cn(
             "h-7 w-28 rounded border bg-background px-1.5 text-xs",
             matched ? "border-input" : "border-red-400 text-red-600 dark:text-red-400",
@@ -409,7 +413,8 @@ function ProductPicker({
 function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
@@ -473,7 +478,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
       // Server now returns an array of groups; tolerate a single object too.
       const rawGroups: PictureGroup[] = Array.isArray(data) ? data : (data ? [data] : []);
       if (rawGroups.length === 0) {
-        setErrorMsg("No test data found in image");
+        setErrorMsg(L("Fant ingen testdata i bildet", "No test data found in image"));
         setStep("error");
         return;
       }
@@ -583,7 +588,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Camera className="h-5 w-5 text-primary" />
-            Add from picture
+            {L("Legg til fra bilde", "Add from picture")}
           </DialogTitle>
         </DialogHeader>
 
@@ -591,7 +596,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         {step === "upload" && (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Take a photo or upload an image of an existing test sheet. AI will extract the data and create the test automatically.
+              {L("Ta et bilde eller last opp et eksisterende testark. KI henter ut dataene og oppretter testen automatisk.", "Take a photo or upload an image of an existing test sheet. AI will extract the data and create the test automatically.")}
             </p>
             <div
               ref={dropRef}
@@ -662,23 +667,23 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {groups.length} groups detected — review each, then create all.
+                  {L(`${groups.length} grupper funnet — gå gjennom hver, og opprett alle.`, `${groups.length} groups detected — review each, then create all.`)}
                 </p>
               </div>
             )}
 
-            <p className="text-sm text-muted-foreground">Review and edit the extracted data before saving.</p>
+            <p className="text-sm text-muted-foreground">{L("Gå gjennom og rediger dataene før lagring.", "Review and edit the extracted data before saving.")}</p>
 
             {/* Basic info */}
             <div className="rounded-lg border border-border p-3 flex flex-col gap-2.5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Test info</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">{L("Testinfo", "Test info")}</p>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs text-muted-foreground">Date</label>
+                  <label className="text-xs text-muted-foreground">{L("Dato", "Date")}</label>
                   <Input type="date" value={activeGroup.date} onChange={(e) => updateActiveGroup((g) => ({ ...g, date: e.target.value }))} className="h-8 text-sm mt-0.5" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Type</label>
+                  <label className="text-xs text-muted-foreground">{L("Type", "Type")}</label>
                   <Select value={activeGroup.testType} onValueChange={(v) => updateActiveGroup((g) => ({ ...g, testType: v }))}>
                     <SelectTrigger className="h-8 text-sm mt-0.5">
                       <SelectValue />
@@ -695,15 +700,15 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                 </div>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Location</label>
+                <label className="text-xs text-muted-foreground">{L("Sted", "Location")}</label>
                 <Input value={activeGroup.location} onChange={(e) => updateActiveGroup((g) => ({ ...g, location: e.target.value }))} className="h-8 text-sm mt-0.5" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Test name (optional)</label>
-                <Input value={activeGroup.testName} onChange={(e) => updateActiveGroup((g) => ({ ...g, testName: e.target.value }))} placeholder="e.g. Morning glide test" className="h-8 text-sm mt-0.5" />
+                <label className="text-xs text-muted-foreground">{L("Testnavn (valgfritt)", "Test name (optional)")}</label>
+                <Input value={activeGroup.testName} onChange={(e) => updateActiveGroup((g) => ({ ...g, testName: e.target.value }))} placeholder={L("f.eks. Morgenglidtest", "e.g. Morning glide test")} className="h-8 text-sm mt-0.5" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Notes (optional)</label>
+                <label className="text-xs text-muted-foreground">{L("Notater (valgfritt)", "Notes (optional)")}</label>
                 <Input value={activeGroup.notes} onChange={(e) => updateActiveGroup((g) => ({ ...g, notes: e.target.value }))} className="h-8 text-sm mt-0.5" />
               </div>
             </div>
@@ -711,45 +716,45 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             {/* Weather — editable, created only if toggle on */}
             <div className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weather</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Vær", "Weather")}</p>
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
                   <input
                     type="checkbox"
                     checked={activeGroup.createWeather}
                     onChange={(e) => updateActiveGroup((g) => ({ ...g, createWeather: e.target.checked }))}
                   />
-                  Create weather record
+                  {L("Opprett værpost", "Create weather record")}
                 </label>
               </div>
               {activeGroup.createWeather ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div>
-                    <label className="text-[10px] text-muted-foreground">Snow °C</label>
+                    <label className="text-[10px] text-muted-foreground">{L("Snø °C", "Snow °C")}</label>
                     <input type="number" step="0.1" value={activeGroup.weather.snowTemperatureC ?? ""}
                       onChange={(e) => updateActiveGroup((g) => ({ ...g, weather: { ...g.weather, snowTemperatureC: e.target.value !== "" ? parseFloat(e.target.value) : null } }))}
                       className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-muted-foreground">Air °C</label>
+                    <label className="text-[10px] text-muted-foreground">{L("Luft °C", "Air °C")}</label>
                     <input type="number" step="0.1" value={activeGroup.weather.airTemperatureC ?? ""}
                       onChange={(e) => updateActiveGroup((g) => ({ ...g, weather: { ...g.weather, airTemperatureC: e.target.value !== "" ? parseFloat(e.target.value) : null } }))}
                       className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-muted-foreground">Snow hum %</label>
+                    <label className="text-[10px] text-muted-foreground">{L("Snøfukt %", "Snow hum %")}</label>
                     <input type="number" min={0} max={100} value={activeGroup.weather.snowHumidityPct ?? ""}
                       onChange={(e) => updateActiveGroup((g) => ({ ...g, weather: { ...g.weather, snowHumidityPct: e.target.value !== "" ? parseFloat(e.target.value) : null } }))}
                       className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-muted-foreground">Air hum %</label>
+                    <label className="text-[10px] text-muted-foreground">{L("Luftfukt %", "Air hum %")}</label>
                     <input type="number" min={0} max={100} value={activeGroup.weather.airHumidityPct ?? ""}
                       onChange={(e) => updateActiveGroup((g) => ({ ...g, weather: { ...g.weather, airHumidityPct: e.target.value !== "" ? parseFloat(e.target.value) : null } }))}
                       className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs" />
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground italic">Weather entered manually later. Enable to save the values read from the image.</p>
+                <p className="text-xs text-muted-foreground italic">{L("Vær legges inn manuelt senere. Aktiver for å lagre verdiene fra bildet.", "Weather entered manually later. Enable to save the values read from the image.")}</p>
               )}
             </div>
 
@@ -818,10 +823,10 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                               <button
                                 type="button"
                                 onClick={() => setCreateProductFor(p._i)}
-                                title="This product is not in your database — create it"
+                                title={L("Dette produktet finnes ikke i databasen — opprett det", "This product is not in your database — create it")}
                                 className="h-7 px-1.5 flex items-center justify-center rounded bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 text-[10px] font-semibold flex-shrink-0"
                               >
-                                + Create
+                                {L("+ Opprett", "+ Create")}
                               </button>
                             )}
                             <button
@@ -837,10 +842,10 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                         <button
                           type="button"
                           onClick={() => updateActiveGroup((g) => ({ ...g, products: [...g.products, { skiNumber: skiNum, brand: "", name: "", category: "", matched: false }] }))}
-                          title="Add another product to this ski pair"
+                          title={L("Legg til et produkt på dette skiparet", "Add another product to this ski pair")}
                           className="h-7 px-1.5 flex items-center justify-center rounded border border-dashed border-border text-muted-foreground hover:text-primary hover:border-primary text-[11px] font-medium flex-shrink-0"
                         >
-                          + product
+                          {L("+ produkt", "+ product")}
                         </button>
                       </div>
                     ));
@@ -868,7 +873,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
                   {activeGroup.products.some((p) => !p.matched) && (
                     <p className="text-[11px] text-red-500 mt-1">
-                      Products in red are not in your database. Click "+ Create" to add them.
+                      {L("Produkter i rødt finnes ikke i databasen. Trykk «+ Opprett» for å legge dem til.", "Products in red are not in your database. Click \"+ Create\" to add them.")}
                     </p>
                   )}
                 </div>
@@ -879,7 +884,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             <div className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Results ({activeGroup.entries.length} entries)
+                  {L(`Resultater (${activeGroup.entries.length})`, `Results (${activeGroup.entries.length} entries)`)}
                 </p>
                 <button
                   type="button"
@@ -889,11 +894,11 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                     entries: [...g.entries, { skiNumber: 0, methodology: "", results: Array.from({ length: g.numRounds }, () => null), feelingRank: null }],
                   }))}
                 >
-                  + Add row
+                  {L("+ Legg til rad", "+ Add row")}
                 </button>
               </div>
               {activeGroup.entries.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">No entries</p>
+                <p className="text-xs text-muted-foreground italic">{L("Ingen rader", "No entries")}</p>
               ) : (
                 (() => {
                   const numRounds = activeGroup.numRounds;
@@ -984,10 +989,10 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
             <div className="flex gap-2 pt-1">
               <Button variant="outline" className="flex-1" onClick={reset}>
-                Re-upload
+                {L("Last opp på nytt", "Re-upload")}
               </Button>
               <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={handleCreateAll}>
-                {groups.length > 1 ? "Create all" : "Create test"}
+                {groups.length > 1 ? L("Opprett alle", "Create all") : L("Opprett test", "Create test")}
               </Button>
             </div>
           </div>
@@ -999,8 +1004,8 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <p className="text-sm font-medium">
               {creatingProgress.total > 1
-                ? `Creating test ${creatingProgress.current} of ${creatingProgress.total}…`
-                : "Creating test…"}
+                ? L(`Oppretter test ${creatingProgress.current} av ${creatingProgress.total}…`, `Creating test ${creatingProgress.current} of ${creatingProgress.total}…`)
+                : L("Oppretter test…", "Creating test…")}
             </p>
           </div>
         )}
@@ -1011,26 +1016,26 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             <CheckCircle2 className="h-12 w-12 text-green-500" />
             <p className="text-base font-semibold">
               {createdTestIds.length === 1
-                ? "Test created!"
-                : `${createdTestIds.length} tests created!`}
+                ? L("Test opprettet!", "Test created!")
+                : L(`${createdTestIds.length} tester opprettet!`, `${createdTestIds.length} tests created!`)}
             </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => { reset(); onOpenChange(false); }}>
-                Close
+                {L("Lukk", "Close")}
               </Button>
               {createdTestIds.length === 1 ? (
                 <Button
                   className="bg-green-600 hover:bg-green-700 text-white"
                   onClick={() => { const id = createdTestIds[0]; reset(); onOpenChange(false); navigate(`/tests/${id}`); }}
                 >
-                  View test
+                  {L("Vis test", "View test")}
                 </Button>
               ) : (
                 <Button
                   className="bg-green-600 hover:bg-green-700 text-white"
                   onClick={() => { reset(); onOpenChange(false); navigate(`/tests`); }}
                 >
-                  View tests
+                  {L("Vis tester", "View tests")}
                 </Button>
               )}
             </div>
@@ -1041,9 +1046,9 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         {step === "error" && (
           <div className="flex flex-col items-center gap-4 py-6">
             <AlertCircle className="h-12 w-12 text-destructive" />
-            <p className="text-sm font-semibold text-destructive">Something went wrong</p>
+            <p className="text-sm font-semibold text-destructive">{L("Noe gikk galt", "Something went wrong")}</p>
             <p className="text-xs text-muted-foreground text-center max-w-xs">{errorMsg}</p>
-            <Button variant="outline" onClick={reset}>Try again</Button>
+            <Button variant="outline" onClick={reset}>{L("Prøv igjen", "Try again")}</Button>
           </div>
         )}
       </DialogContent>

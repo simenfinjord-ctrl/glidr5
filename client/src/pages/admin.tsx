@@ -108,7 +108,8 @@ function PermissionsMatrix({
   onPresetApplied?: (blindTester: boolean) => void;
   disabledAreas?: string[];
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const areaLabels: Record<string, string> = {
     dashboard: t("nav.dashboard"),
     tests: t("nav.tests"),
@@ -261,6 +262,8 @@ function GroupCheckboxes({
   onChange: (groups: string[]) => void;
   testIdPrefix: string;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   return (
     <div className="flex flex-wrap gap-2">
       {groupNames.map((g) => {
@@ -362,7 +365,8 @@ const ATHLETE_ACCESS_PERMISSIONS: UserPermissions = {
 function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: () => void; allGroups: ApiGroup[]; defaultTeamId: number; teams: ApiTeam[] }) {
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [perms, setPerms] = useState<UserPermissions>({ ...DEFAULT_PERMISSIONS });
   const [doSendWelcomeEmail, setDoSendWelcomeEmail] = useState(true);
   const [selectedTeamId, setSelectedTeamId] = useState(defaultTeamId);
@@ -393,11 +397,11 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast({ title: "User created" });
+      toast({ title: L("Bruker opprettet", "User created") });
       onDone();
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -405,20 +409,20 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
     <Form {...form}>
       <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
         <FormField control={form.control} name="name" render={({ field }) => (
-          <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} data-testid="input-user-name" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{L("Navn", "Name")}</FormLabel><FormControl><Input {...field} data-testid="input-user-name" /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={form.control} name="email" render={({ field }) => (
-          <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} data-testid="input-user-email" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{L("E-post", "Email")}</FormLabel><FormControl><Input {...field} data-testid="input-user-email" /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={form.control} name="username" render={({ field }) => (
-          <FormItem><FormLabel>Username <span className="text-xs text-muted-foreground font-normal">(optional — will be derived from email if empty)</span></FormLabel><FormControl><Input {...field} placeholder="e.g. johndoe" autoComplete="off" data-testid="input-user-username" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{L("Brukernavn ", "Username ")}<span className="text-xs text-muted-foreground font-normal">(optional — will be derived from email if empty)</span></FormLabel><FormControl><Input {...field} placeholder="e.g. johndoe" autoComplete="off" data-testid="input-user-username" /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={form.control} name="password" render={({ field }) => (
-          <FormItem><FormLabel>Password</FormLabel><FormControl><Input {...field} type="password" data-testid="input-user-password" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{L("Passord", "Password")}</FormLabel><FormControl><Input {...field} type="password" data-testid="input-user-password" /></FormControl><FormMessage /></FormItem>
         )} />
         {isSuperAdmin && teams.length > 1 && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">Team</label>
+            <label className="text-sm font-medium">{L("Lag", "Team")}</label>
             <Select
               value={String(selectedTeamId)}
               onValueChange={(v) => {
@@ -439,7 +443,7 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
         )}
         <FormField control={form.control} name="groupScope" render={({ field }) => (
           <FormItem>
-            <FormLabel>Groups (select one or more)</FormLabel>
+            <FormLabel>{L("Grupper (velg én eller flere)", "Groups (select one or more)")}</FormLabel>
             <FormControl>
               <GroupCheckboxes
                 groupNames={groupNames}
@@ -453,7 +457,7 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
         )} />
         <FormField control={form.control} name="isAdmin" render={() => (
           <FormItem>
-            <FormLabel>Role</FormLabel>
+            <FormLabel>{L("Rolle", "Role")}</FormLabel>
             <Select
               value={form.watch("isAdmin") ? "superadmin" : form.watch("isTeamAdmin") ? "teamadmin" : isAthleteAccess ? "athleteaccess" : "member"}
               onValueChange={(v) => {
@@ -473,10 +477,10 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
             >
               <FormControl><SelectTrigger data-testid="select-user-role"><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
-                <SelectItem value="member">Member</SelectItem>
-                <SelectItem value="teamadmin">Team Admin</SelectItem>
-                {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
-                <SelectItem value="athleteaccess">Athlete Access</SelectItem>
+                <SelectItem value="member">{L("Medlem", "Member")}</SelectItem>
+                <SelectItem value="teamadmin">{L("Lagadmin", "Team Admin")}</SelectItem>
+                {isSuperAdmin && <SelectItem value="superadmin">{L("Superadmin", "Super Admin")}</SelectItem>}
+                <SelectItem value="athleteaccess">{L("Utøvertilgang", "Athlete Access")}</SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />
@@ -484,12 +488,12 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
         )} />
         {isAthleteAccess && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">Linked Athlete</label>
+            <label className="text-sm font-medium">{L("Tilknyttet utøver", "Linked Athlete")}</label>
             <Select
               value={linkedAthleteId ? String(linkedAthleteId) : ""}
               onValueChange={(v) => setLinkedAthleteId(v ? parseInt(v) : null)}
             >
-              <SelectTrigger><SelectValue placeholder="Select athlete..." /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={L("Velg utøver...", "Select athlete...")} /></SelectTrigger>
               <SelectContent>
                 {athletes.map((a) => (
                   <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
@@ -521,22 +525,22 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
               >
                 <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} className="sr-only" />
                 <EyeOff className="h-3.5 w-3.5" />
-                Blind tester
+                {L("Blindtester", "Blind tester")}
               </label>
               {field.value && (
-                <span className="text-[10px] text-muted-foreground">Products & methodology hidden from this user</span>
+                <span className="text-[10px] text-muted-foreground">{L("Produkter og metodikk skjult for denne brukeren", "Products & methodology hidden from this user")}</span>
               )}
             </div>
           </FormItem>
         )} />
         <FormField control={form.control} name="language" render={({ field }) => (
           <FormItem>
-            <FormLabel>Language</FormLabel>
+            <FormLabel>{L("Språk", "Language")}</FormLabel>
             <Select value={field.value} onValueChange={field.onChange}>
               <FormControl><SelectTrigger data-testid="select-user-language"><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
-                <SelectItem value="no">Norsk</SelectItem>
-                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="no">{L("Norsk", "Norsk")}</SelectItem>
+                <SelectItem value="en">{L("English", "English")}</SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />
@@ -544,12 +548,12 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
         )} />
         <FormField control={form.control} name="isActive" render={({ field }) => (
           <FormItem>
-            <FormLabel>Status</FormLabel>
+            <FormLabel>{L("Status", "Status")}</FormLabel>
             <Select value={field.value ? "active" : "inactive"} onValueChange={(v) => field.onChange(v === "active")}>
               <FormControl><SelectTrigger data-testid="select-user-status"><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="active">{L("Aktiv", "Active")}</SelectItem>
+                <SelectItem value="inactive">{L("Inaktiv", "Inactive")}</SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />
@@ -567,7 +571,7 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
           />
         </div>
         <div className="flex justify-end">
-          <Button type="submit" data-testid="button-create-user" disabled={mutation.isPending}>Create</Button>
+          <Button type="submit" data-testid="button-create-user" disabled={mutation.isPending}>{L("Opprett", "Create")}</Button>
         </div>
       </form>
     </Form>
@@ -588,6 +592,8 @@ function TeamPermRow({
   onSaved: () => void;
   onReset: () => void;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
   const [localPerms, setLocalPerms] = useState<UserPermissions>(
@@ -614,7 +620,7 @@ function TeamPermRow({
       return res.json();
     },
     onSuccess: () => { onSaved(); toast({ title: `Settings saved for ${team.name}` }); },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
   const resetTeamPermsMutation = useMutation({
@@ -623,7 +629,7 @@ function TeamPermRow({
       return res.json();
     },
     onSuccess: () => { onReset(); toast({ title: `Reset to global settings for ${team.name}` }); },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
   return (
@@ -636,10 +642,10 @@ function TeamPermRow({
         <span className="text-xs font-medium">{team.name}</span>
         <div className="flex items-center gap-2">
           {(existingPerms || existingGroupScope) && (
-            <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full">Custom</span>
+            <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full">{L("Egendefinert", "Custom")}</span>
           )}
           {existingIsTeamAdmin && (
-            <span className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full">Team Admin</span>
+            <span className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full">{L("Lagadmin", "Team Admin")}</span>
           )}
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-180")} />
         </div>
@@ -647,14 +653,14 @@ function TeamPermRow({
       {isExpanded && (
         <div className="p-3 space-y-3 border-t border-border">
           <p className="text-[11px] text-muted-foreground">
-            {existingPerms ? "Custom settings active for this team." : "Using global settings. Save to create team-specific override."}
+            {existingPerms ? L("Egendefinerte innstillinger aktive for dette laget.", "Custom settings active for this team.") : L("Bruker globale innstillinger. Lagre for å opprette en lagspesifikk overstyring.", "Using global settings. Save to create team-specific override.")}
           </p>
 
           {/* Team Admin toggle */}
           <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
             <div>
-              <p className="text-xs font-medium">Team Admin for {team.name}</p>
-              <p className="text-[10px] text-muted-foreground">Can manage users and settings for this team</p>
+              <p className="text-xs font-medium">{L("Lagadmin for ", "Team Admin for ")}{team.name}</p>
+              <p className="text-[10px] text-muted-foreground">{L("Kan administrere brukere og innstillinger for dette laget", "Can manage users and settings for this team")}</p>
             </div>
             <button
               type="button"
@@ -674,7 +680,7 @@ function TeamPermRow({
           {/* Groups for this team */}
           {teamGroupNames.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-xs font-medium">Groups in {team.name}</p>
+              <p className="text-xs font-medium">{L("Grupper i ", "Groups in ")}{team.name}</p>
               <GroupCheckboxes
                 groupNames={teamGroupNames}
                 selected={localGroupScope}
@@ -722,6 +728,8 @@ function TeamPermRow({
 }
 
 function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDone: () => void; allGroups: ApiGroup[]; teams: ApiTeam[] }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
   const [selectedTeamId, setSelectedTeamId] = useState(user.teamId);
@@ -748,9 +756,9 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
     onSuccess: (data) => {
       setGarminWatchOn(data.garminWatch);
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({ title: data.garminWatch ? "Watch Queue access granted" : "Watch Queue access removed" });
+      toast({ title: data.garminWatch ? L("Tilgang til overvåkingskø gitt", "Watch Queue access granted") : L("Tilgang til overvåkingskø fjernet", "Watch Queue access removed") });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
   const addTeamMutation = useMutation({
@@ -759,7 +767,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
       return res.json();
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/users/${user.id}/teams`] }); },
-    onError: (e: Error) => { toast({ title: "Error", description: e.message, variant: "destructive" }); },
+    onError: (e: Error) => { toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }); },
   });
 
   const removeTeamMutation = useMutation({
@@ -768,7 +776,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
       return res.json();
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/users/${user.id}/teams`] }); },
-    onError: (e: Error) => { toast({ title: "Error", description: e.message, variant: "destructive" }); },
+    onError: (e: Error) => { toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }); },
   });
   const teamChanged = selectedTeamId !== user.teamId;
   const { data: teamGroups } = useQuery<ApiGroup[]>({
@@ -803,11 +811,11 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast({ title: "User updated" });
+      toast({ title: L("Bruker oppdatert", "User updated") });
       onDone();
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -815,17 +823,17 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
     <Form {...form}>
       <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
         <FormField control={form.control} name="name" render={({ field }) => (
-          <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} data-testid="input-edit-name" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{L("Navn", "Name")}</FormLabel><FormControl><Input {...field} data-testid="input-edit-name" /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={form.control} name="email" render={({ field }) => (
-          <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} data-testid="input-edit-email" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{L("E-post", "Email")}</FormLabel><FormControl><Input {...field} data-testid="input-edit-email" /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={form.control} name="username" render={({ field }) => (
-          <FormItem><FormLabel>Username <span className="text-xs text-muted-foreground font-normal">(used for login)</span></FormLabel><FormControl><Input {...field} placeholder="e.g. johndoe" autoComplete="off" data-testid="input-edit-username" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{L("Brukernavn ", "Username ")}<span className="text-xs text-muted-foreground font-normal">(used for login)</span></FormLabel><FormControl><Input {...field} placeholder="e.g. johndoe" autoComplete="off" data-testid="input-edit-username" /></FormControl><FormMessage /></FormItem>
         )} />
         {isSuperAdmin && teams.length > 1 && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">Primary Team</label>
+            <label className="text-sm font-medium">{L("Hovedlag", "Primary Team")}</label>
             <Select
               value={String(selectedTeamId)}
               onValueChange={(v) => {
@@ -846,7 +854,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
         )}
         {isSuperAdmin && teams.length > 1 && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">Additional Teams</label>
+            <label className="text-sm font-medium">{L("Tilleggslag", "Additional Teams")}</label>
             <div className="flex flex-wrap gap-2">
               {teams.filter((t) => t.id !== selectedTeamId).map((t) => {
                 const isMember = memberTeamIds.includes(t.id);
@@ -868,12 +876,12 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
                 );
               })}
             </div>
-            <p className="text-[11px] text-muted-foreground">Click to toggle access. User can switch between primary and additional teams.</p>
+            <p className="text-[11px] text-muted-foreground">{L("Klikk for å veksle tilgang. Brukeren kan bytte mellom hovedlag og tilleggslag.", "Click to toggle access. User can switch between primary and additional teams.")}</p>
           </div>
         )}
         <FormField control={form.control} name="groupScope" render={({ field }) => (
           <FormItem>
-            <FormLabel>Groups (select one or more)</FormLabel>
+            <FormLabel>{L("Grupper (velg én eller flere)", "Groups (select one or more)")}</FormLabel>
             <FormControl>
               <GroupCheckboxes
                 groupNames={groupNames}
@@ -887,7 +895,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
         )} />
         <FormField control={form.control} name="isAdmin" render={() => (
           <FormItem>
-            <FormLabel>Role</FormLabel>
+            <FormLabel>{L("Rolle", "Role")}</FormLabel>
             <Select
               value={form.watch("isAdmin") ? "superadmin" : form.watch("isTeamAdmin") ? "teamadmin" : "member"}
               onValueChange={(v) => {
@@ -897,9 +905,9 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
             >
               <FormControl><SelectTrigger data-testid="select-edit-role"><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
-                <SelectItem value="member">Member</SelectItem>
-                <SelectItem value="teamadmin">Team Admin</SelectItem>
-                {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
+                <SelectItem value="member">{L("Medlem", "Member")}</SelectItem>
+                <SelectItem value="teamadmin">{L("Lagadmin", "Team Admin")}</SelectItem>
+                {isSuperAdmin && <SelectItem value="superadmin">{L("Superadmin", "Super Admin")}</SelectItem>}
               </SelectContent>
             </Select>
             <FormMessage />
@@ -926,10 +934,10 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
               >
                 <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} className="sr-only" />
                 <EyeOff className="h-3.5 w-3.5" />
-                Blind tester
+                {L("Blindtester", "Blind tester")}
               </label>
               {field.value && (
-                <span className="text-[10px] text-muted-foreground">Products & methodology hidden from this user</span>
+                <span className="text-[10px] text-muted-foreground">{L("Produkter og metodikk skjult for denne brukeren", "Products & methodology hidden from this user")}</span>
               )}
             </div>
           </FormItem>
@@ -944,7 +952,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
           if (!teamHasWatch && !isSuperAdmin) return null;
           return (
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Watch Queue Access</label>
+              <label className="text-sm font-medium">{L("Tilgang til overvåkingskø", "Watch Queue Access")}</label>
               <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5">
                 <div>
                   <div className="text-sm font-medium flex items-center gap-1.5">
@@ -952,7 +960,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
                     Garmin Watch Queue
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
-                    {garminWatchOn ? "User can access Watch Queue" : "User cannot access Watch Queue"}
+                    {garminWatchOn ? L("Brukeren har tilgang til overvåkingskø", "User can access Watch Queue") : L("Brukeren har ikke tilgang til overvåkingskø", "User cannot access Watch Queue")}
                     {!teamHasWatch && <span className="ml-1 text-amber-600">(team feature not enabled)</span>}
                   </div>
                 </div>
@@ -975,8 +983,8 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
         {/* Per-team permissions for multi-team users */}
         {isSuperAdmin && memberTeamIds.length > 0 && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">Per-team Permissions</label>
-            <p className="text-[11px] text-muted-foreground">Override permissions for specific teams this user belongs to.</p>
+            <label className="text-sm font-medium">{L("Tilganger per lag", "Per-team Permissions")}</label>
+            <p className="text-[11px] text-muted-foreground">{L("Overstyr tilganger for bestemte lag denne brukeren tilhører.", "Override permissions for specific teams this user belongs to.")}</p>
             <div className="space-y-2">
               {teams
                 .filter((t) => memberTeamIds.includes(t.id))
@@ -1004,19 +1012,19 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
 
         <FormField control={form.control} name="isActive" render={({ field }) => (
           <FormItem>
-            <FormLabel>Status</FormLabel>
+            <FormLabel>{L("Status", "Status")}</FormLabel>
             <Select value={field.value ? "active" : "inactive"} onValueChange={(v) => field.onChange(v === "active")}>
               <FormControl><SelectTrigger data-testid="select-edit-status"><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="active">{L("Aktiv", "Active")}</SelectItem>
+                <SelectItem value="inactive">{L("Inaktiv", "Inactive")}</SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />
           </FormItem>
         )} />
         <div className="flex justify-end">
-          <Button type="submit" data-testid="button-save-user" disabled={mutation.isPending}>Save</Button>
+          <Button type="submit" data-testid="button-save-user" disabled={mutation.isPending}>{L("Lagre", "Save")}</Button>
         </div>
       </form>
     </Form>
@@ -1024,6 +1032,8 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
 }
 
 function ResetPasswordForm({ user, onDone }: { user: ApiUser; onDone: () => void }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const form = useForm<z.infer<typeof resetSchema>>({
     resolver: zodResolver(resetSchema),
@@ -1036,11 +1046,11 @@ function ResetPasswordForm({ user, onDone }: { user: ApiUser; onDone: () => void
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Password reset" });
+      toast({ title: L("Passord tilbakestilt", "Password reset") });
       onDone();
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -1048,10 +1058,10 @@ function ResetPasswordForm({ user, onDone }: { user: ApiUser; onDone: () => void
     <Form {...form}>
       <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
         <FormField control={form.control} name="password" render={({ field }) => (
-          <FormItem><FormLabel>New password</FormLabel><FormControl><Input {...field} type="password" data-testid="input-reset-password" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{L("Nytt passord", "New password")}</FormLabel><FormControl><Input {...field} type="password" data-testid="input-reset-password" /></FormControl><FormMessage /></FormItem>
         )} />
         <div className="flex justify-end">
-          <Button type="submit" data-testid="button-reset-password" disabled={mutation.isPending}>Reset</Button>
+          <Button type="submit" data-testid="button-reset-password" disabled={mutation.isPending}>{L("Tilbakestill", "Reset")}</Button>
         </div>
       </form>
     </Form>
@@ -1071,6 +1081,8 @@ type ActiveSession = {
 };
 
 function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId: number }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const [reopenAt, setReopenAt] = useState("");
 
@@ -1091,9 +1103,9 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
     onSuccess: (data) => {
       refetchMaintenance();
       if (!data.enabled) setReopenAt("");
-      toast({ title: data.enabled ? "Maintenance mode ON" : "Maintenance mode OFF", description: data.enabled ? "All non-SA users are now blocked." : "Normal access restored." });
+      toast({ title: data.enabled ? L("Vedlikeholdsmodus PÅ", "Maintenance mode ON") : L("Vedlikeholdsmodus AV", "Maintenance mode OFF"), description: data.enabled ? L("Alle ikke-SA-brukere er nå blokkert.", "All non-SA users are now blocked.") : L("Normal tilgang gjenopprettet.", "Normal access restored.") });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
   // Active sessions
@@ -1107,8 +1119,8 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
       const res = await apiRequest("POST", `/api/admin/force-logout/${userId}`);
       return res.json();
     },
-    onSuccess: () => { refetchSessions(); toast({ title: "User logged out" }); },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onSuccess: () => { refetchSessions(); toast({ title: L("Bruker logget ut", "User logged out") }); },
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
   // Emergency lockdown
@@ -1118,7 +1130,7 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
       return res.json();
     },
     onSuccess: (data) => { refetchSessions(); toast({ title: `Lockdown complete`, description: `${data.loggedOut} session(s) terminated.` }); },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
   // Team pause
@@ -1129,9 +1141,9 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
     },
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: vars.paused ? "Team suspended" : "Team unsuspended", description: vars.paused ? "Team members will be unable to log in." : "Team members can log in again." });
+      toast({ title: vars.paused ? L("Lag suspendert", "Team suspended") : L("Lag gjenopprettet", "Team unsuspended"), description: vars.paused ? L("Lagmedlemmer vil ikke kunne logge inn.", "Team members will be unable to log in.") : L("Lagmedlemmer kan logge inn igjen.", "Team members can log in again.") });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
   return (
@@ -1143,7 +1155,7 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <Shield className="h-4 w-4 text-amber-500" />
-              <span className="font-semibold text-foreground">Maintenance Mode</span>
+              <span className="font-semibold text-foreground">{L("Vedlikeholdsmodus", "Maintenance Mode")}</span>
               {maintenanceEnabled && (
                 <span className="rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide animate-pulse">
                   ACTIVE
@@ -1155,7 +1167,7 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
             </p>
             {!maintenanceEnabled && (
               <div className="mt-3 flex items-center gap-2">
-                <label className="text-xs text-muted-foreground whitespace-nowrap">Reopen at (optional):</label>
+                <label className="text-xs text-muted-foreground whitespace-nowrap">{L("Gjenåpne (valgfritt):", "Reopen at (optional):")}</label>
                 <Input
                   type="datetime-local"
                   value={reopenAt}
@@ -1173,7 +1185,7 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
               "relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none mt-1",
               maintenanceEnabled ? "bg-amber-500" : "bg-muted-foreground/25"
             )}
-            aria-label="Toggle maintenance mode"
+            aria-label={L("Veksle vedlikeholdsmodus","Toggle maintenance mode")}
           >
             <span className={cn(
               "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform",
@@ -1184,10 +1196,10 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
         {maintenanceEnabled && (
           <div className="mt-3 space-y-2">
             <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
-              ⚠️ Maintenance mode is currently <strong>ON</strong>. All other users are locked out. Remember to turn it off when done.
+              {L("⚠️ Vedlikeholdsmodus er nå ", "⚠️ Maintenance mode is currently ")}<strong>{L("PÅ", "ON")}</strong>{L(". Alle andre brukere er utestengt. Husk å slå det av når du er ferdig.", ". All other users are locked out. Remember to turn it off when done.")}
             </div>
             <div className="rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs text-slate-600 dark:text-slate-400">
-              <span className="font-medium text-slate-700 dark:text-slate-300">Message shown to users: </span>
+              <span className="font-medium text-slate-700 dark:text-slate-300">{L("Melding vist til brukere: ", "Message shown to users: ")}</span>
               Maintenance in progress.{maintenanceData?.reopenAt
                 ? ` The system will reopen at ${new Date(maintenanceData.reopenAt).toLocaleString("no-NO", { dateStyle: "short", timeStyle: "short" })}.`
                 : " The system will be back shortly."}
@@ -1201,10 +1213,10 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
       <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-1">
           <AlertTriangle className="h-4 w-4 text-destructive" />
-          <span className="font-semibold text-foreground">Emergency Session Lockdown</span>
+          <span className="font-semibold text-foreground">{L("Nødlås av økter", "Emergency Session Lockdown")}</span>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          Immediately terminate <strong>all active sessions</strong> for every user in a team. They will be logged out instantly. Use this if credentials are compromised or suspicious activity is detected.
+          {L("Avslutt umiddelbart ", "Immediately terminate ")}<strong>{L("alle aktive økter", "all active sessions")}</strong>{L(" for hver bruker i et lag. De blir logget ut umiddelbart. Bruk dette hvis innloggingsinformasjon er kompromittert eller mistenkelig aktivitet oppdages.", " for every user in a team. They will be logged out instantly. Use this if credentials are compromised or suspicious activity is detected.")}
         </p>
         <div className="space-y-2">
           {teams.map((team) => (
@@ -1239,10 +1251,10 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
       <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-1">
           <UserX className="h-4 w-4 text-red-500" />
-          <span className="font-semibold text-foreground">Team Pause</span>
+          <span className="font-semibold text-foreground">{L("Lagpause", "Team Pause")}</span>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          Suspend a team's login access. <strong>All team members will be unable to log in</strong> while paused. Super Admins are unaffected. Use this to temporarily block a team without deleting any data.
+          Suspend a team's login access. <strong>{L("Ingen lagmedlemmer vil kunne logge inn", "All team members will be unable to log in")}</strong> while paused. Super Admins are unaffected. Use this to temporarily block a team without deleting any data.
         </p>
         <div className="space-y-2">
           {teams.map((team) => {
@@ -1256,11 +1268,11 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-medium text-foreground">{team.name}</span>
                     {isPaused && (
-                      <span className="rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-1.5 py-0.5 text-[9px] font-bold uppercase">Suspended</span>
+                      <span className="rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-1.5 py-0.5 text-[9px] font-bold uppercase">{L("Suspendert", "Suspended")}</span>
                     )}
                   </div>
                   {isPaused && (
-                    <p className="text-[11px] text-red-500 mt-0.5">All members cannot log in</p>
+                    <p className="text-[11px] text-red-500 mt-0.5">{L("Ingen medlemmer kan logge inn", "All members cannot log in")}</p>
                   )}
                 </div>
                 <Button
@@ -1279,9 +1291,9 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
                   }}
                 >
                   {isPaused ? (
-                    <><ToggleRight className="h-3.5 w-3.5 mr-1.5" />Unpause</>
+                    <><ToggleRight className="h-3.5 w-3.5 mr-1.5" />{L("Opphev pause", "Unpause")}</>
                   ) : (
-                    <><ToggleLeft className="h-3.5 w-3.5 mr-1.5" />Pause</>
+                    <><ToggleLeft className="h-3.5 w-3.5 mr-1.5" />{L("Pause", "Pause")}</>
                   )}
                 </Button>
               </div>
@@ -1295,7 +1307,7 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Activity className="h-4 w-4 text-green-500" />
-            <span className="font-semibold text-foreground">Active Sessions</span>
+            <span className="font-semibold text-foreground">{L("Aktive økter", "Active Sessions")}</span>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
               {sessions.length}
             </span>
@@ -1305,18 +1317,18 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
             Refresh
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mb-3">Auto-refreshes every 15 s. Your own session is shown but cannot be terminated.</p>
+        <p className="text-xs text-muted-foreground mb-3">{L("Oppdateres automatisk hvert 15. sekund. Din egen økt vises, men kan ikke avsluttes.", "Auto-refreshes every 15 s. Your own session is shown but cannot be terminated.")}</p>
         {sessions.length === 0 ? (
-          <div className="text-sm text-muted-foreground text-center py-6">No active sessions found.</div>
+          <div className="text-sm text-muted-foreground text-center py-6">{L("Fant ingen aktive økter.", "No active sessions found.")}</div>
         ) : (
           <div className="rounded-xl border border-border overflow-hidden">
             <table className="w-full text-sm" data-testid="table-active-sessions">
               <thead>
                 <tr className="bg-muted/40 border-b border-border">
-                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">User</th>
-                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">Email</th>
-                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">Expires</th>
-                  <th className="text-center px-3 py-2 font-medium text-foreground/80 text-xs">Action</th>
+                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Bruker", "User")}</th>
+                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("E-post", "Email")}</th>
+                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Utløper", "Expires")}</th>
+                  <th className="text-center px-3 py-2 font-medium text-foreground/80 text-xs">{L("Handling", "Action")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -1329,7 +1341,7 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1.5">
                           <span className="font-medium text-foreground">{s.userName}</span>
-                          {isMe && <span className="rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 px-1.5 py-0.5 text-[9px] font-bold">YOU</span>}
+                          {isMe && <span className="rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 px-1.5 py-0.5 text-[9px] font-bold">{L("DEG", "YOU")}</span>}
                           {s.isAdmin === 1 && <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 text-[9px] font-bold">SA</span>}
                         </div>
                       </td>
@@ -1407,6 +1419,8 @@ function TeamFeaturesDialog({
   onSave: (id: number, name: string, features: string[]) => void;
   isPending: boolean;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [name, setName] = useState(team.name);
   const [features, setFeatures] = useState<string[]>(() => {
     try {
@@ -1447,7 +1461,7 @@ function TeamFeaturesDialog({
         {/* Header */}
         <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
           <Settings2 className="h-4 w-4 text-muted-foreground" />
-          <span className="font-semibold text-foreground">Feature Access</span>
+          <span className="font-semibold text-foreground">{L("Funksjonstilgang", "Feature Access")}</span>
           <span className="text-muted-foreground">·</span>
           <span className="text-sm text-muted-foreground">{team.name}</span>
         </div>
@@ -1455,7 +1469,7 @@ function TeamFeaturesDialog({
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
           {/* Team name */}
           <div className="space-y-1">
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Team name</label>
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{L("Lagnavn", "Team name")}</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8 text-sm" />
           </div>
 
@@ -1489,7 +1503,7 @@ function TeamFeaturesDialog({
               })}
             </div>
             {detectedPlan === null && features.length > 0 && (
-              <p className="text-[10px] text-muted-foreground mt-1.5">Custom configuration</p>
+              <p className="text-[10px] text-muted-foreground mt-1.5">{L("Egendefinert oppsett", "Custom configuration")}</p>
             )}
           </div>
 
@@ -1561,7 +1575,7 @@ function TeamFeaturesDialog({
               disabled={!name.trim() || isPending}
               onClick={() => onSave(team.id, name.trim(), features)}
             >
-              {isPending ? "Saving…" : "Save changes"}
+              {isPending ? L("Lagrer…", "Saving…") : L("Lagre endringer", "Save changes")}
             </Button>
           </div>
         </div>
@@ -1588,6 +1602,8 @@ const ALL_TABS: { id: TabId; labelKey: string; superAdminOnly?: boolean; icon: R
 ];
 
 function BackupStatusCard() {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { data } = useQuery<{ available: boolean; mode: string; serviceAccountEmail?: string; driveAvailable?: boolean }>({
     queryKey: ["/api/backup/status"],
     queryFn: getQueryFn({ on401: "returnNull" }),
@@ -1597,7 +1613,7 @@ function BackupStatusCard() {
   if (!data) return null;
 
   if (data.available) {
-    const label = data.mode === "service_account" ? "Service Account" : "Replit connector";
+    const label = data.mode === "service_account" ? L("Tjenestekonto", "Service Account") : L("Replit-kobling", "Replit connector");
     return (
       <Card className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4 shadow-sm">
         <div className="flex items-start gap-3">
@@ -1605,7 +1621,7 @@ function BackupStatusCard() {
             <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">Google Sheets backup is ready ({label})</p>
+            <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">{L("Google Sheets-sikkerhetskopi er klar", "Google Sheets backup is ready")} ({label})</p>
             {data.serviceAccountEmail && (
               <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
                 Service account: <code className="font-mono bg-emerald-100 dark:bg-emerald-900 px-1 rounded break-all">{data.serviceAccountEmail}</code>
@@ -1629,18 +1645,18 @@ function BackupStatusCard() {
           <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
         </div>
         <div className="space-y-2 text-xs text-amber-800 dark:text-amber-300">
-          <p className="font-semibold">Google Sheets backup is not configured</p>
-          <p>To enable backup on Render, add a Google Service Account:</p>
+          <p className="font-semibold">{L("Google Sheets-sikkerhetskopi er ikke konfigurert", "Google Sheets backup is not configured")}</p>
+          <p>{L("Slik aktiverer du sikkerhetskopi på Render – legg til en Google-tjenestekonto:", "To enable backup on Render, add a Google Service Account:")}</p>
           <ol className="list-decimal pl-4 space-y-1 text-[11px]">
-            <li>Go to <strong>console.cloud.google.com</strong> → create or select a project</li>
-            <li>Enable the <strong>Google Sheets API</strong> and <strong>Google Drive API</strong></li>
-            <li>Go to <strong>IAM &amp; Admin → Service Accounts</strong> → create a service account</li>
-            <li>Open the service account → <strong>Keys</strong> tab → <strong>Add Key → JSON</strong></li>
-            <li>Copy the entire JSON file content</li>
-            <li>In <strong>Render dashboard → Environment</strong>, add:<br />
-              <code className="bg-amber-100 dark:bg-amber-900 px-1 rounded font-mono">GOOGLE_SERVICE_ACCOUNT_JSON</code> = the JSON content</li>
-            <li>Redeploy the service</li>
-            <li>Share your Google Sheet with the service account email (<code className="font-mono">client_email</code> in the JSON) — give it <strong>Editor</strong> access</li>
+            <li>{L("Gå til", "Go to")} <strong>console.cloud.google.com</strong> → {L("opprett eller velg et prosjekt", "create or select a project")}</li>
+            <li>{L("Aktiver", "Enable the")} <strong>Google Sheets API</strong> {L("og", "and")} <strong>Google Drive API</strong></li>
+            <li>{L("Gå til", "Go to")} <strong>IAM &amp; Admin → Service Accounts</strong> → {L("opprett en tjenestekonto", "create a service account")}</li>
+            <li>{L("Åpne tjenestekontoen →", "Open the service account →")} <strong>{L("Nøkler", "Keys")}</strong>{L("-fanen", " tab")} → <strong>Add Key → JSON</strong></li>
+            <li>{L("Kopier hele innholdet i JSON-filen", "Copy the entire JSON file content")}</li>
+            <li>{L("I", "In")} <strong>Render dashboard → Environment</strong>{L(", legg til:", ", add:")}<br />
+              <code className="bg-amber-100 dark:bg-amber-900 px-1 rounded font-mono">GOOGLE_SERVICE_ACCOUNT_JSON</code> = {L("JSON-innholdet", "the JSON content")}</li>
+            <li>{L("Distribuer tjenesten på nytt", "Redeploy the service")}</li>
+            <li>{L("Del Google-arket ditt med tjenestekontoens e-post (", "Share your Google Sheet with the service account email (")}<code className="font-mono">client_email</code>{L(" i JSON-filen) — gi den ", " in the JSON) — give it ")}<strong>{L("Redaktør", "Editor")}</strong>{L("-tilgang", " access")}</li>
           </ol>
         </div>
       </div>
@@ -1682,6 +1698,8 @@ type UserHistoryData = {
 };
 
 function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser | null; open: boolean; onClose: () => void }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [historyTab, setHistoryTab] = useState<"logins" | "activity" | "passwords" | "exports">("logins");
 
   const { data, isLoading } = useQuery<UserHistoryData>({
@@ -1708,16 +1726,16 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
           </DialogTitle>
         </DialogHeader>
         {isLoading ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">Loading history…</div>
+          <div className="py-8 text-center text-sm text-muted-foreground">{L("Laster historikk…", "Loading history…")}</div>
         ) : (
           <div className="flex flex-col gap-4">
             {/* Tab switcher */}
             <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/30 w-fit">
               {([
-                { id: "logins", label: `Logins (${loginLogs.length})` },
-                { id: "activity", label: `Activity (${activityLogs.length})` },
-                { id: "passwords", label: `Password Changes (${passwordChanges.length})` },
-                { id: "exports", label: `Exports (${activityLogs.filter((l) => l.action?.startsWith("exported_")).length})` },
+                { id: "logins", label: `${L("Innlogginger", "Logins")} (${loginLogs.length})` },
+                { id: "activity", label: `${L("Aktivitet", "Activity")} (${activityLogs.length})` },
+                { id: "passwords", label: `${L("Passordendringer", "Password Changes")} (${passwordChanges.length})` },
+                { id: "exports", label: `${L("Eksporter", "Exports")} (${activityLogs.filter((l) => l.action?.startsWith("exported_")).length})` },
               ] as const).map((t) => (
                 <button
                   key={t.id}
@@ -1735,15 +1753,15 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
 
             {historyTab === "logins" && (
               loginLogs.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No login events found.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{L("Fant ingen innloggingshendelser.", "No login events found.")}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                        <th className="pb-2 pr-3">Date/Time</th>
-                        <th className="pb-2 pr-3">Action</th>
-                        <th className="pb-2">IP Address</th>
+                        <th className="pb-2 pr-3">{L("Dato/tid", "Date/Time")}</th>
+                        <th className="pb-2 pr-3">{L("Handling", "Action")}</th>
+                        <th className="pb-2">{L("IP-adresse", "IP Address")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1767,16 +1785,16 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
 
             {historyTab === "activity" && (
               activityLogs.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No activity logs found.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{L("Fant ingen aktivitetslogger.", "No activity logs found.")}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                        <th className="pb-2 pr-3">Date/Time</th>
-                        <th className="pb-2 pr-3">Action</th>
-                        <th className="pb-2 pr-3">Entity</th>
-                        <th className="pb-2">Details</th>
+                        <th className="pb-2 pr-3">{L("Dato/tid", "Date/Time")}</th>
+                        <th className="pb-2 pr-3">{L("Handling", "Action")}</th>
+                        <th className="pb-2 pr-3">{L("Enhet", "Entity")}</th>
+                        <th className="pb-2">{L("Detaljer", "Details")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1798,14 +1816,14 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
 
             {historyTab === "passwords" && (
               passwordChanges.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No password change records found.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{L("Fant ingen passordendringer.", "No password change records found.")}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                        <th className="pb-2 pr-3">Date/Time</th>
-                        <th className="pb-2">Details</th>
+                        <th className="pb-2 pr-3">{L("Dato/tid", "Date/Time")}</th>
+                        <th className="pb-2">{L("Detaljer", "Details")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1824,15 +1842,15 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
             {historyTab === "exports" && (() => {
               const exportLogs = activityLogs.filter((l) => l.action?.startsWith("exported_"));
               return exportLogs.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No export events recorded yet.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{L("Ingen eksporthendelser registrert ennå.", "No export events recorded yet.")}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                        <th className="pb-2 pr-3">Date/Time</th>
-                        <th className="pb-2 pr-3">Who</th>
-                        <th className="pb-2">Type</th>
+                        <th className="pb-2 pr-3">{L("Dato/tid", "Date/Time")}</th>
+                        <th className="pb-2 pr-3">{L("Hvem", "Who")}</th>
+                        <th className="pb-2">{L("Type", "Type")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1856,6 +1874,8 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
 }
 
 function PlanHistoryContent({ teamId }: { teamId: number }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { data: history = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/teams", teamId, "plan-history"],
     queryFn: async () => {
@@ -1865,8 +1885,8 @@ function PlanHistoryContent({ teamId }: { teamId: number }) {
     },
   });
 
-  if (isLoading) return <div className="py-4 text-sm text-muted-foreground">Loading...</div>;
-  if (history.length === 0) return <div className="py-4 text-sm text-muted-foreground">No plan changes recorded yet.</div>;
+  if (isLoading) return <div className="py-4 text-sm text-muted-foreground">{L("Laster...", "Loading...")}</div>;
+  if (history.length === 0) return <div className="py-4 text-sm text-muted-foreground">{L("Ingen planendringer registrert ennå.", "No plan changes recorded yet.")}</div>;
 
   return (
     <div className="space-y-2 pt-2">
@@ -1880,10 +1900,10 @@ function PlanHistoryContent({ teamId }: { teamId: number }) {
           </div>
           <div className="mt-0.5 text-xs text-muted-foreground flex gap-3 flex-wrap">
             {(row.old_price != null || row.new_price != null) && (
-              <span>Price: {row.old_price ?? "—"} → {row.new_price ?? "—"} NOK</span>
+              <span>{L("Pris: ", "Price: ")}{row.old_price ?? "—"} → {row.new_price ?? "—"} NOK</span>
             )}
-            {row.billing_period && <span>Billing: {row.billing_period}</span>}
-            {row.changed_by && <span>By: {row.changed_by}</span>}
+            {row.billing_period && <span>{L("Fakturering: ", "Billing: ")}{row.billing_period}</span>}
+            {row.changed_by && <span>{L("Av: ", "By: ")}{row.changed_by}</span>}
           </div>
           {row.notes && <div className="mt-0.5 text-xs text-muted-foreground italic">{row.notes}</div>}
         </div>
@@ -1893,6 +1913,8 @@ function PlanHistoryContent({ teamId }: { teamId: number }) {
 }
 
 function RegistrationsTab() {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { data: registrations = [], refetch } = useQuery<any[]>({
     queryKey: ["/api/admin/registrations"],
     queryFn: async () => {
@@ -1917,7 +1939,7 @@ function RegistrationsTab() {
       credentials: "include",
       body: JSON.stringify({ status: editStatus, adminNotes: editNotes }),
     });
-    toast({ title: "Saved" });
+    toast({ title: L("Lagret", "Saved") });
     setEditing(null);
     refetch();
   }
@@ -1932,7 +1954,7 @@ function RegistrationsTab() {
       });
       if (!teamRes.ok) {
         const data = await teamRes.json();
-        toast({ title: "Error", description: data.message || "Failed to create team", variant: "destructive" });
+        toast({ title: L("Feil", "Error"), description: data.message || "Failed to create team", variant: "destructive" });
         return;
       }
       // 2. Mark registration as converted
@@ -1942,11 +1964,11 @@ function RegistrationsTab() {
         credentials: "include",
         body: JSON.stringify({ status: "converted" }),
       });
-      toast({ title: "Team created!", description: `Team "${convertTeamName}" has been created and registration marked as converted.` });
+      toast({ title: L("Lag opprettet!", "Team created!"), description: `Team "${convertTeamName}" has been created and registration marked as converted.` });
       setConvertReg(null);
       refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e.message || "Something went wrong", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message || "Something went wrong", variant: "destructive" });
     }
   }
 
@@ -1968,12 +1990,12 @@ function RegistrationsTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Registrations ({registrations.length})</h2>
-        <span className="text-xs text-muted-foreground">From /get-started and plan change requests</span>
+        <h2 className="text-lg font-semibold">{L("Registreringer", "Registrations")} ({registrations.length})</h2>
+        <span className="text-xs text-muted-foreground">{L("Fra /get-started og forespørsler om planendring", "From /get-started and plan change requests")}</span>
       </div>
 
       {registrations.length === 0 && (
-        <Card className="rounded-2xl p-8 text-center text-muted-foreground text-sm">No registrations yet.</Card>
+        <Card className="rounded-2xl p-8 text-center text-muted-foreground text-sm">{L("Ingen registreringer ennå.", "No registrations yet.")}</Card>
       )}
 
       <div className="space-y-3">
@@ -1998,7 +2020,7 @@ function RegistrationsTab() {
                     size="sm"
                     variant="outline"
                     className="h-7 text-xs"
-                    title="Convert to team"
+                    title={L("Konverter til lag", "Convert to team")}
                     onClick={() => {
                       setConvertReg(r);
                       setConvertTeamName(r.team_name ?? r.teamName ?? "");
@@ -2012,18 +2034,18 @@ function RegistrationsTab() {
               </div>
             </div>
             <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-              <span>Plan: <strong className="text-foreground">{r.plan_name ?? r.planName}</strong></span>
-              {(r.user_count ?? r.userCount) && <span>Users: {r.user_count ?? r.userCount}</span>}
-              {(r.group_count ?? r.groupCount) && <span>Groups: {r.group_count ?? r.groupCount}</span>}
-              <span>Billing: {(r.billing_period ?? r.billingPeriod) === "annual" ? "Annual" : "Monthly"}</span>
+              <span>{L("Plan: ", "Plan: ")}<strong className="text-foreground">{r.plan_name ?? r.planName}</strong></span>
+              {(r.user_count ?? r.userCount) && <span>{L("Brukere: ", "Users: ")}{r.user_count ?? r.userCount}</span>}
+              {(r.group_count ?? r.groupCount) && <span>{L("Grupper: ", "Groups: ")}{r.group_count ?? r.groupCount}</span>}
+              <span>Billing: {(r.billing_period ?? r.billingPeriod) === "annual" ? L("Årlig", "Annual") : L("Månedlig", "Monthly")}</span>
               <span>{new Date(r.created_at ?? r.createdAt).toLocaleDateString("no-NO")}</span>
             </div>
             {(r.invoice_address ?? r.invoiceAddress) && (
-              <div className="text-xs text-muted-foreground">Invoice address: {r.invoice_address ?? r.invoiceAddress}</div>
+              <div className="text-xs text-muted-foreground">{L("Fakturaadresse: ", "Invoice address: ")}{r.invoice_address ?? r.invoiceAddress}</div>
             )}
             {(r.notes) && <div className="text-xs text-muted-foreground italic">«{r.notes}»</div>}
             {(r.admin_notes ?? r.adminNotes) && (
-              <div className="text-xs bg-muted rounded px-2 py-1">Admin note: {r.admin_notes ?? r.adminNotes}</div>
+              <div className="text-xs bg-muted rounded px-2 py-1">{L("Adminnotat: ", "Admin note: ")}{r.admin_notes ?? r.adminNotes}</div>
             )}
           </Card>
         ))}
@@ -2033,29 +2055,29 @@ function RegistrationsTab() {
       {editing && (
         <Dialog open={!!editing} onOpenChange={o => !o && setEditing(null)}>
           <DialogContent>
-            <DialogHeader><DialogTitle>Edit registration — {editing.team_name ?? editing.teamName}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{L("Rediger registrering — ", "Edit registration — ")}{editing.team_name ?? editing.teamName}</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Status</label>
+                <label className="text-sm font-medium">{L("Status", "Status")}</label>
                 <Select value={editStatus} onValueChange={setEditStatus}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="contacted">Contacted</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                    <SelectItem value="converted">Converted</SelectItem>
+                    <SelectItem value="new">{L("Ny", "New")}</SelectItem>
+                    <SelectItem value="contacted">{L("Kontaktet", "Contacted")}</SelectItem>
+                    <SelectItem value="active">{L("Aktiv", "Active")}</SelectItem>
+                    <SelectItem value="rejected">{L("Avvist", "Rejected")}</SelectItem>
+                    <SelectItem value="converted">{L("Konvertert", "Converted")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Admin note</label>
+                <label className="text-sm font-medium">{L("Adminnotat", "Admin note")}</label>
                 <textarea className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20"
-                  rows={3} value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Internal note..." />
+                  rows={3} value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder={L("Internt notat...", "Internal note...")} />
               </div>
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-                <Button onClick={saveEdit}>Save</Button>
+                <Button variant="outline" onClick={() => setEditing(null)}>{L("Avbryt", "Cancel")}</Button>
+                <Button onClick={saveEdit}>{L("Lagre", "Save")}</Button>
               </div>
             </div>
           </DialogContent>
@@ -2066,14 +2088,14 @@ function RegistrationsTab() {
       {convertReg && (
         <Dialog open={!!convertReg} onOpenChange={o => !o && setConvertReg(null)}>
           <DialogContent className="sm:max-w-md">
-            <DialogHeader><DialogTitle>Create team from registration</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{L("Opprett lag fra registrering", "Create team from registration")}</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Team name</label>
+                <label className="text-sm font-medium">{L("Lagnavn", "Team name")}</label>
                 <Input value={convertTeamName} onChange={e => setConvertTeamName(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Plan</label>
+                <label className="text-sm font-medium">{L("Plan", "Plan")}</label>
                 <Select value={convertPlan} onValueChange={setConvertPlan}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -2083,10 +2105,10 @@ function RegistrationsTab() {
                   </SelectContent>
                 </Select>
               </div>
-              <p className="text-xs text-muted-foreground">This will create a new team and mark the registration as "converted".</p>
+              <p className="text-xs text-muted-foreground">{L("Dette oppretter et nytt lag og merker registreringen som «konvertert».", "This will create a new team and mark the registration as "converted".")}</p>
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setConvertReg(null)}>Cancel</Button>
-                <Button onClick={handleConvert} disabled={!convertTeamName.trim()}>Create team</Button>
+                <Button variant="outline" onClick={() => setConvertReg(null)}>{L("Avbryt", "Cancel")}</Button>
+                <Button onClick={handleConvert} disabled={!convertTeamName.trim()}>{L("Opprett lag", "Create team")}</Button>
               </div>
             </div>
           </DialogContent>
@@ -2098,7 +2120,8 @@ function RegistrationsTab() {
 
 
 function AccountingTab({ teams }: { teams: ApiTeam[] }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
 
   // ── Plan prices ──────────────────────────────────────────────────
@@ -2475,17 +2498,17 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-sm">{t("admin.billingPricesTitle")}</h3>
           {!editingPrices ? (
-            <Button variant="outline" size="sm" onClick={() => setEditingPrices(true)}>Rediger</Button>
+            <Button variant="outline" size="sm" onClick={() => setEditingPrices(true)}>{L("Rediger", "Edit")}</Button>
           ) : (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setEditingPrices(false)}>Avbryt</Button>
+              <Button variant="outline" size="sm" onClick={() => setEditingPrices(false)}>{L("Avbryt", "Cancel")}</Button>
               <Button size="sm" disabled={savePricesMutation.isPending} onClick={() => {
                 const data: Record<string, number | null> = {};
                 for (const [k, v] of Object.entries(priceForm)) {
                   data[k] = v === "" ? null : parseFloat(v);
                 }
                 savePricesMutation.mutate(data);
-              }}>Lagre</Button>
+              }}>{L("Lagre", "Save")}</Button>
             </div>
           )}
         </div>
@@ -2508,7 +2531,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                 <div className="text-sm font-semibold">
                   {(planPrices as any)[plan] == null
                     ? <span className="text-muted-foreground">{t("admin.billingCustom")}</span>
-                    : <>{Number((planPrices as any)[plan]).toLocaleString("no-NO")} <span className="font-normal text-muted-foreground text-xs">NOK/mnd inkl. mva</span></>
+                    : <>{Number((planPrices as any)[plan]).toLocaleString("no-NO")} <span className="font-normal text-muted-foreground text-xs">{L("NOK/mnd inkl. mva", "NOK/mo incl. VAT")}</span></>
                   }
                 </div>
               )}
@@ -2566,7 +2589,8 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
 
 
 export default function Admin() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { user, isSuperAdmin, isTeamAdmin, canManage } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
@@ -2734,7 +2758,7 @@ export default function Admin() {
       autoTable(doc, {
         startY: y,
         head: [["Name", "Email", "Groups", "Role", "Active"]],
-        body: data.users.map((u: any) => [u.name, u.email, u.groupScope, u.isAdmin ? "Super Admin" : u.isTeamAdmin ? "Team Admin" : "Member", u.isActive ? "Yes" : "No"]),
+        body: data.users.map((u: any) => [u.name, u.email, u.groupScope, u.isAdmin ? "Super Admin" : u.isTeamAdmin ? L("Lagadmin", "Team Admin") : L("Medlem", "Member"), u.isActive ? L("Ja", "Yes") : L("Nei", "No")]),
         styles: { fontSize: 8 }, headStyles: hStyle, margin: { left: 14, right: 14 },
       });
       y = (doc as any).lastAutoTable.finalY + 10;
@@ -3309,7 +3333,7 @@ export default function Admin() {
         data.raceSkiRegrinds?.length ? `${data.raceSkiRegrinds.length} ski regrinds` : null,
         data.testSkiRegrinds?.length ? `${data.testSkiRegrinds.length} series regrinds` : null,
       ].filter(Boolean).join(", ");
-      toast({ title: "PDF exported", description: sections });
+      toast({ title: L("PDF eksportert", "PDF exported"), description: sections });
       fetch("/api/log-export", {
         method: "POST",
         credentials: "include",
@@ -3321,7 +3345,7 @@ export default function Admin() {
         queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/login-logs") });
       } catch (_) {}
     } catch (err: any) {
-      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+      toast({ title: L("Eksport mislyktes", "Export failed"), description: err.message, variant: "destructive" });
     } finally {
       setPdfLoading(false);
     }
@@ -3336,10 +3360,10 @@ export default function Admin() {
       queryClient.invalidateQueries();
       setNewGroupName("");
       setNewGroupTeamId(undefined);
-      toast({ title: "Group created" });
+      toast({ title: L("Gruppe opprettet", "Group created") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3351,10 +3375,10 @@ export default function Admin() {
     onSuccess: () => {
       queryClient.invalidateQueries();
       setEditingGroup(null);
-      toast({ title: "Group renamed" });
+      toast({ title: L("Gruppe omdøpt", "Group renamed") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3365,10 +3389,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast({ title: "Group deleted" });
+      toast({ title: L("Gruppe slettet", "Group deleted") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3379,10 +3403,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast({ title: "User deleted" });
+      toast({ title: L("Bruker slettet", "User deleted") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3392,10 +3416,10 @@ export default function Admin() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "User session terminated" });
+      toast({ title: L("Brukerøkt avsluttet", "User session terminated") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3406,10 +3430,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast({ title: "User status updated" });
+      toast({ title: L("Brukerstatus oppdatert", "User status updated") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3420,10 +3444,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast({ title: "Account unlocked" });
+      toast({ title: L("Konto låst opp", "Account unlocked") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3436,7 +3460,7 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: [`/api/users${teamScopeParam}`] });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3449,10 +3473,10 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       setNewTeamName("");
       setNewTeamAreas([...PERMISSION_AREAS]);
-      toast({ title: "Team created" });
+      toast({ title: L("Lag opprettet", "Team created") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3465,10 +3489,10 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       setEditingTeam(null);
       setConfiguringTeam(null);
-      toast({ title: "Team updated" });
+      toast({ title: L("Lag oppdatert", "Team updated") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3479,10 +3503,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: "Team deleted" });
+      toast({ title: L("Lag slettet", "Team deleted") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3493,10 +3517,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: "Default team updated" });
+      toast({ title: L("Standardlag oppdatert", "Default team updated") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3507,10 +3531,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: "Saved" });
+      toast({ title: L("Lagret", "Saved") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3533,9 +3557,9 @@ export default function Admin() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       setNotesTeam(null);
-      toast({ title: "Notes saved" });
+      toast({ title: L("Notater lagret", "Notes saved") });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
   const pauseTeamMutation = useMutation({
@@ -3545,10 +3569,10 @@ export default function Admin() {
     },
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: vars.paused ? "Team suspended" : "Team unsuspended", description: vars.paused ? "Team members will be unable to log in." : "Team members can log in again." });
+      toast({ title: vars.paused ? L("Lag suspendert", "Team suspended") : L("Lag gjenopprettet", "Team unsuspended"), description: vars.paused ? L("Lagmedlemmer vil ikke kunne logge inn.", "Team members will be unable to log in.") : L("Lagmedlemmer kan logge inn igjen.", "Team members can log in again.") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3560,10 +3584,10 @@ export default function Admin() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       queryClient.invalidateQueries({ queryKey: ["/api/my-team-info"] });
-      toast({ title: "Team logo saved" });
+      toast({ title: L("Laglogo lagret", "Team logo saved") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3574,10 +3598,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: "Backup sheet saved" });
+      toast({ title: L("Sikkerhetskopiark lagret", "Backup sheet saved") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3588,10 +3612,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: "Backup completed successfully" });
+      toast({ title: L("Sikkerhetskopi fullført", "Backup completed successfully") });
     },
     onError: (e: Error) => {
-      toast({ title: "Backup failed", description: e.message, variant: "destructive" });
+      toast({ title: L("Sikkerhetskopi mislyktes", "Backup failed"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3602,10 +3626,10 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      toast({ title: "Drive folder saved" });
+      toast({ title: L("Drive-mappe lagret", "Drive folder saved") });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3617,13 +3641,13 @@ export default function Admin() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       if (data?.pdfError) {
-        toast({ title: "Drive backup: JSON OK — PDF failed", description: data.pdfError, variant: "destructive" });
+        toast({ title: L("Drive-sikkerhetskopi: JSON OK — PDF mislyktes", "Drive backup: JSON OK — PDF failed"), description: data.pdfError, variant: "destructive" });
       } else {
-        toast({ title: "Drive backup completed", description: "JSON and PDF uploaded successfully." });
+        toast({ title: L("Drive-sikkerhetskopi fullført", "Drive backup completed"), description: L("JSON og PDF lastet opp.", "JSON and PDF uploaded successfully.") });
       }
     },
     onError: (e: Error) => {
-      toast({ title: "Drive backup failed", description: e.message, variant: "destructive" });
+      toast({ title: L("Drive-sikkerhetskopi mislyktes", "Drive backup failed"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -3636,7 +3660,7 @@ export default function Admin() {
     return (
       <AppShell>
         <Card className="fs-card rounded-2xl p-6" data-testid="status-admin-forbidden">
-          <div className="text-base font-semibold">Admin only</div>
+          <div className="text-base font-semibold">{L("Kun admin", "Admin only")}</div>
           <div className="mt-2 text-sm text-muted-foreground">
             Your account does not have access to Admin tools.
           </div>
@@ -3675,7 +3699,7 @@ export default function Admin() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="current" data-testid="scope-current">{t("admin.currentTeam")}</SelectItem>
-                  <SelectItem value="all" data-testid="scope-all">All teams</SelectItem>
+                  <SelectItem value="all" data-testid="scope-all">{L("Alle lag", "All teams")}</SelectItem>
                   {teams.map((t) => (
                     <SelectItem key={t.id} value={String(t.id)} data-testid={`scope-team-${t.id}`}>
                       {t.name}
@@ -3739,7 +3763,7 @@ export default function Admin() {
                 <h2 className="text-sm font-semibold text-foreground">{t("admin.recentActivity")}</h2>
               </div>
               {activities.length === 0 ? (
-                <p className="text-sm text-muted-foreground" data-testid="empty-activity">No activity recorded yet.</p>
+                <p className="text-sm text-muted-foreground" data-testid="empty-activity">{L("Ingen aktivitet registrert ennå.", "No activity recorded yet.")}</p>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {activities.slice(0, 20).map((a) => (
@@ -3781,8 +3805,8 @@ export default function Admin() {
                     <Users className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-semibold text-foreground">Team Logo</h2>
-                    <p className="text-xs text-muted-foreground">Shown in the sidebar instead of the Glidr icon. Max 150 KB.</p>
+                    <h2 className="text-sm font-semibold text-foreground">{L("Laglogo", "Team Logo")}</h2>
+                    <p className="text-xs text-muted-foreground">{L("Vises i sidemenyen i stedet for Glidr-ikonet. Maks 150 KB.", "Shown in the sidebar instead of the Glidr icon. Max 150 KB.")}</p>
                   </div>
                 </div>
                 {(isSuperAdmin ? teams : teams.filter((t) => t.id === user?.teamId)).map((team) => (
@@ -3792,10 +3816,10 @@ export default function Admin() {
                     )}
                     <div className="flex items-center gap-3 flex-wrap">
                       {team.teamLogo && (
-                        <img src={team.teamLogo} alt="Current logo" className="h-12 w-12 object-contain rounded border border-border" />
+                        <img src={team.teamLogo} alt={L("Nåværende logo","Current logo")} className="h-12 w-12 object-contain rounded border border-border" />
                       )}
                       <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors">
-                        {team.teamLogo ? "Replace logo" : "Upload logo"}
+                        {team.teamLogo ? L("Bytt logo", "Replace logo") : L("Last opp logo", "Upload logo")}
                         <input
                           type="file"
                           accept="image/*"
@@ -3836,7 +3860,7 @@ export default function Admin() {
         {activeTab === "users" && (
           <div className="flex flex-col gap-4" data-testid="tab-content-users">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Users ({users.length})</h2>
+              <h2 className="text-sm font-semibold text-foreground">{L("Brukere", "Users")} ({users.length})</h2>
               <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                 <DialogTrigger asChild>
                   <Button data-testid="button-add-user" className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white">
@@ -3845,7 +3869,7 @@ export default function Admin() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader><DialogTitle>Create user</DialogTitle></DialogHeader>
+                  <DialogHeader><DialogTitle>{L("Opprett bruker", "Create user")}</DialogTitle></DialogHeader>
                   <CreateUserForm onDone={() => setCreateOpen(false)} allGroups={apiGroups} defaultTeamId={effectiveTeamId} teams={teams} />
                 </DialogContent>
               </Dialog>
@@ -3879,7 +3903,7 @@ export default function Admin() {
                             "rounded-full px-2 py-0.5 text-[10px] font-medium",
                             u.isAdmin ? "bg-amber-50 text-amber-600" : u.isTeamAdmin ? "bg-purple-50 text-purple-600" : "bg-muted text-muted-foreground"
                           )}>
-                            {u.isAdmin ? "Super Admin" : u.isTeamAdmin ? "Team Admin" : "Member"}
+                            {u.isAdmin ? "Super Admin" : u.isTeamAdmin ? L("Lagadmin", "Team Admin") : L("Medlem", "Member")}
                           </span>
                           {!!u.isBlindTester && (
                             <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-600">
@@ -3887,7 +3911,7 @@ export default function Admin() {
                             </span>
                           )}
                           {!u.isActive && (
-                            <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600">Inactive</span>
+                            <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600">{L("Inaktiv", "Inactive")}</span>
                           )}
                           {!!u.loginLocked && (
                             <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700 flex items-center gap-0.5">
@@ -3916,7 +3940,7 @@ export default function Admin() {
                             u.isActive ? "text-green-600 hover:bg-green-50" : "text-red-500 hover:bg-red-50"
                           )}
                           data-testid={`toggle-active-${u.id}`}
-                          title={u.isActive ? "Deactivate user" : "Activate user"}
+                          title={u.isActive ? L("Deaktiver bruker", "Deactivate user") : L("Aktiver bruker", "Activate user")}
                           onClick={() => toggleActiveMutation.mutate({ userId: u.id, value: !u.isActive })}
                         >
                           {u.isActive ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
@@ -3927,7 +3951,7 @@ export default function Admin() {
                             u.garminWatch ? "text-sky-500 hover:bg-sky-50" : "text-muted-foreground/40 hover:bg-muted"
                           )}
                           data-testid={`toggle-watch-${u.id}`}
-                          title={u.garminWatch ? "Revoke Watch Queue access" : "Grant Watch Queue access"}
+                          title={u.garminWatch ? L("Trekk tilbake tilgang til overvåkingskø", "Revoke Watch Queue access") : L("Gi tilgang til overvåkingskø", "Grant Watch Queue access")}
                           onClick={() => toggleWatchMutation.mutate({ userId: u.id, enabled: !u.garminWatch })}
                         >
                           <Watch className="h-4.5 w-4.5" />
@@ -3935,7 +3959,7 @@ export default function Admin() {
                         <button
                           className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground/80"
                           data-testid={`button-edit-user-${u.id}`}
-                          title="Edit user"
+                          title={L("Rediger bruker", "Edit user")}
                           onClick={() => setEditUser(u)}
                         >
                           <Pencil className="h-4.5 w-4.5" />
@@ -3943,7 +3967,7 @@ export default function Admin() {
                         <button
                           className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground/80"
                           data-testid={`button-reset-user-${u.id}`}
-                          title="Reset password"
+                          title={L("Tilbakestill passord", "Reset password")}
                           onClick={() => setResetUser(u)}
                         >
                           <KeyRound className="h-4.5 w-4.5" />
@@ -3952,7 +3976,7 @@ export default function Admin() {
                           <button
                             className="rounded p-1 text-red-500 hover:bg-red-50"
                             data-testid={`button-unlock-user-${u.id}`}
-                            title="Unlock account"
+                            title={L("Lås opp konto", "Unlock account")}
                             onClick={() => unlockMutation.mutate(u.id)}
                           >
                             <LockKeyhole className="h-4.5 w-4.5" />
@@ -3961,7 +3985,7 @@ export default function Admin() {
                         <button
                           className="rounded p-1 text-orange-500 hover:bg-orange-50"
                           data-testid={`button-force-logout-${u.id}`}
-                          title="Force logout"
+                          title={L("Tving utlogging", "Force logout")}
                           onClick={() => {
                             if (confirm(`Force logout ${u.name}?`)) {
                               forceLogoutMutation.mutate(u.id);
@@ -3974,7 +3998,7 @@ export default function Admin() {
                           className="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-30"
                           data-testid={`button-delete-user-${u.id}`}
                           disabled={u.id === user.id}
-                          title="Delete user"
+                          title={L("Slett bruker", "Delete user")}
                           onClick={() => {
                             if (confirm(`Delete ${u.name}?`)) {
                               deleteMutation.mutate(u.id);
@@ -3987,7 +4011,7 @@ export default function Admin() {
                           <button
                             className="rounded p-1 text-violet-500 hover:bg-violet-50"
                             data-testid={`button-history-user-${u.id}`}
-                            title="View user history"
+                            title={L("Vis brukerhistorikk", "View user history")}
                             onClick={() => setHistoryUser(u)}
                           >
                             <Activity className="h-4.5 w-4.5" />
@@ -4002,14 +4026,14 @@ export default function Admin() {
 
             <Dialog open={!!editUser} onOpenChange={(v) => { if (!v) setEditUser(undefined); }}>
               <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>Edit user</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{L("Rediger bruker", "Edit user")}</DialogTitle></DialogHeader>
                 {editUser && <EditUserForm user={editUser} onDone={() => setEditUser(undefined)} allGroups={apiGroups} teams={teams} />}
               </DialogContent>
             </Dialog>
 
             <Dialog open={!!resetUser} onOpenChange={(v) => { if (!v) setResetUser(undefined); }}>
               <DialogContent className="sm:max-w-md">
-                <DialogHeader><DialogTitle>Reset password for {resetUser?.name}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{L("Tilbakestill passord for ", "Reset password for ")}{resetUser?.name}</DialogTitle></DialogHeader>
                 {resetUser && <ResetPasswordForm user={resetUser} onDone={() => setResetUser(undefined)} />}
               </DialogContent>
             </Dialog>
@@ -4095,7 +4119,7 @@ export default function Admin() {
                 <Input
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
-                  placeholder="New group name…"
+                  placeholder={L("Nytt gruppenavn…", "New group name…")}
                   className="h-8 text-sm flex-1"
                   data-testid="input-new-group"
                   onKeyDown={(e) => {
@@ -4110,7 +4134,7 @@ export default function Admin() {
                     onValueChange={(v) => setNewGroupTeamId(parseInt(v))}
                   >
                     <SelectTrigger className="h-8 w-[140px] text-sm" data-testid="select-new-group-team">
-                      <SelectValue placeholder="Team" />
+                      <SelectValue placeholder={L("Lag", "Team")} />
                     </SelectTrigger>
                     <SelectContent>
                       {teams.map((t) => (
@@ -4150,7 +4174,7 @@ export default function Admin() {
 
             <Dialog open={!!limitsTeam} onOpenChange={(o) => { if (!o) setLimitsTeam(null); }}>
               <DialogContent className="sm:max-w-xs">
-                <DialogHeader><DialogTitle>Limits: {limitsTeam?.name}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{L("Grenser: ", "Limits: ")}{limitsTeam?.name}</DialogTitle></DialogHeader>
                 <div className="space-y-3 pt-2">
                   {[
                     { key: "maxUsers", label: t("admin.accountingMaxUsers") },
@@ -4280,10 +4304,10 @@ export default function Admin() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-sm font-medium text-foreground">{team.name}</span>
                           {team.isDefault === 1 && (
-                            <span className="rounded-full bg-green-50 dark:bg-green-900/30 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-300">Default</span>
+                            <span className="rounded-full bg-green-50 dark:bg-green-900/30 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-300">{L("Standard", "Default")}</span>
                           )}
                           {!!team.isPaused && (
-                            <span className="rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Suspended</span>
+                            <span className="rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">{L("Suspendert", "Suspended")}</span>
                           )}
                           {planPreset && planStyle && (
                             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", planStyle.badge)}>
@@ -4299,7 +4323,7 @@ export default function Admin() {
                         <div className="text-[10px] text-muted-foreground mt-0.5">
                           {users.filter((u) => u.teamId === team.id).length} users
                           {featureCount !== null && <> · {featureCount} features enabled</>}
-                          {!!team.isPaused && <> · <span className="text-red-500 font-medium">All members cannot log in</span></>}
+                          {!!team.isPaused && <> · <span className="text-red-500 font-medium">{L("Ingen medlemmer kan logge inn", "All members cannot log in")}</span></>}
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
@@ -4310,7 +4334,7 @@ export default function Admin() {
                             data-testid={`button-set-default-team-${team.id}`}
                             onClick={() => setDefaultTeamMutation.mutate(team.id)}
                             disabled={setDefaultTeamMutation.isPending}
-                            title="Set as default"
+                            title={L("Sett som standard", "Set as default")}
                           >
                             <Shield className="h-4 w-4 text-green-500" />
                           </Button>
@@ -4319,7 +4343,7 @@ export default function Admin() {
                           variant="ghost"
                           size="sm"
                           data-testid={`button-pause-team-${team.id}`}
-                          title={team.isPaused ? "Unpause team" : "Pause team — members cannot log in"}
+                          title={team.isPaused ? L("Opphev lagpause", "Unpause team") : L("Sett laget på pause — medlemmer kan ikke logge inn", "Pause team — members cannot log in")}
                           disabled={pauseTeamMutation.isPending}
                           onClick={() => {
                             const willPause = !team.isPaused;
@@ -4334,21 +4358,21 @@ export default function Admin() {
                           variant="ghost"
                           size="sm"
                           data-testid={`button-configure-team-${team.id}`}
-                          title="Configure features"
+                          title={L("Konfigurer funksjoner", "Configure features")}
                           onClick={() => setConfiguringTeam(team)}
                         >
                           <Settings2 className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" title="Set limits" onClick={() => { setLimitsTeam(team); setLimitsForm({ maxUsers: team.maxUsers ?? team.max_users ?? "", maxGroups: team.maxGroups ?? team.max_groups ?? "", maxTests: team.maxTests ?? team.max_tests ?? "", maxProducts: team.maxProducts ?? team.max_products ?? "" }); }}>
+                        <Button variant="ghost" size="sm" title={L("Sett grenser", "Set limits")} onClick={() => { setLimitsTeam(team); setLimitsForm({ maxUsers: team.maxUsers ?? team.max_users ?? "", maxGroups: team.maxGroups ?? team.max_groups ?? "", maxTests: team.maxTests ?? team.max_tests ?? "", maxProducts: team.maxProducts ?? team.max_products ?? "" }); }}>
                           <Hash className="h-4 w-4 text-muted-foreground" />
                         </Button>
-                        <Button variant="ghost" size="sm" title="Edit plan / billing" onClick={() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "" }); }}>
+                        <Button variant="ghost" size="sm" title={L("Rediger plan / fakturering", "Edit plan / billing")} onClick={() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "" }); }}>
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </Button>
-                        <Button variant="ghost" size="sm" title="Plan history" onClick={() => setHistoryTeam(team)}>
+                        <Button variant="ghost" size="sm" title={L("Planhistorikk", "Plan history")} onClick={() => setHistoryTeam(team)}>
                           <Clock className="h-4 w-4 text-muted-foreground" />
                         </Button>
-                        <Button variant="ghost" size="sm" title="Edit notes" onClick={() => { setNotesTeam(team); setNotesValue(team.notes ?? ""); }}>
+                        <Button variant="ghost" size="sm" title={L("Rediger notater", "Edit notes")} onClick={() => { setNotesTeam(team); setNotesValue(team.notes ?? ""); }}>
                           <MessageSquare className={cn("h-4 w-4", team.notes ? "text-blue-500" : "text-muted-foreground")} />
                         </Button>
                         {team.isDefault !== 1 && (
@@ -4377,17 +4401,17 @@ export default function Admin() {
 
               {/* New team form */}
               <div className="mt-4 rounded-xl border border-border bg-muted/20 p-4 space-y-3">
-                <div className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">New team</div>
+                <div className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">{L("Nytt lag", "New team")}</div>
                 <Input
                   value={newTeamName}
                   onChange={(e) => setNewTeamName(e.target.value)}
-                  placeholder="Team name…"
+                  placeholder={L("Lagnavn…", "Team name…")}
                   className="h-8 text-sm"
                   data-testid="input-new-team"
                 />
                 {/* Plan preset buttons for new team */}
                 <div>
-                  <div className="text-xs font-medium text-muted-foreground mb-1.5">Subscription plan</div>
+                  <div className="text-xs font-medium text-muted-foreground mb-1.5">{L("Abonnementsplan", "Subscription plan")}</div>
                   <div className="grid grid-cols-4 gap-1.5">
                     {Object.entries(PLAN_FEATURE_PRESETS).map(([key, preset]) => {
                       const isActive = (() => {
@@ -4438,9 +4462,9 @@ export default function Admin() {
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/30">
                   <Download className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <h2 className="text-sm font-semibold text-foreground">Google Sheets Backup</h2>
+                <h2 className="text-sm font-semibold text-foreground">{L("Google Sheets-sikkerhetskopi", "Google Sheets Backup")}</h2>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">Paste a Google Sheets URL to back up all data. Backups run automatically every 30 minutes and can also be triggered manually.</p>
+              <p className="text-xs text-muted-foreground mb-4">{L("Lim inn en Google Sheets-URL for å sikkerhetskopiere alle data. Sikkerhetskopier kjøres automatisk hvert 30. minutt og kan også startes manuelt.", "Paste a Google Sheets URL to back up all data. Backups run automatically every 30 minutes and can also be triggered manually.")}</p>
               <div className="space-y-4">
                 {(isSuperAdmin ? teams : teams.filter((t) => t.id === user?.teamId)).map((team) => {
                   const inputVal = backupSheetInputs[team.id] ?? team.backupSheetUrl ?? '';
@@ -4480,7 +4504,7 @@ export default function Admin() {
                           ) : (
                             <Download className="h-3.5 w-3.5" />
                           )}
-                          <span className="ml-1 text-xs">Backup</span>
+                          <span className="ml-1 text-xs">{L("Sikkerhetskopi", "Backup")}</span>
                         </Button>
                       </div>
                       {team.lastBackupAt && (
@@ -4500,7 +4524,7 @@ export default function Admin() {
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
                   <HardDrive className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 </div>
-                <h2 className="text-sm font-semibold text-foreground">Google Drive Backup</h2>
+                <h2 className="text-sm font-semibold text-foreground">{L("Google Drive-sikkerhetskopi", "Google Drive Backup")}</h2>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
                 Connect a Google Shared Drive folder for fully automatic uploads every 30 minutes.
@@ -4510,12 +4534,12 @@ export default function Admin() {
               {/* ── Shared Drive auto-upload (Google Workspace only) ── */}
               {teams.some(t => !(t as any).driveFolderId) && (
               <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20 p-3 mb-3 text-[11px] text-amber-800 dark:text-amber-300 space-y-1">
-                <p className="font-semibold">⚠ Automatic Drive upload requires a Shared Drive (Google Workspace)</p>
-                <p>Google service accounts cannot store files in a personal My Drive. To use automatic upload you need a <strong>Shared Drive</strong> (available on Google Workspace / G Suite):</p>
+                <p className="font-semibold">{L("⚠ Automatisk Drive-opplasting krever en delt disk (Google Workspace)", "⚠ Automatic Drive upload requires a Shared Drive (Google Workspace)")}</p>
+                <p>{L("Google-tjenestekontoer kan ikke lagre filer i en personlig My Drive. For å bruke automatisk opplasting trenger du en ", "Google service accounts cannot store files in a personal My Drive. To use automatic upload you need a ")}<strong>{L("Delt disk", "Shared Drive")}</strong>{L(" (tilgjengelig på Google Workspace / G Suite):", " (available on Google Workspace / G Suite):")}</p>
                 <ol className="list-decimal pl-4 space-y-1 mt-1">
-                  <li>In Google Drive, create a <strong>Shared Drive</strong> (not a regular folder).</li>
-                  <li>Click <strong>Manage members</strong> → add the service account email (shown in the green card above) as <strong>Contributor</strong>.</li>
-                  <li>Copy the Shared Drive URL and paste it below.</li>
+                  <li>{L("Opprett en", "In Google Drive, create a")} <strong>{L("Delt disk", "Shared Drive")}</strong>{L(" i Google Drive (ikke en vanlig mappe).", " (not a regular folder).")}</li>
+                  <li>{L("Klikk", "Click")} <strong>{L("Administrer medlemmer", "Manage members")}</strong>{L(" → legg til tjenestekontoens e-post (vist i det grønne kortet over) som ", " → add the service account email (shown in the green card above) as ")}<strong>{L("Bidragsyter", "Contributor")}</strong>.</li>
+                  <li>{L("Kopier URL-en til den delte disken og lim den inn nedenfor.", "Copy the Shared Drive URL and paste it below.")}</li>
                 </ol>
               </div>
               )}
@@ -4555,7 +4579,7 @@ export default function Admin() {
                           ) : (
                             <Download className="h-3.5 w-3.5" />
                           )}
-                          <span className="ml-1 text-xs">Upload now</span>
+                          <span className="ml-1 text-xs">{L("Last opp nå", "Upload now")}</span>
                         </Button>
                         {hasDriveFolder && (
                           <a
@@ -4583,21 +4607,21 @@ export default function Admin() {
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50">
                   <Activity className="h-4 w-4 text-teal-600" />
                 </div>
-                <h2 className="text-sm font-semibold text-foreground">Activity Log ({activities.length})</h2>
+                <h2 className="text-sm font-semibold text-foreground">{L("Aktivitetslogg", "Activity Log")} ({activities.length})</h2>
               </div>
               {activities.length === 0 ? (
-                <p className="text-sm text-muted-foreground" data-testid="empty-activity-log">No activity recorded yet.</p>
+                <p className="text-sm text-muted-foreground" data-testid="empty-activity-log">{L("Ingen aktivitet registrert ennå.", "No activity recorded yet.")}</p>
               ) : (
                 <div className="max-h-[600px] overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                        <th className="pb-2 pr-3">Time</th>
-                        <th className="pb-2 pr-3">User</th>
-                        <th className="pb-2 pr-3">Action</th>
-                        <th className="pb-2 pr-3">Type</th>
-                        <th className="pb-2 pr-3">Details</th>
-                        <th className="pb-2">Group</th>
+                        <th className="pb-2 pr-3">{L("Tid", "Time")}</th>
+                        <th className="pb-2 pr-3">{L("Bruker", "User")}</th>
+                        <th className="pb-2 pr-3">{L("Handling", "Action")}</th>
+                        <th className="pb-2 pr-3">{L("Type", "Type")}</th>
+                        <th className="pb-2 pr-3">{L("Detaljer", "Details")}</th>
+                        <th className="pb-2">{L("Gruppe", "Group")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -4636,20 +4660,20 @@ export default function Admin() {
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50">
                   <Clock className="h-4 w-4 text-indigo-600" />
                 </div>
-                <h2 className="text-sm font-semibold text-foreground">Login History ({loginLogs.length})</h2>
+                <h2 className="text-sm font-semibold text-foreground">{L("Innloggingshistorikk", "Login History")} ({loginLogs.length})</h2>
               </div>
               {loginLogs.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No login records yet.</p>
+                <p className="text-sm text-muted-foreground">{L("Ingen innlogginger registrert ennå.", "No login records yet.")}</p>
               ) : (
                 <div className="max-h-[600px] overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                        <th className="pb-2 pr-3">Name</th>
-                        <th className="pb-2 pr-3">Email</th>
-                        <th className="pb-2 pr-3">Action</th>
-                        <th className="pb-2 pr-3">IP Address</th>
-                        <th className="pb-2">Time</th>
+                        <th className="pb-2 pr-3">{L("Navn", "Name")}</th>
+                        <th className="pb-2 pr-3">{L("E-post", "Email")}</th>
+                        <th className="pb-2 pr-3">{L("Handling", "Action")}</th>
+                        <th className="pb-2 pr-3">{L("IP-adresse", "IP Address")}</th>
+                        <th className="pb-2">{L("Tid", "Time")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -4659,7 +4683,7 @@ export default function Admin() {
                           <td className="py-2 pr-3 text-muted-foreground">{log.email}</td>
                           <td className="py-2 pr-3">
                             {log.action === "login" ? (
-                              <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-200">Login</span>
+                              <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-200">{L("Innlogging", "Login")}</span>
                             ) : log.action === "pdf_download" ? (
                               <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
                                 PDF {log.details ? `— ${log.details}` : ""}
@@ -4692,13 +4716,13 @@ export default function Admin() {
                   <FileText className="h-6 w-6 text-violet-600" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-xl font-semibold mb-1">Glidr Feature Guide</h2>
+                  <h2 className="text-xl font-semibold mb-1">{L("Glidr funksjonsguide", "Glidr Feature Guide")}</h2>
                   <p className="text-sm text-muted-foreground mb-4">
                     A complete, confidential reference document covering all platform features, role requirements, and the permission system. Updated automatically as new features are added.
                   </p>
                   <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-3 mb-4">
                     <p className="text-xs text-amber-700 dark:text-amber-400">
-                      <strong>Confidential:</strong> This document contains proprietary feature descriptions and internal workflows. Do not distribute to third parties or use as a reference for competing software development.
+                      <strong>{L("Konfidensielt:", "Confidential:")}</strong> This document contains proprietary feature descriptions and internal workflows. Do not distribute to third parties or use as a reference for competing software development.
                     </p>
                   </div>
                   <Button
@@ -4717,7 +4741,7 @@ export default function Admin() {
                   <FileText className="h-6 w-6 text-amber-600" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-xl font-semibold mb-1">Glidr Customer Presentation</h2>
+                  <h2 className="text-xl font-semibold mb-1">{L("Glidr kundepresentasjon", "Glidr Customer Presentation")}</h2>
                   <p className="text-sm text-muted-foreground mb-4">
                     The full interactive HTML pitch deck. Switch between Norwegian and English with the language toggle. Includes feature overview, workflow, security, pricing and CTA slides. Opens in a new tab.
                   </p>
@@ -4736,7 +4760,7 @@ export default function Admin() {
             </Card>
 
             <Card className="fs-card rounded-2xl p-6">
-              <h3 className="font-semibold mb-3">Document Contents</h3>
+              <h3 className="font-semibold mb-3">{L("Dokumentinnhold", "Document Contents")}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">
                 {[
                   "Introduction & Role Overview",
@@ -4768,7 +4792,7 @@ export default function Admin() {
                   <FileText className="h-6 w-6 text-emerald-600" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-xl font-semibold mb-1">Glidr Sales Brochure</h2>
+                  <h2 className="text-xl font-semibold mb-1">{L("Glidr salgsbrosjyre", "Glidr Sales Brochure")}</h2>
                   <p className="text-sm text-muted-foreground mb-4">
                     A professional 7-page sales PDF presenting Glidr's value proposition, key features, analytics capabilities, and the development platform narrative. Use this when introducing Glidr to potential customers or new team members. Available in Norwegian and English.
                   </p>
@@ -4811,6 +4835,8 @@ export default function Admin() {
 }
 
 function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSuperAdmin, teams }: { teamScopeParam: string; downloadFullPdf: (scope?: string) => void; pdfLoading: boolean; isSuperAdmin: boolean; teams: ApiTeam[] }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const { data: dbStats } = useQuery<any>({ queryKey: [`/api/admin/db-stats${teamScopeParam}`] });
 
@@ -4831,7 +4857,7 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
       toast({ title: data.removed > 0 ? `Removed ${data.removed} duplicate${data.removed !== 1 ? "s" : ""}` : "No duplicates found" });
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -4873,12 +4899,12 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
       if (importSelections.tests) parts.push(`${result.imported.tests} tests`);
       if (importSelections.weather) parts.push(`${result.imported.weather} weather logs`);
       toast({
-        title: "Import complete",
+        title: L("Import fullført", "Import complete"),
         description: `Imported: ${parts.join(", ")}. Skipped: ${result.imported.skipped} duplicates.`,
       });
       queryClient.invalidateQueries();
     } catch (err: any) {
-      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+      toast({ title: L("Import mislyktes", "Import failed"), description: err.message, variant: "destructive" });
     } finally {
       setImporting(false);
       e.target.value = "";
@@ -4960,9 +4986,9 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ exportType: "excel_export", details: "Admin Excel export" }),
       }).catch(() => {});
-      toast({ title: "Excel exported" });
+      toast({ title: L("Excel eksportert", "Excel exported") });
     } catch (err: any) {
-      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+      toast({ title: L("Eksport mislyktes", "Export failed"), description: err.message, variant: "destructive" });
     } finally {
       setXlsLoading(false);
     }
@@ -4976,7 +5002,7 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
           <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-violet-50">
             <Database className="h-4 w-4 text-violet-600" />
           </div>
-          <h2 className="text-sm font-semibold text-foreground">Database Overview</h2>
+          <h2 className="text-sm font-semibold text-foreground">{L("Databaseoversikt", "Database Overview")}</h2>
         </div>
         {dbStats ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
@@ -5000,7 +5026,7 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <p className="text-sm text-muted-foreground">{L("Laster...", "Loading...")}</p>
         )}
       </Card>
 
@@ -5009,17 +5035,17 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
           <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50">
             <Download className="h-4 w-4 text-emerald-600" />
           </div>
-          <h2 className="text-sm font-semibold text-foreground">Export Tools</h2>
+          <h2 className="text-sm font-semibold text-foreground">{L("Eksportverktøy", "Export Tools")}</h2>
         </div>
         {isSuperAdmin && teams.length > 0 && (
           <div className="mb-4 flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Export for team:</span>
+            <span className="text-xs font-medium text-muted-foreground">{L("Eksporter for lag:", "Export for team:")}</span>
             <Select value={String(exportTeamId)} onValueChange={(v) => setExportTeamId(v === "all" ? "all" : parseInt(v))}>
               <SelectTrigger className="h-7 w-48 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All teams</SelectItem>
+                <SelectItem value="all">{L("Alle lag", "All teams")}</SelectItem>
                 {teams.map((t) => (
                   <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
                 ))}
@@ -5029,12 +5055,12 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="rounded-xl border border-border bg-muted/30 p-4">
-            <h3 className="text-sm font-medium text-foreground mb-1">PDF Export</h3>
-            <p className="text-xs text-muted-foreground mb-3">Export all app data as a comprehensive PDF document.</p>
+            <h3 className="text-sm font-medium text-foreground mb-1">{L("PDF-eksport", "PDF Export")}</h3>
+            <p className="text-xs text-muted-foreground mb-3">{L("Eksporter alle appdata som et omfattende PDF-dokument.", "Export all app data as a comprehensive PDF document.")}</p>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" data-testid="button-export-pdf-data" onClick={() => downloadFullPdf(exportTeamScopeParam)} disabled={pdfLoading}>
                 {pdfLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
-                {pdfLoading ? "Exporting…" : "Export PDF"}
+                {pdfLoading ? L("Eksporterer…", "Exporting…") : L("Eksporter PDF", "Export PDF")}
               </Button>
               <Button size="sm" variant="outline" onClick={async () => {
                 try {
@@ -5048,20 +5074,20 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
                   a.click();
                   URL.revokeObjectURL(url);
                 } catch (err: any) {
-                  toast({ title: "Export failed", description: err.message, variant: "destructive" });
+                  toast({ title: L("Eksport mislyktes", "Export failed"), description: err.message, variant: "destructive" });
                 }
               }}>
                 <Download className="mr-2 h-3.5 w-3.5" />
-                Download JSON
+                {L("Last ned JSON", "Download JSON")}
               </Button>
             </div>
           </div>
           <div className="rounded-xl border border-border bg-muted/30 p-4">
-            <h3 className="text-sm font-medium text-foreground mb-1">Excel Export</h3>
-            <p className="text-xs text-muted-foreground mb-3">Export all data as an Excel workbook with separate sheets per data type.</p>
+            <h3 className="text-sm font-medium text-foreground mb-1">{L("Excel-eksport", "Excel Export")}</h3>
+            <p className="text-xs text-muted-foreground mb-3">{L("Eksporter alle data som en Excel-arbeidsbok med egne ark per datatype.", "Export all data as an Excel workbook with separate sheets per data type.")}</p>
             <Button size="sm" variant="outline" data-testid="button-export-xlsx" onClick={downloadXlsExport} disabled={xlsLoading}>
               {xlsLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
-              {xlsLoading ? "Exporting…" : "Export Excel"}
+              {xlsLoading ? L("Eksporterer…", "Exporting…") : L("Eksporter Excel", "Export Excel")}
             </Button>
           </div>
         </div>
@@ -5072,17 +5098,17 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
           <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-green-50">
             <HardDrive className="h-4 w-4 text-green-600" />
           </div>
-          <h2 className="text-sm font-semibold text-foreground">Import Data</h2>
+          <h2 className="text-sm font-semibold text-foreground">{L("Importer data", "Import Data")}</h2>
         </div>
         <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-4">
           <div>
-            <h3 className="text-sm font-medium text-foreground mb-1">Import from Glidr backup</h3>
+            <h3 className="text-sm font-medium text-foreground mb-1">{L("Importer fra Glidr-sikkerhetskopi", "Import from Glidr backup")}</h3>
             <p className="text-xs text-muted-foreground">
-              Upload a Glidr JSON export and choose what to import. Duplicates are automatically skipped.
+              {L("Last opp en Glidr JSON-eksport og velg hva som skal importeres. Duplikater hoppes automatisk over.", "Upload a Glidr JSON export and choose what to import. Duplicates are automatically skipped.")}
             </p>
           </div>
           <div>
-            <p className="text-xs font-medium text-foreground mb-2">Select what to import:</p>
+            <p className="text-xs font-medium text-foreground mb-2">{L("Velg hva som skal importeres:", "Select what to import:")}</p>
             <div className="grid grid-cols-2 gap-2">
               {importOptions.map((opt) => (
                 <label
@@ -5142,13 +5168,13 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
           <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-orange-50">
             <Trash2 className="h-4 w-4 text-orange-600" />
           </div>
-          <h2 className="text-sm font-semibold text-foreground">Maintenance</h2>
+          <h2 className="text-sm font-semibold text-foreground">{L("Vedlikehold", "Maintenance")}</h2>
         </div>
         <div className="rounded-xl border border-border bg-muted/30 p-4 flex flex-col gap-2">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-medium text-foreground">Remove Duplicate Products</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Removes duplicate products with identical brand+name. Cannot be undone.</p>
+              <p className="text-xs font-medium text-foreground">{L("Fjern dupliserte produkter", "Remove Duplicate Products")}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{L("Fjerner dupliserte produkter med identisk merke+navn. Kan ikke angres.", "Removes duplicate products with identical brand+name. Cannot be undone.")}</p>
             </div>
             <Button
               size="sm"
@@ -5175,6 +5201,8 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
 }
 
 function DangerZoneTab() {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
 
   const purgeActivityMutation = useMutation({
@@ -5189,7 +5217,7 @@ function DangerZoneTab() {
       queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string).startsWith("/api/admin/db-stats") });
       toast({ title: `${data.deleted} activity log entries removed` });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
   const purgeLoginMutation = useMutation({
@@ -5204,7 +5232,7 @@ function DangerZoneTab() {
       queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/admin/db-stats") });
       toast({ title: `${data.deleted} login log entries removed` });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
   const forceLogoutAllMutation = useMutation({
@@ -5214,9 +5242,9 @@ function DangerZoneTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/admin/db-stats") });
-      toast({ title: "All other users have been logged out" });
+      toast({ title: L("Alle andre brukere er logget ut", "All other users have been logged out") });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
   return (
@@ -5226,16 +5254,16 @@ function DangerZoneTab() {
           <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-red-100">
             <AlertTriangle className="h-4 w-4 text-red-600" />
           </div>
-          <h2 className="text-sm font-semibold text-red-900">Danger Zone</h2>
-          <span className="text-xs text-red-500">These actions are irreversible.</span>
+          <h2 className="text-sm font-semibold text-red-900">{L("Faresone", "Danger Zone")}</h2>
+          <span className="text-xs text-red-500">{L("Disse handlingene kan ikke angres.", "These actions are irreversible.")}</span>
         </div>
 
         <div className="space-y-4">
           <div className="rounded-xl border border-red-200 bg-card p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-medium text-foreground">Purge Old Activity Logs</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Remove activity log entries older than a specified period.</p>
+                <h3 className="text-sm font-medium text-foreground">{L("Slett gamle aktivitetslogger", "Purge Old Activity Logs")}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{L("Fjern aktivitetslogger eldre enn en valgt periode.", "Remove activity log entries older than a specified period.")}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Button
@@ -5271,8 +5299,8 @@ function DangerZoneTab() {
           <div className="rounded-xl border border-red-200 bg-card p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-medium text-foreground">Purge Old Login History</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Remove login history entries older than a specified period.</p>
+                <h3 className="text-sm font-medium text-foreground">{L("Slett gammel innloggingshistorikk", "Purge Old Login History")}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{L("Fjern innloggingshistorikk eldre enn en valgt periode.", "Remove login history entries older than a specified period.")}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Button
@@ -5308,8 +5336,8 @@ function DangerZoneTab() {
           <div className="rounded-xl border border-red-200 bg-card p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-medium text-foreground">Force Logout All Users</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Terminate all active sessions except your own. Users will need to log in again.</p>
+                <h3 className="text-sm font-medium text-foreground">{L("Tving utlogging av alle brukere", "Force Logout All Users")}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{L("Avslutt alle aktive økter unntatt din egen. Brukere må logge inn på nytt.", "Terminate all active sessions except your own. Users will need to log in again.")}</p>
               </div>
               <Button
                 size="sm" variant="outline"

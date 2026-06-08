@@ -872,6 +872,7 @@ export default function MyAccount() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { lang, setLang } = useLanguage();
+  const L = (no: string, en: string) => (lang === "en" ? en : no);
 
   const [activeSection, setActiveSection] = useState<Section>("profile");
   const [copied, setCopied] = useState(false);
@@ -1043,7 +1044,6 @@ export default function MyAccount() {
     { id: "profile", labelKey: "account.profile", icon: User },
     { id: "security", labelKey: "account.navSecurity", icon: KeyRound },
     { id: "preferences", labelKey: "account.navPreferences", icon: Smartphone },
-    { id: "language", labelKey: "account.navLanguage", icon: Mail },
     ...(hasGarminWatch ? [{ id: "watch" as Section, labelKey: "account.navWatch", icon: Watch }] : []),
     { id: "sessions", labelKey: "account.navSessions", icon: Shield },
     ...(commercializationEnabled && isTeamAdmin && !user?.isAdmin
@@ -1374,10 +1374,43 @@ export default function MyAccount() {
               </div>
             </div>
 
+            <div className="rounded-xl bg-muted/50 px-4 py-3 space-y-2">
+              <div>
+                <div className="text-sm font-medium">{t("account.language")}</div>
+                <div className="text-xs text-muted-foreground">{t("account.languageDesc")}</div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setLang("no")}
+                  className={cn(
+                    "flex-1 rounded-lg border-2 px-3 py-2 text-xs font-medium transition-colors",
+                    lang === "no"
+                      ? ACCENT_NAV[accentColor].selectedBtn
+                      : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                  )}
+                  aria-pressed={lang === "no"}
+                >
+                  {t("account.norwegian")}
+                </button>
+                <button
+                  onClick={() => setLang("en")}
+                  className={cn(
+                    "flex-1 rounded-lg border-2 px-3 py-2 text-xs font-medium transition-colors",
+                    lang === "en"
+                      ? ACCENT_NAV[accentColor].selectedBtn
+                      : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                  )}
+                  aria-pressed={lang === "en"}
+                >
+                  {t("account.english")}
+                </button>
+              </div>
+            </div>
+
             <div className="rounded-xl bg-muted/50 px-4 py-3 flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-medium">Guided Tour</div>
-                <div className="text-xs text-muted-foreground">Restart the step-by-step feature tour</div>
+                <div className="text-sm font-medium">{L("Veiledet omvisning", "Guided Tour")}</div>
+                <div className="text-xs text-muted-foreground">{L("Start den trinnvise funksjonsomvisningen på nytt", "Restart the step-by-step feature tour")}</div>
               </div>
               <Button
                 size="sm"
@@ -1388,30 +1421,8 @@ export default function MyAccount() {
                   window.location.reload();
                 }}
               >
-                Restart tour
+                {L("Start omvisning på nytt", "Restart tour")}
               </Button>
-            </div>
-          </Card>
-        );
-
-      case "language":
-        return (
-          <Card className="rounded-2xl p-6 space-y-3">
-            <h3 className="font-semibold">{t("account.language")}</h3>
-            <p className="text-sm text-muted-foreground">{t("account.languageDesc")}</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setLang("en")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${lang === "en" ? "bg-foreground text-background border-foreground" : "border-border hover:bg-muted"}`}
-              >
-                {t("account.english")}
-              </button>
-              <button
-                onClick={() => setLang("no")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${lang === "no" ? "bg-foreground text-background border-foreground" : "border-border hover:bg-muted"}`}
-              >
-                {t("account.norwegian")}
-              </button>
             </div>
           </Card>
         );

@@ -230,12 +230,13 @@ type AthleteRaceHistory = {
 // Inline-editable ski ID for one slot of a race-prep entry, used on the athlete
 // page so ski-waxers can register the ski pair without entering the Race Prep zone.
 function RacePrepSkiIdField({
-  prepId, entryId, athleteId, slot, entry, canEdit, onSaved, lang,
+  prepId, entryId, athleteId, slot, discipline, entry, canEdit, onSaved, lang,
 }: {
   prepId: number;
   entryId: number;
   athleteId: number;
   slot: "single" | "classic" | "skating";
+  discipline: string;
   entry: { skiId: string | null; skiIdClassic: string | null; skiIdSkating: string | null; entryNotes: string | null };
   canEdit: boolean;
   onSaved: () => void;
@@ -253,7 +254,9 @@ function RacePrepSkiIdField({
     queryKey: [`/api/athletes/${athleteId}/skis`],
     enabled: editing,
   });
-  const discFilter = slot === "classic" ? "Classic" : slot === "skating" ? "Skating" : null;
+  // Only suggest skis matching this slot's discipline. For a single-discipline
+  // race the slot is "single" → filter by the race's own discipline.
+  const discFilter = slot === "classic" ? "Classic" : slot === "skating" ? "Skating" : discipline;
   const suggestions = useMemo(() => {
     let base = discFilter ? skis.filter(s => s.discipline === discFilter) : skis;
     if (val.trim()) base = base.filter(s => s.skiId.toLowerCase().includes(val.toLowerCase()) || (s.serialNumber ?? "").toLowerCase().includes(val.toLowerCase()));
@@ -2215,13 +2218,13 @@ export default function AthleteDetail() {
                           <div className="rounded-xl bg-sky-50 dark:bg-sky-900/25 ring-1 ring-sky-200 dark:ring-sky-800 px-4 py-3">
                             <div className="text-[9px] font-bold uppercase tracking-widest text-sky-500 dark:text-sky-400 mb-0.5">Classic</div>
                             <div className="text-xl font-bold text-sky-700 dark:text-sky-200 leading-tight">
-                              <RacePrepSkiIdField prepId={entry.racePrepId} entryId={entry.entryId} athleteId={athleteId!} slot="classic" entry={entry} canEdit={canEditSki} onSaved={onSkiSaved} lang={skiLang} />
+                              <RacePrepSkiIdField prepId={entry.racePrepId} entryId={entry.entryId} athleteId={athleteId!} slot="classic" discipline={entry.discipline} entry={entry} canEdit={canEditSki} onSaved={onSkiSaved} lang={skiLang} />
                             </div>
                           </div>
                           <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/25 ring-1 ring-emerald-200 dark:ring-emerald-800 px-4 py-3">
                             <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-500 dark:text-emerald-400 mb-0.5">Skating</div>
                             <div className="text-xl font-bold text-emerald-700 dark:text-emerald-200 leading-tight">
-                              <RacePrepSkiIdField prepId={entry.racePrepId} entryId={entry.entryId} athleteId={athleteId!} slot="skating" entry={entry} canEdit={canEditSki} onSaved={onSkiSaved} lang={skiLang} />
+                              <RacePrepSkiIdField prepId={entry.racePrepId} entryId={entry.entryId} athleteId={athleteId!} slot="skating" discipline={entry.discipline} entry={entry} canEdit={canEditSki} onSaved={onSkiSaved} lang={skiLang} />
                             </div>
                           </div>
                         </div>
@@ -2231,7 +2234,7 @@ export default function AthleteDetail() {
                             {DISCIPLINE_LABEL_DETAIL[entry.discipline]?.en ?? entry.discipline}
                           </div>
                           <div className="text-2xl font-bold text-violet-700 dark:text-violet-200 leading-tight">
-                            <RacePrepSkiIdField prepId={entry.racePrepId} entryId={entry.entryId} athleteId={athleteId!} slot="single" entry={entry} canEdit={canEditSki} onSaved={onSkiSaved} lang={skiLang} />
+                            <RacePrepSkiIdField prepId={entry.racePrepId} entryId={entry.entryId} athleteId={athleteId!} slot="single" discipline={entry.discipline} entry={entry} canEdit={canEditSki} onSaved={onSkiSaved} lang={skiLang} />
                           </div>
                         </div>
                       )}

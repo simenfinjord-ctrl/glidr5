@@ -72,6 +72,7 @@ import { cn, fmtDate, fmtDateShort } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language";
 import { pdfDocument, pdfSection, pdfCards, pdfTable, pdfWeather, openPdfWindow } from "@/lib/pdf-layout";
+import { RacePrepComments } from "@/components/race-prep-comments";
 
 type Athlete = {
   id: number;
@@ -2153,6 +2154,13 @@ export default function AthleteDetail() {
                           </div>
                         );
                       })()}
+
+                      {/* ── Waxer comments (private to author + admins) ── */}
+                      {!isAthletePortal && can("raceprep", "view") && (
+                        <div className="border-t border-border/40 pt-1 mt-1">
+                          <RacePrepComments prepId={entry.racePrepId} lang={language === "no" ? "no" : "en"} />
+                        </div>
+                      )}
                     </div>
                   </Card>
                 );

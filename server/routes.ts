@@ -511,6 +511,16 @@ export async function registerRoutes(
         notes TEXT,
         created_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS race_prep_comments (
+        id SERIAL PRIMARY KEY,
+        race_prep_id INTEGER NOT NULL,
+        team_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        user_name TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (now())::text
+      );
+      CREATE INDEX IF NOT EXISTS race_prep_comments_prep_id_idx ON race_prep_comments(race_prep_id);
       ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS product_ids TEXT;
       ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS structure_ids TEXT;
       ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS kick_product_ids TEXT;
@@ -5229,6 +5239,64 @@ export async function registerRoutes(
       [id]
     );
     return res.json(result.rows);
+  });
+
+  // ── Race-prep comments (waxer-private notes) ────────────────────────────
+  // Each waxer can leave a private comment on a race prep. Only the comment's
+  // author and Team Admins / Super Admins can see it.
+  app.get("/api/race-preps/:id/comments", requirePermission("raceprep", "view"), async (req, res) => {
+    const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
+    const id = parseInt(req.params.id);
+    if (!await getRacePrepForTeam(id, teamId)) return res.status(403).json({ message: "Forbidden" });
+    const isAdmin = u.isTeamAdmin === 1 || u.isAdmin === 1;
+    const { pool } = await import("./db");
+    // Admins see all comments; regular waxers see only their own.
+    const result = isAdmin
+      ? await (pool as any).query(
+          `SELECT id, race_prep_id AS "racePrepId", user_id AS "userId", user_name AS "userName", content, created_at AS "createdAt"
+           FROM race_prep_comments WHERE race_prep_id = $1 AND team_id = $2 ORDER BY created_at ASC`,
+          [id, teamId]
+        )
+      : await (pool as any).query(
+          `SELECT id, race_prep_id AS "racePrepId", user_id AS "userId", user_name AS "userName", content, created_at AS "createdAt"
+           FROM race_prep_comments WHERE race_prep_id = $1 AND team_id = $2 AND user_id = $3 ORDER BY created_at ASC`,
+          [id, teamId, u.id]
+        );
+    return res.json(result.rows);
+  });
+
+  app.post("/api/race-preps/:id/comments", requirePermission("raceprep", "view"), async (req, res) => {
+    const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
+    const id = parseInt(req.params.id);
+    if (!await getRacePrepForTeam(id, teamId)) return res.status(403).json({ message: "Forbidden" });
+    const content = String(req.body.content ?? "").trim();
+    if (!content || content.length > 2000) return res.status(400).json({ message: "Invalid comment" });
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `INSERT INTO race_prep_comments (race_prep_id, team_id, user_id, user_name, content, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       RETURNING id, race_prep_id AS "racePrepId", user_id AS "userId", user_name AS "userName", content, created_at AS "createdAt"`,
+      [id, teamId, u.id, u.name || "Unknown", content, new Date().toISOString()]
+    );
+    return res.json(result.rows[0]);
+  });
+
+  app.delete("/api/race-prep-comments/:id", requirePermission("raceprep", "view"), async (req, res) => {
+    const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
+    const commentId = parseInt(req.params.id);
+    const isAdmin = u.isTeamAdmin === 1 || u.isAdmin === 1;
+    const { pool } = await import("./db");
+    const existing = await (pool as any).query(
+      `SELECT user_id FROM race_prep_comments WHERE id = $1 AND team_id = $2`, [commentId, teamId]
+    );
+    if (!existing.rows.length) return res.status(404).json({ message: "Not found" });
+    // Only the author or an admin may delete
+    if (!isAdmin && existing.rows[0].user_id !== u.id) return res.status(403).json({ message: "Forbidden" });
+    await (pool as any).query(`DELETE FROM race_prep_comments WHERE id = $1`, [commentId]);
+    return res.json({ ok: true });
   });
 
   app.post("/api/race-preps/:id/entries", requirePermission("raceprep", "edit"), async (req, res) => {

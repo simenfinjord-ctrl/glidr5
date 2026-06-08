@@ -18,6 +18,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn, fmtDate as fmtDateGlobal } from "@/lib/utils";
 import { pdfDocument, pdfSection, pdfTable, pdfWeather, openPdfWindow } from "@/lib/pdf-layout";
 import { LocationAutocomplete } from "@/components/location-autocomplete";
+import { RacePrepComments } from "@/components/race-prep-comments";
 
 type Product = { id: number; category: string; brand: string; name: string };
 
@@ -1037,6 +1038,9 @@ function PrepDetailDialog({
               )}
             </>
           )}
+
+          {/* Waxer comments — private to author + admins */}
+          <RacePrepComments prepId={prep.id} lang={lang} />
         </div>
 
         {/* Add athletes sub-dialog */}

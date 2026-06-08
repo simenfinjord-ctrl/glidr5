@@ -5408,6 +5408,7 @@ export async function registerRoutes(
          rpe.ski_id AS "skiId",
          rpe.ski_id_classic AS "skiIdClassic",
          rpe.ski_id_skating AS "skiIdSkating",
+         rpe.waxer_id AS "waxerId",
          rpe.waxer_name AS "waxerName",
          rpe.notes AS "entryNotes",
          rp.id AS "racePrepId",

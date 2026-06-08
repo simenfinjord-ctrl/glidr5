@@ -227,6 +227,111 @@ type AthleteRaceHistory = {
   weatherId: number | null;
 };
 
+// Inline-editable ski ID for one slot of a race-prep entry, used on the athlete
+// page so ski-waxers can register the ski pair without entering the Race Prep zone.
+function RacePrepSkiIdField({
+  prepId, entryId, athleteId, slot, entry, canEdit, onSaved, lang,
+}: {
+  prepId: number;
+  entryId: number;
+  athleteId: number;
+  slot: "single" | "classic" | "skating";
+  entry: { skiId: string | null; skiIdClassic: string | null; skiIdSkating: string | null; entryNotes: string | null };
+  canEdit: boolean;
+  onSaved: () => void;
+  lang: "no" | "en";
+}) {
+  const L = (no: string, en: string) => (lang === "en" ? en : no);
+  const { toast } = useToast();
+  const current = slot === "classic" ? (entry.skiIdClassic ?? entry.skiId) : slot === "skating" ? entry.skiIdSkating : entry.skiId;
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(current ?? "");
+  const [saving, setSaving] = useState(false);
+  const [optimistic, setOptimistic] = useState<string | null | undefined>(undefined);
+  const [showSug, setShowSug] = useState(false);
+  const { data: skis = [] } = useQuery<{ id: number; skiId: string; serialNumber: string | null; discipline: string }[]>({
+    queryKey: [`/api/athletes/${athleteId}/skis`],
+    enabled: editing,
+  });
+  const discFilter = slot === "classic" ? "Classic" : slot === "skating" ? "Skating" : null;
+  const suggestions = useMemo(() => {
+    let base = discFilter ? skis.filter(s => s.discipline === discFilter) : skis;
+    if (val.trim()) base = base.filter(s => s.skiId.toLowerCase().includes(val.toLowerCase()) || (s.serialNumber ?? "").toLowerCase().includes(val.toLowerCase()));
+    return base.slice(0, 8);
+  }, [skis, val, discFilter]);
+  const display = optimistic !== undefined ? optimistic : current;
+
+  async function save(v?: string) {
+    const final = (v ?? val).trim();
+    setSaving(true);
+    try {
+      const body = {
+        notes: entry.entryNotes ?? null,
+        skiId: slot === "single" ? (final || null) : (entry.skiId ?? null),
+        skiIdClassic: slot === "classic" ? (final || null) : (entry.skiIdClassic ?? null),
+        skiIdSkating: slot === "skating" ? (final || null) : (entry.skiIdSkating ?? null),
+      };
+      await apiRequest("PUT", `/api/race-preps/${prepId}/entries/${entryId}`, body);
+      setOptimistic(final || null);
+      setEditing(false);
+      setShowSug(false);
+      onSaved();
+    } catch {
+      toast({ title: L("Feil", "Error"), description: L("Kunne ikke lagre", "Could not save"), variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        disabled={!canEdit}
+        onClick={() => { if (canEdit) { setVal(display ?? ""); setEditing(true); } }}
+        className={cn(
+          "text-left leading-tight",
+          canEdit ? "cursor-text hover:opacity-80" : "cursor-default"
+        )}
+        title={canEdit ? L("Klikk for å legge inn skipar", "Click to enter ski pair") : undefined}
+      >
+        {display || <span className="text-muted-foreground text-sm font-normal">{canEdit ? L("+ Legg inn", "+ Enter") : "—"}</span>}
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <input
+        autoFocus
+        value={val}
+        disabled={saving}
+        onChange={(e) => { setVal(e.target.value); setShowSug(true); }}
+        onFocus={() => setShowSug(true)}
+        onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setEditing(false); setShowSug(false); } }}
+        onBlur={() => setTimeout(() => save(), 120)}
+        placeholder={L("Ski-ID", "Ski ID")}
+        className="w-full rounded border border-input bg-background px-2 py-1 text-base font-bold"
+      />
+      {showSug && suggestions.length > 0 && (
+        <div className="absolute z-50 left-0 right-0 top-full mt-1 rounded-md border border-border bg-popover shadow-lg max-h-40 overflow-y-auto">
+          {suggestions.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); setVal(s.skiId); save(s.skiId); }}
+              className="block w-full text-left px-2 py-1 text-sm hover:bg-muted"
+            >
+              <span className="font-medium">{s.skiId}</span>
+              {s.serialNumber && <span className="ml-1.5 text-xs text-muted-foreground">{s.serialNumber}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Ski color tags ──────────────────────────────────────────────────────────
 const SKI_COLORS = [
   { id: "none",    label: "None",    bg: "bg-muted/40",                              ring: "ring-border",         dot: "" },
@@ -2075,6 +2180,11 @@ export default function AthleteDetail() {
                 const kickText = kickIsText ? entry.kickProductIds : null;
                 const hasProducts = glideProducts.length > 0 || structureProducts.length > 0 || kickProducts.length > 0 || !!kickText;
 
+                // Ski-pair editing: the assigned waxer (or unassigned, or admin) may enter ski IDs here.
+                const canEditSki = !!athleteId && (canManage || entry.waxerId == null || entry.waxerId === (user as any)?.id);
+                const skiLang: "no" | "en" = language === "no" ? "no" : "en";
+                const onSkiSaved = () => queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/race-history`] });
+
                 return (
                   <Card key={entry.entryId} className="rounded-xl overflow-hidden">
                     {/* ── Header bar ── */}
@@ -2097,30 +2207,30 @@ export default function AthleteDetail() {
                       )}
                     </div>
 
-                    {/* ── SKI PAIR — hero section ── */}
+                    {/* ── SKI PAIR — hero section (editable for the assigned waxer) ── */}
                     <div className="px-4 pb-3">
                       {entry.discipline === "Skiathlon" ? (
                         <div className="grid grid-cols-2 gap-2 mb-3">
                           <div className="rounded-xl bg-sky-50 dark:bg-sky-900/25 ring-1 ring-sky-200 dark:ring-sky-800 px-4 py-3">
                             <div className="text-[9px] font-bold uppercase tracking-widest text-sky-500 dark:text-sky-400 mb-0.5">Classic</div>
                             <div className="text-xl font-bold text-sky-700 dark:text-sky-200 leading-tight">
-                              {entry.skiIdClassic ?? <span className="text-muted-foreground text-sm font-normal">—</span>}
+                              <RacePrepSkiIdField prepId={entry.racePrepId} entryId={entry.entryId} athleteId={athleteId!} slot="classic" entry={entry} canEdit={canEditSki} onSaved={onSkiSaved} lang={skiLang} />
                             </div>
                           </div>
                           <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/25 ring-1 ring-emerald-200 dark:ring-emerald-800 px-4 py-3">
                             <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-500 dark:text-emerald-400 mb-0.5">Skating</div>
                             <div className="text-xl font-bold text-emerald-700 dark:text-emerald-200 leading-tight">
-                              {entry.skiIdSkating ?? <span className="text-muted-foreground text-sm font-normal">—</span>}
+                              <RacePrepSkiIdField prepId={entry.racePrepId} entryId={entry.entryId} athleteId={athleteId!} slot="skating" entry={entry} canEdit={canEditSki} onSaved={onSkiSaved} lang={skiLang} />
                             </div>
                           </div>
                         </div>
                       ) : (
-                        <div className="inline-flex flex-col rounded-xl bg-violet-50 dark:bg-violet-900/25 ring-1 ring-violet-200 dark:ring-violet-800 px-5 py-2.5 mb-3">
+                        <div className="inline-flex flex-col rounded-xl bg-violet-50 dark:bg-violet-900/25 ring-1 ring-violet-200 dark:ring-violet-800 px-5 py-2.5 mb-3 min-w-[160px]">
                           <div className="text-[9px] font-bold uppercase tracking-widest text-violet-400 mb-0.5">
                             {DISCIPLINE_LABEL_DETAIL[entry.discipline]?.en ?? entry.discipline}
                           </div>
                           <div className="text-2xl font-bold text-violet-700 dark:text-violet-200 leading-tight">
-                            {entry.skiId ?? <span className="text-muted-foreground text-sm font-normal">—</span>}
+                            <RacePrepSkiIdField prepId={entry.racePrepId} entryId={entry.entryId} athleteId={athleteId!} slot="single" entry={entry} canEdit={canEditSki} onSaved={onSkiSaved} lang={skiLang} />
                           </div>
                         </div>
                       )}

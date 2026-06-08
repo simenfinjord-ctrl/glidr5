@@ -41,7 +41,10 @@ async function enforceTeamAreas(perms: Record<string, string>, teamId: number | 
     const enabled: string[] = JSON.parse(team.enabledAreas as string);
     const result = { ...perms };
     for (const area of PERMISSION_AREAS) {
-      if (!enabled.includes(area)) {
+      // raceprepGlide is a sub-permission of raceprep — enabled whenever raceprep is,
+      // so existing teams don't need an enabledAreas migration.
+      const enablingArea = area === "raceprepGlide" ? "raceprep" : area;
+      if (!enabled.includes(enablingArea)) {
         result[area] = "none";
       }
     }
@@ -63,6 +66,12 @@ function sanitizePermissions(input: any): Record<string, string> {
     } else if (val === "view") {
       result[area] = "edit";
     }
+  }
+  // Backfill: existing users have no raceprepGlide key. Default it to their
+  // raceprep level so current glide-waxers keep glide visibility until an
+  // admin explicitly downgrades them.
+  if (raw.raceprepGlide === undefined) {
+    result.raceprepGlide = result.raceprep;
   }
   return result;
 }
@@ -5147,6 +5156,24 @@ export async function registerRoutes(
 
   // ── Race Preps ──────────────────────────────────────────────────────────────
 
+  // Whether the requester may see the glide/structure work on race preps.
+  // Ski-waxers (raceprepGlide = none) see start lists, skis, weather, kick/binder
+  // and comments, but not the glide/structure products & applications.
+  function canSeeRacePrepGlide(req: Request): boolean {
+    const info = userInfo(req);
+    if (info.isScopeAdmin) return true;
+    return (info.permissions as any).raceprepGlide !== "none";
+  }
+  // Remove glide/structure fields from a race-prep row.
+  function stripGlide<T extends Record<string, any>>(row: T): T {
+    return {
+      ...row,
+      products: undefined, method: undefined, structure: undefined,
+      productIds: undefined, structureIds: undefined,
+      productApps: undefined, structureApps: undefined,
+    };
+  }
+
   app.get("/api/race-preps", requirePermission("raceprep", "view"), async (req, res) => {
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
@@ -5179,7 +5206,8 @@ export async function registerRoutes(
        FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
       [teamId]
     );
-    return res.json(result.rows);
+    const showGlide = canSeeRacePrepGlide(req);
+    return res.json(showGlide ? result.rows : result.rows.map(stripGlide));
   });
 
   app.post("/api/race-preps", requirePermission("raceprep", "edit"), async (req, res) => {
@@ -5403,19 +5431,22 @@ export async function registerRoutes(
        ORDER BY rp.date DESC`,
       [athleteId, teamId]
     );
-    // Strip sensitive wax/product data for athlete access users
-    const rows = u.isAthleteAccess === 1
-      ? result.rows.map((r: any) => ({
-          ...r,
-          productIds: undefined,
-          structureIds: undefined,
-          kickProductIds: undefined,
-          productApps: undefined,
-          structureApps: undefined,
-          method: undefined,
-          prepNotes: undefined,
-        }))
-      : result.rows;
+    // Athlete-access users see no wax data at all. Ski-waxers (no raceprepGlide)
+    // see kick/binder but not the glide/structure work. Admins & glide-waxers see all.
+    let rows = result.rows;
+    if (u.isAthleteAccess === 1) {
+      rows = rows.map((r: any) => ({
+        ...r,
+        productIds: undefined, structureIds: undefined, kickProductIds: undefined,
+        productApps: undefined, structureApps: undefined, method: undefined, prepNotes: undefined,
+      }));
+    } else if (!canSeeRacePrepGlide(req)) {
+      rows = rows.map((r: any) => ({
+        ...r,
+        productIds: undefined, structureIds: undefined,
+        productApps: undefined, structureApps: undefined, method: undefined,
+      }));
+    }
     return res.json(rows);
   });
 

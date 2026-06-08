@@ -1190,6 +1190,8 @@ function PrepFormDialog({
   weatherList: Weather[];
 }) {
   const { toast } = useToast();
+  const { can } = useAuth();
+  const canSeeGlide = can("raceprepGlide", "view");
   const [saving, setSaving] = useState(false);
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
 
@@ -1306,24 +1308,28 @@ function PrepFormDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium">{L("Produkt(er) — glid", "Product(s) — glide")}</label>
-            <ProductApplicationPicker
-              value={form.glide}
-              onChange={(next) => f("glide", next)}
-              products={products.filter(p => p.category !== "Structure tool")}
-              L={L}
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium">{L("Struktur", "Structure")}</label>
-            <ProductApplicationPicker
-              value={form.structure}
-              onChange={(next) => f("structure", next)}
-              products={products.filter(p => p.category === "Structure tool")}
-              L={L}
-            />
-          </div>
+          {canSeeGlide && (
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium">{L("Produkt(er) — glid", "Product(s) — glide")}</label>
+              <ProductApplicationPicker
+                value={form.glide}
+                onChange={(next) => f("glide", next)}
+                products={products.filter(p => p.category !== "Structure tool")}
+                L={L}
+              />
+            </div>
+          )}
+          {canSeeGlide && (
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium">{L("Struktur", "Structure")}</label>
+              <ProductApplicationPicker
+                value={form.structure}
+                onChange={(next) => f("structure", next)}
+                products={products.filter(p => p.category === "Structure tool")}
+                L={L}
+              />
+            </div>
+          )}
           {showKick && (
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-medium">Kick</label>
@@ -1342,10 +1348,12 @@ function PrepFormDialog({
               <Input value={form.tette} onChange={(e) => f("tette", e.target.value)} placeholder={L("f.eks. Rode Violet", "e.g. Rode Violet")} />
             </div>
           )}
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium">{L("Metode", "Method")}</label>
-            <Input value={form.method} onChange={(e) => f("method", e.target.value)} />
-          </div>
+          {canSeeGlide && (
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium">{L("Metode", "Method")}</label>
+              <Input value={form.method} onChange={(e) => f("method", e.target.value)} />
+            </div>
+          )}
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-medium">{L("Notater", "Notes")}</label>
             <Textarea value={form.notes} onChange={(e) => f("notes", e.target.value)} rows={2} className="resize-none" />

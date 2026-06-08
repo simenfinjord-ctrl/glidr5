@@ -119,6 +119,7 @@ function PermissionsMatrix({
     grinding: t("nav.grinding"),
     raceskis: t("nav.raceskis"),
     raceprep: t("nav.raceprep"),
+    raceprepGlide: t("nav.raceprepGlide"),
     suggestions: t("nav.suggestions"),
     liverunsheets: t("nav.liveRunsheets"),
   };
@@ -342,7 +343,11 @@ function getTeamDisabledAreas(teams: ApiTeam[], teamId: number, isSuperAdmin: bo
   if (!team || !team.enabledAreas) return [];
   try {
     const enabled: string[] = JSON.parse(team.enabledAreas);
-    return PERMISSION_AREAS.filter((a) => !enabled.includes(a));
+    // raceprepGlide is a sub-permission of raceprep — available whenever raceprep is.
+    return PERMISSION_AREAS.filter((a) => {
+      const enablingArea = a === "raceprepGlide" ? "raceprep" : a;
+      return !enabled.includes(enablingArea);
+    });
   } catch {
     return [];
   }

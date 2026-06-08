@@ -46,6 +46,11 @@ export function parsePermissions(permissionsStr: string | null | undefined, isAd
     for (const key of Object.keys(merged)) {
       if (merged[key] === "view") merged[key] = "edit";
     }
+    // Backfill: existing users predate the raceprepGlide sub-permission.
+    // Default it to their raceprep level so current glide-waxers keep glide.
+    if (parsed.raceprepGlide === undefined) {
+      merged.raceprepGlide = merged.raceprep;
+    }
     return merged;
   } catch {
     return { ...DEFAULT_PERMISSIONS };

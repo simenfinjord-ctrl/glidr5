@@ -2180,8 +2180,9 @@ export default function AthleteDetail() {
                 const kickText = kickIsText ? entry.kickProductIds : null;
                 const hasProducts = glideProducts.length > 0 || structureProducts.length > 0 || kickProducts.length > 0 || !!kickText;
 
-                // Ski-pair editing: the assigned waxer (or unassigned, or admin) may enter ski IDs here.
-                const canEditSki = !!athleteId && (canManage || entry.waxerId == null || entry.waxerId === (user as any)?.id);
+                // Ski-pair editing: anyone with access to this athlete may register the ski pair.
+                // (Viewing this page already requires athlete access; the server re-checks.)
+                const canEditSki = !!athleteId && !isAthletePortal;
                 const skiLang: "no" | "en" = language === "no" ? "no" : "en";
                 const onSkiSaved = () => queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/race-history`] });
 
@@ -2300,7 +2301,7 @@ export default function AthleteDetail() {
                       })()}
 
                       {/* ── Waxer comments (private to author + admins) ── */}
-                      {!isAthletePortal && can("raceprep", "view") && (
+                      {!isAthletePortal && can("raceskis", "view") && (
                         <div className="border-t border-border/40 pt-1 mt-1">
                           <RacePrepComments prepId={entry.racePrepId} lang={language === "no" ? "no" : "en"} />
                         </div>

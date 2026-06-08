@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageSquare, Send, Trash2, Lock } from "lucide-react";
+import { MessageSquare, Send, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import { fmtDate } from "@/lib/utils";
@@ -66,12 +66,6 @@ export function RacePrepComments({
       <div className="flex items-center gap-1.5 mb-2">
         <MessageSquare className="h-4 w-4 text-muted-foreground" />
         <h4 className="text-sm font-semibold">{L("Kommentarer", "Comments")}</h4>
-        <span className="inline-flex items-center gap-1 ml-1 rounded-full bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-900">
-          <Lock className="h-2.5 w-2.5" />
-          {isAdmin
-            ? L("Synlig for smører + admin", "Visible to waxer + admin")
-            : L("Kun synlig for deg + admin", "Only visible to you + admin")}
-        </span>
       </div>
 
       {/* Comment list */}

@@ -67,12 +67,6 @@ function sanitizePermissions(input: any): Record<string, string> {
       result[area] = "edit";
     }
   }
-  // Backfill: existing users have no raceprepGlide key. Default it to their
-  // raceprep level so current glide-waxers keep glide visibility until an
-  // admin explicitly downgrades them.
-  if (raw.raceprepGlide === undefined) {
-    result.raceprepGlide = result.raceprep;
-  }
   return result;
 }
 
@@ -5174,6 +5168,16 @@ export async function registerRoutes(
     };
   }
 
+  // Allow access via either the Race Prep zone (raceprep) or the athlete/Race
+  // Skis area (raceskis) — used for race-prep comments which appear in both.
+  function requireRaceprepOrRaceskis(req: Request, res: Response, next: NextFunction) {
+    if (!req.isAuthenticated?.() || !req.user) return res.status(401).json({ message: "Not authenticated" });
+    const info = userInfo(req);
+    if (info.isScopeAdmin) return next();
+    if (info.permissions.raceprep !== "none" || info.permissions.raceskis !== "none") return next();
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
   app.get("/api/race-preps", requirePermission("raceprep", "view"), async (req, res) => {
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
@@ -5275,7 +5279,7 @@ export async function registerRoutes(
   // ── Race-prep comments (waxer-private notes) ────────────────────────────
   // Each waxer can leave a private comment on a race prep. Only the comment's
   // author and Team Admins / Super Admins can see it.
-  app.get("/api/race-preps/:id/comments", requirePermission("raceprep", "view"), async (req, res) => {
+  app.get("/api/race-preps/:id/comments", requireRaceprepOrRaceskis, async (req, res) => {
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
     const id = parseInt(req.params.id);
@@ -5297,7 +5301,7 @@ export async function registerRoutes(
     return res.json(result.rows);
   });
 
-  app.post("/api/race-preps/:id/comments", requirePermission("raceprep", "view"), async (req, res) => {
+  app.post("/api/race-preps/:id/comments", requireRaceprepOrRaceskis, async (req, res) => {
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
     const id = parseInt(req.params.id);
@@ -5314,7 +5318,7 @@ export async function registerRoutes(
     return res.json(result.rows[0]);
   });
 
-  app.delete("/api/race-prep-comments/:id", requirePermission("raceprep", "view"), async (req, res) => {
+  app.delete("/api/race-prep-comments/:id", requireRaceprepOrRaceskis, async (req, res) => {
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
     const commentId = parseInt(req.params.id);
@@ -5355,7 +5359,10 @@ export async function registerRoutes(
     return res.json({ id: result.rows[0].id });
   });
 
-  app.put("/api/race-preps/:id/entries/:eid", requirePermission("raceprep", "view"), async (req, res) => {
+  // Editing an entry's ski IDs is an athlete-ski activity — allowed for anyone
+  // with access to the athlete (ski-waxers work from the Race Skis area, which
+  // doesn't require raceprep). Glide work is gated separately by raceprepGlide.
+  app.put("/api/race-preps/:id/entries/:eid", requireAuth, async (req, res) => {
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
     const prepId = parseInt(req.params.id);
@@ -5364,14 +5371,17 @@ export async function registerRoutes(
     const { skiId, skiIdClassic, skiIdSkating, notes } = req.body;
     const { pool } = await import("./db");
     const entryRes = await (pool as any).query(
-      `SELECT waxer_id AS "waxerId", race_prep_id AS "racePrepId" FROM race_prep_entries WHERE id=$1`, [eid]
+      `SELECT athlete_id AS "athleteId", race_prep_id AS "racePrepId" FROM race_prep_entries WHERE id=$1`, [eid]
     );
     if (!entryRes.rows.length) return res.status(404).json({ message: "Not found" });
     // Verify entry belongs to the same race prep
     if (entryRes.rows[0].racePrepId !== prepId) return res.status(403).json({ message: "Forbidden" });
-    const waxerId = entryRes.rows[0].waxerId;
     const isAdmin = u.isTeamAdmin === 1 || u.isAdmin === 1;
-    if (!isAdmin && waxerId !== null && waxerId !== u.id) return res.status(403).json({ message: "You can only update your own entries" });
+    // Anyone with access to the athlete may register their ski pair.
+    if (!isAdmin) {
+      const hasAccess = await storage.hasAthleteAccess(entryRes.rows[0].athleteId, u.id, false, teamId);
+      if (!hasAccess) return res.status(403).json({ message: "No access to this athlete" });
+    }
     await (pool as any).query(
       `UPDATE race_prep_entries SET ski_id=$1, ski_id_classic=$2, ski_id_skating=$3, waxer_id=$4, waxer_name=$5, notes=$6 WHERE id=$7`,
       [skiId != null ? String(skiId) : null,
@@ -5395,7 +5405,10 @@ export async function registerRoutes(
     return res.json({ ok: true });
   });
 
-  app.get("/api/athletes/:id/race-history", requirePermission("raceprep", "view"), async (req, res) => {
+  // Athlete race history lives in the Race Skis area — gated by raceskis, not
+  // raceprep, so ski-waxers (no Race Prep zone access) can still see and register
+  // ski pairs for their athletes.
+  app.get("/api/athletes/:id/race-history", requirePermission("raceskis", "view"), async (req, res) => {
     const athleteId = parseInt(req.params.id);
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;

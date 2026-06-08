@@ -383,6 +383,7 @@ export default function AthleteDetail() {
   const isAthletePortal = new URLSearchParams(search).get("view") === "athlete-portal";
   const { toast } = useToast();
   const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { isOnline, pendingCount, queueMutation } = useOffline();
 
   const [skiDialogOpen, setSkiDialogOpen] = useState(false);
@@ -1609,7 +1610,7 @@ export default function AthleteDetail() {
     return (
       <AppShell>
         <div className="flex flex-col items-center gap-4 py-20" data-testid="not-found-athlete">
-          <p className="text-muted-foreground">Athlete not found.</p>
+          <p className="text-muted-foreground">{L("Fant ikke utøveren.", "Athlete not found.")}</p>
           <AppLink href="/raceskis">
             <Button variant="secondary" data-testid="button-back-raceskis">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -1659,7 +1660,7 @@ export default function AthleteDetail() {
         {/* Athlete Portal read-only banner */}
         {isAthletePortal && (
           <div className="flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-4 py-2.5 text-sm text-amber-800 dark:text-amber-200">
-            <span className="font-medium">Read-only view</span>
+            <span className="font-medium">{L("Skrivebeskyttet", "Read-only view")}</span>
             <span className="text-amber-600 dark:text-amber-400">— contact your coach for access</span>
           </div>
         )}
@@ -1773,7 +1774,7 @@ export default function AthleteDetail() {
           <Card className="fs-card rounded-2xl p-4" data-testid="card-access-management">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h2 className="text-sm font-semibold">Access</h2>
+                <h2 className="text-sm font-semibold">{L("Tilgang", "Access")}</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground" data-testid="text-shared-with">
                   {t("raceskis.sharedWith")}: {access.length > 0
                     ? access.map((a) => {
@@ -1872,14 +1873,14 @@ export default function AthleteDetail() {
                 <button
                   onClick={() => setRaceView("card")}
                   className={cn("flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors", raceViewMode === "card" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
-                  title="Card view"
+                  title={L("Kortvisning", "Card view")}
                 >
                   <LayoutGrid className="h-3 w-3" />
                 </button>
                 <button
                   onClick={() => setRaceView("compact")}
                   className={cn("flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors", raceViewMode === "compact" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
-                  title="Compact view"
+                  title={L("Kompakt visning", "Compact view")}
                 >
                   <List className="h-3 w-3" />
                 </button>
@@ -1891,15 +1892,15 @@ export default function AthleteDetail() {
                 <Input
                   value={raceLocationFilter}
                   onChange={e => setRaceLocationFilter(e.target.value)}
-                  placeholder="Location…"
+                  placeholder={L("Sted…", "Location…")}
                   className="h-8 w-[140px] text-xs"
                 />
                 <Select value={raceSeasonFilter} onValueChange={setRaceSeasonFilter}>
                   <SelectTrigger className="h-8 w-[120px] text-xs">
-                    <SelectValue placeholder="Season" />
+                    <SelectValue placeholder={L("Sesong", "Season")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All seasons</SelectItem>
+                    <SelectItem value="all">{L("Alle sesonger", "All seasons")}</SelectItem>
                     {raceAvailableSeasons.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -1932,7 +1933,7 @@ export default function AthleteDetail() {
                 <div className="rounded-xl border border-border bg-muted/20 p-3">
                   <div className="space-y-4">
                     <div>
-                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Temperature & Humidity</div>
+                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Temperatur og fuktighet", "Temperature & Humidity")}</div>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                         <div>
                           <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
@@ -1941,7 +1942,7 @@ export default function AthleteDetail() {
                           <div className="flex items-center gap-1">
                             <Input type="number" className="h-7 text-xs" placeholder="Min" value={raceAirTempMin} onChange={e => setRaceAirTempMin(e.target.value)} />
                             <span className="text-xs">–</span>
-                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceAirTempMax} onChange={e => setRaceAirTempMax(e.target.value)} />
+                            <Input type="number" className="h-7 text-xs" placeholder={L("Maks", "Max")} value={raceAirTempMax} onChange={e => setRaceAirTempMax(e.target.value)} />
                           </div>
                         </div>
                         <div>
@@ -1951,7 +1952,7 @@ export default function AthleteDetail() {
                           <div className="flex items-center gap-1">
                             <Input type="number" className="h-7 text-xs" placeholder="Min" value={raceSnowTempMin} onChange={e => setRaceSnowTempMin(e.target.value)} />
                             <span className="text-xs">–</span>
-                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceSnowTempMax} onChange={e => setRaceSnowTempMax(e.target.value)} />
+                            <Input type="number" className="h-7 text-xs" placeholder={L("Maks", "Max")} value={raceSnowTempMax} onChange={e => setRaceSnowTempMax(e.target.value)} />
                           </div>
                         </div>
                         <div>
@@ -1961,7 +1962,7 @@ export default function AthleteDetail() {
                           <div className="flex items-center gap-1">
                             <Input type="number" className="h-7 text-xs" placeholder="Min" value={raceAirHumMin} onChange={e => setRaceAirHumMin(e.target.value)} />
                             <span className="text-xs">–</span>
-                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceAirHumMax} onChange={e => setRaceAirHumMax(e.target.value)} />
+                            <Input type="number" className="h-7 text-xs" placeholder={L("Maks", "Max")} value={raceAirHumMax} onChange={e => setRaceAirHumMax(e.target.value)} />
                           </div>
                         </div>
                         <div>
@@ -1971,7 +1972,7 @@ export default function AthleteDetail() {
                           <div className="flex items-center gap-1">
                             <Input type="number" className="h-7 text-xs" placeholder="Min" value={raceSnowHumMin} onChange={e => setRaceSnowHumMin(e.target.value)} />
                             <span className="text-xs">–</span>
-                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceSnowHumMax} onChange={e => setRaceSnowHumMax(e.target.value)} />
+                            <Input type="number" className="h-7 text-xs" placeholder={L("Maks", "Max")} value={raceSnowHumMax} onChange={e => setRaceSnowHumMax(e.target.value)} />
                           </div>
                         </div>
                         <div>
@@ -1981,20 +1982,20 @@ export default function AthleteDetail() {
                           <div className="flex items-center gap-1">
                             <Input type="number" className="h-7 text-xs" placeholder="Min" value={raceCloudMin} onChange={e => setRaceCloudMin(e.target.value)} />
                             <span className="text-xs">–</span>
-                            <Input type="number" className="h-7 text-xs" placeholder="Max" value={raceCloudMax} onChange={e => setRaceCloudMax(e.target.value)} />
+                            <Input type="number" className="h-7 text-xs" placeholder={L("Maks", "Max")} value={raceCloudMax} onChange={e => setRaceCloudMax(e.target.value)} />
                           </div>
                         </div>
                       </div>
                     </div>
                     <div>
-                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow Type</div>
+                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Snøtype", "Snow Type")}</div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div>
                           <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                             <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-400" />Artificial snow
                           </label>
                           <Select value={raceArtSnow || "__any__"} onValueChange={v => setRaceArtSnow(v === "__any__" ? "" : v)}>
-                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__any__">— Any —</SelectItem>
                               {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -2006,7 +2007,7 @@ export default function AthleteDetail() {
                             <span className="inline-block h-1.5 w-1.5 rounded-full bg-teal-400" />Natural snow
                           </label>
                           <Select value={raceNatSnow || "__any__"} onValueChange={v => setRaceNatSnow(v === "__any__" ? "" : v)}>
-                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__any__">— Any —</SelectItem>
                               {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -2018,7 +2019,7 @@ export default function AthleteDetail() {
                             <span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-400" />Snow humidity type
                           </label>
                           <Select value={raceSnowHumidityType || "__any__"} onValueChange={v => setRaceSnowHumidityType(v === "__any__" ? "" : v)}>
-                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__any__">— Any —</SelectItem>
                               {SNOW_HUMIDITY_TYPE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -2030,7 +2031,7 @@ export default function AthleteDetail() {
                             <span className="inline-block h-1.5 w-1.5 rounded-full bg-lime-400" />Grain size
                           </label>
                           <Select value={raceGrainSize || "__any__"} onValueChange={v => setRaceGrainSize(v === "__any__" ? "" : v)}>
-                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__any__">— Any —</SelectItem>
                               {GRAIN_SIZE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -2040,14 +2041,14 @@ export default function AthleteDetail() {
                       </div>
                     </div>
                     <div>
-                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow & Track</div>
+                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Snø og spor", "Snow & Track")}</div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div>
                           <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                             <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-400" />Track hardness
                           </label>
                           <Select value={raceTrackHardness || "__any__"} onValueChange={v => setRaceTrackHardness(v === "__any__" ? "" : v)}>
-                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__any__">— Any —</SelectItem>
                               {TRACK_HARDNESS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -2084,14 +2085,14 @@ export default function AthleteDetail() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-muted/40">
-                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Date</th>
-                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Location</th>
-                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Discipline</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">{L("Dato", "Date")}</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">{L("Sted", "Location")}</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">{L("Stilart", "Discipline")}</th>
                       <th className="text-left px-3 py-2 font-medium text-muted-foreground">Ski</th>
-                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Glide</th>
-                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Structure</th>
-                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Kick / Grunning</th>
-                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Waxer</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">{L("Glid", "Glide")}</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">{L("Struktur", "Structure")}</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">{L("Kick / Grunning", "Kick / Binder")}</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">{L("Smører", "Waxer")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2320,7 +2321,7 @@ export default function AthleteDetail() {
               })}
             </div>
             {filteredRaceHistory.length === 0 && (
-              <p className="text-sm text-muted-foreground py-2">No races match the current filters.</p>
+              <p className="text-sm text-muted-foreground py-2">{L("Ingen renn matcher filtrene.", "No races match the current filters.")}</p>
             )}
           </div>
         )}
@@ -2415,10 +2416,10 @@ export default function AthleteDetail() {
               <div className="flex flex-wrap items-center gap-2 mt-3" data-testid="garage-filter-bar">
                 <Select value={garageDisciplineFilter} onValueChange={setGarageDisciplineFilter}>
                   <SelectTrigger className="h-7 w-[130px] text-xs" data-testid="select-garage-discipline">
-                    <SelectValue placeholder="All disciplines" />
+                    <SelectValue placeholder={L("Alle stilarter", "All disciplines")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All disciplines</SelectItem>
+                    <SelectItem value="all">{L("Alle stilarter", "All disciplines")}</SelectItem>
                     {garageDisciplineOptions.map((d) => (
                       <SelectItem key={d} value={d}>{d}</SelectItem>
                     ))}
@@ -2426,10 +2427,10 @@ export default function AthleteDetail() {
                 </Select>
                 <Select value={garageBrandFilter} onValueChange={setGarageBrandFilter}>
                   <SelectTrigger className="h-7 w-[120px] text-xs" data-testid="select-garage-brand">
-                    <SelectValue placeholder="All brands" />
+                    <SelectValue placeholder={L("Alle merker", "All brands")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All brands</SelectItem>
+                    <SelectItem value="all">{L("Alle merker", "All brands")}</SelectItem>
                     {garageBrandOptions.map((b) => (
                       <SelectItem key={b} value={b}>{b}</SelectItem>
                     ))}
@@ -2437,10 +2438,10 @@ export default function AthleteDetail() {
                 </Select>
                 <Select value={garageYearFilter} onValueChange={setGarageYearFilter}>
                   <SelectTrigger className="h-7 w-[100px] text-xs" data-testid="select-garage-year">
-                    <SelectValue placeholder="All years" />
+                    <SelectValue placeholder={L("Alle år", "All years")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All years</SelectItem>
+                    <SelectItem value="all">{L("Alle år", "All years")}</SelectItem>
                     {garageYearOptions.map((y) => (
                       <SelectItem key={y} value={y}>{y}</SelectItem>
                     ))}
@@ -2449,23 +2450,23 @@ export default function AthleteDetail() {
                 <Input
                   value={garageGrindFilter}
                   onChange={(e) => setGarageGrindFilter(e.target.value)}
-                  placeholder="Grind…"
+                  placeholder={L("Slip…", "Grind…")}
                   className="h-7 w-[110px] text-xs"
                   data-testid="input-garage-grind-filter"
                 />
                 <Input
                   value={garageRaValueFilter}
                   onChange={(e) => setGarageRaValueFilter(e.target.value)}
-                  placeholder="RA-value…"
+                  placeholder={L("RA-verdi…", "RA-value…")}
                   className="h-7 w-[110px] text-xs"
                   data-testid="input-garage-ra-value-filter"
                 />
                 <Select value={garageRaSort} onValueChange={setGarageRaSort}>
                   <SelectTrigger className="h-7 w-[160px] text-xs" data-testid="select-garage-ra-sort">
-                    <SelectValue placeholder="Sort by RA" />
+                    <SelectValue placeholder={L("Sorter etter RA", "Sort by RA")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No RA sort</SelectItem>
+                    <SelectItem value="none">{L("Ingen RA-sortering", "No RA sort")}</SelectItem>
                     <SelectItem value="ra-high">RA-value High→Low</SelectItem>
                     <SelectItem value="ra-low">RA-value Low→High</SelectItem>
                   </SelectContent>
@@ -2510,7 +2511,7 @@ export default function AthleteDetail() {
                   />
                 ))}
                 {filteredGarageSkis.length === 0 && skis.length > 0 && (
-                  <p className="text-sm text-muted-foreground">No skis match the current filters.</p>
+                  <p className="text-sm text-muted-foreground">{L("Ingen ski matcher filtrene.", "No skis match the current filters.")}</p>
                 )}
               </div>
             ) : (
@@ -2521,14 +2522,14 @@ export default function AthleteDetail() {
                     <table className="w-full border-separate border-spacing-0 text-sm">
                       <thead>
                         <tr className="text-left text-xs text-muted-foreground border-b">
-                          <th className="px-4 py-2.5 font-medium">Ski ID</th>
-                          <th className="px-3 py-2.5 font-medium">Serial</th>
-                          <th className="px-3 py-2.5 font-medium">Brand</th>
-                          <th className="px-3 py-2.5 font-medium">Discipline</th>
-                          <th className="px-3 py-2.5 font-medium">Construction</th>
-                          <th className="px-3 py-2.5 font-medium">Base</th>
-                          <th className="px-3 py-2.5 font-medium">Grind</th>
-                          <th className="px-3 py-2.5 font-medium">Year</th>
+                          <th className="px-4 py-2.5 font-medium">{L("Ski-ID", "Ski ID")}</th>
+                          <th className="px-3 py-2.5 font-medium">{L("Serienr.", "Serial")}</th>
+                          <th className="px-3 py-2.5 font-medium">{L("Merke", "Brand")}</th>
+                          <th className="px-3 py-2.5 font-medium">{L("Stilart", "Discipline")}</th>
+                          <th className="px-3 py-2.5 font-medium">{L("Konstruksjon", "Construction")}</th>
+                          <th className="px-3 py-2.5 font-medium">{L("Såle", "Base")}</th>
+                          <th className="px-3 py-2.5 font-medium">{L("Slip", "Grind")}</th>
+                          <th className="px-3 py-2.5 font-medium">{L("År", "Year")}</th>
                           <th className="px-3 py-2.5 font-medium"></th>
                         </tr>
                       </thead>
@@ -2618,7 +2619,7 @@ export default function AthleteDetail() {
 
             {showArchivedSkis && archivedSkis.length > 0 && (
               <div className="space-y-3 opacity-70">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Archived Skis</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Arkiverte ski", "Archived Skis")}</p>
                 {archivedSkis.map((ski) => (
                   <SkiCard
                     key={ski.id}
@@ -2736,20 +2737,20 @@ export default function AthleteDetail() {
                     {/* 1. Season */}
                     <Select value={testSeasonFilter} onValueChange={setTestSeasonFilter}>
                       <SelectTrigger className="h-8 min-w-[140px] text-xs">
-                        <SelectValue placeholder="All seasons" />
+                        <SelectValue placeholder={L("Alle sesonger", "All seasons")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All seasons</SelectItem>
+                        <SelectItem value="all">{L("Alle sesonger", "All seasons")}</SelectItem>
                         {testAvailableSeasons.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     {/* 2. All dates */}
                     <Select value={testDateFilter} onValueChange={setTestDateFilter}>
                       <SelectTrigger className="h-8 min-w-[180px] text-xs" data-testid="select-test-date-filter">
-                        <SelectValue placeholder="All dates" />
+                        <SelectValue placeholder={L("Alle datoer", "All dates")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All dates</SelectItem>
+                        <SelectItem value="all">{L("Alle datoer", "All dates")}</SelectItem>
                         {testDates.map((d) => (
                           <SelectItem key={d} value={d}>{dateLabelMap.get(d) ?? fmtDate(d)}</SelectItem>
                         ))}
@@ -2782,10 +2783,10 @@ export default function AthleteDetail() {
                     {/* 4. Test type */}
                     <Select value={testTypeFilter} onValueChange={setTestTypeFilter}>
                       <SelectTrigger className="h-8 min-w-[140px] text-xs" data-testid="select-test-type-filter">
-                        <SelectValue placeholder="All types" />
+                        <SelectValue placeholder={L("Alle typer", "All types")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All types</SelectItem>
+                        <SelectItem value="all">{L("Alle typer", "All types")}</SelectItem>
                         <SelectItem value="Classic">Classic</SelectItem>
                         <SelectItem value="Skating">Skating</SelectItem>
                         <SelectItem value="Double Poling">Double Poling</SelectItem>
@@ -2795,7 +2796,7 @@ export default function AthleteDetail() {
                     <Input
                       value={testLocationFilter}
                       onChange={e => setTestLocationFilter(e.target.value)}
-                      placeholder="Location..."
+                      placeholder={L("Sted…", "Location…")}
                       className="h-8 min-w-[140px] text-xs"
                     />
                     {/* Extra: Sort */}
@@ -2806,8 +2807,8 @@ export default function AthleteDetail() {
                       <SelectContent>
                         <SelectItem value="date-desc">Date ↓</SelectItem>
                         <SelectItem value="date-asc">Date ↑</SelectItem>
-                        <SelectItem value="location-asc">Location A-Z</SelectItem>
-                        <SelectItem value="location-desc">Location Z-A</SelectItem>
+                        <SelectItem value="location-asc">{L("Sted A–Å", "Location A-Z")}</SelectItem>
+                        <SelectItem value="location-desc">{L("Sted Å–A", "Location Z-A")}</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
@@ -2830,7 +2831,7 @@ export default function AthleteDetail() {
                     <div className="rounded-xl border border-border bg-muted/20 p-3">
                       <div className="space-y-4">
                         <div>
-                          <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Temperature & Humidity</div>
+                          <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Temperatur og fuktighet", "Temperature & Humidity")}</div>
                           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                             <div>
                               <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
@@ -2839,7 +2840,7 @@ export default function AthleteDetail() {
                               <div className="flex items-center gap-1">
                                 <Input type="number" className="h-7 text-xs" placeholder="Min" value={testAirTempMin} onChange={e => setTestAirTempMin(e.target.value)} />
                                 <span className="text-xs">–</span>
-                                <Input type="number" className="h-7 text-xs" placeholder="Max" value={testAirTempMax} onChange={e => setTestAirTempMax(e.target.value)} />
+                                <Input type="number" className="h-7 text-xs" placeholder={L("Maks", "Max")} value={testAirTempMax} onChange={e => setTestAirTempMax(e.target.value)} />
                               </div>
                             </div>
                             <div>
@@ -2849,7 +2850,7 @@ export default function AthleteDetail() {
                               <div className="flex items-center gap-1">
                                 <Input type="number" className="h-7 text-xs" placeholder="Min" value={testSnowTempMin} onChange={e => setTestSnowTempMin(e.target.value)} />
                                 <span className="text-xs">–</span>
-                                <Input type="number" className="h-7 text-xs" placeholder="Max" value={testSnowTempMax} onChange={e => setTestSnowTempMax(e.target.value)} />
+                                <Input type="number" className="h-7 text-xs" placeholder={L("Maks", "Max")} value={testSnowTempMax} onChange={e => setTestSnowTempMax(e.target.value)} />
                               </div>
                             </div>
                             <div>
@@ -2859,7 +2860,7 @@ export default function AthleteDetail() {
                               <div className="flex items-center gap-1">
                                 <Input type="number" className="h-7 text-xs" placeholder="Min" value={testAirHumMin} onChange={e => setTestAirHumMin(e.target.value)} />
                                 <span className="text-xs">–</span>
-                                <Input type="number" className="h-7 text-xs" placeholder="Max" value={testAirHumMax} onChange={e => setTestAirHumMax(e.target.value)} />
+                                <Input type="number" className="h-7 text-xs" placeholder={L("Maks", "Max")} value={testAirHumMax} onChange={e => setTestAirHumMax(e.target.value)} />
                               </div>
                             </div>
                             <div>
@@ -2869,7 +2870,7 @@ export default function AthleteDetail() {
                               <div className="flex items-center gap-1">
                                 <Input type="number" className="h-7 text-xs" placeholder="Min" value={testSnowHumMin} onChange={e => setTestSnowHumMin(e.target.value)} />
                                 <span className="text-xs">–</span>
-                                <Input type="number" className="h-7 text-xs" placeholder="Max" value={testSnowHumMax} onChange={e => setTestSnowHumMax(e.target.value)} />
+                                <Input type="number" className="h-7 text-xs" placeholder={L("Maks", "Max")} value={testSnowHumMax} onChange={e => setTestSnowHumMax(e.target.value)} />
                               </div>
                             </div>
                             <div>
@@ -2879,20 +2880,20 @@ export default function AthleteDetail() {
                               <div className="flex items-center gap-1">
                                 <Input type="number" className="h-7 text-xs" placeholder="Min" value={testCloudMin} onChange={e => setTestCloudMin(e.target.value)} />
                                 <span className="text-xs">–</span>
-                                <Input type="number" className="h-7 text-xs" placeholder="Max" value={testCloudMax} onChange={e => setTestCloudMax(e.target.value)} />
+                                <Input type="number" className="h-7 text-xs" placeholder={L("Maks", "Max")} value={testCloudMax} onChange={e => setTestCloudMax(e.target.value)} />
                               </div>
                             </div>
                           </div>
                         </div>
                         <div>
-                          <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow Type</div>
+                          <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Snøtype", "Snow Type")}</div>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             <div>
                               <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-400" />Artificial snow
                               </label>
                               <Select value={testArtSnow || "__any__"} onValueChange={v => setTestArtSnow(v === "__any__" ? "" : v)}>
-                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="__any__">— Any —</SelectItem>
                                   {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -2904,7 +2905,7 @@ export default function AthleteDetail() {
                                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-teal-400" />Natural snow
                               </label>
                               <Select value={testNatSnow || "__any__"} onValueChange={v => setTestNatSnow(v === "__any__" ? "" : v)}>
-                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="__any__">— Any —</SelectItem>
                                   {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -2916,7 +2917,7 @@ export default function AthleteDetail() {
                                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-400" />Snow humidity type
                               </label>
                               <Select value={testSnowHumidityType || "__any__"} onValueChange={v => setTestSnowHumidityType(v === "__any__" ? "" : v)}>
-                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="__any__">— Any —</SelectItem>
                                   {SNOW_HUMIDITY_TYPE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -2928,7 +2929,7 @@ export default function AthleteDetail() {
                                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-lime-400" />Grain size
                               </label>
                               <Select value={testGrainSize || "__any__"} onValueChange={v => setTestGrainSize(v === "__any__" ? "" : v)}>
-                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="__any__">— Any —</SelectItem>
                                   {GRAIN_SIZE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -2938,14 +2939,14 @@ export default function AthleteDetail() {
                           </div>
                         </div>
                         <div>
-                          <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow & Track</div>
+                          <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Snø og spor", "Snow & Track")}</div>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             <div>
                               <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-400" />Track hardness
                               </label>
                               <Select value={testTrackHardness || "__any__"} onValueChange={v => setTestTrackHardness(v === "__any__" ? "" : v)}>
-                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="__any__">— Any —</SelectItem>
                                   {TRACK_HARDNESS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -3070,7 +3071,7 @@ export default function AthleteDetail() {
               {showTestForm && (
                 <Card className="fs-card rounded-2xl p-4" data-testid="card-new-test-form">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold">New Raceski Test</h3>
+                    <h3 className="text-sm font-semibold">{L("Ny konkurranseski-test", "New Raceski Test")}</h3>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -3102,7 +3103,7 @@ export default function AthleteDetail() {
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm font-medium">Test Type</label>
+                      <label className="mb-1 block text-sm font-medium">{L("Testtype", "Test Type")}</label>
                       <Select
                         value={testForm.testType}
                         onValueChange={(v) => setTestForm((f) => ({ ...f, testType: v as "Classic" | "Skating" | "Double Poling" }))}
@@ -3118,7 +3119,7 @@ export default function AthleteDetail() {
                       </Select>
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm font-medium">Weather</label>
+                      <label className="mb-1 block text-sm font-medium">{L("Vær", "Weather")}</label>
                       <Select
                         value={testForm.weatherId != null ? String(testForm.weatherId) : "__auto__"}
                         onValueChange={(v) => setTestForm((f) => ({ ...f, weatherId: v === "__auto__" ? undefined : Number(v) }))}
@@ -3148,11 +3149,11 @@ export default function AthleteDetail() {
 
                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-4">
                     <div className="lg:col-span-3">
-                      <label className="mb-1 block text-sm font-medium">Notes</label>
+                      <label className="mb-1 block text-sm font-medium">{L("Notater", "Notes")}</label>
                       <Textarea
                         value={testForm.notes}
                         onChange={(e) => setTestForm((f) => ({ ...f, notes: e.target.value }))}
-                        placeholder="Optional notes..."
+                        placeholder={L("Valgfrie notater…", "Optional notes…")}
                         className="h-9 min-h-[36px] resize-none"
                         data-testid="input-test-notes"
                       />
@@ -3161,7 +3162,7 @@ export default function AthleteDetail() {
 
                   {/* Ski Selection */}
                   <div className="mb-4">
-                    <label className="mb-2 block text-sm font-medium">Select skis for this test</label>
+                    <label className="mb-2 block text-sm font-medium">{L("Velg ski for denne testen", "Select skis for this test")}</label>
                     {(() => {
                       const raceTestTypes = ["Classic", "Skating", "Double Poling"];
                       const disciplineFiltered = raceTestTypes.includes(testForm.testType)
@@ -3186,7 +3187,7 @@ export default function AthleteDetail() {
                           <Input
                             value={skiSearchQuery}
                             onChange={(e) => setSkiSearchQuery(e.target.value)}
-                            placeholder="Search serial number, ski ID, brand, grind…"
+                            placeholder={L("Søk serienummer, ski-ID, merke, slip…", "Search serial number, ski ID, brand, grind…")}
                             className="h-8 pl-8 text-sm"
                             data-testid="input-ski-search"
                           />
@@ -3251,12 +3252,12 @@ export default function AthleteDetail() {
                       <Dialog open={editParamsOpen} onOpenChange={setEditParamsOpen}>
                         <DialogContent className="max-w-sm">
                           <DialogHeader>
-                            <DialogTitle>Edit Parameters</DialogTitle>
+                            <DialogTitle>{L("Rediger parametre", "Edit Parameters")}</DialogTitle>
                           </DialogHeader>
                           <div className="space-y-3">
-                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active columns</div>
+                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{L("Aktive kolonner", "Active columns")}</div>
                             {activeParams.length === 0 && (
-                              <p className="text-sm text-muted-foreground">No parameters selected</p>
+                              <p className="text-sm text-muted-foreground">{L("Ingen parametre valgt", "No parameters selected")}</p>
                             )}
                             <div className="space-y-1">
                               {activeParams.map((key, idx) => (
@@ -3299,7 +3300,7 @@ export default function AthleteDetail() {
 
                             {inactiveParams.length > 0 && (
                               <>
-                                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider pt-2">Available</div>
+                                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider pt-2">{L("Tilgjengelige", "Available")}</div>
                                 <div className="space-y-1">
                                   {inactiveParams.map((p) => (
                                     <div
@@ -3328,7 +3329,7 @@ export default function AthleteDetail() {
                       <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${400 + distanceLabels.length * 200}px` }}>
                         <thead>
                           <tr className="text-left text-xs text-muted-foreground">
-                            <th className="sticky left-0 z-10 bg-card/80 px-3 py-3">Ski ID</th>
+                            <th className="sticky left-0 z-10 bg-card/80 px-3 py-3">{L("Ski-ID", "Ski ID")}</th>
                             {activeParams.map((key) => (
                               <th key={key} className="px-2 py-3">{getParamLabel(key)}</th>
                             ))}
@@ -3365,7 +3366,7 @@ export default function AthleteDetail() {
                                 </div>
                               </th>
                             ))}
-                            <th className="px-3 py-3">Feeling</th>
+                            <th className="px-3 py-3">{L("Følelse", "Feeling")}</th>
                             <th className="px-1 py-3">
                               <Button
                                 type="button"
@@ -3393,8 +3394,8 @@ export default function AthleteDetail() {
                             ))}
                             {distanceLabels.map((_, roundIdx) => (
                               <React.Fragment key={roundIdx}>
-                                <th className="px-3 pb-1">Result (cm)</th>
-                                <th className="px-3 pb-1">Rank</th>
+                                <th className="px-3 pb-1">{L("Resultat (cm)", "Result (cm)")}</th>
+                                <th className="px-3 pb-1">{L("Rang", "Rank")}</th>
                               </React.Fragment>
                             ))}
                             <th></th>
@@ -3561,7 +3562,7 @@ export default function AthleteDetail() {
               <p className="mt-1 text-xs">Comma or tab-separated. Only <code>skiId</code> is required.</p>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Select CSV file</label>
+              <label className="mb-1.5 block text-sm font-medium">{L("Velg CSV-fil", "Select CSV file")}</label>
               <input
                 ref={csvFileRef}
                 type="file"
@@ -3621,7 +3622,7 @@ export default function AthleteDetail() {
               </div>
             )}
             <div className="flex items-center justify-end gap-2 pt-1">
-              <Button variant="outline" size="sm" onClick={() => setCsvImportOpen(false)}>Cancel</Button>
+              <Button variant="outline" size="sm" onClick={() => setCsvImportOpen(false)}>{L("Avbryt", "Cancel")}</Button>
               <Button
                 size="sm"
                 disabled={csvPreviewRows.length === 0 || !!csvImportProgress}
@@ -3705,7 +3706,7 @@ export default function AthleteDetail() {
 
             {/* Colour tag field */}
             <div>
-              <label className="mb-2 block text-sm font-medium">Colour tag</label>
+              <label className="mb-2 block text-sm font-medium">{L("Fargemerke", "Colour tag")}</label>
               <div className="flex flex-wrap gap-2">
                 {SKI_COLORS.map((c) => (
                   <button
@@ -3753,12 +3754,12 @@ export default function AthleteDetail() {
           <Dialog open={editFormFieldsOpen} onOpenChange={setEditFormFieldsOpen}>
             <DialogContent className="max-w-sm">
               <DialogHeader>
-                <DialogTitle>Edit Parameters</DialogTitle>
+                <DialogTitle>{L("Rediger parametre", "Edit Parameters")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
-                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active fields</div>
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{L("Aktive felt", "Active fields")}</div>
                 {activeFormFields.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No fields selected</p>
+                  <p className="text-sm text-muted-foreground">{L("Ingen felt valgt", "No fields selected")}</p>
                 )}
                 <div className="space-y-1">
                   {activeFormFields.map((key, idx) => (
@@ -3804,7 +3805,7 @@ export default function AthleteDetail() {
 
                 {inactiveFormFields.length > 0 && (
                   <>
-                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider pt-2">Available</div>
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider pt-2">{L("Tilgjengelige", "Available")}</div>
                     <div className="space-y-1">
                       {inactiveFormFields.map((f) => (
                         <div
@@ -3828,12 +3829,12 @@ export default function AthleteDetail() {
                 )}
 
                 <div className="border-t pt-3">
-                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Add custom parameter</div>
+                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{L("Legg til egendefinert parameter", "Add custom parameter")}</div>
                   <div className="flex items-center gap-2">
                     <Input
                       value={newCustomFieldName}
                       onChange={(e) => setNewCustomFieldName(e.target.value)}
-                      placeholder="Parameter name..."
+                      placeholder={L("Parameternavn…", "Parameter name…")}
                       className="h-8 text-sm"
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomField(); } }}
                       data-testid="input-new-custom-field"
@@ -3907,7 +3908,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Notes</label>
+              <label className="mb-1 block text-sm font-medium">{L("Notater", "Notes")}</label>
               <Input
                 value={regrindForm.notes}
                 onChange={(e) => setRegrindForm((f) => ({ ...f, notes: e.target.value }))}
@@ -3935,7 +3936,7 @@ export default function AthleteDetail() {
           </DialogHeader>
           <div className="space-y-2">
             {users.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No users available.</p>
+              <p className="text-sm text-muted-foreground">{L("Ingen brukere tilgjengelig.", "No users available.")}</p>
             ) : (
               users
                 .filter((u) => u.id !== athlete?.createdById)
@@ -3977,7 +3978,7 @@ export default function AthleteDetail() {
       <Dialog open={editAthleteOpen} onOpenChange={setEditAthleteOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit</DialogTitle>
+            <DialogTitle>{L("Rediger", "Edit")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAthleteSubmit} className="space-y-3">
             <div>
@@ -3990,7 +3991,7 @@ export default function AthleteDetail() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Team</label>
+              <label className="mb-1 block text-sm font-medium">{L("Lag", "Team")}</label>
               <Input
                 value={athleteForm.team}
                 onChange={(e) => setAthleteForm((f) => ({ ...f, team: e.target.value }))}
@@ -4014,10 +4015,10 @@ export default function AthleteDetail() {
       <Dialog open={testColumnsDialogOpen} onOpenChange={setTestColumnsDialogOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Test Result Columns</DialogTitle>
+            <DialogTitle>{L("Kolonner for testresultat", "Test Result Columns")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="text-xs text-muted-foreground">Choose which columns to show in test results.</div>
+            <div className="text-xs text-muted-foreground">{L("Velg hvilke kolonner som vises i testresultater.", "Choose which columns to show in test results.")}</div>
             <div className="space-y-2">
               {allTestColumns.map((col) => {
                 const isActive = activeTestColumns.includes(col.key);
@@ -4129,7 +4130,8 @@ function SkiSuggestionsSection({
   raceSkiTests: RaceSkiTest[];
   raceHistory: AthleteRaceHistory[];
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [open, setOpen] = useState(false);
   const [discipline, setDiscipline] = useState<"Classic" | "Skating">("Classic");
 
@@ -4405,7 +4407,7 @@ function SkiSuggestionsSection({
                     <div className="flex items-center gap-1">
                       <Input type="number" className="h-8 text-xs" placeholder="Min" value={sfSnowMin} onChange={e => setSfSnowMin(e.target.value)} />
                       <span className="text-xs text-muted-foreground">–</span>
-                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={sfSnowMax} onChange={e => setSfSnowMax(e.target.value)} />
+                      <Input type="number" className="h-8 text-xs" placeholder={L("Maks", "Max")} value={sfSnowMax} onChange={e => setSfSnowMax(e.target.value)} />
                     </div>
                   </div>
                   <div>
@@ -4416,7 +4418,7 @@ function SkiSuggestionsSection({
                     <div className="flex items-center gap-1">
                       <Input type="number" className="h-8 text-xs" placeholder="Min" value={sfAirMin} onChange={e => setSfAirMin(e.target.value)} />
                       <span className="text-xs text-muted-foreground">–</span>
-                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={sfAirMax} onChange={e => setSfAirMax(e.target.value)} />
+                      <Input type="number" className="h-8 text-xs" placeholder={L("Maks", "Max")} value={sfAirMax} onChange={e => setSfAirMax(e.target.value)} />
                     </div>
                   </div>
                   <div>
@@ -4427,7 +4429,7 @@ function SkiSuggestionsSection({
                     <div className="flex items-center gap-1">
                       <Input type="number" className="h-8 text-xs" placeholder="Min" value={sfAirHumMin} onChange={e => setSfAirHumMin(e.target.value)} />
                       <span className="text-xs text-muted-foreground">–</span>
-                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={sfAirHumMax} onChange={e => setSfAirHumMax(e.target.value)} />
+                      <Input type="number" className="h-8 text-xs" placeholder={L("Maks", "Max")} value={sfAirHumMax} onChange={e => setSfAirHumMax(e.target.value)} />
                     </div>
                   </div>
                   <div>
@@ -4438,7 +4440,7 @@ function SkiSuggestionsSection({
                     <div className="flex items-center gap-1">
                       <Input type="number" className="h-8 text-xs" placeholder="Min" value={sfSnowHumMin} onChange={e => setSfSnowHumMin(e.target.value)} />
                       <span className="text-xs text-muted-foreground">–</span>
-                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={sfSnowHumMax} onChange={e => setSfSnowHumMax(e.target.value)} />
+                      <Input type="number" className="h-8 text-xs" placeholder={L("Maks", "Max")} value={sfSnowHumMax} onChange={e => setSfSnowHumMax(e.target.value)} />
                     </div>
                   </div>
                   <div>
@@ -4449,7 +4451,7 @@ function SkiSuggestionsSection({
                     <div className="flex items-center gap-1">
                       <Input type="number" className="h-8 text-xs" placeholder="Min" value={sfCloudMin} onChange={e => setSfCloudMin(e.target.value)} />
                       <span className="text-xs text-muted-foreground">–</span>
-                      <Input type="number" className="h-8 text-xs" placeholder="Max" value={sfCloudMax} onChange={e => setSfCloudMax(e.target.value)} />
+                      <Input type="number" className="h-8 text-xs" placeholder={L("Maks", "Max")} value={sfCloudMax} onChange={e => setSfCloudMax(e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -4467,7 +4469,7 @@ function SkiSuggestionsSection({
                       <span className="text-xs text-muted-foreground">{t("suggestions.artificialSnow")}</span>
                     </div>
                     <Select value={sfArtSnow || "__any__"} onValueChange={v => setSfArtSnow(v === "__any__" ? "" : v)}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__any__">— Any —</SelectItem>
                         {SNOW_STAGE_OPTS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -4480,7 +4482,7 @@ function SkiSuggestionsSection({
                       <span className="text-xs text-muted-foreground">{t("suggestions.naturalSnow")}</span>
                     </div>
                     <Select value={sfNatSnow || "__any__"} onValueChange={v => setSfNatSnow(v === "__any__" ? "" : v)}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__any__">— Any —</SelectItem>
                         {SNOW_STAGE_OPTS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -4493,7 +4495,7 @@ function SkiSuggestionsSection({
                       <span className="text-xs text-muted-foreground">{t("suggestions.snowHumidityType")}</span>
                     </div>
                     <Select value={sfSnowHumType || "__any__"} onValueChange={v => setSfSnowHumType(v === "__any__" ? "" : v)}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__any__">— Any —</SelectItem>
                         {SNOW_HUM_TYPE_OPTS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -4506,7 +4508,7 @@ function SkiSuggestionsSection({
                       <span className="text-xs text-muted-foreground">{t("suggestions.grainSize")}</span>
                     </div>
                     <Select value={sfGrainSize || "__any__"} onValueChange={v => setSfGrainSize(v === "__any__" ? "" : v)}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__any__">— Any —</SelectItem>
                         {GRAIN_SIZE_OPTS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -4528,7 +4530,7 @@ function SkiSuggestionsSection({
                       <span className="text-xs text-muted-foreground">{t("suggestions.trackHardness")}</span>
                     </div>
                     <Select value={sfTrackHardness || "__any__"} onValueChange={v => setSfTrackHardness(v === "__any__" ? "" : v)}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__any__">— Any —</SelectItem>
                         {TRACK_HARDNESS_OPTS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -4592,7 +4594,7 @@ function SkiSuggestionsSection({
                         <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/30">
                           <th className="px-3 py-2.5">#</th>
                           <th className="px-3 py-2.5">{t("raceskis.skiId")}</th>
-                          <th className="px-3 py-2.5">Brand</th>
+                          <th className="px-3 py-2.5">{L("Merke", "Brand")}</th>
                           <th className="px-3 py-2.5">{t("raceskis.grind")}</th>
                           <th className="px-3 py-2.5">{t("suggestions.avgRank")}</th>
                           <th className="px-3 py-2.5">{t("suggestions.wins")}</th>
@@ -4680,7 +4682,8 @@ function SkiDetailPanel({
   raceHistory?: AthleteRaceHistory[];
   weatherList?: WeatherItem[];
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const raceWeatherById = useMemo(() => new Map(weatherList.map(w => [w.id, w])), [weatherList]);
   const { data: regrinds = [] } = useQuery<RaceSkiRegrind[]>({
     queryKey: [`/api/race-skis/${ski.id}/regrinds`],
@@ -4731,7 +4734,7 @@ function SkiDetailPanel({
 
       {/* All parameters */}
       <div>
-        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Parameters</div>
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{L("Parametre", "Parameters")}</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
           {paramRows.map((row) => (
             <div key={row.label} className="text-xs">
@@ -4834,6 +4837,8 @@ function SkiAnalyticsSection({
   setCompareSkiIds: React.Dispatch<React.SetStateAction<Set<number>>>;
 }) {
   const testIds = useMemo(() => raceSkiTests.map((t) => t.id), [raceSkiTests]);
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
 
   // Fetch entries for all race ski tests
   const { data: allEntries = [] } = useQuery<(TestEntry & { testId: number })[]>({
@@ -4911,13 +4916,13 @@ function SkiAnalyticsSection({
             <thead>
               <tr className="text-left text-xs text-muted-foreground border-b">
                 <th className="px-4 py-2.5 font-medium">Ski</th>
-                <th className="px-3 py-2.5 font-medium">Tests</th>
-                <th className="px-3 py-2.5 font-medium">Entries</th>
-                <th className="px-3 py-2.5 font-medium">Avg Rank</th>
-                <th className="px-3 py-2.5 font-medium">Best Rank</th>
-                <th className="px-3 py-2.5 font-medium">Win Rate</th>
-                <th className="px-3 py-2.5 font-medium">Avg Feeling</th>
-                <th className="px-3 py-2.5 font-medium">Compare</th>
+                <th className="px-3 py-2.5 font-medium">{L("Tester", "Tests")}</th>
+                <th className="px-3 py-2.5 font-medium">{L("Skipar", "Entries")}</th>
+                <th className="px-3 py-2.5 font-medium">{L("Snittrang", "Avg Rank")}</th>
+                <th className="px-3 py-2.5 font-medium">{L("Beste rang", "Best Rank")}</th>
+                <th className="px-3 py-2.5 font-medium">{L("Seiersrate", "Win Rate")}</th>
+                <th className="px-3 py-2.5 font-medium">{L("Snittfølelse", "Avg Feeling")}</th>
+                <th className="px-3 py-2.5 font-medium">{L("Sammenlign", "Compare")}</th>
               </tr>
             </thead>
             <tbody>
@@ -4955,7 +4960,7 @@ function SkiAnalyticsSection({
       {compareList.length >= 2 && (
         <Card className="fs-card rounded-2xl p-4" data-testid="analytics-comparison">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold">Ski Pair Comparison</h3>
+            <h3 className="text-sm font-semibold">{L("Sammenligning av skipar", "Ski Pair Comparison")}</h3>
             <Button
               variant="ghost"
               size="sm"
@@ -4970,7 +4975,7 @@ function SkiAnalyticsSection({
             <table className="w-full border-separate border-spacing-0 text-sm">
               <thead>
                 <tr className="text-left text-xs text-muted-foreground">
-                  <th className="px-2 py-2 font-medium">Metric</th>
+                  <th className="px-2 py-2 font-medium">{L("Måltall", "Metric")}</th>
                   {compareList.map(({ ski }) => (
                     <th key={ski.id} className="px-3 py-2 font-medium">{ski.skiId}</th>
                   ))}
@@ -5048,7 +5053,8 @@ function SkiCard({
   raceHistory?: AthleteRaceHistory[];
   weatherList?: WeatherItem[];
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const raceWeatherById = useMemo(() => new Map(weatherList.map(w => [w.id, w])), [weatherList]);
   const { data: regrinds = [] } = useQuery<RaceSkiRegrind[]>({
     queryKey: [`/api/race-skis/${ski.id}/regrinds`],
@@ -5138,7 +5144,7 @@ function SkiCard({
               data-testid={`button-archive-ski-${ski.id}`}
               onClick={onArchive}
               className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20"
-              title="Archive ski"
+              title={L("Arkiver ski", "Archive ski")}
             >
               <Archive className="h-3.5 w-3.5" />
             </Button>
@@ -5173,7 +5179,7 @@ function SkiCard({
         <div className="mt-3 border-t border-border/40 pt-3 space-y-4" data-testid={`section-regrinds-${ski.id}`}>
           {/* All parameters */}
           <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Parameters</h3>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Parametre", "Parameters")}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
               {[
                 { label: t("raceskis.serialNumber"), value: ski.serialNumber },
@@ -5291,6 +5297,8 @@ function SkiCard({
 }
 
 function TestListView({ tests, skiIds, allSkis, activeTestColumns, weather = [] }: { tests: RaceSkiTest[]; skiIds: Set<number>; allSkis: RaceSki[]; activeTestColumns: string[]; weather?: WeatherItem[] }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const testIds = useMemo(() => tests.map((t) => t.id), [tests]);
   const [, navigate] = useLocation();
 
@@ -5337,12 +5345,12 @@ function TestListView({ tests, skiIds, allSkis, activeTestColumns, weather = [] 
         <table className="w-full border-separate border-spacing-0 text-xs">
           <thead>
             <tr className="text-left text-muted-foreground border-b">
-              <th className="px-3 py-2.5 font-medium">Date</th>
-              <th className="px-3 py-2.5 font-medium">Location</th>
-              <th className="px-3 py-2.5 font-medium">Type</th>
-              <th className="px-3 py-2.5 font-medium">Weather</th>
+              <th className="px-3 py-2.5 font-medium">{L("Dato", "Date")}</th>
+              <th className="px-3 py-2.5 font-medium">{L("Sted", "Location")}</th>
+              <th className="px-3 py-2.5 font-medium">{L("Type", "Type")}</th>
+              <th className="px-3 py-2.5 font-medium">{L("Vær", "Weather")}</th>
               <th className="px-3 py-2.5 font-medium"># Skis</th>
-              <th className="px-3 py-2.5 font-medium">Top Ski</th>
+              <th className="px-3 py-2.5 font-medium">{L("Beste ski", "Top Ski")}</th>
               <th className="px-3 py-2.5 font-medium"></th>
             </tr>
           </thead>
@@ -5460,6 +5468,8 @@ function RaceSkiTestCard({
   isReadOnly?: boolean;
 }) {
   const weatherMap = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [, navigate] = useLocation();
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentText, setCommentText] = useState("");
@@ -5597,7 +5607,7 @@ function RaceSkiTestCard({
     const subtitle = [athleteName, test.location, test.testType].filter(Boolean).join(" · ");
 
     const body = `
-      <div class="pdf-title">Test Report</div>
+      <div class="pdf-title">{L("Testrapport", "Test Report")}</div>
       <div class="pdf-subtitle">${subtitle}</div>
       ${pdfTable(["Date", "Location", "Type", "Notes"], [[test.date, test.location, test.testType, test.notes ?? null]])}
       ${weath ? pdfWeather(weath) : ""}
@@ -5687,7 +5697,7 @@ function RaceSkiTestCard({
             className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
             onClick={handleOpenReport}
             data-testid={`button-report-test-${test.id}`}
-            title="Print/export this test report"
+            title={L("Skriv ut / eksporter denne testrapporten", "Print/export this test report")}
           >
             <FileText className="h-3.5 w-3.5" />
           </Button>
@@ -5748,21 +5758,21 @@ function RaceSkiTestCard({
               <thead>
                 <tr className="text-left text-muted-foreground">
                   {reorderMode && <th className="px-2 py-2 w-16"></th>}
-                  {activeTestColumns.includes("skiId") && <th className="px-3 py-2">Ski ID</th>}
+                  {activeTestColumns.includes("skiId") && <th className="px-3 py-2">{L("Ski-ID", "Ski ID")}</th>}
                   {!activeTestColumns.includes("skiId") && <th className="px-3 py-2">Ski</th>}
-                  {activeTestColumns.includes("serialNumber") && <th className="px-3 py-2">Serial</th>}
-                  {activeTestColumns.includes("brand") && <th className="px-3 py-2">Brand</th>}
-                  {activeTestColumns.includes("discipline") && <th className="px-3 py-2">Discipline</th>}
-                  {activeTestColumns.includes("construction") && <th className="px-3 py-2">Construction</th>}
+                  {activeTestColumns.includes("serialNumber") && <th className="px-3 py-2">{L("Serienr.", "Serial")}</th>}
+                  {activeTestColumns.includes("brand") && <th className="px-3 py-2">{L("Merke", "Brand")}</th>}
+                  {activeTestColumns.includes("discipline") && <th className="px-3 py-2">{L("Stilart", "Discipline")}</th>}
+                  {activeTestColumns.includes("construction") && <th className="px-3 py-2">{L("Konstruksjon", "Construction")}</th>}
                   {activeTestColumns.includes("mold") && <th className="px-3 py-2">Mold</th>}
                   {activeTestColumns.includes("base") && <th className="px-3 py-2">Base</th>}
-                  {activeTestColumns.includes("grind") && <th className="px-3 py-2">Grind</th>}
-                  {activeTestColumns.includes("heights") && <th className="px-3 py-2">Heights</th>}
+                  {activeTestColumns.includes("grind") && <th className="px-3 py-2">{L("Slip", "Grind")}</th>}
+                  {activeTestColumns.includes("heights") && <th className="px-3 py-2">{L("Høyder", "Heights")}</th>}
                   {activeTestColumns.includes("year") && <th className="px-3 py-2">Year</th>}
-                  {activeTestColumns.includes("result") && <th className="px-3 py-2">Result</th>}
+                  {activeTestColumns.includes("result") && <th className="px-3 py-2">{L("Resultat", "Result")}</th>}
                   {activeTestColumns.includes("rank") && <th className="px-3 py-2">Rank</th>}
-                  {activeTestColumns.includes("feeling") && <th className="px-3 py-2">Feeling</th>}
-                  {activeTestColumns.includes("methodology") && <th className="px-3 py-2">Methodology</th>}
+                  {activeTestColumns.includes("feeling") && <th className="px-3 py-2">{L("Følelse", "Feeling")}</th>}
+                  {activeTestColumns.includes("methodology") && <th className="px-3 py-2">{L("Metodikk", "Methodology")}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -5873,7 +5883,7 @@ function RaceSkiTestCard({
             {commentsOpen && (
               <div className="mt-3 space-y-3" data-testid={`comments-section-${test.id}`}>
                 {comments.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No comments yet.</p>
+                  <p className="text-xs text-muted-foreground">{L("Ingen kommentarer ennå.", "No comments yet.")}</p>
                 ) : (
                   <div className="space-y-2">
                     {comments.map((c) => {
@@ -5916,7 +5926,7 @@ function RaceSkiTestCard({
                     <Textarea
                       value={commentText}
                       onChange={(e) => setCommentText(e.target.value)}
-                      placeholder="Add a comment…"
+                      placeholder={L("Skriv en kommentar…", "Add a comment…")}
                       className="min-h-[40px] h-10 resize-none text-xs flex-1"
                       rows={2}
                       onKeyDown={(e) => {
@@ -6286,6 +6296,8 @@ function AthleteAnalyticsView({
   setCompareSkiIds: React.Dispatch<React.SetStateAction<Set<number>>>;
 }) {
   const testIds = useMemo(() => raceSkiTests.map((t) => t.id), [raceSkiTests]);
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
 
   const { data: allEntries = [] } = useQuery<(TestEntry & { testId: number })[]>({
     queryKey: [`/api/athletes/analytics/entries`, testIds.join(",")],
@@ -6453,17 +6465,17 @@ function AthleteAnalyticsView({
       {/* Per-ski performance summary */}
       <Card className="fs-card rounded-2xl overflow-hidden" data-testid="analytics-perf-table">
         <div className="px-4 pt-4 pb-2">
-          <h2 className="text-base font-semibold">Per-Ski Performance Summary</h2>
+          <h2 className="text-base font-semibold">{L("Ytelsessammendrag per ski", "Per-Ski Performance Summary")}</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full border-separate border-spacing-0 text-sm">
             <thead>
               <tr className="text-left text-xs text-muted-foreground border-b">
-                <th className="px-4 py-2.5 font-medium">Ski ID</th>
+                <th className="px-4 py-2.5 font-medium">{L("Ski-ID", "Ski ID")}</th>
                 <th className="px-3 py-2.5 font-medium"># Tests</th>
-                <th className="px-3 py-2.5 font-medium">Avg Rank</th>
-                <th className="px-3 py-2.5 font-medium">Best Rank</th>
-                <th className="px-3 py-2.5 font-medium">Win Rate</th>
+                <th className="px-3 py-2.5 font-medium">{L("Snittrang", "Avg Rank")}</th>
+                <th className="px-3 py-2.5 font-medium">{L("Beste rang", "Best Rank")}</th>
+                <th className="px-3 py-2.5 font-medium">{L("Seiersrate", "Win Rate")}</th>
               </tr>
             </thead>
             <tbody>
@@ -6524,15 +6536,15 @@ function AthleteAnalyticsView({
       {/* Best conditions per ski */}
       <Card className="fs-card rounded-2xl overflow-hidden" data-testid="analytics-best-conditions">
         <div className="px-4 pt-4 pb-2">
-          <h2 className="text-base font-semibold">Best Conditions Per Ski</h2>
+          <h2 className="text-base font-semibold">{L("Beste forhold per ski", "Best Conditions Per Ski")}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">Snow temperature ranges where each ski ranked #1 or top 3</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full border-separate border-spacing-0 text-sm">
             <thead>
               <tr className="text-left text-xs text-muted-foreground border-b">
-                <th className="px-4 py-2.5 font-medium">Ski ID</th>
-                <th className="px-3 py-2.5 font-medium">Won in conditions</th>
+                <th className="px-4 py-2.5 font-medium">{L("Ski-ID", "Ski ID")}</th>
+                <th className="px-3 py-2.5 font-medium">{L("Vant i forhold", "Won in conditions")}</th>
                 <th className="px-3 py-2.5 font-medium">Top 3 in conditions</th>
               </tr>
             </thead>
@@ -6579,7 +6591,7 @@ function AthleteAnalyticsView({
       {/* Feature 4: Ski Performance Over Time */}
       {performanceOverTimeData.length > 1 && top6Skis.length > 0 && (
         <Card className="fs-card rounded-2xl p-4" data-testid="analytics-performance-over-time">
-          <h2 className="text-base font-semibold mb-1">Ski Performance Over Time</h2>
+          <h2 className="text-base font-semibold mb-1">{L("Skiytelse over tid", "Ski Performance Over Time")}</h2>
           <p className="text-xs text-muted-foreground mb-4">Average rank per test date (lower = better) — top 6 most-tested skis</p>
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={performanceOverTimeData} margin={{ top: 5, right: 20, left: 0, bottom: 20 }}>
@@ -6608,18 +6620,18 @@ function AthleteAnalyticsView({
       {tempCorrelationData.length > 0 && (
         <Card className="fs-card rounded-2xl overflow-hidden" data-testid="analytics-temp-correlation">
           <div className="px-4 pt-4 pb-2">
-            <h2 className="text-base font-semibold">Performance by Snow Temperature</h2>
+            <h2 className="text-base font-semibold">{L("Ytelse etter snøtemperatur", "Performance by Snow Temperature")}</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Best 2°C snow temperature bucket per ski</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full border-separate border-spacing-0 text-sm">
               <thead>
                 <tr className="text-left text-xs text-muted-foreground border-b">
-                  <th className="px-4 py-2.5 font-medium">Ski ID</th>
-                  <th className="px-3 py-2.5 font-medium">Brand</th>
-                  <th className="px-3 py-2.5 font-medium">Best Temp Range</th>
-                  <th className="px-3 py-2.5 font-medium">Avg Rank</th>
-                  <th className="px-3 py-2.5 font-medium">Tests</th>
+                  <th className="px-4 py-2.5 font-medium">{L("Ski-ID", "Ski ID")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Merke", "Brand")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Beste temp.område", "Best Temp Range")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Snittrang", "Avg Rank")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Tester", "Tests")}</th>
                 </tr>
               </thead>
               <tbody>

@@ -3280,6 +3280,36 @@ function DurabilityAnalysis({
   );
 }
 
+// Renders every available weather/conditions field for a race usage.
+function WeatherFields({ w, L }: { w: Weather; L: (no: string, en: string) => string }) {
+  const cell = (label: string, value: any) =>
+    value != null && value !== "" ? (
+      <div>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
+        <p className="font-medium">{value}</p>
+      </div>
+    ) : null;
+  return (
+    <>
+      {cell(L("Snøtemp", "Snow temp"), w.snowTemperatureC != null ? `${w.snowTemperatureC}°C` : null)}
+      {cell(L("Lufttemp", "Air temp"), w.airTemperatureC != null ? `${w.airTemperatureC}°C` : null)}
+      {cell(L("Snøfukt", "Snow humidity"), w.snowHumidityPct != null ? `${w.snowHumidityPct}%` : null)}
+      {cell(L("Luftfukt", "Air humidity"), w.airHumidityPct != null ? `${w.airHumidityPct}%` : null)}
+      {cell(L("Snøtype", "Snow type"), w.snowType)}
+      {cell(L("Snøfukttype", "Snow humidity type"), w.snowHumidityType)}
+      {cell(L("Kornstørrelse", "Grain size"), w.grainSize)}
+      {cell(L("Sporhardhet", "Track hardness"), w.trackHardness)}
+      {cell(L("Vind", "Wind"), w.wind)}
+      {cell(L("Skydekke", "Clouds"), w.clouds != null ? `${w.clouds}/8` : null)}
+      {cell(L("Nedbør", "Precipitation"), w.precipitation)}
+      {cell(L("Sikt", "Visibility"), w.visibility)}
+      {cell(L("Kunstig snø", "Artificial snow"), w.artificialSnow)}
+      {cell(L("Naturlig snø", "Natural snow"), w.naturalSnow)}
+      {cell(L("Testkvalitet", "Test quality"), w.testQuality != null ? `${w.testQuality}/10` : null)}
+    </>
+  );
+}
+
 function RacedProductsTab({
   racePreps,
   racedProductStats,
@@ -3296,22 +3326,48 @@ function RacedProductsTab({
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [expandedCombo, setExpandedCombo] = useState<Set<string>>(new Set());
   const [view, setView] = useState<"products" | "combinations">("products");
-  // Conditions filter — find which products/combos were raced in a given føre
-  const [snowMin, setSnowMin] = useState("");
-  const [snowMax, setSnowMax] = useState("");
-  const [snowTypeFilter, setSnowTypeFilter] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  // Full conditions filter (same fields as the Tests page)
+  const emptyCf = {
+    airTempMin: "", airTempMax: "", snowTempMin: "", snowTempMax: "",
+    airHumMin: "", airHumMax: "", snowHumMin: "", snowHumMax: "",
+    cloudMin: "", cloudMax: "", snowType: "", trackHardness: "",
+    snowHumidityType: "", grainSize: "", artificialSnow: "", naturalSnow: "",
+    precipitation: "", wind: "", visibility: "",
+  };
+  const [cf, setCf] = useState({ ...emptyCf });
+  const setCfField = (k: keyof typeof cf, v: string) => setCf(prev => ({ ...prev, [k]: v }));
   const L = (no: string, en: string) => lang === "en" ? en : no;
 
-  const hasCondFilter = snowMin !== "" || snowMax !== "" || snowTypeFilter !== "";
+  const hasCondFilter = Object.values(cf).some(v => v !== "");
+  const condCount = Object.values(cf).filter(v => v !== "").length;
   const weatherMatches = (w: Weather | null): boolean => {
     if (!hasCondFilter) return true;
     if (!w) return false;
-    const lo = snowMin !== "" ? parseFloat(snowMin) : null;
-    const hi = snowMax !== "" ? parseFloat(snowMax) : null;
-    const [a, b] = lo != null && hi != null && lo > hi ? [hi, lo] : [lo, hi];
-    if (a != null && (w.snowTemperatureC == null || w.snowTemperatureC < a)) return false;
-    if (b != null && (w.snowTemperatureC == null || w.snowTemperatureC > b)) return false;
-    if (snowTypeFilter && !(w.snowType ?? "").toLowerCase().includes(snowTypeFilter.toLowerCase())) return false;
+    const range = (val: number | null | undefined, minS: string, maxS: string): boolean => {
+      let lo = minS !== "" ? parseFloat(minS) : null;
+      let hi = maxS !== "" ? parseFloat(maxS) : null;
+      if (lo != null && hi != null && lo > hi) { const t = lo; lo = hi; hi = t; }
+      if (lo != null && (val == null || val < lo)) return false;
+      if (hi != null && (val == null || val > hi)) return false;
+      return true;
+    };
+    const has = (field: string | null | undefined, q: string): boolean =>
+      !q || (field ?? "").toLowerCase().includes(q.toLowerCase());
+    if (!range(w.airTemperatureC, cf.airTempMin, cf.airTempMax)) return false;
+    if (!range(w.snowTemperatureC, cf.snowTempMin, cf.snowTempMax)) return false;
+    if (!range(w.airHumidityPct, cf.airHumMin, cf.airHumMax)) return false;
+    if (!range(w.snowHumidityPct, cf.snowHumMin, cf.snowHumMax)) return false;
+    if (!range(w.clouds, cf.cloudMin, cf.cloudMax)) return false;
+    if (!has(w.snowType, cf.snowType)) return false;
+    if (!has(w.trackHardness, cf.trackHardness)) return false;
+    if (!has(w.snowHumidityType, cf.snowHumidityType)) return false;
+    if (!has(w.grainSize, cf.grainSize)) return false;
+    if (!has(w.artificialSnow, cf.artificialSnow)) return false;
+    if (!has(w.naturalSnow, cf.naturalSnow)) return false;
+    if (!has(w.precipitation, cf.precipitation)) return false;
+    if (!has(w.wind, cf.wind)) return false;
+    if (!has(w.visibility, cf.visibility)) return false;
     return true;
   };
 
@@ -3327,7 +3383,7 @@ function RacedProductsTab({
         .map(s => ({ ...s, total: s.usages.length }));
     }
     return stats;
-  }, [racedProductStats, roleFilter, snowMin, snowMax, snowTypeFilter]);
+  }, [racedProductStats, roleFilter, cf]);
 
   const visibleCombos = useMemo(() => {
     if (!hasCondFilter) return racedCombinations;
@@ -3335,7 +3391,7 @@ function RacedProductsTab({
       .map(c => ({ ...c, usages: c.usages.filter(u => weatherMatches(u.weather)) }))
       .filter(c => c.usages.length > 0)
       .map(c => ({ ...c, count: c.usages.length }));
-  }, [racedCombinations, snowMin, snowMax, snowTypeFilter]);
+  }, [racedCombinations, cf]);
 
   function toggleCombo(key: string) {
     setExpandedCombo(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
@@ -3371,20 +3427,71 @@ function RacedProductsTab({
             {L("Kombinasjoner", "Combinations")}
           </button>
         </div>
-        <div className="flex items-center gap-1.5 ml-auto flex-wrap">
-          <Snowflake className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">{L("Føre:", "Conditions:")}</span>
-          <input type="number" value={snowMin} onChange={(e) => setSnowMin(e.target.value)} placeholder={L("Snø min", "Snow min")} className="h-7 w-20 rounded border border-input bg-background px-1.5 text-xs" />
-          <span className="text-xs text-muted-foreground">–</span>
-          <input type="number" value={snowMax} onChange={(e) => setSnowMax(e.target.value)} placeholder={L("Snø max", "Snow max")} className="h-7 w-20 rounded border border-input bg-background px-1.5 text-xs" />
-          <input type="text" value={snowTypeFilter} onChange={(e) => setSnowTypeFilter(e.target.value)} placeholder={L("Snøtype", "Snow type")} className="h-7 w-28 rounded border border-input bg-background px-1.5 text-xs" />
-          {hasCondFilter && (
-            <button onClick={() => { setSnowMin(""); setSnowMax(""); setSnowTypeFilter(""); }} className="text-xs text-muted-foreground hover:text-foreground underline">
-              {L("Nullstill", "Clear")}
-            </button>
-          )}
-        </div>
+        <button
+          onClick={() => setShowFilters(v => !v)}
+          className={cn("ml-auto flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+            hasCondFilter ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}
+        >
+          <Snowflake className="h-3.5 w-3.5" />
+          {L("Vær/føre-filter", "Weather/conditions filter")}
+          {condCount > 0 && <span className="rounded-full bg-primary text-primary-foreground px-1.5 text-[10px]">{condCount}</span>}
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showFilters && "rotate-180")} />
+        </button>
       </div>
+
+      {showFilters && (() => {
+        const RangeRow = ({ label, dot, minK, maxK }: { label: string; dot: string; minK: keyof typeof cf; maxK: keyof typeof cf }) => (
+          <div>
+            <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+              <span className={cn("inline-block h-1.5 w-1.5 rounded-full", dot)} />{label}
+            </label>
+            <div className="flex items-center gap-1">
+              <input type="number" className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs" placeholder={L("Min", "Min")} value={cf[minK]} onChange={e => setCfField(minK, e.target.value)} />
+              <span className="text-xs">–</span>
+              <input type="number" className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs" placeholder={L("Max", "Max")} value={cf[maxK]} onChange={e => setCfField(maxK, e.target.value)} />
+            </div>
+          </div>
+        );
+        const TextRow = ({ label, k, ph }: { label: string; k: keyof typeof cf; ph?: string }) => (
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">{label}</label>
+            <input type="text" className="h-7 w-full rounded border border-input bg-background px-1.5 text-xs" placeholder={ph} value={cf[k]} onChange={e => setCfField(k, e.target.value)} />
+          </div>
+        );
+        return (
+          <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-4">
+            <div>
+              <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Temperatur og fuktighet", "Temperature & Humidity")}</div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <RangeRow label={L("Lufttemp (°C)", "Air temp (°C)")} dot="bg-sky-400" minK="airTempMin" maxK="airTempMax" />
+                <RangeRow label={L("Snøtemp (°C)", "Snow temp (°C)")} dot="bg-emerald-400" minK="snowTempMin" maxK="snowTempMax" />
+                <RangeRow label={L("Luftfukt (%)", "Air humidity (%)")} dot="bg-violet-400" minK="airHumMin" maxK="airHumMax" />
+                <RangeRow label={L("Snøfukt (%)", "Snow humidity (%)")} dot="bg-amber-400" minK="snowHumMin" maxK="snowHumMax" />
+                <RangeRow label={L("Skydekke (/8)", "Cloud cover (/8)")} dot="bg-slate-400" minK="cloudMin" maxK="cloudMax" />
+              </div>
+            </div>
+            <div>
+              <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Snø og spor", "Snow & Track")}</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <TextRow label={L("Snøtype", "Snow type")} k="snowType" />
+                <TextRow label={L("Snøfukttype", "Snow humidity type")} k="snowHumidityType" />
+                <TextRow label={L("Kornstørrelse", "Grain size")} k="grainSize" />
+                <TextRow label={L("Sporhardhet", "Track hardness")} k="trackHardness" />
+                <TextRow label={L("Kunstig snø", "Artificial snow")} k="artificialSnow" />
+                <TextRow label={L("Naturlig snø", "Natural snow")} k="naturalSnow" />
+                <TextRow label={L("Nedbør", "Precipitation")} k="precipitation" ph={L("f.eks. Lett snø", "e.g. Light snow")} />
+                <TextRow label={L("Vind", "Wind")} k="wind" ph={L("f.eks. Lett NV", "e.g. Light NW")} />
+                <TextRow label={L("Sikt", "Visibility")} k="visibility" ph={L("f.eks. God", "e.g. Good")} />
+              </div>
+            </div>
+            {hasCondFilter && (
+              <button onClick={() => setCf({ ...emptyCf })} className="text-xs text-muted-foreground hover:text-foreground underline">
+                {L("Nullstill filter", "Clear filter")}
+              </button>
+            )}
+          </div>
+        );
+      })()}
       {hasCondFilter && (
         <p className="text-xs text-amber-600 dark:text-amber-400">
           {L("Viser kun produkter/kombinasjoner som har vært kjørt på dette føret.", "Showing only products/combinations raced in these conditions.")}
@@ -3459,88 +3566,7 @@ function RacedProductsTab({
                             </div>
                           )}
                           {/* Weather fields */}
-                          {w && (
-                            <>
-                              {w.snowTemperatureC != null && (
-                                <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Snøtemp", "Snow temp")}</p>
-                                  <p className="font-medium">{w.snowTemperatureC}°C</p>
-                                </div>
-                              )}
-                              {w.airTemperatureC != null && (
-                                <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Lufttemp", "Air temp")}</p>
-                                  <p className="font-medium">{w.airTemperatureC}°C</p>
-                                </div>
-                              )}
-                              {w.snowHumidityPct != null && (
-                                <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Snøfukt", "Snow humidity")}</p>
-                                  <p className="font-medium">{w.snowHumidityPct}%</p>
-                                </div>
-                              )}
-                              {w.airHumidityPct != null && (
-                                <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Luftfukt", "Air humidity")}</p>
-                                  <p className="font-medium">{w.airHumidityPct}%</p>
-                                </div>
-                              )}
-                              {w.snowType && (
-                                <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Snøtype", "Snow type")}</p>
-                                  <p className="font-medium">{w.snowType}</p>
-                                </div>
-                              )}
-                              {w.trackHardness && (
-                                <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Sporhardhet", "Track hardness")}</p>
-                                  <p className="font-medium">{w.trackHardness}</p>
-                                </div>
-                              )}
-                              {w.snowHumidityType && (
-                                <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Snøfukttype", "Snow humidity type")}</p>
-                                  <p className="font-medium capitalize">{w.snowHumidityType}</p>
-                                </div>
-                              )}
-                              {w.wind && (
-                                <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Vind", "Wind")}</p>
-                                  <p className="font-medium">{w.wind}</p>
-                                </div>
-                              )}
-                              {w.precipitation && (
-                                <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Nedbør", "Precipitation")}</p>
-                                  <p className="font-medium">{w.precipitation}</p>
-                                </div>
-                              )}
-                              {w.clouds != null && (
-                                <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Skydekke", "Clouds")}</p>
-                                  <p className="font-medium">{w.clouds}/8</p>
-                                </div>
-                              )}
-                              {w.artificialSnow && (
-                                <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Kunstig snø", "Artificial snow")}</p>
-                                  <p className="font-medium">{w.artificialSnow}</p>
-                                </div>
-                              )}
-                              {w.naturalSnow && (
-                                <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Naturlig snø", "Natural snow")}</p>
-                                  <p className="font-medium">{w.naturalSnow}</p>
-                                </div>
-                              )}
-                              {w.grainSize && (
-                                <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Kornstørrelse", "Grain size")}</p>
-                                  <p className="font-medium">{w.grainSize}</p>
-                                </div>
-                              )}
-                            </>
-                          )}
+                          {w && <WeatherFields w={w} L={L} />}
                           {/* Notes / method */}
                           {p.notes && (
                             <div className="sm:col-span-2 md:col-span-3">
@@ -3617,18 +3643,7 @@ function RacedCombinationsList({
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Renntype", "Race type")}</p>
                         <p className="font-medium">{p.raceType} <span className="text-muted-foreground text-xs">({p.discipline})</span></p>
                       </div>
-                      {w?.snowTemperatureC != null && (
-                        <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Snøtemp", "Snow temp")}</p><p className="font-medium">{w.snowTemperatureC}°C</p></div>
-                      )}
-                      {w?.airTemperatureC != null && (
-                        <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Lufttemp", "Air temp")}</p><p className="font-medium">{w.airTemperatureC}°C</p></div>
-                      )}
-                      {w?.snowType && (
-                        <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Snøtype", "Snow type")}</p><p className="font-medium">{w.snowType}</p></div>
-                      )}
-                      {w?.trackHardness && (
-                        <div><p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Sporhardhet", "Track hardness")}</p><p className="font-medium">{w.trackHardness}</p></div>
-                      )}
+                      {w && <WeatherFields w={w} L={L} />}
                       {/* Products + applications used in this race */}
                       <div className="sm:col-span-2 md:col-span-3">
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{L("Produkter + applikasjon", "Products + application")}</p>

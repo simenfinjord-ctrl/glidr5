@@ -88,7 +88,9 @@ export function useAuth() {
       if (user.isTeamAdmin) return true;
       return !!user.garminWatch;
     }
-    if (user.teamEnabledAreas && !user.teamEnabledAreas.includes(area)) return false;
+    // raceprepGlide is a sub-permission of raceprep — enabled whenever raceprep is.
+    const enablingArea = area === "raceprepGlide" ? "raceprep" : area;
+    if (user.teamEnabledAreas && !user.teamEnabledAreas.includes(enablingArea)) return false;
     if (user.isTeamAdmin) return true;
     if (!perms) return false;
     const userLevel = perms[area as keyof UserPermissions];

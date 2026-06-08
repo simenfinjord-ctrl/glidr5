@@ -160,7 +160,8 @@ function WeatherForm({
   selectedGroup: string;
   onGroupChange: (group: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const { queueMutation } = useOffline();
   const today = new Date().toISOString().slice(0, 10);
@@ -223,18 +224,18 @@ function WeatherForm({
     },
     onSuccess: (result) => {
       if (result?.offline) {
-        toast({ title: "Saved offline", description: "Will sync when you reconnect." });
+        toast({ title: L("Lagret offline", "Saved offline"), description: L("Synkroniseres når du er tilkoblet igjen.", "Will sync when you reconnect.") });
         onSaved();
         return;
       }
       queryClient.invalidateQueries({ queryKey: ["/api/weather"] });
-      toast({ title: "Weather added" });
+      toast({ title: L("Værdata lagt til", "Weather added") });
       onSaved();
     },
     onError: (e) => {
       toast({
-        title: "Could not save weather",
-        description: e instanceof Error ? e.message : "Unknown error",
+        title: L("Kunne ikke lagre værdata", "Could not save weather"),
+        description: e instanceof Error ? e.message : L("Ukjent feil", "Unknown error"),
         variant: "destructive",
       });
     },
@@ -247,13 +248,13 @@ function WeatherForm({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/weather"] });
-      toast({ title: "Weather updated" });
+      toast({ title: L("Værdata oppdatert", "Weather updated") });
       onSaved();
     },
     onError: (e) => {
       toast({
-        title: "Could not save weather",
-        description: e instanceof Error ? e.message : "Unknown error",
+        title: L("Kunne ikke lagre værdata", "Could not save weather"),
+        description: e instanceof Error ? e.message : L("Ukjent feil", "Unknown error"),
         variant: "destructive",
       });
     },
@@ -273,7 +274,7 @@ function WeatherForm({
       >
         {userGroups.length > 1 && (
           <div className="space-y-1">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Group</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Gruppe", "Group")}</h3>
             <Select
               value={selectedGroup}
               onValueChange={(v) => onGroupChange(v)}
@@ -293,7 +294,7 @@ function WeatherForm({
         )}
 
         <div className="space-y-1">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date & Location</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Dato og sted", "Date & Location")}</h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <FormField
               control={form.control}
@@ -351,7 +352,7 @@ function WeatherForm({
                   const date = form.getValues("date");
                   const time = form.getValues("time");
                   if (!date || !time) {
-                    toast({ title: "Date and time required", variant: "destructive" });
+                    toast({ title: L("Dato og tid kreves", "Date and time required"), variant: "destructive" });
                     return;
                   }
                   setFetchingStation(true);
@@ -359,17 +360,17 @@ function WeatherForm({
                     const res = await apiRequest("GET", `/api/weather-station/fetch?date=${date}&time=${time}`);
                     const result = await res.json();
                     const filled: string[] = [];
-                    if (result.airTemperatureC != null) { form.setValue("airTemperatureC", result.airTemperatureC); filled.push("air temp"); }
-                    if (result.snowTemperatureC != null) { form.setValue("snowTemperatureC", result.snowTemperatureC); filled.push("snow temp"); }
-                    if (result.airHumidityPct != null) { form.setValue("airHumidityPct", result.airHumidityPct); filled.push("air humidity"); }
-                    if (result.snowHumidityPct != null) { form.setValue("snowHumidityPct", result.snowHumidityPct); filled.push("snow humidity"); }
-                    if (result.wind != null) { form.setValue("wind", result.wind); filled.push("wind"); }
-                    if (result.precipitation != null) { form.setValue("precipitation", result.precipitation); filled.push("precipitation"); }
-                    if (result.clouds != null) { form.setValue("clouds", result.clouds); filled.push("clouds"); }
-                    if (result.visibility != null) { form.setValue("visibility", result.visibility); filled.push("visibility"); }
+                    if (result.airTemperatureC != null) { form.setValue("airTemperatureC", result.airTemperatureC); filled.push(L("lufttemp", "air temp")); }
+                    if (result.snowTemperatureC != null) { form.setValue("snowTemperatureC", result.snowTemperatureC); filled.push(L("snøtemp", "snow temp")); }
+                    if (result.airHumidityPct != null) { form.setValue("airHumidityPct", result.airHumidityPct); filled.push(L("luftfuktighet", "air humidity")); }
+                    if (result.snowHumidityPct != null) { form.setValue("snowHumidityPct", result.snowHumidityPct); filled.push(L("snøfuktighet", "snow humidity")); }
+                    if (result.wind != null) { form.setValue("wind", result.wind); filled.push(L("vind", "wind")); }
+                    if (result.precipitation != null) { form.setValue("precipitation", result.precipitation); filled.push(L("nedbør", "precipitation")); }
+                    if (result.clouds != null) { form.setValue("clouds", result.clouds); filled.push(L("skyer", "clouds")); }
+                    if (result.visibility != null) { form.setValue("visibility", result.visibility); filled.push(L("sikt", "visibility")); }
                     toast({
                       title: t("weatherStation.fetchSuccess"),
-                      description: filled.length ? filled.join(", ") : "No data returned",
+                      description: filled.length ? filled.join(", ") : L("Ingen data returnert", "No data returned"),
                     });
                   } catch (err) {
                     toast({ title: t("weatherStation.testFailed"), variant: "destructive" });
@@ -379,14 +380,14 @@ function WeatherForm({
                 }}
               >
                 <Wifi className="mr-1.5 h-3.5 w-3.5" />
-                {fetchingStation ? "Fetching…" : t("weatherStation.fetchFromStation")}
+                {fetchingStation ? L("Henter…", "Fetching…") : t("weatherStation.fetchFromStation")}
               </Button>
             </div>
           )}
         </div>
 
         <div className="space-y-1">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Temperature & Humidity</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Temperatur og fuktighet", "Temperature & Humidity")}</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <FormField
               control={form.control}
@@ -444,7 +445,7 @@ function WeatherForm({
         </div>
 
         <div className="space-y-1">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weather Conditions</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Værforhold", "Weather Conditions")}</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <FormField
               control={form.control}
@@ -510,7 +511,7 @@ function WeatherForm({
         </div>
 
         <div className="space-y-1">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Snow Type</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Snøtype", "Snow Type")}</h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FormField
               control={form.control}
@@ -568,7 +569,7 @@ function WeatherForm({
         </div>
 
         <div className="space-y-1">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Snow & Track</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Snø og spor", "Snow & Track")}</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <FormField
               control={form.control}
@@ -709,7 +710,8 @@ function StationFields({ stationType, config, onChange }: {
   config: Record<string, string>;
   onChange: (key: string, value: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
 
   const field = (key: string, labelKey: string, type: "text" | "password" = "text", placeholder?: string) => (
     <div className="space-y-1" key={key}>
@@ -860,7 +862,8 @@ function buildConfig(stationType: string, flat: Record<string, string>): Record<
 }
 
 function WeatherStationDialog() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [stationType, setStationType] = useState<StationType | "">("");
@@ -904,7 +907,7 @@ function WeatherStationDialog() {
         toast({ title: t("weatherStation.testFailed"), description: data.error, variant: "destructive" });
       }
     } catch (err) {
-      toast({ title: t("weatherStation.testFailed"), description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+      toast({ title: t("weatherStation.testFailed"), description: err instanceof Error ? err.message : L("Ukjent feil", "Unknown error"), variant: "destructive" });
     } finally {
       setTesting(false);
     }
@@ -923,7 +926,7 @@ function WeatherStationDialog() {
       toast({ title: t("weatherStation.connected") });
       setOpen(false);
     } catch (err) {
-      toast({ title: "Save failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+      toast({ title: L("Lagring mislyktes", "Save failed"), description: err instanceof Error ? err.message : L("Ukjent feil", "Unknown error"), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -937,7 +940,7 @@ function WeatherStationDialog() {
       toast({ title: t("weatherStation.disconnect") });
       setOpen(false);
     } catch (err) {
-      toast({ title: "Error", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: err instanceof Error ? err.message : L("Ukjent feil", "Unknown error"), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -985,7 +988,7 @@ function WeatherStationDialog() {
             <label className="text-sm font-medium">{t("weatherStation.stationType")}</label>
             <Select value={stationType} onValueChange={(v) => { setStationType(v as StationType); setConfig({}); }}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a station type…" />
+                <SelectValue placeholder={L("Velg en værstasjontype…", "Select a station type…")} />
               </SelectTrigger>
               <SelectContent>
                 {STATION_TYPES.map((s) => (
@@ -1013,12 +1016,12 @@ function WeatherStationDialog() {
             <div className="flex gap-2 ml-auto">
               {stationType && (
                 <Button variant="outline" size="sm" disabled={testing} onClick={handleTest}>
-                  {testing ? "Testing…" : t("weatherStation.testConnection")}
+                  {testing ? L("Tester…", "Testing…") : t("weatherStation.testConnection")}
                 </Button>
               )}
               {stationType && (
                 <Button size="sm" disabled={saving} onClick={handleSave}>
-                  {saving ? "Saving…" : t("weatherStation.save")}
+                  {saving ? L("Lagrer…", "Saving…") : t("weatherStation.save")}
                 </Button>
               )}
             </div>
@@ -1030,7 +1033,8 @@ function WeatherStationDialog() {
 }
 
 export default function WeatherPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -1087,11 +1091,11 @@ export default function WeatherPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/weather"] });
-      toast({ title: "Weather log deleted" });
+      toast({ title: L("Værlogg slettet", "Weather log deleted") });
       setConfirmDelete(undefined);
     },
     onError: (e) => {
-      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e instanceof Error ? e.message : L("Ukjent feil", "Unknown error"), variant: "destructive" });
     },
   });
 
@@ -1137,7 +1141,7 @@ export default function WeatherPage() {
             <LocationAutocomplete
               value={locationSearch}
               onChange={setLocationSearch}
-              placeholder="Search location…"
+              placeholder={L("Søk etter sted…", "Search location…")}
               searchMode
               data-testid="input-weather-search"
               inputClassName="h-8 text-sm"
@@ -1160,10 +1164,10 @@ export default function WeatherPage() {
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted"
               )}
-              title="Card view"
+              title={L("Kortvisning", "Card view")}
             >
               <LayoutGrid className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Cards</span>
+              <span className="hidden sm:inline">{L("Kort", "Cards")}</span>
             </button>
             <button
               onClick={() => setView("list")}
@@ -1173,10 +1177,10 @@ export default function WeatherPage() {
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted"
               )}
-              title="List view"
+              title={L("Listevisning", "List view")}
             >
               <List className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">List</span>
+              <span className="hidden sm:inline">{L("Liste", "List")}</span>
             </button>
           </div>
         </div>
@@ -1186,8 +1190,8 @@ export default function WeatherPage() {
           <Card className="fs-card rounded-2xl">
             <EmptyState
               icon={Search}
-              title="No results"
-              description={`No weather entries found for "${locationSearch}".`}
+              title={L("Ingen treff", "No results")}
+              description={L(`Fant ingen værlogger for «${locationSearch}».`, `No weather entries found for "${locationSearch}".`)}
             />
           </Card>
         )}
@@ -1199,16 +1203,16 @@ export default function WeatherPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/40">
-                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date</th>
-                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Location</th>
-                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Snow °C</th>
-                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Air °C</th>
-                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Snow Hum</th>
-                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Air Hum</th>
-                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Conditions</th>
-                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Quality</th>
-                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">Added by</th>
-                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Dato", "Date")}</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Sted", "Location")}</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Snø °C", "Snow °C")}</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Luft °C", "Air °C")}</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">{L("Snøfukt", "Snow Hum")}</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">{L("Luftfukt", "Air Hum")}</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden md:table-cell">{L("Forhold", "Conditions")}</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">{L("Kvalitet", "Quality")}</th>
+                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">{L("Lagt til av", "Added by")}</th>
+                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Handlinger", "Actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -1326,25 +1330,25 @@ export default function WeatherPage() {
                     <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                       <div className="rounded-xl fs-gradient-emerald px-3 py-2.5 ring-1 ring-emerald-500/10" data-testid={`text-snowtemp-${w.id}`}>
                         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-700/70">
-                          <Thermometer className="h-3 w-3" /> Snow Temp
+                          <Thermometer className="h-3 w-3" /> {L("Snøtemp", "Snow Temp")}
                         </div>
                         <div className="mt-0.5 text-sm font-bold text-emerald-700">{w.snowTemperatureC}°C</div>
                       </div>
                       <div className="rounded-xl fs-gradient-blue px-3 py-2.5 ring-1 ring-sky-500/10" data-testid={`text-airtemp-${w.id}`}>
                         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-sky-700/70">
-                          <Thermometer className="h-3 w-3" /> Air Temp
+                          <Thermometer className="h-3 w-3" /> {L("Lufttemp", "Air Temp")}
                         </div>
                         <div className="mt-0.5 text-sm font-bold text-sky-700">{w.airTemperatureC}°C</div>
                       </div>
                       <div className="rounded-xl fs-gradient-amber px-3 py-2.5 ring-1 ring-amber-500/10" data-testid={`text-snowhum-${w.id}`}>
                         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-amber-300/70">
-                          <Droplets className="h-3 w-3" /> Snow Hum (Doser)
+                          <Droplets className="h-3 w-3" /> {L("Snøfukt (Doser)", "Snow Hum (Doser)")}
                         </div>
                         <div className="mt-0.5 text-sm font-bold text-amber-300">{w.snowHumidityPct != null ? `${w.snowHumidityPct}%` : "—"}</div>
                       </div>
                       <div className="rounded-xl fs-gradient-violet px-3 py-2.5 ring-1 ring-violet-500/10" data-testid={`text-airhum-${w.id}`}>
                         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-violet-700/70">
-                          <Droplets className="h-3 w-3" /> Air Hum
+                          <Droplets className="h-3 w-3" /> {L("Luftfukt", "Air Hum")}
                         </div>
                         <div className="mt-0.5 text-sm font-bold text-violet-700">{w.airHumidityPct != null ? `${w.airHumidityPct}%rH` : "—"}</div>
                       </div>
@@ -1352,31 +1356,31 @@ export default function WeatherPage() {
 
                     <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                       {w.clouds != null && (
-                        <WeatherBadge label="Clouds" value={`${w.clouds}/8`} colorClass="bg-slate-500/10 text-slate-300 ring-slate-500/20" />
+                        <WeatherBadge label={L("Skyer", "Clouds")} value={`${w.clouds}/8`} colorClass="bg-slate-500/10 text-slate-300 ring-slate-500/20" />
                       )}
                       {w.visibility && (
-                        <WeatherBadge label="Vis" value={w.visibility} colorClass="bg-cyan-500/10 text-cyan-300 ring-cyan-500/20" />
+                        <WeatherBadge label={L("Sikt", "Vis")} value={w.visibility} colorClass="bg-cyan-500/10 text-cyan-300 ring-cyan-500/20" />
                       )}
                       {w.wind && (
-                        <WeatherBadge label="Wind" value={w.wind} colorClass="bg-teal-500/10 text-teal-300 ring-teal-500/20" />
+                        <WeatherBadge label={L("Vind", "Wind")} value={w.wind} colorClass="bg-teal-500/10 text-teal-300 ring-teal-500/20" />
                       )}
                       {w.precipitation && (
-                        <WeatherBadge label="Precip" value={w.precipitation} colorClass="bg-blue-50 text-blue-300 ring-blue-200" />
+                        <WeatherBadge label={L("Nedbør", "Precip")} value={w.precipitation} colorClass="bg-blue-50 text-blue-300 ring-blue-200" />
                       )}
                       {w.artificialSnow && (
-                        <WeatherBadge label="Art. snow" value={w.artificialSnow} colorClass="bg-pink-50 text-pink-700 ring-pink-200" />
+                        <WeatherBadge label={L("Kunstsnø", "Art. snow")} value={w.artificialSnow} colorClass="bg-pink-50 text-pink-700 ring-pink-200" />
                       )}
                       {w.naturalSnow && (
-                        <WeatherBadge label="Nat. snow" value={w.naturalSnow} colorClass="bg-sky-50 text-sky-700 ring-sky-200" />
+                        <WeatherBadge label={L("Natursnø", "Nat. snow")} value={w.naturalSnow} colorClass="bg-sky-50 text-sky-700 ring-sky-200" />
                       )}
                       {w.grainSize && (
-                        <WeatherBadge label="Grain" value={w.grainSize} colorClass="bg-orange-500/10 text-orange-300 ring-orange-500/20" />
+                        <WeatherBadge label={L("Korn", "Grain")} value={w.grainSize} colorClass="bg-orange-500/10 text-orange-300 ring-orange-500/20" />
                       )}
                       {w.snowHumidityType && (
-                        <WeatherBadge label="Snow hum" value={w.snowHumidityType} colorClass="bg-indigo-50 text-indigo-700 ring-indigo-500/20" />
+                        <WeatherBadge label={L("Snøfukt", "Snow hum")} value={w.snowHumidityType} colorClass="bg-indigo-50 text-indigo-700 ring-indigo-500/20" />
                       )}
                       {w.trackHardness && (
-                        <WeatherBadge label="Track" value={w.trackHardness} colorClass="bg-rose-50 text-rose-300 ring-rose-200" />
+                        <WeatherBadge label={L("Spor", "Track")} value={w.trackHardness} colorClass="bg-rose-50 text-rose-300 ring-rose-200" />
                       )}
                     </div>
 
@@ -1425,7 +1429,7 @@ export default function WeatherPage() {
             {confirmDelete && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Are you sure you want to delete the weather log for <span className="font-medium text-foreground">{confirmDelete.location}</span> on <span className="font-medium text-foreground">{fmtDate(confirmDelete.date)}</span>?
+                  {L("Er du sikker på at du vil slette værloggen for ", "Are you sure you want to delete the weather log for ")}<span className="font-medium text-foreground">{confirmDelete.location}</span> {L("på", "on")} <span className="font-medium text-foreground">{fmtDate(confirmDelete.date)}</span>?
                 </p>
                 <div className="flex justify-end gap-2">
                   <Button variant="ghost" onClick={() => setConfirmDelete(undefined)}>{t("common.cancel")}</Button>

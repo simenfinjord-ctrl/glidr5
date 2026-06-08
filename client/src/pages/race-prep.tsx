@@ -1,7 +1,7 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Flag, Plus, X, ChevronRight, Pencil, Check, Trash2, Users, Search, Snowflake, FileDown } from "lucide-react";
+import { Flag, Plus, X, ChevronRight, Pencil, Check, Trash2, Users, Search, Snowflake, FileDown, ChevronsUpDown } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,11 +59,27 @@ type RacePrep = {
   structureIds: string | null;
   kickProductIds: string | null;
   tette: string | null;
+  productApps: string | null;    // JSON: [{ productId, application }]
+  structureApps: string | null;  // JSON: [{ productId, application }]
   weatherId: number | null;
   createdById: number;
   createdByName: string;
   createdAt: string;
 };
+
+// One glide/structure product with its own application on a race prep.
+type ProductApp = { productId: number; application: string };
+
+function parseProductApps(json: string | null, fallbackIds: string | null): ProductApp[] {
+  if (json) {
+    try {
+      const arr = JSON.parse(json);
+      if (Array.isArray(arr)) return arr.filter((x) => x && typeof x.productId === "number");
+    } catch {}
+  }
+  // Fall back to legacy comma-separated IDs with empty applications
+  return parseIds(fallbackIds).map((productId) => ({ productId, application: "" }));
+}
 
 type RacePrepEntry = {
   id: number;
@@ -123,8 +139,8 @@ const EMPTY_FORM = {
   location: "",
   raceType: "",
   discipline: "Classic",
-  productIds: [] as number[],
-  structureIds: [] as number[],
+  glide: [] as ProductApp[],
+  structure: [] as ProductApp[],
   kick: "",
   tette: "",
   method: "",
@@ -158,54 +174,57 @@ const GRAIN_SIZE_OPTIONS = ["Extra fine", "Very fine", "Fine", "Average", "Coars
 const SNOW_STAGE_OPTIONS = ["Falling new", "New", "Irreg. dir. new", "Irreg. dir. transf.", "Transformed"] as const;
 
 // ── Multi-product picker ──────────────────────────────────────────────────────
-function MultiProductPicker({
-  value,
-  onChange,
+// Single product search-select. Shows the chosen product, or a search box.
+function SingleProductSelect({
+  productId,
+  onSelect,
   products,
   placeholder,
 }: {
-  value: number[];
-  onChange: (ids: number[]) => void;
+  productId: number;
+  onSelect: (id: number) => void;
   products: Product[];
   placeholder: string;
 }) {
   const [search, setSearch] = useState("");
-  const selected = products.filter(p => value.includes(p.id));
+  const [open, setOpen] = useState(false);
+  const chosen = products.find((p) => p.id === productId);
   const filtered = search.trim()
-    ? products.filter(p =>
-        !value.includes(p.id) &&
-        `${p.brand} ${p.name} ${p.category}`.toLowerCase().includes(search.toLowerCase())
-      )
-    : products.filter(p => !value.includes(p.id)).slice(0, 20);
+    ? products.filter((p) => `${p.brand} ${p.name} ${p.category}`.toLowerCase().includes(search.toLowerCase())).slice(0, 30)
+    : products.slice(0, 30);
+
+  if (chosen && !open) {
+    return (
+      <button
+        type="button"
+        onClick={() => { setOpen(true); setSearch(""); }}
+        className="flex-1 min-w-0 flex items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 h-9 text-sm hover:bg-muted/40"
+      >
+        <span className="truncate font-medium">{chosen.brand} {chosen.name}</span>
+        <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+      </button>
+    );
+  }
 
   return (
-    <div className="space-y-1.5">
-      {selected.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {selected.map(p => (
-            <span key={p.id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-medium">
-              {p.brand} {p.name}
-              <button type="button" onClick={() => onChange(value.filter(id => id !== p.id))} className="ml-0.5 hover:text-red-500">
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
+    <div className="relative flex-1 min-w-0">
       <Input
+        autoFocus={open}
         placeholder={placeholder}
         value={search}
-        onChange={e => setSearch(e.target.value)}
-        className="h-8 text-sm"
+        onChange={(e) => setSearch(e.target.value)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        className="h-9 text-sm"
       />
-      {search.trim() && filtered.length > 0 && (
-        <div className="rounded-lg border border-border bg-card shadow-sm max-h-40 overflow-y-auto">
-          {filtered.map(p => (
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 left-0 right-0 top-full mt-1 rounded-lg border border-border bg-popover shadow-lg max-h-44 overflow-y-auto">
+          {filtered.map((p) => (
             <button
               key={p.id}
               type="button"
+              onMouseDown={(e) => { e.preventDefault(); onSelect(p.id); setOpen(false); setSearch(""); }}
               className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted/60 transition-colors"
-              onClick={() => { onChange([...value, p.id]); setSearch(""); }}
             >
               <span className="font-medium">{p.brand} {p.name}</span>
               <span className="ml-1.5 text-xs text-muted-foreground">{p.category}</span>
@@ -213,9 +232,63 @@ function MultiProductPicker({
           ))}
         </div>
       )}
-      {search.trim() && filtered.length === 0 && (
-        <p className="text-xs text-muted-foreground px-1">No products found</p>
-      )}
+    </div>
+  );
+}
+
+// Product + per-product application list, with "+" to add more — mirrors Tests.
+function ProductApplicationPicker({
+  value,
+  onChange,
+  products,
+  L,
+}: {
+  value: ProductApp[];
+  onChange: (next: ProductApp[]) => void;
+  products: Product[];
+  L: (no: string, en: string) => string;
+}) {
+  const add = () => onChange([...value, { productId: 0, application: "" }]);
+  const update = (i: number, patch: Partial<ProductApp>) =>
+    onChange(value.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const remove = (i: number) => onChange(value.filter((_, j) => j !== i));
+
+  return (
+    <div className="space-y-2">
+      {value.map((row, i) => (
+        <div key={i} className="rounded-lg border border-border bg-muted/20 p-2 space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <SingleProductSelect
+              productId={row.productId}
+              onSelect={(id) => update(i, { productId: id })}
+              products={products}
+              placeholder={L("Velg produkt", "Select product")}
+            />
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              className="h-9 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-muted flex-shrink-0"
+              title={L("Fjern", "Remove")}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <Input
+            value={row.application}
+            onChange={(e) => update(i, { application: e.target.value })}
+            placeholder={L("Applikasjon…", "Application…")}
+            className="h-8 text-sm border-dashed"
+          />
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={add}
+        className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+      >
+        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary text-sm">+</span>
+        {L("Legg til produkt", "Add product")}
+      </button>
     </div>
   );
 }
@@ -724,8 +797,19 @@ function PrepDetailDialog({
     }
   }
 
-  const glideNames = productNames(prep.productIds, products);
-  const structureNamesStr = productNames(prep.structureIds, products);
+  // Render "Brand Name (application)" joined by " + " from the per-product apps
+  const fmtProductApps = (appsJson: string | null, idsFallback: string | null): string =>
+    parseProductApps(appsJson, idsFallback)
+      .map(({ productId, application }) => {
+        const p = products.find((pp) => pp.id === productId);
+        const nm = p ? `${p.brand} ${p.name}` : "";
+        if (!nm) return "";
+        return application ? `${nm} (${application})` : nm;
+      })
+      .filter(Boolean)
+      .join(" + ");
+  const glideDisplay = fmtProductApps(prep.productApps, prep.productIds);
+  const structureDisplay = fmtProductApps(prep.structureApps, prep.structureIds);
   // kickProductIds may hold free text or legacy comma-sep IDs
   const kickDisplay = prep.kickProductIds
     ? (isFreeText(prep.kickProductIds) ? prep.kickProductIds : productNames(prep.kickProductIds, products))
@@ -746,8 +830,8 @@ function PrepDetailDialog({
       [L("Renntype", "Race type"), prep.raceType],
       [L("Stilart", "Discipline"), disciplineLabel],
     ];
-    if (glideNames) infoRows.push([L("Glid", "Glide"), glideNames]);
-    if (structureNamesStr) infoRows.push([L("Struktur", "Structure"), structureNamesStr]);
+    if (glideDisplay) infoRows.push([L("Glid", "Glide"), glideDisplay]);
+    if (structureDisplay) infoRows.push([L("Struktur", "Structure"), structureDisplay]);
     if (showKick && kickDisplay) infoRows.push(["Kick", kickDisplay]);
     if (showKick && prep.tette) infoRows.push([lang === "en" ? "Binder" : "Tette", prep.tette]);
     if (prep.method) infoRows.push([L("Metode", "Method"), prep.method]);
@@ -788,8 +872,8 @@ function PrepDetailDialog({
       return [
         e.athleteName,
         skiVal ?? "—",
-        glideNames || "—",
-        structureNamesStr || "—",
+        glideDisplay || "—",
+        structureDisplay || "—",
         ...(showKick ? [kickDisplay || "—"] : []),
         e.waxerName ?? "—",
         e.notes ?? "",
@@ -840,16 +924,16 @@ function PrepDetailDialog({
               {DISCIPLINE_LABEL[prep.discipline]?.[lang] ?? prep.discipline}
             </span>
           </div>
-          {glideNames && (
+          {glideDisplay && (
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">{L("Produkter (glid)", "Products (glide)")}</p>
-              <p className="font-medium">{glideNames}</p>
+              <p className="font-medium">{glideDisplay}</p>
             </div>
           )}
-          {structureNamesStr && (
+          {structureDisplay && (
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">{L("Struktur", "Structure")}</p>
-              <p className="font-medium">{structureNamesStr}</p>
+              <p className="font-medium">{structureDisplay}</p>
             </div>
           )}
           {showKick && (
@@ -871,13 +955,13 @@ function PrepDetailDialog({
             </div>
           )}
           {/* Legacy text fields fallback */}
-          {!glideNames && prep.products && (
+          {!glideDisplay && prep.products && (
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">{L("Produkter", "Products")}</p>
               <p className="font-medium">{prep.products}</p>
             </div>
           )}
-          {!structureNamesStr && prep.structure && (
+          {!structureDisplay && prep.structure && (
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">{L("Struktur", "Structure")}</p>
               <p className="font-medium">{prep.structure}</p>
@@ -1117,8 +1201,8 @@ function PrepFormDialog({
           location: editPrep.location,
           raceType: editPrep.raceType,
           discipline: editPrep.discipline,
-          productIds: parseIds(editPrep.productIds),
-          structureIds: parseIds(editPrep.structureIds),
+          glide: parseProductApps(editPrep.productApps, editPrep.productIds),
+          structure: parseProductApps(editPrep.structureApps, editPrep.structureIds),
           // kickProductIds may be free text or legacy IDs — display as text
           kick: editPrep.kickProductIds
             ? (isFreeText(editPrep.kickProductIds) ? editPrep.kickProductIds : productNames(editPrep.kickProductIds, []))
@@ -1149,14 +1233,21 @@ function PrepFormDialog({
     if (!form.date || !form.startTime || !form.location || !form.raceType || !form.discipline) return;
     setSaving(true);
     try {
+      // Only keep rows with a chosen product
+      const glide = form.glide.filter((g) => g.productId > 0);
+      const structure = form.structure.filter((s) => s.productId > 0);
       const payload = {
         date: form.date,
         startTime: form.startTime,
         location: form.location,
         raceType: form.raceType,
         discipline: form.discipline,
-        productIds: form.productIds.join(","),
-        structureIds: form.structureIds.join(","),
+        // Keep comma-separated IDs in sync for analytics / PDF / backup
+        productIds: glide.map((g) => g.productId).join(","),
+        structureIds: structure.map((s) => s.productId).join(","),
+        // Per-product application as JSON
+        productApps: glide.length ? JSON.stringify(glide) : null,
+        structureApps: structure.length ? JSON.stringify(structure) : null,
         // Store kick free text in kickProductIds column
         kickProductIds: form.kick,
         tette: form.tette,
@@ -1217,20 +1308,20 @@ function PrepFormDialog({
           </div>
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-medium">{L("Produkt(er) — glid", "Product(s) — glide")}</label>
-            <MultiProductPicker
-              value={form.productIds}
-              onChange={(ids) => f("productIds", ids)}
-              products={products}
-              placeholder={L("Søk etter produkt...", "Search for product...")}
+            <ProductApplicationPicker
+              value={form.glide}
+              onChange={(next) => f("glide", next)}
+              products={products.filter(p => p.category !== "Structure tool")}
+              L={L}
             />
           </div>
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-medium">{L("Struktur", "Structure")}</label>
-            <MultiProductPicker
-              value={form.structureIds}
-              onChange={(ids) => f("structureIds", ids)}
+            <ProductApplicationPicker
+              value={form.structure}
+              onChange={(next) => f("structure", next)}
               products={products.filter(p => p.category === "Structure tool")}
-              placeholder={L("Søk etter struktur...", "Search for structure tool...")}
+              L={L}
             />
           </div>
           {showKick && (

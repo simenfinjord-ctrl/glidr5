@@ -527,6 +527,8 @@ export async function registerRoutes(
       ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS tette TEXT;
       ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS weather_id INTEGER;
       ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS start_time TEXT;
+      ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS product_apps TEXT;
+      ALTER TABLE race_preps ADD COLUMN IF NOT EXISTS structure_apps TEXT;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS ski_id_classic TEXT;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS ski_id_skating TEXT;
       ALTER TABLE products ADD COLUMN IF NOT EXISTS archived_at TEXT;
@@ -5171,6 +5173,7 @@ export async function registerRoutes(
       `SELECT id, team_id AS "teamId", date, start_time AS "startTime", location, race_type AS "raceType", discipline,
               products, method, structure, notes,
               product_ids AS "productIds", structure_ids AS "structureIds", kick_product_ids AS "kickProductIds", tette,
+              product_apps AS "productApps", structure_apps AS "structureApps",
               weather_id AS "weatherId",
               created_by_id AS "createdById", created_by_name AS "createdByName", created_at AS "createdAt"
        FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
@@ -5182,13 +5185,13 @@ export async function registerRoutes(
   app.post("/api/race-preps", requirePermission("raceprep", "edit"), async (req, res) => {
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
-    const { date, startTime, location, raceType, discipline, products, method, structure, notes, productIds, structureIds, kickProductIds, tette, weatherId } = req.body;
+    const { date, startTime, location, raceType, discipline, products, method, structure, notes, productIds, structureIds, kickProductIds, tette, weatherId, productApps, structureApps } = req.body;
     if (!date || !startTime || !location || !raceType || !discipline) return res.status(400).json({ message: "date, startTime, location, raceType, discipline required" });
     const { pool } = await import("./db");
     const result = await (pool as any).query(
-      `INSERT INTO race_preps (team_id, date, start_time, location, race_type, discipline, products, method, structure, notes, product_ids, structure_ids, kick_product_ids, tette, weather_id, created_by_id, created_by_name, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`,
-      [teamId, date, startTime || null, location, raceType, discipline, products || null, method || null, structure || null, notes || null, productIds || null, structureIds || null, kickProductIds || null, tette || null, weatherId || null, u.id, u.name || "Ukjent", new Date().toISOString()]
+      `INSERT INTO race_preps (team_id, date, start_time, location, race_type, discipline, products, method, structure, notes, product_ids, structure_ids, kick_product_ids, tette, weather_id, product_apps, structure_apps, created_by_id, created_by_name, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING id`,
+      [teamId, date, startTime || null, location, raceType, discipline, products || null, method || null, structure || null, notes || null, productIds || null, structureIds || null, kickProductIds || null, tette || null, weatherId || null, productApps || null, structureApps || null, u.id, u.name || "Ukjent", new Date().toISOString()]
     );
     return res.json({ id: result.rows[0].id });
   });
@@ -5198,11 +5201,11 @@ export async function registerRoutes(
     if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) return res.status(403).json({ message: "Team admin only" });
     const id = parseInt(req.params.id);
     const teamId = u.activeTeamId || u.teamId;
-    const { date, startTime, location, raceType, discipline, products, method, structure, notes, productIds, structureIds, kickProductIds, tette, weatherId } = req.body;
+    const { date, startTime, location, raceType, discipline, products, method, structure, notes, productIds, structureIds, kickProductIds, tette, weatherId, productApps, structureApps } = req.body;
     const { pool } = await import("./db");
     await (pool as any).query(
-      `UPDATE race_preps SET date=$1, start_time=$2, location=$3, race_type=$4, discipline=$5, products=$6, method=$7, structure=$8, notes=$9, product_ids=$10, structure_ids=$11, kick_product_ids=$12, tette=$13, weather_id=$14 WHERE id=$15 AND team_id=$16`,
-      [date, startTime || null, location, raceType, discipline, products || null, method || null, structure || null, notes || null, productIds || null, structureIds || null, kickProductIds || null, tette || null, weatherId || null, id, teamId]
+      `UPDATE race_preps SET date=$1, start_time=$2, location=$3, race_type=$4, discipline=$5, products=$6, method=$7, structure=$8, notes=$9, product_ids=$10, structure_ids=$11, kick_product_ids=$12, tette=$13, weather_id=$14, product_apps=$15, structure_apps=$16 WHERE id=$17 AND team_id=$18`,
+      [date, startTime || null, location, raceType, discipline, products || null, method || null, structure || null, notes || null, productIds || null, structureIds || null, kickProductIds || null, tette || null, weatherId || null, productApps || null, structureApps || null, id, teamId]
     );
     return res.json({ ok: true });
   });

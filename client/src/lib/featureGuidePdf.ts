@@ -648,7 +648,7 @@ ul.feat-list li::before {
   <li>Race type (Sprint / Distance / Skiathlon / etc.) and discipline (Classic / Skating / Free).</li>
   <li>Glide products, structure, and kick products — displayed as resolved product names.</li>
   <li>Application method and preparation notes.</li>
-  <li>Tette — kick zone / boot tightness notes.</li>
+  <li>Grunning (binder) — kick zone notes.</li>
   <li>Linked weather/conditions log with full 15-field conditions display.</li>
 </ul>
 

@@ -833,7 +833,7 @@ function PrepDetailDialog({
     if (glideDisplay) infoRows.push([L("Glid", "Glide"), glideDisplay]);
     if (structureDisplay) infoRows.push([L("Struktur", "Structure"), structureDisplay]);
     if (showKick && kickDisplay) infoRows.push(["Kick", kickDisplay]);
-    if (showKick && prep.tette) infoRows.push([lang === "en" ? "Binder" : "Tette", prep.tette]);
+    if (showKick && prep.tette) infoRows.push([lang === "en" ? "Binder" : "Grunning", prep.tette]);
     if (prep.method) infoRows.push([L("Metode", "Method"), prep.method]);
     if (prep.notes) infoRows.push([L("Notater", "Notes"), prep.notes]);
 
@@ -944,7 +944,7 @@ function PrepDetailDialog({
           )}
           {showKick && (
             <div>
-              <p className="text-xs text-muted-foreground mb-0.5">{lang === "en" ? "Binder" : "Tette"}</p>
+              <p className="text-xs text-muted-foreground mb-0.5">{lang === "en" ? "Binder" : "Grunning"}</p>
               <p className="font-medium">{prep.tette || <span className="text-muted-foreground">—</span>}</p>
             </div>
           )}
@@ -1344,7 +1344,7 @@ function PrepFormDialog({
           )}
           {showKick && (
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium">{L("Tette", "Binder")}</label>
+              <label className="mb-1 block text-xs font-medium">{L("Grunning", "Binder")}</label>
               <Input value={form.tette} onChange={(e) => f("tette", e.target.value)} placeholder={L("f.eks. Rode Violet", "e.g. Rode Violet")} />
             </div>
           )}

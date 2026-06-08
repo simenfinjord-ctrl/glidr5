@@ -2105,7 +2105,7 @@ function RegistrationsTab() {
                   </SelectContent>
                 </Select>
               </div>
-              <p className="text-xs text-muted-foreground">{L("Dette oppretter et nytt lag og merker registreringen som «konvertert».", "This will create a new team and mark the registration as "converted".")}</p>
+              <p className="text-xs text-muted-foreground">{L("Dette oppretter et nytt lag og merker registreringen som «konvertert».", 'This will create a new team and mark the registration as "converted".')}</p>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setConvertReg(null)}>{L("Avbryt", "Cancel")}</Button>
                 <Button onClick={handleConvert} disabled={!convertTeamName.trim()}>{L("Opprett lag", "Create team")}</Button>

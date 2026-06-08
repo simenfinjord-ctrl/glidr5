@@ -4201,7 +4201,7 @@ export async function registerRoutes(
     const racePrepsResult = await (pool as any).query(
       `SELECT id, date, start_time, location, race_type, discipline,
               products, method, structure, notes, tette,
-              product_ids, structure_ids, kick_product_ids,
+              product_ids, structure_ids, kick_product_ids, product_apps, structure_apps,
               weather_id, created_by_name, created_at
        FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
       [teamId]

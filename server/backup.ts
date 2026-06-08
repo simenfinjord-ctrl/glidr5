@@ -136,7 +136,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
     const racePrepsResult = await (pool as any).query(
       `SELECT id, date, start_time, location, race_type, discipline,
               products, method, structure, notes, tette,
-              product_ids, structure_ids, kick_product_ids,
+              product_ids, structure_ids, kick_product_ids, product_apps, structure_apps,
               weather_id, created_by_name, created_at
        FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
       [teamId]
@@ -339,6 +339,27 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
         return raw;
       }
     };
+    // Per-product application: "Brand Name (app) + ...". Falls back to comma-sep IDs.
+    const resolveProductApps = (appsJson: string | null | undefined, idsFallback: string | null | undefined): string => {
+      if (appsJson) {
+        try {
+          const arr = JSON.parse(appsJson);
+          if (Array.isArray(arr)) {
+            return arr.map((x: any) => {
+              const p = productsById[x.productId];
+              const nm = p ? `${p.brand} ${p.name}` : '';
+              if (!nm) return '';
+              return x.application ? `${nm} (${x.application})` : nm;
+            }).filter(Boolean).join(' + ');
+          }
+        } catch {}
+      }
+      if (!idsFallback) return '';
+      return String(idsFallback).split(',').map(s => {
+        const p = productsById[parseInt(s.trim())];
+        return p ? `${p.brand} ${p.name}` : '';
+      }).filter(Boolean).join(' + ');
+    };
 
     // Helper: build flat entry rows for a list of tests
     // Each test gets a bold header row, then one entry row per ski entry.
@@ -515,8 +536,8 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       rpRows.push([`─── Race Prep #${rp.id} ───`]);
       rpRows.push(['Date', rp.date || '', 'Start Time', rp.start_time || '', 'Location', rp.location || '']);
       rpRows.push(['Race Type', rp.race_type || '', 'Discipline', rp.discipline || '', 'Tette', rp.tette || '']);
-      const glideNames = resolveProductIds(rp.product_ids) || rp.products || '';
-      const structureNames = resolveProductIds(rp.structure_ids) || rp.structure || '';
+      const glideNames = resolveProductApps(rp.product_apps, rp.product_ids) || rp.products || '';
+      const structureNames = resolveProductApps(rp.structure_apps, rp.structure_ids) || rp.structure || '';
       const kickNames = resolveProductIds(rp.kick_product_ids) || '';
       rpRows.push(['Glide Products', glideNames, 'Structure', structureNames, 'Kick Products', kickNames]);
       rpRows.push(['Application / Method', rp.method || '']);
@@ -825,7 +846,7 @@ export async function buildTeamJsonExport(teamId: number): Promise<string> {
   const racePrepsResult = await (pool as any).query(
     `SELECT id, date, start_time, location, race_type, discipline,
             products, method, structure, notes, tette,
-            product_ids, structure_ids, kick_product_ids,
+            product_ids, structure_ids, kick_product_ids, product_apps, structure_apps,
             weather_id, created_by_name, created_at
      FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
     [teamId]
@@ -909,6 +930,23 @@ function buildExportHtml(data: {
     const ids = raw.split(',').map((p: string) => parseInt(p.trim())).filter((n: number) => !isNaN(n));
     const resolved = ids.map((id: number) => { const p = productMap.get(id); return p ? `${p.brand || ''} ${p.name}`.trim() : ''; }).filter(Boolean).join(' + ');
     return resolved || raw;
+  };
+  // Per-product application: "Brand Name (app) + ...". Falls back to comma-sep IDs.
+  const resolveApps = (appsJson: string | null | undefined, idsFallback: string | null | undefined): string => {
+    if (appsJson) {
+      try {
+        const arr = JSON.parse(appsJson);
+        if (Array.isArray(arr)) {
+          return arr.map((x: any) => {
+            const p = productMap.get(x.productId);
+            const nm = p ? `${p.brand || ''} ${p.name}`.trim() : '';
+            if (!nm) return '';
+            return x.application ? `${nm} (${x.application})` : nm;
+          }).filter(Boolean).join(' + ');
+        }
+      } catch {}
+    }
+    return resolveIds(idsFallback);
   };
 
   const getProductLabel = (entry: any, forAthleteTest = false): string => {
@@ -1165,8 +1203,8 @@ function buildExportHtml(data: {
     let rpHtml = '';
     const sortedRps = [...data.racePreps].sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
     for (const rp of sortedRps) {
-      const glide   = resolveIds(rp.product_ids) || rp.products || '—';
-      const struct  = resolveIds(rp.structure_ids) || rp.structure || '—';
+      const glide   = resolveApps(rp.product_apps, rp.product_ids) || rp.products || '—';
+      const struct  = resolveApps(rp.structure_apps, rp.structure_ids) || rp.structure || '—';
       const kick    = resolveIds(rp.kick_product_ids) || '—';
       const rpEntries = entriesByRpId.get(rp.id) || [];
       const isSkating = rp.discipline === 'Skating';
@@ -1319,7 +1357,7 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
   const racePrepsResult = await (pool as any).query(
     `SELECT id, date, start_time, location, race_type, discipline,
             products, method, structure, notes, tette,
-            product_ids, structure_ids, kick_product_ids,
+            product_ids, structure_ids, kick_product_ids, product_apps, structure_apps,
             weather_id, created_by_name, created_at
      FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
     [teamId]

@@ -2834,6 +2834,23 @@ export default function Admin() {
           const resolved = ids.map(id => { const p = earlyProductMap.get(id); return p ? `${p.brand || ""} ${p.name}`.trim() : ""; }).filter(Boolean).join(" + ");
           return resolved || raw;
         };
+        // Per-product application: "Brand Name (app) + ...". Falls back to IDs.
+        const resolveRpApps = (appsJson: string | null | undefined, idsFallback: string | null | undefined): string => {
+          if (appsJson) {
+            try {
+              const arr = JSON.parse(appsJson);
+              if (Array.isArray(arr)) {
+                return arr.map((x: any) => {
+                  const p = earlyProductMap.get(x.productId);
+                  const nm = p ? `${p.brand || ""} ${p.name}`.trim() : "";
+                  if (!nm) return "";
+                  return x.application ? `${nm} (${x.application})` : nm;
+                }).filter(Boolean).join(" + ");
+              }
+            } catch {}
+          }
+          return resolveRpIds(idsFallback);
+        };
 
         // Group entries by race prep ID
         const entriesByRpId = new Map<number, any[]>();
@@ -2853,8 +2870,8 @@ export default function Admin() {
         for (const rp of sortedRacePreps) {
           checkPage(40);
 
-          const glideStr = resolveRpIds(rp.product_ids) || rp.products || "—";
-          const structStr = resolveRpIds(rp.structure_ids) || rp.structure || "—";
+          const glideStr = resolveRpApps(rp.product_apps, rp.product_ids) || rp.products || "—";
+          const structStr = resolveRpApps(rp.structure_apps, rp.structure_ids) || rp.structure || "—";
           const kickStr = resolveRpIds(rp.kick_product_ids) || "—";
           const linkedWx = rp.weather_id ? weatherById.get(rp.weather_id) : null;
 

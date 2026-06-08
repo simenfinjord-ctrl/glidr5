@@ -1226,8 +1226,8 @@ export default function WeatherPage() {
                       </td>
                       <td className="px-3 py-2.5 text-right font-mono text-xs font-semibold text-emerald-600 dark:text-emerald-400">{w.snowTemperatureC}°</td>
                       <td className="px-3 py-2.5 text-right font-mono text-xs font-semibold text-sky-600 dark:text-sky-400">{w.airTemperatureC}°</td>
-                      <td className="px-3 py-2.5 text-right text-xs text-muted-foreground hidden sm:table-cell">{w.snowHumidityPct}%</td>
-                      <td className="px-3 py-2.5 text-right text-xs text-muted-foreground hidden sm:table-cell">{w.airHumidityPct}%</td>
+                      <td className="px-3 py-2.5 text-right text-xs text-muted-foreground hidden sm:table-cell">{w.snowHumidityPct != null ? `${w.snowHumidityPct}%` : "—"}</td>
+                      <td className="px-3 py-2.5 text-right text-xs text-muted-foreground hidden sm:table-cell">{w.airHumidityPct != null ? `${w.airHumidityPct}%` : "—"}</td>
                       <td className="px-3 py-2.5 hidden md:table-cell">
                         <div className="flex flex-wrap gap-1">
                           {w.trackHardness && (
@@ -1340,13 +1340,13 @@ export default function WeatherPage() {
                         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-amber-300/70">
                           <Droplets className="h-3 w-3" /> Snow Hum (Doser)
                         </div>
-                        <div className="mt-0.5 text-sm font-bold text-amber-300">{w.snowHumidityPct}%</div>
+                        <div className="mt-0.5 text-sm font-bold text-amber-300">{w.snowHumidityPct != null ? `${w.snowHumidityPct}%` : "—"}</div>
                       </div>
                       <div className="rounded-xl fs-gradient-violet px-3 py-2.5 ring-1 ring-violet-500/10" data-testid={`text-airhum-${w.id}`}>
                         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-violet-700/70">
                           <Droplets className="h-3 w-3" /> Air Hum
                         </div>
-                        <div className="mt-0.5 text-sm font-bold text-violet-700">{w.airHumidityPct}%rH</div>
+                        <div className="mt-0.5 text-sm font-bold text-violet-700">{w.airHumidityPct != null ? `${w.airHumidityPct}%rH` : "—"}</div>
                       </div>
                     </div>
 

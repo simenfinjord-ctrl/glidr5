@@ -5390,6 +5390,8 @@ export async function registerRoutes(
          rp.product_ids AS "productIds",
          rp.structure_ids AS "structureIds",
          rp.kick_product_ids AS "kickProductIds",
+         rp.product_apps AS "productApps",
+         rp.structure_apps AS "structureApps",
          rp.tette,
          rp.method,
          rp.notes AS "prepNotes",
@@ -5408,6 +5410,8 @@ export async function registerRoutes(
           productIds: undefined,
           structureIds: undefined,
           kickProductIds: undefined,
+          productApps: undefined,
+          structureApps: undefined,
           method: undefined,
           prepNotes: undefined,
         }))

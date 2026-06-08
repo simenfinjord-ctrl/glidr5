@@ -219,6 +219,8 @@ type AthleteRaceHistory = {
   productIds: string | null;
   structureIds: string | null;
   kickProductIds: string | null;
+  productApps: string | null;
+  structureApps: string | null;
   tette: string | null;
   method: string | null;
   prepNotes: string | null;
@@ -1991,8 +1993,21 @@ export default function AthleteDetail() {
                             .map(id => allProducts.find(p => p.id === id))
                             .filter((p): p is typeof allProducts[0] => !!p)
                         : [];
-                      const glide = parseIds(entry.productIds).map(p => `${p.brand} ${p.name}`).join(" + ");
-                      const struct = parseIds(entry.structureIds).map(p => `${p.brand} ${p.name}`).join(" + ");
+                      // "Brand Name (app) + ..." from productApps, falling back to IDs
+                      const fmtApps = (appsJson: string | null, idsFallback: string | null): string => {
+                        let pairs: { productId: number; application: string }[] = [];
+                        if (appsJson) {
+                          try { const a = JSON.parse(appsJson); if (Array.isArray(a)) pairs = a.filter((x: any) => x && typeof x.productId === "number"); } catch {}
+                        }
+                        if (pairs.length === 0) return parseIds(idsFallback).map(p => `${p.brand} ${p.name}`).join(" + ");
+                        return pairs.map(({ productId, application }) => {
+                          const p = allProducts.find(pp => pp.id === productId);
+                          if (!p) return "";
+                          return application ? `${p.brand} ${p.name} (${application})` : `${p.brand} ${p.name}`;
+                        }).filter(Boolean).join(" + ");
+                      };
+                      const glide = fmtApps(entry.productApps, entry.productIds);
+                      const struct = fmtApps(entry.structureApps, entry.structureIds);
                       const kickIsText = entry.kickProductIds ? entry.kickProductIds.split(",").some(s => isNaN(Number(s.trim()))) : false;
                       const kick = kickIsText ? (entry.kickProductIds ?? "") : parseIds(entry.kickProductIds).map(p => `${p.brand} ${p.name}`).join(" + ");
                       const tette = entry.tette ?? "";
@@ -2026,14 +2041,33 @@ export default function AthleteDetail() {
               {filteredRaceHistory.map((entry) => {
                 const rw = entry.weatherId ? raceWeatherById.get(entry.weatherId) : null;
 
-                // Resolve product objects from comma-sep IDs
+                // Resolve products with their per-product application.
+                // Prefer the productApps JSON; fall back to comma-sep IDs.
+                const resolveWithApps = (appsJson: string | null, idsFallback: string | null) => {
+                  let pairs: { productId: number; application: string }[] = [];
+                  if (appsJson) {
+                    try {
+                      const arr = JSON.parse(appsJson);
+                      if (Array.isArray(arr)) pairs = arr.filter((x: any) => x && typeof x.productId === "number");
+                    } catch {}
+                  }
+                  if (pairs.length === 0 && idsFallback) {
+                    pairs = idsFallback.split(",").map(Number).filter(Boolean).map(productId => ({ productId, application: "" }));
+                  }
+                  return pairs
+                    .map(({ productId, application }) => {
+                      const p = allProducts.find(pp => pp.id === productId);
+                      return p ? { product: p, application } : null;
+                    })
+                    .filter((x): x is { product: typeof allProducts[0]; application: string } => !!x);
+                };
+                const glideProducts = resolveWithApps(entry.productApps, entry.productIds);
+                const structureProducts = resolveWithApps(entry.structureApps, entry.structureIds);
                 const parseProductIds = (ids: string | null) =>
                   ids ? ids.split(",").map(Number).filter(Boolean)
                       .map(id => allProducts.find(p => p.id === id))
                       .filter((p): p is typeof allProducts[0] => !!p)
                   : [];
-                const glideProducts = parseProductIds(entry.productIds);
-                const structureProducts = parseProductIds(entry.structureIds);
                 const kickIsText = entry.kickProductIds
                   ? entry.kickProductIds.split(",").some(s => isNaN(Number(s.trim())))
                   : false;
@@ -2094,14 +2128,14 @@ export default function AthleteDetail() {
                       {/* ── Products + Application ── */}
                       {hasProducts && (
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mb-3">
-                          {glideProducts.map((p, i) => (
+                          {glideProducts.map(({ product: p, application }, i) => (
                             <span key={i} className="inline-flex items-center rounded-lg bg-violet-50 dark:bg-violet-900/20 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:text-violet-300 ring-1 ring-violet-200 dark:ring-violet-800">
-                              {p.brand} {p.name}
+                              {p.brand} {p.name}{application ? <span className="ml-1 font-normal opacity-80">({application})</span> : null}
                             </span>
                           ))}
-                          {structureProducts.map((p, i) => (
+                          {structureProducts.map(({ product: p, application }, i) => (
                             <span key={`s${i}`} className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700">
-                              {p.brand} {p.name}
+                              {p.brand} {p.name}{application ? <span className="ml-1 font-normal opacity-80">({application})</span> : null}
                             </span>
                           ))}
                           {kickProducts.map((p, i) => (

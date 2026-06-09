@@ -302,10 +302,10 @@ function GroupAssignModal({
 }: {
   product: Product;
   groupNames: string[];
-  const { language } = useI18n();
-  const L = (no: string, en: string) => (language === "no" ? no : en);
   onDone: () => void;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const currentGroups = product.groupScope.split(",").map((s) => s.trim()).filter(Boolean);
   const [selected, setSelected] = useState<string[]>(currentGroups);
@@ -1237,11 +1237,11 @@ function StockChangesView({
 }: {
   stockChanges: StockChange[];
   uniqueGroups: string[];
-  const { language } = useI18n();
-  const L = (no: string, en: string) => (language === "no" ? no : en);
   groupFilter: string;
   setGroupFilter: (v: string) => void;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [sort, setSort] = useState<StockSort>("date-desc");
 
   const filtered = useMemo(() => {

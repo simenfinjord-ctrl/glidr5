@@ -25,7 +25,8 @@ type Athlete = {
 export default function RaceSkis() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [team, setTeam] = useState("");
@@ -139,21 +140,21 @@ export default function RaceSkis() {
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">Name</label>
+                  <label className="mb-1.5 block text-sm font-medium">{L("Navn", "Name")}</label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g., Johannes Klæbo"
+                    placeholder={L("f.eks. Johannes Klæbo", "e.g., Johannes Klæbo")}
                     required
                     data-testid="input-athlete-name"
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">Team</label>
+                  <label className="mb-1.5 block text-sm font-medium">{L("Lag", "Team")}</label>
                   <Input
                     value={team}
                     onChange={(e) => setTeam(e.target.value)}
-                    placeholder="e.g., Norway"
+                    placeholder={L("f.eks. Norge", "e.g., Norway")}
                     data-testid="input-athlete-team"
                   />
                 </div>

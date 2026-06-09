@@ -113,7 +113,8 @@ function timeAgo(iso: string): string {
 
 function LiveBracket({ session }: { session: LiveRunsheet }) {
   const [, navigate] = useLocation();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const bracket = session.bracket;
   if (!bracket || bracket.length === 0) return null;
 
@@ -339,7 +340,8 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
 }
 
 export default function LiveRunsheets() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { data: sessions = [], isLoading } = useQuery<LiveRunsheet[]>({
     queryKey: ["/api/live-runsheets"],
     refetchInterval: 3000,
@@ -397,7 +399,7 @@ export default function LiveRunsheets() {
           </div>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-[150px] h-9" data-testid="select-live-type-filter">
-              <SelectValue placeholder="Test type" />
+              <SelectValue placeholder={L("Testtype", "Test type")} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("liveRunsheets.allTypes")}</SelectItem>
@@ -408,7 +410,7 @@ export default function LiveRunsheets() {
           </Select>
           <Select value={sourceFilter} onValueChange={setSourceFilter}>
             <SelectTrigger className="w-[150px] h-9" data-testid="select-live-source-filter">
-              <SelectValue placeholder="Source" />
+              <SelectValue placeholder={L("Kilde", "Source")} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("liveRunsheets.allSources")}</SelectItem>

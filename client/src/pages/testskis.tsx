@@ -64,7 +64,8 @@ function SeriesForm({
   onSaved: () => void;
   userGroups: string[];
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const { queueMutation } = useOffline();
 
@@ -184,7 +185,7 @@ function SeriesForm({
               <FormItem>
                 <FormLabel>{t("testskis.seriesName")}</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-series-name" placeholder="e.g., Testskis Blue 1" />
+                  <Input {...field} data-testid="input-series-name" placeholder={L("f.eks. Testski Blå 1", "e.g., Testskis Blue 1")} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -198,7 +199,7 @@ function SeriesForm({
               <FormItem>
                 <FormLabel>{t("testskis.brand")}</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-series-brand" placeholder="e.g., Fischer" />
+                  <Input {...field} data-testid="input-series-brand" placeholder={L("f.eks. Fischer", "e.g., Fischer")} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -214,7 +215,7 @@ function SeriesForm({
               <FormItem>
                 <FormLabel>{t("testskis.skiType")}</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-series-skitype" placeholder="e.g., Classic, Skating" />
+                  <Input {...field} data-testid="input-series-skitype" placeholder={L("f.eks. Klassisk, Skøyting", "e.g., Classic, Skating")} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -230,7 +231,7 @@ function SeriesForm({
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger data-testid="select-series-type">
-                      <SelectValue placeholder="Select" />
+                      <SelectValue placeholder={L("Velg", "Select")} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -299,7 +300,7 @@ function SeriesForm({
               <FormItem>
                 <FormLabel>{t("testskis.grind")} ({t("common.optional")})</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-series-grind" placeholder="e.g., R3" />
+                  <Input {...field} data-testid="input-series-grind" placeholder={L("f.eks. R3", "e.g., R3")} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -330,7 +331,7 @@ function SeriesForm({
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger data-testid="select-series-group">
-                      <SelectValue placeholder="Select group" />
+                      <SelectValue placeholder={L("Velg gruppe", "Select group")} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -358,7 +359,8 @@ function SeriesForm({
 }
 
 export default function TestSkis() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -415,7 +417,7 @@ export default function TestSkis() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/series"] });
       queryClient.invalidateQueries({ queryKey: ["/api/series/archived"] });
-      toast({ title: "Series restored" });
+      toast({ title: L("Serie gjenopprettet", "Series restored") });
     },
     onError: (e) => {
       toast({ title: t("common.error"), description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
@@ -428,7 +430,7 @@ export default function TestSkis() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/series/archived"] });
-      toast({ title: "Series permanently deleted" });
+      toast({ title: L("Serie slettet permanent", "Series permanently deleted") });
       setConfirmDelete(undefined);
     },
     onError: (e) => {
@@ -479,7 +481,7 @@ export default function TestSkis() {
             <Input
               value={nameSearch}
               onChange={(e) => setNameSearch(e.target.value)}
-              placeholder="Search name…"
+              placeholder={L("Søk navn…", "Search name…")}
               className={cn("h-9 w-[180px]", !filtersOpen && "hidden sm:block")}
               data-testid="input-search-series"
             />
@@ -537,7 +539,7 @@ export default function TestSkis() {
 
         {showArchive && archived.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-amber-600">Archived series</h2>
+            <h2 className="text-lg font-semibold text-amber-600">{L("Arkiverte serier", "Archived series")}</h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {archived.map((s) => (
                 <Card

@@ -115,7 +115,8 @@ export default function NewTest() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, can } = useAuth();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
 
   const urlParams = new URLSearchParams(window.location.search);
   const duplicateId = urlParams.get("duplicate");
@@ -608,7 +609,7 @@ export default function NewTest() {
                         >
                           <FormControl>
                             <SelectTrigger data-testid="select-test-type">
-                              <SelectValue placeholder="Select" />
+                              <SelectValue placeholder={L("Velg", "Select")} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -823,7 +824,7 @@ export default function NewTest() {
                           <Textarea
                             {...field}
                             rows={2}
-                            placeholder="Optional notes…"
+                            placeholder={L("Valgfrie notater…", "Optional notes…")}
                             data-testid="input-test-notes"
                           />
                         </FormControl>

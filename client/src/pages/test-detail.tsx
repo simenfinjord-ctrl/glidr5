@@ -176,7 +176,8 @@ function RankBadge({ rank, size = "sm" }: { rank: number | null; size?: "sm" | "
 
 function AddToWatchButton({ testId, testName, seriesId, hasAccess }: { testId: number; testName: string; seriesId: number; hasAccess: boolean }) {
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { data: queue = [] } = useQuery<any[]>({
     queryKey: ["/api/watch/queue"],
     enabled: hasAccess,
@@ -187,14 +188,14 @@ function AddToWatchButton({ testId, testName, seriesId, hasAccess }: { testId: n
     mutationFn: () => apiRequest("POST", "/api/watch/queue", { testId, seriesId, testName }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/watch/queue"] });
-      toast({ title: t("watchQueue.addToQueue"), description: "Open the Garmin app and select «From list»." });
+      toast({ title: t("watchQueue.addToQueue"), description: L("Åpne Garmin-appen og velg «Fra liste».", "Open the Garmin app and select «From list».") });
     },
     onError: (err: any) => {
       const msg = err?.message || "";
       if (msg.includes("409") || msg.includes("Already")) {
-        toast({ title: t("watchQueue.active"), description: "This test is already in the watch queue.", variant: "destructive" });
+        toast({ title: t("watchQueue.active"), description: L("Denne testen er allerede i klokkekøen.", "This test is already in the watch queue."), variant: "destructive" });
       } else {
-        toast({ title: t("common.error"), description: "Could not add to watch queue.", variant: "destructive" });
+        toast({ title: t("common.error"), description: L("Kunne ikke legge til i klokkekø.", "Could not add to watch queue."), variant: "destructive" });
       }
     },
   });
@@ -214,6 +215,8 @@ function AddToWatchButton({ testId, testName, seriesId, hasAccess }: { testId: n
 }
 
 function AttachmentsSection({ testId }: { testId: number }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
@@ -230,7 +233,7 @@ function AttachmentsSection({ testId }: { testId: number }) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast({ title: "Only image files are supported", variant: "destructive" });
+      toast({ title: L("Kun bildefiler støttes", "Only image files are supported"), variant: "destructive" });
       return;
     }
     setUploading(true);
@@ -249,9 +252,9 @@ function AttachmentsSection({ testId }: { testId: number }) {
       });
       if (!res.ok) throw new Error("Upload failed");
       queryClient.invalidateQueries({ queryKey: [`/api/tests/${testId}/attachments`] });
-      toast({ title: "Photo uploaded" });
+      toast({ title: L("Bilde lastet opp", "Photo uploaded") });
     } catch {
-      toast({ title: "Upload failed", variant: "destructive" });
+      toast({ title: L("Opplasting mislyktes", "Upload failed"), variant: "destructive" });
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -261,14 +264,14 @@ function AttachmentsSection({ testId }: { testId: number }) {
   return (
     <div className="mt-4">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold">Photos</h3>
+        <h3 className="text-sm font-semibold">{L("Bilder", "Photos")}</h3>
         <label className={`cursor-pointer rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
           {uploading ? "Uploading..." : "Add photo"}
           <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} disabled={uploading} />
         </label>
       </div>
       {attachments.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No photos attached.</p>
+        <p className="text-xs text-muted-foreground">{L("Ingen bilder vedlagt.", "No photos attached.")}</p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {attachments.map((a: any) => (
@@ -312,6 +315,8 @@ function CommentText({ text }: { text: string }) {
 }
 
 function CommentsSection({ testId }: { testId: number }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -434,7 +439,7 @@ function CommentsSection({ testId }: { testId: number }) {
       setMentionQuery(null);
       queryClient.invalidateQueries({ queryKey: [`/api/tests/${testId}/comments`] });
     } catch {
-      toast({ title: "Error", description: "Could not post comment.", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: L("Kunne ikke publisere kommentar.", "Could not post comment."), variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -456,7 +461,7 @@ function CommentsSection({ testId }: { testId: number }) {
         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50">
           <MessageSquare className="h-4 w-4 text-blue-600" />
         </div>
-        <h2 className="text-base font-semibold">Comments</h2>
+        <h2 className="text-base font-semibold">{L("Kommentarer", "Comments")}</h2>
         {comments.length > 0 && (
           <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{comments.length}</span>
         )}
@@ -468,7 +473,7 @@ function CommentsSection({ testId }: { testId: number }) {
           {[1,2].map(i => <div key={i} className="h-14 rounded-xl bg-muted/40 animate-pulse" />)}
         </div>
       ) : comments.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No comments yet. Be the first!</p>
+        <p className="text-sm text-muted-foreground">{L("Ingen kommentarer ennå. Bli den første!", "No comments yet. Be the first!")}</p>
       ) : (
         <div className="space-y-3">
           {comments.map((c: any) => (
@@ -487,7 +492,7 @@ function CommentsSection({ testId }: { testId: number }) {
                 <button
                   onClick={() => deleteComment(c.id)}
                   className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all shrink-0"
-                  title="Delete"
+                  title={L("Slett", "Delete")}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -505,7 +510,7 @@ function CommentsSection({ testId }: { testId: number }) {
             value={content}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            placeholder="Write a comment… type @ to mention someone"
+            placeholder={L("Skriv en kommentar… skriv @ for å nevne noen", "Write a comment… type @ to mention someone")}
             className="w-full min-h-[60px] max-h-[160px] resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             maxLength={2000}
             data-testid="input-comment"
@@ -551,6 +556,7 @@ export default function TestDetail() {
   const testId = id ? parseInt(id) : NaN;
   const { isBlindTester, isSuperAdmin, can } = useAuth();
   const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const lang = language === "no" ? "no" : "en";
   const hasWatchAccess = can("garmin_watch");
   const canEditTests = can("tests", "edit");
@@ -800,7 +806,7 @@ export default function TestDetail() {
     if (!res.ok) {
       let errMsg = `Server returned ${res.status}`;
       try { const body = await res.json(); if (body?.message) errMsg = body.message; } catch {}
-      toast({ title: "PDF failed", description: errMsg, variant: "destructive" });
+      toast({ title: L("PDF mislyktes", "PDF failed"), description: errMsg, variant: "destructive" });
       return;
     }
     const { test: pdfTest, entries: pdfEntries, weather: pdfWeather, comments: pdfComments } = await res.json();
@@ -945,7 +951,7 @@ export default function TestDetail() {
 
     doc.save(`glidr-test-${pdfTest.location}-${pdfTest.date}.pdf`);
     } catch (err: any) {
-      toast({ title: "PDF failed", description: err?.message ?? "Unknown error", variant: "destructive" });
+      toast({ title: L("PDF mislyktes", "PDF failed"), description: err?.message ?? "Unknown error", variant: "destructive" });
     } finally {
       setPdfLoading(false);
     }
@@ -1003,7 +1009,7 @@ export default function TestDetail() {
                     onClick={() => prevId && navigate(`/tests/${prevId}`)}
                     data-testid="button-prev-test"
                     className="h-8 w-8 p-0"
-                    title="Previous test"
+                    title={L("Forrige test", "Previous test")}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -1017,7 +1023,7 @@ export default function TestDetail() {
                     onClick={() => nextId && navigate(`/tests/${nextId}`)}
                     data-testid="button-next-test"
                     className="h-8 w-8 p-0"
-                    title="Next test"
+                    title={L("Neste test", "Next test")}
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -1059,9 +1065,9 @@ export default function TestDetail() {
                       if (!res.ok) throw new Error("Failed to generate link");
                       const { url } = await res.json();
                       await navigator.clipboard.writeText(url);
-                      toast({ title: "Link copied to clipboard" });
+                      toast({ title: L("Lenke kopiert til utklippstavle", "Link copied to clipboard") });
                     } catch {
-                      toast({ title: "Could not copy link", variant: "destructive" });
+                      toast({ title: L("Kunne ikke kopiere lenke", "Could not copy link"), variant: "destructive" });
                     } finally {
                       setCopyLinkLoading(false);
                     }

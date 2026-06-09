@@ -179,6 +179,8 @@ function BucketBreakdown({
   testsById: Map<number, Test>;
   weatherById: Map<number, Weather>;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const rows = useMemo(() => {
     const stats = new Map<string, { ranks: number[]; wins: number }>();
     for (const entry of entries) {
@@ -222,9 +224,9 @@ function BucketBreakdown({
           <thead className="bg-muted/60">
             <tr>
               <th className="text-left px-3 py-2 font-medium">{title}</th>
-              <th className="text-center px-3 py-2 font-medium">Tests</th>
-              <th className="text-center px-3 py-2 font-medium">Avg rank</th>
-              <th className="text-center px-3 py-2 font-medium">Wins</th>
+              <th className="text-center px-3 py-2 font-medium">{L("Tester", "Tests")}</th>
+              <th className="text-center px-3 py-2 font-medium">{L("Snittrang", "Avg rank")}</th>
+              <th className="text-center px-3 py-2 font-medium">{L("Seire", "Wins")}</th>
             </tr>
           </thead>
           <tbody>
@@ -246,6 +248,8 @@ function BucketBreakdown({
 // ── Activity Heatmap ───────────────────────────────────────────────────────────
 
 function ActivityHeatmap({ tests }: { tests: Test[] }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const today = new Date();
   const startDate = new Date(today);
   startDate.setDate(startDate.getDate() - 364);
@@ -298,7 +302,7 @@ function ActivityHeatmap({ tests }: { tests: Test[] }) {
         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
           <CalendarDays className="h-4 w-4 text-emerald-600" />
         </div>
-        <h2 className="text-base font-semibold">Test activity</h2>
+        <h2 className="text-base font-semibold">{L("Testaktivitet", "Test activity")}</h2>
         <span className="text-xs text-muted-foreground">{totalTests} tests across {activeDays} days</span>
       </div>
       <div className="overflow-x-auto">
@@ -335,11 +339,11 @@ function ActivityHeatmap({ tests }: { tests: Test[] }) {
           </div>
           {/* Legend */}
           <div className="flex items-center gap-1.5 mt-2">
-            <span className="text-[10px] text-muted-foreground">Less</span>
+            <span className="text-[10px] text-muted-foreground">{L("Mindre", "Less")}</span>
             {["bg-muted/40", "bg-green-200", "bg-green-400", "bg-green-600"].map((c, i) => (
               <div key={i} className={`h-3 w-3 rounded-sm ${c}`} />
             ))}
-            <span className="text-[10px] text-muted-foreground">More</span>
+            <span className="text-[10px] text-muted-foreground">{L("Mer", "More")}</span>
           </div>
         </div>
       </div>
@@ -360,7 +364,8 @@ function OverviewStats({
   weatherById: Map<number, Weather>;
   productCategoryFilter?: string;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const stats = useMemo(() => {
     const weatherLinked = tests.filter((t) => t.weatherId != null).length;
     const weatherPct = tests.length > 0 ? Math.round((weatherLinked / tests.length) * 100) : 0;
@@ -480,7 +485,7 @@ function OverviewStats({
             <span className="text-xs text-muted-foreground">({t("analytics.minTests", { n: 3 })})</span>
           </div>
           {stats.topByWinRate.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Not enough data yet.</p>
+            <p className="text-xs text-muted-foreground">{L("Ikke nok data ennå.", "Not enough data yet.")}</p>
           ) : (
             <>
               <ResponsiveContainer width="100%" height={220}>
@@ -618,7 +623,7 @@ function OverviewStats({
             <h3 className="text-sm font-semibold">{t("analytics.testedConditionsOverview")}</h3>
           </div>
           {stats.weatherLinked === 0 ? (
-            <p className="text-xs text-muted-foreground">No weather-linked tests yet.</p>
+            <p className="text-xs text-muted-foreground">{L("Ingen værkoblede tester ennå.", "No weather-linked tests yet.")}</p>
           ) : (
             <div className="flex flex-col gap-3">
               {[
@@ -641,7 +646,7 @@ function OverviewStats({
               })}
               {stats.humidityTypeDist.size > 0 && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Snow humidity</p>
+                  <p className="text-xs text-muted-foreground mb-1">{L("Snøfuktighet", "Snow humidity")}</p>
                   <div className="flex flex-wrap gap-1">
                     {Array.from(stats.humidityTypeDist.entries()).map(([k, v]) => (
                       <span key={k} className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-blue-200">{k}: {v}</span>
@@ -651,7 +656,7 @@ function OverviewStats({
               )}
               {stats.trackHardnessDist.size > 0 && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Track hardness</p>
+                  <p className="text-xs text-muted-foreground mb-1">{L("Sporhardhet", "Track hardness")}</p>
                   <div className="flex flex-wrap gap-1">
                     {Array.from(stats.trackHardnessDist.entries()).map(([k, v]) => (
                       <span key={k} className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-700 ring-1 ring-orange-200">{k}: {v}</span>
@@ -684,6 +689,8 @@ function FormTracker({ allEntries, productsById, testsById }: {
   productsById: Map<number, Product>;
   testsById: Map<number, Test>;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const rows = useMemo(() => {
     const pData = new Map<number, { name: string; rankedEntries: { date: string; rank: number }[] }>();
     for (const e of allEntries) {
@@ -719,7 +726,7 @@ function FormTracker({ allEntries, productsById, testsById }: {
         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-50 dark:bg-orange-900/20">
           <TrendingUp className="h-4 w-4 text-orange-500" />
         </div>
-        <h2 className="text-base font-semibold">Form tracker</h2>
+        <h2 className="text-base font-semibold">{L("Formkurve", "Form tracker")}</h2>
         <span className="text-xs text-muted-foreground">Recent 5 tests vs all-time</span>
       </div>
       <div className="space-y-2">
@@ -759,6 +766,8 @@ function ConditionsBestBreakdown({
   testsById: Map<number, Test>;
   weatherById: Map<number, Weather>;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const data = useMemo(() => {
     const bracketStats = new Map<string, { ranks: number[]; wins: number }>();
     const entries = allEntries.filter((e) => e.productId === productId);
@@ -784,7 +793,7 @@ function ConditionsBestBreakdown({
     }).filter((d) => d.tests > 0);
   }, [productId, allEntries, testsById, weatherById]);
 
-  if (data.length === 0) return <p className="text-xs text-muted-foreground">No weather-linked tests for this product.</p>;
+  if (data.length === 0) return <p className="text-xs text-muted-foreground">{L("Ingen værkoblede tester for dette produktet.", "No weather-linked tests for this product.")}</p>;
 
   const best = [...data].sort((a, b) => (a.avgRank ?? 99) - (b.avgRank ?? 99))[0];
 
@@ -799,10 +808,10 @@ function ConditionsBestBreakdown({
         <table className="w-full text-sm">
           <thead className="bg-muted/60">
             <tr>
-              <th className="text-left px-3 py-2 text-xs font-medium">Snow temp range</th>
-              <th className="text-center px-3 py-2 text-xs font-medium">Tests</th>
-              <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
-              <th className="text-center px-3 py-2 text-xs font-medium">Wins</th>
+              <th className="text-left px-3 py-2 text-xs font-medium">{L("Snøtemp-område", "Snow temp range")}</th>
+              <th className="text-center px-3 py-2 text-xs font-medium">{L("Tester", "Tests")}</th>
+              <th className="text-center px-3 py-2 text-xs font-medium">{L("Snittrang", "Avg rank")}</th>
+              <th className="text-center px-3 py-2 text-xs font-medium">{L("Seire", "Wins")}</th>
             </tr>
           </thead>
           <tbody>
@@ -837,6 +846,8 @@ function BestProductsByConditions({
   testsById: Map<number, Test>;
   weatherById: Map<number, Weather>;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [selectedBracket, setSelectedBracket] = useState(TEMP_BRACKETS[1].label);
 
   const data = useMemo(() => {
@@ -886,7 +897,7 @@ function BestProductsByConditions({
         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 dark:bg-sky-900/30">
           <Snowflake className="h-4 w-4 text-sky-600 dark:text-sky-400" />
         </div>
-        <h2 className="text-base font-semibold">Best products by conditions</h2>
+        <h2 className="text-base font-semibold">{L("Beste produkter etter forhold", "Best products by conditions")}</h2>
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4">
@@ -925,10 +936,10 @@ function BestProductsByConditions({
               <thead className="bg-muted/60">
                 <tr>
                   <th className="text-left px-3 py-2 text-xs font-medium">#</th>
-                  <th className="text-left px-3 py-2 text-xs font-medium">Product</th>
-                  <th className="text-center px-3 py-2 text-xs font-medium">Tests</th>
-                  <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
-                  <th className="text-center px-3 py-2 text-xs font-medium">Win rate</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium">{L("Produkt", "Product")}</th>
+                  <th className="text-center px-3 py-2 text-xs font-medium">{L("Tester", "Tests")}</th>
+                  <th className="text-center px-3 py-2 text-xs font-medium">{L("Snittrang", "Avg rank")}</th>
+                  <th className="text-center px-3 py-2 text-xs font-medium">{L("Seiersrate", "Win rate")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -965,7 +976,8 @@ function ProductSearchStats({
   testsById: Map<number, Test>;
   weatherById?: Map<number, Weather>;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [expandedCombo, setExpandedCombo] = useState<number | null>(null);
@@ -1171,7 +1183,7 @@ function ProductSearchStats({
         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
           <Search className="h-4 w-4 text-cyan-600" />
         </div>
-        <h2 className="text-base font-semibold">Product performance lookup</h2>
+        <h2 className="text-base font-semibold">{L("Produktytelse-oppslag", "Product performance lookup")}</h2>
       </div>
 
       <div className="flex items-center gap-2 mb-4">
@@ -1193,7 +1205,7 @@ function ProductSearchStats({
             <Command>
               <CommandInput data-testid="input-product-search" placeholder={t("analytics.searchProducts")} />
               <CommandList>
-                <CommandEmpty>No matches.</CommandEmpty>
+                <CommandEmpty>{L("Ingen treff.", "No matches.")}</CommandEmpty>
                 <CommandGroup heading="Products">
                   {products.map((p) => (
                     <CommandItem
@@ -1233,7 +1245,7 @@ function ProductSearchStats({
             <div className="rounded-xl border p-3 text-center">
               <Hash className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
               <div className="text-2xl font-bold" data-testid="text-product-total-tests">{stats.totalTests}</div>
-              <div className="text-xs text-muted-foreground">Total tests</div>
+              <div className="text-xs text-muted-foreground">{L("Totalt antall tester", "Total tests")}</div>
             </div>
             <div className="rounded-xl border p-3 text-center">
               <Trophy className="h-4 w-4 mx-auto text-amber-500 mb-1" />
@@ -1243,17 +1255,17 @@ function ProductSearchStats({
             <div className="rounded-xl border p-3 text-center">
               <Award className="h-4 w-4 mx-auto text-green-500 mb-1" />
               <div className="text-2xl font-bold" data-testid="text-product-avg-rank">{stats.avgRank ?? "—"}</div>
-              <div className="text-xs text-muted-foreground">Avg rank</div>
+              <div className="text-xs text-muted-foreground">{L("Snittrang", "Avg rank")}</div>
             </div>
             <div className="rounded-xl border p-3 text-center">
               <Percent className="h-4 w-4 mx-auto text-emerald-500 mb-1" />
               <div className="text-2xl font-bold" data-testid="text-product-win-rate">{stats.winRate}%</div>
-              <div className="text-xs text-muted-foreground">Win rate</div>
+              <div className="text-xs text-muted-foreground">{L("Seiersrate", "Win rate")}</div>
             </div>
             <div className="rounded-xl border p-3 text-center">
               <Target className="h-4 w-4 mx-auto text-blue-500 mb-1" />
               <div className="text-2xl font-bold">{stats.medianRank ?? "—"}</div>
-              <div className="text-xs text-muted-foreground">Median rank</div>
+              <div className="text-xs text-muted-foreground">{L("Medianrang", "Median rank")}</div>
             </div>
             <div className="rounded-xl border p-3 text-center">
               <Activity className="h-4 w-4 mx-auto text-orange-500 mb-1" />
@@ -1263,7 +1275,7 @@ function ProductSearchStats({
             <div className="rounded-xl border p-3 text-center">
               <Award className="h-4 w-4 mx-auto text-amber-500 mb-1" />
               <div className="text-2xl font-bold">{stats.podiumRate}%</div>
-              <div className="text-xs text-muted-foreground">Podium rate</div>
+              <div className="text-xs text-muted-foreground">{L("Pallplassrate", "Podium rate")}</div>
             </div>
           </div>
 
@@ -1271,7 +1283,7 @@ function ProductSearchStats({
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <FlaskConical className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Methodology breakdown</span>
+                <span className="text-sm font-medium">{L("Metodikkfordeling", "Methodology breakdown")}</span>
               </div>
               <div className="flex flex-wrap gap-2" data-testid="list-methodology-breakdown">
                 {stats.methodologyBreakdown.map((m) => (
@@ -1302,8 +1314,8 @@ function ProductSearchStats({
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Ranking distribution</span>
-                  <span className="text-xs text-muted-foreground ml-auto">Podium rate: <span className="font-bold text-amber-600">{podiumPct}%</span></span>
+                  <span className="text-sm font-medium">{L("Rangfordeling", "Ranking distribution")}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">{L("Pallplassrate: ", "Podium rate: ")}<span className="font-bold text-amber-600">{podiumPct}%</span></span>
                 </div>
                 <ResponsiveContainer width="100%" height={160}>
                   <BarChart data={distData}>
@@ -1324,7 +1336,7 @@ function ProductSearchStats({
 
           {stats.performanceOverTime.length > 1 && (
             <div>
-              <div className="text-sm font-medium mb-2">Performance over time</div>
+              <div className="text-sm font-medium mb-2">{L("Ytelse over tid", "Performance over time")}</div>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={stats.performanceOverTime}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -1361,7 +1373,7 @@ function ProductSearchStats({
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <BucketBreakdown
-                title="Snow temperature"
+                title={L("Snøtemperatur", "Snow temperature")}
                 icon={<Snowflake className="h-3.5 w-3.5 text-sky-500" />}
                 entries={stats.productEntries}
                 getBucket={(e, t, w) => w?.snowTemperatureC != null ? tempBracket(w.snowTemperatureC) : null}
@@ -1369,7 +1381,7 @@ function ProductSearchStats({
                 weatherById={weatherById}
               />
               <BucketBreakdown
-                title="Air temperature"
+                title={L("Lufttemperatur", "Air temperature")}
                 icon={<Thermometer className="h-3.5 w-3.5 text-orange-500" />}
                 entries={stats.productEntries}
                 getBucket={(e, t, w) => w?.airTemperatureC != null ? airTempBracket(w.airTemperatureC) : null}
@@ -1377,7 +1389,7 @@ function ProductSearchStats({
                 weatherById={weatherById}
               />
               <BucketBreakdown
-                title="Snow humidity type"
+                title={L("Snøfukttype", "Snow humidity type")}
                 icon={<Droplets className="h-3.5 w-3.5 text-blue-500" />}
                 entries={stats.productEntries}
                 getBucket={(e, t, w) => w?.snowHumidityType ?? null}
@@ -1385,7 +1397,7 @@ function ProductSearchStats({
                 weatherById={weatherById}
               />
               <BucketBreakdown
-                title="Track hardness"
+                title={L("Sporhardhet", "Track hardness")}
                 icon={<Target className="h-3.5 w-3.5 text-amber-600" />}
                 entries={stats.productEntries}
                 getBucket={(e, t, w) => w?.trackHardness ?? null}
@@ -1393,7 +1405,7 @@ function ProductSearchStats({
                 weatherById={weatherById}
               />
               <BucketBreakdown
-                title="Air humidity"
+                title={L("Luftfuktighet", "Air humidity")}
                 icon={<Wind className="h-3.5 w-3.5 text-teal-500" />}
                 entries={stats.productEntries}
                 getBucket={(e, t, w) => w?.airHumidityPct != null ? humidityBracket(w.airHumidityPct) : null}
@@ -1401,7 +1413,7 @@ function ProductSearchStats({
                 weatherById={weatherById}
               />
               <BucketBreakdown
-                title="Test location"
+                title={L("Teststed", "Test location")}
                 icon={<MapPin className="h-3.5 w-3.5 text-rose-500" />}
                 entries={stats.productEntries}
                 getBucket={(e, t) => t.location}
@@ -1422,10 +1434,10 @@ function ProductSearchStats({
                   <table className="w-full text-sm">
                     <thead className="bg-muted/60">
                       <tr>
-                        <th className="text-left px-3 py-2 text-xs font-medium">Recipe</th>
-                        <th className="text-center px-3 py-2 text-xs font-medium">Times</th>
-                        <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
-                        <th className="text-center px-3 py-2 text-xs font-medium">Wins</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium">{L("Oppskrift", "Recipe")}</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">{L("Ganger", "Times")}</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">{L("Snittrang", "Avg rank")}</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">{L("Seire", "Wins")}</th>
                         <th className="w-8 px-2 py-2"></th>
                       </tr>
                     </thead>
@@ -1454,7 +1466,7 @@ function ProductSearchStats({
                             >
                               <td className="px-3 py-2.5">
                                 {i === 0 && (
-                                  <div className="text-[9px] font-semibold uppercase tracking-wider text-violet-500 mb-1.5">Best combo</div>
+                                  <div className="text-[9px] font-semibold uppercase tracking-wider text-violet-500 mb-1.5">{L("Beste kombinasjon", "Best combo")}</div>
                                 )}
                                 <div className="flex flex-wrap items-center gap-1.5">
                                   <span className="inline-flex items-center gap-1 rounded-md bg-violet-100 dark:bg-violet-900/40 px-2 py-0.5 text-xs font-semibold text-violet-800 dark:text-violet-200 ring-1 ring-violet-300/60 dark:ring-violet-600/40">
@@ -1486,19 +1498,19 @@ function ProductSearchStats({
                                     {comboTests.length} test{comboTests.length !== 1 ? "s" : ""} with this combination
                                   </div>
                                   {comboTests.length === 0 ? (
-                                    <p className="text-xs text-muted-foreground">No test details found.</p>
+                                    <p className="text-xs text-muted-foreground">{L("Ingen testdetaljer funnet.", "No test details found.")}</p>
                                   ) : (
                                     <div className="rounded-md border overflow-hidden">
                                       <table className="w-full text-xs">
                                         <thead className="bg-muted/60">
                                           <tr>
-                                            <th className="text-left px-2.5 py-1.5 font-medium">Date</th>
-                                            <th className="text-left px-2.5 py-1.5 font-medium">Location</th>
-                                            <th className="text-left px-2.5 py-1.5 font-medium">Type</th>
-                                            <th className="text-left px-2.5 py-1.5 font-medium">Application</th>
-                                            <th className="text-left px-2.5 py-1.5 font-medium">Partner app</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">{L("Dato", "Date")}</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">{L("Sted", "Location")}</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">{L("Type", "Type")}</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">{L("Applikasjon", "Application")}</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">{L("Partnerapplikasjon", "Partner app")}</th>
                                             <th className="text-center px-2.5 py-1.5 font-medium">Snow °C</th>
-                                            <th className="text-center px-2.5 py-1.5 font-medium">Rank</th>
+                                            <th className="text-center px-2.5 py-1.5 font-medium">{L("Rang", "Rank")}</th>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -1564,11 +1576,11 @@ function ProductSearchStats({
                   <table className="w-full text-sm">
                     <thead className="bg-muted/60">
                       <tr>
-                        <th className="text-left px-3 py-2 text-xs font-medium">Application</th>
-                        <th className="text-center px-3 py-2 text-xs font-medium">Count</th>
-                        <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
-                        <th className="text-center px-3 py-2 text-xs font-medium">Best</th>
-                        <th className="text-left px-3 py-2 text-xs font-medium">Conditions</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium">{L("Applikasjon", "Application")}</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">{L("Antall", "Count")}</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">{L("Snittrang", "Avg rank")}</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium">{L("Beste", "Best")}</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium">{L("Forhold", "Conditions")}</th>
                         <th className="w-8 px-2 py-2"></th>
                       </tr>
                     </thead>
@@ -1623,19 +1635,19 @@ function ProductSearchStats({
                                     {appTests.length} test{appTests.length !== 1 ? "s" : ""} with this application
                                   </div>
                                   {appTests.length === 0 ? (
-                                    <p className="text-xs text-muted-foreground">No test details found.</p>
+                                    <p className="text-xs text-muted-foreground">{L("Ingen testdetaljer funnet.", "No test details found.")}</p>
                                   ) : (
                                     <div className="rounded-md border overflow-hidden">
                                       <table className="w-full text-xs">
                                         <thead className="bg-muted/60">
                                           <tr>
-                                            <th className="text-left px-2.5 py-1.5 font-medium">Date</th>
-                                            <th className="text-left px-2.5 py-1.5 font-medium">Location</th>
-                                            <th className="text-left px-2.5 py-1.5 font-medium">Type</th>
-                                            <th className="text-left px-2.5 py-1.5 font-medium">Full methodology</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">{L("Dato", "Date")}</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">{L("Sted", "Location")}</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">{L("Type", "Type")}</th>
+                                            <th className="text-left px-2.5 py-1.5 font-medium">{L("Full metodikk", "Full methodology")}</th>
                                             <th className="text-center px-2.5 py-1.5 font-medium">Snow °C</th>
                                             <th className="text-center px-2.5 py-1.5 font-medium">Air °C</th>
-                                            <th className="text-center px-2.5 py-1.5 font-medium">Rank</th>
+                                            <th className="text-center px-2.5 py-1.5 font-medium">{L("Rang", "Rank")}</th>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -1715,10 +1727,10 @@ function ProductSearchStats({
                   <table className="w-full text-xs">
                     <thead className="bg-muted/60">
                       <tr>
-                        <th className="text-left px-3 py-2 font-medium">Location</th>
-                        <th className="text-center px-3 py-2 font-medium">Tests</th>
-                        <th className="text-center px-3 py-2 font-medium">Avg rank</th>
-                        <th className="text-center px-3 py-2 font-medium">Wins</th>
+                        <th className="text-left px-3 py-2 font-medium">{L("Sted", "Location")}</th>
+                        <th className="text-center px-3 py-2 font-medium">{L("Tester", "Tests")}</th>
+                        <th className="text-center px-3 py-2 font-medium">{L("Snittrang", "Avg rank")}</th>
+                        <th className="text-center px-3 py-2 font-medium">{L("Seire", "Wins")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1743,14 +1755,14 @@ function ProductSearchStats({
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
                   <tr>
-                    <th className="text-left px-3 py-2 font-medium">Date</th>
-                    <th className="text-left px-3 py-2 font-medium">Location</th>
-                    <th className="text-left px-3 py-2 font-medium">Type</th>
+                    <th className="text-left px-3 py-2 font-medium">{L("Dato", "Date")}</th>
+                    <th className="text-left px-3 py-2 font-medium">{L("Sted", "Location")}</th>
+                    <th className="text-left px-3 py-2 font-medium">{L("Type", "Type")}</th>
                     <th className="text-center px-3 py-2 font-medium">Snow °C</th>
                     <th className="text-center px-3 py-2 font-medium">Air °C</th>
-                    <th className="text-center px-3 py-2 font-medium">Humidity</th>
-                    <th className="text-center px-3 py-2 font-medium">Track</th>
-                    <th className="text-center px-3 py-2 font-medium">Rank</th>
+                    <th className="text-center px-3 py-2 font-medium">{L("Fuktighet", "Humidity")}</th>
+                    <th className="text-center px-3 py-2 font-medium">{L("Spor", "Track")}</th>
+                    <th className="text-center px-3 py-2 font-medium">{L("Rang", "Rank")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1816,7 +1828,8 @@ function CombinationSearch({
   testsById: Map<number, Test>;
   weatherById: Map<number, Weather>;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [, navigate] = useLocation();
   const [productIds, setProductIds] = useState<number[]>([]);
   const [addOpen, setAddOpen] = useState(false);
@@ -1892,7 +1905,7 @@ function CombinationSearch({
           <Command>
             <CommandInput placeholder={t("analytics.searchProducts")} />
             <CommandList>
-              <CommandEmpty>No matches.</CommandEmpty>
+              <CommandEmpty>{L("Ingen treff.", "No matches.")}</CommandEmpty>
               <CommandGroup>
                 {products.filter((p) => !productIds.includes(p.id)).map((p) => (
                   <CommandItem key={p.id} value={`${p.brand} ${p.name}`} onSelect={() => {
@@ -1917,7 +1930,7 @@ function CombinationSearch({
         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-900/30">
           <TrendingUp className="h-4 w-4 text-violet-600" />
         </div>
-        <h2 className="text-base font-semibold">Combination search</h2>
+        <h2 className="text-base font-semibold">{L("Kombinasjonssøk", "Combination search")}</h2>
         <span className="text-xs text-muted-foreground">— find tests where all selected products were used together on the same ski</span>
       </div>
 
@@ -1961,7 +1974,7 @@ function CombinationSearch({
             <div className="rounded-xl border p-3 text-center">
               <Hash className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
               <div className="text-2xl font-bold">{stats.count}</div>
-              <div className="text-xs text-muted-foreground">Ski appearances</div>
+              <div className="text-xs text-muted-foreground">{L("Ski-opptredener", "Ski appearances")}</div>
             </div>
             <div className="rounded-xl border p-3 text-center">
               <Trophy className="h-4 w-4 mx-auto text-amber-500 mb-1" />
@@ -1971,12 +1984,12 @@ function CombinationSearch({
             <div className="rounded-xl border p-3 text-center">
               <Award className="h-4 w-4 mx-auto text-green-500 mb-1" />
               <div className="text-2xl font-bold">{stats.avgRank ?? "—"}</div>
-              <div className="text-xs text-muted-foreground">Avg rank</div>
+              <div className="text-xs text-muted-foreground">{L("Snittrang", "Avg rank")}</div>
             </div>
             <div className="rounded-xl border p-3 text-center">
               <Percent className="h-4 w-4 mx-auto text-emerald-500 mb-1" />
               <div className="text-2xl font-bold">{stats.winRate}%</div>
-              <div className="text-xs text-muted-foreground">Win rate</div>
+              <div className="text-xs text-muted-foreground">{L("Seiersrate", "Win rate")}</div>
             </div>
           </div>
 
@@ -1996,10 +2009,10 @@ function CombinationSearch({
                 <table className="w-full text-sm">
                   <thead className="bg-muted/60">
                     <tr>
-                      <th className="text-left px-3 py-2 text-xs font-medium">Snow temp range</th>
-                      <th className="text-center px-3 py-2 text-xs font-medium">Tests</th>
-                      <th className="text-center px-3 py-2 text-xs font-medium">Avg rank</th>
-                      <th className="text-center px-3 py-2 text-xs font-medium">Wins</th>
+                      <th className="text-left px-3 py-2 text-xs font-medium">{L("Snøtemp-område", "Snow temp range")}</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">{L("Tester", "Tests")}</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">{L("Snittrang", "Avg rank")}</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium">{L("Seire", "Wins")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2024,10 +2037,10 @@ function CombinationSearch({
                 <thead className="bg-muted/60">
                   <tr>
                     <th className="w-8 px-2 py-2" />
-                    <th className="text-left px-3 py-2 text-xs font-medium">Date</th>
-                    <th className="text-left px-3 py-2 text-xs font-medium">Location</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium">{L("Dato", "Date")}</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium">{L("Sted", "Location")}</th>
                     <th className="text-center px-3 py-2 text-xs font-medium">Ski #</th>
-                    <th className="text-center px-3 py-2 text-xs font-medium">Rank</th>
+                    <th className="text-center px-3 py-2 text-xs font-medium">{L("Rang", "Rank")}</th>
                     <th className="w-8 px-2 py-2" />
                   </tr>
                 </thead>
@@ -2063,7 +2076,7 @@ function CombinationSearch({
                           </td>
                           <td className="px-2 py-2 text-center" onClick={(e) => e.stopPropagation()}>
                             <button
-                              title="Open test"
+                              title={L("Åpne test", "Open test")}
                               onClick={() => navigate(`/tests/${test.id}`)}
                               className="inline-flex items-center justify-center h-6 w-6 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                             >
@@ -2077,7 +2090,7 @@ function CombinationSearch({
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                 {/* Application / methodology */}
                                 <div className="space-y-1.5">
-                                  <div className="font-semibold text-muted-foreground uppercase tracking-wide text-[10px]">Methodology</div>
+                                  <div className="font-semibold text-muted-foreground uppercase tracking-wide text-[10px]">{L("Metodikk", "Methodology")}</div>
                                   {productIds.map((pid, idx) => {
                                     const p = productsById.get(pid);
                                     const appStr = methodologyParts[idx] ?? null;
@@ -2091,7 +2104,7 @@ function CombinationSearch({
                                   })}
                                   {entry.feelingRank != null && (
                                     <div className="flex items-center gap-1.5 pt-0.5">
-                                      <span className="text-muted-foreground">Feeling rank:</span>
+                                      <span className="text-muted-foreground">{L("Følelsesrang:", "Feeling rank:")}</span>
                                       <span className="font-medium">{entry.feelingRank}</span>
                                     </div>
                                   )}
@@ -2099,40 +2112,40 @@ function CombinationSearch({
                                 {/* Weather */}
                                 {w && (
                                   <div className="space-y-1.5">
-                                    <div className="font-semibold text-muted-foreground uppercase tracking-wide text-[10px]">Conditions</div>
+                                    <div className="font-semibold text-muted-foreground uppercase tracking-wide text-[10px]">{L("Forhold", "Conditions")}</div>
                                     <div className="grid grid-cols-2 gap-x-3 gap-y-1">
                                       <div className="flex items-center gap-1">
                                         <Snowflake className="h-3 w-3 text-blue-400 shrink-0" />
-                                        <span className="text-muted-foreground">Snow:</span>
+                                        <span className="text-muted-foreground">{L("Snø:", "Snow:")}</span>
                                         <span className="font-medium ml-1">{w.snowTemperatureC}°C</span>
                                       </div>
                                       <div className="flex items-center gap-1">
                                         <Thermometer className="h-3 w-3 text-orange-400 shrink-0" />
-                                        <span className="text-muted-foreground">Air:</span>
+                                        <span className="text-muted-foreground">{L("Luft:", "Air:")}</span>
                                         <span className="font-medium ml-1">{w.airTemperatureC}°C</span>
                                       </div>
                                       {w.snowHumidityPct != null && (
                                         <div className="flex items-center gap-1">
                                           <Droplets className="h-3 w-3 text-cyan-400 shrink-0" />
-                                          <span className="text-muted-foreground">Humidity:</span>
+                                          <span className="text-muted-foreground">{L("Fuktighet:", "Humidity:")}</span>
                                           <span className="font-medium ml-1">{w.snowHumidityPct}%</span>
                                         </div>
                                       )}
                                       {w.snowType && (
                                         <div className="flex items-center gap-1">
-                                          <span className="text-muted-foreground">Snow type:</span>
+                                          <span className="text-muted-foreground">{L("Snøtype:", "Snow type:")}</span>
                                           <span className="font-medium ml-1">{w.snowType}</span>
                                         </div>
                                       )}
                                       {w.trackHardness && (
                                         <div className="flex items-center gap-1">
-                                          <span className="text-muted-foreground">Track:</span>
+                                          <span className="text-muted-foreground">{L("Spor:", "Track:")}</span>
                                           <span className="font-medium ml-1">{w.trackHardness}</span>
                                         </div>
                                       )}
                                       {w.snowHumidityType && (
                                         <div className="flex items-center gap-1">
-                                          <span className="text-muted-foreground">Type:</span>
+                                          <span className="text-muted-foreground">{L("Type:", "Type:")}</span>
                                           <span className="font-medium ml-1">{w.snowHumidityType}</span>
                                         </div>
                                       )}
@@ -2163,6 +2176,8 @@ function HeadToHeadMatrix({ allEntries, productsById, testsById }: {
   productsById: Map<number, Product>;
   testsById: Map<number, Test>;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { topProducts, matrix } = useMemo(() => {
     // Get top products by appearances
     const appearances = new Map<number, number>();
@@ -2218,8 +2233,8 @@ function HeadToHeadMatrix({ allEntries, productsById, testsById }: {
         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-900/20">
           <Target className="h-4 w-4 text-indigo-600" />
         </div>
-        <h2 className="text-base font-semibold">Head-to-head matrix</h2>
-        <span className="text-xs text-muted-foreground">Win % when both products tested together</span>
+        <h2 className="text-base font-semibold">{L("Head-to-head-matrise", "Head-to-head matrix")}</h2>
+        <span className="text-xs text-muted-foreground">{L("Seier-% når begge produkter testes sammen", "Win % when both products tested together")}</span>
       </div>
       <div className="overflow-x-auto">
         <table className="text-xs border-collapse">
@@ -2341,7 +2356,8 @@ export function ProductCompare({
   filteredTestIds: Set<number>;
   weatherById?: Map<number, Weather>;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [open, setOpen] = useState(false);
   type CurveParam = "snowTemp" | "airTemp" | "snowHumidity" | "airHumidity" | "snowType" | "trackHardness" | "snowHumidityType";
@@ -2513,7 +2529,7 @@ export function ProductCompare({
         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-900/30">
           <BarChart3 className="h-4 w-4 text-violet-600" />
         </div>
-        <h2 className="text-base font-semibold">Compare products</h2>
+        <h2 className="text-base font-semibold">{L("Sammenlign produkter", "Compare products")}</h2>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -2544,7 +2560,7 @@ export function ProductCompare({
             <Command>
               <CommandInput placeholder={t("analytics.searchProducts")} data-testid="input-compare-search" />
               <CommandList>
-                <CommandEmpty>No matches.</CommandEmpty>
+                <CommandEmpty>{L("Ingen treff.", "No matches.")}</CommandEmpty>
                 <CommandGroup heading="Products">
                   {products.filter((p) => !selectedIds.includes(p.id)).map((p) => (
                     <CommandItem
@@ -2576,12 +2592,12 @@ export function ProductCompare({
             <table className="w-full text-sm" data-testid="table-compare-summary">
               <thead className="bg-muted/80">
                 <tr>
-                  <th className="text-left px-3 py-2 font-medium">Product</th>
-                  <th className="text-center px-3 py-2 font-medium">Tests</th>
-                  <th className="text-center px-3 py-2 font-medium">Wins</th>
-                  <th className="text-center px-3 py-2 font-medium">Avg rank</th>
-                  <th className="text-left px-3 py-2 font-medium">Win rate</th>
-                  <th className="text-left px-3 py-2 font-medium">Sweet spot</th>
+                  <th className="text-left px-3 py-2 font-medium">{L("Produkt", "Product")}</th>
+                  <th className="text-center px-3 py-2 font-medium">{L("Tester", "Tests")}</th>
+                  <th className="text-center px-3 py-2 font-medium">{L("Seire", "Wins")}</th>
+                  <th className="text-center px-3 py-2 font-medium">{L("Snittrang", "Avg rank")}</th>
+                  <th className="text-left px-3 py-2 font-medium">{L("Seiersrate", "Win rate")}</th>
+                  <th className="text-left px-3 py-2 font-medium">{L("Sweet spot", "Sweet spot")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -2617,7 +2633,7 @@ export function ProductCompare({
 
           {chartData.length > 1 && (
             <div>
-              <div className="text-sm font-medium mb-2">Average rank over time</div>
+              <div className="text-sm font-medium mb-2">{L("Snittrang over tid", "Average rank over time")}</div>
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -2657,7 +2673,7 @@ export function ProductCompare({
           {(tempCurveData.length >= 2 || compareStats != null) && (
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <span className="text-sm font-medium">Performance Curve</span>
+                <span className="text-sm font-medium">{L("Ytelseskurve", "Performance Curve")}</span>
                 <Select value={curveParam} onValueChange={(v) => setCurveParam(v as typeof curveParam)}>
                   <SelectTrigger className="h-7 w-auto min-w-[160px] text-xs">
                     <SelectValue />
@@ -2674,7 +2690,7 @@ export function ProductCompare({
                 </Select>
               </div>
               {tempCurveData.length < 2 ? (
-                <p className="text-xs text-muted-foreground py-4 text-center">Not enough data for the selected parameter.</p>
+                <p className="text-xs text-muted-foreground py-4 text-center">{L("Ikke nok data for valgt parameter.", "Not enough data for the selected parameter.")}</p>
               ) : (<>
               <p className="text-xs text-muted-foreground mb-3">Lower rank = better performance. Only buckets with test data shown.</p>
               <ResponsiveContainer width="100%" height={260}>
@@ -2745,8 +2761,8 @@ export function ProductCompare({
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
                     <tr>
-                      <th className="text-left px-3 py-2 font-medium">Date</th>
-                      <th className="text-left px-3 py-2 font-medium">Location</th>
+                      <th className="text-left px-3 py-2 font-medium">{L("Dato", "Date")}</th>
+                      <th className="text-left px-3 py-2 font-medium">{L("Sted", "Location")}</th>
                       {compareStats.map((s, i) => (
                         <th key={s.product.id} className="text-center px-3 py-2 font-medium">
                           <span className="inline-flex items-center gap-1">
@@ -2838,6 +2854,8 @@ function DurabilityAnalysis({
   productsById: Map<number, Product>;
   testsById: Map<number, Test>;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [minTests, setMinTests] = React.useState(2);
   const [sortBy, setSortBy] = React.useState<"name" | "trend" | "count">("trend");
   const [search, setSearch] = React.useState("");
@@ -3020,7 +3038,7 @@ function DurabilityAnalysis({
   if (multiRoundCount === 0) {
     return (
       <Card className="fs-card rounded-2xl p-6 text-center text-muted-foreground">
-        <p className="text-sm">No multi-round tests found.</p>
+        <p className="text-sm">{L("Ingen flerrundetester funnet.", "No multi-round tests found.")}</p>
         <p className="text-xs mt-1">Create tests with multiple distance rounds (e.g. 0 km + 30 km) to see durability analysis.</p>
       </Card>
     );
@@ -3039,7 +3057,7 @@ function DurabilityAnalysis({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search products…"
+            placeholder={L("Søk produkter…", "Search products…")}
             className="w-full rounded-md border border-border bg-background pl-8 pr-8 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
           />
           {search && (
@@ -3054,7 +3072,7 @@ function DurabilityAnalysis({
 
         {/* Min appearances */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span>Min:</span>
+          <span>{L("Min:", "Min:")}</span>
           <select
             value={minTests}
             onChange={(e) => setMinTests(Number(e.target.value))}
@@ -3066,15 +3084,15 @@ function DurabilityAnalysis({
 
         {/* Sort */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span>Sort:</span>
+          <span>{L("Sortér:", "Sort:")}</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
             className="rounded border border-border bg-background px-1.5 py-1 text-xs"
           >
-            <option value="trend">Best durability</option>
-            <option value="count">Most tests</option>
-            <option value="name">Name A–Z</option>
+            <option value="trend">{L("Best holdbarhet", "Best durability")}</option>
+            <option value="count">{L("Flest tester", "Most tests")}</option>
+            <option value="name">{L("Navn A–Å", "Name A–Z")}</option>
           </select>
         </div>
 
@@ -3102,7 +3120,7 @@ function DurabilityAnalysis({
       {compareMode && selectedIds.length >= 1 && (
         <Card className="fs-card rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold">Rank over distance</h3>
+            <h3 className="text-sm font-semibold">{L("Rang over distanse", "Rank over distance")}</h3>
             <span className="text-xs text-muted-foreground">Lower rank = better performance</span>
           </div>
           <ResponsiveContainer width="100%" height={260}>
@@ -3169,14 +3187,14 @@ function DurabilityAnalysis({
               <thead>
                 <tr className="border-b border-border">
                   {compareMode && <th className="w-8 px-2 py-2" />}
-                  <th className="text-left px-3 py-2 font-medium text-muted-foreground w-48">Product</th>
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground w-48">{L("Produkt", "Product")}</th>
                   {roundLabels.map((lbl, i) => (
                     <th key={i} className="text-center px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">
                       {lbl}
                     </th>
                   ))}
-                  <th className="text-center px-3 py-2 font-medium text-muted-foreground">Trend</th>
-                  <th className="text-center px-3 py-2 font-medium text-muted-foreground">Tests</th>
+                  <th className="text-center px-3 py-2 font-medium text-muted-foreground">{L("Trend", "Trend")}</th>
+                  <th className="text-center px-3 py-2 font-medium text-muted-foreground">{L("Tester", "Tests")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -3189,19 +3207,19 @@ function DurabilityAnalysis({
                     if (row.trend == null) return <span className="text-muted-foreground">—</span>;
                     if (row.trend < -0.3) return (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700"
-                        title="Improves over distance">
+                        title={L("Forbedres over distanse", "Improves over distance")}>
                         ▼ {Math.abs(row.trend).toFixed(2)}
                       </span>
                     );
                     if (row.trend < 0.3) return (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-                        title="Stable">
+                        title={L("Stabil", "Stable")}>
                         → {row.trend.toFixed(2)}
                       </span>
                     );
                     return (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-600"
-                        title="Degrades over distance">
+                        title={L("Forringes over distanse", "Degrades over distance")}>
                         ▲ +{row.trend.toFixed(2)}
                       </span>
                     );
@@ -3267,7 +3285,7 @@ function DurabilityAnalysis({
 
         {/* Legend */}
         <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground border-t border-border pt-3">
-          <span className="font-medium">Trend:</span>
+          <span className="font-medium">{L("Trend:", "Trend:")}</span>
           <span className="text-emerald-700 font-medium">▼ Negative = improves</span>
           <span>→ ≈ 0 = stable</span>
           <span className="text-red-500 font-medium">▲ Positive = degrades</span>
@@ -3601,6 +3619,8 @@ function RacedCombinationsList({
   fmtD: (d: string) => string;
   lang: string;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   if (combos.length === 0) {
     return (
       <Card className="p-8 text-center">
@@ -3666,7 +3686,8 @@ function RacedCombinationsList({
 }
 
 export default function Analytics() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { can } = useAuth();
   const { lang } = useLanguage();
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
@@ -3884,7 +3905,7 @@ export default function Analytics() {
     const monthRows = testsByMonth.map((m) => [m.month, (m.glide || 0) + (m.structure || 0)]);
 
     const body = `
-      <div class="pdf-title">Analytics Report</div>
+      <div class="pdf-title">{L("Analyserapport", "Analytics Report")}</div>
       <div class="pdf-subtitle">${seasonFilter !== "All" ? `Season ${seasonFilter} · ` : ""}${testTypeFilter !== "All" ? `${testTypeFilter} · ` : ""}All data</div>
 
       ${pdfCards([
@@ -4045,7 +4066,7 @@ export default function Analytics() {
             ))}
             {seasons.length > 1 && (
               <>
-                <span className="text-xs text-muted-foreground font-medium ml-1">Season:</span>
+                <span className="text-xs text-muted-foreground font-medium ml-1">{L("Sesong:", "Season:")}</span>
                 {seasons.slice(0, Math.min(5, seasons.length)).map((season) => (
                   <Button
                     key={season}
@@ -4123,7 +4144,7 @@ export default function Analytics() {
                     <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
                       <TrendingUp className="h-4 w-4 text-emerald-600" />
                     </div>
-                    <h2 className="text-base font-semibold">Product wins over time</h2>
+                    <h2 className="text-base font-semibold">{L("Produktseire over tid", "Product wins over time")}</h2>
                   </div>
                   {productWinTrend.length > 0 && productWinTrendKeys.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
@@ -4139,7 +4160,7 @@ export default function Analytics() {
                       </LineChart>
                     </ResponsiveContainer>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Not enough win data to display trend.</p>
+                    <p className="text-sm text-muted-foreground">{L("Ikke nok seiersdata for å vise trend.", "Not enough win data to display trend.")}</p>
                   )}
                 </Card>
 
@@ -4149,7 +4170,7 @@ export default function Analytics() {
                       <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-green-50 dark:bg-green-900/20">
                         <Award className="h-4 w-4 text-green-600" />
                       </div>
-                      <h2 className="text-base font-semibold">Average rank by product</h2>
+                      <h2 className="text-base font-semibold">{L("Snittrang per produkt", "Average rank by product")}</h2>
                       <span className="text-xs text-muted-foreground">(min 2 tests)</span>
                     </div>
                     {avgRankByProduct.length > 0 ? (
@@ -4174,7 +4195,7 @@ export default function Analytics() {
                       <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-900/30">
                         <BarChart3 className="h-4 w-4 text-violet-600" />
                       </div>
-                      <h2 className="text-base font-semibold">Tests per month</h2>
+                      <h2 className="text-base font-semibold">{L("Tester per måned", "Tests per month")}</h2>
                     </div>
                     {testsByMonth.length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
@@ -4189,7 +4210,7 @@ export default function Analytics() {
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No test data yet.</p>
+                      <p className="text-sm text-muted-foreground">{L("Ingen testdata ennå.", "No test data yet.")}</p>
                     )}
                   </Card>
                 </div>
@@ -4251,7 +4272,7 @@ export default function Analytics() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-900/20">
                   <Thermometer className="h-4 w-4 text-amber-600" />
                 </div>
-                <h2 className="text-base font-semibold">Snow temperature vs. rank</h2>
+                <h2 className="text-base font-semibold">{L("Snøtemperatur vs. rang", "Snow temperature vs. rank")}</h2>
                 <span className="text-xs text-muted-foreground">(top 6 products, lower rank = better)</span>
               </div>
               {tempVsRank.length > 0 ? (
@@ -4281,7 +4302,7 @@ export default function Analytics() {
                   </ScatterChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="text-sm text-muted-foreground">Need tests with linked weather data to show temperature correlations.</p>
+                <p className="text-sm text-muted-foreground">{L("Trenger tester med koblet værdata for å vise temperatursammenhenger.", "Need tests with linked weather data to show temperature correlations.")}</p>
               )}
               {tempVsRank.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">

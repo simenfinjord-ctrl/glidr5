@@ -173,7 +173,8 @@ export default function EditTest() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, can } = useAuth();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
 
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
@@ -441,12 +442,12 @@ export default function EditTest() {
       queryClient.invalidateQueries({ queryKey: [`/api/tests/${testId}/entries`] });
       if (result?.offline) {
         toast({
-          title: "Saved offline",
-          description: "Changes will sync when you reconnect.",
+          title: L("Lagret offline", "Saved offline"),
+          description: L("Endringer synkroniseres når du er tilkoblet igjen.", "Changes will sync when you reconnect."),
         });
       } else {
         toast({
-          title: "Test updated",
+          title: L("Test oppdatert", "Test updated"),
           description: `Updated ${rows.length} entries.`,
         });
       }
@@ -454,7 +455,7 @@ export default function EditTest() {
     },
     onError: (e) => {
       toast({
-        title: "Could not update test",
+        title: L("Kunne ikke oppdatere test", "Could not update test"),
         description: e instanceof Error ? e.message : "Unknown error",
         variant: "destructive",
       });
@@ -475,7 +476,7 @@ export default function EditTest() {
     return (
       <AppShell>
         <div className="flex flex-col items-center gap-4 py-20" data-testid="not-found-test">
-          <p className="text-muted-foreground">Test not found.</p>
+          <p className="text-muted-foreground">{L("Fant ikke testen.", "Test not found.")}</p>
         </div>
       </AppShell>
     );
@@ -600,7 +601,7 @@ export default function EditTest() {
                 {can("raceskis") && (
                   <div className="lg:col-span-2">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium leading-none">Ski source</label>
+                      <label className="text-sm font-medium leading-none">{L("Skikilde", "Ski source")}</label>
                       <Select
                         value={testSkiSource}
                         onValueChange={(v) => {
@@ -618,8 +619,8 @@ export default function EditTest() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="series">Testskis</SelectItem>
-                          <SelectItem value="raceskis">Raceskis</SelectItem>
+                          <SelectItem value="series">{L("Testski", "Testskis")}</SelectItem>
+                          <SelectItem value="raceskis">{L("Løpsski", "Raceskis")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -673,7 +674,7 @@ export default function EditTest() {
                         >
                           <FormControl>
                             <SelectTrigger data-testid="select-test-type">
-                              <SelectValue placeholder="Select" />
+                              <SelectValue placeholder={L("Velg", "Select")} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -746,7 +747,7 @@ export default function EditTest() {
                             value={field.value}
                             onChange={field.onChange}
                             data-testid="input-test-location"
-                            placeholder="e.g., Park City"
+                            placeholder={L("f.eks. Park City", "e.g., Park City")}
                           />
                         </FormControl>
                         <FormMessage />
@@ -870,7 +871,7 @@ export default function EditTest() {
                           <Textarea
                             {...field}
                             rows={2}
-                            placeholder="Optional notes…"
+                            placeholder={L("Valgfrie notater…", "Optional notes…")}
                             data-testid="input-test-notes"
                           />
                         </FormControl>
@@ -888,7 +889,7 @@ export default function EditTest() {
         {/* Grind column chooser */}
         {watchTestType === "Grind" && allGrindParamKeys.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/30 px-4 py-2.5 text-sm">
-            <span className="font-medium text-foreground mr-1">Visible columns:</span>
+            <span className="font-medium text-foreground mr-1">{L("Synlige kolonner:", "Visible columns:")}</span>
             {allGrindParamKeys.map((col) => {
               const label = col === "stone" ? "Stone" : col === "pattern" ? "Pattern" : col === "ra_value" ? "RA-value" : col;
               const checked = visibleGrindCols.includes(col);

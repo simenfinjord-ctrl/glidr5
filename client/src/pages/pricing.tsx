@@ -309,6 +309,7 @@ function PlanCard({ plan, lang }: { plan: PlanWithPrice; lang: "en" | "no" }) {
 
 export default function Pricing() {
   const { lang } = useLanguage();
+  const L = (no: string, en: string) => (lang === "en" ? en : no);
   const p = PAGE_TEXT[lang];
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const planPrices = usePlanPrices();
@@ -353,8 +354,8 @@ export default function Pricing() {
             </div>
             <div className="text-center sm:text-left">
               <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
-                <span className="font-bold text-foreground text-sm">Garmin Watch Integration</span>
-                <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide">Exclusive</span>
+                <span className="font-bold text-foreground text-sm">{L("Garmin-klokkeintegrasjon", "Garmin Watch Integration")}</span>
+                <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide">{L("Eksklusivt", "Exclusive")}</span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
                 The only ski testing platform with native Garmin support. Run your entire bracket hands-free on the hill from your wrist. Included on Team & above.
@@ -385,7 +386,7 @@ export default function Pricing() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/40">
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Feature</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">{L("Funksjon", "Feature")}</th>
                   {PLANS.map((p) => (
                     <th key={p.id} className="text-center px-3 py-3 font-semibold text-foreground">{p.name}</th>
                   ))}

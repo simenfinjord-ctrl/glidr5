@@ -81,6 +81,8 @@ const SCENES = [
 /* ── Mock UI components ─────────────────────────────────────────────────────── */
 
 function TestMockup() {
+  const { lang } = useLanguage();
+  const L = (no: string, en: string) => (lang === "en" ? en : no);
   const [active, setActive] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setActive((n) => (n + 1) % 4), 900);
@@ -96,7 +98,7 @@ function TestMockup() {
     <div className="rounded-xl bg-card border shadow-lg p-3 text-xs space-y-1.5">
       <div className="flex items-center justify-between mb-2">
         <span className="font-semibold text-foreground">Glide Test · 5km</span>
-        <span className="rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[10px] font-medium">Live</span>
+        <span className="rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[10px] font-medium">{L("Live", "Live")}</span>
       </div>
       {skis.map((s, i) => (
         <div key={s.n} className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors ${active === i ? "bg-blue-50 dark:bg-blue-900/30 border border-blue-200/60" : "bg-muted/40"}`}>
@@ -110,9 +112,11 @@ function TestMockup() {
 }
 
 function WeatherMockup() {
+  const { lang } = useLanguage();
+  const L = (no: string, en: string) => (lang === "en" ? en : no);
   return (
     <div className="rounded-xl bg-card border shadow-lg p-3 text-xs">
-      <div className="font-semibold text-foreground mb-3">Weather snapshot</div>
+      <div className="font-semibold text-foreground mb-3">{L("Værsnapshot", "Weather snapshot")}</div>
       <div className="grid grid-cols-2 gap-2">
         {[
           { label: "Snow temp", value: "−4°C", color: "text-sky-600" },
@@ -192,6 +196,8 @@ function ProductsMockup() {
 }
 
 function AIMockup() {
+  const { lang } = useLanguage();
+  const L = (no: string, en: string) => (lang === "en" ? en : no);
   const [step, setStep] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setStep((s) => (s + 1) % 3), 1400);
@@ -223,13 +229,15 @@ function AIMockup() {
   ];
   return (
     <div className="rounded-xl bg-card border shadow-lg p-3 text-xs">
-      <div className="font-semibold text-foreground mb-2">Add test from photo</div>
+      <div className="font-semibold text-foreground mb-2">{L("Legg til test fra foto", "Add test from photo")}</div>
       <div className="min-h-[6.5rem]">{steps[step]}</div>
     </div>
   );
 }
 
 function GarminMockup() {
+  const { lang } = useLanguage();
+  const L = (no: string, en: string) => (lang === "en" ? en : no);
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setTick((n) => n + 1), 1000);
@@ -240,11 +248,11 @@ function GarminMockup() {
     <div className="flex gap-3 items-start">
       {/* Phone side */}
       <div className="flex-1 rounded-xl bg-card border shadow-lg p-3 text-xs">
-        <div className="font-semibold text-foreground mb-2">Live runsheet</div>
+        <div className="font-semibold text-foreground mb-2">{L("Live kjøreark", "Live runsheet")}</div>
         {[1, 2, 3, 4].map((n) => (
           <div key={n} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 mb-1 transition-colors ${highlighted === n - 1 ? "bg-emerald-50 dark:bg-emerald-900/30 font-semibold" : "bg-muted/30"}`}>
             <span className="text-muted-foreground">Ski {n}</span>
-            {highlighted === n - 1 && <span className="ml-auto rounded-full bg-emerald-600 text-white text-[9px] px-1.5 py-0.5">Active</span>}
+            {highlighted === n - 1 && <span className="ml-auto rounded-full bg-emerald-600 text-white text-[9px] px-1.5 py-0.5">{L("Aktiv", "Active")}</span>}
           </div>
         ))}
       </div>
@@ -253,11 +261,11 @@ function GarminMockup() {
         <div className="text-[9px] text-zinc-400 mb-1.5">GLIDR</div>
         <div className="rounded-lg bg-zinc-800 p-2 mb-2">
           <div className="text-white text-[11px] font-bold">Ski {(highlighted % 4) + 1}</div>
-          <div className="text-zinc-400 text-[9px]">Who won?</div>
+          <div className="text-zinc-400 text-[9px]">{L("Hvem vant?", "Who won?")}</div>
         </div>
         <div className="grid grid-cols-2 gap-1">
           <div className="rounded bg-emerald-600 text-white text-[9px] py-1 font-medium">✓ Win</div>
-          <div className="rounded bg-zinc-700 text-zinc-300 text-[9px] py-1">Skip</div>
+          <div className="rounded bg-zinc-700 text-zinc-300 text-[9px] py-1">{L("Hopp over", "Skip")}</div>
         </div>
       </div>
     </div>

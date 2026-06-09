@@ -202,7 +202,8 @@ function GrindProfileForm({
   allProfileParamKeys?: string[];
   lastProfile?: GrindProfile;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
 
   // Build initial param rows from stored order; all params are equal
@@ -318,7 +319,7 @@ function GrindProfileForm({
       onDone();
     },
     onError: (e: Error) => {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -337,7 +338,7 @@ function GrindProfileForm({
             <FormItem>
               <FormLabel>{t("grinding.profileName")}</FormLabel>
               <FormControl>
-                <Input {...field} placeholder="e.g. Classic warm, Skate heavy" data-testid="input-grind-profile-name" />
+                <Input {...field} placeholder={L("f.eks. Klassisk varm, Skøyting tung", "e.g. Classic warm, Skate heavy")} data-testid="input-grind-profile-name" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -353,7 +354,7 @@ function GrindProfileForm({
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger data-testid="select-grind-profile-type">
-                    <SelectValue placeholder="Select grind type…" />
+                    <SelectValue placeholder={L("Velg sliptype…", "Select grind type…")} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -370,7 +371,7 @@ function GrindProfileForm({
         {/* Parameters — all equal: editable name + value, reorderable, removable */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-foreground">Parameters</span>
+            <span className="text-sm font-medium text-foreground">{L("Parametre", "Parameters")}</span>
             <Button
               type="button"
               variant="outline"
@@ -379,7 +380,7 @@ function GrindProfileForm({
               data-testid="button-add-param"
             >
               <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Add parameter
+              {L("Legg til parameter", "Add parameter")}
             </Button>
           </div>
           {params.map((param, idx) => (
@@ -387,14 +388,14 @@ function GrindProfileForm({
               <Input
                 value={param.key}
                 onChange={(e) => updateParam(idx, "key", e.target.value)}
-                placeholder="Name"
+                placeholder={L("Navn", "Name")}
                 className="flex-1"
                 data-testid={`input-param-key-${idx}`}
               />
               <Input
                 value={param.value}
                 onChange={(e) => updateParam(idx, "value", e.target.value)}
-                placeholder="Value"
+                placeholder={L("Verdi", "Value")}
                 className="flex-1"
                 data-testid={`input-param-value-${idx}`}
               />
@@ -425,16 +426,16 @@ function GrindProfileForm({
             </div>
           ))}
           {!allParamsValid && (
-            <p className="text-xs text-destructive">Each parameter needs both a name and a value.</p>
+            <p className="text-xs text-destructive">{L("Hver parameter trenger både et navn og en verdi.", "Each parameter needs both a name and a value.")}</p>
           )}
         </div>
 
         <div className="space-y-1">
-          <label className="text-sm font-medium text-foreground">Notes</label>
+          <label className="text-sm font-medium text-foreground">{L("Notater", "Notes")}</label>
           <Textarea
             value={notesField}
             onChange={(e) => setNotesField(e.target.value)}
-            placeholder="Add notes about this grind profile…"
+            placeholder={L("Legg til notater om denne slipeprofilen…", "Add notes about this grind profile…")}
             className="min-h-[72px] text-sm"
             data-testid="input-grind-profile-notes"
           />
@@ -467,7 +468,8 @@ function GrindProfilesTable({
   onDelete: (p: GrindProfile) => void;
   onArchive?: (p: GrindProfile) => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
 
   return (
     <Card className="fs-card rounded-2xl overflow-hidden">
@@ -475,13 +477,13 @@ function GrindProfilesTable({
         <table className="w-full text-sm" data-testid="table-grind-profiles">
           <thead>
             <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground bg-muted/30">
-              <th className="px-3 py-2.5">Name</th>
+              <th className="px-3 py-2.5">{L("Navn", "Name")}</th>
               <th className="px-3 py-2.5">ID</th>
-              <th className="px-3 py-2.5">Type</th>
-              <th className="px-3 py-2.5">Notes</th>
+              <th className="px-3 py-2.5">{L("Type", "Type")}</th>
+              <th className="px-3 py-2.5">{L("Notater", "Notes")}</th>
               <th className="px-3 py-2.5">{t("grinding.addedBy")}</th>
-              <th className="px-3 py-2.5">Date</th>
-              <th className="px-3 py-2.5 text-right">Actions</th>
+              <th className="px-3 py-2.5">{L("Dato", "Date")}</th>
+              <th className="px-3 py-2.5 text-right">{L("Handlinger", "Actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -514,25 +516,25 @@ function GrindProfilesTable({
                   <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(profile.createdAt)}</td>
                   <td className="px-3 py-2">
                     <div className="flex items-center justify-end gap-0.5">
-                      <Button variant="ghost" size="sm" onClick={() => onViewResults(profile)} title="View test results" data-testid={`button-view-results-grind-profile-list-${profile.id}`}>
+                      <Button variant="ghost" size="sm" onClick={() => onViewResults(profile)} title={L("Vis testresultater", "View test results")} data-testid={`button-view-results-grind-profile-list-${profile.id}`}>
                         <BarChart2 className="h-3.5 w-3.5 text-violet-600" />
                       </Button>
                       {profile.archived ? (
-                        <Button variant="ghost" size="sm" onClick={() => onArchive?.(profile)} title="Restore from archive" data-testid={`button-unarchive-grind-profile-list-${profile.id}`}>
+                        <Button variant="ghost" size="sm" onClick={() => onArchive?.(profile)} title={L("Gjenopprett fra arkiv", "Restore from archive")} data-testid={`button-unarchive-grind-profile-list-${profile.id}`}>
                           <RotateCcw className="h-3.5 w-3.5 text-emerald-600" />
                         </Button>
                       ) : (
                         <>
-                          <Button variant="ghost" size="sm" onClick={() => onDuplicate(profile)} title="Duplicate" data-testid={`button-duplicate-grind-profile-list-${profile.id}`}>
+                          <Button variant="ghost" size="sm" onClick={() => onDuplicate(profile)} title={L("Dupliser", "Duplicate")} data-testid={`button-duplicate-grind-profile-list-${profile.id}`}>
                             <Copy className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => onEdit(profile)} title="Edit" data-testid={`button-edit-grind-profile-list-${profile.id}`}>
+                          <Button variant="ghost" size="sm" onClick={() => onEdit(profile)} title={L("Rediger", "Edit")} data-testid={`button-edit-grind-profile-list-${profile.id}`}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => onArchive?.(profile)} title="Archive" data-testid={`button-archive-grind-profile-list-${profile.id}`}>
+                          <Button variant="ghost" size="sm" onClick={() => onArchive?.(profile)} title={L("Arkiver", "Archive")} data-testid={`button-archive-grind-profile-list-${profile.id}`}>
                             <Archive className="h-3.5 w-3.5 text-muted-foreground" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => onDelete(profile)} title="Delete" data-testid={`button-delete-grind-profile-list-${profile.id}`}>
+                          <Button variant="ghost" size="sm" onClick={() => onDelete(profile)} title={L("Slett", "Delete")} data-testid={`button-delete-grind-profile-list-${profile.id}`}>
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>
                         </>
@@ -563,7 +565,8 @@ function GrindProfileCard({
   onViewResults: () => void;
   onArchive?: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   // Build ordered param list from extraParams (user-defined order), with legacy fallback
   const extra = parseExtraParams(profile.extraParams);
@@ -591,7 +594,7 @@ function GrindProfileCard({
       queryClient.invalidateQueries({ queryKey: ["/api/grind-profiles"] });
       setEditingNotes(false);
     } catch {
-      toast({ title: "Error", description: "Could not save notes", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: L("Kunne ikke lagre notater", "Could not save notes"), variant: "destructive" });
     } finally {
       setNotesSaving(false);
     }
@@ -637,7 +640,7 @@ function GrindProfileCard({
                   value={notesVal}
                   onChange={(e) => setNotesVal(e.target.value)}
                   className="min-h-[60px] text-xs"
-                  placeholder="Add notes about this grind profile…"
+                  placeholder={L("Legg til notater om denne slipeprofilen…", "Add notes about this grind profile…")}
                   autoFocus
                 />
                 <div className="flex gap-1.5">
@@ -645,7 +648,7 @@ function GrindProfileCard({
                     <Check className="h-3 w-3 mr-1" />Save
                   </Button>
                   <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => { setEditingNotes(false); setNotesVal(profile.notes ?? ""); }}>
-                    Cancel
+                    {L("Avbryt", "Cancel")}
                   </Button>
                 </div>
               </div>
@@ -654,13 +657,13 @@ function GrindProfileCard({
                 {profile.notes ? (
                   <p className="text-xs text-muted-foreground italic flex-1">{profile.notes}</p>
                 ) : (
-                  <p className="text-xs text-muted-foreground/40 italic flex-1">No notes</p>
+                  <p className="text-xs text-muted-foreground/40 italic flex-1">{L("Ingen notater", "No notes")}</p>
                 )}
                 <button
                   type="button"
                   onClick={() => setEditingNotes(true)}
                   className="opacity-0 group-hover/notes:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                  title="Edit notes"
+                  title={L("Rediger notater", "Edit notes")}
                 >
                   <Pencil className="h-3 w-3" />
                 </button>
@@ -669,22 +672,22 @@ function GrindProfileCard({
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="sm" onClick={onViewResults} data-testid={`button-view-results-grind-profile-${profile.id}`} title="View test results">
+          <Button variant="ghost" size="sm" onClick={onViewResults} data-testid={`button-view-results-grind-profile-${profile.id}`} title={L("Vis testresultater", "View test results")}>
             <BarChart2 className="h-4 w-4 text-violet-600" />
           </Button>
           {profile.archived ? (
-            <Button variant="ghost" size="sm" onClick={onArchive} data-testid={`button-unarchive-grind-profile-${profile.id}`} title="Restore from archive">
+            <Button variant="ghost" size="sm" onClick={onArchive} data-testid={`button-unarchive-grind-profile-${profile.id}`} title={L("Gjenopprett fra arkiv", "Restore from archive")}>
               <RotateCcw className="h-4 w-4 text-emerald-600" />
             </Button>
           ) : (
             <>
-              <Button variant="ghost" size="sm" onClick={onDuplicate} data-testid={`button-duplicate-grind-profile-${profile.id}`} title="Duplicate profile">
+              <Button variant="ghost" size="sm" onClick={onDuplicate} data-testid={`button-duplicate-grind-profile-${profile.id}`} title={L("Dupliser profil", "Duplicate profile")}>
                 <Copy className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={onEdit} data-testid={`button-edit-grind-profile-${profile.id}`} title="Edit profile">
+              <Button variant="ghost" size="sm" onClick={onEdit} data-testid={`button-edit-grind-profile-${profile.id}`} title={L("Rediger profil", "Edit profile")}>
                 <Pencil className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={onArchive} data-testid={`button-archive-grind-profile-${profile.id}`} title="Archive profile">
+              <Button variant="ghost" size="sm" onClick={onArchive} data-testid={`button-archive-grind-profile-${profile.id}`} title={L("Arkiver profil", "Archive profile")}>
                 <Archive className="h-4 w-4 text-muted-foreground" />
               </Button>
               <Button
@@ -692,7 +695,7 @@ function GrindProfileCard({
                 size="sm"
                 onClick={onDelete}
                 data-testid={`button-delete-grind-profile-${profile.id}`}
-                title="Delete profile"
+                title={L("Slett profil", "Delete profile")}
               >
                 <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
@@ -750,6 +753,8 @@ function GrindProfileDetailDialog({
   open: boolean;
   onClose: () => void;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { data, isLoading } = useQuery<ProfileTestsResponse>({
     queryKey: [`/api/grind-profiles/${profile?.id}/tests`],
     queryFn: async () => {
@@ -789,10 +794,10 @@ function GrindProfileDetailDialog({
   }
 
   function colLabel(col: GrindCol): string {
-    if (col === "name") return "Grind name";
-    if (col === "stone") return "Stone";
-    if (col === "pattern") return "Pattern";
-    if (col === "ra_value") return "RA-Value";
+    if (col === "name") return L("Slipenavn", "Grind name");
+    if (col === "stone") return L("Stein", "Stone");
+    if (col === "pattern") return L("Mønster", "Pattern");
+    if (col === "ra_value") return L("RA-verdi", "RA-Value");
     // User-defined keys: show exactly as stored
     return col;
   }
@@ -874,7 +879,7 @@ function GrindProfileDetailDialog({
         {/* Column visibility toggles */}
         {!isLoading && tests.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 py-2 border-b border-border mb-1">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold shrink-0">Show columns:</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold shrink-0">{L("Vis kolonner:", "Show columns:")}</span>
             {allCols.map((col) => (
               <ColToggle key={col} label={colLabel(col)} active={visibleCols.has(col)} onClick={() => toggleCol(col)} />
             ))}
@@ -886,11 +891,11 @@ function GrindProfileDetailDialog({
         ) : tests.length === 0 ? (
           <div className="py-8 text-center">
             <Disc3 className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
-            <p className="text-sm text-muted-foreground">No tests found for this grind profile.</p>
-            <p className="text-xs text-muted-foreground mt-1">Tests using the same type, stone and pattern will appear here.</p>
+            <p className="text-sm text-muted-foreground">{L("Ingen tester funnet for denne slipeprofilen.", "No tests found for this grind profile.")}</p>
+            <p className="text-xs text-muted-foreground mt-1">{L("Tester med samme type, stein og mønster vises her.", "Tests using the same type, stone and pattern will appear here.")}</p>
             {profile && (
               <div className="mt-3 rounded-lg bg-muted/50 px-3 py-2 text-left text-[11px] text-muted-foreground inline-block">
-                <span className="font-semibold">Searched for:</span>{" "}
+                <span className="font-semibold">{L("Søkte etter:", "Searched for:")}</span>{" "}
                 Name: <span className="text-foreground">{profile.name || "—"}</span>{" · "}
                 Type: <span className="text-foreground">{profile.grindType || "—"}</span>{" · "}
                 Stone: <span className="text-foreground">{profile.stone || "—"}</span>{" · "}
@@ -942,7 +947,7 @@ function GrindProfileDetailDialog({
                       <AppLink href={`/tests/${test.id}`} testId={`link-open-detail-test-${test.id}`}>
                         <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1">
                           <ExternalLink className="h-3 w-3" />
-                          Open
+                          {L("Åpne", "Open")}
                         </Button>
                       </AppLink>
                     </div>
@@ -958,14 +963,14 @@ function GrindProfileDetailDialog({
                         <thead>
                           <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                             <th className="pb-1.5 pr-3">Ski</th>
-                            {hasSkiInfo && <th className="pb-1.5 pr-3">Model</th>}
+                            {hasSkiInfo && <th className="pb-1.5 pr-3">{L("Modell", "Model")}</th>}
                             {activeCols.map((col) => (
                               <th key={col} className="pb-1.5 pr-3">{colLabel(col)}</th>
                             ))}
                             {distLabels.map((label, i) => (
                               <th key={i} className="pb-1.5 pr-3">{label} / Rank</th>
                             ))}
-                            <th className="pb-1.5">Feel</th>
+                            <th className="pb-1.5">{L("Følelse", "Feel")}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1034,6 +1039,8 @@ function GrindProfileDetailDialog({
 }
 
 function GrindProfileHistory({ profileId, open }: { profileId: number | null; open: boolean }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { data: changes = [], isLoading } = useQuery<{
     id: number; userName: string; action: string; details: string; createdAt: string;
   }[]>({
@@ -1067,7 +1074,7 @@ function GrindProfileHistory({ profileId, open }: { profileId: number | null; op
 
   return (
     <div className="mt-4 border-t border-border pt-3">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Change history</div>
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">{L("Endringshistorikk", "Change history")}</div>
       <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1">
         {changes.map((c) => {
           let diffSummary: string | null = null;
@@ -1221,6 +1228,8 @@ function GrindBulkImportDialog({
   onOpenChange: (v: boolean) => void;
   onImported: () => void;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const [raw, setRaw] = useState(PRESET_GRIND_DATA);
   const [importing, setImporting] = useState(false);
@@ -1237,7 +1246,7 @@ function GrindBulkImportDialog({
       onImported();
       onOpenChange(false);
     } catch {
-      toast({ title: "Import feilet", variant: "destructive" });
+      toast({ title: L("Import feilet", "Import failed"), variant: "destructive" });
     } finally {
       setImporting(false);
     }
@@ -1247,10 +1256,10 @@ function GrindBulkImportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Importer slipeprofiler</DialogTitle>
+          <DialogTitle>{L("Importer slipeprofiler", "Import grind profiles")}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Lim inn data fra et regneark (Tab-separert). Kolonnene <strong>Brand</strong> og <strong>Grind</strong> brukes som profilnavn. Alle numeriske kolonner lagres som parametre. Grind type settes til <strong>Universal</strong> med mindre du endrer i forhåndsvisningen.
+          Lim inn data fra et regneark (Tab-separert). Kolonnene <strong>{L("Merke", "Brand")}</strong> og <strong>{L("Slip", "Grind")}</strong> brukes som profilnavn. Alle numeriske kolonner lagres som parametre. Grind type settes til <strong>{L("Universal", "Universal")}</strong> med mindre du endrer i forhåndsvisningen.
         </p>
         <Textarea
           className="font-mono text-xs min-h-[140px]"
@@ -1263,10 +1272,10 @@ function GrindBulkImportDialog({
             <table className="w-full">
               <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="px-2 py-1.5 text-left">Navn</th>
-                  <th className="px-2 py-1.5 text-left">Type</th>
-                  <th className="px-2 py-1.5 text-left">Parametre</th>
-                  <th className="px-2 py-1.5 text-left">Notater</th>
+                  <th className="px-2 py-1.5 text-left">{L("Navn", "Name")}</th>
+                  <th className="px-2 py-1.5 text-left">{L("Type", "Type")}</th>
+                  <th className="px-2 py-1.5 text-left">{L("Parametre", "Parameters")}</th>
+                  <th className="px-2 py-1.5 text-left">{L("Notater", "Notes")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1287,7 +1296,7 @@ function GrindBulkImportDialog({
         <div className="flex items-center justify-between pt-2">
           <span className="text-sm text-muted-foreground">{preview.length} profiler klar til import</span>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>{L("Avbryt", "Cancel")}</Button>
             <Button
               className="bg-violet-600 hover:bg-violet-700 text-white"
               onClick={handleImport}
@@ -1304,6 +1313,7 @@ function GrindBulkImportDialog({
 
 export default function Grinding() {
   const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const { confirm, ConfirmDialog } = useConfirmDialog();
   const [tab, setTab] = useState<"tests" | "grinds" | "analytics">("tests");
@@ -1443,7 +1453,7 @@ export default function Grinding() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/grind-profiles"] });
-      toast({ title: "Grind profile deleted" });
+      toast({ title: L("Slipeprofil slettet", "Grind profile deleted") });
     },
     onError: (e: Error) => {
       toast({ title: t("common.error"), description: e.message, variant: "destructive" });
@@ -1639,7 +1649,7 @@ export default function Grinding() {
               <AppLink href="/tests/new?type=Grind&returnTo=/grinding">
                 <Button data-testid="button-new-grind-test" className="shadow-sm">
                   <Plus className="mr-2 h-4 w-4" />
-                  New Grind Test
+                  {L("Ny sliptest", "New Grind Test")}
                 </Button>
               </AppLink>
             )}
@@ -1704,14 +1714,14 @@ export default function Grinding() {
                     <button
                       onClick={() => openEditLinkDialog(link)}
                       className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      title="Edit"
+                      title={L("Rediger", "Edit")}
                     >
                       <Pencil className="h-3 w-3" />
                     </button>
                     <button
                       onClick={() => deleteLink(link.id)}
                       className="rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      title="Delete"
+                      title={L("Slett", "Delete")}
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -1724,7 +1734,7 @@ export default function Grinding() {
               className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
             >
               <Plus className="h-3 w-3" />
-              Add link
+              {L("Legg til lenke", "Add link")}
             </button>
             <button
               onClick={() => setLinkEditMode((v) => !v)}
@@ -1745,7 +1755,7 @@ export default function Grinding() {
             className="self-start inline-flex items-center gap-1.5 rounded-full border border-dashed border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
           >
             <Link2 className="h-3 w-3" />
-            Add spreadsheet link
+            {L("Legg til regnearklenke", "Add spreadsheet link")}
           </button>
         )}
 
@@ -1779,7 +1789,7 @@ export default function Grinding() {
             data-testid="tab-grinding-analytics"
           >
             <TrendingUp className="inline-block mr-1.5 h-4 w-4" />
-            Analytics
+            {L("Analyse", "Analytics")}
           </button>
         </div>
 
@@ -1792,17 +1802,17 @@ export default function Grinding() {
                   <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10">
                     <Filter className="h-3.5 w-3.5 text-primary" />
                   </div>
-                  Filters
+                  {L("Filtre", "Filters")}
                 </div>
                 <div className="flex flex-1 flex-wrap items-center gap-3">
                   {/* 1. Season */}
                   <div className="min-w-[140px]">
                     <Select value={filterSeason} onValueChange={setFilterSeason}>
                       <SelectTrigger data-testid="select-grind-filter-season">
-                        <SelectValue placeholder="All seasons" />
+                        <SelectValue placeholder={L("Alle sesonger", "All seasons")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="All">All seasons</SelectItem>
+                        <SelectItem value="All">{L("Alle sesonger", "All seasons")}</SelectItem>
                         {availableSeasons.map((s) => (
                           <SelectItem key={s} value={s}>{s}</SelectItem>
                         ))}
@@ -1817,10 +1827,10 @@ export default function Grinding() {
                       data-testid="select-grind-filter-date"
                     >
                       <SelectTrigger className="h-9 text-xs">
-                        <SelectValue placeholder="All dates" />
+                        <SelectValue placeholder={L("Alle datoer", "All dates")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__all__">All dates</SelectItem>
+                        <SelectItem value="__all__">{L("Alle datoer", "All dates")}</SelectItem>
                         {availableDates.map((d) => (
                           <SelectItem key={d} value={d}>{dateLabelMap.get(d) ?? fmtDate(d)}</SelectItem>
                         ))}
@@ -1830,7 +1840,7 @@ export default function Grinding() {
                   {/* 3. Date range */}
                   <div className="flex items-center gap-1">
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-muted-foreground px-1">Date from:</span>
+                      <span className="text-[10px] text-muted-foreground px-1">{L("Dato fra:", "Date from:")}</span>
                       <div className="relative h-9 w-[130px]">
                         <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)}
                           className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden"
@@ -1842,7 +1852,7 @@ export default function Grinding() {
                     </div>
                     <span className="text-muted-foreground text-xs shrink-0 mt-4">–</span>
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-muted-foreground px-1">Date to:</span>
+                      <span className="text-[10px] text-muted-foreground px-1">{L("Dato til:", "Date to:")}</span>
                       <div className="relative h-9 w-[130px]">
                         <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)}
                           className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden"
@@ -1896,7 +1906,7 @@ export default function Grinding() {
                       setWfCloudMin(""); setWfCloudMax("");
                     }}
                   >
-                    Clear
+                    {L("Nullstill", "Clear")}
                   </Button>
                 )}
               </div>
@@ -1906,11 +1916,11 @@ export default function Grinding() {
                 <div className="mt-3 border-t border-border pt-3">
                   <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     <Snowflake className="h-3 w-3" />
-                    Weather Conditions
+                    {L("Værforhold", "Weather Conditions")}
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Temperature & Humidity</div>
+                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Temperatur og fuktighet", "Temperature & Humidity")}</div>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         <div>
                           <div className="flex items-center gap-1 mb-1">
@@ -1920,7 +1930,7 @@ export default function Grinding() {
                           <div className="flex items-center gap-1">
                             <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfAirTempMin} onChange={e => setWfAirTempMin(e.target.value)} />
                             <span className="text-xs text-muted-foreground">–</span>
-                            <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfAirTempMax} onChange={e => setWfAirTempMax(e.target.value)} />
+                            <Input type="number" className="h-8 text-xs" placeholder={L("Maks", "Max")} value={wfAirTempMax} onChange={e => setWfAirTempMax(e.target.value)} />
                           </div>
                         </div>
                         <div>
@@ -1931,54 +1941,54 @@ export default function Grinding() {
                           <div className="flex items-center gap-1">
                             <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfSnowTempMin} onChange={e => setWfSnowTempMin(e.target.value)} />
                             <span className="text-xs text-muted-foreground">–</span>
-                            <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfSnowTempMax} onChange={e => setWfSnowTempMax(e.target.value)} />
+                            <Input type="number" className="h-8 text-xs" placeholder={L("Maks", "Max")} value={wfSnowTempMax} onChange={e => setWfSnowTempMax(e.target.value)} />
                           </div>
                         </div>
                         <div>
                           <div className="flex items-center gap-1 mb-1">
                             <span className="inline-block h-2 w-2 rounded-full bg-violet-500" />
-                            <span className="text-xs text-muted-foreground">Air humidity (%rH)</span>
+                            <span className="text-xs text-muted-foreground">{L("Luftfuktighet (%rH)", "Air humidity (%rH)")}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfAirHumMin} onChange={e => setWfAirHumMin(e.target.value)} />
                             <span className="text-xs text-muted-foreground">–</span>
-                            <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfAirHumMax} onChange={e => setWfAirHumMax(e.target.value)} />
+                            <Input type="number" className="h-8 text-xs" placeholder={L("Maks", "Max")} value={wfAirHumMax} onChange={e => setWfAirHumMax(e.target.value)} />
                           </div>
                         </div>
                         <div>
                           <div className="flex items-center gap-1 mb-1">
                             <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
-                            <span className="text-xs text-muted-foreground">Snow humidity (%)</span>
+                            <span className="text-xs text-muted-foreground">{L("Snøfuktighet (%)", "Snow humidity (%)")}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfSnowHumMin} onChange={e => setWfSnowHumMin(e.target.value)} />
                             <span className="text-xs text-muted-foreground">–</span>
-                            <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfSnowHumMax} onChange={e => setWfSnowHumMax(e.target.value)} />
+                            <Input type="number" className="h-8 text-xs" placeholder={L("Maks", "Max")} value={wfSnowHumMax} onChange={e => setWfSnowHumMax(e.target.value)} />
                           </div>
                         </div>
                         <div>
                           <div className="flex items-center gap-1 mb-1">
                             <span className="inline-block h-2 w-2 rounded-full bg-sky-400" />
-                            <span className="text-xs text-muted-foreground">Cloud cover (%)</span>
+                            <span className="text-xs text-muted-foreground">{L("Skydekke (%)", "Cloud cover (%)")}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Input type="number" className="h-8 text-xs" placeholder="Min" value={wfCloudMin} onChange={e => setWfCloudMin(e.target.value)} />
                             <span className="text-xs text-muted-foreground">–</span>
-                            <Input type="number" className="h-8 text-xs" placeholder="Max" value={wfCloudMax} onChange={e => setWfCloudMax(e.target.value)} />
+                            <Input type="number" className="h-8 text-xs" placeholder={L("Maks", "Max")} value={wfCloudMax} onChange={e => setWfCloudMax(e.target.value)} />
                           </div>
                         </div>
                       </div>
                     </div>
                     <div>
-                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow Type</div>
+                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Snøtype", "Snow Type")}</div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                           <div className="flex items-center gap-1 mb-1">
                             <span className="inline-block h-2 w-2 rounded-full bg-indigo-500" />
-                            <span className="text-xs text-muted-foreground">Artificial snow</span>
+                            <span className="text-xs text-muted-foreground">{L("Kunstsnø", "Artificial snow")}</span>
                           </div>
                           <Select value={wfArtSnow || "__any__"} onValueChange={v => setWfArtSnow(v === "__any__" ? "" : v)}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__any__">— Any —</SelectItem>
                               {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -1988,10 +1998,10 @@ export default function Grinding() {
                         <div>
                           <div className="flex items-center gap-1 mb-1">
                             <span className="inline-block h-2 w-2 rounded-full bg-teal-500" />
-                            <span className="text-xs text-muted-foreground">Natural snow</span>
+                            <span className="text-xs text-muted-foreground">{L("Natursnø", "Natural snow")}</span>
                           </div>
                           <Select value={wfNatSnow || "__any__"} onValueChange={v => setWfNatSnow(v === "__any__" ? "" : v)}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__any__">— Any —</SelectItem>
                               {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -2001,10 +2011,10 @@ export default function Grinding() {
                         <div>
                           <div className="flex items-center gap-1 mb-1">
                             <span className="inline-block h-2 w-2 rounded-full bg-cyan-500" />
-                            <span className="text-xs text-muted-foreground">Snow humidity type</span>
+                            <span className="text-xs text-muted-foreground">{L("Snøfukttype", "Snow humidity type")}</span>
                           </div>
                           <Select value={wfSnowHumidityType || "__any__"} onValueChange={v => setWfSnowHumidityType(v === "__any__" ? "" : v)}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__any__">— Any —</SelectItem>
                               {SNOW_HUMIDITY_TYPE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -2014,10 +2024,10 @@ export default function Grinding() {
                         <div>
                           <div className="flex items-center gap-1 mb-1">
                             <span className="inline-block h-2 w-2 rounded-full bg-lime-500" />
-                            <span className="text-xs text-muted-foreground">Grain size</span>
+                            <span className="text-xs text-muted-foreground">{L("Kornstørrelse", "Grain size")}</span>
                           </div>
                           <Select value={wfGrainSize || "__any__"} onValueChange={v => setWfGrainSize(v === "__any__" ? "" : v)}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__any__">— Any —</SelectItem>
                               {GRAIN_SIZE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -2027,15 +2037,15 @@ export default function Grinding() {
                       </div>
                     </div>
                     <div>
-                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow & Track</div>
+                      <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Snø og spor", "Snow & Track")}</div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                           <div className="flex items-center gap-1 mb-1">
                             <span className="inline-block h-2 w-2 rounded-full bg-orange-500" />
-                            <span className="text-xs text-muted-foreground">Track hardness</span>
+                            <span className="text-xs text-muted-foreground">{L("Sporhardhet", "Track hardness")}</span>
                           </div>
                           <Select value={wfTrackHardness || "__any__"} onValueChange={v => setWfTrackHardness(v === "__any__" ? "" : v)}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__any__">— Any —</SelectItem>
                               {TRACK_HARDNESS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -2045,23 +2055,23 @@ export default function Grinding() {
                         <div>
                           <div className="flex items-center gap-1 mb-1">
                             <span className="inline-block h-2 w-2 rounded-full bg-blue-400" />
-                            <span className="text-xs text-muted-foreground">Precipitation</span>
+                            <span className="text-xs text-muted-foreground">{L("Nedbør", "Precipitation")}</span>
                           </div>
-                          <Input className="h-8 text-xs" placeholder="e.g. Snow" value={wfPrecipitation} onChange={e => setWfPrecipitation(e.target.value)} />
+                          <Input className="h-8 text-xs" placeholder={L("f.eks. Snø", "e.g. Snow")} value={wfPrecipitation} onChange={e => setWfPrecipitation(e.target.value)} />
                         </div>
                         <div>
                           <div className="flex items-center gap-1 mb-1">
                             <span className="inline-block h-2 w-2 rounded-full bg-slate-400" />
-                            <span className="text-xs text-muted-foreground">Wind</span>
+                            <span className="text-xs text-muted-foreground">{L("Vind", "Wind")}</span>
                           </div>
-                          <Input className="h-8 text-xs" placeholder="e.g. NW 3m/s" value={wfWind} onChange={e => setWfWind(e.target.value)} />
+                          <Input className="h-8 text-xs" placeholder={L("f.eks. NV 3 m/s", "e.g. NW 3m/s")} value={wfWind} onChange={e => setWfWind(e.target.value)} />
                         </div>
                         <div>
                           <div className="flex items-center gap-1 mb-1">
                             <span className="inline-block h-2 w-2 rounded-full bg-gray-400" />
-                            <span className="text-xs text-muted-foreground">Visibility</span>
+                            <span className="text-xs text-muted-foreground">{L("Sikt", "Visibility")}</span>
                           </div>
-                          <Input className="h-8 text-xs" placeholder="e.g. Good" value={wfVisibility} onChange={e => setWfVisibility(e.target.value)} />
+                          <Input className="h-8 text-xs" placeholder={L("f.eks. God", "e.g. Good")} value={wfVisibility} onChange={e => setWfVisibility(e.target.value)} />
                         </div>
                       </div>
                     </div>
@@ -2073,7 +2083,7 @@ export default function Grinding() {
                 <div className="mt-3 border-t border-border pt-3">
                   <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     <CalendarDays className="h-3 w-3" />
-                    Quick day select
+                    {L("Hurtigvalg dag", "Quick day select")}
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {availableDates.slice(0, 10).map((d) => (
@@ -2112,7 +2122,7 @@ export default function Grinding() {
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
                       <Disc3 className="h-3 w-3" />
-                      Grind
+                      {L("Slip", "Grind")}
                     </div>
                     {!compareMode ? (
                       <Select
@@ -2120,10 +2130,10 @@ export default function Grinding() {
                         onValueChange={(v) => setFilterGrinds(v === "all" ? [] : [v])}
                       >
                         <SelectTrigger className="h-8 text-xs min-w-[160px] max-w-xs">
-                          <SelectValue placeholder="All grinds" />
+                          <SelectValue placeholder={L("Alle slip", "All grinds")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All grinds</SelectItem>
+                          <SelectItem value="all">{L("Alle slip", "All grinds")}</SelectItem>
                           {grindProfiles.map((p) => (
                             <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
                           ))}
@@ -2173,7 +2183,7 @@ export default function Grinding() {
                         setCompareMode((m) => !m);
                       }}
                     >
-                      Compare
+                      {L("Sammenlign", "Compare")}
                     </Button>
                     {filterGrinds.length > 0 && (
                       <button
@@ -2181,7 +2191,7 @@ export default function Grinding() {
                         className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                         onClick={() => setFilterGrinds([])}
                       >
-                        Clear
+                        {L("Nullstill", "Clear")}
                       </button>
                     )}
                   </div>
@@ -2193,7 +2203,7 @@ export default function Grinding() {
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-2">
                   <CalendarDays className="h-5 w-5 text-indigo-600" />
-                  <h2 className="text-lg font-semibold">Day view: {fmtDate(filterDate)}</h2>
+                  <h2 className="text-lg font-semibold">{L("Dagsvisning:", "Day view:")} {fmtDate(filterDate)}</h2>
                   <span className="rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">{filtered.length} test{filtered.length !== 1 ? "s" : ""}</span>
                 </div>
                 {filtered.length === 0 ? (
@@ -2284,7 +2294,7 @@ export default function Grinding() {
                 className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${grindSubTab === "active" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}
               >
                 <Trophy className="h-4 w-4" />
-                Active
+                {L("Aktive", "Active")}
                 {grindProfiles.length > 0 && (
                   <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">{grindProfiles.length}</span>
                 )}
@@ -2294,7 +2304,7 @@ export default function Grinding() {
                 className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${grindSubTab === "archived" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}
               >
                 <Archive className="h-4 w-4" />
-                Archived
+                {L("Arkivert", "Archived")}
               </button>
             </div>
 
@@ -2326,7 +2336,7 @@ export default function Grinding() {
                   onClick={() => { setGrindViewMode("grid"); try { localStorage.setItem("glidr-grinds-view-mode", "grid"); } catch {} }}
                   className={cn("px-2.5 py-1.5 transition-colors", grindViewMode === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
                   data-testid="button-grinds-view-grid"
-                  title="Grid view"
+                  title={L("Rutenett", "Grid view")}
                 >
                   <LayoutGrid className="h-4 w-4" />
                 </button>
@@ -2335,7 +2345,7 @@ export default function Grinding() {
                   onClick={() => { setGrindViewMode("list"); try { localStorage.setItem("glidr-grinds-view-mode", "list"); } catch {} }}
                   className={cn("px-2.5 py-1.5 transition-colors", grindViewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
                   data-testid="button-grinds-view-list"
-                  title="List view"
+                  title={L("Liste", "List view")}
                 >
                   <LayoutList className="h-4 w-4" />
                 </button>
@@ -2352,7 +2362,7 @@ export default function Grinding() {
                 </Card>
               ) : filteredProfiles.length === 0 ? (
                 <Card className="fs-card rounded-2xl p-6 text-center">
-                  <div className="text-sm text-muted-foreground">No grind profiles match your search.</div>
+                  <div className="text-sm text-muted-foreground">{L("Ingen slipeprofiler samsvarer med søket.", "No grind profiles match your search.")}</div>
                 </Card>
               ) : grindViewMode === "list" ? (
                 <GrindProfilesTable
@@ -2360,8 +2370,8 @@ export default function Grinding() {
                   onViewResults={(profile) => { setDetailProfile(profile); setDetailOpen(true); }}
                   onEdit={(profile) => { setEditProfile(profile); setGrindDialogOpen(true); }}
                   onDuplicate={async (profile) => { if (await confirm({ title: `Duplicate "${profile.name}"?`, confirmLabel: "Duplicate" })) duplicateProfileMutation.mutate(profile.id); }}
-                  onDelete={async (profile) => { if (await confirm({ title: `Delete "${profile.name}"?`, description: "This cannot be undone.", confirmLabel: "Delete", variant: "destructive" })) deleteProfileMutation.mutate(profile.id); }}
-                  onArchive={async (profile) => { if (await confirm({ title: `Archive "${profile.name}"?`, description: "It will be moved to the archive and can be restored later.", confirmLabel: "Archive" })) archiveProfileMutation.mutate({ id: profile.id, archived: true }); }}
+                  onDelete={async (profile) => { if (await confirm({ title: `Delete "${profile.name}"?`, description: L("Dette kan ikke angres.", "This cannot be undone."), confirmLabel: "Delete", variant: "destructive" })) deleteProfileMutation.mutate(profile.id); }}
+                  onArchive={async (profile) => { if (await confirm({ title: `Archive "${profile.name}"?`, description: L("Den flyttes til arkivet og kan gjenopprettes senere.", "It will be moved to the archive and can be restored later."), confirmLabel: "Archive" })) archiveProfileMutation.mutate({ id: profile.id, archived: true }); }}
                 />
               ) : (
                 <div className="flex flex-col gap-3">
@@ -2372,8 +2382,8 @@ export default function Grinding() {
                       onViewResults={() => { setDetailProfile(profile); setDetailOpen(true); }}
                       onEdit={() => { setEditProfile(profile); setGrindDialogOpen(true); }}
                       onDuplicate={async () => { if (await confirm({ title: `Duplicate "${profile.name}"?`, confirmLabel: "Duplicate" })) duplicateProfileMutation.mutate(profile.id); }}
-                      onDelete={async () => { if (await confirm({ title: `Delete "${profile.name}"?`, description: "This cannot be undone.", confirmLabel: "Delete", variant: "destructive" })) deleteProfileMutation.mutate(profile.id); }}
-                      onArchive={async () => { if (await confirm({ title: `Archive "${profile.name}"?`, description: "It will be moved to the archive and can be restored later.", confirmLabel: "Archive" })) archiveProfileMutation.mutate({ id: profile.id, archived: true }); }}
+                      onDelete={async () => { if (await confirm({ title: `Delete "${profile.name}"?`, description: L("Dette kan ikke angres.", "This cannot be undone."), confirmLabel: "Delete", variant: "destructive" })) deleteProfileMutation.mutate(profile.id); }}
+                      onArchive={async () => { if (await confirm({ title: `Archive "${profile.name}"?`, description: L("Den flyttes til arkivet og kan gjenopprettes senere.", "It will be moved to the archive and can be restored later."), confirmLabel: "Archive" })) archiveProfileMutation.mutate({ id: profile.id, archived: true }); }}
                     />
                   ))}
                 </div>
@@ -2385,11 +2395,11 @@ export default function Grinding() {
               archivedProfiles.length === 0 ? (
                 <Card className="fs-card rounded-2xl p-8 text-center">
                   <Archive className="mx-auto h-10 w-10 text-muted-foreground/50 mb-3" />
-                  <div className="text-sm text-muted-foreground">No archived grind profiles.</div>
+                  <div className="text-sm text-muted-foreground">{L("Ingen arkiverte slipeprofiler.", "No archived grind profiles.")}</div>
                 </Card>
               ) : filteredArchivedProfiles.length === 0 ? (
                 <Card className="fs-card rounded-2xl p-6 text-center">
-                  <div className="text-sm text-muted-foreground">No archived profiles match your search.</div>
+                  <div className="text-sm text-muted-foreground">{L("Ingen arkiverte profiler samsvarer med søket.", "No archived profiles match your search.")}</div>
                 </Card>
               ) : grindViewMode === "list" ? (
                 <GrindProfilesTable
@@ -2397,7 +2407,7 @@ export default function Grinding() {
                   onViewResults={(profile) => { setDetailProfile(profile); setDetailOpen(true); }}
                   onEdit={(profile) => { setEditProfile(profile); setGrindDialogOpen(true); }}
                   onDuplicate={async (profile) => { if (await confirm({ title: `Duplicate "${profile.name}"?`, confirmLabel: "Duplicate" })) duplicateProfileMutation.mutate(profile.id); }}
-                  onDelete={async (profile) => { if (await confirm({ title: `Delete "${profile.name}"?`, description: "This cannot be undone.", confirmLabel: "Delete", variant: "destructive" })) deleteProfileMutation.mutate(profile.id); }}
+                  onDelete={async (profile) => { if (await confirm({ title: `Delete "${profile.name}"?`, description: L("Dette kan ikke angres.", "This cannot be undone."), confirmLabel: "Delete", variant: "destructive" })) deleteProfileMutation.mutate(profile.id); }}
                   onArchive={(profile) => archiveProfileMutation.mutate({ id: profile.id, archived: false })}
                 />
               ) : (
@@ -2409,7 +2419,7 @@ export default function Grinding() {
                       onViewResults={() => { setDetailProfile(profile); setDetailOpen(true); }}
                       onEdit={() => { setEditProfile(profile); setGrindDialogOpen(true); }}
                       onDuplicate={async () => { if (await confirm({ title: `Duplicate "${profile.name}"?`, confirmLabel: "Duplicate" })) duplicateProfileMutation.mutate(profile.id); }}
-                      onDelete={async () => { if (await confirm({ title: `Delete "${profile.name}"?`, description: "This cannot be undone.", confirmLabel: "Delete", variant: "destructive" })) deleteProfileMutation.mutate(profile.id); }}
+                      onDelete={async () => { if (await confirm({ title: `Delete "${profile.name}"?`, description: L("Dette kan ikke angres.", "This cannot be undone."), confirmLabel: "Delete", variant: "destructive" })) deleteProfileMutation.mutate(profile.id); }}
                       onArchive={() => archiveProfileMutation.mutate({ id: profile.id, archived: false })}
                     />
                   ))}
@@ -2450,11 +2460,11 @@ export default function Grinding() {
           </DialogHeader>
           <div className="flex flex-col gap-3 pt-1">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-muted-foreground">Button name</label>
+              <label className="text-xs font-medium text-muted-foreground">{L("Knappenavn", "Button name")}</label>
               <Input
                 value={linkName}
                 onChange={(e) => setLinkName(e.target.value)}
-                placeholder="e.g. Grind Log 2025"
+                placeholder={L("f.eks. Sliplogg 2025", "e.g. Grind Log 2025")}
                 autoFocus
                 onKeyDown={(e) => e.key === "Enter" && saveLinkDialog()}
               />
@@ -2469,7 +2479,7 @@ export default function Grinding() {
               />
             </div>
             <div className="flex justify-end gap-2 pt-1">
-              <Button variant="outline" size="sm" onClick={() => setLinkDialogOpen(false)}>Cancel</Button>
+              <Button variant="outline" size="sm" onClick={() => setLinkDialogOpen(false)}>{L("Avbryt", "Cancel")}</Button>
               <Button size="sm" onClick={saveLinkDialog} disabled={!linkName.trim() || !linkUrl.trim()}>
                 {editLink ? "Save" : "Add"}
               </Button>
@@ -2513,7 +2523,8 @@ function GrindingAnalytics({
   grindProfiles: GrindProfile[];
   weatherById: Map<number, Weather>;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [view, setView] = useState<AnalyticsView>("overview");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -3229,6 +3240,8 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
   // maps profile name → color config (from GRIND_COMPARE_COLORS)
   grindHighlight?: Map<string, typeof GRIND_COMPARE_COLORS[number]>;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const distLabels = getDistanceLabels(test);
   const sortedEntries = [...entries].sort((a, b) => a.skiNumber - b.skiNumber);
   const w = test.weatherId ? weatherById.get(test.weatherId) : null;
@@ -3263,11 +3276,11 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
   );
 
   const colLabels: Record<string, string> = {
-    name: "Grind name",
-    grindProfileId: "Grind-ID",
-    grindStone: "Stone",
-    grindPattern: "Pattern",
-    ra_value: "RA-Value",
+    name: L("Slipenavn", "Grind name"),
+    grindProfileId: L("Slip-ID", "Grind-ID"),
+    grindStone: L("Stein", "Stone"),
+    grindPattern: L("Mønster", "Pattern"),
+    ra_value: L("RA-verdi", "RA-Value"),
   };
 
   // For column labels: use colLabels for known internal keys, otherwise show key exactly as stored
@@ -3299,7 +3312,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
       setEditingNotes(false);
     } catch {
-      toast({ title: "Error", description: "Could not save notes", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: L("Kunne ikke lagre notater", "Could not save notes"), variant: "destructive" });
     } finally {
       setNotesSaving(false);
     }
@@ -3365,7 +3378,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
           <AppLink href={`/tests/${test.id}`} testId={`link-open-grind-test-${test.id}`}>
             <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1">
               <ExternalLink className="h-3 w-3" />
-              Open
+              {L("Åpne", "Open")}
             </Button>
           </AppLink>
         </div>
@@ -3374,7 +3387,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
       {/* Grind column chooser */}
       {allGrindCols.length > 0 && (
         <div className="mb-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mr-1">Show per ski:</span>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mr-1">{L("Vis per ski:", "Show per ski:")}</span>
           {allGrindCols.map((col) => (
             <ColToggle
               key={col}
@@ -3400,8 +3413,8 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
                     {label} <span className="text-[9px]">(cm)</span>
                   </th>
                 ))}
-                <th className="pb-2 pr-4">Rank</th>
-                <th className="pb-2 pr-3">Feel</th>
+                <th className="pb-2 pr-4">{L("Rang", "Rank")}</th>
+                <th className="pb-2 pr-3">{L("Følelse", "Feel")}</th>
               </tr>
             </thead>
             <tbody>
@@ -3448,7 +3461,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
             <Textarea
               value={notesVal}
               onChange={e => setNotesVal(e.target.value)}
-              placeholder="Add notes for this grind test..."
+              placeholder={L("Legg til notater for denne sliptesten...", "Add notes for this grind test...")}
               rows={2}
               className="text-xs resize-none"
               autoFocus
@@ -3456,7 +3469,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
             <div className="flex items-center gap-1.5">
               <Button size="sm" className="h-6 px-2 text-xs" onClick={saveNotes} disabled={notesSaving}>
                 <Check className="h-3 w-3 mr-1" />
-                Save
+                {L("Lagre", "Save")}
               </Button>
               <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => { setEditingNotes(false); setNotesVal(test.notes ?? ""); }}>
                 <X className="h-3 w-3" />
@@ -3469,14 +3482,14 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
               {test.notes ? (
                 <p className="text-xs text-muted-foreground italic">{test.notes}</p>
               ) : (
-                <p className="text-xs text-muted-foreground/50 italic">No notes</p>
+                <p className="text-xs text-muted-foreground/50 italic">{L("Ingen notater", "No notes")}</p>
               )}
             </div>
             <button
               type="button"
               onClick={() => setEditingNotes(true)}
               className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-              title="Edit notes"
+              title={L("Rediger notater", "Edit notes")}
             >
               <Pencil className="h-3 w-3" />
             </button>

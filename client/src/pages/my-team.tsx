@@ -33,6 +33,8 @@ interface TeamMember {
   createdAt: string | null;
 }
 
+import { useI18n } from "@/lib/i18n";
+
 type SortKey = "name-asc" | "name-desc";
 type ViewMode = "list" | "grid" | "compact";
 
@@ -84,22 +86,26 @@ function MemberAvatar({ member, size = "sm" }: { member: TeamMember; size?: "sm"
 }
 
 function RoleBadge({ isTeamAdmin }: { isTeamAdmin: boolean }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   if (isTeamAdmin) {
     return (
       <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-300">
         <Shield className="h-2.5 w-2.5" />
-        Admin
+        {L("Admin", "Admin")}
       </span>
     );
   }
   return (
     <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-      Member
+      {L("Medlem", "Member")}
     </span>
   );
 }
 
 export default function MyTeam() {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { user } = useAuth();
   const isTeamAdmin = !!(user as any)?.isTeamAdmin || !!(user as any)?.isAdmin;
 
@@ -113,7 +119,7 @@ export default function MyTeam() {
     queryKey: ["/api/team/members"],
     queryFn: async () => {
       const res = await fetch("/api/team/members", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch team members");
+      if (!res.ok) throw new Error(L("Kunne ikke hente lagmedlemmer", "Failed to fetch team members"));
       return res.json();
     },
     enabled: !!user,
@@ -179,7 +185,7 @@ export default function MyTeam() {
         {/* Header */}
         <div className="flex items-center gap-3">
           <Users className="h-7 w-7 text-green-500 shrink-0" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">My Team</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{L("Mitt lag", "My Team")}</h1>
           {!isLoading && (
             <span className="ml-1 text-sm text-muted-foreground">
               {filtered.length}/{members.length}
@@ -195,7 +201,7 @@ export default function MyTeam() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search members…"
+              placeholder={L("Søk medlemmer…", "Search members…")}
               className="pl-8 pr-8 h-9 text-sm"
             />
             {search && (
@@ -216,7 +222,7 @@ export default function MyTeam() {
                 size="sm"
                 className={cn("h-9 gap-1.5 text-sm", activeFilters > 0 && "border-green-500 text-green-600 dark:text-green-400")}
               >
-                Filter
+                {L("Filter", "Filter")}
                 {activeFilters > 0 && (
                   <span className="ml-0.5 rounded-full bg-green-500 text-white text-[10px] font-bold h-4 w-4 flex items-center justify-center">
                     {activeFilters}
@@ -227,25 +233,25 @@ export default function MyTeam() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuLabel className="text-xs text-muted-foreground font-normal uppercase tracking-wide pb-1">
-                Role
+                {L("Rolle", "Role")}
               </DropdownMenuLabel>
               <DropdownMenuRadioGroup value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
-                <DropdownMenuRadioItem value="all">All roles</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="admin">Admin only</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="member">Members only</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="all">{L("Alle roller", "All roles")}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="admin">{L("Kun admin", "Admin only")}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="member">{L("Kun medlemmer", "Members only")}</DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
 
               {allGroups.length > 0 && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel className="text-xs text-muted-foreground font-normal uppercase tracking-wide pb-1">
-                    Group
+                    {L("Gruppe", "Group")}
                   </DropdownMenuLabel>
                   <DropdownMenuRadioGroup
                     value={groupFilter ?? ""}
                     onValueChange={(v) => setGroupFilter(v || null)}
                   >
-                    <DropdownMenuRadioItem value="">All groups</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="">{L("Alle grupper", "All groups")}</DropdownMenuRadioItem>
                     {allGroups.map((g) => (
                       <DropdownMenuRadioItem key={g} value={g}>
                         {g}
@@ -262,7 +268,7 @@ export default function MyTeam() {
                     onClick={() => { setRoleFilter("all"); setGroupFilter(null); }}
                     className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Clear filters
+                    {L("Nullstill filtre", "Clear filters")}
                   </button>
                 </>
               )}
@@ -274,18 +280,18 @@ export default function MyTeam() {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-9 gap-1.5 text-sm">
                 <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
-                {SORT_LABELS[sortKey].split(":")[0].split("→")[0].trim().replace("Name ", "").replace("Joined", "Date") || "Sort"}
+                {L("Sortér", "Sort")}
                 <ChevronDown className="h-3.5 w-3.5 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuLabel className="text-xs text-muted-foreground font-normal uppercase tracking-wide pb-1">
-                Sort by
+                {L("Sortér etter", "Sort by")}
               </DropdownMenuLabel>
               <DropdownMenuRadioGroup value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
                 {(Object.entries(SORT_LABELS) as [SortKey, string][]).map(([key, label]) => (
                   <DropdownMenuRadioItem key={key} value={key}>
-                    {label}
+                    {key === "name-asc" ? L("Navn A → Å", "Name A → Z") : L("Navn Å → A", "Name Z → A")}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>
@@ -302,7 +308,7 @@ export default function MyTeam() {
                   ? "bg-green-600 text-white"
                   : "text-muted-foreground hover:text-foreground",
               )}
-              title="List view"
+              title={L("Liste", "List view")}
             >
               <List className="h-3.5 w-3.5" />
             </button>
@@ -314,7 +320,7 @@ export default function MyTeam() {
                   ? "bg-green-600 text-white"
                   : "text-muted-foreground hover:text-foreground",
               )}
-              title="Grid view"
+              title={L("Rutenett", "Grid view")}
             >
               <LayoutGrid className="h-3.5 w-3.5" />
             </button>
@@ -326,7 +332,7 @@ export default function MyTeam() {
                   ? "bg-green-600 text-white"
                   : "text-muted-foreground hover:text-foreground",
               )}
-              title="Compact view"
+              title={L("Kompakt", "Compact view")}
             >
               <AlignJustify className="h-3.5 w-3.5" />
             </button>
@@ -346,14 +352,14 @@ export default function MyTeam() {
           <Card className="rounded-2xl overflow-hidden">
             <div className="p-8 text-center space-y-1">
               <p className="text-sm text-muted-foreground">
-                {members.length === 0 ? "No team members found." : "No members match your filters."}
+                {members.length === 0 ? L("Ingen lagmedlemmer funnet.", "No team members found.") : L("Ingen medlemmer samsvarer med filtrene.", "No members match your filters.")}
               </p>
               {(search || activeFilters > 0) && (
                 <button
                   onClick={() => { setSearch(""); setRoleFilter("all"); setGroupFilter(null); }}
                   className="text-xs text-green-600 hover:underline"
                 >
-                  Clear all filters
+                  {L("Nullstill alle filtre", "Clear all filters")}
                 </button>
               )}
             </div>
@@ -389,7 +395,7 @@ export default function MyTeam() {
                         </span>
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Calendar className="h-3 w-3 shrink-0" />
-                          Member since: {formatMemberSince(member.createdAt)}
+                          {L("Medlem siden:", "Member since:")} {formatMemberSince(member.createdAt)}
                         </span>
                       </div>
 
@@ -413,7 +419,7 @@ export default function MyTeam() {
                         </div>
                       ) : (
                         <div className="mt-1.5">
-                          <span className="text-[10px] text-muted-foreground/50 italic">No group assigned</span>
+                          <span className="text-[10px] text-muted-foreground/50 italic">{L("Ingen gruppe tilordnet", "No group assigned")}</span>
                         </div>
                       )}
                     </div>
@@ -452,7 +458,7 @@ export default function MyTeam() {
                     </div>
                     <p className="text-xs text-muted-foreground truncate mt-1">{member.email}</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Since: {formatMemberSince(member.createdAt)}
+                      {L("Siden:", "Since:")} {formatMemberSince(member.createdAt)}
                     </p>
                   </div>
                   {groups.length > 0 && (

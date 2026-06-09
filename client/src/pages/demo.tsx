@@ -78,6 +78,48 @@ const SCENES = [
   },
 ];
 
+const SCENES_NO: Record<string, { title: string; subtitle: string; description: string; bullets: string[] }> = {
+  tests: {
+    title: "Loggfør tester på sekunder",
+    subtitle: "Struktur eller Glid · Heat · Ranger hver ski",
+    description: "Legg inn hele testheatet i én visning. Ranger ski, registrer avstander, legg til notater — alt fra én skjerm. Fungerer offline i løypa.",
+    bullets: ["Testtyper for Glid og Struktur", "Heat-basert rangering", "Avstandsregistrering ski for ski", "Offline-synk når du er tilbake på nett"],
+  },
+  weather: {
+    title: "Knytt tester til føret",
+    subtitle: "Snøtemp · Fuktighet · Sporhardhet",
+    description: "Hver test kobles til et værsnapshot: snøtemperatur, lufttemperatur, fuktighetstype, sporhardhet, kornstørrelse og mer. Analysene dine blir meningsfulle.",
+    bullets: ["Fullt værsnapshot per test", "Auto-foreslått fra nylige logger", "Snøfuktighet: tørr / fuktig / våt", "Koblet til hver rangering"],
+  },
+  analytics: {
+    title: "Analyse som faktisk hjelper",
+    subtitle: "Seiersrater · Værfordelinger · Kombinasjoner",
+    description: "Se hvilke produkter som vinner i hvilke forhold. Filtrer på snøtemperatur, luftfuktighet, sporhardhet eller sted. Finn din beste vokskombinasjon til neste løp.",
+    bullets: ["Seiersrate etter snø- og lufttemperatur", "Beste produktkombinasjoner", "Medianrang og konsistens (σ)", "Ytelse per sted"],
+  },
+  products: {
+    title: "Din produktdatabase",
+    subtitle: "Full testhistorikk · Kombinasjoner · Lager",
+    description: "Hvert produkt bygger sin egen ytelsesprofil over tid. Se full testhistorikk, beste forhold, og hvordan det presterer kombinert med andre produkter.",
+    bullets: ["Full testhistorikk per produkt", "Ytelse i alle forhold", "Kombinasjonsanalyse", "Lagersporing"],
+  },
+  ai: {
+    title: "AI-fotoregistrering",
+    subtitle: "Fotografer håndskrevne ark · Umiddelbar import",
+    description: "Fotografer et håndskrevet testark, så henter Glidrs AI ut skinummer, produktnavn og resultater — og matcher dem automatisk mot produktdatabasen din.",
+    bullets: ["Fotografer hvilket som helst håndskrevet ark", "Matcher produktene dine automatisk", "Gjennomgå før du bekrefter", "Håndterer flere produkter per ski"],
+  },
+  garmin: {
+    title: "Garmin-klokkestyring",
+    subtitle: "Håndfri · I løypa · Live heat",
+    description: "Generer en 4-sifret øktkode i et hvilket som helst kjøreark. Åpne Glidr-appen på Garmin Forerunner eller Fenix — og styr hele heatet fra håndleddet.",
+    bullets: ["Forerunner 945, 970, Fenix 7/8", "Velg vinnere live i bakken", "Legg inn cm-bak-avstander", "Ingen telefon nødvendig i løypa"],
+  },
+};
+
+const localizeScene = (s: (typeof SCENES)[number], lang: "en" | "no") =>
+  lang === "no" && SCENES_NO[s.id] ? { ...s, ...SCENES_NO[s.id] } : s;
+
 /* ── Mock UI components ─────────────────────────────────────────────────────── */
 
 function TestMockup() {
@@ -276,6 +318,7 @@ function GarminMockup() {
 
 export default function Demo() {
   const { lang } = useLanguage();
+  const L = (no: string, en: string) => (lang === "no" ? no : en);
   const [current, setCurrent] = useState(0);
   const [playing, setPlaying] = useState(true);
 
@@ -316,7 +359,7 @@ export default function Demo() {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [playing]);
 
-  const scene = SCENES[current];
+  const scene = localizeScene(SCENES[current], lang);
 
   return (
     <div className="min-h-screen bg-background">
@@ -356,7 +399,7 @@ export default function Demo() {
               className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-all shrink-0 ${i === current ? `bg-gradient-to-r ${s.color} text-white shadow-md` : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"}`}
             >
               {s.icon}
-              <span className="hidden sm:inline">{s.title.split(" ").slice(0, 2).join(" ")}</span>
+              <span className="hidden sm:inline">{(lang === "no" && SCENES_NO[s.id] ? SCENES_NO[s.id].title : s.title).split(" ").slice(0, 2).join(" ")}</span>
             </button>
           ))}
         </div>
@@ -416,12 +459,12 @@ export default function Demo() {
           <h2 className="text-2xl font-bold text-foreground text-center mb-10">{t.featureTitle}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {[
-              { icon: "🎿", title: "Test ski series", desc: "Manage series of test skis with regrind history" },
-              { icon: "🏔️", title: "Multiple locations", desc: "Log and compare across every venue" },
-              { icon: "📊", title: "Head-to-head compare", desc: "Compare any two products over time" },
-              { icon: "🔒", title: "Blind tester mode", desc: "Remove bias — testers don't see product names" },
-              { icon: "📤", title: "Export", desc: "PDF, Excel, and Google Sheets backup" },
-              { icon: "👤", title: "Team management", desc: "Add users with custom permissions per area" },
+              { icon: "🎿", title: L("Testskiserier", "Test ski series"), desc: L("Administrer serier av testski med reslip-historikk", "Manage series of test skis with regrind history") },
+              { icon: "🏔️", title: L("Flere steder", "Multiple locations"), desc: L("Loggfør og sammenlign på tvers av alle steder", "Log and compare across every venue") },
+              { icon: "📊", title: L("Head-to-head-sammenligning", "Head-to-head compare"), desc: L("Sammenlign to produkter over tid", "Compare any two products over time") },
+              { icon: "🔒", title: L("Blindtestermodus", "Blind tester mode"), desc: L("Fjern bias — testere ser ikke produktnavn", "Remove bias — testers don't see product names") },
+              { icon: "📤", title: L("Eksport", "Export"), desc: L("PDF, Excel og Google Sheets-sikkerhetskopi", "PDF, Excel, and Google Sheets backup") },
+              { icon: "👤", title: L("Lagadministrasjon", "Team management"), desc: L("Legg til brukere med egendefinerte tilganger per område", "Add users with custom permissions per area") },
             ].map((f) => (
               <div key={f.title} className="rounded-xl border bg-card p-4">
                 <div className="text-2xl mb-2">{f.icon}</div>

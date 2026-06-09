@@ -72,7 +72,8 @@ function categoryBadgeClass(cat: string) {
 }
 
 function AddProductModal({ onSaved }: { onSaved: () => void }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const { queueMutation } = useOffline();
 
@@ -100,19 +101,19 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
     },
     onSuccess: (result) => {
       if (result?.offline) {
-        toast({ title: "Saved offline", description: "Will sync when you reconnect." });
+        toast({ title: L("Lagret offline", "Saved offline"), description: L("Synkroniseres når du er tilkoblet igjen.", "Will sync when you reconnect.") });
         onSaved();
         return;
       }
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: "Product added" });
+      toast({ title: L("Produkt lagt til", "Product added") });
       onSaved();
     },
     onError: (e) => {
       const msg = e instanceof Error ? e.message : "Unknown error";
       const isLimitError = msg.toLowerCase().includes("limit");
       toast({
-        title: "Could not add product",
+        title: L("Kunne ikke legge til produkt", "Could not add product"),
         description: isLimitError ? t("products.limitReached") : msg,
         variant: "destructive",
       });
@@ -134,7 +135,7 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger data-testid="select-product-category">
-                    <SelectValue placeholder="Select" />
+                    <SelectValue placeholder={L("Velg", "Select")} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -156,7 +157,7 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
               <FormItem>
                 <FormLabel>{t("products.brand")}</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-product-brand" placeholder="e.g., Swix" />
+                  <Input {...field} data-testid="input-product-brand" placeholder={L("f.eks. Swix", "e.g., Swix")} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -169,7 +170,7 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
               <FormItem>
                 <FormLabel>{t("products.name")}</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-product-name" placeholder="e.g., HS10" />
+                  <Input {...field} data-testid="input-product-name" placeholder={L("f.eks. HS10", "e.g., HS10")} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -194,7 +195,8 @@ function EditProductModal({
   product: Product;
   onSaved: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof schema>>({
@@ -213,12 +215,12 @@ function EditProductModal({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: "Product updated" });
+      toast({ title: L("Produkt oppdatert", "Product updated") });
       onSaved();
     },
     onError: (e) => {
       toast({
-        title: "Could not update product",
+        title: L("Kunne ikke oppdatere produkt", "Could not update product"),
         description: e instanceof Error ? e.message : "Unknown error",
         variant: "destructive",
       });
@@ -240,7 +242,7 @@ function EditProductModal({
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger data-testid="select-edit-product-category">
-                    <SelectValue placeholder="Select" />
+                    <SelectValue placeholder={L("Velg", "Select")} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -262,7 +264,7 @@ function EditProductModal({
               <FormItem>
                 <FormLabel>{t("products.brand")}</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-edit-product-brand" placeholder="e.g., Swix" />
+                  <Input {...field} data-testid="input-edit-product-brand" placeholder={L("f.eks. Swix", "e.g., Swix")} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -275,7 +277,7 @@ function EditProductModal({
               <FormItem>
                 <FormLabel>{t("products.name")}</FormLabel>
                 <FormControl>
-                  <Input {...field} data-testid="input-edit-product-name" placeholder="e.g., HS10" />
+                  <Input {...field} data-testid="input-edit-product-name" placeholder={L("f.eks. HS10", "e.g., HS10")} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -300,6 +302,8 @@ function GroupAssignModal({
 }: {
   product: Product;
   groupNames: string[];
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   onDone: () => void;
 }) {
   const { toast } = useToast();
@@ -321,11 +325,11 @@ function GroupAssignModal({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: "Groups updated", description: `${product.brand} ${product.name} assigned to ${selected.join(", ")}` });
+      toast({ title: L("Grupper oppdatert", "Groups updated"), description: L(`${product.brand} ${product.name} tilordnet ${selected.join(", ")}`, `${product.brand} ${product.name} assigned to ${selected.join(", ")}`) });
       onDone();
     },
     onError: (e) => {
-      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e instanceof Error ? e.message : L("Ukjent feil", "Unknown error"), variant: "destructive" });
     },
   });
 
@@ -334,11 +338,11 @@ function GroupAssignModal({
       <div className="rounded-xl border border-border bg-muted/30 p-3">
         <div className="text-sm font-medium">{product.brand} {product.name}</div>
         <div className="mt-1 text-xs text-muted-foreground">
-          Currently in: <span className="font-medium text-foreground">{product.groupScope}</span>
+          {L("Nå i:", "Currently in:")} <span className="font-medium text-foreground">{product.groupScope}</span>
         </div>
       </div>
       <div>
-        <label className="mb-2 block text-sm font-medium">Assign to groups</label>
+        <label className="mb-2 block text-sm font-medium">{L("Tilordne til grupper", "Assign to groups")}</label>
         <div className="space-y-2">
           {groupNames.map((g) => (
             <label
@@ -367,7 +371,7 @@ function GroupAssignModal({
           onClick={() => mutation.mutate()}
         >
           <Users className="mr-2 h-4 w-4" />
-          Save
+          {L("Lagre", "Save")}
         </Button>
       </div>
     </div>
@@ -375,7 +379,8 @@ function GroupAssignModal({
 }
 
 export default function Products() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { user } = useAuth();
   const isAdmin = !!user?.isAdmin || !!user?.isTeamAdmin;
   const [open, setOpen] = useState(false);
@@ -540,11 +545,11 @@ export default function Products() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       queryClient.invalidateQueries({ queryKey: ["/api/products/archived"] });
-      toast({ title: "Product deleted" });
+      toast({ title: L("Produkt slettet", "Product deleted") });
       setDeletingProduct(undefined);
     },
     onError: (e) => {
-      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e instanceof Error ? e.message : L("Ukjent feil", "Unknown error"), variant: "destructive" });
     },
   });
 
@@ -558,7 +563,7 @@ export default function Products() {
       toast({ title: t("products.archived") });
     },
     onError: (e) => {
-      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e instanceof Error ? e.message : L("Ukjent feil", "Unknown error"), variant: "destructive" });
     },
   });
 
@@ -572,7 +577,7 @@ export default function Products() {
       toast({ title: t("products.restored") });
     },
     onError: (e) => {
-      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e instanceof Error ? e.message : L("Ukjent feil", "Unknown error"), variant: "destructive" });
     },
   });
 
@@ -585,10 +590,10 @@ export default function Products() {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       setSelectedIds(new Set());
       setBulkGroup("");
-      toast({ title: `Assigned ${data.updated} product${data.updated !== 1 ? "s" : ""} to group` });
+      toast({ title: L(`Tilordnet ${data.updated} ${data.updated !== 1 ? "produkter" : "produkt"} til gruppe`, `Assigned ${data.updated} product${data.updated !== 1 ? "s" : ""} to group`) });
     },
     onError: (e) => {
-      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e instanceof Error ? e.message : L("Ukjent feil", "Unknown error"), variant: "destructive" });
     },
   });
 
@@ -597,9 +602,9 @@ export default function Products() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{viewMode === "stock-changes" ? t("products.stockHistory") : viewMode === "storage" ? t("products.stock") : viewMode === "archived" ? "Archived Products" : viewMode === "compare" ? "Compare Products" : t("products.title")}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{viewMode === "stock-changes" ? t("products.stockHistory") : viewMode === "storage" ? t("products.stock") : viewMode === "archived" ? L("Arkiverte produkter", "Archived Products") : viewMode === "compare" ? L("Sammenlign produkter", "Compare Products") : t("products.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-products-subtitle">
-              {viewMode === "stock-changes" ? `${stockChanges.length} log entries` : viewMode === "archived" ? `${filteredArchived.length} archived` : viewMode === "compare" ? "Compare product performance" : t("products.subtitle", { count: filtered.length })}
+              {viewMode === "stock-changes" ? L(`${stockChanges.length} loggføringer`, `${stockChanges.length} log entries`) : viewMode === "archived" ? L(`${filteredArchived.length} arkivert`, `${filteredArchived.length} archived`) : viewMode === "compare" ? L("Sammenlign produktytelse", "Compare product performance") : t("products.subtitle", { count: filtered.length })}
             </p>
           </div>
 
@@ -611,7 +616,7 @@ export default function Products() {
               data-testid="button-toggle-storage"
             >
               <Warehouse className="mr-2 h-4 w-4" />
-              Storage
+              {L("Lager", "Storage")}
             </Button>
             {isAdmin && (
               <Button
@@ -621,7 +626,7 @@ export default function Products() {
                 data-testid="button-toggle-archived"
               >
                 <Archive className="mr-2 h-4 w-4" />
-                Archive
+                {L("Arkiv", "Archive")}
               </Button>
             )}
             <Button
@@ -631,7 +636,7 @@ export default function Products() {
               data-testid="button-toggle-stock-changes"
             >
               <History className="mr-2 h-4 w-4" />
-              Stock Changes
+              {L("Lagerendringer", "Stock Changes")}
             </Button>
             <Button
               variant={viewMode === "compare" ? "default" : "outline"}
@@ -640,7 +645,7 @@ export default function Products() {
               data-testid="button-toggle-compare"
             >
               <FlaskConical className="mr-2 h-4 w-4" />
-              Compare
+              {L("Sammenlign", "Compare")}
             </Button>
             {(viewMode === "products" || viewMode === "archived") && (
               <div className="flex items-center rounded-lg border border-border bg-muted/30 p-0.5 gap-0.5">
@@ -649,7 +654,7 @@ export default function Products() {
                   size="sm"
                   className={cn("h-7 w-7 p-0", productLayout === "grid" && "bg-background shadow-sm")}
                   onClick={() => setProductLayout("grid")}
-                  title="Grid view"
+                  title={L("Rutenett", "Grid view")}
                 >
                   <LayoutGrid className="h-3.5 w-3.5" />
                 </Button>
@@ -658,7 +663,7 @@ export default function Products() {
                   size="sm"
                   className={cn("h-7 w-7 p-0", productLayout === "list" && "bg-background shadow-sm")}
                   onClick={() => setProductLayout("list")}
-                  title="List view"
+                  title={L("Liste", "List view")}
                 >
                   <LayoutList className="h-3.5 w-3.5" />
                 </Button>
@@ -667,7 +672,7 @@ export default function Products() {
                   size="sm"
                   className={cn("h-7 w-7 p-0", productLayout === "table" && "bg-background shadow-sm")}
                   onClick={() => setProductLayout("table")}
-                  title="Table view"
+                  title={L("Tabell", "Table view")}
                 >
                   <Table2 className="h-3.5 w-3.5" />
                 </Button>
@@ -679,9 +684,9 @@ export default function Products() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="asc">Least first ↑</SelectItem>
-                  <SelectItem value="desc">Most first ↓</SelectItem>
-                  <SelectItem value="alpha">A–Z</SelectItem>
+                  <SelectItem value="asc">{L("Minst først ↑", "Least first ↑")}</SelectItem>
+                  <SelectItem value="desc">{L("Mest først ↓", "Most first ↓")}</SelectItem>
+                  <SelectItem value="alpha">{L("A–Å", "A–Z")}</SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -714,7 +719,7 @@ export default function Products() {
               className="gap-1.5"
             >
               <Filter className="h-4 w-4" />
-              Filters
+              {L("Filtre", "Filters")}
               {activeFilterCount > 0 && (
                 <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1">
                   {activeFilterCount}
@@ -727,7 +732,7 @@ export default function Products() {
                 onClick={clearFilters}
                 className="text-xs text-muted-foreground underline hover:text-foreground"
               >
-                Clear
+                {L("Nullstill", "Clear")}
               </button>
             )}
           </div>
@@ -738,13 +743,13 @@ export default function Products() {
               <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50">
                 <Filter className="h-3.5 w-3.5 text-amber-600" />
               </div>
-              Filters
+              {L("Filtre", "Filters")}
             </div>
             <div className="flex flex-1 flex-wrap items-center gap-3">
               <div className="min-w-[220px]">
                 <Select value={category} onValueChange={(v) => setCategory(v as any)}>
                   <SelectTrigger data-testid="select-filter-category">
-                    <SelectValue placeholder="Category" />
+                    <SelectValue placeholder={L("Kategori", "Category")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="All">{t("products.filterCategory")}</SelectItem>
@@ -758,7 +763,7 @@ export default function Products() {
                 <div className="min-w-[180px]">
                   <Select value={groupFilter} onValueChange={setGroupFilter}>
                     <SelectTrigger data-testid="select-filter-group">
-                      <SelectValue placeholder="Group" />
+                      <SelectValue placeholder={L("Gruppe", "Group")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="All">{t("products.filterGroup")}</SelectItem>
@@ -773,10 +778,10 @@ export default function Products() {
                 <div className="min-w-[180px]">
                   <Select value={selectedBrand} onValueChange={setSelectedBrand}>
                     <SelectTrigger data-testid="select-filter-brand">
-                      <SelectValue placeholder="All brands" />
+                      <SelectValue placeholder={L("Alle merker", "All brands")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="All">All brands</SelectItem>
+                      <SelectItem value="All">{L("Alle merker", "All brands")}</SelectItem>
                       {uniqueBrands.map(([b, count]) => (
                         <SelectItem key={b} value={b}>{b} ({count})</SelectItem>
                       ))}
@@ -788,31 +793,31 @@ export default function Products() {
                 <Input
                   value={nameSearch}
                   onChange={(e) => setNameSearch(e.target.value)}
-                  placeholder="Name contains…"
+                  placeholder={L("Navn inneholder…", "Name contains…")}
                   data-testid="input-filter-name"
                 />
               </div>
               <div className="min-w-[160px]">
                 <Select value={racedFilter} onValueChange={(v) => setRacedFilter(v as any)}>
                   <SelectTrigger data-testid="select-filter-raced">
-                    <SelectValue placeholder="Race status" />
+                    <SelectValue placeholder={L("Racestatus", "Race status")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="All">All (raced + not)</SelectItem>
-                    <SelectItem value="Raced">Raced</SelectItem>
-                    <SelectItem value="Not Raced">Not Raced</SelectItem>
+                    <SelectItem value="All">{L("Alle (racet + ikke)", "All (raced + not)")}</SelectItem>
+                    <SelectItem value="Raced">{L("Racet", "Raced")}</SelectItem>
+                    <SelectItem value="Not Raced">{L("Ikke racet", "Not Raced")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="min-w-[160px]">
                 <Select value={testedFilter} onValueChange={(v) => setTestedFilter(v as any)}>
                   <SelectTrigger data-testid="select-filter-tested">
-                    <SelectValue placeholder="Test status" />
+                    <SelectValue placeholder={L("Teststatus", "Test status")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="All">All (tested + not)</SelectItem>
-                    <SelectItem value="Tested">Tested</SelectItem>
-                    <SelectItem value="Not Tested">Not Tested</SelectItem>
+                    <SelectItem value="All">{L("Alle (testet + ikke)", "All (tested + not)")}</SelectItem>
+                    <SelectItem value="Tested">{L("Testet", "Tested")}</SelectItem>
+                    <SelectItem value="Not Tested">{L("Ikke testet", "Not Tested")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -822,7 +827,7 @@ export default function Products() {
               data-testid="button-clear-filters"
               onClick={clearFilters}
             >
-              Clear
+              {L("Nullstill", "Clear")}
             </Button>
           </div>
         </Card>)}
@@ -840,7 +845,7 @@ export default function Products() {
           <div>
             {filteredArchived.length === 0 ? (
               <Card className="fs-card rounded-2xl">
-                <EmptyState icon={Archive} title="No archived products" description="Archived products will appear here." />
+                <EmptyState icon={Archive} title={L("Ingen arkiverte produkter", "No archived products")} description={L("Arkiverte produkter vises her.", "Archived products will appear here.")} />
               </Card>
             ) : productLayout === "table" ? (
               <Card className="fs-card rounded-2xl overflow-hidden">
@@ -848,10 +853,10 @@ export default function Products() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-muted/30 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                        <th className="px-4 py-2.5 font-medium">Category</th>
-                        <th className="px-4 py-2.5 font-medium">Product</th>
-                        <th className="px-4 py-2.5 font-medium">Archived</th>
-                        <th className="px-4 py-2.5 font-medium text-right">Actions</th>
+                        <th className="px-4 py-2.5 font-medium">{L("Kategori", "Category")}</th>
+                        <th className="px-4 py-2.5 font-medium">{L("Produkt", "Product")}</th>
+                        <th className="px-4 py-2.5 font-medium">{L("Arkivert", "Archived")}</th>
+                        <th className="px-4 py-2.5 font-medium text-right">{L("Handlinger", "Actions")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -879,14 +884,14 @@ export default function Products() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => setHistoryProduct(p)}>
-                                  <History className="mr-2 h-4 w-4" />History
+                                  <History className="mr-2 h-4 w-4" />{L("Historikk", "History")}
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => restoreMutation.mutate(p.id)} disabled={restoreMutation.isPending}>
-                                  <ArchiveRestore className="mr-2 h-4 w-4" />Restore
+                                  <ArchiveRestore className="mr-2 h-4 w-4" />{L("Gjenopprett", "Restore")}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => setDeletingProduct(p)} className="text-red-600 focus:text-red-600">
-                                  <Trash2 className="mr-2 h-4 w-4" />Delete
+                                  <Trash2 className="mr-2 h-4 w-4" />{L("Slett", "Delete")}
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -907,7 +912,7 @@ export default function Products() {
                         <span className="text-sm font-medium text-foreground group-hover:text-amber-600 transition-colors">{p.brand} {p.name}</span>
                       </div>
                       {p.archivedAt && (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">Archived {new Date(p.archivedAt).toLocaleDateString()}</p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">{L("Arkivert", "Archived")} {new Date(p.archivedAt).toLocaleDateString()}</p>
                       )}
                     </AppLink>
                     <DropdownMenu>
@@ -918,14 +923,14 @@ export default function Products() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => setHistoryProduct(p)}>
-                          <History className="mr-2 h-4 w-4" />History
+                          <History className="mr-2 h-4 w-4" />{L("Historikk", "History")}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => restoreMutation.mutate(p.id)} disabled={restoreMutation.isPending}>
-                          <ArchiveRestore className="mr-2 h-4 w-4" />Restore
+                          <ArchiveRestore className="mr-2 h-4 w-4" />{L("Gjenopprett", "Restore")}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setDeletingProduct(p)} className="text-red-600 focus:text-red-600">
-                          <Trash2 className="mr-2 h-4 w-4" />Delete
+                          <Trash2 className="mr-2 h-4 w-4" />{L("Slett", "Delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -949,7 +954,7 @@ export default function Products() {
                   <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-green-50 dark:bg-green-950/40">
                     <Users className="h-3.5 w-3.5 text-green-600" />
                   </div>
-                  Stock by group
+                  {L("Lager per gruppe", "Stock by group")}
                 </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {uniqueGroups.map((g) => {
@@ -969,7 +974,7 @@ export default function Products() {
                       >
                         <div>
                           <div className="text-sm font-semibold">{g}</div>
-                          <div className="text-xs text-muted-foreground">{groupProducts.length} product{groupProducts.length !== 1 ? "s" : ""}</div>
+                          <div className="text-xs text-muted-foreground">{groupProducts.length} {groupProducts.length !== 1 ? L("produkter", "products") : L("produkt", "product")}</div>
                         </div>
                         <div className={cn(
                           "rounded-xl px-3 py-1 text-lg font-bold tabular-nums",
@@ -993,7 +998,7 @@ export default function Products() {
                   <EmptyState
                     icon={PackagePlus}
                     title={t("products.noProducts")}
-                    description="Add your first product using the button above."
+                    description={L("Legg til ditt første produkt med knappen over.", "Add your first product using the button above.")}
                   />
                 </Card>
               ) : (
@@ -1019,15 +1024,15 @@ export default function Products() {
                   }}
                 >
                   {selectedIds.size === filtered.length && filtered.length > 0
-                    ? <><CheckSquare className="mr-2 h-4 w-4" />Deselect all</>
-                    : <><Square className="mr-2 h-4 w-4" />Select all</>}
+                    ? <><CheckSquare className="mr-2 h-4 w-4" />{L("Fjern alle", "Deselect all")}</>
+                    : <><Square className="mr-2 h-4 w-4" />{L("Velg alle", "Select all")}</>}
                 </Button>
                 {selectedIds.size > 0 && groupNames.length > 0 && (
                   <>
-                    <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
+                    <span className="text-sm text-muted-foreground">{selectedIds.size} {L("valgt", "selected")}</span>
                     <Select value={bulkGroup} onValueChange={setBulkGroup}>
                       <SelectTrigger className="h-9 w-auto min-w-[160px] text-sm">
-                        <SelectValue placeholder="Assign to group…" />
+                        <SelectValue placeholder={L("Tilordne til gruppe…", "Assign to group…")} />
                       </SelectTrigger>
                       <SelectContent>
                         {groupNames.map((g) => (
@@ -1040,7 +1045,7 @@ export default function Products() {
                       disabled={!bulkGroup || bulkAssignMutation.isPending}
                       onClick={() => bulkAssignMutation.mutate({ ids: Array.from(selectedIds), groupScope: bulkGroup })}
                     >
-                      Assign to group
+                      {L("Tilordne til gruppe", "Assign to group")}
                     </Button>
                   </>
                 )}
@@ -1051,7 +1056,7 @@ export default function Products() {
                 <EmptyState
                   icon={PackagePlus}
                   title={t("products.noProducts")}
-                  description="Add your first product using the button above."
+                  description={L("Legg til ditt første produkt med knappen over.", "Add your first product using the button above.")}
                 />
               </Card>
             ) : productLayout === "table" ? (
@@ -1060,11 +1065,11 @@ export default function Products() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-muted/30 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                        <th className="px-4 py-2.5 font-medium">Category</th>
-                        <th className="px-4 py-2.5 font-medium">Product</th>
-                        <th className="px-4 py-2.5 font-medium">Groups</th>
-                        <th className="px-4 py-2.5 font-medium">Added</th>
-                        <th className="px-4 py-2.5 font-medium text-right">Actions</th>
+                        <th className="px-4 py-2.5 font-medium">{L("Kategori", "Category")}</th>
+                        <th className="px-4 py-2.5 font-medium">{L("Produkt", "Product")}</th>
+                        <th className="px-4 py-2.5 font-medium">{L("Grupper", "Groups")}</th>
+                        <th className="px-4 py-2.5 font-medium">{L("Lagt til", "Added")}</th>
+                        <th className="px-4 py-2.5 font-medium text-right">{L("Handlinger", "Actions")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1105,22 +1110,22 @@ export default function Products() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">
                                   <DropdownMenuItem onClick={() => setHistoryProduct(p)}>
-                                    <History className="mr-2 h-4 w-4" />History
+                                    <History className="mr-2 h-4 w-4" />{L("Historikk", "History")}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => setEditingDetailsProduct(p)}>
-                                    <Pencil className="mr-2 h-4 w-4" />Edit
+                                    <Pencil className="mr-2 h-4 w-4" />{L("Rediger", "Edit")}
                                   </DropdownMenuItem>
                                   {isAdmin && (
                                     <>
                                       <DropdownMenuItem onClick={() => setEditingProduct(p)}>
-                                        <Users className="mr-2 h-4 w-4" />Groups
+                                        <Users className="mr-2 h-4 w-4" />{L("Grupper", "Groups")}
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem onClick={() => archiveMutation.mutate(p.id)}>
-                                        <Archive className="mr-2 h-4 w-4" />Add to Archive
+                                        <Archive className="mr-2 h-4 w-4" />{L("Legg i arkiv", "Add to Archive")}
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => setDeletingProduct(p)} className="text-red-600 focus:text-red-600">
-                                        <Trash2 className="mr-2 h-4 w-4" />Delete
+                                        <Trash2 className="mr-2 h-4 w-4" />{L("Slett", "Delete")}
                                       </DropdownMenuItem>
                                     </>
                                   )}
@@ -1164,7 +1169,7 @@ export default function Products() {
 
         <Dialog open={!!editingProduct} onOpenChange={(v) => { if (!v) setEditingProduct(undefined); }}>
           <DialogContent className="sm:max-w-md">
-            <DialogHeader><DialogTitle>Assign groups</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{L("Tilordne grupper", "Assign groups")}</DialogTitle></DialogHeader>
             {editingProduct && (
               <GroupAssignModal
                 product={editingProduct}
@@ -1232,6 +1237,8 @@ function StockChangesView({
 }: {
   stockChanges: StockChange[];
   uniqueGroups: string[];
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   groupFilter: string;
   setGroupFilter: (v: string) => void;
 }) {
@@ -1274,16 +1281,16 @@ function StockChangesView({
             <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950/40">
               <History className="h-3.5 w-3.5 text-violet-600" />
             </div>
-            Filters
+            {L("Filtre", "Filters")}
           </div>
           {uniqueGroups.length > 1 && (
             <div className="min-w-[180px]">
               <Select value={groupFilter} onValueChange={setGroupFilter}>
                 <SelectTrigger data-testid="select-stock-change-group">
-                  <SelectValue placeholder="Group" />
+                  <SelectValue placeholder={L("Gruppe", "Group")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="All">All groups</SelectItem>
+                  <SelectItem value="All">{L("Alle grupper", "All groups")}</SelectItem>
                   {uniqueGroups.map((g) => (
                     <SelectItem key={g} value={g}>{g}</SelectItem>
                   ))}
@@ -1297,27 +1304,27 @@ function StockChangesView({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="date-desc">Newest first</SelectItem>
-                <SelectItem value="date-asc">Oldest first</SelectItem>
-                <SelectItem value="product-az">Product A–Z</SelectItem>
-                <SelectItem value="product-za">Product Z–A</SelectItem>
-                <SelectItem value="user-az">User A–Z</SelectItem>
-                <SelectItem value="user-za">User Z–A</SelectItem>
+                <SelectItem value="date-desc">{L("Nyeste først", "Newest first")}</SelectItem>
+                <SelectItem value="date-asc">{L("Eldste først", "Oldest first")}</SelectItem>
+                <SelectItem value="product-az">{L("Produkt A–Å", "Product A–Z")}</SelectItem>
+                <SelectItem value="product-za">{L("Produkt Å–A", "Product Z–A")}</SelectItem>
+                <SelectItem value="user-az">{L("Bruker A–Å", "User A–Z")}</SelectItem>
+                <SelectItem value="user-za">{L("Bruker Å–A", "User Z–A")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <span className="ml-auto text-xs text-muted-foreground">{sorted.length} entries</span>
+          <span className="ml-auto text-xs text-muted-foreground">{sorted.length} {L("føringer", "entries")}</span>
         </div>
       </Card>
 
       {sorted.length === 0 ? (
         <Card className="fs-card rounded-2xl p-6 text-center text-sm text-muted-foreground" data-testid="empty-stock-changes">
-          No stock changes recorded yet.
+          {L("Ingen lagerendringer registrert ennå.", "No stock changes recorded yet.")}
         </Card>
       ) : (
         <div className="space-y-1.5">
           {sorted.map((sc) => {
-            const productName = sc.details?.split(":")[0]?.trim() ?? "Unknown";
+            const productName = sc.details?.split(":")[0]?.trim() ?? L("Ukjent", "Unknown");
             const changeInfo = sc.details?.split(":").slice(1).join(":").trim() ?? "";
             const isAdd = sc.action === "stock_added";
             const isRemove = sc.action === "stock_removed";
@@ -1367,6 +1374,8 @@ function StockChangesView({
       )}
     </div>
   );
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
 }
 
 function StockRow({ product: p }: { product: Product }) {
@@ -1383,7 +1392,7 @@ function StockRow({ product: p }: { product: Product }) {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
     },
     onError: (e) => {
-      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e instanceof Error ? e.message : L("Ukjent feil", "Unknown error"), variant: "destructive" });
     },
   });
 
@@ -1397,7 +1406,7 @@ function StockRow({ product: p }: { product: Product }) {
       setEditing(false);
     },
     onError: (e) => {
-      toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: L("Feil", "Error"), description: e instanceof Error ? e.message : L("Ukjent feil", "Unknown error"), variant: "destructive" });
     },
   });
 
@@ -1514,6 +1523,8 @@ type ProductTest = {
     results: string | null; feelingRank: number | null;
     isSelectedProduct: boolean;
   }[];
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
 };
 
 function ProductTestHistoryDialog({ product, open, onClose }: { product: Product | null; open: boolean; onClose: () => void }) {
@@ -1521,7 +1532,7 @@ function ProductTestHistoryDialog({ product, open, onClose }: { product: Product
     queryKey: [`/api/products/${product?.id}/tests`],
     queryFn: async () => {
       const res = await fetch(`/api/products/${product!.id}/tests`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load");
+      if (!res.ok) throw new Error(L("Kunne ikke laste", "Failed to load"));
       return res.json();
     },
     enabled: open && product != null,
@@ -1535,19 +1546,19 @@ function ProductTestHistoryDialog({ product, open, onClose }: { product: Product
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="h-5 w-5 text-amber-600" />
-            Test History — {product?.brand} {product?.name}
+            {L("Testhistorikk —", "Test History —")} {product?.brand} {product?.name}
           </DialogTitle>
         </DialogHeader>
         {isLoading ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">Loading test history…</div>
+          <div className="py-8 text-center text-sm text-muted-foreground">{L("Laster testhistorikk…", "Loading test history…")}</div>
         ) : tests.length === 0 ? (
           <div className="py-8 text-center">
             <FlaskConical className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
-            <p className="text-sm text-muted-foreground">No tests found for this product.</p>
+            <p className="text-sm text-muted-foreground">{L("Ingen tester funnet for dette produktet.", "No tests found for this product.")}</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            <p className="text-xs text-muted-foreground">{tests.length} test{tests.length !== 1 ? "s" : ""} found</p>
+            <p className="text-xs text-muted-foreground">{tests.length} {tests.length !== 1 ? L("tester", "tests") : L("test", "test")} {L("funnet", "found")}</p>
             {tests.map((test) => {
               const distLabels: string[] = (() => {
                 if (test.distanceLabels) { try { const p = JSON.parse(test.distanceLabels); if (Array.isArray(p) && p.length > 0) return p; } catch {} }
@@ -1577,10 +1588,10 @@ function ProductTestHistoryDialog({ product, open, onClose }: { product: Product
                 {test.weather && (
                   <div className="flex flex-wrap gap-1 mb-2">
                     <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
-                      <Thermometer className="h-2.5 w-2.5" /> Air {test.weather.airTemperatureC}°C
+                      <Thermometer className="h-2.5 w-2.5" /> {L("Luft", "Air")} {test.weather.airTemperatureC}°C
                     </span>
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
-                      <Snowflake className="h-2.5 w-2.5" /> Snow {test.weather.snowTemperatureC}°C
+                      <Snowflake className="h-2.5 w-2.5" /> {L("Snø", "Snow")} {test.weather.snowTemperatureC}°C
                     </span>
                     {test.weather.airHumidityPct != null && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700 ring-1 ring-violet-200">
@@ -1588,10 +1599,10 @@ function ProductTestHistoryDialog({ product, open, onClose }: { product: Product
                       </span>
                     )}
                     {test.weather.artificialSnow && (
-                      <span className="inline-flex rounded-full bg-pink-50 px-2 py-0.5 text-[10px] font-medium text-pink-700 ring-1 ring-pink-200">Art: {test.weather.artificialSnow}</span>
+                      <span className="inline-flex rounded-full bg-pink-50 px-2 py-0.5 text-[10px] font-medium text-pink-700 ring-1 ring-pink-200">{L("Kunst:", "Art:")} {test.weather.artificialSnow}</span>
                     )}
                     {test.weather.naturalSnow && (
-                      <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-indigo-200">Nat: {test.weather.naturalSnow}</span>
+                      <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-indigo-200">{L("Natur:", "Nat:")} {test.weather.naturalSnow}</span>
                     )}
                     {test.weather.snowHumidityType && (
                       <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{test.weather.snowHumidityType}</span>
@@ -1600,7 +1611,7 @@ function ProductTestHistoryDialog({ product, open, onClose }: { product: Product
                       <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{test.weather.trackHardness}</span>
                     )}
                     {test.weather.wind && (
-                      <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">Wind: {test.weather.wind}</span>
+                      <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{L("Vind:", "Wind:")} {test.weather.wind}</span>
                     )}
                   </div>
                 )}
@@ -1610,12 +1621,12 @@ function ProductTestHistoryDialog({ product, open, onClose }: { product: Product
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                          <th className="pb-1.5 pr-3">Ski</th>
-                          <th className="pb-1.5 pr-3">Product</th>
+                          <th className="pb-1.5 pr-3">{L("Ski", "Ski")}</th>
+                          <th className="pb-1.5 pr-3">{L("Produkt", "Product")}</th>
                           {distLabels.map((label, i) => (
-                            <th key={i} className="pb-1.5 pr-3">{label} / Rank</th>
+                            <th key={i} className="pb-1.5 pr-3">{label} / {L("Rang", "Rank")}</th>
                           ))}
-                          <th className="pb-1.5">Feel</th>
+                          <th className="pb-1.5">{L("Følelse", "Feel")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1710,7 +1721,8 @@ function ProductCard({
   onArchive: () => void;
   onViewHistory: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const groups = p.groupScope.split(",").map((s) => s.trim()).filter(Boolean);
 
   return (
@@ -1727,7 +1739,7 @@ function ProductCard({
             <button
               onClick={onToggleSelect}
               className="mt-0.5 shrink-0 text-muted-foreground hover:text-green-600 transition-colors"
-              aria-label={selected ? "Deselect" : "Select"}
+              aria-label={selected ? L("Fjern valg", "Deselect") : L("Velg", "Select")}
             >
               {selected
                 ? <CheckSquare className="h-4 w-4 text-green-600" />
@@ -1748,7 +1760,7 @@ function ProductCard({
                 </span>
               ))}
               {groups.length === 0 && (
-                <span className="text-[10px] text-muted-foreground">No group assigned</span>
+                <span className="text-[10px] text-muted-foreground">{L("Ingen gruppe tilordnet", "No group assigned")}</span>
               )}
               <span className="text-xs text-muted-foreground">
                 <span className="text-foreground/70">{p.createdByName}</span>
@@ -1763,33 +1775,33 @@ function ProductCard({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
-                Actions
+                {L("Handlinger", "Actions")}
                 <ChevronDown className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={onViewHistory}>
                 <History className="mr-2 h-4 w-4" />
-                History
+                {L("Historikk", "History")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onEdit}>
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit
+                {L("Rediger", "Edit")}
               </DropdownMenuItem>
               {isAdmin && (
                 <>
                   <DropdownMenuItem onClick={onEditGroups}>
                     <Users className="mr-2 h-4 w-4" />
-                    Groups
+                    {L("Grupper", "Groups")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onArchive}>
                     <Archive className="mr-2 h-4 w-4" />
-                    Add to Archive
+                    {L("Legg i arkiv", "Add to Archive")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-600">
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
+                    {L("Slett", "Delete")}
                   </DropdownMenuItem>
                 </>
               )}

@@ -27,7 +27,8 @@ export default function Login() {
   const { toast } = useToast();
   const { login } = useAuth();
   const { commercializationEnabled } = useAppSettings();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const { theme, toggle: toggleTheme } = useTheme();
@@ -41,8 +42,8 @@ export default function Login() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("error") === "google") {
       toast({
-        title: "Google sign-in failed",
-        description: "No Glidr account is linked to that Google address. Contact your administrator.",
+        title: L("Google-innlogging mislyktes", "Google sign-in failed"),
+        description: L("Ingen Glidr-konto er koblet til den Google-adressen. Kontakt administratoren din.", "No Glidr account is linked to that Google address. Contact your administrator."),
         variant: "destructive",
       });
     }
@@ -137,7 +138,7 @@ export default function Login() {
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-50">
                     <Mail className="h-6 w-6 text-green-600" />
                   </div>
-                  <h2 className="text-lg font-semibold text-foreground">Forgot password?</h2>
+                  <h2 className="text-lg font-semibold text-foreground">{L("Glemt passord?", "Forgot password?")}</h2>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     Contact your team administrator to reset your password. Admins can reset passwords from the Admin panel.
                   </p>

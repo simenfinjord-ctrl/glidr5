@@ -123,7 +123,7 @@ export default function ResetPassword() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-foreground/20"
-                    placeholder="Min. 7 chars, 1 number, 1 symbol"
+                    placeholder={lang === "en" ? "Min. 7 chars, 1 number, 1 symbol" : "Min. 7 tegn, 1 tall, 1 symbol"}
                   />
                 </div>
                 <div className="space-y-1.5">

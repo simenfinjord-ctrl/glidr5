@@ -1,4 +1,5 @@
 import { useParams } from "wouter";
+import { useLanguage } from "@/lib/language";
 import { useQuery } from "@tanstack/react-query";
 import { GlidrIcon, GlidrLogo } from "@/components/glidr-logo";
 import { Spinner } from "@/components/ui/spinner";
@@ -51,6 +52,8 @@ function RankBadge({ rank }: { rank: number | null }) {
 }
 
 export default function SharedTest() {
+  const { lang } = useLanguage();
+  const L = (no: string, en: string) => (lang === "en" ? en : no);
   const params = useParams<{ token: string }>();
   const token = params.token;
 
@@ -77,7 +80,7 @@ export default function SharedTest() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-4 px-4 text-center">
         <GlidrIcon size={48} />
-        <h1 className="text-2xl font-bold text-gray-800">This link is no longer valid</h1>
+        <h1 className="text-2xl font-bold text-gray-800">{L("Denne lenken er ikke lenger gyldig", "This link is no longer valid")}</h1>
         <p className="text-gray-500 max-w-sm">
           The test you are looking for does not exist or the share link has been removed.
         </p>
@@ -141,21 +144,21 @@ export default function SharedTest() {
 
         {/* Entries table */}
         {entries.length === 0 ? (
-          <p className="text-gray-400 text-sm">No entries recorded for this test.</p>
+          <p className="text-gray-400 text-sm">{L("Ingen oppføringer registrert for denne testen.", "No entries recorded for this test.")}</p>
         ) : (
           <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                   <th className="text-left px-4 py-3">Ski #</th>
-                  <th className="text-left px-4 py-3">Product</th>
+                  <th className="text-left px-4 py-3">{L("Produkt", "Product")}</th>
                   <th className="text-center px-4 py-3">{distanceLabels[0]}</th>
                   {hasXkm && <th className="text-center px-4 py-3">{distanceLabels[1]}</th>}
                   {entries.some((e) => e.feeling_rank !== null) && (
-                    <th className="text-center px-4 py-3">Feeling</th>
+                    <th className="text-center px-4 py-3">{L("Følelse", "Feeling")}</th>
                   )}
                   {entries.some((e) => e.kick_rank !== null) && (
-                    <th className="text-center px-4 py-3">Kick</th>
+                    <th className="text-center px-4 py-3">{L("Feste", "Kick")}</th>
                   )}
                 </tr>
               </thead>

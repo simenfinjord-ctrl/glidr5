@@ -21,6 +21,7 @@ import { Card } from "@/components/ui/card";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { cn, fmtDate } from "@/lib/utils";
 import { parseApplication } from "@/lib/parse-application";
+import { useI18n } from "@/lib/i18n";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -189,6 +190,8 @@ function StatCard({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 function ProductDetailInner() {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [, params] = useRoute("/products/:id");
   const productId = params?.id ? parseInt(params.id, 10) : null;
 
@@ -311,11 +314,11 @@ function ProductDetailInner() {
     return (
       <AppShell>
         <div className="flex flex-col items-center gap-4 py-20">
-          <p className="text-muted-foreground">Product not found.</p>
+          <p className="text-muted-foreground">{L("Fant ikke produktet.", "Product not found.")}</p>
           <AppLink href="/products">
             <Button variant="secondary">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Products
+              {L("Tilbake til produkter", "Back to Products")}
             </Button>
           </AppLink>
         </div>
@@ -354,14 +357,14 @@ function ProductDetailInner() {
             )}
             {isArchived && (
               <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700">
-                Archived
+                {L("Arkivert", "Archived")}
               </span>
             )}
             <h1
               className="text-2xl sm:text-3xl font-bold"
               data-testid="text-product-title"
             >
-              {product ? `${product.brand} ${product.name}` : "Loading…"}
+              {product ? `${product.brand} ${product.name}` : L("Laster…", "Loading…")}
             </h1>
           </div>
 
@@ -378,7 +381,7 @@ function ProductDetailInner() {
               ))}
               {product.createdByName && (
                 <span className="text-xs text-muted-foreground">
-                  Added by {product.createdByName}
+                  {L("Lagt til av", "Added by")} {product.createdByName}
                 </span>
               )}
             </div>
@@ -389,54 +392,54 @@ function ProductDetailInner() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5" data-testid="stats-row">
           <StatCard
             icon={<FlaskConical className="h-3.5 w-3.5" />}
-            label="Total tests"
+            label={L("Totalt antall tester", "Total tests")}
             value={stats.totalTests}
           />
           <StatCard
             icon={<Trophy className="h-3.5 w-3.5 text-yellow-500" />}
-            label="#1 finishes"
+            label={L("Førsteplasser", "#1 finishes")}
             value={stats.wins}
-            sub="rounds where rank = 1"
+            sub={L("runder med rang = 1", "rounds where rank = 1")}
           />
           <StatCard
             icon={<TrendingUp className="h-3.5 w-3.5" />}
-            label="Avg rank"
+            label={L("Snittrang", "Avg rank")}
             value={stats.avgRank ?? "—"}
-            sub={stats.avgRank ? "across all ranked rounds" : "no ranked rounds yet"}
+            sub={stats.avgRank ? L("på tvers av alle rangerte runder", "across all ranked rounds") : L("ingen rangerte runder ennå", "no ranked rounds yet")}
           />
           <StatCard
             icon={<History className="h-3.5 w-3.5" />}
-            label="Test types"
+            label={L("Testtyper", "Test types")}
             value={`${stats.glideCount}G / ${stats.structureCount}S`}
-            sub="glide / structure entries"
+            sub={L("glid / struktur-oppføringer", "glide / structure entries")}
           />
           <StatCard
             icon={<Flag className="h-3.5 w-3.5 text-rose-500" />}
-            label="Times raced"
+            label={L("Antall ganger racet", "Times raced")}
             value={racePreps.length}
-            sub={racePreps.length > 0 ? `last: ${racePreps[0].location}` : "not used in any race prep"}
+            sub={racePreps.length > 0 ? L(`sist: ${racePreps[0].location}`, `last: ${racePreps[0].location}`) : L("ikke brukt i noen raceprep", "not used in any race prep")}
           />
         </div>
 
         {/* ── Test history ────────────────────────────────────────────────── */}
         <div>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Test History
+            {L("Testhistorikk", "Test History")}
           </h2>
 
           {isLoading ? (
             <Card className="fs-card rounded-2xl p-8 text-center text-sm text-muted-foreground" data-testid="loading-history">
-              Loading test history…
+              {L("Laster testhistorikk…", "Loading test history…")}
             </Card>
           ) : tests.length === 0 ? (
             <Card className="fs-card rounded-2xl p-10 flex flex-col items-center gap-2 text-center" data-testid="empty-history">
               <FlaskConical className="h-8 w-8 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">No tests found for this product.</p>
+              <p className="text-sm text-muted-foreground">{L("Ingen tester funnet for dette produktet.", "No tests found for this product.")}</p>
             </Card>
           ) : (
             <div className="flex flex-col gap-3">
               <p className="text-xs text-muted-foreground">
-                {tests.length} test{tests.length !== 1 ? "s" : ""} found
+                {tests.length} {tests.length !== 1 ? L("tester", "tests") : L("test", "test")} {L("funnet", "found")}
               </p>
 
               {tests.map((test) => {
@@ -473,11 +476,11 @@ function ProductDetailInner() {
                       <div className="mb-2 flex flex-wrap gap-1">
                         <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200 dark:bg-sky-950/30 dark:text-sky-300 dark:ring-sky-800">
                           <Thermometer className="h-2.5 w-2.5" />
-                          Air {test.weather.airTemperatureC}°C
+                          {L("Luft", "Air")} {test.weather.airTemperatureC}°C
                         </span>
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800">
                           <Snowflake className="h-2.5 w-2.5" />
-                          Snow {test.weather.snowTemperatureC}°C
+                          {L("Snø", "Snow")} {test.weather.snowTemperatureC}°C
                         </span>
                         {test.weather.airHumidityPct != null && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700 ring-1 ring-violet-200 dark:bg-violet-950/30 dark:text-violet-300 dark:ring-violet-800">
@@ -487,12 +490,12 @@ function ProductDetailInner() {
                         )}
                         {test.weather.artificialSnow && (
                           <span className="inline-flex rounded-full bg-pink-50 px-2 py-0.5 text-[10px] font-medium text-pink-700 ring-1 ring-pink-200 dark:bg-pink-950/30 dark:text-pink-300 dark:ring-pink-800">
-                            Art: {test.weather.artificialSnow}
+                            {L("Kunst:", "Art:")} {test.weather.artificialSnow}
                           </span>
                         )}
                         {test.weather.naturalSnow && (
                           <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-300 dark:ring-indigo-800">
-                            Nat: {test.weather.naturalSnow}
+                            {L("Natur:", "Nat:")} {test.weather.naturalSnow}
                           </span>
                         )}
                         {test.weather.snowHumidityType && (
@@ -507,7 +510,7 @@ function ProductDetailInner() {
                         )}
                         {test.weather.wind && (
                           <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            Wind: {test.weather.wind}
+                            {L("Vind:", "Wind:")} {test.weather.wind}
                           </span>
                         )}
                       </div>
@@ -526,14 +529,14 @@ function ProductDetailInner() {
                         <table className="w-full text-xs" data-testid={`table-product-test-${test.id}`}>
                           <thead>
                             <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                              <th className="pb-1.5 pr-3">Ski</th>
-                              <th className="pb-1.5 pr-3">Product</th>
+                              <th className="pb-1.5 pr-3">{L("Ski", "Ski")}</th>
+                              <th className="pb-1.5 pr-3">{L("Produkt", "Product")}</th>
                               {distLabels.map((label, i) => (
                                 <th key={i} className="pb-1.5 pr-3">
-                                  {label} / Rank
+                                  {label} / {L("Rang", "Rank")}
                                 </th>
                               ))}
-                              <th className="pb-1.5">Feel</th>
+                              <th className="pb-1.5">{L("Følelse", "Feel")}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -635,18 +638,18 @@ function ProductDetailInner() {
           {appStats.length > 0 && (
             <div className="mt-6">
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                Application Insights
+                {L("Applikasjonsinnsikt", "Application Insights")}
               </h2>
               <Card className="overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-xs text-muted-foreground">
-                        <th className="px-4 py-2 font-medium">Application</th>
-                        <th className="px-4 py-2 font-medium text-center">Count</th>
-                        <th className="px-4 py-2 font-medium text-center">Avg Rank</th>
-                        <th className="px-4 py-2 font-medium text-center">Best Rank</th>
-                        <th className="px-4 py-2 font-medium">Typical Conditions</th>
+                        <th className="px-4 py-2 font-medium">{L("Applikasjon", "Application")}</th>
+                        <th className="px-4 py-2 font-medium text-center">{L("Antall", "Count")}</th>
+                        <th className="px-4 py-2 font-medium text-center">{L("Snittrang", "Avg Rank")}</th>
+                        <th className="px-4 py-2 font-medium text-center">{L("Beste rang", "Best Rank")}</th>
+                        <th className="px-4 py-2 font-medium">{L("Typiske forhold", "Typical Conditions")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -680,19 +683,19 @@ function ProductDetailInner() {
         {racePreps.length > 0 && (
           <div>
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Race Prep History — {racePreps.length} race{racePreps.length !== 1 ? "s" : ""}
+              {L("Raceprep-historikk", "Race Prep History")} — {racePreps.length} {racePreps.length !== 1 ? L("race", "races") : L("race", "race")}
             </h2>
             <Card className="fs-card rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/30 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                      <th className="px-4 py-2.5 font-medium">Date</th>
-                      <th className="px-4 py-2.5 font-medium">Location</th>
-                      <th className="px-4 py-2.5 font-medium">Discipline</th>
-                      <th className="px-4 py-2.5 font-medium">Role</th>
-                      <th className="px-4 py-2.5 font-medium">Method</th>
-                      <th className="px-4 py-2.5 font-medium">Conditions</th>
+                      <th className="px-4 py-2.5 font-medium">{L("Dato", "Date")}</th>
+                      <th className="px-4 py-2.5 font-medium">{L("Sted", "Location")}</th>
+                      <th className="px-4 py-2.5 font-medium">{L("Stilart", "Discipline")}</th>
+                      <th className="px-4 py-2.5 font-medium">{L("Rolle", "Role")}</th>
+                      <th className="px-4 py-2.5 font-medium">{L("Metode", "Method")}</th>
+                      <th className="px-4 py-2.5 font-medium">{L("Forhold", "Conditions")}</th>
                     </tr>
                   </thead>
                   <tbody>

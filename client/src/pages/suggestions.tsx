@@ -4,14 +4,17 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Sparkles, Lightbulb, ThermometerSnowflake, Target, Layers,
   FlaskConical, TrendingUp, ChevronDown, Link2, HelpCircle,
+  CloudSnow, MapPin, Thermometer, Snowflake, Search, X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, fmtDate } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { parseApplication } from "@/lib/parse-application";
 import { useI18n } from "@/lib/i18n";
@@ -34,7 +37,8 @@ type TestEntry = {
 type Product = { id: number; category: string; brand: string; name: string; };
 
 type Weather = {
-  id: number; snowTemperatureC: number; airTemperatureC: number;
+  id: number; date: string; time: string | null; location: string;
+  snowTemperatureC: number; airTemperatureC: number;
   snowHumidityPct: number | null; airHumidityPct: number | null;
   artificialSnow: string | null; naturalSnow: string | null;
   snowHumidityType: string | null; grainSize: string | null;
@@ -414,6 +418,39 @@ export default function Suggestions() {
   function set(field: keyof FilterState) { return (v: string) => setFilters((p) => ({ ...p, [field]: v })); }
   function sel(field: keyof FilterState) { return (v: string) => setFilters((p) => ({ ...p, [field]: v === "__any__" ? "" : v })); }
 
+  // ── Weather picker: fill all filters from a logged weather snapshot ──────────
+  const [weatherPickerOpen, setWeatherPickerOpen] = useState(false);
+  const [weatherSearch, setWeatherSearch] = useState("");
+  function applyWeather(w: Weather) {
+    const s = (n: number | null | undefined) => (n == null ? "" : String(n));
+    setFilters({
+      airTempMin: s(w.airTemperatureC), airTempMax: s(w.airTemperatureC),
+      snowTempMin: s(w.snowTemperatureC), snowTempMax: s(w.snowTemperatureC),
+      airHumMin: s(w.airHumidityPct), airHumMax: s(w.airHumidityPct),
+      snowHumMin: s(w.snowHumidityPct), snowHumMax: s(w.snowHumidityPct),
+      cloudMin: s(w.clouds), cloudMax: s(w.clouds),
+      artificialSnow: w.artificialSnow ? "yes" : "",
+      naturalSnow: w.naturalSnow ?? "",
+      snowHumidityType: w.snowHumidityType ?? "",
+      grainSize: w.grainSize ?? "",
+      trackHardness: w.trackHardness ?? "",
+      precipitation: w.precipitation ?? "",
+      wind: w.wind ?? "",
+      visibility: w.visibility ?? "",
+    });
+    setWeatherPickerOpen(false);
+    setWeatherSearch("");
+  }
+  const sortedWeather = useMemo(
+    () => [...weather].sort((a, b) => (b.date + (b.time ?? "")).localeCompare(a.date + (a.time ?? ""))),
+    [weather]
+  );
+  const pickerWeather = useMemo(() => {
+    const q = weatherSearch.trim().toLowerCase();
+    if (!q) return sortedWeather;
+    return sortedWeather.filter((w) => (w.location ?? "").toLowerCase().includes(q));
+  }, [sortedWeather, weatherSearch]);
+
   const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const testsById    = useMemo(() => new Map(tests.map((t) => [t.id, t])), [tests]);
 
@@ -617,11 +654,24 @@ export default function Suggestions() {
               </div>
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("❄ Værforhold", "❄ Weather Conditions")}</span>
             </div>
-            {hasFilters && (
-              <button onClick={() => setFilters(emptyFilter)} className="text-xs text-muted-foreground underline hover:text-foreground transition-colors">
-                {L("Nullstill alle", "Clear all")}
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => setWeatherPickerOpen(true)}
+                disabled={weather.length === 0}
+                data-testid="button-use-weather"
+              >
+                <CloudSnow className="h-3.5 w-3.5" />
+                {L("Bruk vær", "Use weather")}
+              </Button>
+              {hasFilters && (
+                <button onClick={() => setFilters(emptyFilter)} className="text-xs text-muted-foreground underline hover:text-foreground transition-colors">
+                  {L("Nullstill alle", "Clear all")}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Temperature & Humidity */}
@@ -706,6 +756,79 @@ export default function Suggestions() {
             </div>
           </div>
         </Card>
+
+        {/* ─── Weather picker dialog ───────────────────────────────────────── */}
+        <Dialog open={weatherPickerOpen} onOpenChange={(v) => { setWeatherPickerOpen(v); if (!v) setWeatherSearch(""); }}>
+          <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CloudSnow className="h-5 w-5 text-sky-500" />
+                {L("Velg værlogg", "Choose a weather log")}
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-xs text-muted-foreground -mt-1">
+              {L("Fyll filtrene med forholdene fra en loggført værmåling.", "Fill the filters with the conditions from a logged weather snapshot.")}
+            </p>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+              <Input
+                value={weatherSearch}
+                onChange={(e) => setWeatherSearch(e.target.value)}
+                placeholder={L("Søk etter sted…", "Search location…")}
+                className="h-9 pl-8 pr-8 text-sm"
+                data-testid="input-weather-picker-search"
+              />
+              {weatherSearch && (
+                <button onClick={() => setWeatherSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto -mx-1 px-1 space-y-1.5">
+              {pickerWeather.length === 0 ? (
+                <div className="py-10 text-center text-sm text-muted-foreground">
+                  {weather.length === 0
+                    ? L("Ingen værlogger ennå.", "No weather logs yet.")
+                    : L("Ingen treff.", "No matches.")}
+                </div>
+              ) : (
+                pickerWeather.map((w) => (
+                  <button
+                    key={w.id}
+                    onClick={() => applyWeather(w)}
+                    className="w-full text-left rounded-xl border border-border bg-card hover:bg-muted/50 hover:border-sky-300 transition-colors px-3 py-2.5"
+                    data-testid={`weather-option-${w.id}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <MapPin className="h-3.5 w-3.5 text-sky-500 shrink-0" />
+                        <span className="font-medium text-sm truncate">{w.location || L("Ukjent sted", "Unknown location")}</span>
+                      </div>
+                      <span className="text-[11px] text-muted-foreground shrink-0">{fmtDate(w.date)}{w.time ? ` · ${w.time}` : ""}</span>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                        <Snowflake className="h-2.5 w-2.5" /> {w.snowTemperatureC}°C
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-900/20 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-400">
+                        <Thermometer className="h-2.5 w-2.5" /> {w.airTemperatureC}°C
+                      </span>
+                      {w.snowHumidityPct != null && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{L("Snøfukt", "Snow hum")} {w.snowHumidityPct}%</span>
+                      )}
+                      {w.naturalSnow && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{language === "no" ? (COND_NO[w.naturalSnow] ?? w.naturalSnow) : w.naturalSnow}</span>
+                      )}
+                      {w.trackHardness && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{language === "no" ? (COND_NO[w.trackHardness] ?? w.trackHardness) : w.trackHardness}</span>
+                      )}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* ─── Results ─────────────────────────────────────────────────────── */}
         {isLoading ? (

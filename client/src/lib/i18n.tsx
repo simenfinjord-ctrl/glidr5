@@ -2745,8 +2745,23 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
+// ─── Hooks ────────────────────────────────────────────────────────────────────
 
+// NOTE ON THE TWO LANGUAGE HOOKS:
+// `useLanguage()` (from @/lib/language) owns the language state (localStorage
+// "glidr-lang") and exposes `{ lang, setLang }`. `useI18n()` is built on top of
+// it and exposes `{ t, language }` — where `language` is literally the same
+// value as `lang` (see I18nProvider above). They never diverge. Prefer
+// `useI18n()` in components that need translation keys; use `useLanguage()` when
+// you also need `setLang`.
 export function useI18n() {
   return useContext(I18nContext);
+}
+
+// Reusable bilingual literal helper. Replaces the inline
+//   const L = (no, en) => language === "no" ? no : en
+// pattern duplicated across pages. Usage: const L = useL(); L("Lagre", "Save").
+export function useL() {
+  const { language } = useContext(I18nContext);
+  return (no: string, en: string) => (language === "no" ? no : en);
 }

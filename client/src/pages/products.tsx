@@ -1374,11 +1374,11 @@ function StockChangesView({
       )}
     </div>
   );
-  const { language } = useI18n();
-  const L = (no: string, en: string) => (language === "no" ? no : en);
 }
 
 function StockRow({ product: p }: { product: Product }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
   const [inputValue, setInputValue] = useState(String(p.stockQuantity));
@@ -1523,8 +1523,6 @@ type ProductTest = {
     results: string | null; feelingRank: number | null;
     isSelectedProduct: boolean;
   }[];
-  const { language } = useI18n();
-  const L = (no: string, en: string) => (language === "no" ? no : en);
 };
 
 function ProductTestHistoryDialog({ product, open, onClose }: { product: Product | null; open: boolean; onClose: () => void }) {

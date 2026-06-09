@@ -1323,7 +1323,7 @@ function ProductSearchStats({
                     <XAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
                     <YAxis allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
                     <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px" }} />
-                    <Bar dataKey="count" name="Times" radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="count" name={L("Ganger", "Times")} radius={[4, 4, 0, 0]}>
                       {distData.map((entry, i) => (
                         <Cell key={i} fill={i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : i === 2 ? "#f97316" : CHART_COLORS[i]} />
                       ))}
@@ -4205,8 +4205,8 @@ export default function Analytics() {
                           <YAxis allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
                           <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px" }} />
                           <Legend wrapperStyle={{ fontSize: "12px" }} />
-                          <Bar dataKey="glide" name="Glide" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="structure" name="Structure" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="glide" name={L("Glid", "Glide")} fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="structure" name={L("Struktur", "Structure")} fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
@@ -4279,8 +4279,8 @@ export default function Analytics() {
                 <ResponsiveContainer width="100%" height={350}>
                   <ScatterChart>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                    <XAxis dataKey="snowTemp" name="Snow Temp" unit="°C" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-                    <YAxis dataKey="avgRank" name="Rank" reversed tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                    <XAxis dataKey="snowTemp" name={L("Snøtemp", "Snow Temp")} unit="°C" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                    <YAxis dataKey="avgRank" name={L("Rang", "Rank")} reversed tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
                     <Tooltip
                       contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px" }}
                       content={({ payload }) => {

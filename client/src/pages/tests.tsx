@@ -611,7 +611,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             >
               <ImagePlus className="h-10 w-10 text-muted-foreground/60" />
               <div className="text-center">
-                <p className="text-sm font-medium">Drop image here or click to browse</p>
+                <p className="text-sm font-medium">{L("Slipp bildet her eller klikk for å bla", "Drop image here or click to browse")}</p>
                 <p className="text-xs text-muted-foreground mt-1">JPEG, PNG, WebP supported</p>
               </div>
             </div>
@@ -694,7 +694,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                       <SelectItem value="Classic">{t("tests.classic")}</SelectItem>
                       <SelectItem value="Skating">{t("tests.skating")}</SelectItem>
                       <SelectItem value="Double Poling">{t("tests.doublePole")}</SelectItem>
-                      <SelectItem value="Grind">Grind</SelectItem>
+                      <SelectItem value="Grind">{L("Slip", "Grind")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1186,6 +1186,7 @@ function CalendarView({
 export default function Tests() {
   const [, navigate] = useLocation();
   const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { isBlindTester, can } = useAuth();
   const canViewGrinding = can("grinding", "view");
   const { data: tests = [], isLoading: testsLoading } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
@@ -1548,7 +1549,7 @@ export default function Tests() {
                     <SelectValue placeholder={t("tests.filterSeason")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="All">All seasons</SelectItem>
+                    <SelectItem value="All">{L("Alle sesonger", "All seasons")}</SelectItem>
                     {availableSeasons.map((s) => (
                       <SelectItem key={s} value={s}>{s}</SelectItem>
                     ))}
@@ -1562,10 +1563,10 @@ export default function Tests() {
                   onValueChange={(v) => { setQuickDayDate(v === "__all__" ? "" : v); if (v !== "__all__") setHideDayDetails(false); }}
                 >
                   <SelectTrigger className="h-9 text-xs" data-testid="select-filter-date">
-                    <SelectValue placeholder="All dates" />
+                    <SelectValue placeholder={L("Alle datoer", "All dates")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__all__">All dates</SelectItem>
+                    <SelectItem value="__all__">{L("Alle datoer", "All dates")}</SelectItem>
                     {availableDates.map((d) => (
                       <SelectItem key={d} value={d}>{dateLabelMap.get(d) ?? fmtDate(d)}</SelectItem>
                     ))}
@@ -1604,11 +1605,11 @@ export default function Tests() {
                 </div>
                 <div className="flex items-center gap-1">
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] text-muted-foreground px-1">Date from:</span>
+                    <span className="text-[10px] text-muted-foreground px-1">{L("Dato fra:", "Date from:")}</span>
                     <div className="relative h-9 w-[130px]">
                       <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)}
                         className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden"
-                        title="Fra dato" data-testid="input-filter-date-from" />
+                        title={L("Fra dato", "From date")} data-testid="input-filter-date-from" />
                       <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
                         {filterDateFrom ? fmtDate(filterDateFrom) : <span className="text-muted-foreground text-xs">—</span>}
                       </div>
@@ -1616,11 +1617,11 @@ export default function Tests() {
                   </div>
                   <span className="text-muted-foreground text-xs shrink-0 mt-4">–</span>
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] text-muted-foreground px-1">Date to:</span>
+                    <span className="text-[10px] text-muted-foreground px-1">{L("Dato til:", "Date to:")}</span>
                     <div className="relative h-9 w-[130px]">
                       <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)}
                         className="h-full w-full cursor-pointer rounded-md border border-input bg-background px-3 text-xs [&::-webkit-datetime-edit]:opacity-0 [&::-webkit-inner-spin-button]:hidden"
-                        title="Til dato" data-testid="input-filter-date-to" />
+                        title={L("Til dato", "To date")} data-testid="input-filter-date-to" />
                       <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-xs">
                         {filterDateTo ? fmtDate(filterDateTo) : <span className="text-muted-foreground text-xs">—</span>}
                       </div>
@@ -1661,7 +1662,7 @@ export default function Tests() {
                     <SelectValue placeholder={t("tests.filterProduct")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="All">All products</SelectItem>
+                    <SelectItem value="All">{L("Alle produkter", "All products")}</SelectItem>
                     {products.map((p) => (
                       <SelectItem key={p.id} value={String(p.id)}>
                         {p.brand} {p.name}
@@ -1697,14 +1698,14 @@ export default function Tests() {
             </div>
             {/* Temperature & Humidity */}
             <div>
-              <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Temperature & Humidity</div>
+              <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Temperatur og fuktighet", "Temperature & Humidity")}</div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div>
                   <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />Air temp (°C)</label>
                   <div className="flex items-center gap-1">
                     <Input type="number" value={filterAirTempMin} onChange={e => setFilterAirTempMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-air-temp-min" />
                     <span className="text-xs text-muted-foreground">–</span>
-                    <Input type="number" value={filterAirTempMax} onChange={e => setFilterAirTempMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-air-temp-max" />
+                    <Input type="number" value={filterAirTempMax} onChange={e => setFilterAirTempMax(e.target.value)} placeholder={L("Maks", "Max")} className="h-8 text-xs" data-testid="input-filter-air-temp-max" />
                   </div>
                 </div>
                 <div>
@@ -1712,43 +1713,43 @@ export default function Tests() {
                   <div className="flex items-center gap-1">
                     <Input type="number" value={filterSnowTempMin} onChange={e => setFilterSnowTempMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-snow-temp-min" />
                     <span className="text-xs text-muted-foreground">–</span>
-                    <Input type="number" value={filterSnowTempMax} onChange={e => setFilterSnowTempMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-snow-temp-max" />
+                    <Input type="number" value={filterSnowTempMax} onChange={e => setFilterSnowTempMax(e.target.value)} placeholder={L("Maks", "Max")} className="h-8 text-xs" data-testid="input-filter-snow-temp-max" />
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400" />Air humidity (%rH)</label>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-400" />{L("Luftfuktighet (%rH)", "Air humidity (%rH)")}</label>
                   <div className="flex items-center gap-1">
                     <Input type="number" value={filterAirHumMin} onChange={e => setFilterAirHumMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-air-hum-min" />
                     <span className="text-xs text-muted-foreground">–</span>
-                    <Input type="number" value={filterAirHumMax} onChange={e => setFilterAirHumMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-air-hum-max" />
+                    <Input type="number" value={filterAirHumMax} onChange={e => setFilterAirHumMax(e.target.value)} placeholder={L("Maks", "Max")} className="h-8 text-xs" data-testid="input-filter-air-hum-max" />
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />Snow humidity (%)</label>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />{L("Snøfuktighet (%)", "Snow humidity (%)")}</label>
                   <div className="flex items-center gap-1">
                     <Input type="number" value={filterSnowHumMin} onChange={e => setFilterSnowHumMin(e.target.value)} placeholder="Min" className="h-8 text-xs" data-testid="input-filter-snow-hum-min" />
                     <span className="text-xs text-muted-foreground">–</span>
-                    <Input type="number" value={filterSnowHumMax} onChange={e => setFilterSnowHumMax(e.target.value)} placeholder="Max" className="h-8 text-xs" data-testid="input-filter-snow-hum-max" />
+                    <Input type="number" value={filterSnowHumMax} onChange={e => setFilterSnowHumMax(e.target.value)} placeholder={L("Maks", "Max")} className="h-8 text-xs" data-testid="input-filter-snow-hum-max" />
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-400" />Cloud cover (%)</label>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-400" />{L("Skydekke (%)", "Cloud cover (%)")}</label>
                   <div className="flex items-center gap-1">
                     <Input type="number" value={filterCloudMin} onChange={e => setFilterCloudMin(e.target.value)} placeholder="Min" className="h-8 text-xs" />
                     <span className="text-xs text-muted-foreground">–</span>
-                    <Input type="number" value={filterCloudMax} onChange={e => setFilterCloudMax(e.target.value)} placeholder="Max" className="h-8 text-xs" />
+                    <Input type="number" value={filterCloudMax} onChange={e => setFilterCloudMax(e.target.value)} placeholder={L("Maks", "Max")} className="h-8 text-xs" />
                   </div>
                 </div>
               </div>
             </div>
             {/* Snow Type */}
             <div>
-              <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow Type</div>
+              <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Snøtype", "Snow Type")}</div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-400" />Artificial snow</label>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-400" />{L("Kunstsnø", "Artificial snow")}</label>
                   <Select value={filterArtSnow || "__any__"} onValueChange={v => setFilterArtSnow(v === "__any__" ? "" : v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__any__">— Any —</SelectItem>
                       {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -1756,9 +1757,9 @@ export default function Tests() {
                   </Select>
                 </div>
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-teal-400" />Natural snow</label>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-teal-400" />{L("Natursnø", "Natural snow")}</label>
                   <Select value={filterNatSnow || "__any__"} onValueChange={v => setFilterNatSnow(v === "__any__" ? "" : v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__any__">— Any —</SelectItem>
                       {SNOW_STAGE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -1766,9 +1767,9 @@ export default function Tests() {
                   </Select>
                 </div>
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-400" />Snow humidity type</label>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-400" />{L("Snøfukttype", "Snow humidity type")}</label>
                   <Select value={filterSnowHumidityType || "__any__"} onValueChange={v => setFilterSnowHumidityType(v === "__any__" ? "" : v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__any__">— Any —</SelectItem>
                       {SNOW_HUMIDITY_TYPE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -1776,9 +1777,9 @@ export default function Tests() {
                   </Select>
                 </div>
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-lime-400" />Grain size</label>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-lime-400" />{L("Kornstørrelse", "Grain size")}</label>
                   <Select value={filterGrainSize || "__any__"} onValueChange={v => setFilterGrainSize(v === "__any__" ? "" : v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__any__">— Any —</SelectItem>
                       {GRAIN_SIZE_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -1789,12 +1790,12 @@ export default function Tests() {
             </div>
             {/* Snow & Track */}
             <div>
-              <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Snow & Track</div>
+              <div className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{L("Snø og spor", "Snow & Track")}</div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-400" />Track hardness</label>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-400" />{L("Sporhardhet", "Track hardness")}</label>
                   <Select value={filterTrackHardness || "__any__"} onValueChange={v => setFilterTrackHardness(v === "__any__" ? "" : v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={L("Alle", "Any")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__any__">— Any —</SelectItem>
                       {TRACK_HARDNESS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -1802,15 +1803,15 @@ export default function Tests() {
                   </Select>
                 </div>
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400" />Precipitation</label>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400" />{L("Nedbør", "Precipitation")}</label>
                   <Input className="h-8 text-xs" placeholder="e.g. Light snow" value={filterPrecipitation} onChange={e => setFilterPrecipitation(e.target.value)} />
                 </div>
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-purple-400" />Wind</label>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-purple-400" />{L("Vind", "Wind")}</label>
                   <Input className="h-8 text-xs" placeholder="e.g. Light NW" value={filterWind} onChange={e => setFilterWind(e.target.value)} />
                 </div>
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-pink-400" />Visibility</label>
+                  <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-pink-400" />{L("Sikt", "Visibility")}</label>
                   <Input className="h-8 text-xs" placeholder="e.g. Good" value={filterVisibility} onChange={e => setFilterVisibility(e.target.value)} />
                 </div>
               </div>

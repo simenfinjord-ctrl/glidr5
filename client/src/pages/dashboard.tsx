@@ -46,6 +46,19 @@ type ShortcutDef = {
   dynamicChildren?: "athletes";
 };
 
+const SHORTCUT_LABEL_NO: Record<string, string> = {
+  "new-test": "Ny test", "tests": "Alle tester", "testskis": "Testski", "products": "Produkter", "weather": "Vær",
+  "analytics": "Analyse", "grinding": "Sliping", "grinding-tests": "Sliping — Tester", "grinding-grinds": "Sliping — Profiler",
+  "grinding-analytics": "Sliping — Analyse", "raceskis": "Løpsski", "raceprep": "Raceprep", "suggestions": "Forslag",
+  "live-runsheets": "Live kjøreark", "watch-queue": "Klokkekø", "admin": "Admin",
+};
+const SHORTCUT_DESC_NO: Record<string, string> = {
+  "new-test": "Opprett en ny test", "tests": "Bla gjennom alle tester", "testskis": "Administrer testskiserier",
+  "products": "Katalog over glidprodukter", "weather": "Loggfør vær og snødata", "analytics": "Diagrammer og ytelsesdata",
+  "grinding": "Sliptester og profiler", "grinding-tests": "Sliptest-økter", "grinding-grinds": "Bibliotek med slipeprofiler",
+  "grinding-analytics": "Slipeanalyse", "raceskis": "Skigarasje og løpshistorikk", "raceprep": "Forberedelse til løpsdag",
+  "suggestions": "Voksforslag", "live-runsheets": "Live kjøreark", "watch-queue": "Garmin-klokkekø", "admin": "Innstillinger for lagadmin",
+};
 const ALL_SHORTCUTS: ShortcutDef[] = [
   { id: "new-test",       label: "New Test",         description: "Create a new test",                  href: "/tests/new",       iconKey: "ListChecks",  iconColor: "text-emerald-600", permArea: "tests",     blindHide: true },
   { id: "tests",          label: "All Tests",         description: "Browse all tests",                   href: "/tests",           iconKey: "ListChecks",  iconColor: "text-emerald-600", permArea: "tests" },
@@ -180,6 +193,8 @@ type WatchQueueItem = { id: number; test_name: string | null; series_name: strin
 
 // ── Widget: Top Products ──────────────────────────────────────────────────────
 function TopProductsWidget({ recentResults }: { recentResults: RecentResult[] }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const winCounts: Record<number, { brand: string; name: string; count: number }> = {};
   for (const r of recentResults) {
     if (r.hasResults && r.winnerProduct) {
@@ -200,7 +215,7 @@ function TopProductsWidget({ recentResults }: { recentResults: RecentResult[] })
         Top Products
       </div>
       {top.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic">No results data yet.</p>
+        <p className="text-sm text-muted-foreground italic">{L("Ingen resultatdata ennå.", "No results data yet.")}</p>
       ) : (
         <div className="space-y-2">
           {top.map((p, i) => (
@@ -229,6 +244,8 @@ type AthleteRecentTestsProps = {
 };
 
 function AthleteRecentTestsWidget({ selectedAthleteIds, athletes, tests }: AthleteRecentTestsProps) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const raceSkiTests = tests.filter((t) => t.testSkiSource === "raceskis");
 
   // If no athletes selected → show all raceski tests; otherwise filter
@@ -290,6 +307,8 @@ function AthleteRecentTestsWidget({ selectedAthleteIds, athletes, tests }: Athle
 
 // ── Widget: Recent Activity (admin only) ──────────────────────────────────────
 function RecentActivityWidget() {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { data: activityLogs = [] } = useQuery<any[]>({
     queryKey: ["/api/activity"],
     queryFn: async () => {
@@ -314,7 +333,7 @@ function RecentActivityWidget() {
         Team Activity
       </div>
       {activityLogs.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic">No recent activity.</p>
+        <p className="text-sm text-muted-foreground italic">{L("Ingen nylig aktivitet.", "No recent activity.")}</p>
       ) : (
         <div className="space-y-1.5">
           {activityLogs.slice(0, 10).map((log: any, i: number) => (
@@ -334,7 +353,10 @@ function RecentActivityWidget() {
 
 export default function Dashboard() {
   const { user, isBlindTester, can, canManage } = useAuth();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const sLabel = (id: string, en: string) => (language === "no" ? (SHORTCUT_LABEL_NO[id] ?? en) : en);
+  const sDesc = (id: string, en: string) => (language === "no" ? (SHORTCUT_DESC_NO[id] ?? en) : en);
   const hasGarminWatch = can("garmin_watch");
   const [resultLimit, setResultLimit] = useState("10");
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
@@ -509,7 +531,7 @@ export default function Dashboard() {
         {editingWidgets && (
           <Card className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-foreground">Customise Dashboard</h2>
+              <h2 className="text-sm font-semibold text-foreground">{L("Tilpass dashbord", "Customise Dashboard")}</h2>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -558,8 +580,8 @@ export default function Dashboard() {
                           {enabled && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
                         </div>
                         <div className="min-w-0">
-                          <div className="text-xs font-semibold text-foreground">{w.label}</div>
-                          <div className="text-[11px] text-muted-foreground">{w.description}</div>
+                          <div className="text-xs font-semibold text-foreground">{sLabel(w.uid, w.label)}</div>
+                          <div className="text-[11px] text-muted-foreground">{sDesc(w.uid, w.description)}</div>
                         </div>
                       </button>
 
@@ -606,7 +628,7 @@ export default function Dashboard() {
                         </div>
                       )}
                       {enabled && athletes.length === 0 && (
-                        <p className="mt-2 text-[11px] text-muted-foreground italic">No athletes accessible.</p>
+                        <p className="mt-2 text-[11px] text-muted-foreground italic">{L("Ingen utøvere tilgjengelig.", "No athletes accessible.")}</p>
                       )}
                     </div>
                   );
@@ -631,8 +653,8 @@ export default function Dashboard() {
                       {enabled && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-semibold text-foreground">{w.label}</div>
-                      <div className="text-[11px] text-muted-foreground">{w.description}</div>
+                      <div className="text-xs font-semibold text-foreground">{sLabel(w.uid, w.label)}</div>
+                      <div className="text-[11px] text-muted-foreground">{sDesc(w.uid, w.description)}</div>
                     </div>
                   </button>
                 );
@@ -672,10 +694,10 @@ export default function Dashboard() {
                   const dynamicOpts: { id: string; label: string; description: string; href: string }[] =
                     s.dynamicChildren === "athletes"
                       ? [
-                          { id: `${s.id}-all`, label: "Race Skis — All athletes", description: "Ski garage overview", href: s.href },
+                          { id: `${s.id}-all`, label: L("Løpsski — Alle utøvere", "Race Skis — All athletes"), description: L("Skigarasje-oversikt", "Ski garage overview"), href: s.href },
                           ...athletes.map((a) => ({
                             id: `${s.id}-athlete-${a.id}`,
-                            label: `Race Skis — ${a.name}`,
+                            label: L(`Løpsski — ${a.name}`, `Race Skis — ${a.name}`),
                             description: a.name,
                             href: `/raceskis/${a.id}`,
                           })),
@@ -719,7 +741,7 @@ export default function Dashboard() {
                         )}
                       >
                         <Icon className={cn("h-3.5 w-3.5 shrink-0", parentSaved ? "text-primary" : s.iconColor)} />
-                        <span className="font-medium flex-1 truncate">{s.label}</span>
+                        <span className="font-medium flex-1 truncate">{sLabel(s.id, s.label)}</span>
                         {parentSaved && <span className="text-[10px] font-bold text-primary shrink-0">✓</span>}
                         {hasChildren && (
                           <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", isExpanded && "rotate-180")} />
@@ -753,7 +775,7 @@ export default function Dashboard() {
                                       : "border-border bg-muted/5 text-muted-foreground/40 cursor-not-allowed"
                                 )}
                               >
-                                <span className="flex-1 truncate">{child.label}</span>
+                                <span className="flex-1 truncate">{sLabel(child.id, child.label)}</span>
                                 {saved && <span className="text-[10px] font-bold text-primary shrink-0">✓</span>}
                               </button>
                             );
@@ -780,7 +802,7 @@ export default function Dashboard() {
                       type="button"
                       onClick={() => removeShortcut(s.uid)}
                       className="absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/80 transition-colors"
-                      title="Remove shortcut"
+                      title={L("Fjern snarvei", "Remove shortcut")}
                     >
                       <span className="text-[11px] font-bold leading-none">−</span>
                     </button>
@@ -792,8 +814,8 @@ export default function Dashboard() {
                         <Icon className="h-5 w-5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{s.label}</p>
-                        <p className="text-[11px] text-muted-foreground truncate">{s.description}</p>
+                        <p className="text-sm font-semibold text-foreground truncate">{sLabel(s.id, s.label)}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{sDesc(s.id, s.description)}</p>
                       </div>
                     </div>
                   </AppLink>

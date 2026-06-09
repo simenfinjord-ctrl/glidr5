@@ -29,7 +29,8 @@ function displayName(item: QueueItem): string {
 
 function SessionCode({ item, isAdmin }: { item: QueueItem; isAdmin: boolean }) {
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [copied, setCopied] = useState(false);
 
   const refreshMutation = useMutation({
@@ -63,12 +64,12 @@ function SessionCode({ item, isAdmin }: { item: QueueItem; isAdmin: boolean }) {
       <span className="font-mono font-bold text-base tracking-[0.25em] text-sky-600 select-all">
         {item.session_code}
       </span>
-      <Button variant="ghost" size="icon" className="h-6 w-6" title="Copy code"
+      <Button variant="ghost" size="icon" className="h-6 w-6" title={L("Kopier kode", "Copy code")}
         onClick={() => copy(item.session_code!)}>
         {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
       </Button>
       {isAdmin && (
-        <Button variant="ghost" size="icon" className="h-6 w-6" title="Refresh code"
+        <Button variant="ghost" size="icon" className="h-6 w-6" title={L("Oppdater kode", "Refresh code")}
           onClick={() => refreshMutation.mutate()} disabled={refreshMutation.isPending}>
           <RefreshCw className={cn("h-3 w-3", refreshMutation.isPending && "animate-spin")} />
         </Button>
@@ -79,7 +80,8 @@ function SessionCode({ item, isAdmin }: { item: QueueItem; isAdmin: boolean }) {
 
 export default function WatchQueue() {
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { user } = useAuth();
   const isAdmin = !!(user?.isAdmin || user?.isTeamAdmin);
   const [tab, setTab] = useState<"active" | "archive">("active");
@@ -100,7 +102,7 @@ export default function WatchQueue() {
   const removeMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/watch/queue/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/watch/queue"] }),
-    onError: () => toast({ title: "Error", description: "Could not remove item.", variant: "destructive" }),
+    onError: () => toast({ title: L("Feil", "Error"), description: L("Kunne ikke fjerne element.", "Could not remove item."), variant: "destructive" }),
   });
 
   const restoreMutation = useMutation({
@@ -108,16 +110,16 @@ export default function WatchQueue() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/watch/queue"] });
       queryClient.invalidateQueries({ queryKey: ["/api/watch/queue/archive"] });
-      toast({ title: "Restored", description: "Test moved back to active queue." });
+      toast({ title: L("Gjenopprettet", "Restored"), description: L("Test flyttet tilbake til aktiv kø.", "Test moved back to active queue.") });
     },
-    onError: () => toast({ title: "Error", description: "Could not restore item.", variant: "destructive" }),
+    onError: () => toast({ title: L("Feil", "Error"), description: L("Kunne ikke gjenopprette element.", "Could not restore item."), variant: "destructive" }),
   });
 
   const regenPinMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/watch/pin/regenerate"),
     onSuccess: () => {
       refetchPin();
-      toast({ title: "PIN regenerated", description: "Update the PIN in your Garmin watch app." });
+      toast({ title: L("PIN regenerert", "PIN regenerated"), description: L("Oppdater PIN-koden i Garmin-klokkeappen.", "Update the PIN in your Garmin watch app.") });
     },
   });
 
@@ -268,7 +270,7 @@ export default function WatchQueue() {
                           className="h-8 w-8 text-muted-foreground hover:text-foreground"
                           onClick={() => restoreMutation.mutate(item.id)}
                           disabled={restoreMutation.isPending}
-                          title="Restore to queue"
+                          title={L("Gjenopprett til kø", "Restore to queue")}
                         >
                           <RotateCcw className="h-4 w-4" />
                         </Button>
@@ -279,7 +281,7 @@ export default function WatchQueue() {
                           className="h-8 w-8 text-destructive hover:text-destructive"
                           onClick={() => removeMutation.mutate(item.id)}
                           disabled={removeMutation.isPending}
-                          title="Remove from queue"
+                          title={L("Fjern fra kø", "Remove from queue")}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

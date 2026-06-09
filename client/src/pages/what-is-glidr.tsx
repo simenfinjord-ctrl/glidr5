@@ -1,4 +1,5 @@
 import { AppLink } from "@/components/app-link";
+import { useLanguage } from "@/lib/language";
 import {
   DashboardAnim,
   TestsAnim,
@@ -82,7 +83,34 @@ const sections = [
   },
 ];
 
+const SECTIONS_NO: { title: string; description: string }[] = [
+  { title: "Dashbord og live-resultater", description: "Lagets testnav på ett blikk. Nylige resultater oppdateres automatisk hvert 10. sekund med vinnermarkering og medaljemerker. Se umiddelbart hvilke produkter som presterer — gull-, sølv- og bronserangmerker gjør det tydelig hvem som er på topp." },
+  { title: "Testadministrasjon", description: "Tabellbasert arbeidsflyt designet for fart på snøen. Dynamiske runder, live rangering med konkurranseregler (likt hopper over neste nummer: 1-1-3), og støtte for testtypene Glid, Struktur, Klassisk, Skøyting, Staking og Slip. Filtrer på dato, produkt, snøtype, sted og temperatur." },
+  { title: "Komplett kjøreark", description: "Cup-oppsett med enkel utslagning for head-to-head-testing av skipar. Legg inn avstander, vinnere går automatisk videre, og kaskaderende differanseberegninger viser nøyaktig hvor mye hvert par tapte med. Mobilmodus med store trykkflater for bruk med votter på snøen." },
+  { title: "Garmin-klokkestyring", description: "Den eneste skitestplattformen med innebygd Garmin-klokkestøtte. Generer en 4-sifret øktkode fra kjørearket, legg den inn på Forerunner eller Fenix, og kjør hele heatet håndfritt — ingen telefon, ingen nettbrett, ingen fomling i kulda. Velg vinneren med OPP eller NED, still inn gapet i centimeter, og bekreft. Resultatene synkroniseres umiddelbart til live-heatet. Når alle heat er ferdige, bruker du sluttstillingen direkte fra håndleddet med ett knappetrykk." },
+  { title: "Analyse og produktsammenligning", description: "Interaktive diagrammer drevet av dine data: produktseire over tid, snittrang, tester per måned, og temperatur-vs-rang-spredning. Sammenlign produkter side om side med head-to-head-statistikk, seiersrater og metodikkfordelinger." },
+  { title: "Værdokumentasjon", description: "Loggfør snø- og luftforhold — temperatur, fuktighet, vind, nedbør, kornstørrelse, sporhardhet og testkvalitet. Været kobles automatisk til tester ved å matche dato, sted og gruppe. Forslagsmotoren bruker dine historiske data til å anbefale produkter for ethvert føre." },
+  { title: "Testskiserier", description: "Organiser testing rundt skiserier med merke, skitype og par-etiketter. Spor reslip-historikk per serie. Serier filtreres etter testtype så du alltid jobber med riktig sett. Klikk inn på en serie for å se alle tilknyttede tester og resultater." },
+  { title: "Produktbeholdning og lager", description: "Sentralisert produktkatalog med lagersporing. Hurtige +/−-knapper for beholdning, fargekodede lagernivåer (rød/gul/grønn), endringslogg og gruppefiltrering. Bytt mellom liste- og lagervisning for å styre voksrommet." },
+  { title: "Løpsski- og utøveradministrasjon", description: "Fulle utøverprofiler med skibeholdning: serienummer, merker, stilarter, konstruksjon, slip og mer. Spor reslip-historikk med automatiske oppdateringer. Arkiver/gjenopprett ski. Tilgangskontroll per utøver — bare autoriserte brukere ser dataene." },
+  { title: "Admin og lagsikkerhet", description: "Bygd for kommersiell SaaS med flere lag: full dataisolasjon, tre rollenivåer (Superadmin, Lagadmin, Medlem), og granulære tilganger på tvers av 10 områder. Blindtestermodus, aktivitetslogging og funksjonsstyring per lag." },
+  { title: "Mobil og offline-klar", description: "Responsivt design som fungerer på enhver enhet. Legg inn data uten internett — på fjellet, i voksbua, hvor du enn er. Endringer settes i kø lokalt og synkroniseres automatisk når du er tilbake på nett." },
+];
+
+const FEAT_NO: Record<string, string> = {
+  "⌚ Garmin Watch Control": "⌚ Garmin-klokkestyring", "Apply Results from Watch": "Bruk resultater fra klokke",
+  "Blind Tester Mode": "Blindtestermodus", "Google Sheets Backup": "Google Sheets-sikkerhetskopi",
+  "PDF & Excel Export": "PDF- og Excel-eksport", "Dark Mode": "Mørk modus", "Duplicate Tests": "Dupliser tester",
+  "Feeling & Kick Rank": "Følelses- og festrang", "Multiple Products/Line": "Flere produkter per linje",
+  "Live Runsheet Monitor": "Live kjøreark-skjerm", "Grinding Records": "Slip-historikk", "Stock Management": "Lagerstyring",
+  "Group Management": "Gruppeadministrasjon", "Activity Logging": "Aktivitetslogging", "Suggestions Engine": "Forslagsmotor",
+  "Complete Runsheet Bracket": "Komplett kjøreark-heat", "Date & Sort Filters": "Dato- og sorteringsfiltre", "Admin Data Tools": "Admin-dataverktøy",
+};
+
+
 export default function WhatIsGlidr() {
+  const { lang } = useLanguage();
+  const L = (no: string, en: string) => (lang === "no" ? no : en);
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 py-12">
@@ -91,10 +119,10 @@ export default function WhatIsGlidr() {
             className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground mb-4"
             data-testid="heading-what-is-glidr"
           >
-            What is Glidr?
+            {L("Hva er Glidr?", "What is Glidr?")}
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            The ski testing and documentation platform that streamlines product development for competitive teams.
+            {L("Plattformen for skitesting og dokumentasjon som effektiviserer produktutvikling for konkurranselag.", "The ski testing and documentation platform that streamlines product development for competitive teams.")}
           </p>
         </div>
 
@@ -114,10 +142,10 @@ export default function WhatIsGlidr() {
                 </div>
                 <div className={isMobile ? "md:w-2/3" : "md:w-2/5"}>
                   <h2 className="text-2xl font-bold text-foreground mb-3">
-                    {s.title}
+                    {lang === "no" ? SECTIONS_NO[i].title : s.title}
                   </h2>
                   <p className="text-base text-muted-foreground leading-relaxed">
-                    {s.description}
+                    {lang === "no" ? SECTIONS_NO[i].description : s.description}
                   </p>
                 </div>
               </div>
@@ -127,7 +155,7 @@ export default function WhatIsGlidr() {
 
         <div className="mt-24 text-center border-t border-border pt-12">
           <h2 className="text-2xl font-bold text-foreground mb-4">
-            Plus everything else you need
+            {L("Pluss alt det andre du trenger", "Plus everything else you need")}
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-w-3xl mx-auto text-sm text-muted-foreground">
             {[
@@ -158,7 +186,7 @@ export default function WhatIsGlidr() {
                     : "bg-muted/50 border-border"
                 }`}
               >
-                {f}
+                {lang === "no" ? (FEAT_NO[f] ?? f) : f}
               </div>
             ))}
           </div>
@@ -167,18 +195,18 @@ export default function WhatIsGlidr() {
         <div className="mt-16 flex flex-col items-center gap-6">
           <AppLink href="/login" testId="link-login-from-features">
             <button className="px-8 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base shadow hover:opacity-90 transition-opacity">
-              Sign in to Glidr
+              {L("Logg inn på Glidr", "Sign in to Glidr")}
             </button>
           </AppLink>
           <div className="flex justify-center gap-6 text-xs text-muted-foreground">
             <AppLink href="/pricing" testId="link-pricing-from-features" className="underline hover:text-foreground">
-              Pricing
+              {L("Priser", "Pricing")}
             </AppLink>
             <AppLink href="/contact" testId="link-contact-from-features" className="underline hover:text-foreground">
-              Contact
+              {L("Kontakt", "Contact")}
             </AppLink>
             <AppLink href="/legal" testId="link-legal-from-features" className="underline hover:text-foreground">
-              Terms of Service & Privacy Policy
+              {L("Vilkår og personvern", "Terms of Service & Privacy Policy")}
             </AppLink>
           </div>
         </div>

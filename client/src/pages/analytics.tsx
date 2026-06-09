@@ -3619,8 +3619,6 @@ function RacedCombinationsList({
   fmtD: (d: string) => string;
   lang: string;
 }) {
-  const { language } = useI18n();
-  const L = (no: string, en: string) => (language === "no" ? no : en);
   if (combos.length === 0) {
     return (
       <Card className="p-8 text-center">

@@ -78,6 +78,12 @@ type ComboResult = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+const COND_NO: Record<string, string> = {
+  "Falling new": "Fallende nysnø", "New": "Ny", "Irreg. dir. new": "Uregelm. retn. ny", "Irreg. dir. transf.": "Uregelm. retn. transf.", "Transformed": "Transformert",
+  "Extra fine": "Ekstra fin", "Fine": "Fin", "Medium": "Middels", "Coarse": "Grov", "Very coarse": "Svært grov",
+  "Dry": "Tørr", "Moist": "Fuktig", "Wet": "Våt", "Very wet": "Svært våt", "Slush": "Slaps",
+  "Very soft": "Svært myk", "Soft": "Myk", "Hard": "Hard", "Very hard": "Svært hard", "Ice": "Is",
+};
 const NATURAL_SNOW_OPTIONS = ["Falling new","New","Irreg. dir. new","Irreg. dir. transf.","Transformed"];
 const GRAIN_SIZE_OPTIONS = ["Extra fine","Fine","Medium","Coarse","Very coarse"];
 const SNOW_HUMIDITY_TYPE_OPTIONS = ["Dry","Moist","Wet","Very wet","Slush"];
@@ -159,12 +165,14 @@ function MinMaxInput({ minVal, maxVal, onMinChange, onMaxChange }: {
   minVal: string; maxVal: string;
   onMinChange: (v: string) => void; onMaxChange: (v: string) => void;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   return (
     <div className="flex items-center gap-1">
       <Input type="number" placeholder="Min" value={minVal} onChange={(e) => onMinChange(e.target.value)}
         className="h-8 w-[72px] text-xs text-center px-2 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-auto" />
       <span className="text-muted-foreground text-xs">–</span>
-      <Input type="number" placeholder="Max" value={maxVal} onChange={(e) => onMaxChange(e.target.value)}
+      <Input type="number" placeholder={L("Maks", "Max")} value={maxVal} onChange={(e) => onMaxChange(e.target.value)}
         className="h-8 w-[72px] text-xs text-center px-2 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-auto" />
     </div>
   );
@@ -188,14 +196,16 @@ function ConfidenceBadge({ level, count, usingFallback }: {
   count?: number;
   usingFallback?: boolean;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const tooltipText =
     usingFallback
-      ? "No tests matched these conditions — showing results from all tests."
+      ? L("Ingen tester matchet disse forholdene — viser resultater fra alle tester.", "No tests matched these conditions — showing results from all tests.")
       : level === "High"
-        ? `High confidence: based on ${count ?? "5+"} tests that closely match your conditions.`
+        ? L(`Høy sikkerhet: basert på ${count ?? "5+"} tester som samsvarer godt med forholdene dine.`, `High confidence: based on ${count ?? "5+"} tests that closely match your conditions.`)
         : level === "Medium"
-          ? `Medium confidence: based on ${count ?? "2–4"} tests matching your conditions.`
-          : `Low confidence: based on ${count ?? 1} test matching your conditions, or estimated from all tests.`;
+          ? L(`Middels sikkerhet: basert på ${count ?? "2–4"} tester som samsvarer med forholdene dine.`, `Medium confidence: based on ${count ?? "2–4"} tests matching your conditions.`)
+          : L(`Lav sikkerhet: basert på ${count ?? 1} test som samsvarer med forholdene, eller estimert fra alle tester.`, `Low confidence: based on ${count ?? 1} test matching your conditions, or estimated from all tests.`);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -207,7 +217,7 @@ function ConfidenceBadge({ level, count, usingFallback }: {
             level === "Medium" && "bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:ring-amber-800",
             level === "Low" && "bg-muted text-muted-foreground ring-border",
           )}>
-            {level}
+            {L(level === "High" ? "Høy" : level === "Medium" ? "Middels" : "Lav", level)}
             <HelpCircle className="h-2.5 w-2.5 opacity-60" />
           </span>
         </TooltipTrigger>
@@ -222,6 +232,8 @@ function ConfidenceBadge({ level, count, usingFallback }: {
 function ProductRow({ rank, productName, result }: {
   rank: number; productName: string; result: ProductResult;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [open, setOpen] = useState(false);
   return (
     <div className={cn(
@@ -247,17 +259,17 @@ function ProductRow({ rank, productName, result }: {
           {result.hasRankData ? (
             <>
               <span className="hidden sm:inline text-muted-foreground">
-                Avg <span className="font-semibold text-foreground">#{result.avgRank!.toFixed(1)}</span>
+                {L("Snitt", "Avg")} <span className="font-semibold text-foreground">#{result.avgRank!.toFixed(1)}</span>
               </span>
               <span className="hidden md:inline text-muted-foreground">
-                Best <RankBadge rank={result.bestRank} />
+                {L("Beste", "Best")} <RankBadge rank={result.bestRank} />
               </span>
               {result.wins > 0 && (
                 <span className="hidden sm:inline text-amber-600 font-bold">{result.wins}W</span>
               )}
             </>
           ) : (
-            <span className="text-muted-foreground text-[10px]">no rank data</span>
+            <span className="text-muted-foreground text-[10px]">{L("ingen rangdata", "no rank data")}</span>
           )}
           <span className="text-muted-foreground">
             <span className="font-semibold text-foreground">{result.count}</span>t
@@ -270,24 +282,24 @@ function ProductRow({ rank, productName, result }: {
         <div className="border-t bg-muted/20 px-3 py-3 space-y-2 text-xs">
           <div className="flex flex-wrap gap-x-5 gap-y-1">
             {result.hasRankData && <>
-              <div className="flex items-center gap-1"><span className="text-muted-foreground">Avg rank</span><span className="font-semibold">#{result.avgRank!.toFixed(1)}</span></div>
-              <div className="flex items-center gap-1"><span className="text-muted-foreground">Best rank</span><RankBadge rank={result.bestRank} /></div>
-              <div className="flex items-center gap-1"><span className="text-muted-foreground">Win rate</span><span className="font-semibold">{(result.winRate * 100).toFixed(0)}%</span></div>
-              <div className="flex items-center gap-1"><span className="text-muted-foreground">Wins</span><span className="font-semibold text-amber-600">{result.wins}</span></div>
+              <div className="flex items-center gap-1"><span className="text-muted-foreground">{L("Snittrang", "Avg rank")}</span><span className="font-semibold">#{result.avgRank!.toFixed(1)}</span></div>
+              <div className="flex items-center gap-1"><span className="text-muted-foreground">{L("Beste rang", "Best rank")}</span><RankBadge rank={result.bestRank} /></div>
+              <div className="flex items-center gap-1"><span className="text-muted-foreground">{L("Seiersrate", "Win rate")}</span><span className="font-semibold">{(result.winRate * 100).toFixed(0)}%</span></div>
+              <div className="flex items-center gap-1"><span className="text-muted-foreground">{L("Seire", "Wins")}</span><span className="font-semibold text-amber-600">{result.wins}</span></div>
             </>}
-            <div className="flex items-center gap-1"><span className="text-muted-foreground">Tests</span><span className="font-semibold">{result.count}</span></div>
+            <div className="flex items-center gap-1"><span className="text-muted-foreground">{L("Tester", "Tests")}</span><span className="font-semibold">{result.count}</span></div>
           </div>
           {result.bestApp && (
             <div className="flex items-center gap-2">
               <FlaskConical className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-              <span className="text-muted-foreground">Best application:</span>
+              <span className="text-muted-foreground">{L("Beste applikasjon:", "Best application:")}</span>
               <span className="font-medium bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-md ring-1 ring-amber-200/60 dark:ring-amber-800/60">{result.bestApp}</span>
             </div>
           )}
           {result.bestCombo && (
             <div className="flex items-center gap-2">
               <TrendingUp className="h-3.5 w-3.5 text-violet-500 shrink-0" />
-              <span className="text-muted-foreground">Best combo partner:</span>
+              <span className="text-muted-foreground">{L("Beste kombipartner:", "Best combo partner:")}</span>
               <span className="font-medium bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 px-2 py-0.5 rounded-md ring-1 ring-violet-200/60 dark:ring-violet-800/60">{result.bestCombo.name}</span>
               <span className="text-muted-foreground">({result.bestCombo.count}×)</span>
             </div>
@@ -301,6 +313,8 @@ function ProductRow({ rank, productName, result }: {
 function ComboRow({ rank, combo, productsById }: {
   rank: number; combo: ComboResult; productsById: Map<number, Product>;
 }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [open, setOpen] = useState(false);
   const p1 = productsById.get(combo.product1Id);
   const p2 = productsById.get(combo.product2Id);
@@ -347,11 +361,11 @@ function ComboRow({ rank, combo, productsById }: {
         <div className="border-t bg-muted/20 px-3 py-3 space-y-1.5 text-xs">
           <div className="flex flex-wrap gap-x-5 gap-y-1">
             {combo.hasRankData && <>
-              <div className="flex items-center gap-1"><span className="text-muted-foreground">Avg rank</span><span className="font-semibold">#{combo.avgRank!.toFixed(1)}</span></div>
-              <div className="flex items-center gap-1"><span className="text-muted-foreground">Best rank</span><RankBadge rank={combo.bestRank} /></div>
-              <div className="flex items-center gap-1"><span className="text-muted-foreground">Wins</span><span className="font-semibold text-amber-600">{combo.wins}</span></div>
+              <div className="flex items-center gap-1"><span className="text-muted-foreground">{L("Snittrang", "Avg rank")}</span><span className="font-semibold">#{combo.avgRank!.toFixed(1)}</span></div>
+              <div className="flex items-center gap-1"><span className="text-muted-foreground">{L("Beste rang", "Best rank")}</span><RankBadge rank={combo.bestRank} /></div>
+              <div className="flex items-center gap-1"><span className="text-muted-foreground">{L("Seire", "Wins")}</span><span className="font-semibold text-amber-600">{combo.wins}</span></div>
             </>}
-            <div className="flex items-center gap-1"><span className="text-muted-foreground">Times tested</span><span className="font-semibold">{combo.count}</span></div>
+            <div className="flex items-center gap-1"><span className="text-muted-foreground">{L("Antall tester", "Times tested")}</span><span className="font-semibold">{combo.count}</span></div>
           </div>
           <div className="flex items-start gap-2 pt-1">
             <FlaskConical className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
@@ -374,7 +388,8 @@ type ComboResultFull = ComboResult & { hasRankData: boolean };
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function Suggestions() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
 
   const { data: tests = [] } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
@@ -589,7 +604,7 @@ export default function Suggestions() {
             {t("suggestions.title")}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Condition-based product recommendations from your test history
+            {L("Føreavhengige produktanbefalinger fra testhistorikken din", "Condition-based product recommendations from your test history")}
           </p>
         </div>
 
@@ -600,25 +615,25 @@ export default function Suggestions() {
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 dark:bg-sky-900/30">
                 <ThermometerSnowflake className="h-4 w-4 text-sky-600 dark:text-sky-400" />
               </div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">❄ Weather Conditions</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("❄ Værforhold", "❄ Weather Conditions")}</span>
             </div>
             {hasFilters && (
               <button onClick={() => setFilters(emptyFilter)} className="text-xs text-muted-foreground underline hover:text-foreground transition-colors">
-                Clear all
+                {L("Nullstill alle", "Clear all")}
               </button>
             )}
           </div>
 
           {/* Temperature & Humidity */}
           <div className="mb-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Temperature &amp; Humidity</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">{L("Temperatur og fuktighet", "Temperature & Humidity")}</p>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-x-5 gap-y-4">
               {[
-                { label: "Air temp (°C)", color: "bg-blue-500", minF: "airTempMin" as const, maxF: "airTempMax" as const },
-                { label: "Snow temp (°C)", color: "bg-green-500", minF: "snowTempMin" as const, maxF: "snowTempMax" as const },
-                { label: "Air humidity (%rH)", color: "bg-purple-500", minF: "airHumMin" as const, maxF: "airHumMax" as const },
-                { label: "Snow humidity (%)", color: "bg-yellow-500", minF: "snowHumMin" as const, maxF: "snowHumMax" as const },
-                { label: "Cloud cover (%)", color: "bg-slate-400", minF: "cloudMin" as const, maxF: "cloudMax" as const },
+                { label: L("Lufttemp (°C)", "Air temp (°C)"), color: "bg-blue-500", minF: "airTempMin" as const, maxF: "airTempMax" as const },
+                { label: L("Snøtemp (°C)", "Snow temp (°C)"), color: "bg-green-500", minF: "snowTempMin" as const, maxF: "snowTempMax" as const },
+                { label: L("Luftfuktighet (%rH)", "Air humidity (%rH)"), color: "bg-purple-500", minF: "airHumMin" as const, maxF: "airHumMax" as const },
+                { label: L("Snøfuktighet (%)", "Snow humidity (%)"), color: "bg-yellow-500", minF: "snowHumMin" as const, maxF: "snowHumMax" as const },
+                { label: L("Skydekke (%)", "Cloud cover (%)"), color: "bg-slate-400", minF: "cloudMin" as const, maxF: "cloudMax" as const },
               ].map(({ label, color, minF, maxF }) => (
                 <div key={minF}>
                   <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5">
@@ -632,34 +647,34 @@ export default function Suggestions() {
 
           {/* Snow Type */}
           <div className="mb-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Snow Type</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">{L("Snøtype", "Snow Type")}</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-4">
               <div>
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-blue-400" />Artificial snow</label>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-blue-400" />{L("Kunstsnø", "Artificial snow")}</label>
                 <Select value={filters.artificialSnow || "__any__"} onValueChange={sel("artificialSnow")}>
                   <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="__any__">— Any —</SelectItem><SelectItem value="yes">Artificial</SelectItem></SelectContent>
+                  <SelectContent><SelectItem value="__any__">{L("— Alle —", "— Any —")}</SelectItem><SelectItem value="yes">{L("Kunstig", "Artificial")}</SelectItem></SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-green-400" />Natural snow</label>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-green-400" />{L("Natursnø", "Natural snow")}</label>
                 <Select value={filters.naturalSnow || "__any__"} onValueChange={sel("naturalSnow")}>
                   <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="__any__">— Any —</SelectItem>{NATURAL_SNOW_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                  <SelectContent><SelectItem value="__any__">{L("— Alle —", "— Any —")}</SelectItem>{NATURAL_SNOW_OPTIONS.map((o) => <SelectItem key={o} value={o}>{language === "no" ? (COND_NO[o] ?? o) : o}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-cyan-500" />Snow humidity type</label>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-cyan-500" />{L("Snøfukttype", "Snow humidity type")}</label>
                 <Select value={filters.snowHumidityType || "__any__"} onValueChange={sel("snowHumidityType")}>
                   <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="__any__">— Any —</SelectItem>{SNOW_HUMIDITY_TYPE_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                  <SelectContent><SelectItem value="__any__">{L("— Alle —", "— Any —")}</SelectItem>{SNOW_HUMIDITY_TYPE_OPTIONS.map((o) => <SelectItem key={o} value={o}>{language === "no" ? (COND_NO[o] ?? o) : o}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-lime-500" />Grain size</label>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-lime-500" />{L("Kornstørrelse", "Grain size")}</label>
                 <Select value={filters.grainSize || "__any__"} onValueChange={sel("grainSize")}>
                   <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="__any__">— Any —</SelectItem>{GRAIN_SIZE_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                  <SelectContent><SelectItem value="__any__">{L("— Alle —", "— Any —")}</SelectItem>{GRAIN_SIZE_OPTIONS.map((o) => <SelectItem key={o} value={o}>{language === "no" ? (COND_NO[o] ?? o) : o}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
@@ -667,26 +682,26 @@ export default function Suggestions() {
 
           {/* Snow & Track */}
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Snow &amp; Track</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">{L("Snø og spor", "Snow & Track")}</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-4">
               <div>
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-orange-500" />Track hardness</label>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-orange-500" />{L("Sporhardhet", "Track hardness")}</label>
                 <Select value={filters.trackHardness || "__any__"} onValueChange={sel("trackHardness")}>
                   <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="__any__">— Any —</SelectItem>{TRACK_HARDNESS_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                  <SelectContent><SelectItem value="__any__">{L("— Alle —", "— Any —")}</SelectItem>{TRACK_HARDNESS_OPTIONS.map((o) => <SelectItem key={o} value={o}>{language === "no" ? (COND_NO[o] ?? o) : o}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-blue-500" />Precipitation</label>
-                <Input placeholder="e.g. Light snow" value={filters.precipitation} onChange={(e) => set("precipitation")(e.target.value)} className="h-9 text-xs" />
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-blue-500" />{L("Nedbør", "Precipitation")}</label>
+                <Input placeholder={L("f.eks. Lett snø", "e.g. Light snow")} value={filters.precipitation} onChange={(e) => set("precipitation")(e.target.value)} className="h-9 text-xs" />
               </div>
               <div>
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-pink-500" />Wind</label>
-                <Input placeholder="e.g. Light NW" value={filters.wind} onChange={(e) => set("wind")(e.target.value)} className="h-9 text-xs" />
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-pink-500" />{L("Vind", "Wind")}</label>
+                <Input placeholder={L("f.eks. Svak NV", "e.g. Light NW")} value={filters.wind} onChange={(e) => set("wind")(e.target.value)} className="h-9 text-xs" />
               </div>
               <div>
-                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-pink-400" />Visibility</label>
-                <Input placeholder="e.g. Good" value={filters.visibility} onChange={(e) => set("visibility")(e.target.value)} className="h-9 text-xs" />
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5"><span className="inline-block w-2 h-2 rounded-full bg-pink-400" />{L("Sikt", "Visibility")}</label>
+                <Input placeholder={L("f.eks. God", "e.g. Good")} value={filters.visibility} onChange={(e) => set("visibility")(e.target.value)} className="h-9 text-xs" />
               </div>
             </div>
           </div>
@@ -696,18 +711,18 @@ export default function Suggestions() {
         {isLoading ? (
           <Card className="fs-card rounded-2xl p-8 text-center">
             <Sparkles className="mx-auto h-10 w-10 text-violet-500 animate-pulse mb-3" />
-            <p className="text-sm text-muted-foreground">Loading test data…</p>
+            <p className="text-sm text-muted-foreground">{L("Laster testdata…", "Loading test data…")}</p>
           </Card>
         ) : !hasFilters ? (
           <Card className="fs-card rounded-2xl p-10 text-center">
             <ThermometerSnowflake className="mx-auto h-10 w-10 text-sky-400/60 mb-3" />
-            <p className="text-sm font-medium text-foreground mb-1">Fill in conditions to get suggestions</p>
-            <p className="text-xs text-muted-foreground">Enter at least one filter above — temperature, snow type, humidity or other conditions — to see which products and combinations have worked best in similar conditions.</p>
+            <p className="text-sm font-medium text-foreground mb-1">{L("Fyll inn forhold for å få forslag", "Fill in conditions to get suggestions")}</p>
+            <p className="text-xs text-muted-foreground">{L("Angi minst ett filter over — temperatur, snøtype, fuktighet eller andre forhold — for å se hvilke produkter og kombinasjoner som har fungert best i lignende forhold.", "Enter at least one filter above — temperature, snow type, humidity or other conditions — to see which products and combinations have worked best in similar conditions.")}</p>
           </Card>
         ) : allEntries.length === 0 && allTestIds.length > 0 ? (
           <Card className="fs-card rounded-2xl p-8 text-center">
             <Lightbulb className="mx-auto h-10 w-10 text-muted-foreground/30 mb-3" />
-            <p className="text-sm text-muted-foreground">No test data found. Run some tests first to get recommendations.</p>
+            <p className="text-sm text-muted-foreground">{L("Fant ingen testdata. Kjør noen tester først for å få anbefalinger.", "No test data found. Run some tests first to get recommendations.")}</p>
           </Card>
         ) : (
           <>
@@ -722,8 +737,8 @@ export default function Suggestions() {
                   : "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400"
               )}>
                 {computed.usingFallback
-                  ? `⚠ No tests with matching weather found — showing results from all ${tests.length} tests (Low confidence)`
-                  : `✓ ${computed.matchCount} test${computed.matchCount !== 1 ? "s" : ""} match these conditions (${nFilters} active filter${nFilters !== 1 ? "s" : ""})`
+                  ? L(`⚠ Ingen tester med matchende vær funnet — viser resultater fra alle ${tests.length} tester (lav sikkerhet)`, `⚠ No tests with matching weather found — showing results from all ${tests.length} tests (Low confidence)`)
+                  : L(`✓ ${computed.matchCount} ${computed.matchCount !== 1 ? "tester" : "test"} matcher disse forholdene (${nFilters} ${nFilters !== 1 ? "aktive filtre" : "aktivt filter"})`, `✓ ${computed.matchCount} test${computed.matchCount !== 1 ? "s" : ""} match these conditions (${nFilters} active filter${nFilters !== 1 ? "s" : ""})`)
                 }
               </div>
             )}
@@ -736,11 +751,11 @@ export default function Suggestions() {
                   <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-50 dark:bg-cyan-900/30">
                     <Target className="h-4 w-4 text-cyan-500" />
                   </div>
-                  <h2 className="text-base font-semibold">Glide</h2>
-                  {computed.glideProducts.length > 0 && <span className="ml-auto text-xs text-muted-foreground">{computed.glideProducts.length} products</span>}
+                  <h2 className="text-base font-semibold">{L("Glid", "Glide")}</h2>
+                  {computed.glideProducts.length > 0 && <span className="ml-auto text-xs text-muted-foreground">{computed.glideProducts.length} {L("produkter", "products")}</span>}
                 </div>
                 {computed.glideProducts.length === 0 ? (
-                  <div className="text-center py-6"><Lightbulb className="mx-auto h-7 w-7 text-muted-foreground/30 mb-2" /><p className="text-sm text-muted-foreground">No glide test data.</p></div>
+                  <div className="text-center py-6"><Lightbulb className="mx-auto h-7 w-7 text-muted-foreground/30 mb-2" /><p className="text-sm text-muted-foreground">{L("Ingen glidtestdata.", "No glide test data.")}</p></div>
                 ) : (
                   <div className="space-y-2">
                     {computed.glideProducts.map((r, idx) => {
@@ -754,8 +769,8 @@ export default function Suggestions() {
                   <>
                     <div className="flex items-center gap-2 mt-5 mb-3">
                       <TrendingUp className="h-4 w-4 text-violet-500" />
-                      <h3 className="text-sm font-semibold">Best combinations</h3>
-                      <span className="ml-auto text-xs text-muted-foreground">{computed.glideCombos.length} combos</span>
+                      <h3 className="text-sm font-semibold">{L("Beste kombinasjoner", "Best combinations")}</h3>
+                      <span className="ml-auto text-xs text-muted-foreground">{computed.glideCombos.length} {L("kombinasjoner", "combos")}</span>
                     </div>
                     <div className="space-y-2">
                       {computed.glideCombos.map((c, idx) => (
@@ -772,11 +787,11 @@ export default function Suggestions() {
                   <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-900/30">
                     <Layers className="h-4 w-4 text-violet-500" />
                   </div>
-                  <h2 className="text-base font-semibold">Structure</h2>
-                  {computed.structureProducts.length > 0 && <span className="ml-auto text-xs text-muted-foreground">{computed.structureProducts.length} products</span>}
+                  <h2 className="text-base font-semibold">{L("Struktur", "Structure")}</h2>
+                  {computed.structureProducts.length > 0 && <span className="ml-auto text-xs text-muted-foreground">{computed.structureProducts.length} {L("produkter", "products")}</span>}
                 </div>
                 {computed.structureProducts.length === 0 ? (
-                  <div className="text-center py-6"><Lightbulb className="mx-auto h-7 w-7 text-muted-foreground/30 mb-2" /><p className="text-sm text-muted-foreground">No structure test data.</p></div>
+                  <div className="text-center py-6"><Lightbulb className="mx-auto h-7 w-7 text-muted-foreground/30 mb-2" /><p className="text-sm text-muted-foreground">{L("Ingen strukturtestdata.", "No structure test data.")}</p></div>
                 ) : (
                   <div className="space-y-2">
                     {computed.structureProducts.map((r, idx) => {
@@ -790,8 +805,8 @@ export default function Suggestions() {
                   <>
                     <div className="flex items-center gap-2 mt-5 mb-3">
                       <TrendingUp className="h-4 w-4 text-violet-500" />
-                      <h3 className="text-sm font-semibold">Best combinations</h3>
-                      <span className="ml-auto text-xs text-muted-foreground">{computed.structureCombos.length} combos</span>
+                      <h3 className="text-sm font-semibold">{L("Beste kombinasjoner", "Best combinations")}</h3>
+                      <span className="ml-auto text-xs text-muted-foreground">{computed.structureCombos.length} {L("kombinasjoner", "combos")}</span>
                     </div>
                     <div className="space-y-2">
                       {computed.structureCombos.map((c, idx) => (

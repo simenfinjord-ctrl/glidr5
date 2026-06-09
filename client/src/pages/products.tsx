@@ -1528,6 +1528,8 @@ type ProductTest = {
 };
 
 function ProductTestHistoryDialog({ product, open, onClose }: { product: Product | null; open: boolean; onClose: () => void }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const { data, isLoading } = useQuery<{ tests: ProductTest[] }>({
     queryKey: [`/api/products/${product?.id}/tests`],
     queryFn: async () => {

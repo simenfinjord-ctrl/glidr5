@@ -7919,13 +7919,18 @@ RULES:
     if (!user) return res.status(401).json({ message: "User not found." });
 
     await new Promise<void>((resolve, reject) =>
-      req.session.regenerate((err) => (err ? reject(err) : resolve()))
+      req.session.regenerate((err) => {
+        if (err) { reject(err); return; }
+        // Set remember-me maxAge BEFORE logIn so passport's internal session.save()
+        // persists the 30-day expiry to the Postgres session store (see auth.ts login).
+        if (rememberMe) req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+        resolve();
+      })
     );
 
     await new Promise<void>((resolve, reject) =>
       req.logIn(user as any, async (loginErr) => {
         if (loginErr) { reject(loginErr); return; }
-        if (rememberMe) req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
         (req.session as any).ipAddress = req.headers["x-forwarded-for"]
           ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
           : req.socket.remoteAddress || "unknown";

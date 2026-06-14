@@ -228,11 +228,16 @@ export async function setupAuth(app: Express) {
       // No 2FA — regenerate session to prevent fixation, then log in
       req.session.regenerate((regenErr) => {
         if (regenErr) return next(regenErr);
+        // Set the 30-day cookie BEFORE req.logIn(): passport 0.7 calls
+        // req.session.save() internally during logIn, and connect-pg-simple writes
+        // the session row's `expire` from cookie.maxAge at that moment. Setting it
+        // after logIn left the store row at the 1-day default, so "remember me"
+        // sessions died after a day even though the browser cookie lasted 30 days.
+        if (req.body.rememberMe && req.session) {
+          req.session.cookie.maxAge = REMEMBER_ME_MAX_AGE;
+        }
         req.logIn(user, async (loginErr) => {
           if (loginErr) return next(loginErr);
-          if (req.body.rememberMe && req.session) {
-            req.session.cookie.maxAge = REMEMBER_ME_MAX_AGE;
-          }
           (req.session as any).ipAddress = req.headers["x-forwarded-for"]
             ? String(req.headers["x-forwarded-for"]).split(",")[0].trim()
             : req.socket.remoteAddress || "unknown";

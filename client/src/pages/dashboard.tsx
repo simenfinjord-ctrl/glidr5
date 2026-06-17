@@ -49,7 +49,7 @@ type ShortcutDef = {
 const SHORTCUT_LABEL_NO: Record<string, string> = {
   "new-test": "Ny test", "tests": "Alle tester", "testskis": "Testski", "products": "Produkter", "weather": "Vær",
   "analytics": "Analyse", "grinding": "Sliping", "grinding-tests": "Sliping — Tester", "grinding-grinds": "Sliping — Profiler",
-  "grinding-analytics": "Sliping — Analyse", "raceskis": "Løpsski", "raceprep": "Raceprep", "suggestions": "Forslag",
+  "grinding-analytics": "Sliping — Analyse", "raceskis": "Utøverski", "raceprep": "Raceprep", "suggestions": "Forslag",
   "live-runsheets": "Live kjøreark", "watch-queue": "Klokkekø", "admin": "Admin",
 };
 const SHORTCUT_DESC_NO: Record<string, string> = {
@@ -694,10 +694,10 @@ export default function Dashboard() {
                   const dynamicOpts: { id: string; label: string; description: string; href: string }[] =
                     s.dynamicChildren === "athletes"
                       ? [
-                          { id: `${s.id}-all`, label: L("Løpsski — Alle utøvere", "Race Skis — All athletes"), description: L("Skigarasje-oversikt", "Ski garage overview"), href: s.href },
+                          { id: `${s.id}-all`, label: L("Utøverski — Alle utøvere", "Athlete Skis — All athletes"), description: L("Skigarasje-oversikt", "Ski garage overview"), href: s.href },
                           ...athletes.map((a) => ({
                             id: `${s.id}-athlete-${a.id}`,
-                            label: L(`Løpsski — ${a.name}`, `Race Skis — ${a.name}`),
+                            label: L(`Utøverski — ${a.name}`, `Athlete Skis — ${a.name}`),
                             description: a.name,
                             href: `/raceskis/${a.id}`,
                           })),

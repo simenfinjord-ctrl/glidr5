@@ -14,7 +14,7 @@ const translations: Record<string, Record<string, string>> = {
     "nav.weather": "Weather",
     "nav.analytics": "Analytics",
     "nav.grinding": "Grinding",
-    "nav.raceskis": "Race Skis",
+    "nav.raceskis": "Athlete Skis",
     "nav.raceprep": "Race Prep",
     "nav.raceprepGlide": "Race Prep – Glide & Structure",
     "nav.suggestions": "Suggestions",
@@ -640,8 +640,8 @@ const translations: Record<string, Record<string, string>> = {
     "grinding.analytics.avgSnowTempLabel": "Avg snow°C",
 
     // ── Race skis / Athletes ───────────────────────────────────────────────────
-    "raceskis.title": "Race Skis",
-    "raceskis.subtitle": "Manage athlete profiles and race ski inventory",
+    "raceskis.title": "Athlete Skis",
+    "raceskis.subtitle": "Manage athlete profiles and ski inventory",
     "raceskis.addAthlete": "Add athlete",
     "raceskis.editAthlete": "Edit athlete",
     "raceskis.deleteAthlete": "Delete athlete",
@@ -676,7 +676,7 @@ const translations: Record<string, Record<string, string>> = {
     "raceskis.noSkis": "No race skis registered yet.",
 
     // ── Athlete detail ────────────────────────────────────────────────────────
-    "athleteDetail.back": "Back to race skis",
+    "athleteDetail.back": "Back to athlete skis",
     "athleteDetail.skiProfile": "Ski profile",
     "athleteDetail.testHistory": "Test history",
     "athleteDetail.noTests": "No tests for this athlete yet",
@@ -1366,7 +1366,7 @@ const translations: Record<string, Record<string, string>> = {
     "nav.weather": "Vær",
     "nav.analytics": "Analyse",
     "nav.grinding": "Sliping",
-    "nav.raceskis": "Løperski",
+    "nav.raceskis": "Utøverski",
     "nav.raceprep": "Raceprep",
     "nav.raceprepGlide": "Raceprep – Glid & Struktur",
     "nav.suggestions": "Anbefalinger",
@@ -1992,8 +1992,8 @@ const translations: Record<string, Record<string, string>> = {
     "grinding.analytics.avgSnowTempLabel": "Avg snø°C",
 
     // ── Løperski / Utøvere ────────────────────────────────────────────────────
-    "raceskis.title": "Løperski",
-    "raceskis.subtitle": "Administrer utøverprofiler og løperskiutstyr",
+    "raceskis.title": "Utøverski",
+    "raceskis.subtitle": "Administrer utøverprofiler og skiutstyr",
     "raceskis.addAthlete": "Legg til utøver",
     "raceskis.editAthlete": "Rediger utøver",
     "raceskis.deleteAthlete": "Slett utøver",
@@ -2028,7 +2028,7 @@ const translations: Record<string, Record<string, string>> = {
     "raceskis.noSkis": "Ingen løperski registrert ennå.",
 
     // ── Utøverdetalj ──────────────────────────────────────────────────────────
-    "athleteDetail.back": "Tilbake til løperski",
+    "athleteDetail.back": "Tilbake til utøverski",
     "athleteDetail.skiProfile": "Skiprofil",
     "athleteDetail.testHistory": "Testhistorikk",
     "athleteDetail.noTests": "Ingen tester for denne utøveren ennå",

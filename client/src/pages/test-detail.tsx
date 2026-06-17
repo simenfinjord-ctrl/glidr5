@@ -71,6 +71,7 @@ type TestEntry = {
   rankXkm: number | null;
   results: string | null;
   feelingRank: number | null;
+  feelingNote: string | null;
   kickRank: number | null;
   raceSkiId: number | null;
   grindType: string | null;
@@ -1539,9 +1540,16 @@ export default function TestDetail() {
                         </td>
                         <td className="py-3" data-testid={`text-feeling-${entry.id}`}>
                           {entry.feelingRank != null ? (
-                            <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-semibold text-violet-700">
-                              {entry.feelingRank}
-                            </span>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="inline-flex min-w-8 w-fit items-center justify-center rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                                {entry.feelingRank}
+                              </span>
+                              {(entry as any).feelingNote ? (
+                                <span className="text-xs text-muted-foreground italic max-w-[12rem] whitespace-normal break-words" data-testid={`text-feeling-note-${entry.id}`}>
+                                  {(entry as any).feelingNote}
+                                </span>
+                              ) : null}
+                            </div>
                           ) : "—"}
                         </td>
                         {isClassic && (

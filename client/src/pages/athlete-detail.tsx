@@ -733,15 +733,21 @@ export default function AthleteDetail() {
         } catch { return false; }
       });
     }
-    if (garageRaSort === "ra-high") {
+    if (garageRaSort !== "none") {
+      const [key, dir] = garageRaSort.split("|");
+      const num = (v: string | null | undefined) => parseFloat((v ?? "").replace(",", ".")) || 0;
+      const raVal = (s: RaceSki) => { try { const cp = s.customParams ? JSON.parse(s.customParams) : {}; return parseFloat(cp.ra_value) || 0; } catch { return 0; } };
+      const getVal = (s: RaceSki): number | string =>
+        key === "skiId" ? (s.skiId ?? "") :
+        key === "brand" ? (s.brand ?? "") :
+        key === "grind" ? (s.grind ?? "") :
+        key === "year" ? num(s.year) :
+        key === "length" ? num(s.length) :
+        key === "ra" ? raVal(s) : "";
       list = [...list].sort((a, b) => {
-        const getRa = (s: RaceSki) => { try { const cp = s.customParams ? JSON.parse(s.customParams) : {}; return parseFloat(cp.ra_value) || 0; } catch { return 0; } };
-        return getRa(b) - getRa(a);
-      });
-    } else if (garageRaSort === "ra-low") {
-      list = [...list].sort((a, b) => {
-        const getRa = (s: RaceSki) => { try { const cp = s.customParams ? JSON.parse(s.customParams) : {}; return parseFloat(cp.ra_value) || 0; } catch { return 0; } };
-        return getRa(a) - getRa(b);
+        const av = getVal(a), bv = getVal(b);
+        const cmp = (typeof av === "number" && typeof bv === "number") ? av - bv : String(av).localeCompare(String(bv));
+        return dir === "desc" ? -cmp : cmp;
       });
     }
     return list;
@@ -2491,13 +2497,23 @@ export default function AthleteDetail() {
                   data-testid="input-garage-ra-value-filter"
                 />
                 <Select value={garageRaSort} onValueChange={setGarageRaSort}>
-                  <SelectTrigger className="h-7 w-[160px] text-xs" data-testid="select-garage-ra-sort">
-                    <SelectValue placeholder={L("Sorter etter RA", "Sort by RA")} />
+                  <SelectTrigger className="h-7 w-[170px] text-xs" data-testid="select-garage-ra-sort">
+                    <SelectValue placeholder={L("Sorter", "Sort")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">{L("Ingen RA-sortering", "No RA sort")}</SelectItem>
-                    <SelectItem value="ra-high">RA-value High→Low</SelectItem>
-                    <SelectItem value="ra-low">RA-value Low→High</SelectItem>
+                    <SelectItem value="none">{L("Ingen sortering", "No sorting")}</SelectItem>
+                    <SelectItem value="skiId|asc">{L("Ski-ID A→Å", "Ski ID A→Z")}</SelectItem>
+                    <SelectItem value="skiId|desc">{L("Ski-ID Å→A", "Ski ID Z→A")}</SelectItem>
+                    <SelectItem value="brand|asc">{L("Merke A→Å", "Brand A→Z")}</SelectItem>
+                    <SelectItem value="brand|desc">{L("Merke Å→A", "Brand Z→A")}</SelectItem>
+                    <SelectItem value="grind|asc">{L("Slip A→Å", "Grind A→Z")}</SelectItem>
+                    <SelectItem value="grind|desc">{L("Slip Å→A", "Grind Z→A")}</SelectItem>
+                    <SelectItem value="year|desc">{L("Årgang nyest", "Year newest")}</SelectItem>
+                    <SelectItem value="year|asc">{L("Årgang eldst", "Year oldest")}</SelectItem>
+                    <SelectItem value="length|desc">{L("Lengde høy→lav", "Length high→low")}</SelectItem>
+                    <SelectItem value="length|asc">{L("Lengde lav→høy", "Length low→high")}</SelectItem>
+                    <SelectItem value="ra|desc">{L("RA høy→lav", "RA high→low")}</SelectItem>
+                    <SelectItem value="ra|asc">{L("RA lav→høy", "RA low→high")}</SelectItem>
                   </SelectContent>
                 </Select>
                 {(garageDisciplineFilter !== "all" || garageBrandFilter !== "all" || garageYearFilter !== "all" || garageGrindFilter !== "" || garageRaValueFilter !== "" || garageRaSort !== "none") && (
@@ -2521,9 +2537,14 @@ export default function AthleteDetail() {
               </Card>
             ) : garageViewMode === "grid" ? (
               <div className="space-y-3 mt-3">
-                {filteredGarageSkis.map((ski) => (
+                {[...filteredGarageSkis].sort((a, b) => (a.isTrainingSki || 0) - (b.isTrainingSki || 0)).map((ski, _i, _arr) => (
+                  <React.Fragment key={ski.id}>
+                    {ski.isTrainingSki === 1 && (_i === 0 || _arr[_i - 1].isTrainingSki !== 1) && (
+                      <div className="pt-3 mt-1 border-t border-amber-200/60 dark:border-amber-900/40 text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400" data-testid="garage-training-section">
+                        {L("Treningsski", "Training skis")}
+                      </div>
+                    )}
                   <SkiCard
-                    key={ski.id}
                     ski={ski}
                     expanded={expandedSkiId === ski.id}
                     onToggle={() => setExpandedSkiId(expandedSkiId === ski.id ? null : ski.id)}
@@ -2538,6 +2559,7 @@ export default function AthleteDetail() {
                     raceHistory={raceHistory}
                     weatherList={weather}
                   />
+                  </React.Fragment>
                 ))}
                 {filteredGarageSkis.length === 0 && skis.length > 0 && (
                   <p className="text-sm text-muted-foreground">{L("Ingen ski matcher filtrene.", "No skis match the current filters.")}</p>
@@ -5176,6 +5198,16 @@ function SkiCard({
               <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800">
                 {ski.discipline}
               </span>
+              {ski.typeOfSki && (
+                <span className="rounded-full bg-violet-50 dark:bg-violet-950/30 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300 ring-1 ring-violet-200 dark:ring-violet-800">
+                  {ski.typeOfSki}
+                </span>
+              )}
+              {ski.isTrainingSki === 1 && (
+                <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-800">
+                  {L("Trening", "Training")}
+                </span>
+              )}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
               {ski.grind && (
@@ -5190,6 +5222,8 @@ function SkiCard({
                 <span>Heights: {ski.heights}</span>
               )}
               {ski.year && <span>Year: {ski.year}</span>}
+              {ski.length && <span>{L("Lengde", "Length")}: {ski.length}</span>}
+              {ski.whereReceived && <span>{L("Mottatt", "Received")}: {ski.whereReceived}</span>}
               {(() => {
                 try {
                   const cp = ski.customParams ? JSON.parse(ski.customParams) : {};
@@ -5199,6 +5233,11 @@ function SkiCard({
                 } catch { return null; }
               })()}
             </div>
+            {ski.notes && (
+              <div className="mt-2 rounded-lg bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 px-2.5 py-1.5 text-xs text-amber-900 dark:text-amber-200 whitespace-pre-wrap" data-testid={`text-ski-notes-${ski.id}`}>
+                {ski.notes}
+              </div>
+            )}
           </div>
         </div>
 

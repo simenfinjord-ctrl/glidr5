@@ -284,6 +284,8 @@ export async function registerRoutes(
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS feeling_note TEXT;
       ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_rating TEXT;
       ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_comment TEXT;
+      ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS athlete_rating TEXT;
+      ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS athlete_comment TEXT;
       CREATE TABLE IF NOT EXISTS feedback_links (
         id SERIAL PRIMARY KEY,
         token TEXT NOT NULL UNIQUE,
@@ -5287,18 +5289,40 @@ export async function registerRoutes(
        FROM ski_race_usages su JOIN race_skis rs ON rs.id = su.ski_id
        WHERE su.athlete_id=$1 AND su.team_id=$2 ORDER BY su.date DESC`, [athleteId, teamId]
     );
-    res.json({ athleteName: ath.rows[0]?.name ?? "", usages: usages.rows });
+    const preps = await (pool as any).query(
+      `SELECT rpe.id, rp.date, rp.location, rp.discipline, rp.race_type AS "raceType",
+              rpe.ski_id AS "skiId", rpe.ski_id_classic AS "skiIdClassic", rpe.ski_id_skating AS "skiIdSkating",
+              rpe.athlete_rating AS "athleteRating", rpe.athlete_comment AS "athleteComment"
+       FROM race_prep_entries rpe JOIN race_preps rp ON rp.id = rpe.race_prep_id
+       WHERE rpe.athlete_id=$1 AND rp.team_id=$2 ORDER BY rp.date DESC`, [athleteId, teamId]
+    );
+    const items = [
+      ...usages.rows.map((u: any) => ({ kind: "usage", id: u.id, date: u.date, location: u.location, discipline: u.discipline, label: `${u.brand ? u.brand + " " : ""}${u.skiId}`, athleteRating: u.athleteRating, athleteComment: u.athleteComment })),
+      ...preps.rows.map((p: any) => {
+        const skis = [p.skiId, p.skiIdClassic, p.skiIdSkating].filter(Boolean).join(" / ");
+        return { kind: "prep", id: p.id, date: p.date, location: p.location, discipline: p.discipline, label: skis || p.raceType || "Race prep", athleteRating: p.athleteRating, athleteComment: p.athleteComment };
+      }),
+    ];
+    res.json({ athleteName: ath.rows[0]?.name ?? "", items });
   });
 
   app.post("/api/feedback/:token", async (req, res) => {
     const { pool } = await import("./db");
     const link = await (pool as any).query(`SELECT athlete_id AS "athleteId", team_id AS "teamId" FROM feedback_links WHERE token=$1 AND revoked=0`, [req.params.token]);
     if (!link.rows.length) return res.status(404).json({ message: "invalid" });
-    const { usageId, rating, comment } = req.body;
-    await (pool as any).query(
-      `UPDATE ski_race_usages SET athlete_rating=$1, athlete_comment=$2 WHERE id=$3 AND athlete_id=$4 AND team_id=$5`,
-      [rating || null, comment || null, parseInt(usageId), link.rows[0].athleteId, link.rows[0].teamId]
-    );
+    const { kind, id, rating, comment } = req.body;
+    const { athleteId, teamId } = link.rows[0];
+    if (kind === "prep") {
+      await (pool as any).query(
+        `UPDATE race_prep_entries SET athlete_rating=$1, athlete_comment=$2 WHERE id=$3 AND athlete_id=$4`,
+        [rating || null, comment || null, parseInt(id), athleteId]
+      );
+    } else {
+      await (pool as any).query(
+        `UPDATE ski_race_usages SET athlete_rating=$1, athlete_comment=$2 WHERE id=$3 AND athlete_id=$4 AND team_id=$5`,
+        [rating || null, comment || null, parseInt(id), athleteId, teamId]
+      );
+    }
     res.json({ ok: true });
   });
 

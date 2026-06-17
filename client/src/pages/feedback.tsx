@@ -6,14 +6,13 @@ import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/lib/language";
-import { fmtDate } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { fmtDate, cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { Check } from "lucide-react";
 
-type Usage = {
-  id: number; date: string; location: string | null; discipline: string | null;
-  skiId: string; brand: string | null; athleteRating: string | null; athleteComment: string | null;
+type Item = {
+  kind: "usage" | "prep"; id: number; date: string; location: string | null;
+  discipline: string | null; label: string; athleteRating: string | null; athleteComment: string | null;
 };
 
 const RATINGS = ["Competitive+", "Competitive", "Competitive-"];
@@ -22,6 +21,7 @@ const RATING_STYLE: Record<string, string> = {
   "Competitive": "bg-amber-400 text-amber-950 border-amber-400",
   "Competitive-": "bg-rose-500 text-white border-rose-500",
 };
+const keyOf = (it: Item) => `${it.kind}-${it.id}`;
 
 export default function AthleteFeedback() {
   const params = useParams();
@@ -29,7 +29,7 @@ export default function AthleteFeedback() {
   const { lang } = useLanguage();
   const L = (no: string, en: string) => (lang === "en" ? en : no);
 
-  const { data, isLoading, isError } = useQuery<{ athleteName: string; usages: Usage[] }>({
+  const { data, isLoading, isError } = useQuery<{ athleteName: string; items: Item[] }>({
     queryKey: [`/api/feedback/${token}`],
     queryFn: async () => {
       const r = await fetch(`/api/feedback/${token}`);
@@ -39,37 +39,34 @@ export default function AthleteFeedback() {
     retry: false,
   });
 
-  const [drafts, setDrafts] = useState<Record<number, { rating: string; comment: string }>>({});
-  const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
+  const [drafts, setDrafts] = useState<Record<string, { rating: string; comment: string }>>({});
+  const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
 
-  // Seed drafts from any feedback already submitted.
   useEffect(() => {
-    if (!data?.usages) return;
+    if (!data?.items) return;
     setDrafts((prev) => {
       const next = { ...prev };
-      for (const u of data.usages) {
-        if (!next[u.id]) next[u.id] = { rating: u.athleteRating ?? "", comment: u.athleteComment ?? "" };
+      for (const it of data.items) {
+        const k = keyOf(it);
+        if (!next[k]) next[k] = { rating: it.athleteRating ?? "", comment: it.athleteComment ?? "" };
       }
       return next;
     });
   }, [data]);
 
   const submit = useMutation({
-    mutationFn: async (vars: { usageId: number; rating: string; comment: string }) => {
-      await apiRequest("POST", `/api/feedback/${token}`, vars);
+    mutationFn: async (vars: { kind: string; id: number; rating: string; comment: string; key: string }) => {
+      await apiRequest("POST", `/api/feedback/${token}`, { kind: vars.kind, id: vars.id, rating: vars.rating, comment: vars.comment });
       return vars;
     },
-    onSuccess: (vars) => setSavedIds((s) => new Set(s).add(vars.usageId)),
+    onSuccess: (vars) => setSavedKeys((s) => new Set(s).add(vars.key)),
   });
 
-  // Group by date (acts as the "calendar")
-  const byDate: Record<string, Usage[]> = {};
-  (data?.usages ?? []).forEach((u) => { (byDate[u.date] ||= []).push(u); });
+  const byDate: Record<string, Item[]> = {};
+  (data?.items ?? []).forEach((it) => { (byDate[it.date] ||= []).push(it); });
   const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
 
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-background"><Spinner /></div>;
-  }
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><Spinner /></div>;
   if (isError || !data) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background px-4 text-center">
@@ -102,13 +99,17 @@ export default function AthleteFeedback() {
                   {fmtDate(date)}{byDate[date][0].location ? ` · ${byDate[date][0].location}` : ""}
                 </div>
                 <div className="space-y-3">
-                  {byDate[date].map((u) => {
-                    const d = drafts[u.id] ?? { rating: "", comment: "" };
-                    const saved = savedIds.has(u.id);
+                  {byDate[date].map((it) => {
+                    const k = keyOf(it);
+                    const d = drafts[k] ?? { rating: "", comment: "" };
+                    const saved = savedKeys.has(k);
                     return (
-                      <div key={u.id} className="rounded-xl border border-border bg-card p-3" data-testid={`feedback-usage-${u.id}`}>
+                      <div key={k} className="rounded-xl border border-border bg-card p-3" data-testid={`feedback-item-${k}`}>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="font-semibold text-sm">{u.brand ? `${u.brand} ` : ""}{u.skiId}{u.discipline ? ` · ${u.discipline}` : ""}</span>
+                          <span className="font-semibold text-sm">
+                            {it.label}{it.discipline ? ` · ${it.discipline}` : ""}
+                            {it.kind === "prep" && <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground align-middle">{L("Raceprep", "Race prep")}</span>}
+                          </span>
                           {saved && <span className="flex items-center gap-1 text-xs text-emerald-600"><Check className="h-3.5 w-3.5" />{L("Lagret", "Saved")}</span>}
                         </div>
                         <div className="flex flex-wrap gap-2 mb-2">
@@ -116,9 +117,9 @@ export default function AthleteFeedback() {
                             <button
                               key={r}
                               type="button"
-                              onClick={() => setDrafts((p) => ({ ...p, [u.id]: { ...d, rating: r } }))}
+                              onClick={() => setDrafts((p) => ({ ...p, [k]: { ...d, rating: r } }))}
                               className={cn("rounded-full border px-3 py-1 text-xs font-medium transition-colors", d.rating === r ? RATING_STYLE[r] : "border-border text-muted-foreground hover:bg-muted")}
-                              data-testid={`rating-${u.id}-${r}`}
+                              data-testid={`rating-${k}-${r}`}
                             >
                               {r}
                             </button>
@@ -126,7 +127,7 @@ export default function AthleteFeedback() {
                         </div>
                         <Input
                           value={d.comment}
-                          onChange={(e) => setDrafts((p) => ({ ...p, [u.id]: { ...d, comment: e.target.value } }))}
+                          onChange={(e) => setDrafts((p) => ({ ...p, [k]: { ...d, comment: e.target.value } }))}
                           placeholder={L("Kommentar (valgfritt)…", "Comment (optional)…")}
                           className="h-9 text-sm mb-2"
                         />
@@ -134,8 +135,8 @@ export default function AthleteFeedback() {
                           <Button
                             size="sm"
                             disabled={submit.isPending || !d.rating}
-                            onClick={() => submit.mutate({ usageId: u.id, rating: d.rating, comment: d.comment })}
-                            data-testid={`submit-feedback-${u.id}`}
+                            onClick={() => submit.mutate({ kind: it.kind, id: it.id, rating: d.rating, comment: d.comment, key: k })}
+                            data-testid={`submit-feedback-${k}`}
                           >
                             {L("Send tilbakemelding", "Send feedback")}
                           </Button>

@@ -5241,6 +5241,66 @@ export async function registerRoutes(
     res.json(rows);
   });
 
+  // ── Athlete feedback links (per athlete; open public link; revocable) ──────────
+  app.get("/api/athletes/:id/feedback-link", requirePermission("raceskis", "view"), async (req, res) => {
+    const u = userInfo(req);
+    const athleteId = parseInt(req.params.id);
+    if (!(await storage.hasAthleteAccess(athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req)))) return res.status(403).json({ message: "Forbidden" });
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(`SELECT token FROM feedback_links WHERE athlete_id=$1 AND team_id=$2 AND revoked=0 ORDER BY id DESC LIMIT 1`, [athleteId, getActiveTeamId(req)]);
+    res.json({ token: r.rows[0]?.token ?? null });
+  });
+
+  app.post("/api/athletes/:id/feedback-link", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const athleteId = parseInt(req.params.id);
+    if (!(await storage.hasAthleteAccess(athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req)))) return res.status(403).json({ message: "Forbidden" });
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const existing = await (pool as any).query(`SELECT token FROM feedback_links WHERE athlete_id=$1 AND team_id=$2 AND revoked=0 ORDER BY id DESC LIMIT 1`, [athleteId, teamId]);
+    if (existing.rows.length) return res.json({ token: existing.rows[0].token });
+    const token = (await import("crypto")).randomUUID().replace(/-/g, "");
+    await (pool as any).query(`INSERT INTO feedback_links (token, athlete_id, team_id, created_by_id, created_by_name, created_at) VALUES ($1,$2,$3,$4,$5,$6)`, [token, athleteId, teamId, u.id, u.name, new Date().toISOString()]);
+    res.json({ token });
+  });
+
+  app.post("/api/athletes/:id/feedback-link/revoke", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const athleteId = parseInt(req.params.id);
+    if (!(await storage.hasAthleteAccess(athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req)))) return res.status(403).json({ message: "Forbidden" });
+    const { pool } = await import("./db");
+    await (pool as any).query(`UPDATE feedback_links SET revoked=1 WHERE athlete_id=$1 AND team_id=$2`, [athleteId, getActiveTeamId(req)]);
+    res.json({ ok: true });
+  });
+
+  // Public (no auth): athlete feedback page data + submit
+  app.get("/api/feedback/:token", async (req, res) => {
+    const { pool } = await import("./db");
+    const link = await (pool as any).query(`SELECT athlete_id AS "athleteId", team_id AS "teamId" FROM feedback_links WHERE token=$1 AND revoked=0`, [req.params.token]);
+    if (!link.rows.length) return res.status(404).json({ message: "invalid" });
+    const { athleteId, teamId } = link.rows[0];
+    const ath = await (pool as any).query(`SELECT name FROM athletes WHERE id=$1`, [athleteId]);
+    const usages = await (pool as any).query(
+      `SELECT su.id, su.date, su.location, su.discipline, rs.ski_id AS "skiId", rs.brand,
+              su.athlete_rating AS "athleteRating", su.athlete_comment AS "athleteComment"
+       FROM ski_race_usages su JOIN race_skis rs ON rs.id = su.ski_id
+       WHERE su.athlete_id=$1 AND su.team_id=$2 ORDER BY su.date DESC`, [athleteId, teamId]
+    );
+    res.json({ athleteName: ath.rows[0]?.name ?? "", usages: usages.rows });
+  });
+
+  app.post("/api/feedback/:token", async (req, res) => {
+    const { pool } = await import("./db");
+    const link = await (pool as any).query(`SELECT athlete_id AS "athleteId", team_id AS "teamId" FROM feedback_links WHERE token=$1 AND revoked=0`, [req.params.token]);
+    if (!link.rows.length) return res.status(404).json({ message: "invalid" });
+    const { usageId, rating, comment } = req.body;
+    await (pool as any).query(
+      `UPDATE ski_race_usages SET athlete_rating=$1, athlete_comment=$2 WHERE id=$3 AND athlete_id=$4 AND team_id=$5`,
+      [rating || null, comment || null, parseInt(usageId), link.rows[0].athleteId, link.rows[0].teamId]
+    );
+    res.json({ ok: true });
+  });
+
   // ── Athlete Race Calendar ───────────────────────────────────────────────────
 
   app.get("/api/athletes/:id/races", requirePermission("raceskis", "view"), async (req, res) => {

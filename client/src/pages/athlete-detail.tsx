@@ -5166,6 +5166,40 @@ function SkiCard({
     enabled: expanded,
   });
 
+  // Waxer-logged race usages for this ski pair (no admin race prep needed)
+  const [usageOpen, setUsageOpen] = useState(false);
+  const [usageForm, setUsageForm] = useState({
+    date: new Date().toISOString().slice(0, 10), location: "", discipline: ski.discipline,
+    weatherMode: "link" as "link" | "manual", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "",
+  });
+  const { data: usages = [] } = useQuery<any[]>({ queryKey: [`/api/race-skis/${ski.id}/usages`], enabled: expanded });
+  const usageWeatherOptions = useMemo(() => weatherList.filter((w) => w.date === usageForm.date), [weatherList, usageForm.date]);
+  const saveUsage = useMutation({
+    mutationFn: async () => {
+      const manualWeather = usageForm.weatherMode === "manual"
+        ? JSON.stringify({
+            snowTemperatureC: usageForm.snowTemp ? parseFloat(usageForm.snowTemp.replace(",", ".")) : null,
+            airTemperatureC: usageForm.airTemp ? parseFloat(usageForm.airTemp.replace(",", ".")) : null,
+            snowType: usageForm.snowType || null,
+          })
+        : null;
+      await apiRequest("POST", `/api/race-skis/${ski.id}/usages`, {
+        date: usageForm.date, location: usageForm.location || null, discipline: usageForm.discipline,
+        weatherId: usageForm.weatherMode === "link" && usageForm.weatherId ? parseInt(usageForm.weatherId) : null,
+        manualWeather, result: usageForm.result || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/race-skis/${ski.id}/usages`] });
+      setUsageOpen(false);
+      setUsageForm((f) => ({ ...f, location: "", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "" }));
+    },
+  });
+  const deleteUsage = useMutation({
+    mutationFn: async (id: number) => { await apiRequest("DELETE", `/api/race-skis/${ski.id}/usages/${id}`); },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [`/api/race-skis/${ski.id}/usages`] }),
+  });
+
   const skiColorId = getSkiColor(ski);
   const skiColorEntry = SKI_COLORS.find((c) => c.id === skiColorId);
 
@@ -5412,8 +5446,111 @@ function SkiCard({
               </div>
             );
           })()}
+
+          {/* Waxer-logged race usage */}
+          <div className="pt-2 border-t border-border/40">
+            <div className="flex items-center justify-between mb-1.5">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Løpsbruk", "Race usage")}</h3>
+              {!isArchived && (
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setUsageOpen(true)} data-testid={`button-add-usage-${ski.id}`}>
+                  <Plus className="h-3 w-3 mr-1" />{L("Logg løpsbruk", "Log race use")}
+                </Button>
+              )}
+            </div>
+            {usages.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">{L("Ingen løpsbruk logget.", "No race use logged.")}</p>
+            ) : (
+              <div className="space-y-1.5">
+                {usages.map((usage) => {
+                  let mw: any = null; try { mw = usage.manualWeather ? JSON.parse(usage.manualWeather) : null; } catch {}
+                  const lw = usage.weatherId ? raceWeatherById.get(usage.weatherId) : null;
+                  const w: any = lw || mw;
+                  return (
+                    <div key={usage.id} className="flex items-start justify-between gap-2 rounded-lg bg-muted/30 px-3 py-1.5" data-testid={`row-usage-${usage.id}`}>
+                      <div className="text-[11px]">
+                        <span className="font-medium text-foreground">{usage.location || "—"} · {fmtDate(usage.date)}</span>
+                        {usage.discipline && <span className="text-muted-foreground"> · {usage.discipline}</span>}
+                        {w && (
+                          <div className="flex flex-wrap gap-x-2 text-[10px] text-muted-foreground mt-0.5">
+                            {w.snowTemperatureC != null && <span>{L("Snø", "Snow")} {w.snowTemperatureC}°C</span>}
+                            {w.airTemperatureC != null && <span>{L("Luft", "Air")} {w.airTemperatureC}°C</span>}
+                            {w.snowType && <span>{w.snowType}</span>}
+                          </div>
+                        )}
+                      </div>
+                      {!isArchived && (
+                        <button onClick={() => deleteUsage.mutate(usage.id)} className="text-muted-foreground/50 hover:text-red-500 shrink-0" data-testid={`button-delete-usage-${usage.id}`}>
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
+
+      <Dialog open={usageOpen} onOpenChange={setUsageOpen}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{L("Logg løpsbruk", "Log race use")} — {ski.skiId}</DialogTitle></DialogHeader>
+          <div className="space-y-3 pb-12 sm:pb-0">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium">{L("Dato", "Date")}</label>
+                <Input type="date" value={usageForm.date} onChange={(e) => setUsageForm((f) => ({ ...f, date: e.target.value, weatherId: "" }))} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium">{L("Stilart", "Discipline")}</label>
+                <Select value={usageForm.discipline} onValueChange={(v) => setUsageForm((f) => ({ ...f, discipline: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Classic">Classic</SelectItem>
+                    <SelectItem value="Skating">Skating</SelectItem>
+                    <SelectItem value="Double Poling">Double Poling</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">{L("Sted", "Location")}</label>
+              <Input value={usageForm.location} onChange={(e) => setUsageForm((f) => ({ ...f, location: e.target.value }))} placeholder={L("f.eks. Ruka", "e.g. Ruka")} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">{L("Vær", "Weather")}</label>
+              <div className="flex gap-2 mb-2">
+                <button type="button" onClick={() => setUsageForm((f) => ({ ...f, weatherMode: "link" }))} className={cn("flex-1 rounded-lg border-2 px-2 py-1.5 text-xs font-medium transition-colors", usageForm.weatherMode === "link" ? "border-primary bg-primary/5" : "border-border text-muted-foreground")}>{L("Koble til observasjon", "Link record")}</button>
+                <button type="button" onClick={() => setUsageForm((f) => ({ ...f, weatherMode: "manual" }))} className={cn("flex-1 rounded-lg border-2 px-2 py-1.5 text-xs font-medium transition-colors", usageForm.weatherMode === "manual" ? "border-primary bg-primary/5" : "border-border text-muted-foreground")}>{L("Manuelt", "Manual")}</button>
+              </div>
+              {usageForm.weatherMode === "link" ? (
+                usageWeatherOptions.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">{L("Ingen værobservasjon på denne datoen.", "No weather record on this date.")}</p>
+                ) : (
+                  <Select value={usageForm.weatherId || "__none__"} onValueChange={(v) => setUsageForm((f) => ({ ...f, weatherId: v === "__none__" ? "" : v }))}>
+                    <SelectTrigger><SelectValue placeholder={L("Velg", "Choose")} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">{L("Ingen", "None")}</SelectItem>
+                      {usageWeatherOptions.map((w) => (<SelectItem key={w.id} value={String(w.id)}>{w.location}{w.snowTemperatureC != null ? ` (${w.snowTemperatureC}°C)` : ""}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                )
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  <Input value={usageForm.snowTemp} onChange={(e) => setUsageForm((f) => ({ ...f, snowTemp: e.target.value }))} placeholder={L("Snø °C", "Snow °C")} />
+                  <Input value={usageForm.airTemp} onChange={(e) => setUsageForm((f) => ({ ...f, airTemp: e.target.value }))} placeholder={L("Luft °C", "Air °C")} />
+                  <Input value={usageForm.snowType} onChange={(e) => setUsageForm((f) => ({ ...f, snowType: e.target.value }))} placeholder={L("Snøtype", "Snow type")} />
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => saveUsage.mutate()} disabled={saveUsage.isPending || !usageForm.date} data-testid="button-save-usage">
+                {saveUsage.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

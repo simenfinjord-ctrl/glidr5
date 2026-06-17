@@ -4941,7 +4941,12 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
     weatherMode: "link" as "link" | "manual", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "", notes: "",
   });
   const { data: usages = [] } = useQuery<any[]>({ queryKey: [`/api/race-skis/${ski.id}/usages`] });
+  const { data: prepFeedback = [] } = useQuery<any[]>({ queryKey: [`/api/race-skis/${ski.id}/prep-feedback`] });
   const usageWeatherOptions = useMemo(() => weatherList.filter((w) => w.date === usageForm.date), [weatherList, usageForm.date]);
+  const ratingClass = (r: string) =>
+    r === "Competitive+" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+    : r === "Competitive-" ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
+    : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300";
   const saveUsage = useMutation({
     mutationFn: async () => {
       const manualWeather = usageForm.weatherMode === "manual"
@@ -5022,6 +5027,21 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
               </div>
             );
           })}
+        </div>
+      )}
+      {prepFeedback.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-border/40">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{L("Raceprep-tilbakemelding", "Race-prep feedback")}</h3>
+          <div className="space-y-1.5">
+            {prepFeedback.map((pf) => (
+              <div key={pf.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-muted/30 px-3 py-1.5 text-[11px]" data-testid={`prep-feedback-${pf.id}`}>
+                <span className="font-medium text-foreground">{pf.location || "—"} · {fmtDate(pf.date)}</span>
+                {pf.discipline && <span className="text-muted-foreground">{pf.discipline}</span>}
+                <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold", ratingClass(pf.athleteRating))}>{pf.athleteRating}</span>
+                {pf.athleteComment && <span className="text-muted-foreground italic">«{pf.athleteComment}»</span>}
+              </div>
+            ))}
+          </div>
         </div>
       )}
       <Dialog open={usageOpen} onOpenChange={setUsageOpen}>

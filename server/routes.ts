@@ -5244,6 +5244,26 @@ export async function registerRoutes(
     res.json(rows);
   });
 
+  // Race-prep entries (with athlete feedback) that used this ski pair — for the garage.
+  app.get("/api/race-skis/:id/prep-feedback", requirePermission("raceskis", "view"), async (req, res) => {
+    const u = userInfo(req);
+    const ski = await storage.getRaceSki(parseInt(req.params.id));
+    if (!ski) return res.status(404).json({ message: "Not found" });
+    if (!(await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req)))) return res.status(403).json({ message: "Forbidden" });
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(
+      `SELECT rpe.id, rp.date, rp.location, rp.discipline,
+              rpe.athlete_rating AS "athleteRating", rpe.athlete_comment AS "athleteComment"
+       FROM race_prep_entries rpe JOIN race_preps rp ON rp.id = rpe.race_prep_id
+       WHERE rpe.athlete_id = $1 AND rp.team_id = $2
+         AND (rpe.ski_id = $3 OR rpe.ski_id_classic = $3 OR rpe.ski_id_skating = $3)
+         AND rpe.athlete_rating IS NOT NULL
+       ORDER BY rp.date DESC`,
+      [ski.athleteId, getActiveTeamId(req), ski.skiId]
+    );
+    res.json(r.rows);
+  });
+
   // ── Athlete feedback links (per athlete; open public link; revocable) ──────────
   app.get("/api/athletes/:id/feedback-link", requirePermission("raceskis", "view"), async (req, res) => {
     const u = userInfo(req);

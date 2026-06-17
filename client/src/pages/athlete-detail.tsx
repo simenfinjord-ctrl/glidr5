@@ -1859,32 +1859,32 @@ export default function AthleteDetail() {
                   <BarChart2 className="mr-1.5 h-3.5 w-3.5" />
                   Analytics
                 </Button>
+                {hasAthleteAccess && !isAthletePortal && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-testid="button-edit-athlete"
+                    onClick={openEditAthlete}
+                  >
+                    <Edit2 className="mr-1.5 h-3.5 w-3.5" />
+                    {L("Rediger", "Edit")}
+                  </Button>
+                )}
                 {isOwnerOrAdmin && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      data-testid="button-edit-athlete"
-                      onClick={openEditAthlete}
-                    >
-                      <Edit2 className="mr-1.5 h-3.5 w-3.5" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      data-testid="button-delete-athlete"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
-                      onClick={() => {
-                        if (confirm("Delete this athlete and all their skis?")) {
-                          deleteAthleteMutation.mutate();
-                        }
-                      }}
-                    >
-                      <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                      Delete
-                    </Button>
-                  </>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-testid="button-delete-athlete"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                    onClick={() => {
+                      if (confirm("Delete this athlete and all their skis?")) {
+                        deleteAthleteMutation.mutate();
+                      }
+                    }}
+                  >
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                    {L("Slett", "Delete")}
+                  </Button>
                 )}
               </>
             )}

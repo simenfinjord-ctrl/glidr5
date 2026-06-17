@@ -1587,8 +1587,7 @@ export default function TestDetail() {
           />
         )}
 
-        {isSuperAdmin && (
-          <Dialog open={feelingOpen} onOpenChange={setFeelingOpen}>
+        <Dialog open={feelingOpen} onOpenChange={setFeelingOpen}>
             <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>{L("Feelingtest", "Feeling test")}</DialogTitle></DialogHeader>
               <p className="text-xs text-muted-foreground -mt-1">{L("Dra skiparene i rekkefølge (eller bruk pilene) — 1 = best. Rangen lagres som «Feeling».", "Drag the ski pairs into order (or use the arrows) — 1 = best. The rank is saved as “Feeling”.")}</p>
@@ -1628,6 +1627,7 @@ export default function TestDetail() {
             </DialogContent>
           </Dialog>
 
+        {isSuperAdmin && (
           <Dialog open={showShareDialog} onOpenChange={(open) => { setShowShareDialog(open); if (!open) setSelectedTeamIds([]); }}>
             <DialogContent>
               <DialogHeader>

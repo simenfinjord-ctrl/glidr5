@@ -5174,6 +5174,7 @@ export async function registerRoutes(
     const result = await (pool as any).query(
       `SELECT id, ski_id AS "skiId", athlete_id AS "athleteId", date, location, discipline,
               weather_id AS "weatherId", manual_weather AS "manualWeather", result, notes,
+              athlete_rating AS "athleteRating", athlete_comment AS "athleteComment",
               created_by_name AS "createdByName", created_at AS "createdAt"
        FROM ski_race_usages WHERE ski_id = $1 AND team_id = $2 ORDER BY date DESC`,
       [skiId, getActiveTeamId(req)]

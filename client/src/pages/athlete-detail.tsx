@@ -1423,6 +1423,22 @@ export default function AthleteDetail() {
     setAccessDialogOpen(true);
   }
 
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackCopied, setFeedbackCopied] = useState(false);
+  const { data: feedbackLink } = useQuery<{ token: string | null }>({
+    queryKey: [`/api/athletes/${athleteId}/feedback-link`],
+    enabled: !!athleteId && hasAthleteAccess && !isAthletePortal,
+  });
+  const createFeedbackLink = useMutation({
+    mutationFn: async () => { const r = await apiRequest("POST", `/api/athletes/${athleteId}/feedback-link`); return r.json(); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/feedback-link`] }); setFeedbackOpen(true); },
+  });
+  const revokeFeedbackLink = useMutation({
+    mutationFn: async () => { await apiRequest("POST", `/api/athletes/${athleteId}/feedback-link/revoke`); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/feedback-link`] }); setFeedbackOpen(false); },
+  });
+  const feedbackUrl = feedbackLink?.token ? `${typeof window !== "undefined" ? window.location.origin : ""}/feedback/${feedbackLink.token}` : "";
+
   function openEditAthlete() {
     if (athlete) {
       setAthleteForm({ name: athlete.name, team: athlete.team || "", brand: athlete.defaultSkiBrand || "" });
@@ -1868,6 +1884,18 @@ export default function AthleteDetail() {
                   >
                     <Edit2 className="mr-1.5 h-3.5 w-3.5" />
                     {L("Rediger", "Edit")}
+                  </Button>
+                )}
+                {hasAthleteAccess && !isAthletePortal && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-testid="button-feedback-link"
+                    onClick={() => { if (feedbackLink?.token) setFeedbackOpen(true); else createFeedbackLink.mutate(); }}
+                    disabled={createFeedbackLink.isPending}
+                  >
+                    <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                    {feedbackLink?.token ? L("Tilbakemeldingslenke", "Feedback link") : L("Lag tilbakemeldingslenke", "Create feedback link")}
                   </Button>
                 )}
                 {isOwnerOrAdmin && (
@@ -4161,6 +4189,30 @@ export default function AthleteDetail() {
       </Dialog>
 
       {/* Edit Athlete Dialog */}
+      <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>{L("Tilbakemeldingslenke", "Feedback link")}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {L("Send denne lenken til utøveren. De rangerer skiene (Competitive±) og legger inn kommentar etter renn — svarene vises på skiparenes løpsbruk.",
+               "Send this link to the athlete. They rate the skis (Competitive±) and comment after races — responses appear on the ski pairs' race usage.")}
+          </p>
+          <div className="flex items-center gap-2">
+            <Input value={feedbackUrl} readOnly className="text-xs" data-testid="input-feedback-url" onFocus={(e) => e.currentTarget.select()} />
+            <Button size="sm" onClick={() => { try { navigator.clipboard?.writeText(feedbackUrl); } catch {} setFeedbackCopied(true); setTimeout(() => setFeedbackCopied(false), 1500); }} data-testid="button-copy-feedback-url">
+              {feedbackCopied ? L("Kopiert", "Copied") : L("Kopier", "Copy")}
+            </Button>
+          </div>
+          <div className="flex justify-end pt-1">
+            <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20" disabled={revokeFeedbackLink.isPending}
+              onClick={() => { if (confirm(L("Trekke tilbake lenken? Den slutter å virke.", "Revoke this link? It will stop working."))) revokeFeedbackLink.mutate(); }}
+              data-testid="button-revoke-feedback-link">
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              {L("Trekk tilbake lenke", "Revoke link")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={editAthleteOpen} onOpenChange={setEditAthleteOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -4943,6 +4995,17 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
                       {w.snowTemperatureC != null && <span>{L("Snø", "Snow")} {w.snowTemperatureC}°C</span>}
                       {w.airTemperatureC != null && <span>{L("Luft", "Air")} {w.airTemperatureC}°C</span>}
                       {w.snowType && <span>{w.snowType}</span>}
+                    </div>
+                  )}
+                  {usage.athleteRating && (
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                      <span className={cn("rounded-full px-1.5 py-0.5 font-semibold",
+                        usage.athleteRating === "Competitive+" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" :
+                        usage.athleteRating === "Competitive-" ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300" :
+                        "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300")}>
+                        {L("Utøver", "Athlete")}: {usage.athleteRating}
+                      </span>
+                      {usage.athleteComment && <span className="text-muted-foreground italic">«{usage.athleteComment}»</span>}
                     </div>
                   )}
                 </div>

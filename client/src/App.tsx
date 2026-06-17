@@ -162,7 +162,7 @@ function AuthGuard() {
   }
 
   const publicPaths = ["/login", "/forgot-password", "/reset-password", "/what-is-glidr", "/legal", "/pricing", "/contact", "/demo", "/get-started"];
-  if (!user && !publicPaths.includes(location) && !location.startsWith("/invite/") && !location.startsWith("/share/")) {
+  if (!user && !publicPaths.includes(location) && !location.startsWith("/invite/") && !location.startsWith("/share/") && !location.startsWith("/feedback/")) {
     return <Redirect to="/login" />;
   }
 

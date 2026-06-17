@@ -260,6 +260,16 @@ function RacePrepSkiIdField({
     queryKey: [`/api/athletes/${athleteId}/skis`],
     enabled: editing,
   });
+  // Team-wide skis + athlete names — for borrowing a pair from another athlete.
+  const { data: allSkis = [] } = useQuery<{ id: number; skiId: string; serialNumber: string | null; discipline: string; athleteId: number }[]>({
+    queryKey: ["/api/race-skis/all"],
+    enabled: editing,
+  });
+  const { data: allAthletes = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/athletes"],
+    enabled: editing,
+  });
+  const athleteNameById = useMemo(() => new Map(allAthletes.map((a) => [a.id, a.name])), [allAthletes]);
   // Only suggest skis matching this slot's discipline. For a single-discipline
   // race the slot is "single" → filter by the race's own discipline.
   const discFilter = slot === "classic" ? "Classic" : slot === "skating" ? "Skating" : discipline;
@@ -268,6 +278,11 @@ function RacePrepSkiIdField({
     if (val.trim()) base = base.filter(s => s.skiId.toLowerCase().includes(val.toLowerCase()) || (s.serialNumber ?? "").toLowerCase().includes(val.toLowerCase()));
     return base.slice(0, 8);
   }, [skis, val, discFilter]);
+  const borrowed = useMemo(() => {
+    let base = allSkis.filter((s) => s.athleteId !== athleteId && (!discFilter || s.discipline === discFilter));
+    if (val.trim()) base = base.filter((s) => s.skiId.toLowerCase().includes(val.toLowerCase()) || (s.serialNumber ?? "").toLowerCase().includes(val.toLowerCase()));
+    return base.slice(0, 6);
+  }, [allSkis, athleteId, discFilter, val]);
   const display = optimistic !== undefined ? optimistic : current;
 
   async function save(v?: string) {
@@ -322,8 +337,8 @@ function RacePrepSkiIdField({
         placeholder={L("Ski-ID", "Ski ID")}
         className="w-full rounded border border-input bg-background px-2 py-1 text-base font-bold"
       />
-      {showSug && suggestions.length > 0 && (
-        <div className="absolute z-50 left-0 right-0 top-full mt-1 rounded-md border border-border bg-popover shadow-lg max-h-40 overflow-y-auto">
+      {showSug && (suggestions.length > 0 || borrowed.length > 0) && (
+        <div className="absolute z-50 left-0 right-0 top-full mt-1 rounded-md border border-border bg-popover shadow-lg max-h-48 overflow-y-auto">
           {suggestions.map((s) => (
             <button
               key={s.id}
@@ -335,6 +350,25 @@ function RacePrepSkiIdField({
               {s.serialNumber && <span className="ml-1.5 text-xs text-muted-foreground">{s.serialNumber}</span>}
             </button>
           ))}
+          {borrowed.length > 0 && (
+            <>
+              <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0">
+                {L("Lånt fra andre utøvere", "Borrowed from other athletes")}
+              </div>
+              {borrowed.map((s) => (
+                <button
+                  key={`borrow-${s.id}`}
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); setVal(s.skiId); save(s.skiId); }}
+                  className="block w-full text-left px-2 py-1 text-sm hover:bg-muted"
+                >
+                  <span className="font-medium">{s.skiId}</span>
+                  {s.serialNumber && <span className="ml-1.5 text-xs text-muted-foreground">{s.serialNumber}</span>}
+                  <span className="ml-1.5 text-[10px] text-amber-600 dark:text-amber-400">{athleteNameById.get(s.athleteId) ?? L("Annen utøver", "Other athlete")}</span>
+                </button>
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>

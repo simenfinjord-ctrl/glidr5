@@ -821,7 +821,7 @@ export default function AthleteDetail() {
   }
 
   const isOwnerOrAdmin =
-    user?.isAdmin || (athlete && user?.id === athlete.createdById);
+    user?.isAdmin || user?.isTeamAdmin || (athlete && user?.id === athlete.createdById);
   const hasAthleteAccess = isOwnerOrAdmin || access.some((a) => a.userId === user?.id);
 
   // Import CSV state

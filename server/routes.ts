@@ -275,6 +275,12 @@ export async function registerRoutes(
         session_code TEXT
       );
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS watch_pin TEXT;
+      ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS length TEXT;
+      ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS type_of_ski TEXT;
+      ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS where_received TEXT;
+      ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS notes TEXT;
+      ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS is_training_ski INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS default_ski_brand TEXT;
       ALTER TABLE watch_sessions ADD COLUMN IF NOT EXISTS ski_labels TEXT;
       ALTER TABLE watch_queue ADD COLUMN IF NOT EXISTS session_code TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS garmin_watch INTEGER NOT NULL DEFAULT 0;
@@ -4950,6 +4956,7 @@ export async function registerRoutes(
     const athlete = await storage.createAthlete({
       name: req.body.name,
       team: req.body.team || null,
+      defaultSkiBrand: req.body.defaultSkiBrand || null,
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
@@ -4969,6 +4976,7 @@ export async function registerRoutes(
     const data: any = {};
     if (req.body.name !== undefined) data.name = req.body.name;
     if (req.body.team !== undefined) data.team = req.body.team;
+    if (req.body.defaultSkiBrand !== undefined) data.defaultSkiBrand = req.body.defaultSkiBrand;
     const updated = await storage.updateAthlete(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });
     res.json(updated);
@@ -5058,6 +5066,11 @@ export async function registerRoutes(
       grind: req.body.grind || null,
       heights: req.body.heights || null,
       year: req.body.year || null,
+      length: req.body.length || null,
+      typeOfSki: req.body.typeOfSki || null,
+      whereReceived: req.body.whereReceived || null,
+      notes: req.body.notes || null,
+      isTrainingSki: req.body.isTrainingSki ? 1 : 0,
       customParams: req.body.customParams || null,
       createdAt: now,
       createdById: u.id,
@@ -5084,6 +5097,11 @@ export async function registerRoutes(
     if (req.body.grind !== undefined) data.grind = req.body.grind;
     if (req.body.heights !== undefined) data.heights = req.body.heights;
     if (req.body.year !== undefined) data.year = req.body.year;
+    if (req.body.length !== undefined) data.length = req.body.length;
+    if (req.body.typeOfSki !== undefined) data.typeOfSki = req.body.typeOfSki;
+    if (req.body.whereReceived !== undefined) data.whereReceived = req.body.whereReceived;
+    if (req.body.notes !== undefined) data.notes = req.body.notes;
+    if (req.body.isTrainingSki !== undefined) data.isTrainingSki = req.body.isTrainingSki ? 1 : 0;
     if (req.body.customParams !== undefined) data.customParams = req.body.customParams;
     const updated = await storage.updateRaceSki(id, data);
     res.json(updated);

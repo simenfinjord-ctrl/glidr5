@@ -3328,6 +3328,53 @@ function WeatherFields({ w, L }: { w: Weather; L: (no: string, en: string) => st
   );
 }
 
+function RacedSkisView() {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const [q, setQ] = useState("");
+  const { data: usages = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/ski-race-usages"] });
+  const rows = useMemo(() => {
+    const norm = q.trim().toLowerCase();
+    return usages
+      .map((u: any) => {
+        let mw: any = null; try { mw = u.manualWeather ? JSON.parse(u.manualWeather) : null; } catch {}
+        return { ...u, snowT: u.snowTemperatureC ?? mw?.snowTemperatureC ?? null, airT: u.airTemperatureC ?? mw?.airTemperatureC ?? null, snowTypeV: u.snowType ?? mw?.snowType ?? null };
+      })
+      .filter((u: any) => !norm || [u.athleteName, u.location, u.skiId, u.brand, u.snowTypeV].some((x: any) => String(x ?? "").toLowerCase().includes(norm)));
+  }, [usages, q]);
+  return (
+    <Card className="fs-card rounded-2xl p-4 sm:p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Trophy className="h-4 w-4 text-amber-500" />
+        <h2 className="text-base font-semibold">{L("Kjørte ski", "Raced Skis")}</h2>
+        <span className="ml-auto text-xs text-muted-foreground">{rows.length}</span>
+      </div>
+      <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L("Søk utøver, sted, snøtype…", "Search athlete, location, snow type…")} className="mb-3 h-9 text-sm max-w-xs" />
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">{L("Laster…", "Loading…")}</p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{L("Ingen løpsbruk logget ennå. Smørere logger dette på hvert skipar i garasjen.", "No race use logged yet. Waxers log this on each ski pair in the garage.")}</p>
+      ) : (
+        <div className="space-y-1.5">
+          {rows.map((u: any) => (
+            <div key={u.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-card px-3 py-2 text-sm" data-testid={`raced-ski-${u.id}`}>
+              <span className="font-semibold">{u.brand ? `${u.brand} ` : ""}{u.skiId}</span>
+              <span className="text-muted-foreground">{u.athleteName}</span>
+              <span className="text-muted-foreground">· {u.location || "—"} {fmtDate(u.date)}</span>
+              {u.discipline && <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] text-sky-700 dark:text-sky-300">{u.discipline}</span>}
+              <div className="ml-auto flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
+                {u.snowT != null && <span>{L("Snø", "Snow")} {u.snowT}°C</span>}
+                {u.airT != null && <span>{L("Luft", "Air")} {u.airT}°C</span>}
+                {u.snowTypeV && <span>{u.snowTypeV}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function RacedProductsTab({
   racePreps,
   racedProductStats,
@@ -3932,6 +3979,7 @@ export default function Analytics() {
     { id: "conditions", label: t("analytics.conditions"), icon: <Snowflake className="h-4 w-4" /> },
     { id: "durability", label: t("analytics.durability") || "Durability", icon: <TrendingUp className="h-4 w-4 rotate-90" /> },
     { id: "racedproducts", label: "Raced Products", icon: <Trophy className="h-4 w-4" /> },
+    { id: "racedskis", label: L("Kjørte ski", "Raced Skis"), icon: <Trophy className="h-4 w-4" /> },
   ];
 
   const { data: grindProfiles = [] } = useQuery<any[]>({
@@ -4337,6 +4385,8 @@ export default function Analytics() {
             roleFilter={testTypeFilter}
           />
         )}
+
+        {activeTab === "racedskis" && <RacedSkisView />}
 
       </div>
     </AppShell>

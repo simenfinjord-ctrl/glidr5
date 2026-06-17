@@ -281,6 +281,22 @@ export async function registerRoutes(
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS notes TEXT;
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS is_training_ski INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS default_ski_brand TEXT;
+      CREATE TABLE IF NOT EXISTS ski_race_usages (
+        id SERIAL PRIMARY KEY,
+        ski_id INTEGER NOT NULL,
+        athlete_id INTEGER NOT NULL,
+        team_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        location TEXT,
+        discipline TEXT,
+        weather_id INTEGER,
+        manual_weather TEXT,
+        result TEXT,
+        notes TEXT,
+        created_by_id INTEGER,
+        created_by_name TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT ''
+      );
       ALTER TABLE watch_sessions ADD COLUMN IF NOT EXISTS ski_labels TEXT;
       ALTER TABLE watch_queue ADD COLUMN IF NOT EXISTS session_code TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS garmin_watch INTEGER NOT NULL DEFAULT 0;
@@ -5114,6 +5130,58 @@ export async function registerRoutes(
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     const list = await storage.listArchivedRaceSkis(athleteId);
     res.json(list);
+  });
+
+  // ── Ski race usages (waxer-logged: "this ski pair was raced", no admin prep needed) ──
+  app.get("/api/race-skis/:id/usages", requirePermission("raceskis", "view"), async (req, res) => {
+    const u = userInfo(req);
+    const skiId = parseInt(req.params.id);
+    const ski = await storage.getRaceSki(skiId);
+    if (!ski) return res.status(404).json({ message: "Not found" });
+    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT id, ski_id AS "skiId", athlete_id AS "athleteId", date, location, discipline,
+              weather_id AS "weatherId", manual_weather AS "manualWeather", result, notes,
+              created_by_name AS "createdByName", created_at AS "createdAt"
+       FROM ski_race_usages WHERE ski_id = $1 AND team_id = $2 ORDER BY date DESC`,
+      [skiId, getActiveTeamId(req)]
+    );
+    res.json(result.rows);
+  });
+
+  app.post("/api/race-skis/:id/usages", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const skiId = parseInt(req.params.id);
+    const ski = await storage.getRaceSki(skiId);
+    if (!ski) return res.status(404).json({ message: "Not found" });
+    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const { date, location, discipline, weatherId, manualWeather, result: raceResult, notes } = req.body;
+    if (!date) return res.status(400).json({ message: "date required" });
+    const { pool } = await import("./db");
+    const inserted = await (pool as any).query(
+      `INSERT INTO ski_race_usages (ski_id, athlete_id, team_id, date, location, discipline, weather_id, manual_weather, result, notes, created_by_id, created_by_name, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+      [skiId, ski.athleteId, getActiveTeamId(req), date, location || null, discipline || null,
+       weatherId || null, manualWeather ? (typeof manualWeather === "string" ? manualWeather : JSON.stringify(manualWeather)) : null,
+       raceResult || null, notes || null, u.id, u.name, new Date().toISOString()]
+    );
+    res.json({ id: inserted.rows[0].id });
+  });
+
+  app.delete("/api/race-skis/:id/usages/:usageId", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const skiId = parseInt(req.params.id);
+    const usageId = parseInt(req.params.usageId);
+    const ski = await storage.getRaceSki(skiId);
+    if (!ski) return res.status(404).json({ message: "Not found" });
+    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const { pool } = await import("./db");
+    await (pool as any).query(`DELETE FROM ski_race_usages WHERE id = $1 AND ski_id = $2 AND team_id = $3`, [usageId, skiId, getActiveTeamId(req)]);
+    res.json({ ok: true });
   });
 
   // ── Athlete Race Calendar ───────────────────────────────────────────────────

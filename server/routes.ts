@@ -286,6 +286,9 @@ export async function registerRoutes(
       ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_comment TEXT;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS athlete_rating TEXT;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS athlete_comment TEXT;
+      ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS borrowed_athlete_id INTEGER;
+      ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS borrowed_athlete_id_classic INTEGER;
+      ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS borrowed_athlete_id_skating INTEGER;
       CREATE TABLE IF NOT EXISTS feedback_links (
         id SERIAL PRIMARY KEY,
         token TEXT NOT NULL UNIQUE,
@@ -5517,9 +5520,34 @@ export async function registerRoutes(
     const result = await (pool as any).query(
       `SELECT id, race_prep_id AS "racePrepId", athlete_id AS "athleteId", athlete_name AS "athleteName",
               ski_id AS "skiId", ski_id_classic AS "skiIdClassic", ski_id_skating AS "skiIdSkating",
+              borrowed_athlete_id AS "borrowedAthleteId", borrowed_athlete_id_classic AS "borrowedAthleteIdClassic",
+              borrowed_athlete_id_skating AS "borrowedAthleteIdSkating",
               waxer_id AS "waxerId", waxer_name AS "waxerName", notes, created_at AS "createdAt"
        FROM race_prep_entries WHERE race_prep_id = $1 ORDER BY athlete_name ASC`,
       [id]
+    );
+    return res.json(result.rows);
+  });
+
+  // Skis available to borrow from other athletes for a race prep. Returns every
+  // ski pair in the team (with its owning athlete's name) so a waxer can register
+  // that an athlete is racing on a pair borrowed from a team-mate.
+  app.get("/api/race-preps/:id/borrowable-skis", requirePermission("raceprep", "view"), async (req, res) => {
+    const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
+    const id = parseInt(req.params.id);
+    if (!await getRacePrepForTeam(id, teamId)) return res.status(403).json({ message: "Forbidden" });
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT rs.id, rs.athlete_id AS "athleteId", a.name AS "athleteName",
+              rs.ski_id AS "skiId", rs.serial_number AS "serialNumber", rs.brand,
+              rs.discipline, rs.construction, rs.mold, rs.base, rs.grind,
+              rs.heights, rs.year, rs.custom_params AS "customParams"
+       FROM race_skis rs
+       JOIN athletes a ON a.id = rs.athlete_id
+       WHERE a.team_id = $1 AND rs.archived_at IS NULL
+       ORDER BY a.name ASC, rs.ski_id ASC`,
+      [teamId]
     );
     return res.json(result.rows);
   });
@@ -5616,7 +5644,8 @@ export async function registerRoutes(
     const prepId = parseInt(req.params.id);
     const eid = parseInt(req.params.eid);
     if (!await getRacePrepForTeam(prepId, teamId)) return res.status(403).json({ message: "Forbidden" });
-    const { skiId, skiIdClassic, skiIdSkating, notes } = req.body;
+    const { skiId, skiIdClassic, skiIdSkating, notes,
+            borrowedAthleteId, borrowedAthleteIdClassic, borrowedAthleteIdSkating } = req.body;
     const { pool } = await import("./db");
     const entryRes = await (pool as any).query(
       `SELECT athlete_id AS "athleteId", race_prep_id AS "racePrepId" FROM race_prep_entries WHERE id=$1`, [eid]
@@ -5630,12 +5659,24 @@ export async function registerRoutes(
       const hasAccess = await storage.hasAthleteAccess(entryRes.rows[0].athleteId, u.id, false, teamId);
       if (!hasAccess) return res.status(403).json({ message: "No access to this athlete" });
     }
+    // Borrowed-ski owner ids must reference athletes in the same team (a ski pair
+    // belonging to another athlete that the waxer is using for this race).
+    const normBorrow = async (v: any): Promise<number | null> => {
+      const n = v != null && v !== "" ? parseInt(String(v)) : null;
+      if (n == null || isNaN(n)) return null;
+      const r = await (pool as any).query(`SELECT id FROM athletes WHERE id=$1 AND team_id=$2`, [n, teamId]);
+      return r.rows.length ? n : null;
+    };
+    const bId = await normBorrow(borrowedAthleteId);
+    const bClassic = await normBorrow(borrowedAthleteIdClassic);
+    const bSkating = await normBorrow(borrowedAthleteIdSkating);
     await (pool as any).query(
-      `UPDATE race_prep_entries SET ski_id=$1, ski_id_classic=$2, ski_id_skating=$3, waxer_id=$4, waxer_name=$5, notes=$6 WHERE id=$7`,
+      `UPDATE race_prep_entries SET ski_id=$1, ski_id_classic=$2, ski_id_skating=$3, waxer_id=$4, waxer_name=$5, notes=$6,
+              borrowed_athlete_id=$8, borrowed_athlete_id_classic=$9, borrowed_athlete_id_skating=$10 WHERE id=$7`,
       [skiId != null ? String(skiId) : null,
        skiIdClassic != null ? String(skiIdClassic) : null,
        skiIdSkating != null ? String(skiIdSkating) : null,
-       u.id, u.name || "Ukjent", notes || null, eid]
+       u.id, u.name || "Ukjent", notes || null, eid, bId, bClassic, bSkating]
     );
     return res.json({ ok: true });
   });

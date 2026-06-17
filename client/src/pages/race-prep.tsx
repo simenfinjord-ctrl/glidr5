@@ -89,6 +89,9 @@ type RacePrepEntry = {
   skiId: string | null;
   skiIdClassic: string | null;
   skiIdSkating: string | null;
+  borrowedAthleteId: number | null;
+  borrowedAthleteIdClassic: number | null;
+  borrowedAthleteIdSkating: number | null;
   waxerId: number | null;
   waxerName: string | null;
   notes: string | null;
@@ -359,16 +362,21 @@ function SkiDetailDialog({
 function AthleteSkiOverviewRow({
   entry,
   skiId,
+  ownerAthleteId,
   disciplineLabel,
   lang,
 }: {
   entry: RacePrepEntry;
   skiId: string | null | undefined;
+  ownerAthleteId?: number | null;
   disciplineLabel?: string;
   lang: string;
 }) {
+  const L = (no: string, en: string) => (lang === "en" ? en : no);
+  const effectiveOwnerId = ownerAthleteId ?? entry.athleteId;
+  const isBorrowed = ownerAthleteId != null && ownerAthleteId !== entry.athleteId;
   const { data: skis = [] } = useQuery<RaceSkiRecord[]>({
-    queryKey: [`/api/athletes/${entry.athleteId}/skis`],
+    queryKey: [`/api/athletes/${effectiveOwnerId}/skis`],
     enabled: !!skiId,
   });
   const ski = skis.find(s => s.skiId === skiId || s.serialNumber === skiId) ?? null;
@@ -382,6 +390,9 @@ function AthleteSkiOverviewRow({
         {entry.athleteName}
         {disciplineLabel && (
           <span className="ml-1.5 text-[10px] text-muted-foreground">({disciplineLabel})</span>
+        )}
+        {isBorrowed && (
+          <span className="ml-1.5 text-[10px] text-amber-600 dark:text-amber-400">{L("lånt", "borrowed")}</span>
         )}
       </td>
       <td className="px-3 py-2 text-xs font-mono">{skiId || <span className="text-muted-foreground">—</span>}</td>
@@ -433,6 +444,7 @@ function EquipmentOverview({
                   key={`${entry.id}-c`}
                   entry={entry}
                   skiId={entry.skiIdClassic ?? entry.skiId}
+                  ownerAthleteId={entry.borrowedAthleteIdClassic ?? entry.borrowedAthleteId}
                   disciplineLabel={L("Klassisk", "Classic")}
                   lang={lang}
                 />,
@@ -440,6 +452,7 @@ function EquipmentOverview({
                   key={`${entry.id}-s`}
                   entry={entry}
                   skiId={entry.skiIdSkating}
+                  ownerAthleteId={entry.borrowedAthleteIdSkating}
                   disciplineLabel={L("Skøyting", "Skating")}
                   lang={lang}
                 />,
@@ -450,6 +463,7 @@ function EquipmentOverview({
                 key={entry.id}
                 entry={entry}
                 skiId={entry.skiId ?? entry.skiIdClassic}
+                ownerAthleteId={entry.borrowedAthleteId ?? entry.borrowedAthleteIdClassic}
                 lang={lang}
               />
             );
@@ -457,6 +471,96 @@ function EquipmentOverview({
         </tbody>
       </table>
     </div>
+  );
+}
+
+// ── Borrow-ski picker — choose a ski pair from another athlete ───────────────
+type BorrowableSki = RaceSkiRecord & { athleteName: string };
+
+function BorrowSkiDialog({
+  prepId,
+  open,
+  onClose,
+  ownAthleteId,
+  disciplineFilter,
+  lang,
+  onPick,
+}: {
+  prepId: number;
+  open: boolean;
+  onClose: () => void;
+  ownAthleteId: number;
+  disciplineFilter?: "Classic" | "Skating";
+  lang: string;
+  onPick: (ski: BorrowableSki) => void;
+}) {
+  const L = (no: string, en: string) => (lang === "en" ? en : no);
+  const [search, setSearch] = useState("");
+  const { data: skis = [] } = useQuery<BorrowableSki[]>({
+    queryKey: [`/api/race-preps/${prepId}/borrowable-skis`],
+    enabled: open,
+  });
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return skis
+      .filter((s) => s.athleteId !== ownAthleteId)
+      .filter((s) => !disciplineFilter || s.discipline === disciplineFilter)
+      .filter((s) =>
+        !q ||
+        s.skiId.toLowerCase().includes(q) ||
+        (s.serialNumber ?? "").toLowerCase().includes(q) ||
+        (s.brand ?? "").toLowerCase().includes(q) ||
+        s.athleteName.toLowerCase().includes(q)
+      );
+  }, [skis, search, ownAthleteId, disciplineFilter]);
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" />
+            {L("Lån ski fra en annen løper", "Borrow ski from another athlete")}
+          </DialogTitle>
+        </DialogHeader>
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={L("Søk på løper, Ski-ID, serienr. eller merke…", "Search athlete, Ski-ID, serial no. or brand…")}
+          className="h-9 text-sm"
+          autoFocus
+        />
+        <div className="mt-2 space-y-1.5">
+          {filtered.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              {L("Ingen ski å låne fra andre løpere.", "No skis available to borrow from other athletes.")}
+            </p>
+          ) : (
+            filtered.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => { onPick(s); onClose(); }}
+                className="w-full text-left rounded-lg border border-border bg-card px-3 py-2 hover:bg-primary/5 hover:border-primary/30 transition-colors"
+                data-testid={`borrow-ski-${s.id}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-sm">{s.skiId}</span>
+                  <span className="text-xs text-muted-foreground">{s.athleteName}</span>
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5 flex flex-wrap gap-x-2">
+                  {s.brand && <span>{s.brand}</span>}
+                  <span>{s.discipline}</span>
+                  {s.serialNumber && <span>#{s.serialNumber}</span>}
+                  {s.grind && <span>{s.grind}</span>}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -507,6 +611,8 @@ function SkiIdCell({
   }, [athleteSkis, val, disciplineHint]);
 
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [borrowOpen, setBorrowOpen] = useState(false);
+  const L = (no: string, en: string) => (lang === "en" ? en : no);
 
   // Current ski ID value for display (use optimistic value while refetch is in-flight)
   const currentSkiId = disciplineHint === "Classic" ? (entry.skiIdClassic ?? entry.skiId)
@@ -514,20 +620,41 @@ function SkiIdCell({
     : entry.skiId;
   const displaySkiId = optimisticVal !== undefined ? optimisticVal : currentSkiId;
 
-  async function save(skiIdVal?: string) {
+  // Owning athlete for the ski in this field — own athlete unless it's borrowed.
+  const currentBorrowedId = disciplineHint === "Classic" ? (entry.borrowedAthleteIdClassic ?? entry.borrowedAthleteId)
+    : disciplineHint === "Skating" ? entry.borrowedAthleteIdSkating
+    : entry.borrowedAthleteId;
+  const [optimisticBorrowedId, setOptimisticBorrowedId] = useState<number | null | undefined>(undefined);
+  const displayBorrowedId = optimisticBorrowedId !== undefined ? optimisticBorrowedId : currentBorrowedId;
+  const effectiveOwnerId = displayBorrowedId ?? entry.athleteId;
+
+  // Resolve the owner athlete's name for the "borrowed from" badge.
+  const { data: athletesForName = [] } = useQuery<Athlete[]>({
+    queryKey: ["/api/athletes"],
+    enabled: displayBorrowedId != null,
+  });
+  const borrowedName = displayBorrowedId != null
+    ? (athletesForName.find(a => a.id === displayBorrowedId)?.name ?? null)
+    : null;
+
+  async function save(skiIdVal?: string, borrowedId: number | null = null) {
     const finalVal = skiIdVal !== undefined ? skiIdVal : val;
     setSaving(true);
     try {
-      // Always send all three ski ID fields to avoid nulling out sibling fields (e.g. Skiathlon)
+      // Always send all three ski ID + borrowed-owner fields to avoid nulling siblings (e.g. Skiathlon)
       const body: any = {
         notes: entry.notes,
         skiId: disciplineHint == null ? (finalVal.trim() || null) : (entry.skiId ?? null),
         skiIdClassic: disciplineHint === "Classic" ? (finalVal.trim() || null) : (entry.skiIdClassic ?? null),
         skiIdSkating: disciplineHint === "Skating" ? (finalVal.trim() || null) : (entry.skiIdSkating ?? null),
+        borrowedAthleteId: disciplineHint == null ? borrowedId : (entry.borrowedAthleteId ?? null),
+        borrowedAthleteIdClassic: disciplineHint === "Classic" ? borrowedId : (entry.borrowedAthleteIdClassic ?? null),
+        borrowedAthleteIdSkating: disciplineHint === "Skating" ? borrowedId : (entry.borrowedAthleteIdSkating ?? null),
       };
       await apiRequest("PUT", `/api/race-preps/${prepId}/entries/${entry.id}`, body);
       // Show value immediately while refetch is in-flight (prevents flash to "—")
       setOptimisticVal(finalVal.trim() || null);
+      setOptimisticBorrowedId(finalVal.trim() ? borrowedId : null);
       onSaved();
       setEditing(false);
       setShowSuggestions(false);
@@ -538,8 +665,13 @@ function SkiIdCell({
     }
   }
 
+  function pickBorrow(ski: BorrowableSki) {
+    setVal(ski.skiId);
+    save(ski.skiId, ski.athleteId);
+  }
+
   const { data: allSkisForAthlete = [] } = useQuery<RaceSkiRecord[]>({
-    queryKey: [`/api/athletes/${entry.athleteId}/skis`],
+    queryKey: [`/api/athletes/${effectiveOwnerId}/skis`],
     enabled: !!currentSkiId,
   });
 
@@ -548,9 +680,33 @@ function SkiIdCell({
     [allSkisForAthlete, currentSkiId]
   );
 
+  // "Borrowed from X" badge — shown in every render branch when applicable.
+  const borrowedBadge = displayBorrowedId != null ? (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 whitespace-nowrap"
+      title={L("Lånt fra en annen løper", "Borrowed from another athlete")}
+      data-testid={`borrowed-badge-${entry.id}-${disciplineHint ?? "main"}`}
+    >
+      <Users className="h-2.5 w-2.5" />
+      {L("Lånt", "Borrowed")}{borrowedName ? ` · ${borrowedName}` : ""}
+    </span>
+  ) : null;
+
+  const borrowDialog = (
+    <BorrowSkiDialog
+      prepId={prepId}
+      open={borrowOpen}
+      onClose={() => setBorrowOpen(false)}
+      ownAthleteId={entry.athleteId}
+      disciplineFilter={disciplineHint}
+      lang={lang}
+      onPick={pickBorrow}
+    />
+  );
+
   if (!canEdit) {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 flex-wrap">
         <span className="text-sm">{displaySkiId ?? <span className="text-muted-foreground">—</span>}</span>
         {displaySkiId && matchedSki && (
           <button
@@ -561,6 +717,7 @@ function SkiIdCell({
             <Search className="h-3.5 w-3.5" />
           </button>
         )}
+        {borrowedBadge}
         {selectedSki && (
           <SkiDetailDialog ski={selectedSki} open={skiDetailOpen} onClose={() => setSkiDetailOpen(false)} lang={lang} />
         )}
@@ -620,12 +777,17 @@ function SkiIdCell({
         <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditing(false); setVal(displaySkiId ?? ""); setShowSuggestions(false); }}>
           <X className="h-3.5 w-3.5" />
         </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-1.5 text-[10px] gap-1" onClick={() => setBorrowOpen(true)} title={L("Lån ski fra en annen løper", "Borrow ski from another athlete")}>
+          <Users className="h-3.5 w-3.5" />
+          {L("Lån", "Borrow")}
+        </Button>
+        {borrowDialog}
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 flex-wrap">
       <button
         className="flex items-center gap-1.5 group text-sm"
         onClick={() => setEditing(true)}
@@ -642,9 +804,22 @@ function SkiIdCell({
           <Search className="h-3.5 w-3.5" />
         </button>
       )}
+      {borrowedBadge}
+      {!displaySkiId && (
+        <button
+          className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
+          onClick={() => setBorrowOpen(true)}
+          title={L("Lån ski fra en annen løper", "Borrow ski from another athlete")}
+          data-testid={`borrow-trigger-${entry.id}-${disciplineHint ?? "main"}`}
+        >
+          <Users className="h-3 w-3" />
+          {L("Lån", "Borrow")}
+        </button>
+      )}
       {selectedSki && (
         <SkiDetailDialog ski={selectedSki} open={skiDetailOpen} onClose={() => setSkiDetailOpen(false)} lang={lang} />
       )}
+      {borrowDialog}
     </div>
   );
 }
@@ -1048,6 +1223,10 @@ function PrepDetailDialog({
                       const skiIdVal = prep.discipline === "Skating"
                         ? (entry.skiIdSkating ?? entry.skiId)
                         : (entry.skiId ?? entry.skiIdClassic);
+                      // Params come from the ski's OWNER — own athlete unless borrowed.
+                      const paramOwnerId = (prep.discipline === "Skating"
+                        ? (entry.borrowedAthleteIdSkating ?? entry.borrowedAthleteId)
+                        : (entry.borrowedAthleteId ?? entry.borrowedAthleteIdClassic)) ?? entry.athleteId;
                       return (
                         <tr key={entry.id} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
                           <td className="px-3 py-2.5 font-medium">{entry.athleteName}</td>
@@ -1074,7 +1253,7 @@ function PrepDetailDialog({
                           )}
                           {visibleSkiCols.map(colKey => (
                             <td key={colKey} className="px-3 py-2.5">
-                              <SkiParamCell athleteId={entry.athleteId} skiIdValue={skiIdVal} paramKey={colKey} />
+                              <SkiParamCell athleteId={paramOwnerId} skiIdValue={skiIdVal} paramKey={colKey} />
                             </td>
                           ))}
                           <td className="px-3 py-2.5 text-muted-foreground text-xs">{entry.waxerName ?? "—"}</td>

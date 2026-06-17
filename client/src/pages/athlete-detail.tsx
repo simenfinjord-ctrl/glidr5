@@ -604,8 +604,20 @@ export default function AthleteDetail() {
     try {
       const stored = localStorage.getItem("glidr-raceski-form-fields");
       if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        let parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // One-time migration: move Grind to right under Serial number for faster entry.
+          if (!localStorage.getItem("glidr-raceski-grind-moved-v1") && parsed.includes("grind")) {
+            parsed = parsed.filter((k: string) => k !== "grind");
+            const si = parsed.indexOf("serialNumber");
+            parsed.splice(si >= 0 ? si + 1 : 0, 0, "grind");
+            try {
+              localStorage.setItem("glidr-raceski-form-fields", JSON.stringify(parsed));
+              localStorage.setItem("glidr-raceski-grind-moved-v1", "1");
+            } catch {}
+          }
+          return parsed;
+        }
       }
     } catch {}
     return defaultFormFields;

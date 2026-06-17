@@ -30,6 +30,7 @@ export default function RaceSkis() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [team, setTeam] = useState("");
+  const [brand, setBrand] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
     try {
       const stored = localStorage.getItem("glidr-raceskis-view-mode");
@@ -43,10 +44,11 @@ export default function RaceSkis() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; team: string }) => {
+    mutationFn: async (data: { name: string; team: string; brand: string }) => {
       const res = await apiRequest("POST", "/api/athletes", {
         name: data.name,
         team: data.team.trim() || null,
+        defaultSkiBrand: data.brand.trim() || null,
       });
       return res.json();
     },
@@ -56,6 +58,7 @@ export default function RaceSkis() {
       setOpen(false);
       setName("");
       setTeam("");
+      setBrand("");
     },
     onError: (e) => {
       toast({
@@ -69,7 +72,7 @@ export default function RaceSkis() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    createMutation.mutate({ name: name.trim(), team: team.trim() });
+    createMutation.mutate({ name: name.trim(), team: team.trim(), brand: brand.trim() });
   };
 
   function toggleView(mode: "grid" | "list") {
@@ -123,7 +126,7 @@ export default function RaceSkis() {
 
           <Dialog open={open} onOpenChange={(v) => {
             setOpen(v);
-            if (!v) { setName(""); setTeam(""); }
+            if (!v) { setName(""); setTeam(""); setBrand(""); }
           }}>
             <DialogTrigger asChild>
               <Button
@@ -158,13 +161,23 @@ export default function RaceSkis() {
                     data-testid="input-athlete-team"
                   />
                 </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">{L("Standard skimerke", "Default ski brand")}</label>
+                  <Input
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
+                    placeholder={L("f.eks. Madshus", "e.g., Madshus")}
+                    data-testid="input-athlete-brand"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">{L("Fylles automatisk inn på nye skipar.", "Auto-fills on every new ski pair.")}</p>
+                </div>
                 <div className="flex items-center justify-end">
                   <Button
                     type="submit"
                     data-testid="button-save-athlete"
                     disabled={createMutation.isPending || !name.trim()}
                   >
-                    {createMutation.isPending ? "Saving…" : "Save"}
+                    {createMutation.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}
                   </Button>
                 </div>
               </form>

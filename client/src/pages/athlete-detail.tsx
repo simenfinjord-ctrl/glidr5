@@ -627,7 +627,7 @@ export default function AthleteDetail() {
     notes: "",
   });
 
-  const [athleteForm, setAthleteForm] = useState({ name: "", team: "" });
+  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "" });
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
 
   const { data: athletes = [] } = useQuery<Athlete[]>({
@@ -1209,16 +1209,17 @@ export default function AthleteDetail() {
   });
 
   const updateAthleteMutation = useMutation({
-    mutationFn: async (data: { name: string; team: string }) => {
+    mutationFn: async (data: { name: string; team: string; brand: string }) => {
       const res = await apiRequest("PUT", `/api/athletes/${athleteId}`, {
         name: data.name,
         team: data.team.trim() || null,
+        defaultSkiBrand: data.brand.trim() || null,
       });
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/athletes"] });
-      toast({ title: "Athlete updated" });
+      toast({ title: L("Utøver oppdatert", "Athlete updated") });
       setEditAthleteOpen(false);
     },
     onError: (e) => {
@@ -1356,7 +1357,7 @@ export default function AthleteDetail() {
 
   function openEditAthlete() {
     if (athlete) {
-      setAthleteForm({ name: athlete.name, team: athlete.team || "" });
+      setAthleteForm({ name: athlete.name, team: athlete.team || "", brand: athlete.defaultSkiBrand || "" });
       setEditAthleteOpen(true);
     }
   }
@@ -4070,13 +4071,23 @@ export default function AthleteDetail() {
                 data-testid="input-edit-athlete-team"
               />
             </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{L("Standard skimerke", "Default ski brand")}</label>
+              <Input
+                value={athleteForm.brand}
+                onChange={(e) => setAthleteForm((f) => ({ ...f, brand: e.target.value }))}
+                placeholder={L("f.eks. Madshus", "e.g., Madshus")}
+                data-testid="input-edit-athlete-brand"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">{L("Fylles automatisk inn på nye skipar.", "Auto-fills on every new ski pair.")}</p>
+            </div>
             <div className="flex items-center justify-end pt-2">
               <Button
                 type="submit"
                 data-testid="button-save-edit-athlete"
                 disabled={updateAthleteMutation.isPending || !athleteForm.name.trim()}
               >
-                {updateAthleteMutation.isPending ? "Saving…" : "Save"}
+                {updateAthleteMutation.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}
               </Button>
             </div>
           </form>

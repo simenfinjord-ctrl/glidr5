@@ -5184,6 +5184,33 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  // Team-wide raced-skis feed for analytics ("which ski pairs were raced in which conditions")
+  app.get("/api/ski-race-usages", requirePermission("raceskis", "view"), async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const result = await (pool as any).query(
+      `SELECT su.id, su.date, su.location, su.discipline, su.result, su.notes,
+              su.manual_weather AS "manualWeather", su.created_by_name AS "createdByName",
+              rs.ski_id AS "skiId", rs.brand, su.athlete_id AS "athleteId", a.name AS "athleteName",
+              w.snow_temperature_c AS "snowTemperatureC", w.air_temperature_c AS "airTemperatureC",
+              w.snow_type AS "snowType", w.track_hardness AS "trackHardness"
+       FROM ski_race_usages su
+       JOIN race_skis rs ON rs.id = su.ski_id
+       JOIN athletes a ON a.id = su.athlete_id
+       LEFT JOIN daily_weather w ON w.id = su.weather_id
+       WHERE su.team_id = $1
+       ORDER BY su.date DESC`,
+      [teamId]
+    );
+    let rows = result.rows;
+    if (!u.isScopeAdmin) {
+      const accessible = new Set((await storage.listAthletes(u.id, false)).map((a: any) => a.id));
+      rows = rows.filter((r: any) => accessible.has(r.athleteId));
+    }
+    res.json(rows);
+  });
+
   // ── Athlete Race Calendar ───────────────────────────────────────────────────
 
   app.get("/api/athletes/:id/races", requirePermission("raceskis", "view"), async (req, res) => {

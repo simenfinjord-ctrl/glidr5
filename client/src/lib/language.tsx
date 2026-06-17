@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
 export type Lang = "en" | "no";
 
@@ -18,6 +18,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       return "en";
     }
   });
+
+  // Keep <html lang> in sync with the chosen language so the browser doesn't flag
+  // the page as foreign and offer auto-translation (which crashes React).
+  useEffect(() => {
+    try { document.documentElement.lang = lang; } catch {}
+  }, [lang]);
 
   function setLang(l: Lang) {
     setLangState(l);

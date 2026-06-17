@@ -1,8 +1,13 @@
 <!DOCTYPE html>
-<html lang="no">
+<html lang="no" translate="no">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
+    <!-- Glidr has its own NO/EN language switch. Browser auto-translation (Google
+         Translate / Safari Translate) rewrites DOM text nodes and crashes React
+         ("Failed to execute 'removeChild' on 'Node'" → the error boundary). Tell
+         the browser not to offer/auto-translate. -->
+    <meta name="google" content="notranslate" />
 
     <meta property="og:title" content="Glidr — Digitalt testverktøy for skismøring" />
     <meta property="og:description" content="Registrer, analyser og gjenfinne alle ski- og glidetester. Bygget for smørelag som vil vinne på fakta, ikke magefølelse." />

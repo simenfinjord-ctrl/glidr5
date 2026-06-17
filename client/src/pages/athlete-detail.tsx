@@ -78,6 +78,7 @@ type Athlete = {
   id: number;
   name: string;
   team: string | null;
+  defaultSkiBrand: string | null;
   createdAt: string;
   createdById: number;
   createdByName: string;
@@ -96,6 +97,11 @@ type RaceSki = {
   grind: string | null;
   heights: string | null;
   year: string | null;
+  length: string | null;
+  typeOfSki: string | null;
+  whereReceived: string | null;
+  notes: string | null;
+  isTrainingSki: number;
   customParams: string | null;
   archivedAt: string | null;
   createdAt: string;
@@ -469,7 +475,7 @@ export default function AthleteDetail() {
   }, [customFieldDefs]);
 
   const builtInTestParams: { key: string; label: string }[] = [
-    { key: "brand", label: "Brand" },
+    { key: "brand", label: L("Merke", "Brand") },
     { key: "base", label: t("raceskis.base") },
     { key: "grind", label: t("raceskis.grind") },
     { key: "heights", label: t("raceskis.heights") },
@@ -532,26 +538,34 @@ export default function AthleteDetail() {
     grind: "",
     heights: "",
     year: "",
+    length: "",
+    typeOfSki: "",
+    whereReceived: "",
+    notes: "",
+    isTrainingSki: false,
     color: "",
   });
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
   const builtInSkiFields: { key: string; label: string }[] = [
     { key: "serialNumber", label: t("raceskis.serialNumber") },
-    { key: "brand", label: "Brand" },
+    { key: "brand", label: L("Merke", "Brand") },
     { key: "discipline", label: t("raceskis.discipline") },
     { key: "construction", label: t("raceskis.construction") },
     { key: "mold", label: t("raceskis.mold") },
     { key: "base", label: t("raceskis.base") },
     { key: "grind", label: t("raceskis.grind") },
     { key: "heights", label: t("raceskis.heights") },
-    { key: "year", label: "Year" },
+    { key: "year", label: L("Årgang", "Year") },
+    { key: "length", label: L("Lengde", "Length") },
+    { key: "typeOfSki", label: L("Skitype", "Ski type") },
+    { key: "whereReceived", label: L("Mottatt fra", "Where received") },
   ];
   const builtInKeys = builtInSkiFields.map((f) => f.key);
 
   const allSkiFormFields = [...builtInSkiFields, ...customFieldDefs];
 
-  const defaultFormFields = ["serialNumber", "brand", "discipline", "construction", "mold", "base", "grind", "heights", "year"];
+  const defaultFormFields = ["serialNumber", "grind", "brand", "discipline", "construction", "mold", "base", "heights", "year", "length", "typeOfSki", "whereReceived"];
   const [activeFormFields, setActiveFormFields] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem("glidr-raceski-form-fields");
@@ -669,7 +683,7 @@ export default function AthleteDetail() {
   const allTestColumns: { key: string; label: string }[] = [
     { key: "skiId", label: t("raceskis.skiId") },
     { key: "serialNumber", label: t("raceskis.serialNumber") },
-    { key: "brand", label: "Brand" },
+    { key: "brand", label: L("Merke", "Brand") },
     { key: "discipline", label: t("raceskis.discipline") },
     { key: "construction", label: t("raceskis.construction") },
     { key: "mold", label: t("raceskis.mold") },
@@ -1049,6 +1063,11 @@ export default function AthleteDetail() {
       grind: data.grind.trim() || null,
       heights: data.discipline === "Classic" ? data.heights.trim() || null : null,
       year: data.year.trim() || null,
+      length: data.length.trim() || null,
+      typeOfSki: data.typeOfSki.trim() || null,
+      whereReceived: data.whereReceived.trim() || null,
+      notes: data.notes.trim() || null,
+      isTrainingSki: data.isTrainingSki ? 1 : 0,
       customParams: Object.keys(cp).length > 0 ? JSON.stringify(cp) : null,
     };
   }
@@ -1060,7 +1079,7 @@ export default function AthleteDetail() {
     },
     onSuccess: (_, data) => {
       queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis`] });
-      toast({ title: "Ski added" });
+      toast({ title: L("Ski lagt til", "Ski added") });
       setSkiDialogOpen(false);
       resetSkiForm();
       setCustomFieldValues({});
@@ -1078,7 +1097,7 @@ export default function AthleteDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis`] });
-      toast({ title: "Ski updated" });
+      toast({ title: L("Ski oppdatert", "Ski updated") });
       setSkiDialogOpen(false);
       setEditingSki(null);
       resetSkiForm();
@@ -1273,7 +1292,7 @@ export default function AthleteDetail() {
   });
 
   function resetSkiForm() {
-    setSkiForm({ skiId: "", serialNumber: "", brand: "", discipline: "Classic", construction: "", mold: "", base: "", grind: "", heights: "", year: "", color: "" });
+    setSkiForm({ skiId: "", serialNumber: "", brand: "", discipline: "Classic", construction: "", mold: "", base: "", grind: "", heights: "", year: "", length: "", typeOfSki: "", whereReceived: "", notes: "", isTrainingSki: false, color: "" });
   }
 
   function resetRegrindForm() {
@@ -1303,6 +1322,11 @@ export default function AthleteDetail() {
       grind: ski.grind || "",
       heights: ski.heights || "",
       year: ski.year || "",
+      length: ski.length || "",
+      typeOfSki: ski.typeOfSki || "",
+      whereReceived: ski.whereReceived || "",
+      notes: ski.notes || "",
+      isTrainingSki: ski.isTrainingSki === 1,
       color: parsedColor,
     });
     setSkiDialogOpen(true);
@@ -1311,6 +1335,10 @@ export default function AthleteDetail() {
   function openAddSki() {
     setEditingSki(null);
     resetSkiForm();
+    // Pre-fill the athlete's default ski brand so it carries into every new pair.
+    if (athlete?.defaultSkiBrand) {
+      setSkiForm((f) => ({ ...f, brand: athlete.defaultSkiBrand || "" }));
+    }
     setCustomFieldValues({});
     setSkiDialogOpen(true);
   }
@@ -3686,6 +3714,21 @@ export default function AthleteDetail() {
                   </div>
                 );
               }
+              if (fieldKey === "typeOfSki") {
+                return (
+                  <div key={fieldKey}>
+                    <label className="mb-1 block text-sm font-medium">{getFormFieldLabel(fieldKey)}</label>
+                    <Select value={skiForm.typeOfSki || "__none__"} onValueChange={(v) => setSkiForm((f) => ({ ...f, typeOfSki: v === "__none__" ? "" : v }))}>
+                      <SelectTrigger data-testid="select-ski-type"><SelectValue placeholder={L("Ingen", "None")} /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">{L("Ingen", "None")}</SelectItem>
+                        <SelectItem value="Klister/Cover">Klister/Cover</SelectItem>
+                        <SelectItem value="Zero">Zero</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              }
               return (
                 <div key={fieldKey}>
                   <label className="mb-1 block text-sm font-medium">{getFormFieldLabel(fieldKey)}</label>
@@ -3729,7 +3772,36 @@ export default function AthleteDetail() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2">
+            {/* Notes (always visible in the garage) */}
+            <div>
+              <label className="mb-1 block text-sm font-medium">{L("Notat", "Note")}</label>
+              <textarea
+                value={skiForm.notes}
+                onChange={(e) => setSkiForm((f) => ({ ...f, notes: e.target.value }))}
+                rows={2}
+                placeholder={L("Synlig på skiparet i garasjen…", "Shown on the ski pair in the garage…")}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-testid="textarea-ski-notes"
+              />
+            </div>
+
+            {/* Training-ski toggle */}
+            <button
+              type="button"
+              onClick={() => setSkiForm((f) => ({ ...f, isTrainingSki: !f.isTrainingSki }))}
+              className={cn(
+                "flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-sm transition-colors",
+                skiForm.isTrainingSki ? "border-amber-400 bg-amber-50 dark:bg-amber-900/20" : "border-border bg-muted/30"
+              )}
+              data-testid="toggle-training-ski"
+            >
+              <span className="font-medium">{L("Treningsski", "Training ski")}</span>
+              <span className={cn("relative inline-flex h-5 w-9 items-center rounded-full transition-colors", skiForm.isTrainingSki ? "bg-amber-500" : "bg-muted-foreground/30")}>
+                <span className={cn("inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform", skiForm.isTrainingSki ? "translate-x-4" : "translate-x-0.5")} />
+              </span>
+            </button>
+
+            <div className="flex items-center justify-between pt-2 pb-16 sm:pb-0">
               <Button
                 type="button"
                 variant="ghost"
@@ -3739,14 +3811,14 @@ export default function AthleteDetail() {
                 data-testid="button-edit-ski-form-fields"
               >
                 <Settings2 className="h-3.5 w-3.5 mr-1" />
-                Edit parameters
+                {L("Rediger parametre", "Edit parameters")}
               </Button>
               <Button
                 type="submit"
                 data-testid="button-save-ski"
                 disabled={createSkiMutation.isPending || updateSkiMutation.isPending || !skiForm.skiId.trim()}
               >
-                {(createSkiMutation.isPending || updateSkiMutation.isPending) ? "Saving…" : "Save"}
+                {(createSkiMutation.isPending || updateSkiMutation.isPending) ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}
               </Button>
             </div>
           </form>

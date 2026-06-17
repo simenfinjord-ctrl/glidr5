@@ -1377,6 +1377,30 @@ export default function AthleteDetail() {
     summary: true,
   });
   const [isExporting, setIsExporting] = useState(false);
+  // Which ski parameters (columns) to include in the inventory table. Default = on.
+  const [exportSkiParams, setExportSkiParams] = useState<Record<string, boolean>>({});
+  const includeParam = (key: string) => exportSkiParams[key] !== false;
+  const customSkiParamKeys = useMemo(() => {
+    const set = new Set<string>();
+    skis.forEach((s) => { try { const cp = s.customParams ? JSON.parse(s.customParams) : {}; Object.keys(cp).filter((k) => !k.startsWith("_")).forEach((k) => set.add(k)); } catch {} });
+    return Array.from(set);
+  }, [skis]);
+  const pdfParamDefs: { key: string; label: string }[] = [
+    { key: "brand", label: L("Merke", "Brand") },
+    { key: "discipline", label: L("Stilart", "Discipline") },
+    { key: "base", label: L("Såle", "Base") },
+    { key: "grind", label: L("Slip", "Grind") },
+    { key: "construction", label: L("Konstruksjon", "Construction") },
+    { key: "mold", label: L("Form", "Mold") },
+    { key: "heights", label: L("Høyder", "Heights") },
+    { key: "year", label: L("Årgang", "Year") },
+    { key: "length", label: L("Lengde", "Length") },
+    { key: "typeOfSki", label: L("Skitype", "Ski type") },
+    { key: "whereReceived", label: L("Mottatt fra", "Where received") },
+    { key: "serialNumber", label: L("Serienr.", "Serial #") },
+    { key: "notes", label: L("Notat", "Note") },
+    ...customSkiParamKeys.map((k) => ({ key: k, label: k.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) })),
+  ];
 
   function toggleExportSection(key: keyof typeof exportSections) {
     setExportSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -1388,7 +1412,7 @@ export default function AthleteDetail() {
     // Open the window BEFORE any async work so popup blockers don't intervene
     const win = window.open("", "_blank");
     if (!win) {
-      toast({ title: "Popup blocked", description: "Allow popups for glidr.no to export PDF.", variant: "destructive" });
+      toast({ title: L("Sprettvindu blokkert", "Popup blocked"), description: L("Tillat sprettvinduer for glidr.no for å eksportere PDF.", "Allow popups for glidr.no to export PDF."), variant: "destructive" });
       setIsExporting(false);
       setExportPdfOpen(false);
       return;
@@ -1446,16 +1470,17 @@ export default function AthleteDetail() {
 
       // ── Ski Inventory ────────────────────────────────────────────────────
       if (exportSections.inventory && skis.length > 0) {
-        const rows = skis.map((s) => [
-          s.skiId, s.brand, s.discipline, s.base, s.grind,
-          s.construction, s.mold, s.heights, s.year, s.serialNumber,
-        ]);
+        const selDefs = pdfParamDefs.filter((d) => includeParam(d.key));
+        const getVal = (s: RaceSki, key: string): string => {
+          if (key === "notes") return s.notes || "";
+          if (key in s && (s as any)[key] != null) return String((s as any)[key]);
+          try { const cp = s.customParams ? JSON.parse(s.customParams) : {}; return cp[key] != null ? String(cp[key]) : ""; } catch { return ""; }
+        };
+        const headers = [L("Ski-ID", "Ski ID"), ...selDefs.map((d) => d.label)];
+        const rows = skis.map((s) => [s.skiId, ...selDefs.map((d) => getVal(s, d.key) || "—")]);
         sections.push(
-          pdfSection("Ski Inventory") +
-          pdfTable(
-            ["Ski ID", "Brand", "Discipline", "Base", "Grind", "Construction", "Mold", "Heights", "Year", "Serial #"],
-            rows,
-          )
+          pdfSection(L("Skioversikt", "Ski Inventory")) +
+          pdfTable(headers, rows)
         );
       }
 
@@ -4159,20 +4184,20 @@ export default function AthleteDetail() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileDown className="h-4 w-4" />
-              Export to PDF
+              {L("Eksporter til PDF", "Export to PDF")}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
             <p className="text-sm text-muted-foreground">
-              Select which data to include in the report. All sections are selected by default.
+              {L("Velg hva som skal med i rapporten. Alt er valgt som standard.", "Select which data to include in the report. All sections are selected by default.")}
             </p>
             <div className="space-y-2">
               {(
                 [
-                  { key: "summary", label: "Performance Summary", desc: "Totals & average rank" },
-                  { key: "inventory", label: "Ski Inventory", desc: `${skis.length} skis` },
-                  { key: "tests", label: "Test Results", desc: `${raceSkiTests.length} tests` },
-                  { key: "grindHistory", label: "Grind History", desc: "All regrind records" },
+                  { key: "summary", label: L("Ytelsessammendrag", "Performance Summary"), desc: L("Totaler og snittrang", "Totals & average rank") },
+                  { key: "inventory", label: L("Skioversikt", "Ski Inventory"), desc: `${skis.length} ${L("ski", "skis")}` },
+                  { key: "tests", label: L("Testresultater", "Test Results"), desc: `${raceSkiTests.length} ${L("tester", "tests")}` },
+                  { key: "grindHistory", label: L("Sliphistorikk", "Grind History"), desc: L("Alle reslip-oppføringer", "All regrind records") },
                 ] as { key: keyof typeof exportSections; label: string; desc: string }[]
               ).map(({ key, label, desc }) => (
                 <div
@@ -4188,9 +4213,22 @@ export default function AthleteDetail() {
                 </div>
               ))}
             </div>
+            {exportSections.inventory && (
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-xs font-medium mb-2">{L("Parametre i skioversikten", "Ski inventory parameters")}</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {pdfParamDefs.map((d) => (
+                    <label key={d.key} className="flex items-center gap-2 text-xs cursor-pointer">
+                      <Checkbox checked={includeParam(d.key)} onCheckedChange={() => setExportSkiParams((p) => ({ ...p, [d.key]: p[d.key] === false }))} className="shrink-0" />
+                      <span className="truncate">{d.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-end gap-2 pt-1">
               <Button variant="outline" size="sm" onClick={() => setExportPdfOpen(false)}>
-                Cancel
+                {L("Avbryt", "Cancel")}
               </Button>
               <Button
                 size="sm"
@@ -4200,12 +4238,12 @@ export default function AthleteDetail() {
                 {isExporting ? (
                   <>
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    Generating…
+                    {L("Genererer…", "Generating…")}
                   </>
                 ) : (
                   <>
                     <FileDown className="mr-1.5 h-3.5 w-3.5" />
-                    Generate PDF
+                    {L("Generer PDF", "Generate PDF")}
                   </>
                 )}
               </Button>

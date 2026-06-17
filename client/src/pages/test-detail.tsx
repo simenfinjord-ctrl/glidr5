@@ -616,6 +616,43 @@ export default function TestDetail() {
   const [showReviewRunsheet, setShowReviewRunsheet] = useState(false);
   const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>(["grindType"]);
 
+  // ── Feeling test (drag-rank ski pairs 1..N + comment → feeling_rank/feeling_note) ──
+  const [feelingOpen, setFeelingOpen] = useState(false);
+  const [feelingOrder, setFeelingOrder] = useState<number[]>([]);
+  const [feelingNotes, setFeelingNotes] = useState<Record<number, string>>({});
+  const feelingDragIdx = useRef<number | null>(null);
+  const feelingMutation = useMutation({
+    mutationFn: async () => {
+      const rankings = feelingOrder.map((entryId, i) => ({ entryId, feelingRank: i + 1, feelingNote: feelingNotes[entryId] || null }));
+      await apiRequest("PATCH", `/api/tests/${id}/feeling`, { rankings });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/tests/${id}/entries`] });
+      setFeelingOpen(false);
+    },
+    onError: (e) => { toast({ title: t("common.error"), description: e instanceof Error ? e.message : "", variant: "destructive" }); },
+  });
+  function openFeeling() {
+    const init = [...entries].sort((a, b) => {
+      const ra = a.feelingRank ?? 999, rb = b.feelingRank ?? 999;
+      return ra !== rb ? ra - rb : a.skiNumber - b.skiNumber;
+    });
+    setFeelingOrder(init.map((e) => e.id));
+    setFeelingNotes(Object.fromEntries(init.map((e) => [e.id, (e as any).feelingNote || ""])));
+    setFeelingOpen(true);
+  }
+  function feelingDrop(targetIdx: number) {
+    const from = feelingDragIdx.current;
+    feelingDragIdx.current = null;
+    if (from === null || from === targetIdx) return;
+    setFeelingOrder((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(targetIdx, 0, moved);
+      return next;
+    });
+  }
+
   const runsheetMutation = useMutation({
     mutationFn: async ({ results, bracket }: { results: BracketResult[]; bracket: any[][] }) => {
       await apiRequest("PATCH", `/api/tests/${id}/runsheet-results`, { results, bracket });
@@ -1362,6 +1399,12 @@ export default function TestDetail() {
                   {hideDetails ? t("tests.showBlind") : t("tests.hideBlind")}
                 </Button>
               )}
+              {!isBlindTester && isRaceSkiTest && sortedEntries.length > 0 && (
+                <Button variant="outline" size="sm" onClick={openFeeling} data-testid="button-feelingtest">
+                  <Award className="mr-2 h-4 w-4" />
+                  {L("Feelingtest", "Feeling test")}
+                </Button>
+              )}
             </div>
           </div>
           {/* Grind column chooser */}
@@ -1545,6 +1588,46 @@ export default function TestDetail() {
         )}
 
         {isSuperAdmin && (
+          <Dialog open={feelingOpen} onOpenChange={setFeelingOpen}>
+            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader><DialogTitle>{L("Feelingtest", "Feeling test")}</DialogTitle></DialogHeader>
+              <p className="text-xs text-muted-foreground -mt-1">{L("Dra skiparene i rekkefølge (eller bruk pilene) — 1 = best. Rangen lagres som «Feeling».", "Drag the ski pairs into order (or use the arrows) — 1 = best. The rank is saved as “Feeling”.")}</p>
+              <div className="space-y-1.5 pb-12 sm:pb-0">
+                {feelingOrder.map((eid, i) => {
+                  const entry = entries.find((e) => e.id === eid);
+                  if (!entry) return null;
+                  const label = skiLabels?.[entry.skiNumber] ?? `#${entry.skiNumber}`;
+                  return (
+                    <div
+                      key={eid}
+                      draggable
+                      onDragStart={() => { feelingDragIdx.current = i; }}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => feelingDrop(i)}
+                      className="flex items-center gap-2 rounded-lg border border-border bg-card px-2 py-1.5"
+                      data-testid={`feeling-row-${eid}`}
+                    >
+                      <span className="cursor-grab active:cursor-grabbing select-none text-muted-foreground text-sm shrink-0" title={L("Dra for å sortere", "Drag to reorder")}>⠿</span>
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold shrink-0">{i + 1}</span>
+                      <span className="font-medium text-sm shrink-0 min-w-[3rem]">{label}</span>
+                      <Input value={feelingNotes[eid] ?? ""} onChange={(e) => setFeelingNotes((p) => ({ ...p, [eid]: e.target.value }))} placeholder={L("Kommentar…", "Comment…")} className="h-7 text-xs flex-1" data-testid={`feeling-note-${eid}`} />
+                      <div className="flex flex-col shrink-0">
+                        <button type="button" disabled={i === 0} onClick={() => setFeelingOrder((p) => { const j = i - 1; if (j < 0) return p; const n = [...p]; [n[i], n[j]] = [n[j], n[i]]; return n; })} className="text-muted-foreground hover:text-foreground disabled:opacity-30 text-xs leading-none">▲</button>
+                        <button type="button" disabled={i === feelingOrder.length - 1} onClick={() => setFeelingOrder((p) => { const j = i + 1; if (j >= p.length) return p; const n = [...p]; [n[i], n[j]] = [n[j], n[i]]; return n; })} className="text-muted-foreground hover:text-foreground disabled:opacity-30 text-xs leading-none">▼</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setFeelingOpen(false)}>{L("Avbryt", "Cancel")}</Button>
+                <Button onClick={() => feelingMutation.mutate()} disabled={feelingMutation.isPending} data-testid="button-save-feeling">
+                  {feelingMutation.isPending ? L("Lagrer…", "Saving…") : L("Lagre rangering", "Save ranking")}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           <Dialog open={showShareDialog} onOpenChange={(open) => { setShowShareDialog(open); if (!open) setSelectedTeamIds([]); }}>
             <DialogContent>
               <DialogHeader>

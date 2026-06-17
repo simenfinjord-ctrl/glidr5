@@ -281,6 +281,19 @@ export async function registerRoutes(
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS notes TEXT;
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS is_training_ski INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS default_ski_brand TEXT;
+      ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS feeling_note TEXT;
+      ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_rating TEXT;
+      ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_comment TEXT;
+      CREATE TABLE IF NOT EXISTS feedback_links (
+        id SERIAL PRIMARY KEY,
+        token TEXT NOT NULL UNIQUE,
+        athlete_id INTEGER NOT NULL,
+        team_id INTEGER NOT NULL,
+        created_by_id INTEGER,
+        created_by_name TEXT NOT NULL DEFAULT '',
+        revoked INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT ''
+      );
       CREATE TABLE IF NOT EXISTS ski_race_usages (
         id SERIAL PRIMARY KEY,
         ski_id INTEGER NOT NULL,
@@ -2480,6 +2493,23 @@ export async function registerRoutes(
     }
 
     res.json(updated);
+  });
+
+  // Feeling test: waxers rank ski pairs (1..N) + optional comment → test_entries.feeling_rank / feeling_note
+  app.patch("/api/tests/:id/feeling", requireAuth, async (req, res) => {
+    const testId = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const t = await (pool as any).query(`SELECT id FROM tests WHERE id = $1 AND team_id = $2`, [testId, teamId]);
+    if (!t.rows.length) return res.status(404).json({ message: "Not found" });
+    const rankings = Array.isArray(req.body.rankings) ? req.body.rankings : [];
+    for (const r of rankings) {
+      await (pool as any).query(
+        `UPDATE test_entries SET feeling_rank = $1, feeling_note = $2 WHERE id = $3 AND test_id = $4`,
+        [r.feelingRank ?? null, r.feelingNote || null, parseInt(r.entryId), testId]
+      );
+    }
+    res.json({ ok: true });
   });
 
   app.patch("/api/tests/:id/runsheet-results", requireAuth, async (req, res) => {

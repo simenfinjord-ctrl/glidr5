@@ -382,6 +382,7 @@ export const testEntries = pgTable("test_entries", {
   rankXkm: integer("rank_xkm"),
   results: text("results"),
   feelingRank: integer("feeling_rank"),
+  feelingNote: text("feeling_note"),
   kickRank: integer("kick_rank"),
   grindType: text("grind_type"),
   grindStone: text("grind_stone"),

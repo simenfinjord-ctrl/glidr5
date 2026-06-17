@@ -773,7 +773,11 @@ export default function AthleteDetail() {
       const raVal = (s: RaceSki) => { try { const cp = s.customParams ? JSON.parse(s.customParams) : {}; return parseFloat(cp.ra_value) || 0; } catch { return 0; } };
       const getVal = (s: RaceSki): number | string =>
         key === "skiId" ? (s.skiId ?? "") :
+        key === "serialNumber" ? (s.serialNumber ?? "") :
         key === "brand" ? (s.brand ?? "") :
+        key === "discipline" ? (s.discipline ?? "") :
+        key === "construction" ? (s.construction ?? "") :
+        key === "base" ? (s.base ?? "") :
         key === "grind" ? (s.grind ?? "") :
         key === "year" ? num(s.year) :
         key === "length" ? num(s.length) :
@@ -790,6 +794,18 @@ export default function AthleteDetail() {
   function setGarageView(mode: "grid" | "list") {
     setGarageViewMode(mode);
     try { localStorage.setItem("glidr-garage-view-mode", mode); } catch {}
+  }
+  // Click a list-view column header to sort by it (toggles asc/desc).
+  function toggleColSort(col: string) {
+    setGarageRaSort((prev) => {
+      const [k, d] = prev.split("|");
+      return k === col ? `${col}|${d === "asc" ? "desc" : "asc"}` : `${col}|asc`;
+    });
+  }
+  function sortArrow(col: string) {
+    const [k, d] = garageRaSort.split("|");
+    if (k !== col) return "";
+    return d === "desc" ? " ↓" : " ↑";
   }
 
   const isOwnerOrAdmin =
@@ -2631,15 +2647,15 @@ export default function AthleteDetail() {
                   <div className="overflow-x-auto">
                     <table className="w-full border-separate border-spacing-0 text-sm">
                       <thead>
-                        <tr className="text-left text-xs text-muted-foreground border-b">
-                          <th className="px-4 py-2.5 font-medium">{L("Ski-ID", "Ski ID")}</th>
-                          <th className="px-3 py-2.5 font-medium">{L("Serienr.", "Serial")}</th>
-                          <th className="px-3 py-2.5 font-medium">{L("Merke", "Brand")}</th>
-                          <th className="px-3 py-2.5 font-medium">{L("Stilart", "Discipline")}</th>
-                          <th className="px-3 py-2.5 font-medium">{L("Konstruksjon", "Construction")}</th>
-                          <th className="px-3 py-2.5 font-medium">{L("Såle", "Base")}</th>
-                          <th className="px-3 py-2.5 font-medium">{L("Slip", "Grind")}</th>
-                          <th className="px-3 py-2.5 font-medium">{L("År", "Year")}</th>
+                        <tr className="text-left text-xs text-muted-foreground border-b select-none">
+                          <th className="px-4 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("skiId")}>{L("Ski-ID", "Ski ID")}{sortArrow("skiId")}</th>
+                          <th className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("serialNumber")}>{L("Serienr.", "Serial")}{sortArrow("serialNumber")}</th>
+                          <th className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("brand")}>{L("Merke", "Brand")}{sortArrow("brand")}</th>
+                          <th className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("discipline")}>{L("Stilart", "Discipline")}{sortArrow("discipline")}</th>
+                          <th className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("construction")}>{L("Konstruksjon", "Construction")}{sortArrow("construction")}</th>
+                          <th className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("base")}>{L("Såle", "Base")}{sortArrow("base")}</th>
+                          <th className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("grind")}>{L("Slip", "Grind")}{sortArrow("grind")}</th>
+                          <th className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("year")}>{L("År", "Year")}{sortArrow("year")}</th>
                           <th className="px-3 py-2.5 font-medium"></th>
                         </tr>
                       </thead>
@@ -2663,6 +2679,10 @@ export default function AthleteDetail() {
                                     return cid !== "none" && ce?.dot ? <span className={cn("inline-block h-2 w-2 rounded-full shrink-0", ce.dot)} /> : null;
                                   })()}
                                   {ski.skiId}
+                                  {ski.isTrainingSki === 1 && (
+                                    <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 dark:text-amber-300" title={L("Treningsski", "Training ski")}>{L("TRENING", "TRAINING")}</span>
+                                  )}
+                                  {ski.notes && <MessageSquare className="h-3 w-3 text-muted-foreground/60 shrink-0" />}
                                 </span>
                               </td>
                               <td className="px-3 py-2.5 text-muted-foreground">{ski.serialNumber || "—"}</td>
@@ -4842,6 +4862,160 @@ function SkiSuggestionsSection({
   );
 }
 
+// Shared "race usage" log for a ski pair — used in both grid (SkiCard) and list (SkiDetailPanel).
+function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true }: {
+  ski: RaceSki;
+  weatherList: WeatherItem[];
+  raceWeatherById: Map<number, WeatherItem>;
+  canEdit?: boolean;
+}) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const [usageOpen, setUsageOpen] = useState(false);
+  const [usageForm, setUsageForm] = useState({
+    date: new Date().toISOString().slice(0, 10), location: "", discipline: ski.discipline,
+    weatherMode: "link" as "link" | "manual", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "", notes: "",
+  });
+  const { data: usages = [] } = useQuery<any[]>({ queryKey: [`/api/race-skis/${ski.id}/usages`] });
+  const usageWeatherOptions = useMemo(() => weatherList.filter((w) => w.date === usageForm.date), [weatherList, usageForm.date]);
+  const saveUsage = useMutation({
+    mutationFn: async () => {
+      const manualWeather = usageForm.weatherMode === "manual"
+        ? JSON.stringify({
+            snowTemperatureC: usageForm.snowTemp ? parseFloat(usageForm.snowTemp.replace(",", ".")) : null,
+            airTemperatureC: usageForm.airTemp ? parseFloat(usageForm.airTemp.replace(",", ".")) : null,
+            snowType: usageForm.snowType || null,
+          })
+        : null;
+      await apiRequest("POST", `/api/race-skis/${ski.id}/usages`, {
+        date: usageForm.date, location: usageForm.location || null, discipline: usageForm.discipline,
+        weatherId: usageForm.weatherMode === "link" && usageForm.weatherId ? parseInt(usageForm.weatherId) : null,
+        manualWeather, result: usageForm.result || null, notes: usageForm.notes || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/race-skis/${ski.id}/usages`] });
+      setUsageOpen(false);
+      setUsageForm((f) => ({ ...f, location: "", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "", notes: "" }));
+    },
+  });
+  const deleteUsage = useMutation({
+    mutationFn: async (id: number) => { await apiRequest("DELETE", `/api/race-skis/${ski.id}/usages/${id}`); },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [`/api/race-skis/${ski.id}/usages`] }),
+  });
+  return (
+    <div className="pt-2 border-t border-border/40">
+      <div className="flex items-center justify-between mb-1.5">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Løpsbruk", "Race usage")}</h3>
+        {canEdit && (
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setUsageOpen(true)} data-testid={`button-add-usage-${ski.id}`}>
+            <Plus className="h-3 w-3 mr-1" />{L("Logg løpsbruk", "Log race use")}
+          </Button>
+        )}
+      </div>
+      {usages.length === 0 ? (
+        <p className="text-[11px] text-muted-foreground">{L("Ingen løpsbruk logget.", "No race use logged.")}</p>
+      ) : (
+        <div className="space-y-1.5">
+          {usages.map((usage) => {
+            let mw: any = null; try { mw = usage.manualWeather ? JSON.parse(usage.manualWeather) : null; } catch {}
+            const lw = usage.weatherId ? raceWeatherById.get(usage.weatherId) : null;
+            const w: any = lw || mw;
+            return (
+              <div key={usage.id} className="flex items-start justify-between gap-2 rounded-lg bg-muted/30 px-3 py-1.5" data-testid={`row-usage-${usage.id}`}>
+                <div className="text-[11px]">
+                  <span className="font-medium text-foreground">{usage.location || "—"} · {fmtDate(usage.date)}</span>
+                  {usage.discipline && <span className="text-muted-foreground"> · {usage.discipline}</span>}
+                  {w && (
+                    <div className="flex flex-wrap gap-x-2 text-[10px] text-muted-foreground mt-0.5">
+                      {w.snowTemperatureC != null && <span>{L("Snø", "Snow")} {w.snowTemperatureC}°C</span>}
+                      {w.airTemperatureC != null && <span>{L("Luft", "Air")} {w.airTemperatureC}°C</span>}
+                      {w.snowType && <span>{w.snowType}</span>}
+                    </div>
+                  )}
+                </div>
+                {usage.notes && (
+                  <div className="flex-1 min-w-0 text-[11px] text-muted-foreground italic border-l border-border/50 pl-2 self-stretch" data-testid={`usage-note-${usage.id}`}>
+                    {usage.notes}
+                  </div>
+                )}
+                {canEdit && (
+                  <button onClick={() => deleteUsage.mutate(usage.id)} className="text-muted-foreground/50 hover:text-red-500 shrink-0" data-testid={`button-delete-usage-${usage.id}`}>
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <Dialog open={usageOpen} onOpenChange={setUsageOpen}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{L("Logg løpsbruk", "Log race use")} — {ski.skiId}</DialogTitle></DialogHeader>
+          <div className="space-y-3 pb-12 sm:pb-0">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium">{L("Dato", "Date")}</label>
+                <Input type="date" value={usageForm.date} onChange={(e) => setUsageForm((f) => ({ ...f, date: e.target.value, weatherId: "" }))} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium">{L("Stilart", "Discipline")}</label>
+                <Select value={usageForm.discipline} onValueChange={(v) => setUsageForm((f) => ({ ...f, discipline: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Classic">Classic</SelectItem>
+                    <SelectItem value="Skating">Skating</SelectItem>
+                    <SelectItem value="Double Poling">Double Poling</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">{L("Sted", "Location")}</label>
+              <Input value={usageForm.location} onChange={(e) => setUsageForm((f) => ({ ...f, location: e.target.value }))} placeholder={L("f.eks. Ruka", "e.g. Ruka")} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">{L("Vær", "Weather")}</label>
+              <div className="flex gap-2 mb-2">
+                <button type="button" onClick={() => setUsageForm((f) => ({ ...f, weatherMode: "link" }))} className={cn("flex-1 rounded-lg border-2 px-2 py-1.5 text-xs font-medium transition-colors", usageForm.weatherMode === "link" ? "border-primary bg-primary/5" : "border-border text-muted-foreground")}>{L("Koble til observasjon", "Link record")}</button>
+                <button type="button" onClick={() => setUsageForm((f) => ({ ...f, weatherMode: "manual" }))} className={cn("flex-1 rounded-lg border-2 px-2 py-1.5 text-xs font-medium transition-colors", usageForm.weatherMode === "manual" ? "border-primary bg-primary/5" : "border-border text-muted-foreground")}>{L("Manuelt", "Manual")}</button>
+              </div>
+              {usageForm.weatherMode === "link" ? (
+                usageWeatherOptions.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">{L("Ingen værobservasjon på denne datoen.", "No weather record on this date.")}</p>
+                ) : (
+                  <Select value={usageForm.weatherId || "__none__"} onValueChange={(v) => setUsageForm((f) => ({ ...f, weatherId: v === "__none__" ? "" : v }))}>
+                    <SelectTrigger><SelectValue placeholder={L("Velg", "Choose")} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">{L("Ingen", "None")}</SelectItem>
+                      {usageWeatherOptions.map((w) => (<SelectItem key={w.id} value={String(w.id)}>{w.location}{w.snowTemperatureC != null ? ` (${w.snowTemperatureC}°C)` : ""}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                )
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  <Input value={usageForm.snowTemp} onChange={(e) => setUsageForm((f) => ({ ...f, snowTemp: e.target.value }))} placeholder={L("Snø °C", "Snow °C")} />
+                  <Input value={usageForm.airTemp} onChange={(e) => setUsageForm((f) => ({ ...f, airTemp: e.target.value }))} placeholder={L("Luft °C", "Air °C")} />
+                  <Input value={usageForm.snowType} onChange={(e) => setUsageForm((f) => ({ ...f, snowType: e.target.value }))} placeholder={L("Snøtype", "Snow type")} />
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">{L("Kommentar", "Comment")}</label>
+              <Input value={usageForm.notes} onChange={(e) => setUsageForm((f) => ({ ...f, notes: e.target.value }))} placeholder={L("Valgfri kommentar…", "Optional comment…")} />
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => saveUsage.mutate()} disabled={saveUsage.isPending || !usageForm.date} data-testid="button-save-usage">
+                {saveUsage.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 function SkiDetailPanel({
   ski,
   onEdit,
@@ -4878,7 +5052,10 @@ function SkiDetailPanel({
     { label: t("raceskis.base"), value: ski.base },
     { label: t("raceskis.grind"), value: ski.grind },
     ...(ski.discipline === "Classic" ? [{ label: t("raceskis.heights"), value: ski.heights }] : []),
-    { label: "Year", value: ski.year },
+    { label: L("Årgang", "Year"), value: ski.year },
+    { label: L("Lengde", "Length"), value: ski.length },
+    { label: L("Skitype", "Ski type"), value: ski.typeOfSki },
+    { label: L("Mottatt fra", "Where received"), value: ski.whereReceived },
     ...Object.entries(customParams).map(([k, v]) => ({
       label: k.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
       value: v || null,
@@ -4887,6 +5064,22 @@ function SkiDetailPanel({
 
   return (
     <div className="space-y-4">
+      {/* Training badge + notes */}
+      {(ski.isTrainingSki === 1 || ski.typeOfSki) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {ski.typeOfSki && (
+            <span className="rounded-full bg-violet-50 dark:bg-violet-950/30 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300 ring-1 ring-violet-200 dark:ring-violet-800">{ski.typeOfSki}</span>
+          )}
+          {ski.isTrainingSki === 1 && (
+            <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-800">{L("Treningsski", "Training ski")}</span>
+          )}
+        </div>
+      )}
+      {ski.notes && (
+        <div className="rounded-lg bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 px-3 py-2 text-xs text-amber-900 dark:text-amber-200 whitespace-pre-wrap" data-testid={`detail-ski-notes-${ski.id}`}>
+          {ski.notes}
+        </div>
+      )}
       {/* Action buttons */}
       <div className="flex items-center gap-2">
         {onRegrind && (
@@ -4998,6 +5191,8 @@ function SkiDetailPanel({
           </div>
         );
       })()}
+
+      <SkiRaceUsageSection ski={ski} weatherList={weatherList} raceWeatherById={raceWeatherById} canEdit={!!onEdit} />
     </div>
   );
 }
@@ -5242,7 +5437,7 @@ function SkiCard({
   const [usageOpen, setUsageOpen] = useState(false);
   const [usageForm, setUsageForm] = useState({
     date: new Date().toISOString().slice(0, 10), location: "", discipline: ski.discipline,
-    weatherMode: "link" as "link" | "manual", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "",
+    weatherMode: "link" as "link" | "manual", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "", notes: "",
   });
   const { data: usages = [] } = useQuery<any[]>({ queryKey: [`/api/race-skis/${ski.id}/usages`], enabled: expanded });
   const usageWeatherOptions = useMemo(() => weatherList.filter((w) => w.date === usageForm.date), [weatherList, usageForm.date]);
@@ -5258,13 +5453,13 @@ function SkiCard({
       await apiRequest("POST", `/api/race-skis/${ski.id}/usages`, {
         date: usageForm.date, location: usageForm.location || null, discipline: usageForm.discipline,
         weatherId: usageForm.weatherMode === "link" && usageForm.weatherId ? parseInt(usageForm.weatherId) : null,
-        manualWeather, result: usageForm.result || null,
+        manualWeather, result: usageForm.result || null, notes: usageForm.notes || null,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/race-skis/${ski.id}/usages`] });
       setUsageOpen(false);
-      setUsageForm((f) => ({ ...f, location: "", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "" }));
+      setUsageForm((f) => ({ ...f, location: "", weatherId: "", snowTemp: "", airTemp: "", snowType: "", result: "", notes: "" }));
     },
   });
   const deleteUsage = useMutation({
@@ -5614,6 +5809,10 @@ function SkiCard({
                   <Input value={usageForm.snowType} onChange={(e) => setUsageForm((f) => ({ ...f, snowType: e.target.value }))} placeholder={L("Snøtype", "Snow type")} />
                 </div>
               )}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">{L("Kommentar", "Comment")}</label>
+              <Input value={usageForm.notes} onChange={(e) => setUsageForm((f) => ({ ...f, notes: e.target.value }))} placeholder={L("Valgfri kommentar…", "Optional comment…")} />
             </div>
             <div className="flex justify-end">
               <Button onClick={() => saveUsage.mutate()} disabled={saveUsage.isPending || !usageForm.date} data-testid="button-save-usage">

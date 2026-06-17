@@ -52,6 +52,7 @@ import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import AcceptInvite from "@/pages/accept-invite";
 import SharedTest from "@/pages/shared-test";
+import AthleteFeedback from "@/pages/feedback";
 
 function Router() {
   return (
@@ -61,6 +62,7 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/invite/:token" component={AcceptInvite} />
       <Route path="/share/test/:token" component={SharedTest} />
+      <Route path="/feedback/:token" component={AthleteFeedback} />
       <Route path="/" component={() => <Redirect to="/dashboard" />} />
       <Route path="/live-runsheets" component={LiveRunsheets} />
       <Route path="/dashboard" component={Dashboard} />

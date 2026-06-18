@@ -63,6 +63,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
@@ -413,6 +421,35 @@ const SNOW_HUMIDITY_TYPE_OPTIONS = ["Dry", "Moist", "Wet", "Very wet", "Slush"] 
 const GRAIN_SIZE_OPTIONS = ["Extra fine", "Very fine", "Fine", "Average", "Coarse", "Very coarse"] as const;
 const SNOW_STAGE_OPTIONS = ["Falling new", "New", "Irreg. dir. new", "Irreg. dir. transf.", "Transformed"] as const;
 
+// ── Ski Garage list-view columns ────────────────────────────────────────────
+// Every standard ski parameter plus RA-value. Custom params are appended
+// dynamically (key "cp:<name>"). Numeric columns sort numerically.
+const GARAGE_NUMERIC_KEYS = new Set(["year", "length", "ra"]);
+function garageParseCustom(s: any): Record<string, any> {
+  try { return s.customParams ? JSON.parse(s.customParams) : {}; } catch { return {}; }
+}
+// Raw value used for sorting (number for numeric columns, string otherwise).
+function garageSortValue(s: any, key: string): number | string {
+  const num = (v: any) => parseFloat(String(v ?? "").replace(",", ".")) || 0;
+  if (key === "skiId") return s.skiId ?? "";
+  if (key === "year") return num(s.year);
+  if (key === "length") return num(s.length);
+  if (key === "ra") return num(garageParseCustom(s).ra_value);
+  if (key.startsWith("cp:")) {
+    const v = garageParseCustom(s)[key.slice(3)];
+    const n = parseFloat(String(v ?? "").replace(",", "."));
+    return isNaN(n) ? String(v ?? "") : n;
+  }
+  return (s as any)[key] ?? "";
+}
+// Display string for a cell ("—" when empty).
+function garageCellValue(s: any, key: string): string {
+  if (key === "ra") { const v = garageParseCustom(s).ra_value; return v != null && v !== "" ? String(v) : "—"; }
+  if (key.startsWith("cp:")) { const v = garageParseCustom(s)[key.slice(3)]; return v != null && v !== "" ? String(v) : "—"; }
+  const v = (s as any)[key];
+  return v != null && v !== "" ? String(v) : "—";
+}
+
 export default function AthleteDetail() {
   const [, params] = useRoute("/raceskis/:id");
   const [, navigate] = useLocation();
@@ -451,6 +488,12 @@ export default function AthleteDetail() {
   const [garageRaValueFilter, setGarageRaValueFilter] = useState<string>("");
   const [garageRaSort, setGarageRaSort] = useState<string>("none");
   const [showGarageFilters, setShowGarageFilters] = useState(false);
+  // List-view column visibility. null = auto (show every column that has data).
+  // Once the user toggles a column it becomes an explicit list, persisted locally.
+  const [garageColPref, setGarageColPref] = useState<string[] | null>(() => {
+    try { const s = localStorage.getItem("glidr-garage-cols-v1"); if (s) { const p = JSON.parse(s); if (Array.isArray(p)) return p; } } catch {}
+    return null;
+  });
 
   // Analytics section (used by dedicated analytics view)
   const [compareSkiIds, setCompareSkiIds] = useState<Set<number>>(new Set());
@@ -792,21 +835,8 @@ export default function AthleteDetail() {
     }
     if (garageRaSort !== "none") {
       const [key, dir] = garageRaSort.split("|");
-      const num = (v: string | null | undefined) => parseFloat((v ?? "").replace(",", ".")) || 0;
-      const raVal = (s: RaceSki) => { try { const cp = s.customParams ? JSON.parse(s.customParams) : {}; return parseFloat(cp.ra_value) || 0; } catch { return 0; } };
-      const getVal = (s: RaceSki): number | string =>
-        key === "skiId" ? (s.skiId ?? "") :
-        key === "serialNumber" ? (s.serialNumber ?? "") :
-        key === "brand" ? (s.brand ?? "") :
-        key === "discipline" ? (s.discipline ?? "") :
-        key === "construction" ? (s.construction ?? "") :
-        key === "base" ? (s.base ?? "") :
-        key === "grind" ? (s.grind ?? "") :
-        key === "year" ? num(s.year) :
-        key === "length" ? num(s.length) :
-        key === "ra" ? raVal(s) : "";
       list = [...list].sort((a, b) => {
-        const av = getVal(a), bv = getVal(b);
+        const av = garageSortValue(a, key), bv = garageSortValue(b, key);
         const cmp = (typeof av === "number" && typeof bv === "number") ? av - bv : String(av).localeCompare(String(bv));
         return dir === "desc" ? -cmp : cmp;
       });
@@ -1474,6 +1504,48 @@ export default function AthleteDetail() {
     skis.forEach((s) => { try { const cp = s.customParams ? JSON.parse(s.customParams) : {}; Object.keys(cp).filter((k) => !k.startsWith("_")).forEach((k) => set.add(k)); } catch {} });
     return Array.from(set);
   }, [skis]);
+
+  // ── Ski Garage list columns (all parameters, sortable + toggleable) ──────────
+  const garageColumns = useMemo(() => {
+    const std: { key: string; label: string }[] = [
+      { key: "serialNumber", label: L("Serienr.", "Serial") },
+      { key: "brand", label: L("Merke", "Brand") },
+      { key: "discipline", label: L("Stilart", "Discipline") },
+      { key: "construction", label: L("Konstruksjon", "Construction") },
+      { key: "mold", label: L("Form", "Mold") },
+      { key: "base", label: L("Såle", "Base") },
+      { key: "grind", label: L("Slip", "Grind") },
+      { key: "heights", label: L("Høyder", "Heights") },
+      { key: "year", label: L("År", "Year") },
+      { key: "length", label: L("Lengde", "Length") },
+      { key: "typeOfSki", label: L("Skitype", "Ski type") },
+      { key: "whereReceived", label: L("Mottatt fra", "Where received") },
+    ];
+    const cols = [...std];
+    // RA-value and any other custom params, derived from the data.
+    if (customSkiParamKeys.includes("ra_value")) cols.push({ key: "ra", label: "RA-Value" });
+    for (const k of customSkiParamKeys) {
+      if (k === "ra_value") continue;
+      cols.push({ key: `cp:${k}`, label: k.replace(/^custom_/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) });
+    }
+    return cols;
+  }, [customSkiParamKeys, language]);
+
+  // Columns that actually have data entered — used as the default visible set.
+  const garageEnteredKeys = useMemo(
+    () => garageColumns.filter((c) => skis.some((s) => garageCellValue(s, c.key) !== "—")).map((c) => c.key),
+    [garageColumns, skis]
+  );
+  const garageVisibleKeys = garageColPref ?? garageEnteredKeys;
+  const visibleGarageColumns = garageColumns.filter((c) => garageVisibleKeys.includes(c.key));
+  function toggleGarageCol(key: string) {
+    setGarageColPref((prev) => {
+      const base = prev ?? garageEnteredKeys;
+      const next = base.includes(key) ? base.filter((k) => k !== key) : [...base, key];
+      try { localStorage.setItem("glidr-garage-cols-v1", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
   const pdfParamDefs: { key: string; label: string }[] = [
     { key: "brand", label: L("Merke", "Brand") },
     { key: "discipline", label: L("Stilart", "Discipline") },
@@ -2694,19 +2766,43 @@ export default function AthleteDetail() {
             ) : (
               /* List view for Ski Garage */
               <div className="mt-3">
+                {/* Column picker — show/hide any parameter. Click a header to sort by it. */}
+                <div className="mb-2 flex items-center justify-end">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" data-testid="button-garage-columns">
+                        <Settings2 className="h-3.5 w-3.5" />
+                        {L("Kolonner", "Columns")}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="max-h-[60vh] overflow-y-auto">
+                      <DropdownMenuLabel>{L("Vis kolonner", "Show columns")}</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {garageColumns.map((col) => (
+                        <DropdownMenuCheckboxItem
+                          key={col.key}
+                          checked={garageVisibleKeys.includes(col.key)}
+                          onCheckedChange={() => toggleGarageCol(col.key)}
+                          onSelect={(e) => e.preventDefault()}
+                          data-testid={`toggle-col-${col.key}`}
+                        >
+                          {col.label}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 <Card className="fs-card rounded-2xl overflow-hidden" data-testid="ski-list-view">
                   <div className="overflow-x-auto">
                     <table className="w-full border-separate border-spacing-0 text-sm">
                       <thead>
                         <tr className="text-left text-xs text-muted-foreground border-b select-none">
                           <th className="px-4 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("skiId")}>{L("Ski-ID", "Ski ID")}{sortArrow("skiId")}</th>
-                          <th className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("serialNumber")}>{L("Serienr.", "Serial")}{sortArrow("serialNumber")}</th>
-                          <th className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("brand")}>{L("Merke", "Brand")}{sortArrow("brand")}</th>
-                          <th className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("discipline")}>{L("Stilart", "Discipline")}{sortArrow("discipline")}</th>
-                          <th className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("construction")}>{L("Konstruksjon", "Construction")}{sortArrow("construction")}</th>
-                          <th className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("base")}>{L("Såle", "Base")}{sortArrow("base")}</th>
-                          <th className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("grind")}>{L("Slip", "Grind")}{sortArrow("grind")}</th>
-                          <th className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground" onClick={() => toggleColSort("year")}>{L("År", "Year")}{sortArrow("year")}</th>
+                          {visibleGarageColumns.map((col) => (
+                            <th key={col.key} className="px-3 py-2.5 font-medium cursor-pointer hover:text-foreground whitespace-nowrap" onClick={() => toggleColSort(col.key)}>
+                              {col.label}{sortArrow(col.key)}
+                            </th>
+                          ))}
                           <th className="px-3 py-2.5 font-medium"></th>
                         </tr>
                       </thead>
@@ -2736,17 +2832,17 @@ export default function AthleteDetail() {
                                   {ski.notes && <MessageSquare className="h-3 w-3 text-muted-foreground/60 shrink-0" />}
                                 </span>
                               </td>
-                              <td className="px-3 py-2.5 text-muted-foreground">{ski.serialNumber || "—"}</td>
-                              <td className="px-3 py-2.5">{ski.brand || "—"}</td>
-                              <td className="px-3 py-2.5">
-                                <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800">
-                                  {ski.discipline}
-                                </span>
-                              </td>
-                              <td className="px-3 py-2.5 text-muted-foreground">{ski.construction || "—"}</td>
-                              <td className="px-3 py-2.5 text-muted-foreground">{ski.base || "—"}</td>
-                              <td className="px-3 py-2.5 text-muted-foreground">{ski.grind || "—"}</td>
-                              <td className="px-3 py-2.5 text-muted-foreground">{ski.year || "—"}</td>
+                              {visibleGarageColumns.map((col) => (
+                                <td key={col.key} className={cn("px-3 py-2.5", col.key === "discipline" ? "" : "text-muted-foreground")}>
+                                  {col.key === "discipline" ? (
+                                    <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800 whitespace-nowrap">
+                                      {ski.discipline}
+                                    </span>
+                                  ) : (
+                                    garageCellValue(ski, col.key)
+                                  )}
+                                </td>
+                              ))}
                               <td className="px-3 py-2.5">
                                 {expandedSkiId === ski.id
                                   ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
@@ -2755,7 +2851,7 @@ export default function AthleteDetail() {
                             </tr>
                             {expandedSkiId === ski.id && (
                               <tr className="border-t border-indigo-200/30 dark:border-indigo-800/30">
-                                <td colSpan={9} className="px-4 py-3 bg-indigo-50/20 dark:bg-indigo-950/10">
+                                <td colSpan={visibleGarageColumns.length + 2} className="px-4 py-3 bg-indigo-50/20 dark:bg-indigo-950/10">
                                   <SkiDetailPanel
                                     ski={ski}
                                     onEdit={() => openEditSki(ski)}
@@ -2772,7 +2868,7 @@ export default function AthleteDetail() {
                         ))}
                         {filteredGarageSkis.length === 0 && (
                           <tr>
-                            <td colSpan={9} className="px-4 py-6 text-sm text-muted-foreground text-center">
+                            <td colSpan={visibleGarageColumns.length + 2} className="px-4 py-6 text-sm text-muted-foreground text-center">
                               No skis match the current filters.
                             </td>
                           </tr>

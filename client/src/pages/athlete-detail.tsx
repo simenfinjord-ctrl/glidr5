@@ -87,6 +87,10 @@ type Athlete = {
   name: string;
   team: string | null;
   defaultSkiBrand: string | null;
+  heightCm: string | null;
+  weightKg: string | null;
+  poleHeight: string | null;
+  bindingPosition: string | null;
   createdAt: string;
   createdById: number;
   createdByName: string;
@@ -444,6 +448,7 @@ function garageSortValue(s: any, key: string): number | string {
   if (key === "year") return num(s.year);
   if (key === "length") return num(s.length);
   if (key === "ra") return num(garageParseCustom(s).ra_value);
+  if (key === "color") { const idx = SKI_COLORS.findIndex((c) => c.id === getSkiColor(s)); return idx < 0 ? 0 : idx; }
   if (key.startsWith("cp:")) {
     const v = garageParseCustom(s)[key.slice(3)];
     const n = parseFloat(String(v ?? "").replace(",", "."));
@@ -453,6 +458,7 @@ function garageSortValue(s: any, key: string): number | string {
 }
 // Display string for a cell ("—" when empty).
 function garageCellValue(s: any, key: string): string {
+  if (key === "color") { const c = SKI_COLORS.find((x) => x.id === getSkiColor(s)); return c && c.id !== "none" ? c.label : "—"; }
   if (key === "ra") { const v = garageParseCustom(s).ra_value; return v != null && v !== "" ? String(v) : "—"; }
   if (key.startsWith("cp:")) { const v = garageParseCustom(s)[key.slice(3)]; return v != null && v !== "" ? String(v) : "—"; }
   const v = (s as any)[key];
@@ -495,6 +501,8 @@ export default function AthleteDetail() {
   const [garageYearFilter, setGarageYearFilter] = useState<string>("all");
   const [garageGrindFilter, setGarageGrindFilter] = useState<string>("");
   const [garageRaValueFilter, setGarageRaValueFilter] = useState<string>("");
+  // Which ski-tag colours to show (empty = show all colours).
+  const [garageColorFilter, setGarageColorFilter] = useState<string[]>([]);
   const [garageRaSort, setGarageRaSort] = useState<string>("none");
   const [showGarageFilters, setShowGarageFilters] = useState(false);
   // List-view column visibility. null = auto (show every column that has data).
@@ -736,7 +744,7 @@ export default function AthleteDetail() {
     notes: "",
   });
 
-  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "" });
+  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", bindingPosition: "" });
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
 
   const { data: athletes = [] } = useQuery<Athlete[]>({
@@ -842,6 +850,9 @@ export default function AthleteDetail() {
         } catch { return false; }
       });
     }
+    if (garageColorFilter.length > 0) {
+      list = list.filter((s) => garageColorFilter.includes(getSkiColor(s)));
+    }
     if (garageRaSort !== "none") {
       const [key, dir] = garageRaSort.split("|");
       list = [...list].sort((a, b) => {
@@ -851,7 +862,7 @@ export default function AthleteDetail() {
       });
     }
     return list;
-  }, [skis, garageDisciplineFilter, garageBrandFilter, garageYearFilter, garageGrindFilter, garageRaValueFilter, garageRaSort]);
+  }, [skis, garageDisciplineFilter, garageBrandFilter, garageYearFilter, garageGrindFilter, garageRaValueFilter, garageColorFilter, garageRaSort]);
 
   function setGarageView(mode: "grid" | "list") {
     setGarageViewMode(mode);
@@ -1327,11 +1338,15 @@ export default function AthleteDetail() {
   });
 
   const updateAthleteMutation = useMutation({
-    mutationFn: async (data: { name: string; team: string; brand: string }) => {
+    mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; bindingPosition: string }) => {
       const res = await apiRequest("PUT", `/api/athletes/${athleteId}`, {
         name: data.name,
         team: data.team.trim() || null,
         defaultSkiBrand: data.brand.trim() || null,
+        heightCm: data.heightCm.trim() || null,
+        weightKg: data.weightKg.trim() || null,
+        poleHeight: data.poleHeight.trim() || null,
+        bindingPosition: data.bindingPosition.trim() || null,
       });
       return res.json();
     },
@@ -1491,7 +1506,11 @@ export default function AthleteDetail() {
 
   function openEditAthlete() {
     if (athlete) {
-      setAthleteForm({ name: athlete.name, team: athlete.team || "", brand: athlete.defaultSkiBrand || "" });
+      setAthleteForm({
+        name: athlete.name, team: athlete.team || "", brand: athlete.defaultSkiBrand || "",
+        heightCm: athlete.heightCm || "", weightKg: athlete.weightKg || "",
+        poleHeight: athlete.poleHeight || "", bindingPosition: athlete.bindingPosition || "",
+      });
       setEditAthleteOpen(true);
     }
   }
@@ -1517,6 +1536,7 @@ export default function AthleteDetail() {
   // ── Ski Garage list columns (all parameters, sortable + toggleable) ──────────
   const garageColumns = useMemo(() => {
     const std: { key: string; label: string }[] = [
+      { key: "color", label: L("Farge", "Colour") },
       { key: "serialNumber", label: L("Serienr.", "Serial") },
       { key: "brand", label: L("Merke", "Brand") },
       { key: "discipline", label: L("Stilart", "Discipline") },
@@ -1927,6 +1947,22 @@ export default function AthleteDetail() {
                 {athlete.createdByName}
               </span>
             </div>
+            {/* Athlete profile metrics — shown in the same box as name & team */}
+            {(athlete.defaultSkiBrand || athlete.heightCm || athlete.weightKg || athlete.poleHeight || athlete.bindingPosition) && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5" data-testid="athlete-metrics">
+                {([
+                  [L("Merke", "Brand"), athlete.defaultSkiBrand],
+                  [L("Høyde", "Height"), athlete.heightCm ? `${athlete.heightCm} cm` : null],
+                  [L("Vekt", "Weight"), athlete.weightKg ? `${athlete.weightKg} kg` : null],
+                  [L("Stavhøyde", "Pole height"), athlete.poleHeight],
+                  [L("Binding", "Binding"), athlete.bindingPosition],
+                ] as [string, string | null][]).filter(([, v]) => !!v).map(([label, v]) => (
+                  <span key={label} className="inline-flex items-center gap-1 rounded-full bg-muted/70 px-2 py-0.5 text-[11px] text-muted-foreground">
+                    <span className="font-medium text-foreground">{label}:</span> {v}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -2738,20 +2774,46 @@ export default function AthleteDetail() {
                     <SelectItem value="length|asc">{L("Lengde lav→høy", "Length low→high")}</SelectItem>
                     <SelectItem value="ra|desc">{L("RA høy→lav", "RA high→low")}</SelectItem>
                     <SelectItem value="ra|asc">{L("RA lav→høy", "RA low→high")}</SelectItem>
+                    <SelectItem value="color|asc">{L("Farge", "Colour")}</SelectItem>
                   </SelectContent>
                 </Select>
-                {(garageDisciplineFilter !== "all" || garageBrandFilter !== "all" || garageYearFilter !== "all" || garageGrindFilter !== "" || garageRaValueFilter !== "" || garageRaSort !== "none") && (
+                {(garageDisciplineFilter !== "all" || garageBrandFilter !== "all" || garageYearFilter !== "all" || garageGrindFilter !== "" || garageRaValueFilter !== "" || garageColorFilter.length > 0 || garageRaSort !== "none") && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-7 px-2 text-xs text-muted-foreground"
-                    onClick={() => { setGarageDisciplineFilter("all"); setGarageBrandFilter("all"); setGarageYearFilter("all"); setGarageGrindFilter(""); setGarageRaValueFilter(""); setGarageRaSort("none"); }}
+                    onClick={() => { setGarageDisciplineFilter("all"); setGarageBrandFilter("all"); setGarageYearFilter("all"); setGarageGrindFilter(""); setGarageRaValueFilter(""); setGarageColorFilter([]); setGarageRaSort("none"); }}
                     data-testid="button-garage-clear-filters"
                   >
                     <X className="h-3 w-3 mr-1" />
                     Clear
                   </Button>
                 )}
+                {/* Colour filter — choose which colour tag(s) to show. Empty = all. */}
+                <div className="flex w-full flex-wrap items-center gap-1.5 pt-1" data-testid="garage-color-filter">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mr-0.5">{L("Farge", "Colour")}:</span>
+                  {SKI_COLORS.map((c) => {
+                    const active = garageColorFilter.includes(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setGarageColorFilter((prev) => prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id])}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 transition-colors",
+                          active ? "ring-foreground/40 bg-muted text-foreground" : "ring-border text-muted-foreground hover:bg-muted/60",
+                        )}
+                        title={c.label}
+                        data-testid={`color-filter-${c.id}`}
+                      >
+                        {c.id !== "none"
+                          ? <span className={cn("inline-block h-2.5 w-2.5 rounded-full", c.dot)} />
+                          : <span className="inline-block h-2.5 w-2.5 rounded-full ring-1 ring-border" />}
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -2859,11 +2921,18 @@ export default function AthleteDetail() {
                                 </span>
                               </td>
                               {visibleGarageColumns.map((col) => (
-                                <td key={col.key} className={cn("px-3 py-2.5", col.key === "discipline" ? "" : "text-muted-foreground")}>
+                                <td key={col.key} className={cn("px-3 py-2.5", col.key === "discipline" || col.key === "color" ? "" : "text-muted-foreground")}>
                                   {col.key === "discipline" ? (
                                     <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800 whitespace-nowrap">
                                       {ski.discipline}
                                     </span>
+                                  ) : col.key === "color" ? (
+                                    (() => {
+                                      const ce = SKI_COLORS.find((c) => c.id === getSkiColor(ski));
+                                      return ce && ce.id !== "none"
+                                        ? <span className="inline-flex items-center gap-1.5 text-xs"><span className={cn("inline-block h-2.5 w-2.5 rounded-full", ce.dot)} />{ce.label}</span>
+                                        : <span className="text-muted-foreground">—</span>;
+                                    })()
                                   ) : (
                                     garageCellValue(ski, col.key)
                                   )}
@@ -4380,6 +4449,44 @@ export default function AthleteDetail() {
                 data-testid="input-edit-athlete-brand"
               />
               <p className="mt-1 text-xs text-muted-foreground">{L("Fylles automatisk inn på nye skipar.", "Auto-fills on every new ski pair.")}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium">{L("Høyde (cm)", "Height (cm)")}</label>
+                <Input
+                  value={athleteForm.heightCm}
+                  onChange={(e) => setAthleteForm((f) => ({ ...f, heightCm: e.target.value }))}
+                  placeholder="180"
+                  data-testid="input-edit-athlete-height"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">{L("Vekt (kg)", "Weight (kg)")}</label>
+                <Input
+                  value={athleteForm.weightKg}
+                  onChange={(e) => setAthleteForm((f) => ({ ...f, weightKg: e.target.value }))}
+                  placeholder="72"
+                  data-testid="input-edit-athlete-weight"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">{L("Stavhøyde", "Pole height")}</label>
+                <Input
+                  value={athleteForm.poleHeight}
+                  onChange={(e) => setAthleteForm((f) => ({ ...f, poleHeight: e.target.value }))}
+                  placeholder="152 cm"
+                  data-testid="input-edit-athlete-pole-height"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">{L("Bindingsposisjon", "Binding position")}</label>
+                <Input
+                  value={athleteForm.bindingPosition}
+                  onChange={(e) => setAthleteForm((f) => ({ ...f, bindingPosition: e.target.value }))}
+                  placeholder="0 / -1 cm"
+                  data-testid="input-edit-athlete-binding"
+                />
+              </div>
             </div>
             <div className="flex items-center justify-end pt-2">
               <Button

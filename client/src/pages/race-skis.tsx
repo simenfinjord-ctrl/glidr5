@@ -17,10 +17,29 @@ type Athlete = {
   id: number;
   name: string;
   team: string | null;
+  defaultSkiBrand: string | null;
+  heightCm: string | null;
+  weightKg: string | null;
+  poleHeight: string | null;
+  bindingPosition: string | null;
   createdAt: string;
   createdById: number;
   createdByName: string;
 };
+
+// Compact profile chips (brand, height, weight, pole, binding) shown per athlete.
+function athleteMetricChips(a: Athlete, lang: string): { label: string; value: string }[] {
+  const L = (no: string, en: string) => (lang === "no" ? no : en);
+  return ([
+    [L("Merke", "Brand"), a.defaultSkiBrand],
+    [L("Høyde", "Height"), a.heightCm ? `${a.heightCm} cm` : null],
+    [L("Vekt", "Weight"), a.weightKg ? `${a.weightKg} kg` : null],
+    [L("Stav", "Pole"), a.poleHeight],
+    [L("Binding", "Binding"), a.bindingPosition],
+  ] as [string, string | null][])
+    .filter(([, v]) => !!v)
+    .map(([label, value]) => ({ label, value: value as string }));
+}
 
 export default function RaceSkis() {
   const { user } = useAuth();
@@ -31,6 +50,11 @@ export default function RaceSkis() {
   const [name, setName] = useState("");
   const [team, setTeam] = useState("");
   const [brand, setBrand] = useState("");
+  const [heightCm, setHeightCm] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [poleHeight, setPoleHeight] = useState("");
+  const [bindingPosition, setBindingPosition] = useState("");
+  const resetAthleteForm = () => { setName(""); setTeam(""); setBrand(""); setHeightCm(""); setWeightKg(""); setPoleHeight(""); setBindingPosition(""); };
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
     try {
       const stored = localStorage.getItem("glidr-raceskis-view-mode");
@@ -44,11 +68,15 @@ export default function RaceSkis() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; team: string; brand: string }) => {
+    mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; bindingPosition: string }) => {
       const res = await apiRequest("POST", "/api/athletes", {
         name: data.name,
         team: data.team.trim() || null,
         defaultSkiBrand: data.brand.trim() || null,
+        heightCm: data.heightCm.trim() || null,
+        weightKg: data.weightKg.trim() || null,
+        poleHeight: data.poleHeight.trim() || null,
+        bindingPosition: data.bindingPosition.trim() || null,
       });
       return res.json();
     },
@@ -56,9 +84,7 @@ export default function RaceSkis() {
       queryClient.invalidateQueries({ queryKey: ["/api/athletes"] });
       toast({ title: t("raceskis.athleteAdded") });
       setOpen(false);
-      setName("");
-      setTeam("");
-      setBrand("");
+      resetAthleteForm();
     },
     onError: (e) => {
       toast({
@@ -72,7 +98,7 @@ export default function RaceSkis() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    createMutation.mutate({ name: name.trim(), team: team.trim(), brand: brand.trim() });
+    createMutation.mutate({ name: name.trim(), team: team.trim(), brand: brand.trim(), heightCm, weightKg, poleHeight, bindingPosition });
   };
 
   function toggleView(mode: "grid" | "list") {
@@ -126,7 +152,7 @@ export default function RaceSkis() {
 
           <Dialog open={open} onOpenChange={(v) => {
             setOpen(v);
-            if (!v) { setName(""); setTeam(""); setBrand(""); }
+            if (!v) resetAthleteForm();
           }}>
             <DialogTrigger asChild>
               <Button
@@ -170,6 +196,24 @@ export default function RaceSkis() {
                     data-testid="input-athlete-brand"
                   />
                   <p className="mt-1 text-xs text-muted-foreground">{L("Fylles automatisk inn på nye skipar.", "Auto-fills on every new ski pair.")}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium">{L("Høyde (cm)", "Height (cm)")}</label>
+                    <Input value={heightCm} onChange={(e) => setHeightCm(e.target.value)} placeholder="180" data-testid="input-athlete-height" />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium">{L("Vekt (kg)", "Weight (kg)")}</label>
+                    <Input value={weightKg} onChange={(e) => setWeightKg(e.target.value)} placeholder="72" data-testid="input-athlete-weight" />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium">{L("Stavhøyde", "Pole height")}</label>
+                    <Input value={poleHeight} onChange={(e) => setPoleHeight(e.target.value)} placeholder="152 cm" data-testid="input-athlete-pole-height" />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium">{L("Bindingsposisjon", "Binding position")}</label>
+                    <Input value={bindingPosition} onChange={(e) => setBindingPosition(e.target.value)} placeholder="0 / -1 cm" data-testid="input-athlete-binding" />
+                  </div>
                 </div>
                 <div className="flex items-center justify-end">
                   <Button
@@ -222,8 +266,17 @@ export default function RaceSkis() {
                           {athlete.createdByName}
                         </span>
                       </div>
+                      {athleteMetricChips(athlete, language).length > 0 && (
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5" data-testid={`athlete-metrics-${athlete.id}`}>
+                          {athleteMetricChips(athlete, language).map((m) => (
+                            <span key={m.label} className="inline-flex items-center gap-1 rounded-full bg-muted/70 px-2 py-0.5 text-[10px] text-muted-foreground">
+                              <span className="font-medium text-foreground">{m.label}:</span> {m.value}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="inline-flex rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground">
+                    <div className="inline-flex rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground shrink-0">
                       {new Date(athlete.createdAt).toLocaleDateString()}
                     </div>
                   </div>
@@ -249,6 +302,13 @@ export default function RaceSkis() {
                       <span className="font-medium text-sm" data-testid={`text-athlete-name-${athlete.id}`}>
                         {athlete.name}
                       </span>
+                      {athleteMetricChips(athlete, language).length > 0 && (
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                          {athleteMetricChips(athlete, language).map((m) => (
+                            <span key={m.label}><span className="font-medium text-foreground">{m.label}:</span> {m.value}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     {athlete.team && (
                       <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800 shrink-0">

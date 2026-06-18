@@ -291,6 +291,10 @@ export async function registerRoutes(
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS borrowed_athlete_id_skating INTEGER;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS product_sheet_url TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_product_sync_at TEXT;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS height_cm TEXT;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS weight_kg TEXT;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS pole_height TEXT;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS binding_position TEXT;
       CREATE TABLE IF NOT EXISTS feedback_links (
         id SERIAL PRIMARY KEY,
         token TEXT NOT NULL UNIQUE,
@@ -5044,6 +5048,10 @@ export async function registerRoutes(
       name: req.body.name,
       team: req.body.team || null,
       defaultSkiBrand: req.body.defaultSkiBrand || null,
+      heightCm: req.body.heightCm || null,
+      weightKg: req.body.weightKg || null,
+      poleHeight: req.body.poleHeight || null,
+      bindingPosition: req.body.bindingPosition || null,
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
@@ -5064,6 +5072,10 @@ export async function registerRoutes(
     if (req.body.name !== undefined) data.name = req.body.name;
     if (req.body.team !== undefined) data.team = req.body.team;
     if (req.body.defaultSkiBrand !== undefined) data.defaultSkiBrand = req.body.defaultSkiBrand;
+    if (req.body.heightCm !== undefined) data.heightCm = req.body.heightCm || null;
+    if (req.body.weightKg !== undefined) data.weightKg = req.body.weightKg || null;
+    if (req.body.poleHeight !== undefined) data.poleHeight = req.body.poleHeight || null;
+    if (req.body.bindingPosition !== undefined) data.bindingPosition = req.body.bindingPosition || null;
     const updated = await storage.updateAthlete(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });
     res.json(updated);

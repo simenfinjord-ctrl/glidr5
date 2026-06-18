@@ -5586,20 +5586,60 @@ function SkiAnalyticsSection({
     },
   });
 
+  const [analyticsMode, setAnalyticsMode] = useState<"glide" | "feeling" | "total">("glide");
+
+  // Classify every test by what was measured in it. A test that has BOTH a
+  // speed/glide rank and a feeling rank counts as glide AND feeling AND both.
+  const testTypeCounts = useMemo(() => {
+    const byTest = new Map<number, { glide: boolean; feeling: boolean }>();
+    for (const e of allEntries) {
+      const c = byTest.get(e.testId) ?? { glide: false, feeling: false };
+      if (e.rank0km != null) c.glide = true;
+      if (e.feelingRank != null) c.feeling = true;
+      byTest.set(e.testId, c);
+    }
+    let glide = 0, feeling = 0, both = 0;
+    for (const c of byTest.values()) {
+      if (c.glide) glide++;
+      if (c.feeling) feeling++;
+      if (c.glide && c.feeling) both++;
+    }
+    return { glide, feeling, both };
+  }, [allEntries]);
+
   const skiStats = useMemo(() => {
+    const avg = (arr: number[]) => (arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
     return skis.map((ski) => {
       const entries = allEntries.filter((e) => e.raceSkiId === ski.id);
       const testCount = new Set(entries.map((e) => e.testId)).size;
       const ranks = entries.map((e) => e.rank0km).filter((r): r is number => r !== null);
       const feelings = entries.map((e) => e.feelingRank).filter((r): r is number => r !== null);
-      const avgRank = ranks.length > 0 ? ranks.reduce((a, b) => a + b, 0) / ranks.length : null;
+      // Per-ski test-type counts.
+      const glideTestCount = new Set(entries.filter((e) => e.rank0km != null).map((e) => e.testId)).size;
+      const feelingTestCount = new Set(entries.filter((e) => e.feelingRank != null).map((e) => e.testId)).size;
+      const bothTestCount = new Set(entries.filter((e) => e.rank0km != null && e.feelingRank != null).map((e) => e.testId)).size;
+      const avgRank = avg(ranks);
       const bestRank = ranks.length > 0 ? Math.min(...ranks) : null;
       const wins = ranks.filter((r) => r === 1).length;
       const winRate = ranks.length > 0 ? (wins / ranks.length) * 100 : null;
-      const avgFeeling = feelings.length > 0 ? feelings.reduce((a, b) => a + b, 0) / feelings.length : null;
-      return { ski, testCount, avgRank, bestRank, winRate, avgFeeling, entryCount: entries.length };
+      const avgFeeling = avg(feelings);
+      const bestFeeling = feelings.length > 0 ? Math.min(...feelings) : null;
+      // Combined score: average of speed rank and feeling rank (lower = better).
+      const combined = avgRank != null && avgFeeling != null ? (avgRank + avgFeeling) / 2 : null;
+      return {
+        ski, testCount, entryCount: entries.length,
+        avgRank, bestRank, winRate, avgFeeling, bestFeeling, combined,
+        glideTestCount, feelingTestCount, bothTestCount,
+      };
     }).filter((s) => s.entryCount > 0);
   }, [skis, allEntries]);
+
+  // Rows relevant to the current overview.
+  const modeStats = useMemo(() => {
+    if (analyticsMode === "glide") return skiStats.filter((s) => s.avgRank != null);
+    if (analyticsMode === "feeling") return skiStats.filter((s) => s.avgFeeling != null);
+    return skiStats.filter((s) => s.bothTestCount > 0);
+  }, [skiStats, analyticsMode]);
 
   const compareList = useMemo(() => skiStats.filter((s) => compareSkiIds.has(s.ski.id)), [skiStats, compareSkiIds]);
 
@@ -5635,46 +5675,114 @@ function SkiAnalyticsSection({
       </span>
     );
 
+  const MODES: { key: "glide" | "feeling" | "total"; label: string; desc: string }[] = [
+    { key: "glide", label: L("Glid-ytelse", "Glide Performance"), desc: L("Basert på fart/rangering", "Based on speed/ranking") },
+    { key: "feeling", label: L("Følelse-ytelse", "Feeling Performance"), desc: L("Basert på feelingtester", "Based on feeling tests") },
+    { key: "total", label: L("Total ytelse", "Total Performance"), desc: L("Forholdet mellom fart og følelse", "Speed vs. feeling relationship") },
+  ];
+
   return (
     <div className="mt-3 space-y-4" data-testid="analytics-section">
-      {/* Summary table */}
+      {/* Test-type counts — a test with both speed & feeling counts in all three. */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: L("Glidtester", "Glide tests"), value: testTypeCounts.glide, cls: "text-sky-600 dark:text-sky-400" },
+          { label: L("Feelingtester", "Feeling tests"), value: testTypeCounts.feeling, cls: "text-violet-600 dark:text-violet-400" },
+          { label: L("Begge deler", "Both"), value: testTypeCounts.both, cls: "text-emerald-600 dark:text-emerald-400" },
+        ].map((c) => (
+          <Card key={c.label} className="fs-card rounded-2xl p-3 text-center" data-testid={`count-${c.label}`}>
+            <div className={cn("text-2xl font-bold", c.cls)}>{c.value}</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">{c.label}</div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Overview switch: Glide / Feeling / Total */}
+      <div className="flex flex-wrap gap-1.5" data-testid="analytics-mode-toggle">
+        {MODES.map((m) => (
+          <button
+            key={m.key}
+            type="button"
+            onClick={() => setAnalyticsMode(m.key)}
+            className={cn(
+              "rounded-xl px-3 py-1.5 text-xs font-medium ring-1 transition-colors text-left",
+              analyticsMode === m.key ? "bg-primary text-primary-foreground ring-primary" : "ring-border text-muted-foreground hover:bg-muted/60",
+            )}
+            data-testid={`mode-${m.key}`}
+          >
+            <div>{m.label}</div>
+            <div className={cn("text-[10px]", analyticsMode === m.key ? "text-primary-foreground/80" : "text-muted-foreground/70")}>{m.desc}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Mode-aware summary table */}
       <Card className="fs-card rounded-2xl overflow-hidden" data-testid="analytics-summary-table">
         <div className="overflow-x-auto">
           <table className="w-full border-separate border-spacing-0 text-sm">
             <thead>
               <tr className="text-left text-xs text-muted-foreground border-b">
                 <th className="px-4 py-2.5 font-medium">Ski</th>
-                <th className="px-3 py-2.5 font-medium">{L("Tester", "Tests")}</th>
-                <th className="px-3 py-2.5 font-medium">{L("Skipar", "Entries")}</th>
-                <th className="px-3 py-2.5 font-medium">{L("Snittrang", "Avg Rank")}</th>
-                <th className="px-3 py-2.5 font-medium">{L("Beste rang", "Best Rank")}</th>
-                <th className="px-3 py-2.5 font-medium">{L("Seiersrate", "Win Rate")}</th>
-                <th className="px-3 py-2.5 font-medium">{L("Snittfølelse", "Avg Feeling")}</th>
+                {analyticsMode === "glide" && <>
+                  <th className="px-3 py-2.5 font-medium">{L("Glidtester", "Glide tests")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Snittrang", "Avg Rank")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Beste rang", "Best Rank")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Seiersrate", "Win Rate")}</th>
+                </>}
+                {analyticsMode === "feeling" && <>
+                  <th className="px-3 py-2.5 font-medium">{L("Feelingtester", "Feeling tests")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Snittfølelse", "Avg Feeling")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Beste følelse", "Best Feeling")}</th>
+                </>}
+                {analyticsMode === "total" && <>
+                  <th className="px-3 py-2.5 font-medium">{L("Tester (begge)", "Tests (both)")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Snitt fart", "Avg Speed")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Snitt følelse", "Avg Feeling")}</th>
+                  <th className="px-3 py-2.5 font-medium">{L("Kombinert", "Combined")}</th>
+                </>}
                 <th className="px-3 py-2.5 font-medium">{L("Sammenlign", "Compare")}</th>
               </tr>
             </thead>
             <tbody>
-              {skiStats.map(({ ski, testCount, avgRank, bestRank, winRate, avgFeeling, entryCount }, idx) => (
+              {modeStats.length === 0 && (
+                <tr><td colSpan={6} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  {analyticsMode === "glide" ? L("Ingen glidtester ennå.", "No glide tests yet.")
+                    : analyticsMode === "feeling" ? L("Ingen feelingtester ennå.", "No feeling tests yet.")
+                    : L("Ingen tester med både fart og følelse ennå.", "No tests with both speed and feeling yet.")}
+                </td></tr>
+              )}
+              {modeStats.map((s, idx) => (
                 <tr
-                  key={ski.id}
+                  key={s.ski.id}
                   className={cn("border-t border-border/30", idx % 2 === 0 ? "bg-background/30" : "bg-background/10")}
-                  data-testid={`analytics-row-${ski.id}`}
+                  data-testid={`analytics-row-${s.ski.id}`}
                 >
                   <td className="px-4 py-2.5">
-                    <div className="font-semibold text-sm">{ski.skiId}</div>
-                    {ski.brand && <div className="text-xs text-muted-foreground">{ski.brand}</div>}
+                    <div className="font-semibold text-sm">{s.ski.skiId}</div>
+                    {s.ski.brand && <div className="text-xs text-muted-foreground">{s.ski.brand}</div>}
                   </td>
-                  <td className="px-3 py-2.5 text-muted-foreground">{testCount}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground">{entryCount}</td>
-                  <td className="px-3 py-2.5">{avgRank !== null ? avgRank.toFixed(1) : "—"}</td>
-                  <td className="px-3 py-2.5">{rankBadge(bestRank)}</td>
-                  <td className="px-3 py-2.5">{winRate !== null ? `${winRate.toFixed(0)}%` : "—"}</td>
-                  <td className="px-3 py-2.5">{avgFeeling !== null ? avgFeeling.toFixed(1) : "—"}</td>
+                  {analyticsMode === "glide" && <>
+                    <td className="px-3 py-2.5 text-muted-foreground">{s.glideTestCount}</td>
+                    <td className="px-3 py-2.5">{s.avgRank !== null ? s.avgRank.toFixed(1) : "—"}</td>
+                    <td className="px-3 py-2.5">{rankBadge(s.bestRank)}</td>
+                    <td className="px-3 py-2.5">{s.winRate !== null ? `${s.winRate.toFixed(0)}%` : "—"}</td>
+                  </>}
+                  {analyticsMode === "feeling" && <>
+                    <td className="px-3 py-2.5 text-muted-foreground">{s.feelingTestCount}</td>
+                    <td className="px-3 py-2.5">{s.avgFeeling !== null ? s.avgFeeling.toFixed(1) : "—"}</td>
+                    <td className="px-3 py-2.5">{rankBadge(s.bestFeeling)}</td>
+                  </>}
+                  {analyticsMode === "total" && <>
+                    <td className="px-3 py-2.5 text-muted-foreground">{s.bothTestCount}</td>
+                    <td className="px-3 py-2.5">{s.avgRank !== null ? s.avgRank.toFixed(1) : "—"}</td>
+                    <td className="px-3 py-2.5">{s.avgFeeling !== null ? s.avgFeeling.toFixed(1) : "—"}</td>
+                    <td className="px-3 py-2.5 font-semibold">{s.combined !== null ? s.combined.toFixed(1) : "—"}</td>
+                  </>}
                   <td className="px-3 py-2.5">
                     <Checkbox
-                      checked={compareSkiIds.has(ski.id)}
-                      onCheckedChange={() => toggleCompare(ski.id)}
-                      data-testid={`checkbox-compare-${ski.id}`}
+                      checked={compareSkiIds.has(s.ski.id)}
+                      onCheckedChange={() => toggleCompare(s.ski.id)}
+                      data-testid={`checkbox-compare-${s.ski.id}`}
                     />
                   </td>
                 </tr>

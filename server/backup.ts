@@ -147,7 +147,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
     const racePrepEntriesResult = await (pool as any).query(
       `SELECT rpe.id, rpe.race_prep_id, rpe.athlete_name, rpe.ski_id,
               rpe.ski_id_classic, rpe.ski_id_skating,
-              rpe.waxer_name, rpe.notes, rpe.created_at
+              rpe.waxer_name, rpe.notes, rpe.athlete_rating, rpe.athlete_comment, rpe.created_at
        FROM race_prep_entries rpe
        JOIN race_preps rp ON rp.id = rpe.race_prep_id
        WHERE rp.team_id = $1 ORDER BY rpe.race_prep_id, rpe.athlete_name`,
@@ -557,9 +557,9 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
 
       if (entries.length > 0) {
         rpBoldRows.push(rpRows.length);
-        rpRows.push(['  Athlete', 'Ski ID (Glide)', 'Ski ID (Classic)', 'Ski ID (Skating)', 'Waxer', 'Notes']);
+        rpRows.push(['  Athlete', 'Ski ID (Glide)', 'Ski ID (Classic)', 'Ski ID (Skating)', 'Waxer', 'Notes', 'Athlete Rating', 'Athlete Comment']);
         for (const e of entries) {
-          rpRows.push([`  ${e.athlete_name}`, e.ski_id || '', e.ski_id_classic || '', e.ski_id_skating || '', e.waxer_name || '', e.notes || '']);
+          rpRows.push([`  ${e.athlete_name}`, e.ski_id || '', e.ski_id_classic || '', e.ski_id_skating || '', e.waxer_name || '', e.notes || '', e.athlete_rating || '', e.athlete_comment || '']);
         }
       }
       rpRows.push([]);
@@ -577,7 +577,10 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       const sheetTitle = athleteSheetTitles[ai];
 
       const athleteSkis = allRaceSkis.filter(s => s.athleteId === athlete.id);
-      const athleteTests = allTests.filter((t: any) => t.testSkiSource === 'raceskis' && t.athleteId === athlete.id);
+      // Chronological order (oldest → newest) so each athlete's tests read as a timeline.
+      const athleteTests = allTests
+        .filter((t: any) => t.testSkiSource === 'raceskis' && t.athleteId === athlete.id)
+        .sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
 
       const rows: any[][] = [];
       const bolds: number[] = [];
@@ -589,11 +592,13 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       rows.push([]);
 
       h('=== RACE SKIS ===');
-      cols('ID', 'Ski ID', 'Serial', 'Brand', 'Discipline', 'Construction', 'Mold', 'Base', 'Grind', 'Heights', 'Year', 'Archived');
+      cols('ID', 'Ski ID', 'Serial', 'Brand', 'Discipline', 'Construction', 'Mold', 'Base', 'Grind', 'Heights', 'Year', 'Length', 'Type', 'Where received', 'Training', 'Notes', 'Archived');
       for (const ski of athleteSkis) {
         rows.push([ski.id, ski.skiId, ski.serialNumber || '', ski.brand || '', ski.discipline,
           ski.construction || '', ski.mold || '', ski.base || '', ski.grind || '',
-          ski.heights || '', ski.year || '', ski.archivedAt ? 'Yes' : '']);
+          ski.heights || '', ski.year || '', ski.length || '', ski.typeOfSki || '',
+          ski.whereReceived || '', ski.isTrainingSki ? 'Yes' : '', ski.notes || '',
+          ski.archivedAt ? 'Yes' : '']);
       }
       rows.push([]);
 
@@ -616,8 +621,9 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
         rows.push([`--- Test #${test.id}: ${(test as any).testName || test.location} ---`]);
         rows.push(['Date', test.date, 'Location', test.location, 'Type', (test as any).testType]);
         if (w) rows.push(['Weather', `Snow ${w.snowTemperatureC ?? '?'}°C`, `Air ${w.airTemperatureC ?? '?'}°C`, `Type: ${w.snowType || '—'}`, `Track: ${w.trackHardness || '—'}`]);
+        if ((test as any).notes) rows.push(['Notes', (test as any).notes]);
 
-        const headerRow = ['Ski #', 'Race Ski ID', 'Feeling Rank'];
+        const headerRow = ['Ski #', 'Race Ski ID', 'Feeling Rank', 'Feeling Note'];
         if ((test as any).testType === 'Classic') headerRow.push('Kick Rank');
         if (distLabels.length > 0) {
           for (const label of distLabels) { headerRow.push(`Result ${label}`); headerRow.push(`Rank ${label}`); }
@@ -634,7 +640,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
             const rs = allRaceSkis.find(s => s.id === entry.raceSkiId);
             if (rs) skiLabel = `${rs.skiId} (${rs.brand || ''} ${rs.grind || ''})`;
           }
-          const row: any[] = [entry.skiNumber, skiLabel, entry.feelingRank ?? ''];
+          const row: any[] = [entry.skiNumber, skiLabel, entry.feelingRank ?? '', entry.feelingNote ?? ''];
           if ((test as any).testType === 'Classic') row.push(entry.kickRank ?? '');
           if (distLabels.length > 0) {
             const rounds = parseResultsArray(entry.results);
@@ -854,7 +860,7 @@ export async function buildTeamJsonExport(teamId: number): Promise<string> {
   const racePrepEntriesResult = await (pool as any).query(
     `SELECT rpe.id, rpe.race_prep_id, rpe.athlete_name, rpe.ski_id,
             rpe.ski_id_classic, rpe.ski_id_skating,
-            rpe.waxer_name, rpe.notes, rpe.created_at
+            rpe.waxer_name, rpe.notes, rpe.athlete_rating, rpe.athlete_comment, rpe.created_at
      FROM race_prep_entries rpe
      JOIN race_preps rp ON rp.id = rpe.race_prep_id
      WHERE rp.team_id = $1 ORDER BY rpe.race_prep_id, rpe.athlete_name`,
@@ -1076,7 +1082,10 @@ function buildExportHtml(data: {
   // Tests with entries
   const sortedTests = [...data.tests].sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
   const grindTests  = sortedTests.filter((t: any) => t.testType === 'Grind' || t.testType === 'Grinding');
-  const otherTests  = sortedTests.filter((t: any) => t.testType !== 'Grind' && t.testType !== 'Grinding');
+  const nonGrind    = sortedTests.filter((t: any) => t.testType !== 'Grind' && t.testType !== 'Grinding');
+  // Athlete (race-ski) tests are grouped per athlete below; everything else is the flat list.
+  const athleteTestsAll = nonGrind.filter((t: any) => t.testSkiSource === 'raceskis' && t.athleteId);
+  const otherTests  = nonGrind.filter((t: any) => !(t.testSkiSource === 'raceskis' && t.athleteId));
 
   const renderTestsHtml = (tests: any[]): string => {
     let html = '';
@@ -1145,7 +1154,11 @@ function buildExportHtml(data: {
           const row: string[] = [rounds[0]?.rank != null ? String(rounds[0].rank) : '—', String(e.skiNumber || ''), getProductLabel(e, isAthleteTest), e.methodology || ''];
           for (const rr of rounds) { row.push(rr.result != null ? String(rr.result) : '—'); row.push(rr.rank != null ? String(rr.rank) : '—'); }
           if (isClassic) row.push(e.kickRank != null ? String(e.kickRank) : '—');
-          row.push(e.feelingRank != null ? String(e.feelingRank) : '—');
+          row.push(
+            e.feelingRank != null
+              ? String(e.feelingRank) + (e.feelingNote ? ` — ${e.feelingNote}` : '')
+              : (e.feelingNote || '—')
+          );
           return row;
         });
 
@@ -1162,6 +1175,29 @@ function buildExportHtml(data: {
   if (otherTests.length > 0) {
     body += htmlSection(`Tests with Results (${otherTests.length})`, renderTestsHtml(otherTests));
   }
+
+  // Athlete race-ski tests — grouped per athlete, each athlete's tests in
+  // chronological order. This is the critical view for a stand-alone backup.
+  if (athleteTestsAll.length > 0) {
+    const byAthlete = new Map<number, any[]>();
+    for (const t of athleteTestsAll) {
+      if (!byAthlete.has(t.athleteId)) byAthlete.set(t.athleteId, []);
+      byAthlete.get(t.athleteId)!.push(t);
+    }
+    const orderedAthletes = [...data.athletes].sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+    // Include any athlete ids present in tests but missing from the athlete list.
+    const extraIds = [...byAthlete.keys()].filter((id) => !orderedAthletes.some((a: any) => a.id === id));
+    let perAthHtml = '';
+    const renderFor = (athId: number, athName: string) => {
+      const tests = (byAthlete.get(athId) || []).sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
+      if (tests.length === 0) return;
+      perAthHtml += `<div class="athlete-sub">${esc(athName)} (${tests.length})</div>` + renderTestsHtml(tests);
+    };
+    for (const a of orderedAthletes) renderFor(a.id, a.name);
+    for (const id of extraIds) renderFor(id, athleteMap.get(id)?.name || `Athlete #${id}`);
+    body += htmlSection(`Athlete Race-Ski Tests (by athlete, ${athleteTestsAll.length})`, perAthHtml);
+  }
+
   if (grindTests.length > 0) {
     body += htmlSection(`Grind Tests (${grindTests.length})`, renderTestsHtml(grindTests));
   }
@@ -1225,11 +1261,12 @@ function buildExportHtml(data: {
         e.ski_id || '—',
         e.waxer_name || '—',
         e.notes || '',
+        [e.athlete_rating, e.athlete_comment].filter(Boolean).join(' — ') || '',
       ]);
       rpHtml += `<div class="test-block">
         <div class="test-header">${esc(rp.date)} — ${esc(rp.location || '—')} — ${esc(rp.race_type || '—')} — ${esc(rp.discipline || '—')}</div>
         <div class="test-meta">${details}</div>
-        ${rpEntries.length > 0 ? htmlTable(['Athlete', isSkating ? 'Ski (Skating)' : 'Ski (Classic)', 'Glide Ski', 'Waxer', 'Notes'], athleteRows, true) : '<p class="no-entries">No athletes registered.</p>'}
+        ${rpEntries.length > 0 ? htmlTable(['Athlete', isSkating ? 'Ski (Skating)' : 'Ski (Classic)', 'Glide Ski', 'Waxer', 'Notes', 'Athlete feedback'], athleteRows, true) : '<p class="no-entries">No athletes registered.</p>'}
       </div>`;
     }
     body += htmlSection(`Race Preparations (${data.racePreps.length})`, rpHtml);
@@ -1281,6 +1318,7 @@ h1 { font-size: 14pt; margin-bottom: 3pt; }
 .subtitle { font-size: 7pt; color: #555; margin-bottom: 14pt; }
 .section { margin-bottom: 14pt; }
 h2 { font-size: 9.5pt; font-weight: bold; margin-bottom: 3pt; border-bottom: 1px solid #ccc; padding-bottom: 2pt; page-break-after: avoid; }
+.athlete-sub { font-size: 8.5pt; font-weight: bold; color: #16a34a; margin: 8pt 0 3pt; padding-bottom: 1pt; border-bottom: 1px dotted #bbb; page-break-after: avoid; }
 .test-block { margin-bottom: 8pt; page-break-inside: avoid; }
 .test-header { font-size: 7.5pt; font-weight: bold; margin-bottom: 1pt; }
 .test-meta { font-size: 6pt; color: #555; margin-bottom: 2pt; }
@@ -1365,7 +1403,7 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
   const racePrepEntriesResult = await (pool as any).query(
     `SELECT rpe.id, rpe.race_prep_id, rpe.athlete_name, rpe.ski_id,
             rpe.ski_id_classic, rpe.ski_id_skating,
-            rpe.waxer_name, rpe.notes, rpe.created_at
+            rpe.waxer_name, rpe.notes, rpe.athlete_rating, rpe.athlete_comment, rpe.created_at
      FROM race_prep_entries rpe
      JOIN race_preps rp ON rp.id = rpe.race_prep_id
      WHERE rp.team_id = $1 ORDER BY rpe.race_prep_id, rpe.athlete_name`,

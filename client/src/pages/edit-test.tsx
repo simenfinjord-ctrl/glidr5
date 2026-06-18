@@ -110,6 +110,7 @@ type TestEntry = {
   rankXkm: number | null;
   results: string | null;
   feelingRank: number | null;
+  feelingNote: string | null;
   kickRank: number | null;
   grindType?: string | null;
   grindStone?: string | null;
@@ -318,6 +319,7 @@ export default function EditTest() {
         applications: e.methodology ? e.methodology.split('|') : [],
         roundResults: parseEntryResults(e, numRounds),
         feelingRank: e.feelingRank ?? null,
+        feelingNote: (e as any).feelingNote ?? null,
         kickRank: e.kickRank ?? null,
         grindType: e.grindType ?? undefined,
         grindStone: e.grindStone ?? undefined,
@@ -584,6 +586,7 @@ export default function EditTest() {
                     rankXkm: r.roundResults[1]?.rank ?? null,
                     results: JSON.stringify(r.roundResults),
                     feelingRank: r.feelingRank,
+                    feelingNote: r.feelingNote ?? null,
                     kickRank: r.kickRank,
                     grindType: r.grindType || null,
                     grindStone: r.grindStone || null,

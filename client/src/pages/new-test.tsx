@@ -513,6 +513,7 @@ export default function NewTest() {
                     rankXkm: r.roundResults[1]?.rank ?? null,
                     results: JSON.stringify(r.roundResults),
                     feelingRank: r.feelingRank,
+                    feelingNote: r.feelingNote ?? null,
                     kickRank: r.kickRank,
                     grindType: r.grindType || null,
                     grindStone: r.grindStone || null,

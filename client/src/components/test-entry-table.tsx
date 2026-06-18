@@ -31,6 +31,7 @@ export type EntryRow = {
   applications?: string[]; // [primaryApp, add0App, add1App, ...]
   roundResults: RoundResult[];
   feelingRank: number | null;
+  feelingNote?: string | null;
   kickRank: number | null;
   grindType?: string;
   grindStone?: string;
@@ -123,7 +124,8 @@ export function TestEntryTable({
   grindProfiles?: GrindProfile[];
   visibleGrindCols?: string[];
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const feelingNotePlaceholder = language === "no" ? "Notat…" : "Note…";
 
   const roundRanks = useMemo(() => {
     return distanceLabels.map((_, roundIdx) => {
@@ -211,7 +213,7 @@ export function TestEntryTable({
                 </div>
               </th>
             ))}
-            <th className="px-3 py-3">Feeling</th>
+            <th className="px-3 py-3">{language === "no" ? "Feeling + notat" : "Feeling + note"}</th>
             {isClassic && <th className="px-3 py-3">Kick</th>}
             <th className="px-1 py-3">
               <Button
@@ -549,21 +551,34 @@ export function TestEntryTable({
                   </>
                 ))}
                 <td className="px-3 py-2">
-                  <Input
-                    inputMode="numeric"
-                    type="number"
-                    min={1}
-                    value={row.feelingRank ?? ""}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      const num = v === "" ? null : Number(v);
-                      const next = rows.map((r) => (r.id === row.id ? { ...r, feelingRank: Number.isNaN(num) ? null : num } : r));
-                      setRows(next);
-                    }}
-                    className="h-9 w-16 bg-background"
-                    placeholder="—"
-                    data-testid={`input-feeling-${row.id}`}
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      inputMode="numeric"
+                      type="number"
+                      min={1}
+                      value={row.feelingRank ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        const num = v === "" ? null : Number(v);
+                        const next = rows.map((r) => (r.id === row.id ? { ...r, feelingRank: Number.isNaN(num) ? null : num } : r));
+                        setRows(next);
+                      }}
+                      className="h-9 w-14 bg-background"
+                      placeholder="—"
+                      data-testid={`input-feeling-${row.id}`}
+                    />
+                    <Input
+                      value={row.feelingNote ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        const next = rows.map((r) => (r.id === row.id ? { ...r, feelingNote: v } : r));
+                        setRows(next);
+                      }}
+                      className="h-9 w-36 bg-background"
+                      placeholder={feelingNotePlaceholder}
+                      data-testid={`input-feeling-note-${row.id}`}
+                    />
+                  </div>
                 </td>
                 {isClassic && (
                 <td className="px-3 py-2">

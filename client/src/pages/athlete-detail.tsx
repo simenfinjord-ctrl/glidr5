@@ -435,6 +435,45 @@ function athleteRatingClass(r: string): string {
     : "bg-amber-100 text-amber-800 ring-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:ring-amber-800";
 }
 
+// Heuristic interpretation of a ski's feeling notes into one summary sentence.
+// (No LLM available server-side, so this uses sentiment keywords + recurring terms.)
+const FEELING_POS = ["rask", "fort", "kjapp", "god", "bra", "stabil", "fin", "best", "topp", "lett", "smidig", "balansert", "fast", "stable", "good", "great", "smooth", "quick", "nice", "top", "easy", "light", "balanced"];
+const FEELING_NEG = ["treg", "seig", "dårlig", "darlig", "ustabil", "hard", "tung", "glapp", "skrens", "nervøs", "nervos", "slow", "sluggish", "unstable", "bad", "heavy", "stiff", "harsh", "poor", "nervous"];
+const FEELING_STOP = new Set(["og", "i", "på", "pa", "er", "det", "som", "en", "et", "med", "for", "av", "til", "litt", "veldig", "men", "var", "the", "and", "is", "it", "to", "of", "in", "on", "a", "an", "very", "was", "but", "with", "felt", "ski", "skien", "skiene"]);
+
+function summarizeFeelingNotes(
+  notes: { note: string; rank: number | null; date: string }[],
+  lang: string,
+): string | null {
+  const L = (no: string, en: string) => (lang === "no" ? no : en);
+  const withNotes = notes.filter((n) => n.note && n.note.trim());
+  if (withNotes.length === 0) return null;
+  const all = withNotes.map((n) => n.note.toLowerCase()).join(" ");
+  let pos = 0, neg = 0;
+  for (const w of FEELING_POS) if (all.includes(w)) pos++;
+  for (const w of FEELING_NEG) if (all.includes(w)) neg++;
+  // Recurring meaningful words.
+  const freq = new Map<string, number>();
+  for (const tok of all.split(/[^a-zæøåäöü0-9]+/i)) {
+    const w = tok.trim();
+    if (w.length < 3 || FEELING_STOP.has(w)) continue;
+    freq.set(w, (freq.get(w) ?? 0) + 1);
+  }
+  const recurring = [...freq.entries()].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([w]) => w);
+  const sentiment = pos > neg && pos > 0 ? L("Overveiende positiv tilbakemelding.", "Mostly positive feedback.")
+    : neg > pos && neg > 0 ? L("Overveiende negativ tilbakemelding.", "Mostly negative feedback.")
+    : pos > 0 && neg > 0 ? L("Blandet tilbakemelding.", "Mixed feedback.")
+    : "";
+  const sorted = [...withNotes].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const latest = sorted[0]?.note.trim();
+  const parts: string[] = [];
+  parts.push(L(`${withNotes.length} feelingnotat${withNotes.length === 1 ? "" : "er"}.`, `${withNotes.length} feeling note${withNotes.length === 1 ? "" : "s"}.`));
+  if (sentiment) parts.push(sentiment);
+  if (recurring.length) parts.push(L(`Gjentakende: ${recurring.join(", ")}.`, `Recurring: ${recurring.join(", ")}.`));
+  if (latest) parts.push(L(`Siste: «${latest}».`, `Latest: “${latest}”.`));
+  return parts.join(" ");
+}
+
 // ── Ski Garage list-view columns ────────────────────────────────────────────
 // Every standard ski parameter plus RA-value. Custom params are appended
 // dynamically (key "cp:<name>"). Numeric columns sort numerically.
@@ -5648,6 +5687,21 @@ function SkiAnalyticsSection({
 
   const compareList = useMemo(() => skiStats.filter((s) => compareSkiIds.has(s.ski.id)), [skiStats, compareSkiIds]);
 
+  // Interpret each ski's feeling notes into one summary sentence.
+  const testDateById = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const t of raceSkiTests) m.set(t.id, t.date);
+    return m;
+  }, [raceSkiTests]);
+  const feelingSummaries = useMemo(() => {
+    return skiStats.map((s) => {
+      const notes = allEntries
+        .filter((e) => e.raceSkiId === s.ski.id && (e as any).feelingNote)
+        .map((e) => ({ note: (e as any).feelingNote as string, rank: e.feelingRank, date: testDateById.get(e.testId) ?? "" }));
+      return { ski: s.ski, summary: summarizeFeelingNotes(notes, language) };
+    }).filter((x): x is { ski: RaceSki; summary: string } => !!x.summary);
+  }, [skiStats, allEntries, testDateById, language]);
+
   function toggleCompare(skiId: number) {
     setCompareSkiIds((prev) => {
       const next = new Set(prev);
@@ -5796,6 +5850,27 @@ function SkiAnalyticsSection({
           </table>
         </div>
       </Card>
+
+      {/* Feeling notes — interpreted summary per ski (Feeling overview only) */}
+      {analyticsMode === "feeling" && feelingSummaries.length > 0 && (
+        <Card className="fs-card rounded-2xl p-4" data-testid="analytics-feeling-summaries">
+          <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+            <MessageSquare className="h-4 w-4 text-violet-500" />
+            {L("Feeling-oppsummering", "Feeling summary")}
+          </h3>
+          <p className="text-[11px] text-muted-foreground mb-3">
+            {L("Automatisk tolkning av tidligere feelingnotater per skipar.", "Automatic interpretation of past feeling notes per ski pair.")}
+          </p>
+          <div className="space-y-2">
+            {feelingSummaries.map(({ ski, summary }) => (
+              <div key={ski.id} className="rounded-lg bg-muted/40 px-3 py-2" data-testid={`feeling-summary-${ski.id}`}>
+                <div className="text-sm font-semibold">{ski.skiId}{ski.brand ? <span className="ml-1.5 text-xs font-normal text-muted-foreground">{ski.brand}</span> : null}</div>
+                <div className="text-xs text-foreground/90 mt-0.5">{summary}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Comparison panel */}
       {compareList.length >= 2 && (

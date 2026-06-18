@@ -4048,6 +4048,7 @@ export default function AthleteDetail() {
 
             {activeFormFields.map((fieldKey) => {
               if (fieldKey === "heights" && skiForm.discipline !== "Classic") return null;
+              if (fieldKey === "typeOfSki" && skiForm.discipline !== "Classic") return null;
               const custom = isCustomField(fieldKey);
               if (fieldKey === "discipline") {
                 return (

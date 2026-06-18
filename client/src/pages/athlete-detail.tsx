@@ -4029,11 +4029,13 @@ export default function AthleteDetail() {
           if (!v) { setEditingSki(null); resetSkiForm(); }
         }}
       >
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingSki ? t("common.edit") : t("raceskis.addSki")}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSkiSubmit} className="space-y-3">
+          <form onSubmit={handleSkiSubmit} className="space-y-4">
+            {/* Multi-column grid on PC so the form fits without scrolling; single column on mobile. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
             <div>
               <label className="mb-1 block text-sm font-medium">{t("raceskis.skiId")} *</label>
               <Input
@@ -4103,7 +4105,7 @@ export default function AthleteDetail() {
             })}
 
             {/* Colour tag field */}
-            <div>
+            <div className="sm:col-span-2 lg:col-span-3">
               <label className="mb-2 block text-sm font-medium">{L("Fargemerke", "Colour tag")}</label>
               <div className="flex flex-wrap gap-2">
                 {SKI_COLORS.map((c) => (
@@ -4128,7 +4130,7 @@ export default function AthleteDetail() {
             </div>
 
             {/* Notes (always visible in the garage) */}
-            <div>
+            <div className="sm:col-span-2 lg:col-span-3">
               <label className="mb-1 block text-sm font-medium">{L("Notat", "Note")}</label>
               <textarea
                 value={skiForm.notes}
@@ -4139,6 +4141,7 @@ export default function AthleteDetail() {
                 data-testid="textarea-ski-notes"
               />
             </div>
+            </div>{/* end grid */}
 
             {/* Training-ski toggle */}
             <button
@@ -5394,6 +5397,7 @@ function SkiDetailPanel({
   const raceWeatherById = useMemo(() => new Map(weatherList.map(w => [w.id, w])), [weatherList]);
   const { data: regrinds = [] } = useQuery<RaceSkiRegrind[]>({
     queryKey: [`/api/race-skis/${ski.id}/regrinds`],
+    select: (rows) => [...rows].sort((a, b) => (b.date || "").localeCompare(a.date || "")),
   });
 
   let customParams: Record<string, string> = {};
@@ -5895,6 +5899,7 @@ function SkiCard({
   const { data: regrinds = [] } = useQuery<RaceSkiRegrind[]>({
     queryKey: [`/api/race-skis/${ski.id}/regrinds`],
     enabled: expanded,
+    select: (rows) => [...rows].sort((a, b) => (b.date || "").localeCompare(a.date || "")),
   });
 
   // Waxer-logged race usages for this ski pair (no admin race prep needed)

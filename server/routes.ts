@@ -289,6 +289,8 @@ export async function registerRoutes(
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS borrowed_athlete_id INTEGER;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS borrowed_athlete_id_classic INTEGER;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS borrowed_athlete_id_skating INTEGER;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS product_sheet_url TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_product_sync_at TEXT;
       CREATE TABLE IF NOT EXISTS feedback_links (
         id SERIAL PRIMARY KEY,
         token TEXT NOT NULL UNIQUE,
@@ -943,6 +945,40 @@ export async function registerRoutes(
       stopAutoBackup(id);
     }
     res.json(updated);
+  });
+
+  // ── Product import from Google Sheet ───────────────────────────────────────
+  // Connect a Google Sheet of products. Sync is ADDITIVE — new rows become
+  // products; nothing is ever deleted from Glidr when removed from the sheet.
+  app.put("/api/teams/:id/product-sheet", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const id = parseInt(req.params.id);
+    if (u.isAdmin !== 1 && !(u.isTeamAdmin === 1 && u.teamId === id)) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    const url = req.body.url?.trim() || null;
+    if (url && !url.includes('docs.google.com/spreadsheets')) {
+      return res.status(400).json({ message: "Must be a Google Sheets URL" });
+    }
+    const updated = await storage.updateTeam(id, { productSheetUrl: url } as any);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
+  });
+
+  app.post("/api/teams/:id/product-sync", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const id = parseInt(req.params.id);
+    if (u.isAdmin !== 1 && !(u.isTeamAdmin === 1 && u.teamId === id)) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    const { isGoogleSheetsAvailable } = await import('./googleSheets');
+    if (!isGoogleSheetsAvailable()) {
+      return res.status(400).json({ message: "Google Sheets is not configured on this server." });
+    }
+    const { syncProductsFromSheet } = await import('./productSync');
+    const result = await syncProductsFromSheet(id, resolveCreateGroupScope(req));
+    if (!result.success) return res.status(400).json({ message: result.error || "Sync failed" });
+    res.json(result);
   });
 
   // ── Google Drive backup folder ─────────────────────────────────────────────

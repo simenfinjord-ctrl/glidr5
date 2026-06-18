@@ -192,6 +192,8 @@ export const teams = pgTable("teams", {
   superAdminAccess: integer("super_admin_access").notNull().default(1),
   backupSheetUrl: text("backup_sheet_url"),
   lastBackupAt: text("last_backup_at"),
+  productSheetUrl: text("product_sheet_url"),
+  lastProductSyncAt: text("last_product_sync_at"),
   watchPin: text("watch_pin"),
   isPaused: integer("is_paused").notNull().default(0),
   // Billing / subscription

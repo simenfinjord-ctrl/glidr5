@@ -1,0 +1,138 @@
+// © 2025 Glidr — Proprietary and confidential. All rights reserved.
+// Import products from a team's Google Sheet into the Products table.
+//
+// Design contract (per product owner):
+//   • ADDITIVE ONLY — products that appear in the sheet but not in Glidr are
+//     created. Products removed from the sheet are NEVER deleted from Glidr.
+//   • Columns are interpreted leniently: header names are matched case-
+//     insensitively against a set of Norwegian/English synonyms, so the team
+//     can keep their own column titles.
+//
+// Auth: uses the same service-account Google Sheets client as the backup
+// feature. The team must share their product sheet with the service-account
+// email (Settings → Backup shows it).
+import { storage } from "./storage";
+import { pool } from "./db";
+import { getUncachableGoogleSheetClient } from "./googleSheets";
+
+export function extractSpreadsheetId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+
+// Header synonyms → canonical field. All lowercased, trimmed.
+const HEADER_SYNONYMS: Record<string, "category" | "brand" | "name" | "stock"> = {
+  // category
+  "category": "category", "kategori": "category", "type": "category", "produkttype": "category",
+  "product category": "category", "kategorier": "category",
+  // brand
+  "brand": "brand", "merke": "brand", "produsent": "brand", "manufacturer": "brand", "make": "brand",
+  // name
+  "name": "name", "navn": "name", "product": "name", "produkt": "name", "produktnavn": "name",
+  "product name": "name", "model": "name", "modell": "name",
+  // stock
+  "stock": "stock", "lager": "stock", "antall": "stock", "quantity": "stock", "qty": "stock",
+  "lagerbeholdning": "stock", "stock quantity": "stock", "beholdning": "stock",
+};
+
+const norm = (s: any) => String(s ?? "").trim();
+const key = (s: any) => norm(s).toLowerCase();
+
+type SyncResult = {
+  success: boolean;
+  added: number;
+  skipped: number;
+  rows: number;
+  error?: string;
+};
+
+export async function syncProductsFromSheet(teamId: number, groupScope = "All"): Promise<SyncResult> {
+  const team = await storage.getTeam(teamId);
+  if (!team) return { success: false, added: 0, skipped: 0, rows: 0, error: "Team not found" };
+  const spreadsheetId = extractSpreadsheetId((team as any).productSheetUrl);
+  if (!spreadsheetId) {
+    return { success: false, added: 0, skipped: 0, rows: 0, error: "No product sheet configured" };
+  }
+
+  let values: any[][];
+  try {
+    const sheets = await getUncachableGoogleSheetClient();
+    const resp = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "A1:Z100000",
+      valueRenderOption: "UNFORMATTED_VALUE",
+    });
+    values = (resp.data.values as any[][]) || [];
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    // The most common failure: sheet not shared with the service account.
+    return { success: false, added: 0, skipped: 0, rows: 0, error: `Could not read sheet: ${msg}` };
+  }
+
+  if (values.length < 2) {
+    return { success: false, added: 0, skipped: 0, rows: 0, error: "Sheet is empty or has no data rows" };
+  }
+
+  // Map header columns → canonical field.
+  const header = values[0].map((h) => key(h));
+  const colOf: Partial<Record<"category" | "brand" | "name" | "stock", number>> = {};
+  header.forEach((h, i) => {
+    const field = HEADER_SYNONYMS[h];
+    if (field && colOf[field] === undefined) colOf[field] = i;
+  });
+
+  if (colOf.brand === undefined || colOf.name === undefined) {
+    return {
+      success: false, added: 0, skipped: 0, rows: 0,
+      error: "Could not find a 'Brand'/'Merke' and 'Name'/'Navn' column in the sheet header",
+    };
+  }
+
+  // Existing products in this team (incl. archived) — dedupe by brand+name+category.
+  const existingRes = await (pool as any).query(
+    `SELECT brand, name, category FROM products WHERE team_id = $1`, [teamId]
+  );
+  const seen = new Set(existingRes.rows.map((p: any) => `${key(p.brand)}|${key(p.name)}|${key(p.category)}`));
+
+  const now = new Date().toISOString();
+  let added = 0;
+  let skipped = 0;
+  const dataRows = values.slice(1);
+
+  for (const row of dataRows) {
+    const brand = norm(row[colOf.brand!]);
+    const name = norm(row[colOf.name!]);
+    if (!brand || !name) { skipped++; continue; }
+    const category = colOf.category !== undefined ? (norm(row[colOf.category!]) || "Other") : "Other";
+    const dedupeKey = `${key(brand)}|${key(name)}|${key(category)}`;
+    if (seen.has(dedupeKey)) { skipped++; continue; }
+
+    let stockQuantity = 0;
+    if (colOf.stock !== undefined) {
+      const n = parseInt(norm(row[colOf.stock!]), 10);
+      if (!isNaN(n) && n >= 0) stockQuantity = n;
+    }
+
+    try {
+      await storage.createProduct({
+        category,
+        brand,
+        name,
+        stockQuantity,
+        createdAt: now,
+        createdById: 0,
+        createdByName: "Google Sheet sync",
+        groupScope,
+        teamId,
+      } as any);
+      seen.add(dedupeKey);
+      added++;
+    } catch {
+      skipped++;
+    }
+  }
+
+  await storage.updateTeam(teamId, { lastProductSyncAt: now } as any);
+  return { success: true, added, skipped, rows: dataRows.length };
+}

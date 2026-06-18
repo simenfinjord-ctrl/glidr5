@@ -1,5 +1,5 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, useEffect } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -378,11 +378,102 @@ function GroupAssignModal({
   );
 }
 
+// ── Google Sheet → Products connection (admin only) ──────────────────────────
+function ProductSheetDialog({ teamId, lang }: { teamId: number; lang: string }) {
+  const L = (no: string, en: string) => (lang === "no" ? no : en);
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState("");
+  const [result, setResult] = useState<string | null>(null);
+
+  const { data: teams = [] } = useQuery<any[]>({ queryKey: ["/api/teams"], enabled: open });
+  const { data: status } = useQuery<any>({ queryKey: ["/api/backup/status"], enabled: open });
+  const team = teams.find((t) => t.id === teamId) ?? teams[0];
+
+  useEffect(() => {
+    if (team) setUrl(team.productSheetUrl ?? "");
+  }, [team?.id, team?.productSheetUrl]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => apiRequest("PUT", `/api/teams/${teamId}/product-sheet`, { url: url.trim() || null }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      toast({ title: L("Lenke lagret", "Link saved") });
+    },
+    onError: (e: any) => toast({ title: L("Kunne ikke lagre", "Could not save"), description: e?.message, variant: "destructive" }),
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/teams/${teamId}/product-sync`, {});
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      setResult(L(`${data.added} lagt til, ${data.skipped} hoppet over (av ${data.rows} rader).`,
+                  `${data.added} added, ${data.skipped} skipped (of ${data.rows} rows).`));
+      toast({ title: L("Synkronisering fullført", "Sync complete") });
+    },
+    onError: (e: any) => toast({ title: L("Synkronisering feilet", "Sync failed"), description: e?.message, variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" data-testid="button-product-sheet">
+          <Table2 className="mr-2 h-4 w-4" />
+          {L("Google Sheet", "Google Sheet")}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{L("Koble til Google Sheet", "Connect Google Sheet")}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <p className="text-muted-foreground">
+            {L("Lim inn lenken til regnearket med produktene deres. Nye rader blir lagt til i Products automatisk. Produkter fjernes aldri fra Glidr selv om de fjernes fra arket.",
+               "Paste the link to your products spreadsheet. New rows are added to Products automatically. Products are never removed from Glidr even if removed from the sheet.")}
+          </p>
+          <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground mb-1">{L("Slik gjør du:", "How to:")}</p>
+            <p>{L("1. Del regnearket (Del → Alle med lenken kan se), eller del direkte med:", "1. Share the sheet (Share → Anyone with the link can view), or share directly with:")}</p>
+            {status?.serviceAccountEmail
+              ? <p className="font-mono break-all text-foreground mt-1">{status.serviceAccountEmail}</p>
+              : <p className="italic mt-1">{L("(tjenestekonto ikke konfigurert på serveren)", "(service account not configured on the server)")}</p>}
+            <p className="mt-2">{L("2. Header-raden må ha kolonner for Merke/Brand og Navn/Name. Valgfritt: Kategori/Category, Lager/Stock.",
+                                   "2. The header row must have columns for Brand/Merke and Name/Navn. Optional: Category/Kategori, Stock/Lager.")}</p>
+          </div>
+          <Input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://docs.google.com/spreadsheets/d/…"
+            data-testid="input-product-sheet-url"
+          />
+          <div className="flex items-center justify-between gap-2">
+            <Button variant="outline" size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} data-testid="button-save-product-sheet">
+              {saveMutation.isPending ? L("Lagrer…", "Saving…") : L("Lagre lenke", "Save link")}
+            </Button>
+            <Button size="sm" onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending || !team?.productSheetUrl} data-testid="button-sync-products">
+              {syncMutation.isPending ? L("Synkroniserer…", "Syncing…") : L("Synkroniser nå", "Sync now")}
+            </Button>
+          </div>
+          {result && <p className="text-xs text-emerald-600">{result}</p>}
+          {team?.lastProductSyncAt && (
+            <p className="text-[11px] text-muted-foreground">{L("Sist synkronisert:", "Last synced:")} {fmtDate(team.lastProductSyncAt)}</p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Products() {
   const { t, language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const { user } = useAuth();
   const isAdmin = !!user?.isAdmin || !!user?.isTeamAdmin;
+  const activeTeamId = (user as any)?.activeTeamId || (user as any)?.teamId;
   const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"products" | "storage" | "stock-changes" | "archived" | "compare">("products");
   const [productLayout, setProductLayout] = useState<"grid" | "list" | "table">("grid");
@@ -629,6 +720,7 @@ export default function Products() {
                 {L("Arkiv", "Archive")}
               </Button>
             )}
+            {isAdmin && activeTeamId && <ProductSheetDialog teamId={activeTeamId} lang={language} />}
             <Button
               variant={viewMode === "stock-changes" ? "default" : "outline"}
               size="sm"

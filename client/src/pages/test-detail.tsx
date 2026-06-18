@@ -2,7 +2,8 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, EyeOff, Eye, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch, ImageIcon, MessageSquare, Send, Link2, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch, ImageIcon, MessageSquare, Send, Link2, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { AppShell } from "@/components/app-shell";
@@ -617,6 +618,37 @@ export default function TestDetail() {
   const [showReviewRunsheet, setShowReviewRunsheet] = useState(false);
   const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>(["grindType"]);
 
+  // Shared test actions — used by both the desktop button row and the mobile "Options" menu.
+  async function openEditTest() {
+    // Warm the React Query cache before navigating to edit (avoids the Radix Select
+    // race that blanks form fields on first visit).
+    await Promise.all([
+      queryClient.prefetchQuery({
+        queryKey: [`/api/tests/${id}`],
+        queryFn: () => fetch(`/api/tests/${id}`, { credentials: "include" }).then((r) => r.json()),
+      }),
+      queryClient.prefetchQuery({
+        queryKey: [`/api/tests/${id}/entries`],
+        queryFn: () => fetch(`/api/tests/${id}/entries`, { credentials: "include" }).then((r) => r.json()),
+      }),
+    ]);
+    setLocation(`/tests/${id}/edit`);
+  }
+  async function copyPublicLink() {
+    setCopyLinkLoading(true);
+    try {
+      const res = await fetch(`/api/tests/${id}/public-link`, { method: "POST", credentials: "include" });
+      if (!res.ok) throw new Error("Failed to generate link");
+      const { url } = await res.json();
+      await navigator.clipboard.writeText(url);
+      toast({ title: L("Lenke kopiert til utklippstavle", "Link copied to clipboard") });
+    } catch {
+      toast({ title: L("Kunne ikke kopiere lenke", "Could not copy link"), variant: "destructive" });
+    } finally {
+      setCopyLinkLoading(false);
+    }
+  }
+
   // ── Feeling test (drag-rank ski pairs 1..N + comment → feeling_rank/feeling_note) ──
   const [feelingOpen, setFeelingOpen] = useState(false);
   const [feelingOrder, setFeelingOrder] = useState<number[]>([]);
@@ -1028,7 +1060,7 @@ export default function TestDetail() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-5" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div className="flex flex-col gap-5">
         <div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
@@ -1068,7 +1100,75 @@ export default function TestDetail() {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* Mobile: collapse all actions into a single "Options" dropdown so they
+                don't overflow horizontally on narrow screens. */}
+            <div className="sm:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" data-testid="button-test-options">
+                    <MoreHorizontal className="mr-2 h-4 w-4" />
+                    {L("Valg", "Options")}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {!isBlindTester && (
+                    <DropdownMenuItem onClick={() => setHideDetails((v) => !v)}>
+                      {hideDetails ? <Eye className="mr-2 h-4 w-4" /> : <EyeOff className="mr-2 h-4 w-4" />}
+                      {hideDetails ? t("tests.showBlind") : t("tests.hideBlind")}
+                    </DropdownMenuItem>
+                  )}
+                  {!isBlindTester && isRaceSkiTest && sortedEntries.length > 0 && (
+                    <DropdownMenuItem onClick={openFeeling}>
+                      <Award className="mr-2 h-4 w-4" />
+                      {L("Feelingtest", "Feeling test")}
+                    </DropdownMenuItem>
+                  )}
+                  {sortedEntries.length >= 2 && (
+                    <DropdownMenuItem onClick={() => setShowRunsheet(true)}>
+                      <Trophy className="mr-2 h-4 w-4" />
+                      {t("testDetail.runsheet")}
+                    </DropdownMenuItem>
+                  )}
+                  {(test as any)?.runsheetBracket && (
+                    <DropdownMenuItem onClick={() => setShowReviewRunsheet(true)}>
+                      <ClipboardList className="mr-2 h-4 w-4" />
+                      {t("testDetail.runsheet")}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  {isSuperAdmin && (
+                    <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
+                      <Share2 className="mr-2 h-4 w-4" />
+                      {t("testDetail.shareLink")}
+                    </DropdownMenuItem>
+                  )}
+                  {canEditTests && (
+                    <DropdownMenuItem onClick={copyPublicLink} disabled={copyLinkLoading}>
+                      <Link2 className="mr-2 h-4 w-4" />
+                      Copy link
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => setLocation(`/tests/new?duplicate=${id}`)}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    {t("newTest.duplicateTest")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={generatePDF} disabled={pdfLoading}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    {pdfLoading ? "Generating…" : "PDF"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={openEditTest}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    {t("testDetail.editTest")}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteDialog(true)}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {t("testDetail.deleteTest")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 flex-wrap justify-end">
               {sortedEntries.length >= 2 && (
                 <Button variant="outline" size="sm" onClick={() => setShowRunsheet(true)} data-testid="button-complete-runsheet">
                   <Trophy className="mr-2 h-4 w-4" />
@@ -1093,23 +1193,7 @@ export default function TestDetail() {
                   size="sm"
                   disabled={copyLinkLoading}
                   data-testid="button-copy-link"
-                  onClick={async () => {
-                    setCopyLinkLoading(true);
-                    try {
-                      const res = await fetch(`/api/tests/${id}/public-link`, {
-                        method: "POST",
-                        credentials: "include",
-                      });
-                      if (!res.ok) throw new Error("Failed to generate link");
-                      const { url } = await res.json();
-                      await navigator.clipboard.writeText(url);
-                      toast({ title: L("Lenke kopiert til utklippstavle", "Link copied to clipboard") });
-                    } catch {
-                      toast({ title: L("Kunne ikke kopiere lenke", "Could not copy link"), variant: "destructive" });
-                    } finally {
-                      setCopyLinkLoading(false);
-                    }
-                  }}
+                  onClick={copyPublicLink}
                 >
                   <Link2 className="mr-2 h-4 w-4" />
                   Copy link
@@ -1129,26 +1213,7 @@ export default function TestDetail() {
                 variant="outline"
                 size="sm"
                 data-testid="button-edit-test"
-                onClick={async () => {
-                  // Warm the React Query cache before navigating to edit.
-                  // This replicates the manual "edit → back → edit" workaround:
-                  // on a second visit the test + entries data is already cached so
-                  // form.reset() runs with real values before the first render, avoiding
-                  // the Radix Select race condition that blanks the form fields.
-                  await Promise.all([
-                    queryClient.prefetchQuery({
-                      queryKey: [`/api/tests/${id}`],
-                      queryFn: () =>
-                        fetch(`/api/tests/${id}`, { credentials: "include" }).then((r) => r.json()),
-                    }),
-                    queryClient.prefetchQuery({
-                      queryKey: [`/api/tests/${id}/entries`],
-                      queryFn: () =>
-                        fetch(`/api/tests/${id}/entries`, { credentials: "include" }).then((r) => r.json()),
-                    }),
-                  ]);
-                  setLocation(`/tests/${id}/edit`);
-                }}
+                onClick={openEditTest}
               >
                 <Pencil className="mr-2 h-4 w-4" />
                 {t("testDetail.editTest")}
@@ -1393,6 +1458,7 @@ export default function TestDetail() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="hidden sm:inline-flex"
                   data-testid="button-toggle-hide"
                   onClick={() => setHideDetails((v) => !v)}
                 >
@@ -1401,7 +1467,7 @@ export default function TestDetail() {
                 </Button>
               )}
               {!isBlindTester && isRaceSkiTest && sortedEntries.length > 0 && (
-                <Button variant="outline" size="sm" onClick={openFeeling} data-testid="button-feelingtest">
+                <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={openFeeling} data-testid="button-feelingtest">
                   <Award className="mr-2 h-4 w-4" />
                   {L("Feelingtest", "Feeling test")}
                 </Button>

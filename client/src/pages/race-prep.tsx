@@ -503,8 +503,8 @@ function BorrowSkiDialog({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    // Borrowing intentionally spans ALL athletes' ski pairs in the team.
     return skis
-      .filter((s) => s.athleteId !== ownAthleteId)
       .filter((s) => !disciplineFilter || s.discipline === disciplineFilter)
       .filter((s) =>
         !q ||

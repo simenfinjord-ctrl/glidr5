@@ -3864,7 +3864,9 @@ export default function AthleteDetail() {
                       <SelectTrigger data-testid="select-ski-type"><SelectValue placeholder={L("Ingen", "None")} /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">{L("Ingen", "None")}</SelectItem>
+                        <SelectItem value="Hard Wax">Hard Wax</SelectItem>
                         <SelectItem value="Klister/Cover">Klister/Cover</SelectItem>
+                        <SelectItem value="Klister">Klister</SelectItem>
                         <SelectItem value="Zero">Zero</SelectItem>
                       </SelectContent>
                     </Select>

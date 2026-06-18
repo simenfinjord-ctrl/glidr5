@@ -616,6 +616,17 @@ export default function AthleteDetail() {
               localStorage.setItem("glidr-raceski-grind-moved-v1", "1");
             } catch {}
           }
+          // One-time migration: append newer fields (length, type of ski, where received)
+          // for users whose saved config predates them, so they actually appear in the form.
+          if (!localStorage.getItem("glidr-raceski-newfields-v1")) {
+            for (const k of ["length", "typeOfSki", "whereReceived"]) {
+              if (!parsed.includes(k)) parsed.push(k);
+            }
+            try {
+              localStorage.setItem("glidr-raceski-form-fields", JSON.stringify(parsed));
+              localStorage.setItem("glidr-raceski-newfields-v1", "1");
+            } catch {}
+          }
           return parsed;
         }
       }

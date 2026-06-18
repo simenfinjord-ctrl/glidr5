@@ -24,12 +24,15 @@ import { useOffline } from "@/lib/offline-context";
 import { cn, fmtDate } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
+// Product categories === the product tags used across Glidr / Google Sheet sync.
+const PRODUCT_CATEGORIES = ["Parafin", "Liquid", "Block", "Structure Tool"] as const;
+
 function productCategoryKey(v: string) {
-  const map: Record<string, string> = { "Glide product": "products.glide", "Topping product": "products.topping", "Structure tool": "products.structure" };
-  return map[v] ?? v;
+  // Categories are now plain tag names (no i18n key); show as-is.
+  return v;
 }
 
-type ProductCategory = "Glide product" | "Topping product" | "Structure tool";
+type ProductCategory = typeof PRODUCT_CATEGORIES[number];
 
 type Product = {
   id: number;
@@ -60,14 +63,15 @@ type StockChange = {
 };
 
 const schema = z.object({
-  category: z.enum(["Glide product", "Topping product", "Structure tool"]),
+  category: z.enum(["Parafin", "Liquid", "Block", "Structure Tool"]),
   brand: z.string().min(1, "Brand is required"),
   name: z.string().min(1, "Name is required"),
 });
 
 function categoryBadgeClass(cat: string) {
-  if (cat === "Glide product") return "fs-badge-glide";
-  if (cat === "Topping product") return "fs-badge-topping";
+  if (cat === "Parafin") return "fs-badge-glide";
+  if (cat === "Liquid") return "fs-badge-topping";
+  if (cat === "Block") return "fs-badge-glide";
   return "fs-badge-structure";
 }
 
@@ -80,7 +84,7 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: {
-      category: "Glide product",
+      category: "Parafin",
       brand: "",
       name: "",
     },
@@ -139,9 +143,10 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="Glide product">{t("products.glide")}</SelectItem>
-                  <SelectItem value="Topping product">{t("products.topping")}</SelectItem>
-                  <SelectItem value="Structure tool">{t("products.structure")}</SelectItem>
+                  <SelectItem value="Parafin">Parafin</SelectItem>
+                  <SelectItem value="Liquid">Liquid</SelectItem>
+                  <SelectItem value="Block">Block</SelectItem>
+                  <SelectItem value="Structure Tool">Structure Tool</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -246,9 +251,10 @@ function EditProductModal({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="Glide product">{t("products.glide")}</SelectItem>
-                  <SelectItem value="Topping product">{t("products.topping")}</SelectItem>
-                  <SelectItem value="Structure tool">{t("products.structure")}</SelectItem>
+                  <SelectItem value="Parafin">Parafin</SelectItem>
+                  <SelectItem value="Liquid">Liquid</SelectItem>
+                  <SelectItem value="Block">Block</SelectItem>
+                  <SelectItem value="Structure Tool">Structure Tool</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -880,9 +886,10 @@ export default function Products() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="All">{t("products.filterCategory")}</SelectItem>
-                    <SelectItem value="Glide product">{t("products.glide")}</SelectItem>
-                    <SelectItem value="Topping product">{t("products.topping")}</SelectItem>
-                    <SelectItem value="Structure tool">{t("products.structure")}</SelectItem>
+                    <SelectItem value="Parafin">Parafin</SelectItem>
+                    <SelectItem value="Liquid">Liquid</SelectItem>
+                    <SelectItem value="Block">Block</SelectItem>
+                    <SelectItem value="Structure Tool">Structure Tool</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -12,7 +12,7 @@ import { Check } from "lucide-react";
 
 type Item = {
   kind: "usage" | "prep"; id: number; date: string; location: string | null;
-  discipline: string | null; label: string; athleteRating: string | null; athleteComment: string | null;
+  discipline: string | null; distance: string | null; label: string; athleteRating: string | null; athleteComment: string | null;
 };
 
 const RATINGS = ["Competitive+", "Competitive", "Competitive-"];
@@ -105,12 +105,22 @@ export default function AthleteFeedback() {
                     const saved = savedKeys.has(k);
                     return (
                       <div key={k} className="rounded-xl border border-border bg-card p-3" data-testid={`feedback-item-${k}`}>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-semibold text-sm">
-                            {it.label}{it.discipline ? ` · ${it.discipline}` : ""}
-                            {it.kind === "prep" && <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground align-middle">{L("Raceprep", "Race prep")}</span>}
-                          </span>
-                          {saved && <span className="flex items-center gap-1 text-xs text-emerald-600"><Check className="h-3.5 w-3.5" />{L("Lagret", "Saved")}</span>}
+                        <div className="flex items-start justify-between mb-2 gap-2">
+                          <div className="min-w-0">
+                            <span className="font-semibold text-sm">
+                              {it.label}
+                              {it.kind === "prep" && <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground align-middle">{L("Raceprep", "Race prep")}</span>}
+                            </span>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                              <span className="rounded-full bg-muted px-1.5 py-0.5">
+                                {L("Distanse", "Distance")}: {it.distance || "—"}
+                              </span>
+                              <span className="rounded-full bg-muted px-1.5 py-0.5">
+                                {L("Stilart", "Discipline")}: {it.discipline || "—"}
+                              </span>
+                            </div>
+                          </div>
+                          {saved && <span className="flex items-center gap-1 text-xs text-emerald-600 flex-shrink-0"><Check className="h-3.5 w-3.5" />{L("Lagret", "Saved")}</span>}
                         </div>
                         <div className="flex flex-wrap gap-2 mb-2">
                           {RATINGS.map((r) => (

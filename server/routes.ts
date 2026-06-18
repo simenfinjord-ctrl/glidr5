@@ -5356,10 +5356,10 @@ export async function registerRoutes(
        WHERE rpe.athlete_id=$1 AND rp.team_id=$2 ORDER BY rp.date DESC`, [athleteId, teamId]
     );
     const items = [
-      ...usages.rows.map((u: any) => ({ kind: "usage", id: u.id, date: u.date, location: u.location, discipline: u.discipline, label: `${u.brand ? u.brand + " " : ""}${u.skiId}`, athleteRating: u.athleteRating, athleteComment: u.athleteComment })),
+      ...usages.rows.map((u: any) => ({ kind: "usage", id: u.id, date: u.date, location: u.location, discipline: u.discipline, distance: null, label: `${u.brand ? u.brand + " " : ""}${u.skiId}`, athleteRating: u.athleteRating, athleteComment: u.athleteComment })),
       ...preps.rows.map((p: any) => {
         const skis = [p.skiId, p.skiIdClassic, p.skiIdSkating].filter(Boolean).join(" / ");
-        return { kind: "prep", id: p.id, date: p.date, location: p.location, discipline: p.discipline, label: skis || p.raceType || "Race prep", athleteRating: p.athleteRating, athleteComment: p.athleteComment };
+        return { kind: "prep", id: p.id, date: p.date, location: p.location, discipline: p.discipline, distance: p.raceType || null, label: skis || p.raceType || "Race prep", athleteRating: p.athleteRating, athleteComment: p.athleteComment };
       }),
     ];
     res.json({ athleteName: ath.rows[0]?.name ?? "", items });

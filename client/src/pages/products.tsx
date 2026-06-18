@@ -461,6 +461,9 @@ function ProductSheetDialog({ teamId, lang }: { teamId: number; lang: string }) 
             </Button>
           </div>
           {result && <p className="text-xs text-emerald-600">{result}</p>}
+          {team?.productSheetGroup && (
+            <p className="text-[11px] text-muted-foreground">{L("Importeres til gruppe:", "Imported into group:")} <span className="font-medium text-foreground">{team.productSheetGroup}</span></p>
+          )}
           {team?.lastProductSyncAt && (
             <p className="text-[11px] text-muted-foreground">{L("Sist synkronisert:", "Last synced:")} {fmtDate(team.lastProductSyncAt)}</p>
           )}

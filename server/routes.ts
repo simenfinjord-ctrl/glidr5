@@ -290,6 +290,7 @@ export async function registerRoutes(
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS borrowed_athlete_id_classic INTEGER;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS borrowed_athlete_id_skating INTEGER;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS product_sheet_url TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS product_sheet_group TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_product_sync_at TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS height_cm TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS weight_kg TEXT;
@@ -965,12 +966,14 @@ export async function registerRoutes(
     if (url && !url.includes('docs.google.com/spreadsheets')) {
       return res.status(400).json({ message: "Must be a Google Sheets URL" });
     }
-    const updated = await storage.updateTeam(id, { productSheetUrl: url } as any);
+    // Remember the group the sheet is connected from so imports land there.
+    const importGroup = url ? resolveCreateGroupScope(req) : null;
+    const updated = await storage.updateTeam(id, { productSheetUrl: url, productSheetGroup: importGroup } as any);
     if (!updated) return res.status(404).json({ message: "Not found" });
     const { startAutoProductSync, stopAutoProductSync, syncProductsFromSheet } = await import('./productSync');
     if (url) {
       // Run an immediate sync, then keep it auto-syncing every 5 minutes.
-      syncProductsFromSheet(id, resolveCreateGroupScope(req)).catch(() => {});
+      syncProductsFromSheet(id, importGroup || undefined).catch(() => {});
       startAutoProductSync(id);
     } else {
       stopAutoProductSync(id);
@@ -989,7 +992,10 @@ export async function registerRoutes(
       return res.status(400).json({ message: "Google Sheets is not configured on this server." });
     }
     const { syncProductsFromSheet } = await import('./productSync');
-    const result = await syncProductsFromSheet(id, resolveCreateGroupScope(req));
+    // Use the group the sheet was connected from; fall back to the requester's group.
+    const team = await storage.getTeam(id);
+    const group = (team as any)?.productSheetGroup || resolveCreateGroupScope(req);
+    const result = await syncProductsFromSheet(id, group);
     if (!result.success) return res.status(400).json({ message: result.error || "Sync failed" });
     res.json(result);
   });

@@ -63,9 +63,12 @@ type SyncResult = {
   error?: string;
 };
 
-export async function syncProductsFromSheet(teamId: number, groupScope = "All"): Promise<SyncResult> {
+export async function syncProductsFromSheet(teamId: number, groupScope?: string): Promise<SyncResult> {
   const team = await storage.getTeam(teamId);
   if (!team) return { success: false, added: 0, skipped: 0, rows: 0, error: "Team not found" };
+  // Imported products go into the group the sheet was connected from (e.g. "A-Team"),
+  // falling back to the stored group, then "All".
+  const effectiveGroup = groupScope ?? (team as any).productSheetGroup ?? "All";
   const spreadsheetId = extractSpreadsheetId((team as any).productSheetUrl);
   if (!spreadsheetId) {
     return { success: false, added: 0, skipped: 0, rows: 0, error: "No product sheet configured" };
@@ -139,7 +142,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope = "All"):
         createdAt: now,
         createdById: 0,
         createdByName: "Google Sheet sync",
-        groupScope,
+        groupScope: effectiveGroup,
         teamId,
       } as any);
       seen.add(dedupeKey);

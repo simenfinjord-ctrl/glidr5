@@ -23,9 +23,11 @@ export function extractSpreadsheetId(url: string | null | undefined): string | n
 
 // Header synonyms → canonical field. All lowercased, trimmed.
 const HEADER_SYNONYMS: Record<string, "category" | "brand" | "name" | "stock"> = {
-  // category
+  // category (a.k.a. the product tag/etikett)
   "category": "category", "kategori": "category", "type": "category", "produkttype": "category",
   "product category": "category", "kategorier": "category",
+  "product type": "category", "producttype": "category", "produkt type": "category",
+  "type of product": "category", "type produkt": "category", "etikett": "category", "tag": "category",
   // brand
   "brand": "brand", "merke": "brand", "produsent": "brand", "manufacturer": "brand", "make": "brand",
   // name
@@ -58,6 +60,7 @@ function normalizeCategory(raw: string): string {
 type SyncResult = {
   success: boolean;
   added: number;
+  updated?: number;
   skipped: number;
   rows: number;
   error?: string;
@@ -108,14 +111,17 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
     };
   }
 
-  // Existing products in this team (incl. archived) — dedupe by brand+name+category.
+  // Existing products in this team (incl. archived), keyed by brand+name so a
+  // product's tag/category can be corrected on re-sync instead of duplicated.
   const existingRes = await (pool as any).query(
-    `SELECT brand, name, category FROM products WHERE team_id = $1`, [teamId]
+    `SELECT id, brand, name, category FROM products WHERE team_id = $1`, [teamId]
   );
-  const seen = new Set(existingRes.rows.map((p: any) => `${key(p.brand)}|${key(p.name)}|${key(p.category)}`));
+  const existing = new Map<string, { id: number; category: string }>();
+  for (const p of existingRes.rows) existing.set(`${key(p.brand)}|${key(p.name)}`, { id: p.id, category: p.category });
 
   const now = new Date().toISOString();
   let added = 0;
+  let updated = 0;
   let skipped = 0;
   const dataRows = values.slice(1);
 
@@ -124,8 +130,22 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
     const name = norm(row[colOf.name!]);
     if (!brand || !name) { skipped++; continue; }
     const category = normalizeCategory(colOf.category !== undefined ? norm(row[colOf.category!]) : "");
-    const dedupeKey = `${key(brand)}|${key(name)}|${key(category)}`;
-    if (seen.has(dedupeKey)) { skipped++; continue; }
+    const matchKey = `${key(brand)}|${key(name)}`;
+    const found = existing.get(matchKey);
+
+    if (found) {
+      // Already imported — only correct the category/tag if it changed.
+      if (key(found.category) !== key(category)) {
+        try {
+          await (pool as any).query(`UPDATE products SET category = $1 WHERE id = $2`, [category, found.id]);
+          found.category = category;
+          updated++;
+        } catch { skipped++; }
+      } else {
+        skipped++;
+      }
+      continue;
+    }
 
     let stockQuantity = 0;
     if (colOf.stock !== undefined) {
@@ -134,7 +154,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
     }
 
     try {
-      await storage.createProduct({
+      const created = await storage.createProduct({
         category,
         brand,
         name,
@@ -145,7 +165,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
         groupScope: effectiveGroup,
         teamId,
       } as any);
-      seen.add(dedupeKey);
+      existing.set(matchKey, { id: (created as any).id, category });
       added++;
     } catch {
       skipped++;
@@ -153,7 +173,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
   }
 
   await storage.updateTeam(teamId, { lastProductSyncAt: now } as any);
-  return { success: true, added, skipped, rows: dataRows.length };
+  return { success: true, added, updated, skipped, rows: dataRows.length };
 }
 
 // ── Auto-sync scheduler (every 5 minutes per team with a sheet configured) ───
@@ -166,7 +186,7 @@ export function startAutoProductSync(teamId: number, intervalMs = 5 * 60 * 1000)
       const team = await storage.getTeam(teamId);
       if ((team as any)?.productSheetUrl) {
         const r = await syncProductsFromSheet(teamId);
-        if (r.success && r.added > 0) console.log(`[ProductSync] Auto-sync team ${teamId}: +${r.added} products`);
+        if (r.success && (r.added > 0 || (r.updated ?? 0) > 0)) console.log(`[ProductSync] Auto-sync team ${teamId}: +${r.added} new, ${r.updated ?? 0} re-tagged`);
         else if (!r.success) console.warn(`[ProductSync] Auto-sync team ${teamId} failed: ${r.error}`);
       } else {
         stopAutoProductSync(teamId);

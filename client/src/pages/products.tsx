@@ -417,8 +417,8 @@ function ProductSheetDialog({ teamId, lang }: { teamId: number; lang: string }) 
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
-      setResult(L(`${data.added} lagt til, ${data.skipped} hoppet over (av ${data.rows} rader).`,
-                  `${data.added} added, ${data.skipped} skipped (of ${data.rows} rows).`));
+      setResult(L(`${data.added} lagt til, ${data.updated ?? 0} oppdatert, ${data.skipped} hoppet over (av ${data.rows} rader).`,
+                  `${data.added} added, ${data.updated ?? 0} updated, ${data.skipped} skipped (of ${data.rows} rows).`));
       toast({ title: L("Synkronisering fullført", "Sync complete") });
     },
     onError: (e: any) => toast({ title: L("Synkronisering feilet", "Sync failed"), description: e?.message, variant: "destructive" }),

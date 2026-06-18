@@ -5763,7 +5763,9 @@ export async function registerRoutes(
          rp.method,
          rp.notes AS "prepNotes",
          rp.weather_id AS "weatherId",
-         rp.start_time AS "startTime"
+         rp.start_time AS "startTime",
+         rpe.athlete_rating AS "athleteRating",
+         rpe.athlete_comment AS "athleteComment"
        FROM race_prep_entries rpe
        JOIN race_preps rp ON rpe.race_prep_id = rp.id
        WHERE rpe.athlete_id = $1 AND rp.team_id = $2

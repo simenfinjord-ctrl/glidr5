@@ -239,6 +239,8 @@ type AthleteRaceHistory = {
   method: string | null;
   prepNotes: string | null;
   weatherId: number | null;
+  athleteRating: string | null;
+  athleteComment: string | null;
 };
 
 // Inline-editable ski ID for one slot of a race-prep entry, used on the athlete
@@ -420,6 +422,13 @@ const TRACK_HARDNESS_OPTIONS = ["Very soft", "Soft", "Medium hard", "Hard", "Ver
 const SNOW_HUMIDITY_TYPE_OPTIONS = ["Dry", "Moist", "Wet", "Very wet", "Slush"] as const;
 const GRAIN_SIZE_OPTIONS = ["Extra fine", "Very fine", "Fine", "Average", "Coarse", "Very coarse"] as const;
 const SNOW_STAGE_OPTIONS = ["Falling new", "New", "Irreg. dir. new", "Irreg. dir. transf.", "Transformed"] as const;
+
+// Colour for an athlete feedback rating (Competitive+ / Competitive / Competitive-).
+function athleteRatingClass(r: string): string {
+  return r === "Competitive+" ? "bg-emerald-100 text-emerald-700 ring-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-800"
+    : r === "Competitive-" ? "bg-rose-100 text-rose-700 ring-rose-300 dark:bg-rose-900/30 dark:text-rose-300 dark:ring-rose-800"
+    : "bg-amber-100 text-amber-800 ring-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:ring-amber-800";
+}
 
 // ── Ski Garage list-view columns ────────────────────────────────────────────
 // Every standard ski parameter plus RA-value. Custom params are appended
@@ -2505,6 +2514,23 @@ export default function AthleteDetail() {
                             <span className="text-xs text-muted-foreground">
                               · {entry.method}
                             </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* ── Athlete feedback (from the feedback link) ── */}
+                      {(entry.athleteRating || entry.athleteComment) && (
+                        <div className="flex flex-wrap items-center gap-2 mb-3 rounded-lg bg-muted/40 px-3 py-2">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            {L("Tilbakemelding fra utøver", "Athlete feedback")}
+                          </span>
+                          {entry.athleteRating && (
+                            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1", athleteRatingClass(entry.athleteRating))}>
+                              {entry.athleteRating}
+                            </span>
+                          )}
+                          {entry.athleteComment && (
+                            <span className="text-xs text-muted-foreground italic">“{entry.athleteComment}”</span>
                           )}
                         </div>
                       )}

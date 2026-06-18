@@ -688,6 +688,36 @@ export default function Products() {
     },
   });
 
+  const bulkArchiveMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      await Promise.all(ids.map((id) => apiRequest("POST", `/api/products/${id}/archive`)));
+    },
+    onSuccess: (_d, ids) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products/archived"] });
+      setSelectedIds(new Set());
+      toast({ title: L(`Arkiverte ${ids.length} produkt${ids.length !== 1 ? "er" : ""}`, `Archived ${ids.length} product${ids.length !== 1 ? "s" : ""}`) });
+    },
+    onError: (e) => {
+      toast({ title: L("Feil", "Error"), description: e instanceof Error ? e.message : L("Ukjent feil", "Unknown error"), variant: "destructive" });
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      await Promise.all(ids.map((id) => apiRequest("DELETE", `/api/products/${id}`)));
+    },
+    onSuccess: (_d, ids) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products/archived"] });
+      setSelectedIds(new Set());
+      toast({ title: L(`Slettet ${ids.length} produkt${ids.length !== 1 ? "er" : ""}`, `Deleted ${ids.length} product${ids.length !== 1 ? "s" : ""}`) });
+    },
+    onError: (e) => {
+      toast({ title: L("Feil", "Error"), description: e instanceof Error ? e.message : L("Ukjent feil", "Unknown error"), variant: "destructive" });
+    },
+  });
+
   return (
     <AppShell>
       <div className="flex flex-col gap-5">
@@ -1119,25 +1149,54 @@ export default function Products() {
                     ? <><CheckSquare className="mr-2 h-4 w-4" />{L("Fjern alle", "Deselect all")}</>
                     : <><Square className="mr-2 h-4 w-4" />{L("Velg alle", "Select all")}</>}
                 </Button>
-                {selectedIds.size > 0 && groupNames.length > 0 && (
+                {selectedIds.size > 0 && (
                   <>
                     <span className="text-sm text-muted-foreground">{selectedIds.size} {L("valgt", "selected")}</span>
-                    <Select value={bulkGroup} onValueChange={setBulkGroup}>
-                      <SelectTrigger className="h-9 w-auto min-w-[160px] text-sm">
-                        <SelectValue placeholder={L("Tilordne til gruppe…", "Assign to group…")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {groupNames.map((g) => (
-                          <SelectItem key={g} value={g}>{g}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {groupNames.length > 0 && (
+                      <>
+                        <Select value={bulkGroup} onValueChange={setBulkGroup}>
+                          <SelectTrigger className="h-9 w-auto min-w-[160px] text-sm">
+                            <SelectValue placeholder={L("Tilordne til gruppe…", "Assign to group…")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {groupNames.map((g) => (
+                              <SelectItem key={g} value={g}>{g}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          disabled={!bulkGroup || bulkAssignMutation.isPending}
+                          onClick={() => bulkAssignMutation.mutate({ ids: Array.from(selectedIds), groupScope: bulkGroup })}
+                        >
+                          {L("Tilordne til gruppe", "Assign to group")}
+                        </Button>
+                      </>
+                    )}
                     <Button
+                      variant="outline"
                       size="sm"
-                      disabled={!bulkGroup || bulkAssignMutation.isPending}
-                      onClick={() => bulkAssignMutation.mutate({ ids: Array.from(selectedIds), groupScope: bulkGroup })}
+                      disabled={bulkArchiveMutation.isPending}
+                      onClick={() => bulkArchiveMutation.mutate(Array.from(selectedIds))}
+                      data-testid="button-bulk-archive"
                     >
-                      {L("Tilordne til gruppe", "Assign to group")}
+                      <Archive className="mr-2 h-4 w-4" />
+                      {L("Arkiver", "Archive")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      disabled={bulkDeleteMutation.isPending}
+                      onClick={() => {
+                        if (window.confirm(L(`Slette ${selectedIds.size} produkt${selectedIds.size !== 1 ? "er" : ""} permanent? Dette kan ikke angres.`, `Permanently delete ${selectedIds.size} product${selectedIds.size !== 1 ? "s" : ""}? This cannot be undone.`))) {
+                          bulkDeleteMutation.mutate(Array.from(selectedIds));
+                        }
+                      }}
+                      data-testid="button-bulk-delete"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      {L("Slett", "Delete")}
                     </Button>
                   </>
                 )}

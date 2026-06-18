@@ -489,12 +489,20 @@ function garageSortValue(s: any, key: string): number | string {
   if (key === "length") return num(s.length);
   if (key === "ra") return num(garageParseCustom(s).ra_value);
   if (key === "color") { const idx = SKI_COLORS.findIndex((c) => c.id === getSkiColor(s)); return idx < 0 ? 0 : idx; }
-  if (key.startsWith("cp:")) {
-    const v = garageParseCustom(s)[key.slice(3)];
-    const n = parseFloat(String(v ?? "").replace(",", "."));
-    return isNaN(n) ? String(v ?? "") : n;
-  }
+  // Custom params + free-text standard fields keep their string value; the
+  // comparator below uses a numeric-aware natural sort so values like "10b",
+  // "SL21" or "5093" interpret sensibly without a fixed format.
+  if (key.startsWith("cp:")) return String(garageParseCustom(s)[key.slice(3)] ?? "");
   return (s as any)[key] ?? "";
+}
+// Natural, numeric-aware comparison so free-text/custom values sort sensibly.
+function garageCompare(av: number | string, bv: number | string): number {
+  if (typeof av === "number" && typeof bv === "number") return av - bv;
+  const as = String(av), bs = String(bv);
+  // Push empty values to the end regardless of direction intent.
+  if (!as && bs) return 1;
+  if (as && !bs) return -1;
+  return as.localeCompare(bs, undefined, { numeric: true, sensitivity: "base" });
 }
 // Display string for a cell ("—" when empty).
 function garageCellValue(s: any, key: string): string {
@@ -896,8 +904,7 @@ export default function AthleteDetail() {
     if (garageRaSort !== "none") {
       const [key, dir] = garageRaSort.split("|");
       list = [...list].sort((a, b) => {
-        const av = garageSortValue(a, key), bv = garageSortValue(b, key);
-        const cmp = (typeof av === "number" && typeof bv === "number") ? av - bv : String(av).localeCompare(String(bv));
+        const cmp = garageCompare(garageSortValue(a, key), garageSortValue(b, key));
         return dir === "desc" ? -cmp : cmp;
       });
     }

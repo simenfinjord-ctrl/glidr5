@@ -91,6 +91,7 @@ type Athlete = {
   weightKg: string | null;
   poleHeight: string | null;
   bindingPosition: string | null;
+  skiServicePreferences: string | null;
   createdAt: string;
   createdById: number;
   createdByName: string;
@@ -744,7 +745,7 @@ export default function AthleteDetail() {
     notes: "",
   });
 
-  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", bindingPosition: "" });
+  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", bindingPosition: "", skiServicePreferences: "" });
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
 
   const { data: athletes = [] } = useQuery<Athlete[]>({
@@ -1338,7 +1339,7 @@ export default function AthleteDetail() {
   });
 
   const updateAthleteMutation = useMutation({
-    mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; bindingPosition: string }) => {
+    mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; bindingPosition: string; skiServicePreferences: string }) => {
       const res = await apiRequest("PUT", `/api/athletes/${athleteId}`, {
         name: data.name,
         team: data.team.trim() || null,
@@ -1347,6 +1348,7 @@ export default function AthleteDetail() {
         weightKg: data.weightKg.trim() || null,
         poleHeight: data.poleHeight.trim() || null,
         bindingPosition: data.bindingPosition.trim() || null,
+        skiServicePreferences: data.skiServicePreferences.trim() || null,
       });
       return res.json();
     },
@@ -1510,6 +1512,7 @@ export default function AthleteDetail() {
         name: athlete.name, team: athlete.team || "", brand: athlete.defaultSkiBrand || "",
         heightCm: athlete.heightCm || "", weightKg: athlete.weightKg || "",
         poleHeight: athlete.poleHeight || "", bindingPosition: athlete.bindingPosition || "",
+        skiServicePreferences: athlete.skiServicePreferences || "",
       });
       setEditAthleteOpen(true);
     }
@@ -1961,6 +1964,12 @@ export default function AthleteDetail() {
                     <span className="font-medium text-foreground">{label}:</span> {v}
                   </span>
                 ))}
+              </div>
+            )}
+            {athlete.skiServicePreferences && (
+              <div className="mt-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 ring-1 ring-amber-200/60 dark:ring-amber-900/40 px-3 py-2 max-w-2xl" data-testid="athlete-service-prefs">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">{L("Ski-service-preferanser", "Ski-service preferences")}</div>
+                <div className="text-xs text-foreground/90 whitespace-pre-wrap mt-0.5">{athlete.skiServicePreferences}</div>
               </div>
             )}
           </div>
@@ -4487,6 +4496,16 @@ export default function AthleteDetail() {
                   data-testid="input-edit-athlete-binding"
                 />
               </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{L("Ski-service-preferanser", "Ski-service preferences")}</label>
+              <Textarea
+                value={athleteForm.skiServicePreferences}
+                onChange={(e) => setAthleteForm((f) => ({ ...f, skiServicePreferences: e.target.value }))}
+                placeholder={L("f.eks. liker varm grunning, unngå fluor, foretrukket slip…", "e.g., prefers warm base prep, avoid fluor, preferred grind…")}
+                rows={3}
+                data-testid="input-edit-athlete-service-prefs"
+              />
             </div>
             <div className="flex items-center justify-end pt-2">
               <Button

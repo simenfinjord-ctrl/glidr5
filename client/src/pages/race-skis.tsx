@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -22,6 +23,7 @@ type Athlete = {
   weightKg: string | null;
   poleHeight: string | null;
   bindingPosition: string | null;
+  skiServicePreferences: string | null;
   createdAt: string;
   createdById: number;
   createdByName: string;
@@ -54,7 +56,8 @@ export default function RaceSkis() {
   const [weightKg, setWeightKg] = useState("");
   const [poleHeight, setPoleHeight] = useState("");
   const [bindingPosition, setBindingPosition] = useState("");
-  const resetAthleteForm = () => { setName(""); setTeam(""); setBrand(""); setHeightCm(""); setWeightKg(""); setPoleHeight(""); setBindingPosition(""); };
+  const [skiServicePreferences, setSkiServicePreferences] = useState("");
+  const resetAthleteForm = () => { setName(""); setTeam(""); setBrand(""); setHeightCm(""); setWeightKg(""); setPoleHeight(""); setBindingPosition(""); setSkiServicePreferences(""); };
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
     try {
       const stored = localStorage.getItem("glidr-raceskis-view-mode");
@@ -68,7 +71,7 @@ export default function RaceSkis() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; bindingPosition: string }) => {
+    mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; bindingPosition: string; skiServicePreferences: string }) => {
       const res = await apiRequest("POST", "/api/athletes", {
         name: data.name,
         team: data.team.trim() || null,
@@ -77,6 +80,7 @@ export default function RaceSkis() {
         weightKg: data.weightKg.trim() || null,
         poleHeight: data.poleHeight.trim() || null,
         bindingPosition: data.bindingPosition.trim() || null,
+        skiServicePreferences: data.skiServicePreferences.trim() || null,
       });
       return res.json();
     },
@@ -98,7 +102,7 @@ export default function RaceSkis() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    createMutation.mutate({ name: name.trim(), team: team.trim(), brand: brand.trim(), heightCm, weightKg, poleHeight, bindingPosition });
+    createMutation.mutate({ name: name.trim(), team: team.trim(), brand: brand.trim(), heightCm, weightKg, poleHeight, bindingPosition, skiServicePreferences });
   };
 
   function toggleView(mode: "grid" | "list") {
@@ -215,6 +219,10 @@ export default function RaceSkis() {
                     <Input value={bindingPosition} onChange={(e) => setBindingPosition(e.target.value)} placeholder="0 / -1 cm" data-testid="input-athlete-binding" />
                   </div>
                 </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">{L("Ski-service-preferanser", "Ski-service preferences")}</label>
+                  <Textarea value={skiServicePreferences} onChange={(e) => setSkiServicePreferences(e.target.value)} rows={3} placeholder={L("f.eks. liker varm grunning, unngå fluor, foretrukket slip…", "e.g., prefers warm base prep, avoid fluor, preferred grind…")} data-testid="input-athlete-service-prefs" />
+                </div>
                 <div className="flex items-center justify-end">
                   <Button
                     type="submit"
@@ -275,6 +283,12 @@ export default function RaceSkis() {
                           ))}
                         </div>
                       )}
+                      {athlete.skiServicePreferences && (
+                        <div className="mt-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 ring-1 ring-amber-200/60 dark:ring-amber-900/40 px-2.5 py-1.5">
+                          <div className="text-[9px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">{language === "no" ? "Ski-service" : "Ski service"}</div>
+                          <div className="text-[11px] text-foreground/90 whitespace-pre-wrap line-clamp-3">{athlete.skiServicePreferences}</div>
+                        </div>
+                      )}
                     </div>
                     <div className="inline-flex rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground shrink-0">
                       {new Date(athlete.createdAt).toLocaleDateString()}
@@ -307,6 +321,11 @@ export default function RaceSkis() {
                           {athleteMetricChips(athlete, language).map((m) => (
                             <span key={m.label}><span className="font-medium text-foreground">{m.label}:</span> {m.value}</span>
                           ))}
+                        </div>
+                      )}
+                      {athlete.skiServicePreferences && (
+                        <div className="mt-0.5 text-[11px] text-muted-foreground truncate">
+                          <span className="font-medium text-amber-700 dark:text-amber-400">{language === "no" ? "Ski-service" : "Ski service"}:</span> {athlete.skiServicePreferences}
                         </div>
                       )}
                     </div>

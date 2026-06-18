@@ -511,6 +511,7 @@ export const athletes = pgTable("athletes", {
   weightKg: text("weight_kg"),
   poleHeight: text("pole_height"),
   bindingPosition: text("binding_position"),
+  skiServicePreferences: text("ski_service_preferences"),
   createdAt: text("created_at").notNull(),
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),

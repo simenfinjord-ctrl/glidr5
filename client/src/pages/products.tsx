@@ -432,8 +432,8 @@ function ProductSheetDialog({ teamId, lang }: { teamId: number; lang: string }) 
         </DialogHeader>
         <div className="space-y-3 text-sm">
           <p className="text-muted-foreground">
-            {L("Lim inn lenken til regnearket med produktene deres. Nye rader blir lagt til i Products automatisk. Produkter fjernes aldri fra Glidr selv om de fjernes fra arket.",
-               "Paste the link to your products spreadsheet. New rows are added to Products automatically. Products are never removed from Glidr even if removed from the sheet.")}
+            {L("Lim inn lenken til regnearket med produktene deres. Nye rader synkroniseres automatisk hvert 5. minutt (eller med «Synkroniser nå»). Produkter fjernes aldri fra Glidr selv om de fjernes fra arket.",
+               "Paste the link to your products spreadsheet. New rows sync automatically every 5 minutes (or with “Sync now”). Products are never removed from Glidr even if removed from the sheet.")}
           </p>
           <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
             <p className="font-medium text-foreground mb-1">{L("Slik gjør du:", "How to:")}</p>
@@ -443,6 +443,8 @@ function ProductSheetDialog({ teamId, lang }: { teamId: number; lang: string }) 
               : <p className="italic mt-1">{L("(tjenestekonto ikke konfigurert på serveren)", "(service account not configured on the server)")}</p>}
             <p className="mt-2">{L("2. Header-raden må ha kolonner for Merke/Brand og Navn/Name. Valgfritt: Kategori/Category, Lager/Stock.",
                                    "2. The header row must have columns for Brand/Merke and Name/Navn. Optional: Category/Kategori, Stock/Lager.")}</p>
+            <p className="mt-1">{L("3. Kategori tolkes automatisk til riktig tag: Parafin, Liquid, Block eller Structure Tool.",
+                                   "3. Category is interpreted automatically into the right tag: Parafin, Liquid, Block or Structure Tool.")}</p>
           </div>
           <Input
             value={url}

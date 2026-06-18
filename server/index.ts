@@ -190,6 +190,12 @@ app.use((req, res, next) => {
       } catch (err) {
         console.error("Failed to init auto-backups:", err);
       }
+      try {
+        const { initAutoProductSync } = await import("./productSync");
+        await initAutoProductSync();
+      } catch (err) {
+        console.error("Failed to init auto product-sync:", err);
+      }
 
       if (process.env.NODE_ENV === "production") {
         const selfUrl = process.env.RENDER_EXTERNAL_URL || `https://glidr.onrender.com`;

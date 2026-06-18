@@ -967,6 +967,14 @@ export async function registerRoutes(
     }
     const updated = await storage.updateTeam(id, { productSheetUrl: url } as any);
     if (!updated) return res.status(404).json({ message: "Not found" });
+    const { startAutoProductSync, stopAutoProductSync, syncProductsFromSheet } = await import('./productSync');
+    if (url) {
+      // Run an immediate sync, then keep it auto-syncing every 5 minutes.
+      syncProductsFromSheet(id, resolveCreateGroupScope(req)).catch(() => {});
+      startAutoProductSync(id);
+    } else {
+      stopAutoProductSync(id);
+    }
     res.json(updated);
   });
 

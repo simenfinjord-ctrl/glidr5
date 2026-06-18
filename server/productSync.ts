@@ -39,6 +39,22 @@ const HEADER_SYNONYMS: Record<string, "category" | "brand" | "name" | "stock"> =
 const norm = (s: any) => String(s ?? "").trim();
 const key = (s: any) => norm(s).toLowerCase();
 
+// Canonical product tags. The sheet's category/type value is interpreted into
+// exactly one of these so every imported product is correctly tagged.
+export const PRODUCT_TAGS = ["Parafin", "Liquid", "Block", "Structure Tool"] as const;
+function normalizeCategory(raw: string): string {
+  const v = norm(raw).toLowerCase();
+  if (!v) return "Parafin";
+  if (/(struktur|structure|\btool\b|rille|verkt)/.test(v)) return "Structure Tool";
+  if (/(liquid|flytende|spray|væske|veske|fluid)/.test(v)) return "Liquid";
+  if (/(block|blokk|hard\s*wax|hardvoks|stick)/.test(v)) return "Block";
+  if (/(paraf|paraffin|voks|\bwax\b|glider|glid|pulver|powder|hot\s*wax)/.test(v)) return "Parafin";
+  // Direct match against a canonical tag (case-insensitive).
+  const direct = PRODUCT_TAGS.find((t) => t.toLowerCase() === v);
+  if (direct) return direct;
+  return "Parafin";
+}
+
 type SyncResult = {
   success: boolean;
   added: number;
@@ -104,7 +120,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope = "All"):
     const brand = norm(row[colOf.brand!]);
     const name = norm(row[colOf.name!]);
     if (!brand || !name) { skipped++; continue; }
-    const category = colOf.category !== undefined ? (norm(row[colOf.category!]) || "Other") : "Other";
+    const category = normalizeCategory(colOf.category !== undefined ? norm(row[colOf.category!]) : "");
     const dedupeKey = `${key(brand)}|${key(name)}|${key(category)}`;
     if (seen.has(dedupeKey)) { skipped++; continue; }
 
@@ -135,4 +151,46 @@ export async function syncProductsFromSheet(teamId: number, groupScope = "All"):
 
   await storage.updateTeam(teamId, { lastProductSyncAt: now } as any);
   return { success: true, added, skipped, rows: dataRows.length };
+}
+
+// ── Auto-sync scheduler (every 5 minutes per team with a sheet configured) ───
+const productSyncIntervals: Record<number, NodeJS.Timeout> = {};
+
+export function startAutoProductSync(teamId: number, intervalMs = 5 * 60 * 1000) {
+  stopAutoProductSync(teamId);
+  productSyncIntervals[teamId] = setInterval(async () => {
+    try {
+      const team = await storage.getTeam(teamId);
+      if ((team as any)?.productSheetUrl) {
+        const r = await syncProductsFromSheet(teamId);
+        if (r.success && r.added > 0) console.log(`[ProductSync] Auto-sync team ${teamId}: +${r.added} products`);
+        else if (!r.success) console.warn(`[ProductSync] Auto-sync team ${teamId} failed: ${r.error}`);
+      } else {
+        stopAutoProductSync(teamId);
+      }
+    } catch (err) {
+      console.error(`[ProductSync] Auto-sync error for team ${teamId}:`, err);
+    }
+  }, intervalMs);
+}
+
+export function stopAutoProductSync(teamId: number) {
+  if (productSyncIntervals[teamId]) {
+    clearInterval(productSyncIntervals[teamId]);
+    delete productSyncIntervals[teamId];
+  }
+}
+
+export async function initAutoProductSync() {
+  try {
+    const teams = await storage.listTeams();
+    for (const team of teams) {
+      if ((team as any).productSheetUrl) {
+        startAutoProductSync(team.id);
+        console.log(`[ProductSync] Auto-sync enabled for team ${team.id} (${team.name})`);
+      }
+    }
+  } catch (err) {
+    console.error("[ProductSync] Failed to init auto-sync:", err);
+  }
 }

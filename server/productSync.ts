@@ -43,18 +43,18 @@ const key = (s: any) => norm(s).toLowerCase();
 
 // Canonical product tags. The sheet's category/type value is interpreted into
 // exactly one of these so every imported product is correctly tagged.
-export const PRODUCT_TAGS = ["Parafin", "Liquid", "Block", "Structure Tool"] as const;
+export const PRODUCT_TAGS = ["Paraffin", "Liquid", "Block", "Structure Tool"] as const;
 function normalizeCategory(raw: string): string {
   const v = norm(raw).toLowerCase();
-  if (!v) return "Parafin";
+  if (!v) return "Paraffin";
   if (/(struktur|structure|\btool\b|rille|verkt)/.test(v)) return "Structure Tool";
-  if (/(liquid|flytende|spray|væske|veske|fluid)/.test(v)) return "Liquid";
-  if (/(block|blokk|hard\s*wax|hardvoks|stick)/.test(v)) return "Block";
-  if (/(paraf|paraffin|voks|\bwax\b|glider|glid|pulver|powder|hot\s*wax)/.test(v)) return "Parafin";
+  if (/(liquid|flytende|spray|væske|veske|fluid|gel)/.test(v)) return "Liquid";
+  if (/(block|blokk|hard\s*wax|hardvoks|stick|crayon)/.test(v)) return "Block";
+  if (/(paraf|paraffin|voks|\bwax\b|glider|glid|pulver|powder|hot\s*wax|solid)/.test(v)) return "Paraffin";
   // Direct match against a canonical tag (case-insensitive).
   const direct = PRODUCT_TAGS.find((t) => t.toLowerCase() === v);
   if (direct) return direct;
-  return "Parafin";
+  return "Paraffin";
 }
 
 type SyncResult = {

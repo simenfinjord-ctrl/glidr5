@@ -221,7 +221,7 @@ export default function RaceSkis() {
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-medium">{L("Ski-service-preferanser", "Ski-service preferences")}</label>
-                  <Textarea value={skiServicePreferences} onChange={(e) => setSkiServicePreferences(e.target.value)} rows={3} placeholder={L("f.eks. liker varm grunning, unngå fluor, foretrukket slip…", "e.g., prefers warm base prep, avoid fluor, preferred grind…")} data-testid="input-athlete-service-prefs" />
+                  <Textarea value={skiServicePreferences} onChange={(e) => setSkiServicePreferences(e.target.value)} rows={3} placeholder={L("f.eks. trenger godt feste, vil bare teste 2 par på renndagen, foretrekker varm grunning…", "e.g., needs solid kick, only wants to test 2 pairs on race day, prefers warm base prep…")} data-testid="input-athlete-service-prefs" />
                 </div>
                 <div className="flex items-center justify-end">
                   <Button

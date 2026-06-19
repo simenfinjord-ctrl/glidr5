@@ -25,7 +25,7 @@ import { cn, fmtDate } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
 // Product categories === the product tags used across Glidr / Google Sheet sync.
-const PRODUCT_CATEGORIES = ["Parafin", "Liquid", "Block", "Structure Tool"] as const;
+const PRODUCT_CATEGORIES = ["Paraffin", "Liquid", "Block", "Structure Tool"] as const;
 
 function productCategoryKey(v: string) {
   // Categories are now plain tag names (no i18n key); show as-is.
@@ -63,13 +63,13 @@ type StockChange = {
 };
 
 const schema = z.object({
-  category: z.enum(["Parafin", "Liquid", "Block", "Structure Tool"]),
+  category: z.enum(["Paraffin", "Liquid", "Block", "Structure Tool"]),
   brand: z.string().min(1, "Brand is required"),
   name: z.string().min(1, "Name is required"),
 });
 
 function categoryBadgeClass(cat: string) {
-  if (cat === "Parafin") return "fs-badge-glide";
+  if (cat === "Paraffin") return "fs-badge-glide";
   if (cat === "Liquid") return "fs-badge-topping";
   if (cat === "Block") return "fs-badge-glide";
   return "fs-badge-structure";
@@ -84,7 +84,7 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: {
-      category: "Parafin",
+      category: "Paraffin",
       brand: "",
       name: "",
     },
@@ -143,7 +143,7 @@ function AddProductModal({ onSaved }: { onSaved: () => void }) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="Parafin">Parafin</SelectItem>
+                  <SelectItem value="Paraffin">Paraffin</SelectItem>
                   <SelectItem value="Liquid">Liquid</SelectItem>
                   <SelectItem value="Block">Block</SelectItem>
                   <SelectItem value="Structure Tool">Structure Tool</SelectItem>
@@ -251,7 +251,7 @@ function EditProductModal({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="Parafin">Parafin</SelectItem>
+                  <SelectItem value="Paraffin">Paraffin</SelectItem>
                   <SelectItem value="Liquid">Liquid</SelectItem>
                   <SelectItem value="Block">Block</SelectItem>
                   <SelectItem value="Structure Tool">Structure Tool</SelectItem>
@@ -449,8 +449,8 @@ function ProductSheetDialog({ teamId, lang }: { teamId: number; lang: string }) 
               : <p className="italic mt-1">{L("(tjenestekonto ikke konfigurert på serveren)", "(service account not configured on the server)")}</p>}
             <p className="mt-2">{L("2. Header-raden må ha kolonner for Merke/Brand og Navn/Name. Valgfritt: Kategori/Category, Lager/Stock.",
                                    "2. The header row must have columns for Brand/Merke and Name/Navn. Optional: Category/Kategori, Stock/Lager.")}</p>
-            <p className="mt-1">{L("3. Kategori tolkes automatisk til riktig tag: Parafin, Liquid, Block eller Structure Tool.",
-                                   "3. Category is interpreted automatically into the right tag: Parafin, Liquid, Block or Structure Tool.")}</p>
+            <p className="mt-1">{L("3. Kategori tolkes automatisk til riktig tag: Paraffin, Liquid, Block eller Structure Tool.",
+                                   "3. Category is interpreted automatically into the right tag: Paraffin, Liquid, Block or Structure Tool.")}</p>
           </div>
           <Input
             value={url}
@@ -569,7 +569,9 @@ export default function Products() {
     products.forEach((p) => {
       p.groupScope.split(",").forEach((g) => {
         const trimmed = g.trim();
-        if (trimmed) set.add(trimmed);
+        // Skip a literal "All" group — it collides with the "All groups"
+        // sentinel option (both use value "All") and showed as a duplicate.
+        if (trimmed && trimmed.toLowerCase() !== "all") set.add(trimmed);
       });
     });
     return Array.from(set).sort();
@@ -886,7 +888,7 @@ export default function Products() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="All">{t("products.filterCategory")}</SelectItem>
-                    <SelectItem value="Parafin">Parafin</SelectItem>
+                    <SelectItem value="Paraffin">Paraffin</SelectItem>
                     <SelectItem value="Liquid">Liquid</SelectItem>
                     <SelectItem value="Block">Block</SelectItem>
                     <SelectItem value="Structure Tool">Structure Tool</SelectItem>

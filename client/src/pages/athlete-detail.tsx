@@ -4552,7 +4552,7 @@ export default function AthleteDetail() {
               <Textarea
                 value={athleteForm.skiServicePreferences}
                 onChange={(e) => setAthleteForm((f) => ({ ...f, skiServicePreferences: e.target.value }))}
-                placeholder={L("f.eks. liker varm grunning, unngå fluor, foretrukket slip…", "e.g., prefers warm base prep, avoid fluor, preferred grind…")}
+                placeholder={L("f.eks. trenger godt feste, vil bare teste 2 par på renndagen, foretrekker varm grunning…", "e.g., needs solid kick, only wants to test 2 pairs on race day, prefers warm base prep…")}
                 rows={3}
                 data-testid="input-edit-athlete-service-prefs"
               />
@@ -5784,6 +5784,20 @@ function SkiAnalyticsSection({
 
       {/* Mode-aware summary table */}
       <Card className="fs-card rounded-2xl overflow-hidden" data-testid="analytics-summary-table">
+        <div className="px-4 pt-3 pb-1">
+          <h3 className="text-sm font-semibold">
+            {analyticsMode === "glide" ? L("Glid-ytelse — alle skipar", "Glide performance — all ski pairs")
+              : analyticsMode === "feeling" ? L("Følelse-ytelse — alle skipar", "Feeling performance — all ski pairs")
+              : L("Total ytelse — alle skipar", "Total performance — all ski pairs")}
+          </h3>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {analyticsMode === "glide"
+              ? L("Ett skipar per rad, rangert på fart/plassering. Hak av «Sammenlign» for å stille utvalgte par mot hverandre nedenfor.", "One ski pair per row, ranked on speed/placement. Tick “Compare” to pit selected pairs against each other below.")
+              : analyticsMode === "feeling"
+              ? L("Ett skipar per rad, basert på feelingtester. Hak av «Sammenlign» for direkte sammenligning nedenfor.", "One ski pair per row, based on feeling tests. Tick “Compare” for a head-to-head below.")
+              : L("Ett skipar per rad: fart vs. følelse + en kombinert score (lavere = bedre), kun for par testet på begge.", "One ski pair per row: speed vs. feeling + a combined score (lower = better), only for pairs tested on both.")}
+          </p>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full border-separate border-spacing-0 text-sm">
             <thead>
@@ -5882,7 +5896,7 @@ function SkiAnalyticsSection({
       {/* Comparison panel */}
       {compareList.length >= 2 && (
         <Card className="fs-card rounded-2xl p-4" data-testid="analytics-comparison">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-semibold">{L("Sammenligning av skipar", "Ski Pair Comparison")}</h3>
             <Button
               variant="ghost"
@@ -5894,6 +5908,9 @@ function SkiAnalyticsSection({
               Clear
             </Button>
           </div>
+          <p className="text-[11px] text-muted-foreground mb-3">
+            {L("De avhukede skiparene side om side på tvers av alle måltall. Beste verdi i hver rad er uthevet.", "The ticked ski pairs side by side across every metric. The best value in each row is highlighted.")}
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full border-separate border-spacing-0 text-sm">
               <thead>

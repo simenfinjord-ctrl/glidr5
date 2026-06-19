@@ -1536,9 +1536,15 @@ export async function runDriveBackupForTeam(teamId: number): Promise<{ success: 
 }
 
 const backupIntervals: Record<number, NodeJS.Timeout> = {};
+// PDF/Drive backup runs on its own slower interval — it launches headless
+// Chromium (Puppeteer), which is memory-heavy, so we keep it infrequent (2h)
+// and separate from the cheap 30-min Google Sheets backup.
+const drivePdfIntervals: Record<number, NodeJS.Timeout> = {};
+const PDF_BACKUP_INTERVAL_MS = 2 * 60 * 60 * 1000; // every 2 hours
 
 export function startAutoBackup(teamId: number, intervalMs: number = 30 * 60 * 1000) {
   stopAutoBackup(teamId);
+  // Cheap Sheets backup every 30 min (no Chromium).
   backupIntervals[teamId] = setInterval(async () => {
     try {
       const team = await storage.getTeam(teamId);
@@ -1546,22 +1552,34 @@ export function startAutoBackup(teamId: number, intervalMs: number = 30 * 60 * 1
         console.log(`[Backup] Auto-backup starting for team ${teamId}`);
         const result = await runBackupForTeam(teamId);
         console.log(`[Backup] Auto-backup result for team ${teamId}:`, result.success ? 'OK' : result.error);
-        // Drive backup runs after Sheets so the PDF reflects the latest Sheet
-        if (team.driveFolderId) {
-          const driveResult = await runDriveBackupForTeam(teamId);
-          console.log(`[DriveBackup] Auto result for team ${teamId}:`, driveResult.success ? 'OK' : driveResult.error);
-        }
       }
     } catch (err) {
       console.error(`[Backup] Auto-backup failed for team ${teamId}:`, err);
     }
   }, intervalMs);
+
+  // Heavy PDF/Drive backup every 2 hours (Puppeteer) — only if a Drive folder is set.
+  drivePdfIntervals[teamId] = setInterval(async () => {
+    try {
+      const team = await storage.getTeam(teamId);
+      if (team?.backupSheetUrl && team.driveFolderId) {
+        const driveResult = await runDriveBackupForTeam(teamId);
+        console.log(`[DriveBackup] Auto (2h) result for team ${teamId}:`, driveResult.success ? 'OK' : driveResult.error);
+      }
+    } catch (err) {
+      console.error(`[DriveBackup] Auto (2h) failed for team ${teamId}:`, err);
+    }
+  }, PDF_BACKUP_INTERVAL_MS);
 }
 
 export function stopAutoBackup(teamId: number) {
   if (backupIntervals[teamId]) {
     clearInterval(backupIntervals[teamId]);
     delete backupIntervals[teamId];
+  }
+  if (drivePdfIntervals[teamId]) {
+    clearInterval(drivePdfIntervals[teamId]);
+    delete drivePdfIntervals[teamId];
   }
 }
 

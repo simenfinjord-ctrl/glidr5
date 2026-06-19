@@ -82,7 +82,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
     const sheets = await getUncachableGoogleSheetClient();
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "A1:Z100000",
+      range: "A1:Z1000",
       valueRenderOption: "UNFORMATTED_VALUE",
     });
     values = (resp.data.values as any[][]) || [];

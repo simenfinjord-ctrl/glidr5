@@ -5185,7 +5185,24 @@ export async function registerRoutes(
     const list = includeArchived
       ? await storage.listAllRaceSkisIncludingArchived(athleteId)
       : await storage.listRaceSkis(athleteId);
-    res.json(list);
+    // #24: attach how many times each pair has been raced (race-use + race prep).
+    try {
+      const { pool } = await import("./db");
+      const [usageRes, prepRes] = await Promise.all([
+        (pool as any).query(`SELECT ski_id, COUNT(*)::int AS c FROM ski_race_usages WHERE athlete_id = $1 GROUP BY ski_id`, [athleteId]),
+        (pool as any).query(`SELECT ski_id, ski_id_classic, ski_id_skating FROM race_prep_entries WHERE athlete_id = $1`, [athleteId]),
+      ]);
+      const usageBySkiId = new Map<number, number>(usageRes.rows.map((r: any) => [r.ski_id, r.c]));
+      const prepLabels = prepRes.rows.flatMap((r: any) => [r.ski_id, r.ski_id_classic, r.ski_id_skating].filter(Boolean).map((s: string) => String(s).trim().toLowerCase()));
+      const prepCount = (ski: any) => {
+        const keys = [ski.skiId, ski.serialNumber].filter(Boolean).map((s: string) => String(s).trim().toLowerCase());
+        return prepLabels.filter((l: string) => keys.includes(l)).length;
+      };
+      const withCounts = list.map((s: any) => ({ ...s, racedCount: (usageBySkiId.get(s.id) || 0) + prepCount(s) }));
+      return res.json(withCounts);
+    } catch {
+      return res.json(list);
+    }
   });
 
   app.post("/api/athletes/:athleteId/skis", requirePermission("raceskis", "edit"), async (req, res) => {

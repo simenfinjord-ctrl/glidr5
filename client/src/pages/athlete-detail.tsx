@@ -117,6 +117,7 @@ type RaceSki = {
   isTrainingSki: number;
   customParams: string | null;
   archivedAt: string | null;
+  racedCount?: number;
   createdAt: string;
   createdById: number;
   createdByName: string;
@@ -494,6 +495,7 @@ function garageSortValue(s: any, key: string): number | string {
   if (key === "length") return num(s.length);
   if (key === "ra") return num(garageParseCustom(s).ra_value);
   if (key === "color") { const idx = SKI_COLORS.findIndex((c) => c.id === getSkiColor(s)); return idx < 0 ? 0 : idx; }
+  if (key === "raced") return s.racedCount ?? 0;
   // Custom params + free-text standard fields keep their string value; the
   // comparator below uses a numeric-aware natural sort so values like "10b",
   // "SL21" or "5093" interpret sensibly without a fixed format.
@@ -512,6 +514,7 @@ function garageCompare(av: number | string, bv: number | string): number {
 // Display string for a cell ("—" when empty).
 function garageCellValue(s: any, key: string): string {
   if (key === "color") { const c = SKI_COLORS.find((x) => x.id === getSkiColor(s)); return c && c.id !== "none" ? c.label : "—"; }
+  if (key === "raced") return String(s.racedCount ?? 0);
   if (key === "ra") { const v = garageParseCustom(s).ra_value; return v != null && v !== "" ? String(v) : "—"; }
   if (key.startsWith("cp:")) { const v = garageParseCustom(s)[key.slice(3)]; return v != null && v !== "" ? String(v) : "—"; }
   const v = (s as any)[key];
@@ -1596,6 +1599,7 @@ export default function AthleteDetail() {
   const garageColumns = useMemo(() => {
     const std: { key: string; label: string }[] = [
       { key: "color", label: L("Farge", "Colour") },
+      { key: "raced", label: L("Antall renn", "Times raced") },
       { key: "serialNumber", label: L("Serienr.", "Serial") },
       { key: "brand", label: L("Merke", "Brand") },
       { key: "discipline", label: L("Stilart", "Discipline") },

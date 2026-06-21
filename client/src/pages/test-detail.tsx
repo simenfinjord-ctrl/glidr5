@@ -792,7 +792,8 @@ export default function TestDetail() {
         if (entry.raceSkiId) {
           const rs = raceSkiById.get(entry.raceSkiId);
           if (rs) {
-            labels[entry.skiNumber] = rs.serialNumber || rs.skiId;
+            // Show the Ski-ID (#14) — fall back to serial only if Ski-ID is missing.
+            labels[entry.skiNumber] = rs.skiId || rs.serialNumber || String(entry.skiNumber);
           }
         }
       }
@@ -1521,7 +1522,7 @@ export default function TestDetail() {
               <table className="w-full text-sm" data-testid="table-results">
                 <thead>
                   <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    <th className="pb-3 pr-3">{t("tests.skiNumber")}</th>
+                    <th className="pb-3 pr-3">{isRaceSkiTest ? "Ski-ID" : t("tests.skiNumber")}</th>
                     {!isGrind && <th className="pb-3 pr-3">{t("tests.product")}</th>}
                     {isGrind && visibleGrindCols.map((col) => (
                       <th key={col} className="pb-3 pr-3">{formatGrindColLabel(col)}</th>

@@ -849,37 +849,43 @@ export async function buildTeamJsonExport(teamId: number): Promise<string> {
   const allRaceSkiRegrinds: any[] = raceSkiRegrindsNested.flat();
   const allTestSkiRegrinds: any[] = testSkiRegrindsNested.flat();
 
-  const racePrepsResult = await (pool as any).query(
-    `SELECT id, date, start_time, location, race_type, discipline,
-            products, method, structure, notes, tette,
-            product_ids, structure_ids, kick_product_ids, product_apps, structure_apps,
-            weather_id, created_by_name, created_at
-     FROM race_preps WHERE team_id = $1 ORDER BY date DESC`,
-    [teamId]
-  );
+  // SELECT * so every column (incl. new ones) is always captured — critical
+  // for a complete restore source (see "no data loss" requirement).
+  const q = async (sql: string) => ((await (pool as any).query(sql, [teamId])).rows as any[]);
+  const racePrepsResult = await (pool as any).query(`SELECT * FROM race_preps WHERE team_id = $1 ORDER BY date DESC`, [teamId]);
   const racePrepEntriesResult = await (pool as any).query(
-    `SELECT rpe.id, rpe.race_prep_id, rpe.athlete_name, rpe.ski_id,
-            rpe.ski_id_classic, rpe.ski_id_skating,
-            rpe.waxer_name, rpe.notes, rpe.athlete_rating, rpe.athlete_comment, rpe.created_at
-     FROM race_prep_entries rpe
-     JOIN race_preps rp ON rp.id = rpe.race_prep_id
-     WHERE rp.team_id = $1 ORDER BY rpe.race_prep_id, rpe.athlete_name`,
-    [teamId]
+    `SELECT rpe.* FROM race_prep_entries rpe JOIN race_preps rp ON rp.id = rpe.race_prep_id
+     WHERE rp.team_id = $1 ORDER BY rpe.race_prep_id, rpe.athlete_name`, [teamId]
   );
+  // Previously-missing data tables — included so nothing is lost on restore.
+  const skiRaceUsages = await q(`SELECT * FROM ski_race_usages WHERE team_id = $1`).catch(() => []);
+  const racePrepComments = await q(`SELECT * FROM race_prep_comments WHERE team_id = $1`).catch(() => []);
+  const athleteRaceCalendar = await q(`SELECT * FROM athlete_race_calendar WHERE team_id = $1`).catch(() => []);
+  const feedbackLinks = await q(`SELECT * FROM feedback_links WHERE team_id = $1`).catch(() => []);
+  const userTeamPermissions = await q(`SELECT * FROM user_team_permissions WHERE team_id = $1`).catch(() => []);
+  const watchQueue = await q(`SELECT * FROM watch_queue WHERE team_id = $1`).catch(() => []);
+  // Athlete access (no team_id column — scope via this team's athletes).
+  const athleteAccess = await (pool as any).query(
+    `SELECT aa.* FROM athlete_access aa JOIN athletes a ON a.id = aa.athlete_id WHERE a.team_id = $1`, [teamId]
+  ).then((r: any) => r.rows).catch(() => []);
+  // Archived products are real data too.
+  const archivedProducts = await storage.listArchivedProducts('', true, teamId).catch(() => [] as any[]);
 
   return JSON.stringify({
     exportedAt: new Date().toISOString(),
-    team: { id: team?.id, name: team?.name },
+    team: team ?? { id: teamId },
     tests: allTests,
     entriesByTest,
     weather: allWeather,
     series: allSeries,
     products: allProducts,
+    archivedProducts,
     users: allTeamUsers.map(({ password, ...rest }: any) => rest),
     groups: allGroups,
     loginLogs: allLoginLogs,
     activities: allActivities,
     athletes: allAthletes,
+    athleteAccess,
     raceSkis: allRaceSkis,
     grindingRecords: allGrindingRecords,
     grindingSheets: allGrindingSheets,
@@ -888,6 +894,12 @@ export async function buildTeamJsonExport(teamId: number): Promise<string> {
     grindProfiles: allGrindProfiles,
     racePreps: racePrepsResult.rows,
     racePrepEntries: racePrepEntriesResult.rows,
+    skiRaceUsages,
+    racePrepComments,
+    athleteRaceCalendar,
+    feedbackLinks,
+    userTeamPermissions,
+    watchQueue,
   }, null, 2);
 }
 

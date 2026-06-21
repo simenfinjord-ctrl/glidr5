@@ -868,6 +868,22 @@ export default function TestDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries, testSort, skiLabels, distLabels.length]);
 
+  // ── Rank basis (#36): diff vs feeling. Diff-rank is ALWAYS what analytics
+  // uses (rank0km on the entries); this toggle only changes what the Rank column
+  // displays here, shown only when both a diff rank and a feeling rank exist.
+  const rankBothAvailable = useMemo(() => {
+    const hasDiff = entries.some((e) => getEntryRounds(e, distLabels.length)[0]?.rank != null);
+    const hasFeel = entries.some((e) => e.feelingRank != null);
+    return hasDiff && hasFeel;
+  }, [entries, distLabels.length]);
+  const [rankBasis, setRankBasis] = useState<"diff" | "feel">(() => {
+    try { return (localStorage.getItem("glidr-raceski-rank-basis") as "diff" | "feel") || "diff"; } catch { return "diff"; }
+  });
+  function chooseRankBasis(v: "diff" | "feel") {
+    setRankBasis(v);
+    try { localStorage.setItem("glidr-raceski-rank-basis", v); } catch {}
+  }
+
   // ── Grind column helpers (hooks must be before any early returns) ────────────
   function parseExtraParams(json: string | null): Record<string, string> {
     if (!json) return {};
@@ -1501,6 +1517,26 @@ export default function TestDetail() {
               </div>
               <h2 className="text-base font-semibold">{t("common.results")}</h2>
               <span className="rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">{sortedEntries.length} {t("testDetail.entries")}</span>
+              {rankBothAvailable && (
+                <div className="ml-1 inline-flex rounded-lg border border-border bg-background/60 p-0.5 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => chooseRankBasis("diff")}
+                    className={cn("rounded-md px-2 py-0.5 transition-colors", rankBasis === "diff" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                    data-testid="rank-by-diff"
+                  >
+                    {L("Rangér på diff", "Rank by diff")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => chooseRankBasis("feel")}
+                    className={cn("rounded-md px-2 py-0.5 transition-colors", rankBasis === "feel" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                    data-testid="rank-by-feel"
+                  >
+                    {L("Rangér på feeling", "Rank by feel")}
+                  </button>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {!isBlindTester && <>
@@ -1597,6 +1633,8 @@ export default function TestDetail() {
 
                     const rounds = getEntryRounds(entry, distLabels.length);
                     const firstRank = rounds[0]?.rank ?? null;
+                    // Displayed rank follows the chosen basis; analytics still uses diff (firstRank).
+                    const displayRank = rankBothAvailable && rankBasis === "feel" ? (entry.feelingRank ?? null) : firstRank;
 
                     return (
                       <tr
@@ -1604,16 +1642,20 @@ export default function TestDetail() {
                         data-testid={`row-entry-${entry.id}`}
                         className={cn(
                           "border-b border-border/30 last:border-0 transition-colors",
-                          firstRank === 1 && "bg-emerald-500/8",
-                          firstRank === 2 && "bg-sky-500/8",
-                          firstRank === 3 && "bg-amber-500/8",
-                          idx % 2 === 0 && !firstRank && "bg-background/20",
+                          displayRank === 1 && "bg-emerald-500/8",
+                          displayRank === 2 && "bg-sky-500/8",
+                          displayRank === 3 && "bg-amber-500/8",
+                          idx % 2 === 0 && !displayRank && "bg-background/20",
                         )}
                       >
                         <td className="py-3 pr-3" data-testid={`text-ski-number-${entry.id}`}>
                           <span className="inline-flex h-8 min-w-10 items-center justify-center rounded-lg bg-background/50 px-2 text-sm font-semibold ring-1 ring-border/50">
                             {skiLabels?.[entry.skiNumber] ?? entry.skiNumber}
                           </span>
+                          {isRaceSkiTest && entry.raceSkiId && (() => {
+                            const g = raceSkisData.find((rs) => rs.id === entry.raceSkiId)?.grind;
+                            return g ? <div className="mt-0.5 text-[10px] text-muted-foreground">{g}</div> : null;
+                          })()}
                         </td>
                         {!isGrind && (
                           <td className="py-3 pr-5" data-testid={`text-product-${entry.id}`}>
@@ -1645,8 +1687,8 @@ export default function TestDetail() {
                         ))}
                         <td className="py-3 pr-3">
                           <div className="flex items-center gap-2">
-                            <RankBadge rank={firstRank} size="lg" />
-                            {!hideDetails && firstRank === 1 && (
+                            <RankBadge rank={displayRank} size="lg" />
+                            {!hideDetails && displayRank === 1 && (
                               <span
                                 className="rounded-full bg-gradient-to-r from-emerald-500/20 to-emerald-400/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 ring-1 ring-emerald-500/30"
                                 data-testid={`badge-winner-${entry.id}`}

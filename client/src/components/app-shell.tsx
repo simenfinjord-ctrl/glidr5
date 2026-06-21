@@ -163,7 +163,7 @@ const nav: NavItem[] = [
   // ── Equipment ─────────────────────────────────────
   {
     href: "/testskis",
-    label: "Testskis",
+    label: "Testfleets",
     icon: Snowflake,
     testId: "link-testskis",
     color: "text-muted-foreground",

@@ -9,7 +9,7 @@ const translations: Record<string, Record<string, string>> = {
     // ── Navigation ──────────────────────────────────────────────────────────
     "nav.dashboard": "Dashboard",
     "nav.tests": "Tests",
-    "nav.testskis": "Test Skis",
+    "nav.testskis": "Testfleets",
     "nav.products": "Products",
     "nav.weather": "Weather",
     "nav.analytics": "Analytics",
@@ -390,8 +390,8 @@ const translations: Record<string, Record<string, string>> = {
     "testDetail.back": "Back",
 
     // ── Test skis (series) ─────────────────────────────────────────────────────
-    "testskis.title": "Test Skis",
-    "testskis.subtitle": "Manage test ski series and regrind history",
+    "testskis.title": "Testfleets",
+    "testskis.subtitle": "Manage testfleets and regrind history",
     "testskis.newSeries": "New series",
     "testskis.editSeries": "Edit series",
     "testskis.deleteSeries": "Delete series",
@@ -408,7 +408,7 @@ const translations: Record<string, Record<string, string>> = {
     "testskis.lastRegrind": "Last regrind",
     "testskis.showArchived": "Show archived",
     "testskis.hideArchived": "Hide archived",
-    "testskis.noSeries": "No test ski series yet. Create your first series.",
+    "testskis.noSeries": "No testfleets yet. Create your first one.",
     "testskis.group": "Group",
     "testskis.regrindHistory": "Regrind history",
     "testskis.addRegrind": "Add regrind",
@@ -1361,7 +1361,7 @@ const translations: Record<string, Record<string, string>> = {
     // ── Navigasjon ───────────────────────────────────────────────────────────
     "nav.dashboard": "Oversikt",
     "nav.tests": "Tester",
-    "nav.testskis": "Testski",
+    "nav.testskis": "Testfleets",
     "nav.products": "Produkter",
     "nav.weather": "Vær",
     "nav.analytics": "Analyse",
@@ -1742,8 +1742,8 @@ const translations: Record<string, Record<string, string>> = {
     "testDetail.back": "Tilbake",
 
     // ── Testski (serier) ──────────────────────────────────────────────────────
-    "testskis.title": "Testski",
-    "testskis.subtitle": "Administrer testskiserier og slipehistorikk",
+    "testskis.title": "Testfleets",
+    "testskis.subtitle": "Administrer testfleets og slipehistorikk",
     "testskis.newSeries": "Ny serie",
     "testskis.editSeries": "Rediger serie",
     "testskis.deleteSeries": "Slett serie",
@@ -1760,7 +1760,7 @@ const translations: Record<string, Record<string, string>> = {
     "testskis.lastRegrind": "Siste omslip",
     "testskis.showArchived": "Vis arkiverte",
     "testskis.hideArchived": "Skjul arkiverte",
-    "testskis.noSeries": "Ingen testskiserier ennå. Opprett din første serie.",
+    "testskis.noSeries": "Ingen testfleets ennå. Opprett din første.",
     "testskis.group": "Gruppe",
     "testskis.regrindHistory": "Slipehistorikk",
     "testskis.addRegrind": "Legg til omslip",

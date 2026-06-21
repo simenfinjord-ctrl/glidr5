@@ -28,7 +28,7 @@ const TYPE_ICON = {
 const TYPE_LABEL: Record<SearchResult["type"], string> = {
   test: "Tests",
   product: "Products",
-  series: "Test Skis",
+  series: "Testfleets",
   athlete: "Athletes",
   grind: "Grind Profiles",
   weather: "Weather",

@@ -731,6 +731,21 @@ export default function Products() {
     },
   });
 
+  const bulkRestoreMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      await Promise.all(ids.map((id) => apiRequest("POST", `/api/products/${id}/restore`)));
+    },
+    onSuccess: (_d, ids) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products/archived"] });
+      setSelectedIds(new Set());
+      toast({ title: L(`Gjenopprettet ${ids.length} produkt${ids.length !== 1 ? "er" : ""}`, `Restored ${ids.length} product${ids.length !== 1 ? "s" : ""}`) });
+    },
+    onError: (e) => {
+      toast({ title: L("Feil", "Error"), description: e instanceof Error ? e.message : L("Ukjent feil", "Unknown error"), variant: "destructive" });
+    },
+  });
+
   return (
     <AppShell>
       <div className="flex flex-col gap-5">
@@ -979,6 +994,50 @@ export default function Products() {
           />
         ) : viewMode === "archived" ? (
           <div>
+            {isAdmin && filteredArchived.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const allSelected = filteredArchived.every((p) => selectedIds.has(p.id));
+                    setSelectedIds(allSelected ? new Set() : new Set(filteredArchived.map((p) => p.id)));
+                  }}
+                >
+                  {filteredArchived.every((p) => selectedIds.has(p.id))
+                    ? <><CheckSquare className="mr-2 h-4 w-4" />{L("Fjern alle", "Deselect all")}</>
+                    : <><Square className="mr-2 h-4 w-4" />{L("Velg alle", "Select all")}</>}
+                </Button>
+                {[...selectedIds].some((id) => filteredArchived.some((p) => p.id === id)) && (
+                  <>
+                    <span className="text-sm text-muted-foreground">{[...selectedIds].filter((id) => filteredArchived.some((p) => p.id === id)).length} {L("valgt", "selected")}</span>
+                    <Button
+                      size="sm"
+                      disabled={bulkRestoreMutation.isPending}
+                      onClick={() => bulkRestoreMutation.mutate([...selectedIds].filter((id) => filteredArchived.some((p) => p.id === id)))}
+                      data-testid="button-bulk-restore"
+                    >
+                      <ArchiveRestore className="mr-2 h-4 w-4" />{L("Gjenopprett", "Restore")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      disabled={bulkDeleteMutation.isPending}
+                      onClick={() => {
+                        const ids = [...selectedIds].filter((id) => filteredArchived.some((p) => p.id === id));
+                        if (window.confirm(L(`Slette ${ids.length} produkt${ids.length !== 1 ? "er" : ""} permanent? Dette kan ikke angres.`, `Permanently delete ${ids.length} product${ids.length !== 1 ? "s" : ""}? This cannot be undone.`))) {
+                          bulkDeleteMutation.mutate(ids);
+                        }
+                      }}
+                      data-testid="button-bulk-delete-archived"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />{L("Slett", "Delete")}
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
             {filteredArchived.length === 0 ? (
               <Card className="fs-card rounded-2xl">
                 <EmptyState icon={Archive} title={L("Ingen arkiverte produkter", "No archived products")} description={L("Arkiverte produkter vises her.", "Archived products will appear here.")} />

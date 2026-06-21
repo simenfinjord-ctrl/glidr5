@@ -282,6 +282,7 @@ export async function registerRoutes(
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS is_training_ski INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS default_ski_brand TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS feeling_note TEXT;
+      ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS kick_solution TEXT;
       ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_rating TEXT;
       ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_comment TEXT;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS athlete_rating TEXT;
@@ -2163,6 +2164,7 @@ export async function registerRoutes(
         feelingRank: e.feelingRank ?? null,
         feelingNote: e.feelingNote ?? null,
         kickRank: e.kickRank ?? null,
+        kickSolution: e.kickSolution ?? null,
         grindType: e.grindType || null,
         grindStone: e.grindStone || null,
         grindPattern: e.grindPattern || null,
@@ -2539,6 +2541,7 @@ export async function registerRoutes(
           feelingRank: e.feelingRank ?? null,
           feelingNote: e.feelingNote ?? null,
           kickRank: e.kickRank ?? null,
+          kickSolution: e.kickSolution ?? null,
           grindType: e.grindType || null,
           grindStone: e.grindStone || null,
           grindPattern: e.grindPattern || null,

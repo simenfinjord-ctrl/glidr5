@@ -34,6 +34,7 @@ export type EntryRow = {
   feelingRank: number | null;
   feelingNote?: string | null;
   kickRank: number | null;
+  kickSolution?: string | null;
   grindType?: string;
   grindStone?: string;
   grindPattern?: string;
@@ -171,12 +172,57 @@ export function TestEntryTable({
   const isClassic = testType === "Classic";
   const isRaceSki = testSkiSource === "raceskis";
 
+  // Kick solution (#35) — optional free-text per pair on classic tests.
+  const [showKickSolution, setShowKickSolution] = useState(false);
+  const [kickSame, setKickSame] = useState(false);
+  useEffect(() => { if (rows.some((r) => r.kickSolution)) setShowKickSolution(true); }, [rows]);
+  const setKickSolution = (rowId: string, v: string) => {
+    setRows(rows.map((r, i) => {
+      if (kickSame) return { ...r, kickSolution: v || null }; // applies to all pairs
+      return r.id === rowId ? { ...r, kickSolution: v || null } : r;
+    }));
+  };
+
   // Grind param columns: stone/pattern/ra_value (fixed labels) + custom keys
   const GRIND_PARAM_LABELS: Record<string, string> = { stone: "Stone / Tool", pattern: "Pattern", ra_value: "RA-value" };
   // Compute all extra param columns that are visible (beyond profile selector)
   const extraGrindCols = visibleGrindCols.filter((k) => !["profile"].includes(k));
 
   return (
+    <div className="space-y-2">
+    {isClassic && (
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setShowKickSolution((v) => !v)}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium ring-1 transition-colors",
+            showKickSolution ? "bg-primary/10 text-primary ring-primary/30" : "ring-border text-muted-foreground hover:bg-muted/60",
+          )}
+          data-testid="toggle-kick-solution"
+        >
+          {language === "no" ? "Kick solution" : "Kick solution"}
+        </button>
+        {showKickSolution && (
+          <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={kickSame}
+              onChange={(e) => {
+                const on = e.target.checked;
+                setKickSame(on);
+                if (on && rows.length > 0) {
+                  const first = rows[0].kickSolution || null;
+                  setRows(rows.map((r) => ({ ...r, kickSolution: first })));
+                }
+              }}
+              data-testid="checkbox-kick-same"
+            />
+            {language === "no" ? "Samme for alle par" : "Same for every pair"}
+          </label>
+        )}
+      </div>
+    )}
     <div className="overflow-x-auto rounded-2xl border bg-card">
       <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${(isGrind ? 300 + extraGrindCols.length * 120 : 560) + distanceLabels.length * 200 + (isClassic ? 80 : 0)}px` }}>
         <thead>
@@ -625,6 +671,16 @@ export function TestEntryTable({
                     placeholder="—"
                     data-testid={`input-kick-${row.id}`}
                   />
+                  {showKickSolution && (
+                    <Input
+                      value={kickSame ? (rows[0]?.kickSolution ?? "") : (row.kickSolution ?? "")}
+                      disabled={kickSame && row.id !== rows[0]?.id}
+                      onChange={(e) => setKickSolution(row.id, e.target.value)}
+                      className="mt-1 h-7 w-40 bg-background text-xs"
+                      placeholder={language === "no" ? "Kick solution…" : "Kick solution…"}
+                      data-testid={`input-kick-solution-${row.id}`}
+                    />
+                  )}
                 </td>
                 )}
                 <td></td>
@@ -633,6 +689,7 @@ export function TestEntryTable({
           })}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

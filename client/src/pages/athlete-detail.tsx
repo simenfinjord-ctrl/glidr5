@@ -868,6 +868,7 @@ export default function AthleteDetail() {
     { key: "rank", label: "Rank" },
     { key: "feeling", label: "Feeling" },
     { key: "feelingNote", label: L("Feeling-notat", "Feeling note") },
+    { key: "kickSolution", label: "Kick solution" },
     { key: "methodology", label: "Methodology" },
   ];
 
@@ -6881,6 +6882,7 @@ function RaceSkiTestCard({
                   {activeTestColumns.includes("rank") && <th className="px-3 py-2">Rank</th>}
                   {activeTestColumns.includes("feeling") && <th className="px-3 py-2">{L("Følelse", "Feeling")}</th>}
                   {activeTestColumns.includes("feelingNote") && <th className="px-3 py-2">{L("Feeling-notat", "Feeling note")}</th>}
+                  {activeTestColumns.includes("kickSolution") && <th className="px-3 py-2">Kick solution</th>}
                   {activeTestColumns.includes("methodology") && <th className="px-3 py-2">{L("Metodikk", "Methodology")}</th>}
                 </tr>
               </thead>
@@ -6964,6 +6966,9 @@ function RaceSkiTestCard({
                     )}
                     {activeTestColumns.includes("feelingNote") && (
                       <td className="px-3 py-1.5 text-muted-foreground italic">{(entry as any).feelingNote || "—"}</td>
+                    )}
+                    {activeTestColumns.includes("kickSolution") && (
+                      <td className="px-3 py-1.5 text-muted-foreground">{(entry as any).kickSolution || "—"}</td>
                     )}
                     {activeTestColumns.includes("methodology") && (
                       <td className="px-3 py-1.5 text-muted-foreground">{entry.methodology || "—"}</td>

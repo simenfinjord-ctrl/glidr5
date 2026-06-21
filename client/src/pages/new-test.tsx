@@ -516,6 +516,7 @@ export default function NewTest() {
                     feelingRank: r.feelingRank,
                     feelingNote: r.feelingNote ?? null,
                     kickRank: r.kickRank,
+                    kickSolution: r.kickSolution ?? null,
                     grindType: r.grindType || null,
                     grindStone: r.grindStone || null,
                     grindPattern: r.grindPattern || null,

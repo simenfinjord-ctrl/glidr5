@@ -5314,7 +5314,7 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
             return (
               <div key={usage.id} className="flex items-start justify-between gap-2 rounded-lg bg-muted/30 px-3 py-1.5" data-testid={`row-usage-${usage.id}`}>
                 <div className="text-[11px]">
-                  <span className="font-medium text-foreground">{usage.location || "—"} · {fmtDate(usage.date)}</span>
+                  <span className="font-medium text-foreground">{usage.location || "—"}{usage.date ? ` · ${fmtDate(usage.date)}` : ""}</span>
                   {usage.discipline && <span className="text-muted-foreground"> · {usage.discipline}</span>}
                   {w && (
                     <div className="flex flex-wrap gap-x-2 text-[10px] text-muted-foreground mt-0.5">
@@ -5371,7 +5371,7 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
           <div className="space-y-3 pb-12 sm:pb-0">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium">{L("Dato", "Date")}</label>
+                <label className="mb-1 block text-xs font-medium">{L("Dato (valgfritt)", "Date (optional)")}</label>
                 <Input type="date" value={usageForm.date} onChange={(e) => setUsageForm((f) => ({ ...f, date: e.target.value, weatherId: "" }))} />
               </div>
               <div>
@@ -6314,7 +6314,7 @@ function SkiCard({
                   return (
                     <div key={usage.id} className="flex items-start justify-between gap-2 rounded-lg bg-muted/30 px-3 py-1.5" data-testid={`row-usage-${usage.id}`}>
                       <div className="text-[11px]">
-                        <span className="font-medium text-foreground">{usage.location || "—"} · {fmtDate(usage.date)}</span>
+                        <span className="font-medium text-foreground">{usage.location || "—"}{usage.date ? ` · ${fmtDate(usage.date)}` : ""}</span>
                         {usage.discipline && <span className="text-muted-foreground"> · {usage.discipline}</span>}
                         {w && (
                           <div className="flex flex-wrap gap-x-2 text-[10px] text-muted-foreground mt-0.5">
@@ -6344,7 +6344,7 @@ function SkiCard({
           <div className="space-y-3 pb-12 sm:pb-0">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium">{L("Dato", "Date")}</label>
+                <label className="mb-1 block text-xs font-medium">{L("Dato (valgfritt)", "Date (optional)")}</label>
                 <Input type="date" value={usageForm.date} onChange={(e) => setUsageForm((f) => ({ ...f, date: e.target.value, weatherId: "" }))} />
               </div>
               <div>

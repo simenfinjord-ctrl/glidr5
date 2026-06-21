@@ -5284,12 +5284,12 @@ export async function registerRoutes(
     const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     const { date, location, discipline, weatherId, manualWeather, result: raceResult, notes } = req.body;
-    if (!date) return res.status(400).json({ message: "date required" });
+    // #18: date is optional. The column is NOT NULL, so store "" when omitted.
     const { pool } = await import("./db");
     const inserted = await (pool as any).query(
       `INSERT INTO ski_race_usages (ski_id, athlete_id, team_id, date, location, discipline, weather_id, manual_weather, result, notes, created_by_id, created_by_name, created_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
-      [skiId, ski.athleteId, getActiveTeamId(req), date, location || null, discipline || null,
+      [skiId, ski.athleteId, getActiveTeamId(req), date || "", location || null, discipline || null,
        weatherId || null, manualWeather ? (typeof manualWeather === "string" ? manualWeather : JSON.stringify(manualWeather)) : null,
        raceResult || null, notes || null, u.id, u.name, new Date().toISOString()]
     );

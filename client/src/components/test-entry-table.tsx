@@ -26,6 +26,7 @@ export type EntryRow = {
   id: string;
   skiNumber: number;
   productId?: number;
+  freeTextProduct?: string | null;
   additionalProductIds?: string;
   methodology: string; // kept for backward compat, stores pipe-separated applications
   applications?: string[]; // [primaryApp, add0App, add1App, ...]
@@ -321,15 +322,30 @@ export function TestEntryTable({
                 {!isGrind && (
                 <td className="px-3 py-2">
                   {isRaceSki ? (
-                    <RaceSkiCombobox
-                      raceSkis={raceSkis}
-                      value={row.raceSkiId}
-                      onChange={(val) => {
-                        const next = rows.map((r) => (r.id === row.id ? { ...r, raceSkiId: val } : r));
-                        setRows(next);
-                      }}
-                      testId={`select-raceski-${row.id}`}
-                    />
+                    <div className="flex flex-col gap-1 min-w-[180px]">
+                      <RaceSkiCombobox
+                        raceSkis={raceSkis}
+                        value={row.freeTextProduct ? undefined : row.raceSkiId}
+                        onChange={(val) => {
+                          // Picking a garage ski clears any free-text ski.
+                          const next = rows.map((r) => (r.id === row.id ? { ...r, raceSkiId: val, freeTextProduct: null } : r));
+                          setRows(next);
+                        }}
+                        testId={`select-raceski-${row.id}`}
+                      />
+                      <Input
+                        value={row.freeTextProduct ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          // Free-text ski (e.g. borrowed) — not in the garage, excluded from analytics.
+                          const next = rows.map((r) => (r.id === row.id ? { ...r, freeTextProduct: v || null, raceSkiId: v ? undefined : r.raceSkiId } : r));
+                          setRows(next);
+                        }}
+                        className="h-6 text-[11px] bg-background/60 border-dashed px-2"
+                        placeholder={language === "no" ? "…eller fritekst (lånt ski – ikke i analyse)" : "…or free text (borrowed ski – excluded from analytics)"}
+                        data-testid={`input-freetext-ski-${row.id}`}
+                      />
+                    </div>
                   ) : (
                   <div className="flex items-start gap-1.5 flex-wrap">
                     {/* Primary product block */}
@@ -337,12 +353,24 @@ export function TestEntryTable({
                       <ProductCombobox
                         testType={testType as "Glide" | "Structure" | "Classic" | "Skating" | "Double Poling"}
                         products={products}
-                        value={row.productId}
+                        value={row.freeTextProduct ? undefined : row.productId}
                         onChange={(id) => {
-                          const next = rows.map((r) => (r.id === row.id ? { ...r, productId: id } : r));
+                          const next = rows.map((r) => (r.id === row.id ? { ...r, productId: id, freeTextProduct: null } : r));
                           setRows(next);
                         }}
                         testId={`input-product-${row.id}`}
+                      />
+                      <Input
+                        value={row.freeTextProduct ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          // Free-text product (e.g. borrowed) — excluded from analytics.
+                          const next = rows.map((r) => (r.id === row.id ? { ...r, freeTextProduct: v || null, productId: v ? undefined : r.productId } : r));
+                          setRows(next);
+                        }}
+                        className="h-6 text-[11px] bg-background/60 border-dashed px-2"
+                        placeholder={language === "no" ? "…eller fritekst (lånt – ikke i analyse)" : "…or free text (borrowed – excluded)"}
+                        data-testid={`input-freetext-product-${row.id}`}
                       />
                       <Input
                         value={row.applications?.[0] ?? ""}

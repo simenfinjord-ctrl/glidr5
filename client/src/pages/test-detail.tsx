@@ -795,6 +795,9 @@ export default function TestDetail() {
             // Show the Ski-ID (#14) — fall back to serial only if Ski-ID is missing.
             labels[entry.skiNumber] = rs.skiId || rs.serialNumber || String(entry.skiNumber);
           }
+        } else if ((entry as any).freeTextProduct) {
+          // Free-text (borrowed) ski — not in the garage, shown by its label.
+          labels[entry.skiNumber] = (entry as any).freeTextProduct;
         }
       }
       return Object.keys(labels).length > 0 ? labels : undefined;

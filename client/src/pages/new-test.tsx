@@ -504,7 +504,8 @@ export default function NewTest() {
                   distanceLabels: JSON.stringify(distanceLabels),
                   entries: rows.map((r) => ({
                     skiNumber: r.skiNumber,
-                    productId: testSkiSource === "raceskis" ? null : r.productId,
+                    productId: testSkiSource === "raceskis" ? null : (r.freeTextProduct ? null : r.productId),
+                    freeTextProduct: r.freeTextProduct || null,
                     additionalProductIds: testSkiSource === "raceskis" ? null : cleanAdditionalIds(r.additionalProductIds),
                     methodology: r.methodology,
                     result0kmCmBehind: r.roundResults[0]?.result ?? null,
@@ -520,7 +521,7 @@ export default function NewTest() {
                     grindPattern: r.grindPattern || null,
                     grindExtraParams: r.grindExtraParams ? JSON.stringify(r.grindExtraParams) : null,
                     grindProfileId: r.grindProfileId || null,
-                    raceSkiId: testSkiSource === "raceskis" ? (r.raceSkiId || null) : null,
+                    raceSkiId: testSkiSource === "raceskis" ? (r.freeTextProduct ? null : (r.raceSkiId || null)) : null,
                   })),
                 });
               })}

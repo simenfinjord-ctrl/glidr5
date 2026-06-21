@@ -314,6 +314,7 @@ export default function EditTest() {
         id: `row_${i}_${e.id}`,
         skiNumber: e.skiNumber,
         productId: e.productId ?? undefined,
+        freeTextProduct: (e as any).freeTextProduct ?? null,
         additionalProductIds: e.additionalProductIds ?? undefined,
         methodology: e.methodology,
         applications: e.methodology ? e.methodology.split('|') : [],
@@ -577,7 +578,8 @@ export default function EditTest() {
                 if (entriesLoaded) {
                   payload.entries = rows.map((r) => ({
                     skiNumber: r.skiNumber,
-                    productId: testSkiSource === "raceskis" ? null : r.productId,
+                    productId: testSkiSource === "raceskis" ? null : ((r as any).freeTextProduct ? null : r.productId),
+                    freeTextProduct: (r as any).freeTextProduct || null,
                     additionalProductIds: testSkiSource === "raceskis" ? null : cleanAdditionalIds(r.additionalProductIds),
                     methodology: r.methodology,
                     result0kmCmBehind: r.roundResults[0]?.result ?? null,
@@ -593,7 +595,7 @@ export default function EditTest() {
                     grindPattern: r.grindPattern || null,
                     grindExtraParams: r.grindExtraParams ? JSON.stringify(r.grindExtraParams) : null,
                     grindProfileId: r.grindProfileId || null,
-                    raceSkiId: testSkiSource === "raceskis" ? (r.raceSkiId || null) : null,
+                    raceSkiId: testSkiSource === "raceskis" ? ((r as any).freeTextProduct ? null : (r.raceSkiId || null)) : null,
                   }));
                 }
                 saveMutation.mutate(payload);

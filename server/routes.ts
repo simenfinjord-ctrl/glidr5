@@ -5859,6 +5859,22 @@ export async function registerRoutes(
   });
 
   // --- Race Ski Regrinds ---
+  // Keep a ski's "current grind" equal to its most recent regrind (by date) so
+  // the garage always shows the LATEST grind, not the original (#20). Falls back
+  // to leaving the value untouched when no regrinds remain.
+  async function syncSkiGrindToLatestRegrind(skiId: number) {
+    try {
+      const { pool } = await import("./db");
+      const r = await (pool as any).query(
+        `SELECT grind_type FROM race_ski_regrinds WHERE race_ski_id = $1
+         ORDER BY date DESC NULLS LAST, id DESC LIMIT 1`, [skiId]
+      );
+      if (r.rows.length && r.rows[0].grind_type) {
+        await storage.updateRaceSki(skiId, { grind: r.rows[0].grind_type });
+      }
+    } catch (e) { /* non-fatal */ }
+  }
+
   app.get("/api/race-skis/:id/regrinds", requirePermission("raceskis", "view"), async (req, res) => {
     const u = userInfo(req);
     const id = parseInt(req.params.id);
@@ -5889,7 +5905,7 @@ export async function registerRoutes(
       createdById: u.id,
       createdByName: u.name,
     });
-    await storage.updateRaceSki(id, { grind: req.body.grindType });
+    await syncSkiGrindToLatestRegrind(id);
     res.json(regrind);
   });
 
@@ -5903,6 +5919,7 @@ export async function registerRoutes(
     const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
     if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
     await storage.deleteRaceSkiRegrind(id);
+    await syncSkiGrindToLatestRegrind(regrind.raceSkiId);
     res.json({ ok: true });
   });
 

@@ -391,15 +391,20 @@ function RacePrepSkiIdField({
 }
 
 // ─── Ski color tags ──────────────────────────────────────────────────────────
+// Palette + sort order (#19): White, Green, Blue, Purple, Red, Yellow, Grey.
+// "none" is the white/untagged swatch. Legacy colours are kept at the end so
+// existing ski tags still render their dot.
 const SKI_COLORS = [
-  { id: "none",    label: "None",    bg: "bg-muted/40",                              ring: "ring-border",         dot: "" },
-  { id: "sky",     label: "Blue",    bg: "bg-sky-100 dark:bg-sky-900/30",            ring: "ring-sky-300",        dot: "bg-sky-400" },
+  { id: "none",    label: "White",   bg: "bg-muted/40",                              ring: "ring-border",         dot: "" },
   { id: "emerald", label: "Green",   bg: "bg-emerald-100 dark:bg-emerald-900/30",    ring: "ring-emerald-300",    dot: "bg-emerald-400" },
-  { id: "rose",    label: "Pink",    bg: "bg-rose-100 dark:bg-rose-900/30",          ring: "ring-rose-300",       dot: "bg-rose-400" },
-  { id: "orange",  label: "Orange",  bg: "bg-orange-100 dark:bg-orange-900/30",      ring: "ring-orange-300",     dot: "bg-orange-400" },
-  { id: "yellow",  label: "Yellow",  bg: "bg-yellow-100 dark:bg-yellow-900/30",      ring: "ring-yellow-300",     dot: "bg-yellow-400" },
+  { id: "sky",     label: "Blue",    bg: "bg-sky-100 dark:bg-sky-900/30",            ring: "ring-sky-300",        dot: "bg-sky-400" },
   { id: "violet",  label: "Purple",  bg: "bg-violet-100 dark:bg-violet-900/30",      ring: "ring-violet-300",     dot: "bg-violet-400" },
   { id: "red",     label: "Red",     bg: "bg-red-100 dark:bg-red-900/30",            ring: "ring-red-300",        dot: "bg-red-400" },
+  { id: "yellow",  label: "Yellow",  bg: "bg-yellow-100 dark:bg-yellow-900/30",      ring: "ring-yellow-300",     dot: "bg-yellow-400" },
+  { id: "grey",    label: "Grey",    bg: "bg-gray-200 dark:bg-gray-700/40",          ring: "ring-gray-400",       dot: "bg-gray-400" },
+  // Legacy colours (kept so existing tags still render their dot):
+  { id: "rose",    label: "Pink",    bg: "bg-rose-100 dark:bg-rose-900/30",          ring: "ring-rose-300",       dot: "bg-rose-400" },
+  { id: "orange",  label: "Orange",  bg: "bg-orange-100 dark:bg-orange-900/30",      ring: "ring-orange-300",     dot: "bg-orange-400" },
   { id: "teal",    label: "Teal",    bg: "bg-teal-100 dark:bg-teal-900/30",          ring: "ring-teal-300",       dot: "bg-teal-400" },
 ] as const;
 

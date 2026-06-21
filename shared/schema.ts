@@ -287,6 +287,8 @@ export const testSkiSeries = pgTable("test_ski_series", {
   teamId: integer("team_id").notNull().default(1),
   pairLabels: text("pair_labels"),
   archivedAt: text("archived_at"),
+  actionStatus: text("action_status"),       // Need regrind / In for regrind / Grinded / In use
+  actionLocation: text("action_location"),   // where it's in for regrind
 });
 
 export const insertSeriesSchema = createInsertSchema(testSkiSeries).omit({ id: true });

@@ -36,6 +36,8 @@ type Series = {
   createdByName: string;
   groupScope: string;
   archivedAt: string | null;
+  actionStatus: string | null;
+  actionLocation: string | null;
 };
 
 const schema = z.object({
@@ -358,6 +360,49 @@ function SeriesForm({
   );
 }
 
+// #28: action-status control on a testfleet (Need regrind / In for regrind / Grinded / In use).
+const SERIES_ACTION_STATUSES = ["Need regrind", "In for regrind", "Grinded", "In use"] as const;
+function seriesActionClass(s: string | null): string {
+  return s === "Need regrind" ? "bg-red-100 text-red-700 ring-red-300 dark:bg-red-900/30 dark:text-red-300"
+    : s === "In for regrind" ? "bg-amber-100 text-amber-800 ring-amber-300 dark:bg-amber-900/30 dark:text-amber-300"
+    : s === "Grinded" ? "bg-sky-100 text-sky-700 ring-sky-300 dark:bg-sky-900/30 dark:text-sky-300"
+    : s === "In use" ? "bg-emerald-100 text-emerald-700 ring-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-300"
+    : "bg-muted text-muted-foreground ring-border";
+}
+function SeriesActionStatus({ series }: { series: Series }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const m = useMutation({
+    mutationFn: async (vars: { status: string; location: string }) =>
+      apiRequest("PATCH", `/api/series/${series.id}/action`, { actionStatus: vars.status || null, actionLocation: vars.location || null }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/series"] }),
+  });
+  const onChange = (val: string) => {
+    const status = val === "__none__" ? "" : val;
+    let location = series.actionLocation || "";
+    if (status === "In for regrind") {
+      location = window.prompt(L("Hvor sendes de til sliping?", "Where is it in for regrind?"), location) || "";
+    }
+    m.mutate({ status, location });
+  };
+  return (
+    <div className="flex items-center gap-1.5">
+      <Select value={series.actionStatus || "__none__"} onValueChange={onChange}>
+        <SelectTrigger className={cn("h-7 w-auto min-w-[120px] text-[11px] font-medium ring-1 border-0", seriesActionClass(series.actionStatus))} data-testid={`series-action-${series.id}`}>
+          <SelectValue placeholder={L("Status", "Status")} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__none__">{L("Ingen status", "No status")}</SelectItem>
+          {SERIES_ACTION_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      {series.actionStatus === "In for regrind" && series.actionLocation && (
+        <span className="text-[10px] text-muted-foreground">@ {series.actionLocation}</span>
+      )}
+    </div>
+  );
+}
+
 export default function TestSkis() {
   const { t, language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
@@ -626,6 +671,9 @@ export default function TestSkis() {
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground/60">
                       {s.createdByName} · {s.groupScope}
+                    </div>
+                    <div className="mt-2">
+                      <SeriesActionStatus series={s} />
                     </div>
                   </div>
 

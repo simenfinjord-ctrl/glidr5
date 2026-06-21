@@ -283,6 +283,8 @@ export async function registerRoutes(
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS default_ski_brand TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS feeling_note TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS kick_solution TEXT;
+      ALTER TABLE test_ski_series ADD COLUMN IF NOT EXISTS action_status TEXT;
+      ALTER TABLE test_ski_series ADD COLUMN IF NOT EXISTS action_location TEXT;
       ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_rating TEXT;
       ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_comment TEXT;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS athlete_rating TEXT;
@@ -1339,6 +1341,19 @@ export async function registerRoutes(
     if (req.body.skiType !== undefined) data.skiType = req.body.skiType;
     if (req.body.groupScope) data.groupScope = req.body.groupScope;
     const updated = await storage.updateSeries(id, data);
+    res.json(updated);
+  });
+
+  // #28: quick action-status update for a series (Need regrind / In for regrind / Grinded / In use).
+  app.patch("/api/series/:id/action", requirePermission("testskis", "edit"), async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getSeries(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
+    const updated = await storage.updateSeries(id, {
+      actionStatus: req.body.actionStatus || null,
+      actionLocation: req.body.actionLocation || null,
+    } as any);
     res.json(updated);
   });
 

@@ -7294,6 +7294,32 @@ export async function registerRoutes(
       );
     }
 
+    // #22: also append the report to a Google Sheet so the SA can monitor issues
+    // in one place (date, time, reporter, team, topic, problem). Best-effort.
+    try {
+      const sheetUrl = process.env.ISSUES_SHEET_URL;
+      const { isGoogleSheetsAvailable, getUncachableGoogleSheetClient } = await import("./googleSheets");
+      const m = sheetUrl ? sheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/) : null;
+      if (m && isGoogleSheetsAvailable()) {
+        const d = new Date(now);
+        const sheets = await getUncachableGoogleSheetClient();
+        await sheets.spreadsheets.values.append({
+          spreadsheetId: m[1],
+          range: "A1",
+          valueInputOption: "USER_ENTERED",
+          requestBody: {
+            values: [[
+              d.toLocaleDateString("no-NO"),
+              d.toLocaleTimeString("no-NO", { hour: "2-digit", minute: "2-digit" }),
+              sender.name, sender.email, teamName || "", subject.trim(), body.trim(),
+            ]],
+          },
+        });
+      }
+    } catch (err) {
+      console.warn("[ReportProblem] Could not append to issues sheet:", (err as any)?.message);
+    }
+
     return res.json({ ok: true });
   });
 

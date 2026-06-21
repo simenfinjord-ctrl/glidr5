@@ -829,7 +829,44 @@ export default function TestDetail() {
 
   const distLabels = test ? getDistanceLabels(test) : ["0 km"];
 
-  const sortedEntries = [...entries].sort((a, b) => a.skiNumber - b.skiNumber);
+  // ── Sortable results (#16) — remembered per waxer across tests ───────────────
+  const [testSort, setTestSort] = useState<string>(() => {
+    try { return localStorage.getItem("glidr-raceski-test-sort") || "skiNumber|asc"; } catch { return "skiNumber|asc"; }
+  });
+  function toggleTestSort(col: string) {
+    setTestSort((prev) => {
+      const [k, d] = prev.split("|");
+      const next = k === col ? `${col}|${d === "asc" ? "desc" : "asc"}` : `${col}|asc`;
+      try { localStorage.setItem("glidr-raceski-test-sort", next); } catch {}
+      return next;
+    });
+  }
+  function testSortArrow(col: string) {
+    const [k, d] = testSort.split("|");
+    return k === col ? (d === "desc" ? " ↓" : " ↑") : "";
+  }
+  function testSortVal(entry: TestEntry, key: string): number | string {
+    const rounds = getEntryRounds(entry, distLabels.length);
+    if (key === "skiNumber") return skiLabels?.[entry.skiNumber] ?? entry.skiNumber;
+    if (key === "rank") return rounds[0]?.rank ?? Number.POSITIVE_INFINITY;
+    if (key === "feeling") return entry.feelingRank ?? Number.POSITIVE_INFINITY;
+    if (key === "kick") return (entry as any).kickRank ?? Number.POSITIVE_INFINITY;
+    if (key.startsWith("diff")) { const i = parseInt(key.slice(4)) || 0; const v = rounds[i]?.result; return v ?? Number.POSITIVE_INFINITY; }
+    if (key.startsWith("grind:")) { const c = key.slice(6); return String((entry as any)[c] ?? ""); }
+    return entry.skiNumber;
+  }
+  const sortedEntries = useMemo(() => {
+    const [key, dir] = testSort.split("|");
+    const arr = [...entries].sort((a, b) => {
+      const av = testSortVal(a, key), bv = testSortVal(b, key);
+      let cmp: number;
+      if (typeof av === "number" && typeof bv === "number") cmp = av - bv;
+      else cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" });
+      return dir === "desc" ? -cmp : cmp;
+    });
+    return arr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries, testSort, skiLabels, distLabels.length]);
 
   // ── Grind column helpers (hooks must be before any early returns) ────────────
   function parseExtraParams(json: string | null): Record<string, string> {
@@ -1524,20 +1561,20 @@ export default function TestDetail() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm" data-testid="table-results">
                 <thead>
-                  <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    <th className="pb-3 pr-3">{isRaceSkiTest ? "Ski-ID" : t("tests.skiNumber")}</th>
+                  <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground select-none">
+                    <th className="pb-3 pr-3 cursor-pointer hover:text-foreground" onClick={() => toggleTestSort("skiNumber")}>{isRaceSkiTest ? "Ski-ID" : t("tests.skiNumber")}{testSortArrow("skiNumber")}</th>
                     {!isGrind && <th className="pb-3 pr-3">{t("tests.product")}</th>}
                     {isGrind && visibleGrindCols.map((col) => (
-                      <th key={col} className="pb-3 pr-3">{formatGrindColLabel(col)}</th>
+                      <th key={col} className="pb-3 pr-3 cursor-pointer hover:text-foreground" onClick={() => toggleTestSort(`grind:${col}`)}>{formatGrindColLabel(col)}{testSortArrow(`grind:${col}`)}</th>
                     ))}
                     {distLabels.map((label, i) => (
-                      <th key={i} className="pb-3 pr-3">
-                        {(label?.trim() || `Round ${i + 1}`)} ({t("tests.cmBehind")})
+                      <th key={i} className="pb-3 pr-3 cursor-pointer hover:text-foreground" onClick={() => toggleTestSort(`diff${i}`)}>
+                        {(label?.trim() || `Round ${i + 1}`)} ({t("tests.cmBehind")}){testSortArrow(`diff${i}`)}
                       </th>
                     ))}
-                    <th className="pb-3 pr-3">{t("common.rank")}</th>
-                    <th className="pb-3">{t("newTest.feeling")}</th>
-                    {isClassic && <th className="pb-3 pl-3">{t("newTest.kick")}</th>}
+                    <th className="pb-3 pr-3 cursor-pointer hover:text-foreground" onClick={() => toggleTestSort("rank")}>{t("common.rank")}{testSortArrow("rank")}</th>
+                    <th className="pb-3 cursor-pointer hover:text-foreground" onClick={() => toggleTestSort("feeling")}>{t("newTest.feeling")}{testSortArrow("feeling")}</th>
+                    {isClassic && <th className="pb-3 pl-3 cursor-pointer hover:text-foreground" onClick={() => toggleTestSort("kick")}>{t("newTest.kick")}{testSortArrow("kick")}</th>}
                   </tr>
                 </thead>
                 <tbody>

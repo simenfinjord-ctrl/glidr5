@@ -213,6 +213,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
     const STRUCTURE_TESTS_TITLE = '📐 Structure Tests';
     const GRIND_TESTS_TITLE = '⛷️ Grind Tests';
     const RACE_PREPS_TITLE = '🏁 Race Preps';
+    const RACE_USAGE_TITLE = '🎽 Race Usage';
     const GRINDS_TITLE = '⚙️ Grinds';
     const STOCK_TITLE = '📦 Stock Changes';
     const groupSheetTitles = groupNames.map(g => `📂 ${sanitizeSheetTitle(g)}`);
@@ -227,6 +228,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       STRUCTURE_TESTS_TITLE,
       GRIND_TESTS_TITLE,
       RACE_PREPS_TITLE,
+      RACE_USAGE_TITLE,
       ...athleteSheetTitles,
       GRINDS_TITLE,
       STOCK_TITLE,
@@ -571,6 +573,34 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       await boldRows(sheets, spreadsheetId, rpSheetId, rpBoldRows).catch(() => {});
     }
 
+    // ── 4b. RACE USAGE (waxer-logged race-use + athlete feedback) ──────────────
+    await ensureSheet(sheets, spreadsheetId, RACE_USAGE_TITLE);
+    const usageRows: any[][] = [
+      [`RACE USAGE — ${team.name}`],
+      [`Generated: ${now}`],
+      [],
+      ['Date', 'Athlete', 'Ski ID', 'Brand', 'Discipline', 'Location', 'Result', 'Athlete Rating', 'Athlete Comment', 'Notes', 'Logged By'],
+    ];
+    try {
+      const usageRes = await (pool as any).query(
+        `SELECT su.date, a.name AS athlete, rs.ski_id AS ski, rs.brand, su.discipline, su.location,
+                su.result, su.athlete_rating, su.athlete_comment, su.notes, su.created_by_name
+         FROM ski_race_usages su
+         JOIN race_skis rs ON rs.id = su.ski_id
+         JOIN athletes a ON a.id = su.athlete_id
+         WHERE su.team_id = $1 ORDER BY su.date DESC NULLS LAST`,
+        [teamId]
+      );
+      for (const u of usageRes.rows) {
+        usageRows.push([u.date || '', u.athlete || '', u.ski || '', u.brand || '', u.discipline || '',
+          u.location || '', u.result || '', u.athlete_rating || '', u.athlete_comment || '', u.notes || '', u.created_by_name || '']);
+      }
+    } catch (e) { /* table may not exist yet */ }
+    await clearAndWrite(sheets, spreadsheetId, RACE_USAGE_TITLE, usageRows);
+    const usageMeta = await sheets.spreadsheets.get({ spreadsheetId });
+    const usageSheetId = usageMeta.data.sheets?.find((s: any) => s.properties?.title === RACE_USAGE_TITLE)?.properties?.sheetId;
+    if (usageSheetId !== undefined) await boldRows(sheets, spreadsheetId, usageSheetId, [0, 3]).catch(() => {});
+
     // ── 5. ATHLETE SHEETS ─────────────────────────────────────────────────────
     for (let ai = 0; ai < allAthletes.length; ai++) {
       const athlete = allAthletes[ai];
@@ -763,6 +793,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       [STRUCTURE_TESTS_TITLE, `All structure tests — flat table, ${structureTests.length} tests`],
       [GRIND_TESTS_TITLE, `All grind tests — flat table, ${grindTestsList.length} tests`],
       [RACE_PREPS_TITLE, 'All race preps with products, application, weather and per-athlete entries'],
+      [RACE_USAGE_TITLE, 'Waxer-logged race usage per ski pair, with athlete rating/comment'],
       ...athleteSheetTitles.map((t, i) => [t, `Race skis, regrind history, race ski tests for ${(allAthletes[i] as any).name}`]),
       [GRINDS_TITLE, 'Grind profiles, grinding records, linked grinding sheets'],
       [STOCK_TITLE, 'Product stock change history'],
@@ -933,7 +964,7 @@ function buildExportHtml(data: {
   groups: any[]; athletes: any[]; raceSkis: any[]; raceSkiRegrinds: any[];
   testSkiRegrinds: any[]; grindProfiles: any[]; grindingRecords: any[];
   grindingSheets: any[]; activities: any[]; loginLogs: any[];
-  racePreps: any[]; racePrepEntries: any[];
+  racePreps: any[]; racePrepEntries: any[]; raceUsage?: any[];
 }): string {
   const productMap     = new Map(data.products.map((p: any)     => [p.id, p]));
   const raceSkiMap     = new Map(data.raceSkis.map((s: any)     => [s.id, s]));
@@ -1284,6 +1315,15 @@ function buildExportHtml(data: {
     body += htmlSection(`Race Preparations (${data.racePreps.length})`, rpHtml);
   }
 
+  // Race usage — waxer-logged race-use per ski pair + athlete feedback.
+  if (data.raceUsage && data.raceUsage.length > 0) {
+    body += htmlSection(`Race Usage (${data.raceUsage.length})`, htmlTable(
+      ['Date', 'Athlete', 'Ski ID', 'Brand', 'Discipline', 'Location', 'Result', 'Athlete Rating', 'Athlete Comment', 'Notes'],
+      data.raceUsage.map((u: any) => [u.date || '', u.athlete || '', u.ski || '', u.brand || '', u.discipline || '', u.location || '', u.result || '', u.athlete_rating || '', u.athlete_comment || '', u.notes || '']),
+      true
+    ));
+  }
+
   if (data.grindingRecords.length > 0) {
     body += htmlSection(`Grinding Records (${data.grindingRecords.length})`, htmlTable(
       ['Date', 'Series', 'Type', 'Stone', 'Notes', 'Created By', 'Group'],
@@ -1421,6 +1461,15 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
      WHERE rp.team_id = $1 ORDER BY rpe.race_prep_id, rpe.athlete_name`,
     [teamId]
   );
+  const raceUsageResult = await (pool as any).query(
+    `SELECT su.date, a.name AS athlete, rs.ski_id AS ski, rs.brand, su.discipline, su.location,
+            su.result, su.athlete_rating, su.athlete_comment, su.notes, su.created_by_name
+     FROM ski_race_usages su
+     JOIN race_skis rs ON rs.id = su.ski_id
+     JOIN athletes a ON a.id = su.athlete_id
+     WHERE su.team_id = $1 ORDER BY su.date DESC NULLS LAST`,
+    [teamId]
+  ).catch(() => ({ rows: [] as any[] }));
 
   const html = buildExportHtml({
     teamName: team?.name ?? 'Glidr',
@@ -1442,6 +1491,7 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
     loginLogs: allLoginLogs,
     racePreps: racePrepsResult.rows,
     racePrepEntries: racePrepEntriesResult.rows,
+    raceUsage: raceUsageResult.rows,
   });
 
   const puppeteer = await import('puppeteer');

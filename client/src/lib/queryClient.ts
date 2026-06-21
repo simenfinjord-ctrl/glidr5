@@ -58,8 +58,13 @@ export const getQueryFn: <T>(options: {
       }
 
       if (res.status === 401) {
-        queryClient.setQueryData(["/api/auth/me"], null);
-        throw new Error("Session expired");
+        // A single data-endpoint 401 must NOT force a global logout: during a
+        // redeploy/restart the session store can briefly reconnect and return a
+        // transient 401 even though the real session (stored in Postgres) is
+        // intact. Wiping ["/api/auth/me"] here caused spurious logouts. Instead
+        // we just fail this one query; /api/auth/me stays the source of truth
+        // (re-checked on reload), so a genuine logout is still caught.
+        throw new Error("401: Unauthorized");
       }
 
       await throwIfResNotOk(res);

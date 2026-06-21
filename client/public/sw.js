@@ -1,6 +1,6 @@
-const CACHE_NAME = "glidr-v5";
+const CACHE_NAME = "glidr-v6";
 const STATIC_EXTENSIONS = [".js", ".css", ".png", ".jpg", ".svg", ".ico", ".woff", ".woff2"];
-const API_CACHE_NAME = "glidr-api-v5";
+const API_CACHE_NAME = "glidr-api-v6";
 const CACHEABLE_API = ["/api/tests", "/api/products", "/api/groups", "/api/users", "/api/weather", "/api/testskis"];
 
 self.addEventListener("install", (event) => {

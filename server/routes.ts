@@ -3516,7 +3516,8 @@ export async function registerRoutes(
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const teamId = getAdminTeamScope(req);
     const logs = await storage.listLoginLogs(teamId);
-    res.json(logs);
+    // #25: login history shows ONLY actual logins; in-app actions belong in the activity log.
+    res.json(logs.filter((l: any) => (l.action ?? "login") === "login"));
   });
 
   app.post("/api/action-log", requireAuth, async (req, res) => {
@@ -3550,10 +3551,22 @@ export async function registerRoutes(
   // Activity feed
   app.get("/api/activity", requireAuth, async (req, res) => {
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
-    const limit = parseInt(req.query.limit as string) || 50;
+    // #23: show far more history, and allow filtering by action.
+    const limit = Math.min(parseInt(req.query.limit as string) || 2000, 10000);
+    const actionFilter = (req.query.action as string) || "";
     const teamId = getAdminTeamScope(req);
-    const logs = await storage.listActivityLogs(limit, teamId);
+    let logs = await storage.listActivityLogs(limit, teamId);
+    if (actionFilter) logs = logs.filter((l: any) => l.action === actionFilter);
     res.json(logs);
+  });
+
+  // Distinct actions present in the activity log (for the filter dropdown).
+  app.get("/api/activity/actions", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const teamId = getAdminTeamScope(req);
+    const logs = await storage.listActivityLogs(10000, teamId);
+    const actions = [...new Set(logs.map((l: any) => l.action).filter(Boolean))].sort();
+    res.json(actions);
   });
 
   // Profile - change own password
@@ -4634,16 +4647,19 @@ export async function registerRoutes(
       }
     }
 
+    // login_at / created_at are stored as ISO text; ISO-8601 sorts chronologically
+    // as text, so compare against an ISO threshold (avoids text-vs-timestamp errors).
+    const sinceIso = new Date(Date.now() - days * 86400000).toISOString();
     const [loginResult, activityResult] = await Promise.all([
       (pg as any).query(
         `SELECT id, user_id, email, name, login_at, ip_address, action, details
-         FROM login_logs WHERE user_id = $1 AND login_at >= NOW() - ($2 * INTERVAL '1 day') ORDER BY login_at DESC LIMIT 200`,
-        [targetId, days]
+         FROM login_logs WHERE user_id = $1 AND login_at >= $2 AND action = 'login' ORDER BY login_at DESC LIMIT 200`,
+        [targetId, sinceIso]
       ),
       (pg as any).query(
         `SELECT id, user_id, user_name, action, entity_type, entity_id, details, created_at, team_id
-         FROM activity_logs WHERE user_id = $1 AND created_at >= NOW() - ($2 * INTERVAL '1 day') ORDER BY created_at DESC LIMIT 200`,
-        [targetId, days]
+         FROM activity_logs WHERE user_id = $1 AND created_at >= $2 ORDER BY created_at DESC LIMIT 200`,
+        [targetId, sinceIso]
       ),
     ]);
 
@@ -4679,16 +4695,19 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Cannot view activity for users outside your team" });
     }
 
+    // login_at / created_at are stored as ISO text; ISO-8601 sorts chronologically
+    // as text, so compare against an ISO threshold (avoids text-vs-timestamp errors).
+    const sinceIso = new Date(Date.now() - days * 86400000).toISOString();
     const [loginResult, activityResult] = await Promise.all([
       (pg as any).query(
         `SELECT id, user_id, email, name, login_at, ip_address, action, details
-         FROM login_logs WHERE user_id = $1 AND login_at >= NOW() - ($2 * INTERVAL '1 day') ORDER BY login_at DESC LIMIT 200`,
-        [targetId, days]
+         FROM login_logs WHERE user_id = $1 AND login_at >= $2 AND action = 'login' ORDER BY login_at DESC LIMIT 200`,
+        [targetId, sinceIso]
       ),
       (pg as any).query(
         `SELECT id, user_id, user_name, action, entity_type, entity_id, details, created_at, team_id
-         FROM activity_logs WHERE user_id = $1 AND created_at >= NOW() - ($2 * INTERVAL '1 day') ORDER BY created_at DESC LIMIT 200`,
-        [targetId, days]
+         FROM activity_logs WHERE user_id = $1 AND created_at >= $2 ORDER BY created_at DESC LIMIT 200`,
+        [targetId, sinceIso]
       ),
     ]);
 

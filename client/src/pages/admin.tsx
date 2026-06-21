@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -2668,6 +2668,15 @@ export default function Admin() {
     queryKey: [`/api/activity${teamScopeParam}`],
     enabled: canManage,
   });
+  const [activityActionFilter, setActivityActionFilter] = useState<string>("all");
+  const activityActions = useMemo(
+    () => [...new Set(activities.map((a) => a.action).filter(Boolean))].sort(),
+    [activities],
+  );
+  const filteredActivities = useMemo(
+    () => (activityActionFilter === "all" ? activities : activities.filter((a) => a.action === activityActionFilter)),
+    [activities, activityActionFilter],
+  );
 
   const groupNames = apiGroups.map((g) => g.name);
 
@@ -4603,13 +4612,26 @@ export default function Admin() {
         {activeTab === "activity" && (
           <div className="flex flex-col gap-4" data-testid="tab-content-activity">
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-activity-log">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex flex-wrap items-center gap-2 mb-4">
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50">
                   <Activity className="h-4 w-4 text-teal-600" />
                 </div>
-                <h2 className="text-sm font-semibold text-foreground">{L("Aktivitetslogg", "Activity Log")} ({activities.length})</h2>
+                <h2 className="text-sm font-semibold text-foreground">{L("Aktivitetslogg", "Activity Log")} ({filteredActivities.length})</h2>
+                <div className="ml-auto">
+                  <Select value={activityActionFilter} onValueChange={setActivityActionFilter}>
+                    <SelectTrigger className="h-8 w-[200px] text-xs" data-testid="select-activity-action">
+                      <SelectValue placeholder={L("Alle handlinger", "All actions")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{L("Alle handlinger", "All actions")}</SelectItem>
+                      {activityActions.map((a) => (
+                        <SelectItem key={a} value={a}>{a}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              {activities.length === 0 ? (
+              {filteredActivities.length === 0 ? (
                 <p className="text-sm text-muted-foreground" data-testid="empty-activity-log">{L("Ingen aktivitet registrert ennå.", "No activity recorded yet.")}</p>
               ) : (
                 <div className="max-h-[600px] overflow-y-auto">
@@ -4625,7 +4647,7 @@ export default function Admin() {
                       </tr>
                     </thead>
                     <tbody>
-                      {activities.slice(0, 200).map((a) => (
+                      {filteredActivities.slice(0, 1000).map((a) => (
                         <tr key={a.id} className="border-b border-border" data-testid={`row-activitylog-${a.id}`}>
                           <td className="py-2 pr-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(a.createdAt).toLocaleString()}</td>
                           <td className="py-2 pr-3 font-medium text-foreground">{a.userName}</td>

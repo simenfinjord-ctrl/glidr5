@@ -1189,7 +1189,10 @@ export default function Tests() {
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const { isBlindTester, can } = useAuth();
   const canViewGrinding = can("grinding", "view");
-  const { data: tests = [], isLoading: testsLoading } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
+  const { data: allTests = [], isLoading: testsLoading } = useQuery<Test[]>({ queryKey: ["/api/tests"] });
+  // Race-ski (athlete) tests live under Race Skis only — never show them in the
+  // general Tests list (avoids the confusion of #17).
+  const tests = useMemo(() => allTests.filter((t) => (t as any).testSkiSource !== "raceskis"), [allTests]);
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: weather = [] } = useQuery<Weather[]>({ queryKey: ["/api/weather/for-filtering"] });

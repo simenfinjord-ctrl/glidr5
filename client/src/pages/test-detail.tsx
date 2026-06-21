@@ -713,7 +713,11 @@ export default function TestDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tests"] });
       toast({ title: t("testDetail.deleteTest") });
-      setLocation(test?.testType === "Grind" ? "/grinding" : "/tests");
+      setLocation(
+        test?.testType === "Grind" ? "/grinding"
+        : (isRaceSkiTest && (test as any).athleteId) ? `/raceskis/${(test as any).athleteId}?tab=tests`
+        : "/tests"
+      );
     },
     onError: (e) => {
       toast({
@@ -1064,10 +1068,17 @@ export default function TestDetail() {
         <div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
-              <AppLink href={isGrind ? "/grinding" : "/tests"} testId="link-back-tests">
+              <AppLink
+                href={isGrind ? "/grinding" : (isRaceSkiTest && (test as any).athleteId) ? `/raceskis/${(test as any).athleteId}?tab=tests` : "/tests"}
+                testId="link-back-tests"
+              >
                 <Button variant="ghost" size="sm" data-testid="button-back-tests">
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  {isGrind ? `${t("testDetail.back")} — ${t("grinding.title")}` : t("testDetail.backToTests")}
+                  {isGrind
+                    ? `${t("testDetail.back")} — ${t("grinding.title")}`
+                    : (isRaceSkiTest && (test as any).athleteId)
+                    ? L("Tilbake til utøver", "Back to athlete")
+                    : t("testDetail.backToTests")}
                 </Button>
               </AppLink>
               {allTests.length > 0 && (

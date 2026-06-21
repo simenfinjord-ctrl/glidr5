@@ -581,7 +581,10 @@ export default function AthleteDetail() {
     try { localStorage.setItem("glidr-raceski-test-columns", JSON.stringify(activeTestColumns)); } catch {}
   }, [activeTestColumns]);
 
-  const [pageTab, setPageTab] = useState<"garage" | "tests" | "races">("garage");
+  const [pageTab, setPageTab] = useState<"garage" | "tests" | "races">(() => {
+    const tab = new URLSearchParams(search).get("tab");
+    return tab === "tests" || tab === "races" ? tab : "garage";
+  });
   const [testsExpanded, setTestsExpanded] = useState(true);
   const [testViewMode, setTestViewMode] = useState<"card" | "list">("card");
   const [expandedTestIds, setExpandedTestIds] = useState<Set<number>>(new Set());

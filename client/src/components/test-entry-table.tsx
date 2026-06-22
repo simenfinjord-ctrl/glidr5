@@ -1,5 +1,5 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ProductCombobox } from "@/components/product-combobox";

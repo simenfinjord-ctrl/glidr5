@@ -5935,6 +5935,28 @@ export async function registerRoutes(
   // Editing an entry's ski IDs is an athlete-ski activity — allowed for anyone
   // with access to the athlete (ski-waxers work from the Race Skis area, which
   // doesn't require raceprep). Glide work is gated separately by raceprepGlide.
+  // #5: a waxer enters/edits the athlete feedback for a race directly (after
+  // talking to the runner) — separate from the public feedback link.
+  app.patch("/api/race-preps/:id/entries/:eid/feedback", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
+    const prepId = parseInt(req.params.id);
+    const eid = parseInt(req.params.eid);
+    if (!await getRacePrepForTeam(prepId, teamId)) return res.status(403).json({ message: "Forbidden" });
+    const { pool } = await import("./db");
+    const entryRes = await (pool as any).query(`SELECT athlete_id AS "athleteId", race_prep_id AS "racePrepId" FROM race_prep_entries WHERE id=$1`, [eid]);
+    if (!entryRes.rows.length || entryRes.rows[0].racePrepId !== prepId) return res.status(404).json({ message: "Not found" });
+    if (u.isTeamAdmin !== 1 && u.isAdmin !== 1) {
+      const hasAccess = await storage.hasAthleteAccess(entryRes.rows[0].athleteId, u.id, false, teamId);
+      if (!hasAccess) return res.status(403).json({ message: "No access to this athlete" });
+    }
+    await (pool as any).query(
+      `UPDATE race_prep_entries SET athlete_rating=$1, athlete_comment=$2 WHERE id=$3`,
+      [req.body.athleteRating || null, req.body.athleteComment || null, eid]
+    );
+    return res.json({ ok: true });
+  });
+
   app.put("/api/race-preps/:id/entries/:eid", requireAuth, async (req, res) => {
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;

@@ -36,6 +36,7 @@ import {
   FileText,
   WifiOff,
   MessageSquare,
+  Pencil,
   Link2,
   CalendarDays,
   Upload,
@@ -443,6 +444,61 @@ function athleteRatingClass(r: string): string {
     : "bg-amber-100 text-amber-800 ring-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:ring-amber-800";
 }
 
+const FEEDBACK_RATINGS = ["Competitive+", "Competitive", "Competitive-"];
+// #5: waxer enters/edits the athlete feedback for a race directly on the athlete page.
+function RacePrepFeedbackEditor({ prepId, entryId, rating, comment, canEdit, onSaved, lang }: {
+  prepId: number; entryId: number; rating: string | null; comment: string | null; canEdit: boolean; onSaved: () => void; lang: "no" | "en";
+}) {
+  const L = (no: string, en: string) => (lang === "en" ? en : no);
+  const { toast } = useToast();
+  const [editing, setEditing] = useState(false);
+  const [r, setR] = useState(rating || "");
+  const [c, setC] = useState(comment || "");
+  useEffect(() => { setR(rating || ""); setC(comment || ""); }, [rating, comment]);
+  const save = useMutation({
+    mutationFn: async () => apiRequest("PATCH", `/api/race-preps/${prepId}/entries/${entryId}/feedback`, { athleteRating: r || null, athleteComment: c || null }),
+    onSuccess: () => { onSaved(); setEditing(false); toast({ title: L("Lagret", "Saved") }); },
+    onError: (e: any) => toast({ title: L("Feil", "Error"), description: e?.message, variant: "destructive" }),
+  });
+
+  if (!editing) {
+    if (!rating && !comment) {
+      if (!canEdit) return null;
+      return (
+        <button type="button" onClick={() => setEditing(true)} className="mb-3 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary" data-testid={`add-athlete-feedback-${entryId}`}>
+          <MessageSquare className="h-3 w-3" />{L("Legg til tilbakemelding fra utøver", "Add athlete feedback")}
+        </button>
+      );
+    }
+    return (
+      <div className="flex flex-wrap items-center gap-2 mb-3 rounded-lg bg-muted/40 px-3 py-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Tilbakemelding fra utøver", "Athlete feedback")}</span>
+        {rating && <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1", athleteRatingClass(rating))}>{rating}</span>}
+        {comment && <span className="text-xs text-muted-foreground italic">“{comment}”</span>}
+        {canEdit && <button type="button" onClick={() => setEditing(true)} className="text-muted-foreground hover:text-foreground" title={L("Rediger", "Edit")}><Pencil className="h-3 w-3" /></button>}
+      </div>
+    );
+  }
+  return (
+    <div className="mb-3 rounded-lg bg-muted/40 px-3 py-2 space-y-2">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Tilbakemelding fra utøver", "Athlete feedback")}</div>
+      <div className="flex flex-wrap gap-1.5">
+        {FEEDBACK_RATINGS.map((opt) => (
+          <button key={opt} type="button" onClick={() => setR(r === opt ? "" : opt)}
+            className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 transition-colors", r === opt ? athleteRatingClass(opt) : "ring-border text-muted-foreground hover:bg-muted")}>
+            {opt}
+          </button>
+        ))}
+      </div>
+      <Input value={c} onChange={(e) => setC(e.target.value)} placeholder={L("Kommentar fra utøver…", "Athlete comment…")} className="h-8 text-sm" />
+      <div className="flex justify-end gap-2">
+        <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setR(rating || ""); setC(comment || ""); }}>{L("Avbryt", "Cancel")}</Button>
+        <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}</Button>
+      </div>
+    </div>
+  );
+}
+
 // Heuristic interpretation of a ski's feeling notes into one summary sentence.
 // (No LLM available server-side, so this uses sentiment keywords + recurring terms.)
 const FEELING_POS = ["rask", "fort", "kjapp", "god", "bra", "stabil", "fin", "best", "topp", "lett", "smidig", "balansert", "fast", "stable", "good", "great", "smooth", "quick", "nice", "top", "easy", "light", "balanced"];
@@ -450,7 +506,7 @@ const FEELING_NEG = ["treg", "seig", "dårlig", "darlig", "ustabil", "hard", "tu
 const FEELING_STOP = new Set(["og", "i", "på", "pa", "er", "det", "som", "en", "et", "med", "for", "av", "til", "litt", "veldig", "men", "var", "the", "and", "is", "it", "to", "of", "in", "on", "a", "an", "very", "was", "but", "with", "felt", "ski", "skien", "skiene"]);
 
 function summarizeFeelingNotes(
-  notes: { note: string; rank: number | null; date: string }[],
+  notes: { note: string; rank: number | null; date: string; airTemp?: number | null; snowType?: string | null }[],
   lang: string,
 ): string | null {
   const L = (no: string, en: string) => (lang === "no" ? no : en);
@@ -474,9 +530,26 @@ function summarizeFeelingNotes(
     : "";
   const sorted = [...withNotes].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   const latest = sorted[0]?.note.trim();
+  // #10: tie weather/conditions into the interpreted sentence.
+  const temps = withNotes.map((n) => n.airTemp).filter((t): t is number => typeof t === "number");
+  const snowFreq = new Map<string, number>();
+  for (const n of withNotes) { const st = (n.snowType || "").trim(); if (st) snowFreq.set(st, (snowFreq.get(st) ?? 0) + 1); }
+  let conditions = "";
+  if (temps.length) {
+    const lo = Math.min(...temps), hi = Math.max(...temps);
+    const range = lo === hi ? `${lo.toFixed(0)}°C` : `${lo.toFixed(0)}–${hi.toFixed(0)}°C`;
+    const band = hi <= -8 ? L("kaldt føre", "cold conditions")
+      : lo >= -2 ? L("mildt føre", "mild conditions")
+      : L("variert føre", "varied conditions");
+    conditions = L(`Brukt i ${band} (lufttemp ${range})`, `Used in ${band} (air temp ${range})`);
+    const topSnow = [...snowFreq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (topSnow) conditions += L(`, oftest ${topSnow.toLowerCase()}`, `, mostly ${topSnow.toLowerCase()}`);
+    conditions += ".";
+  }
   const parts: string[] = [];
   parts.push(L(`${withNotes.length} feelingnotat${withNotes.length === 1 ? "" : "er"}.`, `${withNotes.length} feeling note${withNotes.length === 1 ? "" : "s"}.`));
   if (sentiment) parts.push(sentiment);
+  if (conditions) parts.push(conditions);
   if (recurring.length) parts.push(L(`Gjentakende: ${recurring.join(", ")}.`, `Recurring: ${recurring.join(", ")}.`));
   if (latest) parts.push(L(`Siste: «${latest}».`, `Latest: “${latest}”.`));
   return parts.join(" ");
@@ -2631,22 +2704,16 @@ export default function AthleteDetail() {
                         </div>
                       )}
 
-                      {/* ── Athlete feedback (from the feedback link) ── */}
-                      {(entry.athleteRating || entry.athleteComment) && (
-                        <div className="flex flex-wrap items-center gap-2 mb-3 rounded-lg bg-muted/40 px-3 py-2">
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            {L("Tilbakemelding fra utøver", "Athlete feedback")}
-                          </span>
-                          {entry.athleteRating && (
-                            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1", athleteRatingClass(entry.athleteRating))}>
-                              {entry.athleteRating}
-                            </span>
-                          )}
-                          {entry.athleteComment && (
-                            <span className="text-xs text-muted-foreground italic">“{entry.athleteComment}”</span>
-                          )}
-                        </div>
-                      )}
+                      {/* ── Athlete feedback (waxer-editable + from feedback link) ── */}
+                      <RacePrepFeedbackEditor
+                        prepId={entry.racePrepId}
+                        entryId={entry.entryId}
+                        rating={entry.athleteRating}
+                        comment={entry.athleteComment}
+                        canEdit={canEditSki}
+                        onSaved={onSkiSaved}
+                        lang={skiLang}
+                      />
 
                       {/* ── Weather conditions grid ── */}
                       {rw && (() => {
@@ -5750,14 +5817,26 @@ function SkiAnalyticsSection({
     for (const t of raceSkiTests) m.set(t.id, t.date);
     return m;
   }, [raceSkiTests]);
+  // #10: per-test air temp + snow type so feeling summaries can describe conditions.
+  const testConditionsById = useMemo(() => {
+    const m = new Map<number, { airTemp: number | null; snowType: string | null }>();
+    for (const t of raceSkiTests) {
+      const w = t.weatherId ? testWeatherById.get(t.weatherId) : null;
+      m.set(t.id, { airTemp: w?.airTemperatureC ?? null, snowType: w?.snowType ?? w?.snowHumidityType ?? null });
+    }
+    return m;
+  }, [raceSkiTests, testWeatherById]);
   const feelingSummaries = useMemo(() => {
     return skiStats.map((s) => {
       const notes = allEntries
         .filter((e) => e.raceSkiId === s.ski.id && (e as any).feelingNote)
-        .map((e) => ({ note: (e as any).feelingNote as string, rank: e.feelingRank, date: testDateById.get(e.testId) ?? "" }));
+        .map((e) => {
+          const cond = testConditionsById.get(e.testId);
+          return { note: (e as any).feelingNote as string, rank: e.feelingRank, date: testDateById.get(e.testId) ?? "", airTemp: cond?.airTemp ?? null, snowType: cond?.snowType ?? null };
+        });
       return { ski: s.ski, summary: summarizeFeelingNotes(notes, language) };
     }).filter((x): x is { ski: RaceSki; summary: string } => !!x.summary);
-  }, [skiStats, allEntries, testDateById, language]);
+  }, [skiStats, allEntries, testDateById, testConditionsById, language]);
 
   function toggleCompare(skiId: number) {
     setCompareSkiIds((prev) => {

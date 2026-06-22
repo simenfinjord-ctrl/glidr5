@@ -701,7 +701,7 @@ function AddFromPictureDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">{L("Sted", "Location")}</label>
-                <Input value={activeGroup.location} onChange={(e) => updateActiveGroup((g) => ({ ...g, location: e.target.value }))} className="h-8 text-sm mt-0.5" />
+                <LocationAutocomplete value={activeGroup.location} onChange={(v) => updateActiveGroup((g) => ({ ...g, location: v }))} className="mt-0.5" inputClassName="h-8 text-sm" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">{L("Testnavn (valgfritt)", "Test name (optional)")}</label>

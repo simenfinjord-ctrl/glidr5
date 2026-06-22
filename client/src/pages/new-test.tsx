@@ -127,6 +127,9 @@ export default function NewTest() {
 
   const initialSource = urlParams.get("source") === "raceskis" ? "raceskis" : "series";
   const [testSkiSource, setTestSkiSource] = useState<"series" | "raceskis">(initialSource as any);
+  // Race-ski tests are only created from the Athlete Skis page (?source=raceskis or
+  // when duplicating a race-ski test). The general New test page is Testfleets-only.
+  const isRaceSkiFlow = initialSource === "raceskis" || testSkiSource === "raceskis";
 
   const { data: series = [] } = useQuery<Series[]>({ queryKey: ["/api/series"] });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
@@ -531,23 +534,14 @@ export default function NewTest() {
               className="space-y-4"
             >
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                {can("raceskis") && (
+                {/* Race-ski tests must be started from the Athlete Skis page. On the
+                    general New test page only Testfleets is selectable; when started as
+                    a race-ski test the source is locked. */}
+                {can("raceskis") && isRaceSkiFlow && (
                   <div className="lg:col-span-2">
                     <div className="space-y-2">
                       <label className="text-sm font-medium leading-none">{t("newTest.skiSource")}</label>
-                      <Select
-                        value={testSkiSource}
-                        onValueChange={(v) => {
-                          setTestSkiSource(v as "series" | "raceskis");
-                          const currentType = form.getValues("testType");
-                          if (v === "raceskis" && ["Glide", "Structure", "Grind"].includes(currentType)) {
-                            form.setValue("testType", "Classic");
-                          }
-                          if (v === "series" && ["Classic", "Skating", "Double Poling"].includes(currentType)) {
-                            form.setValue("testType", "Glide");
-                          }
-                        }}
-                      >
+                      <Select value={testSkiSource} disabled>
                         <SelectTrigger data-testid="select-ski-source">
                           <SelectValue />
                         </SelectTrigger>
@@ -560,7 +554,7 @@ export default function NewTest() {
                   </div>
                 )}
                 {testSkiSource === "series" && (
-                <div className={can("raceskis") ? "lg:col-span-2" : "lg:col-span-3"}>
+                <div className={can("raceskis") && isRaceSkiFlow ? "lg:col-span-2" : "lg:col-span-3"}>
                   <FormField
                     control={form.control}
                     name="seriesId"

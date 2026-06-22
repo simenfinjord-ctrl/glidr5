@@ -611,6 +611,7 @@ export default function AthleteDetail() {
     testType: "Classic" as "Classic" | "Skating" | "Double Poling",
     notes: "",
     weatherId: undefined as number | undefined,
+    noWeather: false,
   });
   const [selectedSkiIds, setSelectedSkiIds] = useState<Set<number>>(new Set());
   const [skiSearchQuery, setSkiSearchQuery] = useState("");
@@ -1456,7 +1457,8 @@ export default function AthleteDetail() {
         testSkiSource: "raceskis",
         seriesId: null,
         athleteId: Number(athleteId),
-        weatherId: resolvedWeatherId || null,
+        weatherId: testForm.noWeather ? null : (resolvedWeatherId || null),
+        noWeather: testForm.noWeather,
         notes: testForm.notes.trim() || null,
         distanceLabels: JSON.stringify(distanceLabels),
         groupScope,
@@ -1476,7 +1478,7 @@ export default function AthleteDetail() {
       }
       toast({ title: (data as any)?.queued ? "Test queued (offline)" : "Test saved" });
       setShowTestForm(false);
-      setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Classic" as any, notes: "", weatherId: undefined });
+      setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Classic" as any, notes: "", weatherId: undefined, noWeather: false });
       setSelectedSkiIds(new Set());
       setDistanceLabels([""]);
       setTestRows([]);
@@ -1889,7 +1891,7 @@ export default function AthleteDetail() {
   }
 
   function openNewTest() {
-    setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Classic", notes: "", weatherId: undefined });
+    setTestForm({ date: new Date().toISOString().split("T")[0], location: "", testType: "Classic", notes: "", weatherId: undefined, noWeather: false });
     setDistanceLabels([""]);
     setSelectedSkiIds(new Set());
     setSkiSearchQuery("");
@@ -3560,7 +3562,19 @@ export default function AthleteDetail() {
                       </Select>
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm font-medium">{L("Vær", "Weather")}</label>
+                      <div className="mb-1 flex items-center justify-between">
+                        <label className="block text-sm font-medium">{L("Vær", "Weather")}</label>
+                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none" data-testid="checkbox-no-weather-athlete">
+                          <input
+                            type="checkbox"
+                            checked={testForm.noWeather}
+                            onChange={(e) => setTestForm((f) => ({ ...f, noWeather: e.target.checked, weatherId: e.target.checked ? undefined : f.weatherId }))}
+                            className="h-3.5 w-3.5"
+                          />
+                          {L("Ikke legg til vær", "Do not add weather")}
+                        </label>
+                      </div>
+                      <div className={testForm.noWeather ? "opacity-40 pointer-events-none" : ""}>
                       <Select
                         value={testForm.weatherId != null ? String(testForm.weatherId) : "__auto__"}
                         onValueChange={(v) => setTestForm((f) => ({ ...f, weatherId: v === "__auto__" ? undefined : Number(v) }))}
@@ -3585,6 +3599,7 @@ export default function AthleteDetail() {
                           ))}
                         </SelectContent>
                       </Select>
+                      </div>
                     </div>
                   </div>
 

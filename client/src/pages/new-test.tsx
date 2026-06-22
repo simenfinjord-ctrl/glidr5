@@ -157,6 +157,7 @@ export default function NewTest() {
   const [duplicateApplied, setDuplicateApplied] = useState(false);
   const [runsheetOpen, setRunsheetOpen] = useState(false);
   const [manualWeatherOpen, setManualWeatherOpen] = useState(false);
+  const [noWeather, setNoWeather] = useState(false);
   const [weatherDefaults, setWeatherDefaults] = useState<{ date?: string; time?: string; location?: string; groupScope?: string }>({});
 
   // Grind column visibility: only include stone/pattern if at least one profile uses them
@@ -483,9 +484,9 @@ export default function NewTest() {
                   form.setError("seriesId", { message: "Select a series" });
                   return;
                 }
-                const chosenWeatherId = values.weatherId
+                const chosenWeatherId = noWeather ? undefined : (values.weatherId
                   ? Number(values.weatherId)
-                  : autoWeather?.id;
+                  : autoWeather?.id);
                 const effectiveGroup = values.testType === "Grind" ? (userGroups[0] || "Grinding") : values.groupScope;
                 saveMutation.mutate({
                   date: values.date,
@@ -493,6 +494,7 @@ export default function NewTest() {
                   location: values.location,
                   testName: values.testName || null,
                   weatherId: chosenWeatherId,
+                  noWeather,
                   testType: values.testType,
                   testSkiSource,
                   seriesId: testSkiSource === "raceskis" ? null : Number(values.seriesId),
@@ -729,23 +731,36 @@ export default function NewTest() {
                       <FormItem>
                         <div className="flex items-center justify-between mb-1">
                           <FormLabel className="mb-0">{t("newTest.weather")}</FormLabel>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setWeatherDefaults({
-                                date: form.getValues("date"),
-                                time: form.getValues("startTime"),
-                                location: form.getValues("location"),
-                                groupScope: form.getValues("groupScope"),
-                              });
-                              setManualWeatherOpen(true);
-                            }}
-                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <CloudSun className="h-3 w-3" />
-                            {t("newTest.addManualWeather") ?? "+ Add manual"}
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none" data-testid="checkbox-no-weather">
+                              <input
+                                type="checkbox"
+                                checked={noWeather}
+                                onChange={(e) => { setNoWeather(e.target.checked); if (e.target.checked) field.onChange(undefined); }}
+                                className="h-3.5 w-3.5"
+                              />
+                              {language === "no" ? "Ikke legg til vær" : "Do not add weather"}
+                            </label>
+                            <button
+                              type="button"
+                              disabled={noWeather}
+                              onClick={() => {
+                                setWeatherDefaults({
+                                  date: form.getValues("date"),
+                                  time: form.getValues("startTime"),
+                                  location: form.getValues("location"),
+                                  groupScope: form.getValues("groupScope"),
+                                });
+                                setManualWeatherOpen(true);
+                              }}
+                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                            >
+                              <CloudSun className="h-3 w-3" />
+                              {t("newTest.addManualWeather") ?? "+ Add manual"}
+                            </button>
+                          </div>
                         </div>
+                        <div className={noWeather ? "opacity-40 pointer-events-none" : ""}>
                         <Select
                           value={field.value ?? "__auto__"}
                           onValueChange={(v) => {
@@ -781,6 +796,7 @@ export default function NewTest() {
                             ))}
                           </SelectContent>
                         </Select>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}

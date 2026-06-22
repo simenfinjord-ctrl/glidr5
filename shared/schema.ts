@@ -365,6 +365,7 @@ export const tests = pgTable("tests", {
   groupScope: text("group_scope").notNull(),
   teamId: integer("team_id").notNull().default(1),
   runsheetBracket: text("runsheet_bracket"),
+  noWeather: integer("no_weather").notNull().default(0), // "Do not add weather" — excluded from missing-weather counts
   watchOperatorName: text("watch_operator_name"), // name of person who ran the test on watch
   startTime: text("start_time"), // HH:MM format
 });

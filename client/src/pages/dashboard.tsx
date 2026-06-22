@@ -871,7 +871,7 @@ export default function Dashboard() {
         {!isBlindTester && (() => {
           const sortedTests = [...tests].sort((a, b) => b.date.localeCompare(a.date));
           const lastTest = sortedTests[0];
-          const noWeather = sortedTests.filter((t) => !t.weatherId);
+          const noWeather = sortedTests.filter((t) => !t.weatherId && !(t as any).noWeather);
           if (!lastTest && noWeather.length === 0) return null;
           return (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

@@ -286,6 +286,7 @@ export async function registerRoutes(
       ALTER TABLE test_ski_series ADD COLUMN IF NOT EXISTS action_status TEXT;
       ALTER TABLE test_ski_series ADD COLUMN IF NOT EXISTS action_location TEXT;
       ALTER TABLE grind_profiles ADD COLUMN IF NOT EXISTS is_us_grind INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE tests ADD COLUMN IF NOT EXISTS no_weather INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_rating TEXT;
       ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_comment TEXT;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS athlete_rating TEXT;
@@ -2140,6 +2141,7 @@ export async function registerRoutes(
       location: req.body.location.trim(),
       testName: req.body.testName?.trim() || null,
       weatherId: req.body.weatherId || null,
+      noWeather: req.body.noWeather ? 1 : 0,
       testType: req.body.testType,
       seriesId: testSkiSource === "raceskis" ? null : req.body.seriesId,
       athleteId: testSkiSource === "raceskis" ? (req.body.athleteId || null) : null,
@@ -2509,6 +2511,7 @@ export async function registerRoutes(
       location: req.body.location?.trim(),
       testName: req.body.testName !== undefined ? (req.body.testName?.trim() || null) : undefined,
       weatherId: req.body.weatherId || null,
+      ...(req.body.noWeather !== undefined ? { noWeather: req.body.noWeather ? 1 : 0 } : {}),
       testType: req.body.testType,
       seriesId: testSkiSource === "raceskis" ? null : req.body.seriesId,
       testSkiSource,

@@ -4942,6 +4942,8 @@ export async function registerRoutes(
       const result = await (pool as any).query(`
         SELECT sid,
                (sess::json -> 'passport' ->> 'user')::int AS user_id,
+               sess::json ->> 'ipAddress' AS ip_address,
+               sess::json ->> 'userAgent' AS user_agent,
                expire
         FROM user_sessions
         WHERE expire > NOW()
@@ -4964,6 +4966,8 @@ export async function registerRoutes(
           email: usr?.email || "—",
           teamId: usr?.teamId ?? null,
           isAdmin: usr?.isAdmin ?? 0,
+          ipAddress: row.ip_address || null,
+          userAgent: row.user_agent || null,
           expiresAt: row.expire,
         };
       });
@@ -7507,6 +7511,12 @@ export async function registerRoutes(
       console.warn("[ReportProblem] Could not append to issues sheet:", (err as any)?.message);
     }
 
+    // #30: email the owner so follow-ups don't require logging in daily.
+    try {
+      const { sendProblemReportNotification } = await import("./email");
+      sendProblemReportNotification({ fromName: sender.name, fromEmail: (sender as any).email, teamName, subject: subject.trim(), body: body.trim() }).catch(() => {});
+    } catch {}
+
     return res.json({ ok: true });
   });
 
@@ -8289,6 +8299,15 @@ RULES:
     await db.execute(sql`
       UPDATE interest_registrations SET status = ${status ?? null}, admin_notes = ${adminNotes ?? null} WHERE id = ${id}
     `);
+    res.json({ ok: true });
+  });
+
+  // #31: delete a registration after it has been followed up.
+  app.delete("/api/admin/registrations/:id", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const id = parseInt(req.params.id);
+    await db.execute(sql`DELETE FROM interest_registrations WHERE id = ${id}`);
     res.json({ ok: true });
   });
 

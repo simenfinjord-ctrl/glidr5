@@ -440,6 +440,34 @@ export async function sendWelcomeEmail(
 
 // ── Interest / registration notification (sent to owner) ──────────────────────
 
+// #30: notify the owner (hei@glidr.no) about a problem report / error so the
+// SA doesn't have to log in daily to discover follow-ups.
+export async function sendProblemReportNotification(report: {
+  fromName: string; fromEmail?: string | null; teamName?: string | null; subject: string; body: string;
+}): Promise<void> {
+  const ownerEmail = process.env.OWNER_EMAIL || "hei@glidr.no";
+  const rows = [
+    ["Fra", report.fromName],
+    ...(report.fromEmail ? [["E-post", report.fromEmail]] : []),
+    ...(report.teamName ? [["Lag", report.teamName]] : []),
+    ["Tema", report.subject],
+  ] as [string, string][];
+  const tableRows = rows.map(([k, v]) =>
+    `<tr><td style="padding:6px 12px;font-size:13px;color:#6b7280;white-space:nowrap;">${k}</td><td style="padding:6px 12px;font-size:13px;font-weight:600;color:#111827;">${v}</td></tr>`
+  ).join("");
+  await sendEmail({
+    to: ownerEmail,
+    subject: `Glidr-feilmelding: ${report.subject}`,
+    text: rows.map(([k, v]) => `${k}: ${v}`).join("\n") + `\n\n${report.body}`,
+    html: emailHtml(`
+      <p style="font-size:15px;font-weight:700;color:#111827;margin:0 0 20px;">Ny feilmelding / rapport ⚠️</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:16px;">${tableRows}</table>
+      <p style="font-size:13px;color:#374151;white-space:pre-wrap;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-bottom:24px;">${report.body.replace(/</g, "&lt;")}</p>
+      <a href="https://glidr.no/inbox" style="display:inline-block;background:#059669;color:#fff;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Åpne innboks</a>
+    `),
+  });
+}
+
 export async function sendInterestNotification(reg: {
   contactName: string;
   email: string;

@@ -1077,8 +1077,19 @@ type ActiveSession = {
   email: string;
   teamId: number | null;
   isAdmin: number;
+  ipAddress: string | null;
+  userAgent: string | null;
   expiresAt: string;
 };
+
+// Short human-readable device/browser from a user-agent string.
+function shortDevice(ua: string): string {
+  const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android"
+    : /Mac OS X/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : /Linux/.test(ua) ? "Linux" : "";
+  const br = /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox"
+    : /Safari\//.test(ua) ? "Safari" : "";
+  return [os, br].filter(Boolean).join(" · ") || ua.slice(0, 40);
+}
 
 function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId: number }) {
   const { language } = useI18n();
@@ -1327,6 +1338,7 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
                 <tr className="bg-muted/40 border-b border-border">
                   <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Bruker", "User")}</th>
                   <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("E-post", "Email")}</th>
+                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("IP / enhet", "IP / device")}</th>
                   <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Utløper", "Expires")}</th>
                   <th className="text-center px-3 py-2 font-medium text-foreground/80 text-xs">{L("Handling", "Action")}</th>
                 </tr>
@@ -1346,6 +1358,10 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
                         </div>
                       </td>
                       <td className="px-3 py-2 text-muted-foreground text-xs">{s.email}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        <div className="font-mono">{s.ipAddress || "—"}</div>
+                        {s.userAgent && <div className="truncate max-w-[220px] opacity-70" title={s.userAgent}>{shortDevice(s.userAgent)}</div>}
+                      </td>
                       <td className="px-3 py-2 text-xs text-muted-foreground">
                         {expires.toLocaleString()} ({hoursLeft}h)
                       </td>
@@ -2047,6 +2063,15 @@ function RegistrationsTab() {
                 <Button size="sm" variant="outline" className="h-7 text-xs"
                   onClick={() => { setEditing(r); setEditStatus(r.status); setEditNotes(r.admin_notes ?? r.adminNotes ?? ""); }}>
                   Edit
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs text-destructive hover:text-destructive"
+                  data-testid={`button-delete-registration-${r.id}`}
+                  onClick={async () => {
+                    if (!window.confirm(L("Slette denne registreringen?", "Delete this registration?"))) return;
+                    await fetch(`/api/admin/registrations/${r.id}`, { method: "DELETE", credentials: "include" });
+                    refetch();
+                  }}>
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
                 {r.status !== "converted" && (
                   <Button

@@ -33,6 +33,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  MessageSquare,
   Users,
   Smartphone,
   PanelLeft,
@@ -640,6 +641,11 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
     return (list.find((t: any) => t.id === tid)?.teamLogo as string | undefined) ?? null;
   })();
 
+  const { data: feedbackButton } = useQuery<{ enabled: boolean; url: string | null }>({
+    queryKey: ["/api/feedback-button"],
+    enabled: !!user,
+    staleTime: 120_000,
+  });
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/inbox/unread-count"],
     enabled: !!user && (isSuperAdmin || isTeamAdmin),
@@ -887,6 +893,20 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
   // Sidebar footer: user info + team name
   const SidebarFooter = () => (
     <div className="border-t border-border mt-auto">
+      {/* Feedback button (#44) — opens the team's configured Google sheet */}
+      {feedbackButton?.enabled && feedbackButton.url && !sidebarCollapsed && (
+        <a
+          href={feedbackButton.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 mx-2 mt-2 -mb-0.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-800 hover:bg-emerald-100 transition-colors shrink-0 w-[calc(100%-16px)]"
+          style={{ fontSize: `${12 * sidebarScale}px` }}
+          data-testid="button-sidebar-feedback"
+        >
+          <MessageSquare className="h-3 w-3 shrink-0 opacity-70" />
+          <span className="flex-1 text-left font-medium">Feedback</span>
+        </a>
+      )}
       {/* Search button */}
       {!sidebarCollapsed ? (
         <button

@@ -195,6 +195,8 @@ export const teams = pgTable("teams", {
   productSheetUrl: text("product_sheet_url"),
   productSheetGroup: text("product_sheet_group"),
   lastProductSyncAt: text("last_product_sync_at"),
+  feedbackSheetUrl: text("feedback_sheet_url"),
+  feedbackEnabled: integer("feedback_enabled").notNull().default(0),
   watchPin: text("watch_pin"),
   isPaused: integer("is_paused").notNull().default(0),
   // Billing / subscription

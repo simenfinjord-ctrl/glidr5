@@ -1601,6 +1601,39 @@ const ALL_TABS: { id: TabId; labelKey: string; superAdminOnly?: boolean; icon: R
   { id: "guide", labelKey: "admin.tabFeatureGuide", icon: FileText, superAdminOnly: true },
 ];
 
+// #44: per-team Feedback button config (toggle + Google link).
+function FeedbackButtonConfig({ team }: { team: any }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { toast } = useToast();
+  const [url, setUrl] = useState<string>(team.feedbackSheetUrl ?? "");
+  const [enabled, setEnabled] = useState<boolean>(team.feedbackEnabled === 1);
+  const save = useMutation({
+    mutationFn: async () => apiRequest("PUT", `/api/teams/${team.id}/feedback-settings`, { url: url.trim() || null, enabled }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/feedback-button"] });
+      toast({ title: L("Lagret", "Saved") });
+    },
+    onError: (e: any) => toast({ title: L("Feil", "Error"), description: e?.message, variant: "destructive" }),
+  });
+  return (
+    <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+      <div className="text-xs font-semibold text-foreground/80">{team.name}</div>
+      <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="h-4 w-4" data-testid={`toggle-feedback-${team.id}`} />
+        {L("Vis Feedback-knapp i menyen", "Show Feedback button in the sidebar")}
+      </label>
+      <div className="flex items-center gap-2">
+        <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://docs.google.com/..." className="h-8 text-xs flex-1" data-testid={`input-feedback-url-${team.id}`} />
+        <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending} data-testid={`button-save-feedback-${team.id}`}>
+          {save.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function BackupStatusCard() {
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
@@ -4466,6 +4499,20 @@ export default function Admin() {
         {activeTab === "backup" && (
           <div className="flex flex-col gap-4" data-testid="tab-content-backup">
             <BackupStatusCard />
+            <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-feedback-button">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/30">
+                  <Activity className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <h2 className="text-sm font-semibold text-foreground">Feedback</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">{L("Slå på en Feedback-knapp over søkefeltet som åpner et Google-ark for laget.", "Enable a Feedback button above the search bar that opens a Google sheet for the team.")}</p>
+              <div className="space-y-4">
+                {(isSuperAdmin ? teams : teams.filter((t) => t.id === user?.teamId)).map((team) => (
+                  <FeedbackButtonConfig key={`feedback-${team.id}`} team={team} />
+                ))}
+              </div>
+            </Card>
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-backup">
               <div className="flex items-center gap-2 mb-1">
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/30">

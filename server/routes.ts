@@ -287,6 +287,8 @@ export async function registerRoutes(
       ALTER TABLE test_ski_series ADD COLUMN IF NOT EXISTS action_location TEXT;
       ALTER TABLE grind_profiles ADD COLUMN IF NOT EXISTS is_us_grind INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE tests ADD COLUMN IF NOT EXISTS no_weather INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS feedback_sheet_url TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS feedback_enabled INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_rating TEXT;
       ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_comment TEXT;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS athlete_rating TEXT;
@@ -955,6 +957,37 @@ export async function registerRoutes(
     } else {
       stopAutoBackup(id);
     }
+    res.json(updated);
+  });
+
+  // ── Feedback button (#44) ───────────────────────────────────────────────────
+  // Team admins set a Google Sheet link + on/off toggle; the button above the
+  // sidebar search opens that sheet for everyone on the team.
+  app.get("/api/feedback-button", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    const teamId = u.activeTeamId || u.teamId;
+    const team = await storage.getTeam(teamId);
+    res.json({
+      enabled: (team as any)?.feedbackEnabled === 1 && !!(team as any)?.feedbackSheetUrl,
+      url: (team as any)?.feedbackSheetUrl || null,
+    });
+  });
+
+  app.put("/api/teams/:id/feedback-settings", requireAuth, async (req, res) => {
+    const u = req.user!;
+    const id = parseInt(req.params.id);
+    if (u.isAdmin !== 1 && !(u.isTeamAdmin === 1 && u.teamId === id)) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    const url = req.body.url?.trim() || null;
+    if (url && !url.includes("docs.google.com")) {
+      return res.status(400).json({ message: "Must be a Google link" });
+    }
+    const updated = await storage.updateTeam(id, {
+      feedbackSheetUrl: url,
+      feedbackEnabled: req.body.enabled ? 1 : 0,
+    } as any);
+    if (!updated) return res.status(404).json({ message: "Not found" });
     res.json(updated);
   });
 

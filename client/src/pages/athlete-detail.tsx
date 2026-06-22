@@ -5736,6 +5736,12 @@ function SkiAnalyticsSection({
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
 
+  // #10: weather per test so feeling summaries can describe conditions (air temp).
+  const { data: analyticsWeather = [] } = useQuery<WeatherItem[]>({
+    queryKey: ["/api/weather/for-filtering"],
+  });
+  const testWeatherById = useMemo(() => new Map(analyticsWeather.map((w) => [w.id, w])), [analyticsWeather]);
+
   // Fetch entries for all race ski tests
   const { data: allEntries = [] } = useQuery<(TestEntry & { testId: number })[]>({
     queryKey: [`/api/athletes/analytics/entries`, testIds.join(",")],
@@ -5818,14 +5824,18 @@ function SkiAnalyticsSection({
     return m;
   }, [raceSkiTests]);
   // #10: per-test air temp + snow type so feeling summaries can describe conditions.
+  const { data: analyticsWeather = [] } = useQuery<WeatherItem[]>({
+    queryKey: ["/api/weather/for-filtering"],
+  });
   const testConditionsById = useMemo(() => {
+    const wById = new Map(analyticsWeather.map((w) => [w.id, w]));
     const m = new Map<number, { airTemp: number | null; snowType: string | null }>();
     for (const t of raceSkiTests) {
-      const w = t.weatherId ? testWeatherById.get(t.weatherId) : null;
+      const w = t.weatherId ? wById.get(t.weatherId) : null;
       m.set(t.id, { airTemp: w?.airTemperatureC ?? null, snowType: w?.snowType ?? w?.snowHumidityType ?? null });
     }
     return m;
-  }, [raceSkiTests, testWeatherById]);
+  }, [raceSkiTests, analyticsWeather]);
   const feelingSummaries = useMemo(() => {
     return skiStats.map((s) => {
       const notes = allEntries

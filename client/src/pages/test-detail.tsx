@@ -1120,7 +1120,7 @@ export default function TestDetail() {
   const testTypeBadgeClass = test.testType === "Glide" ? "fs-badge-glide" : test.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure";
 
   return (
-    <AppShell>
+    <AppShell activeNav={isRaceSkiTest ? "/raceskis" : undefined}>
       <div className="flex flex-col gap-5">
         <div>
           <div className="flex items-center justify-between">

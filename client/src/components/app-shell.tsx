@@ -537,7 +537,7 @@ function DesktopOnboardingPrompt({ onKeepSidebar, onSwitchTop }: { onKeepSidebar
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, activeNav }: { children: ReactNode; activeNav?: string }) {
   const [location, navigate] = useLocation();
   const { user, logout, can, isSuperAdmin, isTeamAdmin, canManage, switchTeam, toggleIncognito, toggleStealth, isViewingOtherTeam, isStealthActive, userTeams, userTeamsLoading } = useAuth();
   const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
@@ -833,7 +833,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return (
       <nav className="flex-1 overflow-y-auto py-2" data-testid="nav-primary">
         {visibleNav.map((item) => {
-          const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href + "/"));
+          const active = activeNav ? item.href === activeNav : (location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href + "/")));
           const Icon = item.icon;
           const showSection = !sidebarCollapsed && item.section && item.section !== lastSection;
           if (item.section) lastSection = item.section;
@@ -1215,7 +1215,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {/* Nav — xl+ only */}
               <nav className={cn("hidden xl:flex flex-1 items-center justify-center gap-0.5", mobileNavEnabled && "!hidden")} data-testid="nav-primary">
                 {visibleNav.map((item) => {
-                  const active = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href + "/"));
+                  const active = activeNav ? item.href === activeNav : (location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href + "/")));
                   const Icon = item.icon;
                   return (
                     <AppLink key={item.href} href={item.href} testId={item.testId}

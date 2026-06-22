@@ -285,6 +285,7 @@ export async function registerRoutes(
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS kick_solution TEXT;
       ALTER TABLE test_ski_series ADD COLUMN IF NOT EXISTS action_status TEXT;
       ALTER TABLE test_ski_series ADD COLUMN IF NOT EXISTS action_location TEXT;
+      ALTER TABLE grind_profiles ADD COLUMN IF NOT EXISTS is_us_grind INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_rating TEXT;
       ALTER TABLE ski_race_usages ADD COLUMN IF NOT EXISTS athlete_comment TEXT;
       ALTER TABLE race_prep_entries ADD COLUMN IF NOT EXISTS athlete_rating TEXT;
@@ -3967,7 +3968,7 @@ export async function registerRoutes(
   app.post("/api/grind-profiles", requirePermission("grinding", "edit"), async (req, res) => {
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
-    const { name, grindType, stone, pattern, extraParams, notes } = req.body;
+    const { name, grindType, stone, pattern, extraParams, notes, isUsGrind } = req.body;
     if (!name || !grindType) {
       return res.status(400).json({ message: "name and grindType are required" });
     }
@@ -3986,6 +3987,7 @@ export async function registerRoutes(
       extraParams: extraParams ? JSON.stringify(extraParams) : null,
       grindId,
       notes: notes ?? null,
+      isUsGrind: isUsGrind ? 1 : 0,
       createdByName: u.name,
       teamId,
       createdAt: new Date().toISOString(),
@@ -4008,7 +4010,7 @@ export async function registerRoutes(
     const existing = await storage.getGrindProfile(id);
     if (!existing) return res.status(404).json({ message: "Not found" });
     if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
-    const { name, grindType, stone, pattern, extraParams, notes } = req.body;
+    const { name, grindType, stone, pattern, extraParams, notes, isUsGrind } = req.body;
     if (!name || !grindType) {
       return res.status(400).json({ message: "name and grindType are required" });
     }
@@ -4028,6 +4030,7 @@ export async function registerRoutes(
       pattern,
       extraParams: newExtraParams,
       notes: notes ?? null,
+      ...(isUsGrind !== undefined ? { isUsGrind: isUsGrind ? 1 : 0 } : {}),
     });
     if (!updated) return res.status(404).json({ message: "Not found" });
     if (!isIncognito(req)) try {

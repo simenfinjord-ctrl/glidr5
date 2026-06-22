@@ -479,6 +479,7 @@ export const grindProfiles = pgTable("grind_profiles", {
   extraParams: text("extra_params"), // JSON: Record<string, string>
   grindId: text("grind_id"), // e.g. "001", "002" — team-scoped sequential
   notes: text("notes"),
+  isUsGrind: integer("is_us_grind").notNull().default(0),
   createdByName: text("created_by_name").notNull(),
   teamId: integer("team_id").notNull().default(1),
   createdAt: text("created_at").notNull(),

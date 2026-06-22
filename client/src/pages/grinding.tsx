@@ -86,6 +86,7 @@ type GrindProfile = {
   extraParams: string | null;
   grindId?: string | null;
   notes: string | null;
+  isUsGrind?: number;
   createdByName: string;
   teamId: number;
   createdAt: string;
@@ -250,6 +251,7 @@ function GrindProfileForm({
 
   const [params, setParams] = useState<ParamRow[]>(initParams);
   const [notesField, setNotesField] = useState(editProfile?.notes ?? "");
+  const [isUsGrind, setIsUsGrind] = useState<boolean>(editProfile?.isUsGrind === 1);
 
   const grindProfileSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -305,6 +307,7 @@ function GrindProfileForm({
         pattern,
         extraParams: Object.keys(extraObj).length > 0 ? extraObj : null,
         notes: notesField.trim() || null,
+        isUsGrind,
       };
       if (editProfile) {
         const res = await apiRequest("PUT", `/api/grind-profiles/${editProfile.id}`, payload);
@@ -441,6 +444,18 @@ function GrindProfileForm({
           />
         </div>
 
+        <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={isUsGrind}
+            onChange={(e) => setIsUsGrind(e.target.checked)}
+            className="h-4 w-4 rounded border-input"
+            data-testid="checkbox-us-grind"
+          />
+          <span className="font-medium">{L("US-Grind", "US-Grind")}</span>
+          <span className="text-xs text-muted-foreground">{L("(merk som US-Grind)", "(mark as US-Grind)")}</span>
+        </label>
+
         <div className="flex justify-end pt-2">
           <Button type="submit" disabled={!canSave} data-testid="button-save-grind-profile">
             {editProfile ? t("common.save") : t("grinding.addGrind")}
@@ -498,6 +513,9 @@ function GrindProfilesTable({
                     >
                       {profile.name}
                     </button>
+                    {profile.isUsGrind === 1 && (
+                      <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold text-blue-700 ring-1 ring-blue-300 dark:bg-blue-900/30 dark:text-blue-300 align-middle">US-GRIND</span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-xs font-mono text-muted-foreground">
                     {profile.grindId ? `#${profile.grindId}` : "—"}
@@ -620,6 +638,9 @@ function GrindProfileCard({
               <span className="inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700 ring-1 ring-violet-200 font-mono">
                 #{profile.grindId}
               </span>
+            )}
+            {profile.isUsGrind === 1 && (
+              <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 ring-1 ring-blue-300 dark:bg-blue-900/30 dark:text-blue-300">US-Grind</span>
             )}
             {allParamEntries.map(([k, v]) => (
               <span key={k} className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -1348,6 +1369,7 @@ export default function Grinding() {
 
   // Grind profiles state
   const [grindSearch, setGrindSearch] = useState("");
+  const [usGrindOnly, setUsGrindOnly] = useState(false);
   const [grindDialogOpen, setGrindDialogOpen] = useState(false);
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [editProfile, setEditProfile] = useState<GrindProfile | undefined>();
@@ -1590,16 +1612,16 @@ export default function Grinding() {
   }, [grindTests, filterSeason, filterLocation, filterDate, filterGrinds, compareMode, allEntries, hasWeatherFiltersGrind, wfAirTempMin, wfAirTempMax, wfSnowTempMin, wfSnowTempMax, wfAirHumMin, wfAirHumMax, wfSnowHumMin, wfSnowHumMax, wfSnowType, wfTrackHardness, wfArtSnow, wfNatSnow, wfSnowHumidityType, wfGrainSize, wfPrecipitation, wfWind, wfVisibility, wfCloudMin, wfCloudMax, weatherById]);
 
   const filteredProfiles = useMemo(() => {
-    if (!grindSearch.trim()) return grindProfiles;
-    const q = grindSearch.toLowerCase();
-    return grindProfiles.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
+    const q = grindSearch.trim().toLowerCase();
+    return grindProfiles.filter((p) => {
+      if (usGrindOnly && p.isUsGrind !== 1) return false;
+      if (!q) return true;
+      return p.name.toLowerCase().includes(q) ||
         p.grindType.toLowerCase().includes(q) ||
         p.stone.toLowerCase().includes(q) ||
-        p.pattern.toLowerCase().includes(q)
-    );
-  }, [grindProfiles, grindSearch]);
+        p.pattern.toLowerCase().includes(q);
+    });
+  }, [grindProfiles, grindSearch, usGrindOnly]);
 
   const filteredArchivedProfiles = useMemo(() => {
     if (!grindSearch.trim()) return archivedProfiles;
@@ -2330,6 +2352,15 @@ export default function Grinding() {
                   </button>
                 )}
               </div>
+              <button
+                type="button"
+                onClick={() => setUsGrindOnly((v) => !v)}
+                className={cn("shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold ring-1 transition-colors", usGrindOnly ? "bg-blue-600 text-white ring-blue-600" : "ring-border text-muted-foreground hover:bg-muted")}
+                data-testid="button-filter-us-grind"
+                title={L("Vis bare US-Grind", "Show only US-Grind")}
+              >
+                US-Grind
+              </button>
               <div className="flex items-center rounded-lg border border-border overflow-hidden shrink-0">
                 <button
                   type="button"

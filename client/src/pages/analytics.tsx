@@ -1,7 +1,7 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft, FileDown, ChevronDown, ChevronRight, ArrowRight } from "lucide-react";
+import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft, FileDown, ChevronDown, ChevronUp, ChevronRight, ArrowRight } from "lucide-react";
 import React from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import {
@@ -9,6 +9,7 @@ import {
 } from "recharts";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -3328,6 +3329,152 @@ function WeatherFields({ w, L }: { w: Weather; L: (no: string, en: string) => st
   );
 }
 
+// ── Brand statistics ─────────────────────────────────────────────────────────
+type BrandStat = {
+  brand: string; productCount: number; structureToolCount: number; raceSkiCount: number; seriesCount: number;
+  raceTestEntries: number; productTestEntries: number;
+  avgRank: number | null; avgFeeling: number | null; avgProductRank: number | null;
+  skis: { skiId: string; athleteName: string; discipline: string; grind: string | null; base: string | null;
+    construction: string | null; mold: string | null; heights: string | null; length: string | null;
+    typeOfSki: string | null; customParams: Record<string, any>; tests: number; avgRank: number | null; avgFeeling: number | null }[];
+  products: { name: string; category: string; tests: number; avgRank: number | null }[];
+  paramBreakdown: Record<"grind" | "base" | "construction" | "mold", { value: string; count: number; avgRank: number | null; avgFeeling: number | null }[]>;
+  conditions: { label: string; count: number; avgRank: number | null; avgFeeling: number | null }[];
+};
+
+function BrandStatsView() {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { data: brands = [], isLoading } = useQuery<BrandStat[]>({ queryKey: ["/api/analytics/brands"] });
+  const [open, setOpen] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(
+    () => brands.filter((b) => !search.trim() || b.brand.toLowerCase().includes(search.trim().toLowerCase())),
+    [brands, search],
+  );
+  const num = (n: number | null) => (n == null ? "—" : n.toFixed(1));
+
+  if (isLoading) return <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground">{L("Laster…", "Loading…")}</Card>;
+  if (brands.length === 0) return <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground">{L("Ingen merker registrert ennå.", "No brands recorded yet.")}</Card>;
+
+  const Breakdown = ({ title, rows }: { title: string; rows: BrandStat["paramBreakdown"]["grind"] }) =>
+    rows.length === 0 ? null : (
+      <div>
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{title}</div>
+        <div className="space-y-0.5">
+          {rows.map((r) => (
+            <div key={r.value} className="flex items-center justify-between gap-2 text-xs rounded bg-muted/40 px-2 py-1">
+              <span className="font-medium truncate">{r.value}</span>
+              <span className="text-muted-foreground whitespace-nowrap">
+                {L("snittrang", "avg rank")} {num(r.avgRank)} · {L("følelse", "feel")} {num(r.avgFeeling)} · {r.count}×
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+
+  return (
+    <div className="space-y-3" data-testid="brand-stats">
+      <p className="text-sm text-muted-foreground">
+        {L("Alle merker i Glidr (produkter, structure tools, skimerker). Klikk for å se hvordan hvert merkes parametre presterer mot resultat, følelse og føre.",
+           "Every brand in Glidr (products, structure tools, ski brands). Click a brand to see how its parameters perform against result, feeling and conditions.")}
+      </p>
+      <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={L("Søk merke…", "Search brand…")} className="h-9 max-w-xs text-sm" />
+      <div className="space-y-2">
+        {filtered.map((b) => {
+          const isOpen = open === b.brand;
+          return (
+            <Card key={b.brand} className="fs-card rounded-2xl overflow-hidden" data-testid={`brand-${b.brand}`}>
+              <button type="button" onClick={() => setOpen(isOpen ? null : b.brand)} className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors">
+                <div className="min-w-0">
+                  <div className="font-semibold">{b.brand}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-2">
+                    {b.raceSkiCount > 0 && <span>{b.raceSkiCount} {L("skipar", "skis")}</span>}
+                    {b.productCount > 0 && <span>{b.productCount} {L("produkter", "products")}</span>}
+                    {b.structureToolCount > 0 && <span>{b.structureToolCount} structure tools</span>}
+                    {b.seriesCount > 0 && <span>{b.seriesCount} testfleets</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 shrink-0 text-xs">
+                  {b.avgRank != null && <span className="text-muted-foreground">{L("Snittrang", "Avg rank")} <span className="font-semibold text-foreground">{num(b.avgRank)}</span></span>}
+                  {b.avgFeeling != null && <span className="text-muted-foreground">{L("Følelse", "Feel")} <span className="font-semibold text-foreground">{num(b.avgFeeling)}</span></span>}
+                  {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </div>
+              </button>
+              {isOpen && (
+                <div className="border-t border-border/40 px-4 py-3 space-y-4">
+                  {/* Parameter breakdowns */}
+                  {(b.paramBreakdown.grind.length + b.paramBreakdown.base.length + b.paramBreakdown.construction.length + b.paramBreakdown.mold.length) > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Breakdown title={L("Slip", "Grind")} rows={b.paramBreakdown.grind} />
+                      <Breakdown title={L("Såle", "Base")} rows={b.paramBreakdown.base} />
+                      <Breakdown title={L("Konstruksjon", "Construction")} rows={b.paramBreakdown.construction} />
+                      <Breakdown title={L("Form", "Mold")} rows={b.paramBreakdown.mold} />
+                    </div>
+                  )}
+                  {/* Conditions */}
+                  {b.conditions.length > 0 && (
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{L("Føre (snøtemp)", "Conditions (snow temp)")}</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {b.conditions.map((c) => (
+                          <span key={c.label} className="rounded-full bg-muted/50 px-2 py-0.5 text-[11px]">
+                            {c.label}: {L("rang", "rank")} {num(c.avgRank)} · {L("føl.", "feel")} {num(c.avgFeeling)} ({c.count})
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Per-ski */}
+                  {b.skis.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{L("Skipar", "Ski pairs")}</div>
+                      <table className="w-full text-xs">
+                        <thead><tr className="text-left text-muted-foreground border-b">
+                          <th className="py-1 pr-2">Ski-ID</th><th className="py-1 pr-2">{L("Utøver", "Athlete")}</th><th className="py-1 pr-2">{L("Stilart", "Disc.")}</th>
+                          <th className="py-1 pr-2">{L("Slip", "Grind")}</th><th className="py-1 pr-2">{L("Såle", "Base")}</th><th className="py-1 pr-2">{L("Rang", "Rank")}</th><th className="py-1 pr-2">{L("Følelse", "Feel")}</th><th className="py-1">{L("Tester", "Tests")}</th>
+                        </tr></thead>
+                        <tbody>
+                          {b.skis.map((s, i) => (
+                            <tr key={i} className="border-b border-border/30">
+                              <td className="py-1 pr-2 font-medium">{s.skiId}</td><td className="py-1 pr-2 text-muted-foreground">{s.athleteName}</td>
+                              <td className="py-1 pr-2 text-muted-foreground">{s.discipline}</td><td className="py-1 pr-2">{s.grind || "—"}</td>
+                              <td className="py-1 pr-2">{s.base || "—"}</td><td className="py-1 pr-2">{num(s.avgRank)}</td><td className="py-1 pr-2">{num(s.avgFeeling)}</td><td className="py-1">{s.tests}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {/* Products */}
+                  {b.products.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{L("Produkter", "Products")}</div>
+                      <table className="w-full text-xs">
+                        <thead><tr className="text-left text-muted-foreground border-b"><th className="py-1 pr-2">{L("Produkt", "Product")}</th><th className="py-1 pr-2">{L("Kategori", "Category")}</th><th className="py-1 pr-2">{L("Snittrang", "Avg rank")}</th><th className="py-1">{L("Tester", "Tests")}</th></tr></thead>
+                        <tbody>
+                          {b.products.map((p, i) => (
+                            <tr key={i} className="border-b border-border/30"><td className="py-1 pr-2 font-medium">{p.name}</td><td className="py-1 pr-2 text-muted-foreground">{p.category}</td><td className="py-1 pr-2">{num(p.avgRank)}</td><td className="py-1">{p.tests}</td></tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {b.skis.length === 0 && b.products.length === 0 && (
+                    <p className="text-xs text-muted-foreground">{L("Ingen testresultater knyttet til dette merket ennå.", "No test results linked to this brand yet.")}</p>
+                  )}
+                </div>
+              )}
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function RacedSkisView() {
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
@@ -3980,6 +4127,7 @@ export default function Analytics() {
     { id: "durability", label: t("analytics.durability") || "Durability", icon: <TrendingUp className="h-4 w-4 rotate-90" /> },
     { id: "racedproducts", label: "Raced Products", icon: <Trophy className="h-4 w-4" /> },
     { id: "racedskis", label: L("Kjørte ski", "Raced Skis"), icon: <Trophy className="h-4 w-4" /> },
+    { id: "brands", label: L("Merkestatistikk", "Brand stats"), icon: <Search className="h-4 w-4" /> },
   ];
 
   const { data: grindProfiles = [] } = useQuery<any[]>({
@@ -4387,6 +4535,8 @@ export default function Analytics() {
         )}
 
         {activeTab === "racedskis" && <RacedSkisView />}
+
+        {activeTab === "brands" && <BrandStatsView />}
 
       </div>
     </AppShell>

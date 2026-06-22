@@ -3796,6 +3796,121 @@ export async function registerRoutes(
     }
   });
 
+  // ── Brand statistics (Analytics) ────────────────────────────────────────────
+  // Aggregates every brand represented in Glidr (products, structure tools, ski
+  // brands) and ties each ski brand's parameters to results, feeling and the
+  // linked weather/conditions, so waxers can learn how brands & grinds perform.
+  app.get("/api/analytics/brands", requirePermission("analytics", "view"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const [skisR, prodR, entriesR, testsR, weatherR, seriesR] = await Promise.all([
+      (pool as any).query(
+        `SELECT rs.id, rs.brand, rs.ski_id AS "skiId", rs.discipline, rs.construction, rs.mold, rs.base,
+                rs.grind, rs.heights, rs.length, rs.type_of_ski AS "typeOfSki", rs.custom_params AS "customParams",
+                a.name AS "athleteName"
+         FROM race_skis rs JOIN athletes a ON a.id = rs.athlete_id
+         WHERE a.team_id = $1 AND rs.archived_at IS NULL`, [teamId]),
+      (pool as any).query(`SELECT id, brand, name, category FROM products WHERE team_id = $1 AND archived_at IS NULL`, [teamId]),
+      (pool as any).query(
+        `SELECT e.race_ski_id AS "raceSkiId", e.product_id AS "productId", e.rank_0km AS "rank0km",
+                e.feeling_rank AS "feelingRank", e.test_id AS "testId"
+         FROM test_entries e JOIN tests t ON t.id = e.test_id WHERE t.team_id = $1`, [teamId]),
+      (pool as any).query(`SELECT id, weather_id AS "weatherId" FROM tests WHERE team_id = $1`, [teamId]),
+      (pool as any).query(`SELECT id, snow_temperature_c AS "snowTemp", snow_type AS "snowType", track_hardness AS "trackHardness" FROM daily_weather WHERE team_id = $1`, [teamId]),
+      (pool as any).query(`SELECT brand FROM test_ski_series WHERE team_id = $1 AND brand IS NOT NULL AND brand <> ''`, [teamId]),
+    ]);
+
+    const norm = (b: any) => String(b ?? "").trim();
+    const skiById = new Map<number, any>(skisR.rows.map((s: any) => [s.id, s]));
+    const prodById = new Map<number, any>(prodR.rows.map((p: any) => [p.id, p]));
+    const weatherById = new Map<number, any>(weatherR.rows.map((w: any) => [w.id, w]));
+    const testWeather = new Map<number, number | null>(testsR.rows.map((t: any) => [t.id, t.weatherId]));
+    const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+    const tempBucket = (t: number | null): string | null => {
+      if (t == null) return null;
+      if (t < -10) return "< -10°C"; if (t < -5) return "-10…-5°C"; if (t < -2) return "-5…-2°C"; if (t < 0) return "-2…0°C"; return "0°C+";
+    };
+
+    type Acc = { brand: string; productCount: number; structureToolCount: number; raceSkiCount: number; seriesCount: number;
+      skiAgg: Map<number, { ranks: number[]; feels: number[] }>;
+      prodAgg: Map<number, { ranks: number[] }>;
+      param: Record<string, Map<string, { ranks: number[]; feels: number[] }>>;
+      cond: Map<string, { ranks: number[]; feels: number[] }>; };
+    const brands = new Map<string, Acc>();
+    const get = (b: string): Acc => {
+      const key = b.toLowerCase();
+      if (!brands.has(key)) brands.set(key, { brand: b, productCount: 0, structureToolCount: 0, raceSkiCount: 0, seriesCount: 0,
+        skiAgg: new Map(), prodAgg: new Map(), param: { grind: new Map(), base: new Map(), construction: new Map(), mold: new Map() }, cond: new Map() });
+      return brands.get(key)!;
+    };
+
+    for (const s of skisR.rows) { const b = norm(s.brand); if (b) { get(b).raceSkiCount++; } }
+    for (const p of prodR.rows) { const b = norm(p.brand); if (b) { const a = get(b); a.productCount++; if (norm(p.category).toLowerCase().includes("structure")) a.structureToolCount++; } }
+    for (const s of seriesR.rows) { const b = norm(s.brand); if (b) get(b).seriesCount++; }
+
+    const pushParam = (m: Map<string, { ranks: number[]; feels: number[] }>, v: any, rank: number | null, feel: number | null) => {
+      const key = norm(v); if (!key) return;
+      if (!m.has(key)) m.set(key, { ranks: [], feels: [] });
+      const e = m.get(key)!; if (rank != null) e.ranks.push(rank); if (feel != null) e.feels.push(feel);
+    };
+
+    for (const e of entriesR.rows) {
+      if (e.raceSkiId) {
+        const ski = skiById.get(e.raceSkiId); if (!ski) continue;
+        const b = norm(ski.brand); if (!b) continue;
+        const a = get(b);
+        if (!a.skiAgg.has(ski.id)) a.skiAgg.set(ski.id, { ranks: [], feels: [] });
+        const sa = a.skiAgg.get(ski.id)!;
+        if (e.rank0km != null) sa.ranks.push(e.rank0km);
+        if (e.feelingRank != null) sa.feels.push(e.feelingRank);
+        pushParam(a.param.grind, ski.grind, e.rank0km, e.feelingRank);
+        pushParam(a.param.base, ski.base, e.rank0km, e.feelingRank);
+        pushParam(a.param.construction, ski.construction, e.rank0km, e.feelingRank);
+        pushParam(a.param.mold, ski.mold, e.rank0km, e.feelingRank);
+        const wId = testWeather.get(e.testId); const w = wId ? weatherById.get(wId) : null;
+        const bucket = w ? tempBucket(w.snowTemp) : null;
+        if (bucket) { if (!a.cond.has(bucket)) a.cond.set(bucket, { ranks: [], feels: [] }); const c = a.cond.get(bucket)!; if (e.rank0km != null) c.ranks.push(e.rank0km); if (e.feelingRank != null) c.feels.push(e.feelingRank); }
+      } else if (e.productId) {
+        const p = prodById.get(e.productId); if (!p) continue;
+        const b = norm(p.brand); if (!b) continue;
+        const a = get(b);
+        if (!a.prodAgg.has(p.id)) a.prodAgg.set(p.id, { ranks: [] });
+        if (e.rank0km != null) a.prodAgg.get(p.id)!.ranks.push(e.rank0km);
+      }
+    }
+
+    const breakdown = (m: Map<string, { ranks: number[]; feels: number[] }>) =>
+      [...m.entries()].map(([value, v]) => ({ value, count: Math.max(v.ranks.length, v.feels.length), avgRank: avg(v.ranks), avgFeeling: avg(v.feels) }))
+        .sort((x, y) => (x.avgRank ?? 99) - (y.avgRank ?? 99));
+
+    const out = [...brands.values()].map((a) => {
+      const allRanks: number[] = []; const allFeels: number[] = [];
+      const skis = [...a.skiAgg.entries()].map(([id, v]) => {
+        allRanks.push(...v.ranks); allFeels.push(...v.feels);
+        const ski = skiById.get(id);
+        let custom: any = {}; try { custom = ski.customParams ? JSON.parse(ski.customParams) : {}; } catch {}
+        return { skiId: ski.skiId, athleteName: ski.athleteName, discipline: ski.discipline, grind: ski.grind,
+          base: ski.base, construction: ski.construction, mold: ski.mold, heights: ski.heights, length: ski.length,
+          typeOfSki: ski.typeOfSki, customParams: custom, tests: Math.max(v.ranks.length, v.feels.length),
+          avgRank: avg(v.ranks), avgFeeling: avg(v.feels) };
+      }).sort((x, y) => (x.avgRank ?? 99) - (y.avgRank ?? 99));
+      const prodRanks: number[] = [];
+      const productsPerf = [...a.prodAgg.entries()].map(([id, v]) => { prodRanks.push(...v.ranks); const p = prodById.get(id); return { name: `${p.brand} ${p.name}`, category: p.category, tests: v.ranks.length, avgRank: avg(v.ranks) }; })
+        .sort((x, y) => (x.avgRank ?? 99) - (y.avgRank ?? 99));
+      return {
+        brand: a.brand, productCount: a.productCount, structureToolCount: a.structureToolCount,
+        raceSkiCount: a.raceSkiCount, seriesCount: a.seriesCount,
+        raceTestEntries: allRanks.length + allFeels.length, productTestEntries: prodRanks.length,
+        avgRank: avg(allRanks), avgFeeling: avg(allFeels), avgProductRank: avg(prodRanks),
+        skis, products: productsPerf,
+        paramBreakdown: { grind: breakdown(a.param.grind), base: breakdown(a.param.base), construction: breakdown(a.param.construction), mold: breakdown(a.param.mold) },
+        conditions: [...a.cond.entries()].map(([label, v]) => ({ label, count: Math.max(v.ranks.length, v.feels.length), avgRank: avg(v.ranks), avgFeeling: avg(v.feels) })),
+      };
+    }).sort((x, y) => x.brand.localeCompare(y.brand));
+
+    res.json(out);
+  });
+
   // Personal watch code — GET returns existing code (generates if missing), POST regenerates
   app.get("/api/auth/my-watch-code", requireAuth, async (req, res) => {
     const u = req.user!;

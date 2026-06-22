@@ -572,13 +572,14 @@ export default function AthleteDetail() {
   const [compareSkiIds, setCompareSkiIds] = useState<Set<number>>(new Set());
 
   // Test result column chooser
-  const defaultTestColumns = ["skiId", "brand", "grind", "result", "rank", "feeling", "methodology"];
+  const defaultTestColumns = ["skiId", "brand", "grind", "result", "rank", "feeling"];
   const [activeTestColumns, setActiveTestColumns] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem("glidr-raceski-test-columns");
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        // #40: methodology is removed from race-ski tests — drop it from saved configs.
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed.filter((c: string) => c !== "methodology");
       }
     } catch {}
     return defaultTestColumns;
@@ -872,7 +873,6 @@ export default function AthleteDetail() {
     { key: "feeling", label: "Feeling" },
     { key: "feelingNote", label: L("Feeling-notat", "Feeling note") },
     { key: "kickSolution", label: "Kick solution" },
-    { key: "methodology", label: "Methodology" },
   ];
 
   const raceSkiTests = useMemo(() => {

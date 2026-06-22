@@ -5824,18 +5824,14 @@ function SkiAnalyticsSection({
     return m;
   }, [raceSkiTests]);
   // #10: per-test air temp + snow type so feeling summaries can describe conditions.
-  const { data: analyticsWeather = [] } = useQuery<WeatherItem[]>({
-    queryKey: ["/api/weather/for-filtering"],
-  });
   const testConditionsById = useMemo(() => {
-    const wById = new Map(analyticsWeather.map((w) => [w.id, w]));
     const m = new Map<number, { airTemp: number | null; snowType: string | null }>();
     for (const t of raceSkiTests) {
-      const w = t.weatherId ? wById.get(t.weatherId) : null;
+      const w = t.weatherId ? testWeatherById.get(t.weatherId) : null;
       m.set(t.id, { airTemp: w?.airTemperatureC ?? null, snowType: w?.snowType ?? w?.snowHumidityType ?? null });
     }
     return m;
-  }, [raceSkiTests, analyticsWeather]);
+  }, [raceSkiTests, testWeatherById]);
   const feelingSummaries = useMemo(() => {
     return skiStats.map((s) => {
       const notes = allEntries

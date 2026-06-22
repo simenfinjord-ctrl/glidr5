@@ -91,6 +91,7 @@ type Athlete = {
   heightCm: string | null;
   weightKg: string | null;
   poleHeight: string | null;
+  poleHeightSkate: string | null;
   bindingPosition: string | null;
   skiServicePreferences: string | null;
   createdAt: string;
@@ -806,7 +807,7 @@ export default function AthleteDetail() {
     notes: "",
   });
 
-  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", bindingPosition: "", skiServicePreferences: "" });
+  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", poleHeightSkate: "", bindingPosition: "", skiServicePreferences: "" });
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
 
   const { data: athletes = [] } = useQuery<Athlete[]>({
@@ -1252,7 +1253,7 @@ export default function AthleteDetail() {
       mold: data.mold.trim() || null,
       base: data.base.trim() || null,
       grind: data.grind.trim() || null,
-      heights: data.discipline === "Classic" ? data.heights.trim() || null : null,
+      heights: data.heights?.trim() || null,
       year: data.year.trim() || null,
       length: data.length.trim() || null,
       typeOfSki: data.typeOfSki.trim() || null,
@@ -1400,7 +1401,7 @@ export default function AthleteDetail() {
   });
 
   const updateAthleteMutation = useMutation({
-    mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; bindingPosition: string; skiServicePreferences: string }) => {
+    mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; poleHeightSkate: string; bindingPosition: string; skiServicePreferences: string }) => {
       const res = await apiRequest("PUT", `/api/athletes/${athleteId}`, {
         name: data.name,
         team: data.team.trim() || null,
@@ -1408,6 +1409,7 @@ export default function AthleteDetail() {
         heightCm: data.heightCm.trim() || null,
         weightKg: data.weightKg.trim() || null,
         poleHeight: data.poleHeight.trim() || null,
+        poleHeightSkate: data.poleHeightSkate.trim() || null,
         bindingPosition: data.bindingPosition.trim() || null,
         skiServicePreferences: data.skiServicePreferences.trim() || null,
       });
@@ -1573,7 +1575,7 @@ export default function AthleteDetail() {
       setAthleteForm({
         name: athlete.name, team: athlete.team || "", brand: athlete.defaultSkiBrand || "",
         heightCm: athlete.heightCm || "", weightKg: athlete.weightKg || "",
-        poleHeight: athlete.poleHeight || "", bindingPosition: athlete.bindingPosition || "",
+        poleHeight: athlete.poleHeight || "", poleHeightSkate: athlete.poleHeightSkate || "", bindingPosition: athlete.bindingPosition || "",
         skiServicePreferences: athlete.skiServicePreferences || "",
       });
       setEditAthleteOpen(true);
@@ -2014,13 +2016,14 @@ export default function AthleteDetail() {
               </span>
             </div>
             {/* Athlete profile metrics — shown in the same box as name & team */}
-            {(athlete.defaultSkiBrand || athlete.heightCm || athlete.weightKg || athlete.poleHeight || athlete.bindingPosition) && (
+            {(athlete.defaultSkiBrand || athlete.heightCm || athlete.weightKg || athlete.poleHeight || athlete.poleHeightSkate || athlete.bindingPosition) && (
               <div className="mt-2 flex flex-wrap items-center gap-1.5" data-testid="athlete-metrics">
                 {([
                   [L("Merke", "Brand"), athlete.defaultSkiBrand],
                   [L("Høyde", "Height"), athlete.heightCm ? `${athlete.heightCm} cm` : null],
                   [L("Vekt", "Weight"), athlete.weightKg ? `${athlete.weightKg} kg` : null],
-                  [L("Stavhøyde", "Pole height"), athlete.poleHeight],
+                  [L("Stav (klassisk)", "Pole (classic)"), athlete.poleHeight],
+                  [L("Stav (skøyt)", "Pole (skate)"), athlete.poleHeightSkate],
                   [L("Binding", "Binding"), athlete.bindingPosition],
                 ] as [string, string | null][]).filter(([, v]) => !!v).map(([label, v]) => (
                   <span key={label} className="inline-flex items-center gap-1 rounded-full bg-muted/70 px-2 py-0.5 text-[11px] text-muted-foreground">
@@ -4127,9 +4130,13 @@ export default function AthleteDetail() {
             </div>
 
             {activeFormFields.map((fieldKey) => {
-              if (fieldKey === "heights" && skiForm.discipline !== "Classic") return null;
+              // Heights now applies to all disciplines; label differs (skating "Heights",
+              // classic "Chamber heights"). Ski type stays classic-only.
               if (fieldKey === "typeOfSki" && skiForm.discipline !== "Classic") return null;
               const custom = isCustomField(fieldKey);
+              const fieldLabel = fieldKey === "heights"
+                ? (skiForm.discipline === "Classic" ? L("Kammerhøyder", "Chamber heights") : L("Høyder", "Heights"))
+                : getFormFieldLabel(fieldKey);
               if (fieldKey === "discipline") {
                 return (
                   <div key={fieldKey}>
@@ -4169,7 +4176,7 @@ export default function AthleteDetail() {
               }
               return (
                 <div key={fieldKey}>
-                  <label className="mb-1 block text-sm font-medium">{getFormFieldLabel(fieldKey)}</label>
+                  <label className="mb-1 block text-sm font-medium">{fieldLabel}</label>
                   <Input
                     value={custom ? (customFieldValues[fieldKey] ?? "") : ((skiForm as any)[fieldKey] ?? "")}
                     onChange={(e) => {
@@ -4563,12 +4570,21 @@ export default function AthleteDetail() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">{L("Stavhøyde", "Pole height")}</label>
+                <label className="mb-1 block text-sm font-medium">{L("Stavhøyde (klassisk)", "Pole height (classic)")}</label>
                 <Input
                   value={athleteForm.poleHeight}
                   onChange={(e) => setAthleteForm((f) => ({ ...f, poleHeight: e.target.value }))}
                   placeholder="152 cm"
                   data-testid="input-edit-athlete-pole-height"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">{L("Stavhøyde (skøyt)", "Pole height (skate)")}</label>
+                <Input
+                  value={athleteForm.poleHeightSkate}
+                  onChange={(e) => setAthleteForm((f) => ({ ...f, poleHeightSkate: e.target.value }))}
+                  placeholder="162 cm"
+                  data-testid="input-edit-athlete-pole-height-skate"
                 />
               </div>
               <div>

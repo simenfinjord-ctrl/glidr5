@@ -22,6 +22,7 @@ type Athlete = {
   heightCm: string | null;
   weightKg: string | null;
   poleHeight: string | null;
+  poleHeightSkate: string | null;
   bindingPosition: string | null;
   skiServicePreferences: string | null;
   createdAt: string;
@@ -36,7 +37,8 @@ function athleteMetricChips(a: Athlete, lang: string): { label: string; value: s
     [L("Merke", "Brand"), a.defaultSkiBrand],
     [L("Høyde", "Height"), a.heightCm ? `${a.heightCm} cm` : null],
     [L("Vekt", "Weight"), a.weightKg ? `${a.weightKg} kg` : null],
-    [L("Stav", "Pole"), a.poleHeight],
+    [L("Stav (kl.)", "Pole (cl.)"), a.poleHeight],
+    [L("Stav (sk.)", "Pole (sk.)"), a.poleHeightSkate],
     [L("Binding", "Binding"), a.bindingPosition],
   ] as [string, string | null][])
     .filter(([, v]) => !!v)
@@ -55,9 +57,10 @@ export default function RaceSkis() {
   const [heightCm, setHeightCm] = useState("");
   const [weightKg, setWeightKg] = useState("");
   const [poleHeight, setPoleHeight] = useState("");
+  const [poleHeightSkate, setPoleHeightSkate] = useState("");
   const [bindingPosition, setBindingPosition] = useState("");
   const [skiServicePreferences, setSkiServicePreferences] = useState("");
-  const resetAthleteForm = () => { setName(""); setTeam(""); setBrand(""); setHeightCm(""); setWeightKg(""); setPoleHeight(""); setBindingPosition(""); setSkiServicePreferences(""); };
+  const resetAthleteForm = () => { setName(""); setTeam(""); setBrand(""); setHeightCm(""); setWeightKg(""); setPoleHeight(""); setPoleHeightSkate(""); setBindingPosition(""); setSkiServicePreferences(""); };
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
     try {
       const stored = localStorage.getItem("glidr-raceskis-view-mode");
@@ -71,7 +74,7 @@ export default function RaceSkis() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; bindingPosition: string; skiServicePreferences: string }) => {
+    mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; poleHeightSkate: string; bindingPosition: string; skiServicePreferences: string }) => {
       const res = await apiRequest("POST", "/api/athletes", {
         name: data.name,
         team: data.team.trim() || null,
@@ -79,6 +82,7 @@ export default function RaceSkis() {
         heightCm: data.heightCm.trim() || null,
         weightKg: data.weightKg.trim() || null,
         poleHeight: data.poleHeight.trim() || null,
+        poleHeightSkate: data.poleHeightSkate.trim() || null,
         bindingPosition: data.bindingPosition.trim() || null,
         skiServicePreferences: data.skiServicePreferences.trim() || null,
       });
@@ -102,7 +106,7 @@ export default function RaceSkis() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    createMutation.mutate({ name: name.trim(), team: team.trim(), brand: brand.trim(), heightCm, weightKg, poleHeight, bindingPosition, skiServicePreferences });
+    createMutation.mutate({ name: name.trim(), team: team.trim(), brand: brand.trim(), heightCm, weightKg, poleHeight, poleHeightSkate, bindingPosition, skiServicePreferences });
   };
 
   function toggleView(mode: "grid" | "list") {
@@ -211,8 +215,12 @@ export default function RaceSkis() {
                     <Input value={weightKg} onChange={(e) => setWeightKg(e.target.value)} placeholder="72" data-testid="input-athlete-weight" />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium">{L("Stavhøyde", "Pole height")}</label>
+                    <label className="mb-1.5 block text-sm font-medium">{L("Stavhøyde (klassisk)", "Pole height (classic)")}</label>
                     <Input value={poleHeight} onChange={(e) => setPoleHeight(e.target.value)} placeholder="152 cm" data-testid="input-athlete-pole-height" />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium">{L("Stavhøyde (skøyt)", "Pole height (skate)")}</label>
+                    <Input value={poleHeightSkate} onChange={(e) => setPoleHeightSkate(e.target.value)} placeholder="162 cm" data-testid="input-athlete-pole-height-skate" />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium">{L("Bindingsposisjon", "Binding position")}</label>

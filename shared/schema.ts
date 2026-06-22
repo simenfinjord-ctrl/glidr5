@@ -517,7 +517,8 @@ export const athletes = pgTable("athletes", {
   defaultSkiBrand: text("default_ski_brand"),
   heightCm: text("height_cm"),
   weightKg: text("weight_kg"),
-  poleHeight: text("pole_height"),
+  poleHeight: text("pole_height"),               // legacy single pole height (= classic)
+  poleHeightSkate: text("pole_height_skate"),     // skating pole height
   bindingPosition: text("binding_position"),
   skiServicePreferences: text("ski_service_preferences"),
   createdAt: text("created_at").notNull(),

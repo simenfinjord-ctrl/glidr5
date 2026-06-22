@@ -302,6 +302,7 @@ export async function registerRoutes(
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS height_cm TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS weight_kg TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS pole_height TEXT;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS pole_height_skate TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS binding_position TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS ski_service_preferences TEXT;
       CREATE TABLE IF NOT EXISTS feedback_links (
@@ -5144,6 +5145,7 @@ export async function registerRoutes(
       heightCm: req.body.heightCm || null,
       weightKg: req.body.weightKg || null,
       poleHeight: req.body.poleHeight || null,
+      poleHeightSkate: req.body.poleHeightSkate || null,
       bindingPosition: req.body.bindingPosition || null,
       skiServicePreferences: req.body.skiServicePreferences || null,
       createdAt: now,
@@ -5169,6 +5171,7 @@ export async function registerRoutes(
     if (req.body.heightCm !== undefined) data.heightCm = req.body.heightCm || null;
     if (req.body.weightKg !== undefined) data.weightKg = req.body.weightKg || null;
     if (req.body.poleHeight !== undefined) data.poleHeight = req.body.poleHeight || null;
+    if (req.body.poleHeightSkate !== undefined) data.poleHeightSkate = req.body.poleHeightSkate || null;
     if (req.body.bindingPosition !== undefined) data.bindingPosition = req.body.bindingPosition || null;
     if (req.body.skiServicePreferences !== undefined) data.skiServicePreferences = req.body.skiServicePreferences || null;
     const updated = await storage.updateAthlete(id, data);

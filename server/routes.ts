@@ -305,6 +305,45 @@ export async function registerRoutes(
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS pole_height_skate TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS binding_position TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS ski_service_preferences TEXT;
+      CREATE TABLE IF NOT EXISTS kick_skis (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER NOT NULL,
+        group_scope TEXT,
+        name TEXT,
+        brand TEXT,
+        grind TEXT,
+        heights TEXT,
+        type_of_ski TEXT,
+        notes TEXT,
+        archived_at TEXT,
+        created_at TEXT NOT NULL,
+        created_by_id INTEGER NOT NULL,
+        created_by_name TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS kick_tests (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER NOT NULL,
+        group_scope TEXT,
+        date TEXT NOT NULL,
+        location TEXT,
+        weather_id INTEGER,
+        no_weather INTEGER NOT NULL DEFAULT 0,
+        test_persons TEXT,
+        notes TEXT,
+        report TEXT,
+        created_at TEXT NOT NULL,
+        created_by_id INTEGER NOT NULL,
+        created_by_name TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS kick_test_entries (
+        id SERIAL PRIMARY KEY,
+        kick_test_id INTEGER NOT NULL,
+        kick_ski_id INTEGER NOT NULL,
+        binder TEXT,
+        kick_solution TEXT,
+        feeling_rank INTEGER,
+        feeling_notes TEXT
+      );
       CREATE TABLE IF NOT EXISTS feedback_links (
         id SERIAL PRIMARY KEY,
         token TEXT NOT NULL UNIQUE,
@@ -990,6 +1029,135 @@ export async function registerRoutes(
     } as any);
     if (!updated) return res.status(404).json({ message: "Not found" });
     res.json(updated);
+  });
+
+  // ── Kick (#9): classic kick-testing skis + tests ──────────────────────────
+  // Group-scope aware list of kick test skis for the active team.
+  app.get("/api/kick-skis", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(
+      `SELECT id, team_id AS "teamId", group_scope AS "groupScope", name, brand, grind, heights,
+              type_of_ski AS "typeOfSki", notes, archived_at AS "archivedAt",
+              created_at AS "createdAt", created_by_id AS "createdById", created_by_name AS "createdByName"
+       FROM kick_skis WHERE team_id=$1 AND archived_at IS NULL ORDER BY id DESC`, [teamId]);
+    const rows = r.rows.filter((row: any) =>
+      userHasGroupAccess(u.groupScope, isEffectiveAdmin(req), row.groupScope || ""));
+    res.json(rows);
+  });
+
+  app.post("/api/kick-skis", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const b = req.body || {};
+    const r = await (pool as any).query(
+      `INSERT INTO kick_skis (team_id, group_scope, name, brand, grind, heights, type_of_ski, notes, created_at, created_by_id, created_by_name)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+      [teamId, resolveCreateGroupScope(req), b.name || null, b.brand || null, b.grind || null,
+       b.heights || null, b.typeOfSki || null, b.notes || null, new Date().toISOString(), u.id, u.name]);
+    res.json({ id: r.rows[0].id });
+  });
+
+  app.put("/api/kick-skis/:id", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const b = req.body || {};
+    const r = await (pool as any).query(
+      `UPDATE kick_skis SET name=$1, brand=$2, grind=$3, heights=$4, type_of_ski=$5, notes=$6
+       WHERE id=$7 AND team_id=$8 RETURNING id`,
+      [b.name || null, b.brand || null, b.grind || null, b.heights || null, b.typeOfSki || null, b.notes || null, id, teamId]);
+    if (!r.rows.length) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/kick-skis/:id", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    await (pool as any).query(`UPDATE kick_skis SET archived_at=$1 WHERE id=$2 AND team_id=$3`,
+      [new Date().toISOString(), id, teamId]);
+    res.json({ ok: true });
+  });
+
+  // List kick tests (newest first) with their entries.
+  app.get("/api/kick-tests", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const tr = await (pool as any).query(
+      `SELECT id, team_id AS "teamId", group_scope AS "groupScope", date, location,
+              weather_id AS "weatherId", no_weather AS "noWeather", test_persons AS "testPersons",
+              notes, report, created_at AS "createdAt", created_by_name AS "createdByName"
+       FROM kick_tests WHERE team_id=$1 ORDER BY date DESC, id DESC`, [teamId]);
+    const tests = tr.rows.filter((row: any) =>
+      userHasGroupAccess(u.groupScope, isEffectiveAdmin(req), row.groupScope || ""));
+    const ids = tests.map((t: any) => t.id);
+    let entries: any[] = [];
+    if (ids.length) {
+      const er = await (pool as any).query(
+        `SELECT id, kick_test_id AS "kickTestId", kick_ski_id AS "kickSkiId", binder,
+                kick_solution AS "kickSolution", feeling_rank AS "feelingRank", feeling_notes AS "feelingNotes"
+         FROM kick_test_entries WHERE kick_test_id = ANY($1::int[])`, [ids]);
+      entries = er.rows;
+    }
+    for (const t of tests) t.entries = entries.filter((e) => e.kickTestId === t.id);
+    res.json(tests);
+  });
+
+  app.post("/api/kick-tests", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const b = req.body || {};
+    const tr = await (pool as any).query(
+      `INSERT INTO kick_tests (team_id, group_scope, date, location, weather_id, no_weather, test_persons, notes, report, created_at, created_by_id, created_by_name)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+      [teamId, resolveCreateGroupScope(req), b.date || new Date().toISOString().split("T")[0],
+       b.location || null, b.noWeather ? null : (b.weatherId || null), b.noWeather ? 1 : 0,
+       b.testPersons || null, b.notes || null, b.report || null, new Date().toISOString(), u.id, u.name]);
+    const id = tr.rows[0].id;
+    for (const e of (b.entries || [])) {
+      await (pool as any).query(
+        `INSERT INTO kick_test_entries (kick_test_id, kick_ski_id, binder, kick_solution, feeling_rank, feeling_notes)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [id, e.kickSkiId, e.binder || null, e.kickSolution || null, e.feelingRank ?? null, e.feelingNotes || null]);
+    }
+    res.json({ id });
+  });
+
+  app.put("/api/kick-tests/:id", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const b = req.body || {};
+    const r = await (pool as any).query(
+      `UPDATE kick_tests SET date=$1, location=$2, weather_id=$3, no_weather=$4, test_persons=$5, notes=$6, report=$7
+       WHERE id=$8 AND team_id=$9 RETURNING id`,
+      [b.date, b.location || null, b.noWeather ? null : (b.weatherId || null), b.noWeather ? 1 : 0,
+       b.testPersons || null, b.notes || null, b.report || null, id, teamId]);
+    if (!r.rows.length) return res.status(404).json({ message: "Not found" });
+    if (Array.isArray(b.entries)) {
+      await (pool as any).query(`DELETE FROM kick_test_entries WHERE kick_test_id=$1`, [id]);
+      for (const e of b.entries) {
+        await (pool as any).query(
+          `INSERT INTO kick_test_entries (kick_test_id, kick_ski_id, binder, kick_solution, feeling_rank, feeling_notes)
+           VALUES ($1,$2,$3,$4,$5,$6)`,
+          [id, e.kickSkiId, e.binder || null, e.kickSolution || null, e.feelingRank ?? null, e.feelingNotes || null]);
+      }
+    }
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/kick-tests/:id", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(`DELETE FROM kick_tests WHERE id=$1 AND team_id=$2 RETURNING id`, [id, teamId]);
+    if (r.rows.length) await (pool as any).query(`DELETE FROM kick_test_entries WHERE kick_test_id=$1`, [id]);
+    res.json({ ok: true });
   });
 
   // ── Product import from Google Sheet ───────────────────────────────────────

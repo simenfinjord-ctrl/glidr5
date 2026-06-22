@@ -895,6 +895,12 @@ export async function buildTeamJsonExport(teamId: number): Promise<string> {
   const feedbackLinks = await q(`SELECT * FROM feedback_links WHERE team_id = $1`).catch(() => []);
   const userTeamPermissions = await q(`SELECT * FROM user_team_permissions WHERE team_id = $1`).catch(() => []);
   const watchQueue = await q(`SELECT * FROM watch_queue WHERE team_id = $1`).catch(() => []);
+  // Kick (#9) — test skis, tests and per-ski entries.
+  const kickSkis = await q(`SELECT * FROM kick_skis WHERE team_id = $1`).catch(() => []);
+  const kickTests = await q(`SELECT * FROM kick_tests WHERE team_id = $1`).catch(() => []);
+  const kickTestEntries = await (pool as any).query(
+    `SELECT kte.* FROM kick_test_entries kte JOIN kick_tests kt ON kt.id = kte.kick_test_id WHERE kt.team_id = $1`, [teamId]
+  ).then((r: any) => r.rows).catch(() => []);
   // Athlete access (no team_id column — scope via this team's athletes).
   const athleteAccess = await (pool as any).query(
     `SELECT aa.* FROM athlete_access aa JOIN athletes a ON a.id = aa.athlete_id WHERE a.team_id = $1`, [teamId]
@@ -931,6 +937,9 @@ export async function buildTeamJsonExport(teamId: number): Promise<string> {
     feedbackLinks,
     userTeamPermissions,
     watchQueue,
+    kickSkis,
+    kickTests,
+    kickTestEntries,
   }, null, 2);
 }
 

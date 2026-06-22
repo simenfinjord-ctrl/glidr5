@@ -588,6 +588,61 @@ export const insertRaceSkiRegrindSchema = createInsertSchema(raceSkiRegrinds).om
 export type InsertRaceSkiRegrind = z.infer<typeof insertRaceSkiRegrindSchema>;
 export type RaceSkiRegrind = typeof raceSkiRegrinds.$inferSelect;
 
+// --- Kick (#9): classic kick-testing skis, tests, and per-ski entries ---
+// A pool of test skis used to evaluate kick (festesmøring). Distinct from
+// race skis (per athlete) and test fleets (glide). Brand / grind / heights /
+// ski-type mirror the Athlete-skis ski choices.
+export const kickSkis = pgTable("kick_skis", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull(),
+  groupScope: text("group_scope"),
+  name: text("name"),            // optional short label/Ski ID
+  brand: text("brand"),
+  grind: text("grind"),
+  heights: text("heights"),
+  typeOfSki: text("type_of_ski"), // Klister/Cover, Zero, Hardwax, …
+  notes: text("notes"),
+  archivedAt: text("archived_at"),
+  createdAt: text("created_at").notNull(),
+  createdById: integer("created_by_id").notNull(),
+  createdByName: text("created_by_name").notNull(),
+});
+export const insertKickSkiSchema = createInsertSchema(kickSkis).omit({ id: true });
+export type InsertKickSki = z.infer<typeof insertKickSkiSchema>;
+export type KickSki = typeof kickSkis.$inferSelect;
+
+export const kickTests = pgTable("kick_tests", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull(),
+  groupScope: text("group_scope"),
+  date: text("date").notNull(),
+  location: text("location"),
+  weatherId: integer("weather_id"),
+  noWeather: integer("no_weather").notNull().default(0),
+  testPersons: text("test_persons"),
+  notes: text("notes"),
+  report: text("report"),        // generated interpreted report (analytics)
+  createdAt: text("created_at").notNull(),
+  createdById: integer("created_by_id").notNull(),
+  createdByName: text("created_by_name").notNull(),
+});
+export const insertKickTestSchema = createInsertSchema(kickTests).omit({ id: true });
+export type InsertKickTest = z.infer<typeof insertKickTestSchema>;
+export type KickTest = typeof kickTests.$inferSelect;
+
+export const kickTestEntries = pgTable("kick_test_entries", {
+  id: serial("id").primaryKey(),
+  kickTestId: integer("kick_test_id").notNull(),
+  kickSkiId: integer("kick_ski_id").notNull(),
+  binder: text("binder"),
+  kickSolution: text("kick_solution"),
+  feelingRank: integer("feeling_rank"),
+  feelingNotes: text("feeling_notes"),
+});
+export const insertKickTestEntrySchema = createInsertSchema(kickTestEntries).omit({ id: true });
+export type InsertKickTestEntry = z.infer<typeof insertKickTestEntrySchema>;
+export type KickTestEntry = typeof kickTestEntries.$inferSelect;
+
 // --- Test Ski Regrind History ---
 
 export const testSkiRegrinds = pgTable("test_ski_regrinds", {

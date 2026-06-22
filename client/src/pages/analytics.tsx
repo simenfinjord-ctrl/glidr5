@@ -3413,7 +3413,7 @@ function BrandStatsView() {
                   {/* Conditions */}
                   {b.conditions.length > 0 && (
                     <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{L("Føre (snøtemp)", "Conditions (snow temp)")}</div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{L("Føre (lufttemp)", "Conditions (air temp)")}</div>
                       <div className="flex flex-wrap gap-1.5">
                         {b.conditions.map((c) => (
                           <span key={c.label} className="rounded-full bg-muted/50 px-2 py-0.5 text-[11px]">

@@ -3816,7 +3816,7 @@ export async function registerRoutes(
                 e.feeling_rank AS "feelingRank", e.test_id AS "testId"
          FROM test_entries e JOIN tests t ON t.id = e.test_id WHERE t.team_id = $1`, [teamId]),
       (pool as any).query(`SELECT id, weather_id AS "weatherId" FROM tests WHERE team_id = $1`, [teamId]),
-      (pool as any).query(`SELECT id, snow_temperature_c AS "snowTemp", snow_type AS "snowType", track_hardness AS "trackHardness" FROM daily_weather WHERE team_id = $1`, [teamId]),
+      (pool as any).query(`SELECT id, air_temperature_c AS "airTemp", snow_type AS "snowType", track_hardness AS "trackHardness" FROM daily_weather WHERE team_id = $1`, [teamId]),
       (pool as any).query(`SELECT brand FROM test_ski_series WHERE team_id = $1 AND brand IS NOT NULL AND brand <> ''`, [teamId]),
     ]);
 
@@ -3886,7 +3886,7 @@ export async function registerRoutes(
           }
         } catch {}
         const wId = testWeather.get(e.testId); const w = wId ? weatherById.get(wId) : null;
-        const bucket = w ? tempBucket(w.snowTemp) : null;
+        const bucket = w ? tempBucket(w.airTemp) : null;
         if (bucket) { if (!a.cond.has(bucket)) a.cond.set(bucket, { ranks: [], feels: [] }); const c = a.cond.get(bucket)!; if (e.rank0km != null) c.ranks.push(e.rank0km); if (e.feelingRank != null) c.feels.push(e.feelingRank); }
       } else if (e.productId) {
         const p = prodById.get(e.productId); if (!p) continue;

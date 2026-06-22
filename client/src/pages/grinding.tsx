@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Plus, Pencil, Trash2, Disc3, Trophy, Filter, MapPin, Thermometer, CalendarDays, Copy, Search, X, ChevronUp, ChevronDown, Wind, Snowflake, BarChart2, LayoutGrid, LayoutList, ExternalLink, Check, TrendingUp, Archive, RotateCcw, Link2, Upload } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { useAuth } from "@/lib/auth";
 import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -206,6 +207,8 @@ function GrindProfileForm({
   const { t, language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const usGrindEnabled = !!user?.teamEnabledAreas?.includes("us_grind");
 
   // Build initial param rows from stored order; all params are equal
   const initParams = (): ParamRow[] => {
@@ -444,17 +447,19 @@ function GrindProfileForm({
           />
         </div>
 
-        <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={isUsGrind}
-            onChange={(e) => setIsUsGrind(e.target.checked)}
-            className="h-4 w-4 rounded border-input"
-            data-testid="checkbox-us-grind"
-          />
-          <span className="font-medium">{L("US-Grind", "US-Grind")}</span>
-          <span className="text-xs text-muted-foreground">{L("(merk som US-Grind)", "(mark as US-Grind)")}</span>
-        </label>
+        {usGrindEnabled && (
+          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={isUsGrind}
+              onChange={(e) => setIsUsGrind(e.target.checked)}
+              className="h-4 w-4 rounded border-input"
+              data-testid="checkbox-us-grind"
+            />
+            <span className="font-medium">{L("US-Grind", "US-Grind")}</span>
+            <span className="text-xs text-muted-foreground">{L("(merk som US-Grind)", "(mark as US-Grind)")}</span>
+          </label>
+        )}
 
         <div className="flex justify-end pt-2">
           <Button type="submit" disabled={!canSave} data-testid="button-save-grind-profile">
@@ -1336,6 +1341,8 @@ export default function Grinding() {
   const { t, language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const usGrindEnabled = !!user?.teamEnabledAreas?.includes("us_grind");
   const { confirm, ConfirmDialog } = useConfirmDialog();
   const [tab, setTab] = useState<"tests" | "grinds" | "analytics">("tests");
 
@@ -2352,6 +2359,7 @@ export default function Grinding() {
                   </button>
                 )}
               </div>
+              {usGrindEnabled && (
               <button
                 type="button"
                 onClick={() => setUsGrindOnly((v) => !v)}
@@ -2361,6 +2369,7 @@ export default function Grinding() {
               >
                 US-Grind
               </button>
+              )}
               <div className="flex items-center rounded-lg border border-border overflow-hidden shrink-0">
                 <button
                   type="button"

@@ -54,7 +54,7 @@ export const TEAM_FEATURES = [
   "pdf_export", "excel_export", "google_sheets_backup", "offline_mode",
   // Team features
   "blind_tester", "activity_logging", "column_visibility",
-  "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management",
+  "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management", "us_grind",
   // Enterprise
   "multi_team", "bulk_export", "custom_groups",
 ] as const;
@@ -87,6 +87,7 @@ export const FEATURE_LABELS: Record<TeamFeature, string> = {
   race_ski_regrind: "Race Ski Regrind History",
   product_stock: "Product Stock Tracking",
   athlete_management: "Athlete Profiles & Access Control",
+  us_grind: "US-Grind tagging",
   multi_team: "Multi-team Support",
   bulk_export: "Bulk Data Export",
   custom_groups: "Custom Group Structures",
@@ -107,7 +108,7 @@ export const FEATURE_CATEGORIES: { label: string; features: readonly TeamFeature
   },
   {
     label: "Team Features",
-    features: ["blind_tester", "activity_logging", "column_visibility", "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management"],
+    features: ["blind_tester", "activity_logging", "column_visibility", "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management", "us_grind"],
   },
   {
     label: "Enterprise",

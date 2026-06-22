@@ -3834,13 +3834,15 @@ export async function registerRoutes(
     type Acc = { brand: string; productCount: number; structureToolCount: number; raceSkiCount: number; seriesCount: number;
       skiAgg: Map<number, { ranks: number[]; feels: number[] }>;
       prodAgg: Map<number, { ranks: number[] }>;
+      // param[category] -> value -> results. Categories are built dynamically so
+      // every parameter a waxer has entered (incl. custom params) is covered.
       param: Record<string, Map<string, { ranks: number[]; feels: number[] }>>;
       cond: Map<string, { ranks: number[]; feels: number[] }>; };
     const brands = new Map<string, Acc>();
     const get = (b: string): Acc => {
       const key = b.toLowerCase();
       if (!brands.has(key)) brands.set(key, { brand: b, productCount: 0, structureToolCount: 0, raceSkiCount: 0, seriesCount: 0,
-        skiAgg: new Map(), prodAgg: new Map(), param: { grind: new Map(), base: new Map(), construction: new Map(), mold: new Map() }, cond: new Map() });
+        skiAgg: new Map(), prodAgg: new Map(), param: {}, cond: new Map() });
       return brands.get(key)!;
     };
 
@@ -3848,8 +3850,11 @@ export async function registerRoutes(
     for (const p of prodR.rows) { const b = norm(p.brand); if (b) { const a = get(b); a.productCount++; if (norm(p.category).toLowerCase().includes("structure")) a.structureToolCount++; } }
     for (const s of seriesR.rows) { const b = norm(s.brand); if (b) get(b).seriesCount++; }
 
-    const pushParam = (m: Map<string, { ranks: number[]; feels: number[] }>, v: any, rank: number | null, feel: number | null) => {
+    // Push a value into param[category]; creates the category map on demand.
+    const pushParam = (a: Acc, category: string, v: any, rank: number | null, feel: number | null) => {
       const key = norm(v); if (!key) return;
+      if (!a.param[category]) a.param[category] = new Map();
+      const m = a.param[category];
       if (!m.has(key)) m.set(key, { ranks: [], feels: [] });
       const e = m.get(key)!; if (rank != null) e.ranks.push(rank); if (feel != null) e.feels.push(feel);
     };
@@ -3863,10 +3868,23 @@ export async function registerRoutes(
         const sa = a.skiAgg.get(ski.id)!;
         if (e.rank0km != null) sa.ranks.push(e.rank0km);
         if (e.feelingRank != null) sa.feels.push(e.feelingRank);
-        pushParam(a.param.grind, ski.grind, e.rank0km, e.feelingRank);
-        pushParam(a.param.base, ski.base, e.rank0km, e.feelingRank);
-        pushParam(a.param.construction, ski.construction, e.rank0km, e.feelingRank);
-        pushParam(a.param.mold, ski.mold, e.rank0km, e.feelingRank);
+        // Every parameter the waxers have filled in — standard + custom.
+        pushParam(a, "Grind", ski.grind, e.rank0km, e.feelingRank);
+        pushParam(a, "Base", ski.base, e.rank0km, e.feelingRank);
+        pushParam(a, "Construction", ski.construction, e.rank0km, e.feelingRank);
+        pushParam(a, "Mold", ski.mold, e.rank0km, e.feelingRank);
+        pushParam(a, "Heights", ski.heights, e.rank0km, e.feelingRank);
+        pushParam(a, "Length", ski.length, e.rank0km, e.feelingRank);
+        pushParam(a, "Ski type", ski.typeOfSki, e.rank0km, e.feelingRank);
+        pushParam(a, "Discipline", ski.discipline, e.rank0km, e.feelingRank);
+        try {
+          const cp = ski.customParams ? JSON.parse(ski.customParams) : {};
+          for (const [k, val] of Object.entries(cp)) {
+            if (k.startsWith("_")) continue;
+            const label = k === "ra_value" ? "RA-value" : k.replace(/_/g, " ");
+            pushParam(a, label, val, e.rank0km, e.feelingRank);
+          }
+        } catch {}
         const wId = testWeather.get(e.testId); const w = wId ? weatherById.get(wId) : null;
         const bucket = w ? tempBucket(w.snowTemp) : null;
         if (bucket) { if (!a.cond.has(bucket)) a.cond.set(bucket, { ranks: [], feels: [] }); const c = a.cond.get(bucket)!; if (e.rank0km != null) c.ranks.push(e.rank0km); if (e.feelingRank != null) c.feels.push(e.feelingRank); }
@@ -3885,25 +3903,22 @@ export async function registerRoutes(
 
     const out = [...brands.values()].map((a) => {
       const allRanks: number[] = []; const allFeels: number[] = [];
-      const skis = [...a.skiAgg.entries()].map(([id, v]) => {
-        allRanks.push(...v.ranks); allFeels.push(...v.feels);
-        const ski = skiById.get(id);
-        let custom: any = {}; try { custom = ski.customParams ? JSON.parse(ski.customParams) : {}; } catch {}
-        return { skiId: ski.skiId, athleteName: ski.athleteName, discipline: ski.discipline, grind: ski.grind,
-          base: ski.base, construction: ski.construction, mold: ski.mold, heights: ski.heights, length: ski.length,
-          typeOfSki: ski.typeOfSki, customParams: custom, tests: Math.max(v.ranks.length, v.feels.length),
-          avgRank: avg(v.ranks), avgFeeling: avg(v.feels) };
-      }).sort((x, y) => (x.avgRank ?? 99) - (y.avgRank ?? 99));
+      for (const v of a.skiAgg.values()) { allRanks.push(...v.ranks); allFeels.push(...v.feels); }
       const prodRanks: number[] = [];
       const productsPerf = [...a.prodAgg.entries()].map(([id, v]) => { prodRanks.push(...v.ranks); const p = prodById.get(id); return { name: `${p.brand} ${p.name}`, category: p.category, tests: v.ranks.length, avgRank: avg(v.ranks) }; })
         .sort((x, y) => (x.avgRank ?? 99) - (y.avgRank ?? 99));
+      // Every parameter category, each with its values ranked by performance.
+      const paramBreakdown = Object.entries(a.param)
+        .map(([category, m]) => ({ category, values: breakdown(m) }))
+        .filter((p) => p.values.length > 0)
+        .sort((x, y) => x.category.localeCompare(y.category));
       return {
         brand: a.brand, productCount: a.productCount, structureToolCount: a.structureToolCount,
         raceSkiCount: a.raceSkiCount, seriesCount: a.seriesCount,
         raceTestEntries: allRanks.length + allFeels.length, productTestEntries: prodRanks.length,
         avgRank: avg(allRanks), avgFeeling: avg(allFeels), avgProductRank: avg(prodRanks),
-        skis, products: productsPerf,
-        paramBreakdown: { grind: breakdown(a.param.grind), base: breakdown(a.param.base), construction: breakdown(a.param.construction), mold: breakdown(a.param.mold) },
+        products: productsPerf,
+        paramBreakdown,
         conditions: [...a.cond.entries()].map(([label, v]) => ({ label, count: Math.max(v.ranks.length, v.feels.length), avgRank: avg(v.ranks), avgFeeling: avg(v.feels) })),
       };
     }).sort((x, y) => x.brand.localeCompare(y.brand));

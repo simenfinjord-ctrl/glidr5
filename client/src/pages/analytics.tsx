@@ -3334,11 +3334,8 @@ type BrandStat = {
   brand: string; productCount: number; structureToolCount: number; raceSkiCount: number; seriesCount: number;
   raceTestEntries: number; productTestEntries: number;
   avgRank: number | null; avgFeeling: number | null; avgProductRank: number | null;
-  skis: { skiId: string; athleteName: string; discipline: string; grind: string | null; base: string | null;
-    construction: string | null; mold: string | null; heights: string | null; length: string | null;
-    typeOfSki: string | null; customParams: Record<string, any>; tests: number; avgRank: number | null; avgFeeling: number | null }[];
   products: { name: string; category: string; tests: number; avgRank: number | null }[];
-  paramBreakdown: Record<"grind" | "base" | "construction" | "mold", { value: string; count: number; avgRank: number | null; avgFeeling: number | null }[]>;
+  paramBreakdown: { category: string; values: { value: string; count: number; avgRank: number | null; avgFeeling: number | null }[] }[];
   conditions: { label: string; count: number; avgRank: number | null; avgFeeling: number | null }[];
 };
 
@@ -3358,7 +3355,7 @@ function BrandStatsView() {
   if (isLoading) return <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground">{L("Laster…", "Loading…")}</Card>;
   if (brands.length === 0) return <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground">{L("Ingen merker registrert ennå.", "No brands recorded yet.")}</Card>;
 
-  const Breakdown = ({ title, rows }: { title: string; rows: BrandStat["paramBreakdown"]["grind"] }) =>
+  const Breakdown = ({ title, rows }: { title: string; rows: BrandStat["paramBreakdown"][number]["values"] }) =>
     rows.length === 0 ? null : (
       <div>
         <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{title}</div>
@@ -3405,13 +3402,12 @@ function BrandStatsView() {
               </button>
               {isOpen && (
                 <div className="border-t border-border/40 px-4 py-3 space-y-4">
-                  {/* Parameter breakdowns */}
-                  {(b.paramBreakdown.grind.length + b.paramBreakdown.base.length + b.paramBreakdown.construction.length + b.paramBreakdown.mold.length) > 0 && (
+                  {/* Every parameter the waxers have entered, ranked within its category */}
+                  {b.paramBreakdown.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Breakdown title={L("Slip", "Grind")} rows={b.paramBreakdown.grind} />
-                      <Breakdown title={L("Såle", "Base")} rows={b.paramBreakdown.base} />
-                      <Breakdown title={L("Konstruksjon", "Construction")} rows={b.paramBreakdown.construction} />
-                      <Breakdown title={L("Form", "Mold")} rows={b.paramBreakdown.mold} />
+                      {b.paramBreakdown.map((p) => (
+                        <Breakdown key={p.category} title={p.category} rows={p.values} />
+                      ))}
                     </div>
                   )}
                   {/* Conditions */}
@@ -3425,27 +3421,6 @@ function BrandStatsView() {
                           </span>
                         ))}
                       </div>
-                    </div>
-                  )}
-                  {/* Per-ski */}
-                  {b.skis.length > 0 && (
-                    <div className="overflow-x-auto">
-                      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{L("Skipar", "Ski pairs")}</div>
-                      <table className="w-full text-xs">
-                        <thead><tr className="text-left text-muted-foreground border-b">
-                          <th className="py-1 pr-2">Ski-ID</th><th className="py-1 pr-2">{L("Utøver", "Athlete")}</th><th className="py-1 pr-2">{L("Stilart", "Disc.")}</th>
-                          <th className="py-1 pr-2">{L("Slip", "Grind")}</th><th className="py-1 pr-2">{L("Såle", "Base")}</th><th className="py-1 pr-2">{L("Rang", "Rank")}</th><th className="py-1 pr-2">{L("Følelse", "Feel")}</th><th className="py-1">{L("Tester", "Tests")}</th>
-                        </tr></thead>
-                        <tbody>
-                          {b.skis.map((s, i) => (
-                            <tr key={i} className="border-b border-border/30">
-                              <td className="py-1 pr-2 font-medium">{s.skiId}</td><td className="py-1 pr-2 text-muted-foreground">{s.athleteName}</td>
-                              <td className="py-1 pr-2 text-muted-foreground">{s.discipline}</td><td className="py-1 pr-2">{s.grind || "—"}</td>
-                              <td className="py-1 pr-2">{s.base || "—"}</td><td className="py-1 pr-2">{num(s.avgRank)}</td><td className="py-1 pr-2">{num(s.avgFeeling)}</td><td className="py-1">{s.tests}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
                     </div>
                   )}
                   {/* Products */}
@@ -3462,7 +3437,7 @@ function BrandStatsView() {
                       </table>
                     </div>
                   )}
-                  {b.skis.length === 0 && b.products.length === 0 && (
+                  {b.paramBreakdown.length === 0 && b.products.length === 0 && b.conditions.length === 0 && (
                     <p className="text-xs text-muted-foreground">{L("Ingen testresultater knyttet til dette merket ennå.", "No test results linked to this brand yet.")}</p>
                   )}
                 </div>

@@ -81,6 +81,7 @@ import { useI18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language";
 import { pdfDocument, pdfSection, pdfCards, pdfTable, pdfWeather, openPdfWindow } from "@/lib/pdf-layout";
 import { RacePrepComments } from "@/components/race-prep-comments";
+import { LocationAutocomplete } from "@/components/location-autocomplete";
 
 type Athlete = {
   id: number;
@@ -2238,11 +2239,13 @@ export default function AthleteDetail() {
             {/* Race history filter bar */}
             <div className="mb-3 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <Input
+                <LocationAutocomplete
                   value={raceLocationFilter}
-                  onChange={e => setRaceLocationFilter(e.target.value)}
+                  onChange={setRaceLocationFilter}
+                  searchMode
                   placeholder={L("Sted…", "Location…")}
-                  className="h-8 w-[140px] text-xs"
+                  className="w-[140px]"
+                  inputClassName="h-8 text-xs"
                 />
                 <Select value={raceSeasonFilter} onValueChange={setRaceSeasonFilter}>
                   <SelectTrigger className="h-8 w-[120px] text-xs">
@@ -3236,11 +3239,13 @@ export default function AthleteDetail() {
                       </SelectContent>
                     </Select>
                     {/* 5. Location */}
-                    <Input
+                    <LocationAutocomplete
                       value={testLocationFilter}
-                      onChange={e => setTestLocationFilter(e.target.value)}
+                      onChange={setTestLocationFilter}
+                      searchMode
                       placeholder={L("Sted…", "Location…")}
-                      className="h-8 min-w-[140px] text-xs"
+                      className="min-w-[140px]"
+                      inputClassName="h-8 text-xs"
                     />
                     {/* Extra: Sort */}
                     <Select value={testSortBy} onValueChange={setTestSortBy}>
@@ -3538,9 +3543,9 @@ export default function AthleteDetail() {
                     </div>
                     <div>
                       <label className="mb-1 block text-sm font-medium">Location *</label>
-                      <Input
+                      <LocationAutocomplete
                         value={testForm.location}
-                        onChange={(e) => setTestForm((f) => ({ ...f, location: e.target.value }))}
+                        onChange={(v) => setTestForm((f) => ({ ...f, location: v }))}
                         placeholder="e.g., Davos"
                         data-testid="input-test-location"
                       />
@@ -5407,7 +5412,7 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium">{L("Sted", "Location")}</label>
-              <Input value={usageForm.location} onChange={(e) => setUsageForm((f) => ({ ...f, location: e.target.value }))} placeholder={L("f.eks. Ruka", "e.g. Ruka")} />
+              <LocationAutocomplete value={usageForm.location} onChange={(v) => setUsageForm((f) => ({ ...f, location: v }))} placeholder={L("f.eks. Ruka", "e.g. Ruka")} />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium">{L("Vær", "Weather")}</label>
@@ -6380,7 +6385,7 @@ function SkiCard({
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium">{L("Sted", "Location")}</label>
-              <Input value={usageForm.location} onChange={(e) => setUsageForm((f) => ({ ...f, location: e.target.value }))} placeholder={L("f.eks. Ruka", "e.g. Ruka")} />
+              <LocationAutocomplete value={usageForm.location} onChange={(v) => setUsageForm((f) => ({ ...f, location: v }))} placeholder={L("f.eks. Ruka", "e.g. Ruka")} />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium">{L("Vær", "Weather")}</label>
@@ -7281,7 +7286,7 @@ function RaceCalendarSection({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium">{L("Lokasjon", "Location")}</label>
-                  <Input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} placeholder={L("f.eks. Lillehammer", "e.g. Lillehammer")} data-testid="input-race-location" />
+                  <LocationAutocomplete value={form.location} onChange={(v) => setForm((f) => ({ ...f, location: v }))} placeholder={L("f.eks. Lillehammer", "e.g. Lillehammer")} data-testid="input-race-location" />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium">{L("Stilart", "Discipline")}</label>

@@ -690,6 +690,36 @@ export function TestEntryTable({
         </tbody>
       </table>
     </div>
+      {/* Add a ski pair directly below the rows — works for new tests and when
+          editing an already-run test (the top "Add ski" button is far away). */}
+      <div className="mt-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-testid="button-add-ski-pair-inline"
+          onClick={() =>
+            setRows([
+              ...rows,
+              {
+                id: `row_new_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+                skiNumber: rows.length + 1,
+                productId: undefined,
+                methodology: "",
+                applications: [],
+                roundResults: Array.from({ length: distanceLabels.length }, () => ({ result: null, rank: null })),
+                feelingRank: null,
+                kickRank: null,
+              },
+            ])
+          }
+        >
+          <Plus className="mr-1.5 h-4 w-4" />
+          {isRaceSki
+            ? (language === "no" ? "Legg til skipar" : "Add ski pair")
+            : (language === "no" ? "Legg til rad" : "Add entry")}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -1,11 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRoute } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Trophy, Award } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { ArrowLeft, Trophy, Award, Plus, Trash2, Disc3 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { cn, fmtDate } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
@@ -105,6 +109,90 @@ function RankBadge({ rank }: { rank: number | null }) {
   );
 }
 
+// #38: regrind history for a testfleet (same as race skis). Newest first.
+type SeriesRegrind = { id: number; date: string; grindType: string; stone: string | null; pattern: string | null; notes: string | null };
+function SeriesRegrindHistory({ seriesId, currentGrind }: { seriesId: number; currentGrind: string | null }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const emptyForm = { date: new Date().toISOString().slice(0, 10), grindType: "", stone: "", pattern: "", notes: "" };
+  const [form, setForm] = useState(emptyForm);
+  const { data: regrinds = [] } = useQuery<SeriesRegrind[]>({
+    queryKey: [`/api/series/${seriesId}/regrinds`],
+    select: (rows) => [...rows].sort((a, b) => (b.date || "").localeCompare(a.date || "")),
+  });
+  const addM = useMutation({
+    mutationFn: async () => apiRequest("POST", `/api/series/${seriesId}/regrinds`, { ...form, grindType: form.grindType.trim() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/series/${seriesId}/regrinds`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/series"] });
+      setOpen(false); setForm(emptyForm);
+      toast({ title: L("Regrind lagt til", "Regrind added") });
+    },
+    onError: (e: any) => toast({ title: L("Feil", "Error"), description: e?.message, variant: "destructive" }),
+  });
+  const delM = useMutation({
+    mutationFn: async (id: number) => apiRequest("DELETE", `/api/test-ski-regrinds/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/series/${seriesId}/regrinds`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/series"] });
+    },
+  });
+  return (
+    <Card className="fs-card rounded-2xl p-4 sm:p-5" data-testid="card-series-regrinds">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Disc3 className="h-4 w-4 text-primary" />
+          <h2 className="text-base font-semibold">{L("Slipehistorikk", "Regrind history")}</h2>
+          {currentGrind && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{L("Nåværende", "Current")}: {currentGrind}</span>}
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" data-testid="button-add-series-regrind"><Plus className="mr-1.5 h-3.5 w-3.5" />{L("Legg til slip", "Add regrind")}</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{L("Legg til slip", "Add regrind")}</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="mb-1 block text-xs font-medium">{L("Dato", "Date")}</label><Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} /></div>
+                <div><label className="mb-1 block text-xs font-medium">{L("Slip", "Grind")}</label><Input value={form.grindType} onChange={(e) => setForm((f) => ({ ...f, grindType: e.target.value }))} placeholder="R3" /></div>
+                <div><label className="mb-1 block text-xs font-medium">{L("Stein/verktøy", "Stone/Tool")}</label><Input value={form.stone} onChange={(e) => setForm((f) => ({ ...f, stone: e.target.value }))} /></div>
+                <div><label className="mb-1 block text-xs font-medium">{L("Mønster", "Pattern")}</label><Input value={form.pattern} onChange={(e) => setForm((f) => ({ ...f, pattern: e.target.value }))} /></div>
+              </div>
+              <div><label className="mb-1 block text-xs font-medium">{L("Notat", "Note")}</label><Input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} /></div>
+              <div className="flex justify-end">
+                <Button size="sm" disabled={addM.isPending || !form.grindType.trim()} onClick={() => addM.mutate()}>{addM.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+      {regrinds.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{L("Ingen slipehistorikk ennå.", "No regrind history yet.")}</p>
+      ) : (
+        <div className="space-y-1.5">
+          {regrinds.map((r, i) => (
+            <div key={r.id} className={cn("flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-sm", i === 0 ? "bg-primary/5 ring-1 ring-primary/20" : "bg-muted/30")} data-testid={`row-series-regrind-${r.id}`}>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span className="font-medium">{fmtDate(r.date)}</span>
+                <span className="text-primary font-semibold">{r.grindType}</span>
+                {r.stone && <span className="text-xs text-muted-foreground">{r.stone}</span>}
+                {r.pattern && <span className="text-xs text-muted-foreground">{r.pattern}</span>}
+                {r.notes && <span className="text-xs text-muted-foreground italic">«{r.notes}»</span>}
+                {i === 0 && <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-primary">{L("Siste", "Latest")}</span>}
+              </div>
+              <button className="text-muted-foreground/50 hover:text-red-500" onClick={() => { if (confirm(L("Slette denne slipen?", "Delete this regrind?"))) delM.mutate(r.id); }} data-testid={`button-del-series-regrind-${r.id}`}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function SeriesDetail() {
   const [, params] = useRoute("/testskis/:id");
   const seriesId = params?.id ? parseInt(params.id) : null;
@@ -180,6 +268,8 @@ export default function SeriesDetail() {
             {t("seriesDetail.testCount").replace("{n}", String(seriesTests.length))}{seriesTests.length !== 1 ? "s" : ""} · {t("testskis.skiCount").replace("{n}", String(series.numberOfSkis))}{series.grind ? ` · Grind ${series.grind}` : ""}
           </p>
         </div>
+
+        <SeriesRegrindHistory seriesId={series.id} currentGrind={series.grind} />
 
         {seriesTests.length === 0 ? (
           <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground" data-testid="empty-series-tests">

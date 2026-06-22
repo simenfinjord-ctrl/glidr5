@@ -10,6 +10,7 @@ import {
   type QueuedMutation,
 } from "./offline-db";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "./language";
 import { queryClient } from "./queryClient";
 
 interface OfflineContextValue {
@@ -40,6 +41,10 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
+  const { lang } = useLanguage();
+  const langRef = useRef(lang);
+  langRef.current = lang;
+  const tr = (no: string, en: string) => (langRef.current === "no" ? no : en);
   const syncingRef = useRef(false);
   const hasPrefetchedRef = useRef(false);
 
@@ -118,13 +123,19 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
 
       if (successCount > 0) {
         toast({
-          title: "Synkronisering fullført",
-          description: `${successCount} endring${successCount > 1 ? "er" : ""} synkronisert.${failCount > 0 ? ` ${failCount} mislyktes.` : ""}`,
+          title: tr("Synkronisering fullført", "Sync complete"),
+          description: tr(
+            `${successCount} endring${successCount > 1 ? "er" : ""} synkronisert.${failCount > 0 ? ` ${failCount} mislyktes.` : ""}`,
+            `${successCount} change${successCount > 1 ? "s" : ""} synced.${failCount > 0 ? ` ${failCount} failed.` : ""}`,
+          ),
         });
       } else if (failCount > 0) {
         toast({
-          title: "Synkroniseringsfeil",
-          description: `${failCount} endring${failCount > 1 ? "er" : ""} kunne ikke synkroniseres.`,
+          title: tr("Synkroniseringsfeil", "Sync error"),
+          description: tr(
+            `${failCount} endring${failCount > 1 ? "er" : ""} kunne ikke synkroniseres.`,
+            `${failCount} change${failCount > 1 ? "s" : ""} could not be synced.`,
+          ),
           variant: "destructive",
         });
       }
@@ -183,16 +194,16 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     const handleOnline = () => {
       setIsOnline(true);
       toast({
-        title: "Tilkoblet igjen",
-        description: "Synkroniserer ventende endringer…",
+        title: tr("Tilkoblet igjen", "Back online"),
+        description: tr("Synkroniserer ventende endringer…", "Syncing pending changes…"),
       });
       syncNow();
     };
     const handleOffline = () => {
       setIsOnline(false);
       toast({
-        title: "Du er offline",
-        description: "Endringer lagres lokalt og synkroniseres når du er tilkoblet igjen.",
+        title: tr("Du er offline", "You are offline"),
+        description: tr("Endringer lagres lokalt og synkroniseres når du er tilkoblet igjen.", "Changes are saved locally and synced when you're back online."),
       });
       restoreCacheToQueryClient();
     };

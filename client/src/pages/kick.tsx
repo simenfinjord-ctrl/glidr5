@@ -5,7 +5,7 @@
 // feeling rank + notes), and an interpreted report tied to weather/conditions.
 import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Footprints, Pencil, Trash2, Cloud, MapPin, Users, FileText } from "lucide-react";
+import { Plus, Footprints, Pencil, Trash2, Cloud, MapPin, Users, FileText, Copy } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -29,8 +29,24 @@ type KickSki = {
   grind: string | null;
   heights: string | null;
   typeOfSki: string | null;
+  color: string | null;
   notes: string | null;
 };
+
+// Same ski-type options as Athlete skis → new ski → ski type.
+const SKI_TYPE_OPTIONS = ["Hard Wax", "Klister/Cover", "Klister", "Zero"] as const;
+
+// Same colour palette as Athlete skis (race ski garage).
+const SKI_COLORS = [
+  { id: "none",    label: "White",  dot: "bg-white border border-border" },
+  { id: "emerald", label: "Green",  dot: "bg-emerald-400" },
+  { id: "sky",     label: "Blue",   dot: "bg-sky-400" },
+  { id: "violet",  label: "Purple", dot: "bg-violet-400" },
+  { id: "red",     label: "Red",    dot: "bg-red-400" },
+  { id: "yellow",  label: "Yellow", dot: "bg-yellow-400" },
+  { id: "grey",    label: "Grey",   dot: "bg-gray-400" },
+] as const;
+const colorDot = (id: string | null) => SKI_COLORS.find((c) => c.id === (id || "none"))?.dot ?? SKI_COLORS[0].dot;
 
 type KickEntry = {
   id?: number;
@@ -151,20 +167,24 @@ function buildKickReport(
 }
 
 // ── Kick ski add/edit dialog ────────────────────────────────────────────────
-function KickSkiDialog({ open, onClose, editing }: { open: boolean; onClose: () => void; editing: KickSki | null }) {
+// `duplicating` pre-fills every field from an existing ski but creates a NEW
+// ski (so the waxer only changes the ski number / small details).
+function KickSkiDialog({ open, onClose, editing, duplicating }: { open: boolean; onClose: () => void; editing: KickSki | null; duplicating?: KickSki | null }) {
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const { toast } = useToast();
-  const [name, setName] = useState(editing?.name ?? "");
-  const [brand, setBrand] = useState(editing?.brand ?? "");
-  const [grind, setGrind] = useState(editing?.grind ?? "");
-  const [heights, setHeights] = useState(editing?.heights ?? "");
-  const [typeOfSki, setTypeOfSki] = useState(editing?.typeOfSki ?? "");
-  const [notes, setNotes] = useState(editing?.notes ?? "");
+  const src = editing ?? duplicating ?? null;
+  const [name, setName] = useState(editing?.name ?? "");  // blank when duplicating → enter new ski number
+  const [brand, setBrand] = useState(src?.brand ?? "");
+  const [grind, setGrind] = useState(src?.grind ?? "");
+  const [heights, setHeights] = useState(src?.heights ?? "");
+  const [typeOfSki, setTypeOfSki] = useState(src?.typeOfSki ?? "");
+  const [color, setColor] = useState(src?.color ?? "none");
+  const [notes, setNotes] = useState(src?.notes ?? "");
 
   const save = useMutation({
     mutationFn: async () => {
-      const body = { name, brand, grind, heights, typeOfSki, notes };
+      const body = { name, brand, grind, heights, typeOfSki, color, notes };
       if (editing) return apiRequest("PUT", `/api/kick-skis/${editing.id}`, body);
       return apiRequest("POST", "/api/kick-skis", body);
     },
@@ -180,12 +200,12 @@ function KickSkiDialog({ open, onClose, editing }: { open: boolean; onClose: () 
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{editing ? L("Rediger testski", "Edit test ski") : L("Ny testski", "New test ski")}</DialogTitle>
+          <DialogTitle>{editing ? L("Rediger testski", "Edit test ski") : duplicating ? L("Dupliser testski", "Duplicate test ski") : L("Ny testski", "New test ski")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
             <label className="text-sm font-medium">{L("Navn / Ski-ID", "Name / Ski ID")}</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={L("valgfritt", "optional")} />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={duplicating ? L("nytt skinummer", "new ski number") : L("valgfritt", "optional")} autoFocus={!!duplicating} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -202,7 +222,25 @@ function KickSkiDialog({ open, onClose, editing }: { open: boolean; onClose: () 
             </div>
             <div>
               <label className="text-sm font-medium">{L("Ski-type", "Ski type")}</label>
-              <Input value={typeOfSki} onChange={(e) => setTypeOfSki(e.target.value)} placeholder={L("f.eks. Klister/Cover, Zero", "e.g. Klister/Cover, Zero")} />
+              <Select value={typeOfSki || "__none__"} onValueChange={(v) => setTypeOfSki(v === "__none__" ? "" : v)}>
+                <SelectTrigger data-testid="select-kick-ski-type"><SelectValue placeholder={L("Ingen", "None")} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">{L("Ingen", "None")}</SelectItem>
+                  {SKI_TYPE_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium">{L("Farge", "Color")}</label>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {SKI_COLORS.map((c) => (
+                <button key={c.id} type="button" onClick={() => setColor(c.id)} title={c.label}
+                  className={cn("flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ring-1 transition-colors",
+                    color === c.id ? "ring-primary bg-primary/10" : "ring-border hover:bg-muted")}>
+                  <span className={cn("h-3 w-3 rounded-full", c.dot)} />{c.label}
+                </button>
+              ))}
             </div>
           </div>
           <div>
@@ -323,9 +361,10 @@ function KickTestDialog({ open, onClose, editing, skis, weather }: {
                   key={s.id}
                   type="button"
                   onClick={() => toggleSki(s.id)}
-                  className={cn("rounded-full px-3 py-1 text-sm ring-1 transition-colors",
+                  className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm ring-1 transition-colors",
                     selectedIds.has(s.id) ? "bg-primary text-primary-foreground ring-primary" : "ring-border text-muted-foreground hover:bg-muted")}
                 >
+                  <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", colorDot(s.color))} />
                   {skiLabel(s)}
                 </button>
               ))}
@@ -504,6 +543,7 @@ export default function Kick() {
 
   const [skiDialog, setSkiDialog] = useState(false);
   const [editingSki, setEditingSki] = useState<KickSki | null>(null);
+  const [duplicatingSki, setDuplicatingSki] = useState<KickSki | null>(null);
   const [testDialog, setTestDialog] = useState(false);
   const [editingTest, setEditingTest] = useState<KickTest | null>(null);
   const [mixDialog, setMixDialog] = useState(false);
@@ -540,7 +580,7 @@ export default function Kick() {
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">{L("Testski", "Test skis")}</h2>
-            <Button size="sm" onClick={() => { setEditingSki(null); setSkiDialog(true); }} data-testid="button-add-kick-ski">
+            <Button size="sm" onClick={() => { setEditingSki(null); setDuplicatingSki(null); setSkiDialog(true); }} data-testid="button-add-kick-ski">
               <Plus className="mr-1.5 h-4 w-4" />{L("Legg til ski", "Add ski")}
             </Button>
           </div>
@@ -562,14 +602,22 @@ export default function Kick() {
                 <tbody>
                   {skis.map((s) => (
                     <tr key={s.id} className="border-t">
-                      <td className="px-4 py-2 font-medium">{s.name || "—"}</td>
+                      <td className="px-4 py-2 font-medium">
+                        <span className="inline-flex items-center gap-2">
+                          <span className={cn("h-3 w-3 rounded-full shrink-0", colorDot(s.color))} />
+                          {s.name || "—"}
+                        </span>
+                      </td>
                       <td className="px-4 py-2">{s.brand || "—"}</td>
                       <td className="px-4 py-2">{s.grind || "—"}</td>
                       <td className="px-4 py-2">{s.heights || "—"}</td>
                       <td className="px-4 py-2">{s.typeOfSki || "—"}</td>
                       <td className="px-4 py-2">
                         <div className="flex justify-end gap-1">
-                          <button className="text-muted-foreground hover:text-foreground" onClick={() => { setEditingSki(s); setSkiDialog(true); }} title={L("Rediger", "Edit")}>
+                          <button className="text-muted-foreground hover:text-foreground" onClick={() => { setEditingSki(null); setDuplicatingSki(s); setSkiDialog(true); }} title={L("Dupliser", "Duplicate")}>
+                            <Copy className="h-4 w-4" />
+                          </button>
+                          <button className="text-muted-foreground hover:text-foreground" onClick={() => { setDuplicatingSki(null); setEditingSki(s); setSkiDialog(true); }} title={L("Rediger", "Edit")}>
                             <Pencil className="h-4 w-4" />
                           </button>
                           <button className="text-muted-foreground hover:text-rose-600" onClick={() => { if (confirm(L("Slette denne testskien?", "Delete this test ski?"))) deleteSki.mutate(s.id); }} title={L("Slett", "Delete")}>
@@ -728,7 +776,7 @@ export default function Kick() {
         </section>
       </div>
 
-      {skiDialog && <KickSkiDialog open={skiDialog} onClose={() => setSkiDialog(false)} editing={editingSki} />}
+      {skiDialog && <KickSkiDialog open={skiDialog} onClose={() => { setSkiDialog(false); setDuplicatingSki(null); }} editing={editingSki} duplicating={duplicatingSki} />}
       {testDialog && <KickTestDialog open={testDialog} onClose={() => setTestDialog(false)} editing={editingTest} skis={skis} weather={weather} />}
       {mixDialog && <KickMixDialog open={mixDialog} onClose={() => setMixDialog(false)} editing={editingMix} />}
     </AppShell>

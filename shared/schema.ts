@@ -604,6 +604,7 @@ export const kickSkis = pgTable("kick_skis", {
   grind: text("grind"),
   heights: text("heights"),
   typeOfSki: text("type_of_ski"), // Klister/Cover, Zero, Hardwax, …
+  color: text("color"),           // SKI_COLORS id (none/emerald/sky/…)
   notes: text("notes"),
   archivedAt: text("archived_at"),
   createdAt: text("created_at").notNull(),

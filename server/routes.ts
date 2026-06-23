@@ -314,12 +314,14 @@ export async function registerRoutes(
         grind TEXT,
         heights TEXT,
         type_of_ski TEXT,
+        color TEXT,
         notes TEXT,
         archived_at TEXT,
         created_at TEXT NOT NULL,
         created_by_id INTEGER NOT NULL,
         created_by_name TEXT NOT NULL
       );
+      ALTER TABLE kick_skis ADD COLUMN IF NOT EXISTS color TEXT;
       CREATE TABLE IF NOT EXISTS kick_tests (
         id SERIAL PRIMARY KEY,
         team_id INTEGER NOT NULL,
@@ -1052,7 +1054,7 @@ export async function registerRoutes(
     const { pool } = await import("./db");
     const r = await (pool as any).query(
       `SELECT id, team_id AS "teamId", group_scope AS "groupScope", name, brand, grind, heights,
-              type_of_ski AS "typeOfSki", notes, archived_at AS "archivedAt",
+              type_of_ski AS "typeOfSki", color, notes, archived_at AS "archivedAt",
               created_at AS "createdAt", created_by_id AS "createdById", created_by_name AS "createdByName"
        FROM kick_skis WHERE team_id=$1 AND archived_at IS NULL ORDER BY id DESC`, [teamId]);
     const rows = r.rows.filter((row: any) =>
@@ -1066,10 +1068,10 @@ export async function registerRoutes(
     const { pool } = await import("./db");
     const b = req.body || {};
     const r = await (pool as any).query(
-      `INSERT INTO kick_skis (team_id, group_scope, name, brand, grind, heights, type_of_ski, notes, created_at, created_by_id, created_by_name)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+      `INSERT INTO kick_skis (team_id, group_scope, name, brand, grind, heights, type_of_ski, color, notes, created_at, created_by_id, created_by_name)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
       [teamId, resolveCreateGroupScope(req), b.name || null, b.brand || null, b.grind || null,
-       b.heights || null, b.typeOfSki || null, b.notes || null, new Date().toISOString(), u.id, u.name]);
+       b.heights || null, b.typeOfSki || null, b.color || null, b.notes || null, new Date().toISOString(), u.id, u.name]);
     res.json({ id: r.rows[0].id });
   });
 
@@ -1079,9 +1081,9 @@ export async function registerRoutes(
     const { pool } = await import("./db");
     const b = req.body || {};
     const r = await (pool as any).query(
-      `UPDATE kick_skis SET name=$1, brand=$2, grind=$3, heights=$4, type_of_ski=$5, notes=$6
-       WHERE id=$7 AND team_id=$8 RETURNING id`,
-      [b.name || null, b.brand || null, b.grind || null, b.heights || null, b.typeOfSki || null, b.notes || null, id, teamId]);
+      `UPDATE kick_skis SET name=$1, brand=$2, grind=$3, heights=$4, type_of_ski=$5, color=$6, notes=$7
+       WHERE id=$8 AND team_id=$9 RETURNING id`,
+      [b.name || null, b.brand || null, b.grind || null, b.heights || null, b.typeOfSki || null, b.color || null, b.notes || null, id, teamId]);
     if (!r.rows.length) return res.status(404).json({ message: "Not found" });
     res.json({ ok: true });
   });

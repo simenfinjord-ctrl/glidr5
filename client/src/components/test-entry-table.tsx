@@ -358,10 +358,16 @@ export function TestEntryTable({
                       </button>
                     </div>
                     <div
-                      className="inline-flex h-9 w-14 items-center justify-center rounded-xl border bg-background text-sm font-semibold"
+                      className={cn(
+                        "inline-flex h-9 items-center justify-center rounded-xl border bg-background text-sm font-semibold px-2",
+                        isRaceSki ? "min-w-14" : "w-14",
+                      )}
                       data-testid={`text-ski-number-${row.id}`}
                     >
-                      {skiLabels?.[row.skiNumber] ?? row.skiNumber}
+                      {/* Race-ski tests show the selected ski's Ski ID, not 1..n (#52). */}
+                      {isRaceSki
+                        ? (raceSkis.find((rs) => rs.id === row.raceSkiId)?.skiId ?? row.freeTextProduct ?? "—")
+                        : (skiLabels?.[row.skiNumber] ?? row.skiNumber)}
                     </div>
                   </div>
                 </td>

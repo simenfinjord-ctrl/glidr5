@@ -67,6 +67,35 @@ type WeatherItem = {
 const skiLabel = (s: KickSki | undefined): string =>
   s ? [s.name, s.brand].filter(Boolean).join(" — ") || `Ski #${s.id}` : "—";
 
+type MixProduct = { name: string; parts: number };
+type KickMix = {
+  id: number;
+  name: string;
+  mixType: "hardwax" | "klister";
+  rollerTemperature: string | null;
+  products: string | null; // JSON: MixProduct[]
+  notes: string | null;
+};
+
+function parseMixProducts(json: string | null): MixProduct[] {
+  if (!json) return [];
+  try { const a = JSON.parse(json); return Array.isArray(a) ? a : []; } catch { return []; }
+}
+
+// Greatest common divisor — used to reduce the mixing ratio (4:2 → 2:1).
+function gcd(a: number, b: number): number { return b === 0 ? a : gcd(b, a % b); }
+
+// "2 : 1 : 1" (reduced) plus per-product percentages.
+function mixRatio(products: MixProduct[]): { ratio: string; pct: number[] } {
+  const parts = products.map((p) => (Number.isFinite(p.parts) && p.parts > 0 ? p.parts : 0));
+  const total = parts.reduce((a, b) => a + b, 0);
+  if (total <= 0) return { ratio: "", pct: products.map(() => 0) };
+  const divisor = parts.filter((p) => p > 0).reduce((a, b) => gcd(a, b), 0) || 1;
+  const ratio = parts.map((p) => p / divisor).join(" : ");
+  const pct = parts.map((p) => Math.round((p / total) * 100));
+  return { ratio, pct };
+}
+
 // ── Report generation (#9) ──────────────────────────────────────────────────
 // Interpret the kick-test text and tie it to weather/conditions into a short
 // report — the foundation for understanding "what works when" and recreating
@@ -351,6 +380,115 @@ function KickTestDialog({ open, onClose, editing, skis, weather }: {
   );
 }
 
+// ── Kick mix add/edit dialog ────────────────────────────────────────────────
+function KickMixDialog({ open, onClose, editing }: { open: boolean; onClose: () => void; editing: KickMix | null }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { toast } = useToast();
+  const [name, setName] = useState(editing?.name ?? "");
+  const [mixType, setMixType] = useState<"hardwax" | "klister">(editing?.mixType ?? "hardwax");
+  const [rollerTemperature, setRollerTemperature] = useState(editing?.rollerTemperature ?? "");
+  const [notes, setNotes] = useState(editing?.notes ?? "");
+  const initialProducts = editing ? parseMixProducts(editing.products) : [];
+  const [products, setProducts] = useState<MixProduct[]>(
+    initialProducts.length >= 2 ? initialProducts : [{ name: "", parts: 1 }, { name: "", parts: 1 }],
+  );
+
+  const setProduct = (i: number, patch: Partial<MixProduct>) =>
+    setProducts((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
+  const addProduct = () => setProducts((prev) => [...prev, { name: "", parts: 1 }]);
+  const removeProduct = (i: number) => setProducts((prev) => prev.length > 2 ? prev.filter((_, idx) => idx !== i) : prev);
+
+  const cleanProducts = products.filter((p) => p.name.trim());
+  const { ratio, pct } = mixRatio(cleanProducts);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const body = { name, mixType, rollerTemperature, notes, products: cleanProducts.map((p) => ({ name: p.name.trim(), parts: Number(p.parts) || 0 })) };
+      if (editing) return apiRequest("PUT", `/api/kick-mixes/${editing.id}`, body);
+      return apiRequest("POST", "/api/kick-mixes", body);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/kick-mixes"] });
+      toast({ title: L("Blanding lagret", "Mix saved") });
+      onClose();
+    },
+    onError: (e: any) => toast({ title: L("Feil", "Error"), description: e?.message, variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{editing ? L("Rediger blanding", "Edit mix") : L("Ny blanding", "New mix")}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm font-medium">{L("Navn på blanding", "Mix name")}</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium">{L("Type", "Type")}</label>
+              <Select value={mixType} onValueChange={(v) => setMixType(v as "hardwax" | "klister")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hardwax">{L("Hardvoks", "Hardwax")}</SelectItem>
+                  <SelectItem value="klister">Klister</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {mixType === "klister" && (
+              <div>
+                <label className="text-sm font-medium">{L("Rulletemperatur", "Roller temperature")}</label>
+                <Input value={rollerTemperature} onChange={(e) => setRollerTemperature(e.target.value)} placeholder={L("f.eks. 60°C", "e.g. 60°C")} />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">{L("Produkter og blandingsforhold", "Products and ratio")}</label>
+              <Button type="button" variant="ghost" size="sm" onClick={addProduct}>
+                <Plus className="mr-1 h-3.5 w-3.5" />{L("Legg til produkt", "Add product")}
+              </Button>
+            </div>
+            <div className="space-y-2 mt-1">
+              {products.map((p, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Input value={p.name} onChange={(e) => setProduct(i, { name: e.target.value })} placeholder={`${L("Produkt", "Product")} ${i + 1}`} className="flex-1 h-8" />
+                  <Input type="number" min={0} value={p.parts} onChange={(e) => setProduct(i, { parts: e.target.value === "" ? 0 : Number(e.target.value) })} className="w-20 h-8" title={L("Deler", "Parts")} />
+                  {pct[i] != null && cleanProducts.length > 0 && p.name.trim() && (
+                    <span className="text-xs text-muted-foreground w-10 text-right">{pct[i]}%</span>
+                  )}
+                  <button type="button" onClick={() => removeProduct(i)} disabled={products.length <= 2} className="text-muted-foreground hover:text-rose-600 disabled:opacity-30">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            {ratio && (
+              <div className="mt-2 text-sm">
+                <span className="text-muted-foreground">{L("Blandingsforhold:", "Mixing ratio:")} </span>
+                <span className="font-semibold">{ratio}</span>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">{L("Notater", "Notes")}</label>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>{L("Avbryt", "Cancel")}</Button>
+          <Button onClick={() => save.mutate()} disabled={save.isPending || !name.trim()}>{save.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main page ───────────────────────────────────────────────────────────────
 export default function Kick() {
   const { language } = useI18n();
@@ -359,6 +497,7 @@ export default function Kick() {
 
   const { data: skis = [] } = useQuery<KickSki[]>({ queryKey: ["/api/kick-skis"] });
   const { data: tests = [] } = useQuery<KickTest[]>({ queryKey: ["/api/kick-tests"] });
+  const { data: mixes = [] } = useQuery<KickMix[]>({ queryKey: ["/api/kick-mixes"] });
   const { data: weather = [] } = useQuery<WeatherItem[]>({ queryKey: ["/api/weather/for-filtering"] });
   const skiById = useMemo(() => new Map(skis.map((s) => [s.id, s])), [skis]);
   const weatherById = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);
@@ -367,6 +506,8 @@ export default function Kick() {
   const [editingSki, setEditingSki] = useState<KickSki | null>(null);
   const [testDialog, setTestDialog] = useState(false);
   const [editingTest, setEditingTest] = useState<KickTest | null>(null);
+  const [mixDialog, setMixDialog] = useState(false);
+  const [editingMix, setEditingMix] = useState<KickMix | null>(null);
 
   const deleteSki = useMutation({
     mutationFn: async (id: number) => apiRequest("DELETE", `/api/kick-skis/${id}`),
@@ -375,6 +516,10 @@ export default function Kick() {
   const deleteTest = useMutation({
     mutationFn: async (id: number) => apiRequest("DELETE", `/api/kick-tests/${id}`),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/kick-tests"] }); toast({ title: L("Slettet", "Deleted") }); },
+  });
+  const deleteMix = useMutation({
+    mutationFn: async (id: number) => apiRequest("DELETE", `/api/kick-mixes/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/kick-mixes"] }); toast({ title: L("Slettet", "Deleted") }); },
   });
 
   return (
@@ -516,10 +661,76 @@ export default function Kick() {
             </div>
           )}
         </section>
+
+        {/* ── Mixes ── */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-lg font-semibold">Mixes</h2>
+              <p className="text-sm text-muted-foreground">{L("Oppskrifter for blandede festeprodukter.", "Recipes for blended kick products.")}</p>
+            </div>
+            <Button size="sm" onClick={() => { setEditingMix(null); setMixDialog(true); }} data-testid="button-add-kick-mix">
+              <Plus className="mr-1.5 h-4 w-4" />{L("Legg til blanding", "Add mix")}
+            </Button>
+          </div>
+          {mixes.length === 0 ? (
+            <Card><p className="p-6 text-sm text-muted-foreground text-center">{L("Ingen blandinger ennå.", "No mixes yet.")}</p></Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {mixes.map((mix) => {
+                const prods = parseMixProducts(mix.products);
+                const { ratio } = mixRatio(prods);
+                return (
+                  <Card key={mix.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold">{mix.name}</div>
+                        <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs">
+                          <span className={cn("rounded-full px-2 py-0.5 ring-1", mix.mixType === "klister" ? "bg-amber-100 text-amber-800 ring-amber-300 dark:bg-amber-900/30 dark:text-amber-300" : "bg-sky-100 text-sky-800 ring-sky-300 dark:bg-sky-900/30 dark:text-sky-300")}>
+                            {mix.mixType === "klister" ? "Klister" : L("Hardvoks", "Hardwax")}
+                          </span>
+                          {mix.mixType === "klister" && mix.rollerTemperature && (
+                            <span className="text-muted-foreground">{L("Rulletemp", "Roller temp")}: {mix.rollerTemperature}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button className="text-muted-foreground hover:text-foreground" onClick={() => { setEditingMix(mix); setMixDialog(true); }} title={L("Rediger", "Edit")}>
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button className="text-muted-foreground hover:text-rose-600" onClick={() => { if (confirm(L("Slette denne blandingen?", "Delete this mix?"))) deleteMix.mutate(mix.id); }} title={L("Slett", "Delete")}>
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    {prods.length > 0 && (
+                      <div className="mt-3 space-y-1">
+                        {prods.map((p, i) => (
+                          <div key={i} className="flex items-center justify-between text-sm rounded bg-muted/40 px-2 py-1">
+                            <span className="font-medium truncate">{p.name}</span>
+                            <span className="text-muted-foreground whitespace-nowrap">{p.parts} {L("deler", "parts")}</span>
+                          </div>
+                        ))}
+                        {ratio && (
+                          <div className="text-sm pt-1">
+                            <span className="text-muted-foreground">{L("Blandingsforhold:", "Mixing ratio:")} </span>
+                            <span className="font-semibold">{ratio}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {mix.notes && <p className="mt-2 text-sm text-muted-foreground italic">{mix.notes}</p>}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
 
       {skiDialog && <KickSkiDialog open={skiDialog} onClose={() => setSkiDialog(false)} editing={editingSki} />}
       {testDialog && <KickTestDialog open={testDialog} onClose={() => setTestDialog(false)} editing={editingTest} skis={skis} weather={weather} />}
+      {mixDialog && <KickMixDialog open={mixDialog} onClose={() => setMixDialog(false)} editing={editingMix} />}
     </AppShell>
   );
 }

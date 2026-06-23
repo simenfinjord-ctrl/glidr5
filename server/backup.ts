@@ -901,6 +901,7 @@ export async function buildTeamJsonExport(teamId: number): Promise<string> {
   const kickTestEntries = await (pool as any).query(
     `SELECT kte.* FROM kick_test_entries kte JOIN kick_tests kt ON kt.id = kte.kick_test_id WHERE kt.team_id = $1`, [teamId]
   ).then((r: any) => r.rows).catch(() => []);
+  const kickMixes = await q(`SELECT * FROM kick_mixes WHERE team_id = $1`).catch(() => []);
   // Athlete access (no team_id column — scope via this team's athletes).
   const athleteAccess = await (pool as any).query(
     `SELECT aa.* FROM athlete_access aa JOIN athletes a ON a.id = aa.athlete_id WHERE a.team_id = $1`, [teamId]
@@ -940,6 +941,7 @@ export async function buildTeamJsonExport(teamId: number): Promise<string> {
     kickSkis,
     kickTests,
     kickTestEntries,
+    kickMixes,
   }, null, 2);
 }
 

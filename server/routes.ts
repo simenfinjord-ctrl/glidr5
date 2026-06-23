@@ -344,6 +344,19 @@ export async function registerRoutes(
         feeling_rank INTEGER,
         feeling_notes TEXT
       );
+      CREATE TABLE IF NOT EXISTS kick_mixes (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER NOT NULL,
+        group_scope TEXT,
+        name TEXT NOT NULL,
+        mix_type TEXT NOT NULL DEFAULT 'hardwax',
+        roller_temperature TEXT,
+        products TEXT,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        created_by_id INTEGER NOT NULL,
+        created_by_name TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS feedback_links (
         id SERIAL PRIMARY KEY,
         token TEXT NOT NULL UNIQUE,
@@ -1033,7 +1046,7 @@ export async function registerRoutes(
 
   // ── Kick (#9): classic kick-testing skis + tests ──────────────────────────
   // Group-scope aware list of kick test skis for the active team.
-  app.get("/api/kick-skis", requireAuth, async (req, res) => {
+  app.get("/api/kick-skis", requirePermission("kick", "view"), async (req, res) => {
     const u = req.user as any;
     const teamId = getActiveTeamId(req);
     const { pool } = await import("./db");
@@ -1047,7 +1060,7 @@ export async function registerRoutes(
     res.json(rows);
   });
 
-  app.post("/api/kick-skis", requireAuth, async (req, res) => {
+  app.post("/api/kick-skis", requirePermission("kick", "edit"), async (req, res) => {
     const u = req.user as any;
     const teamId = getActiveTeamId(req);
     const { pool } = await import("./db");
@@ -1060,7 +1073,7 @@ export async function registerRoutes(
     res.json({ id: r.rows[0].id });
   });
 
-  app.put("/api/kick-skis/:id", requireAuth, async (req, res) => {
+  app.put("/api/kick-skis/:id", requirePermission("kick", "edit"), async (req, res) => {
     const teamId = getActiveTeamId(req);
     const id = parseInt(req.params.id);
     const { pool } = await import("./db");
@@ -1073,7 +1086,7 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
-  app.delete("/api/kick-skis/:id", requireAuth, async (req, res) => {
+  app.delete("/api/kick-skis/:id", requirePermission("kick", "edit"), async (req, res) => {
     const teamId = getActiveTeamId(req);
     const id = parseInt(req.params.id);
     const { pool } = await import("./db");
@@ -1083,7 +1096,7 @@ export async function registerRoutes(
   });
 
   // List kick tests (newest first) with their entries.
-  app.get("/api/kick-tests", requireAuth, async (req, res) => {
+  app.get("/api/kick-tests", requirePermission("kick", "view"), async (req, res) => {
     const u = req.user as any;
     const teamId = getActiveTeamId(req);
     const { pool } = await import("./db");
@@ -1107,7 +1120,7 @@ export async function registerRoutes(
     res.json(tests);
   });
 
-  app.post("/api/kick-tests", requireAuth, async (req, res) => {
+  app.post("/api/kick-tests", requirePermission("kick", "edit"), async (req, res) => {
     const u = req.user as any;
     const teamId = getActiveTeamId(req);
     const { pool } = await import("./db");
@@ -1128,7 +1141,7 @@ export async function registerRoutes(
     res.json({ id });
   });
 
-  app.put("/api/kick-tests/:id", requireAuth, async (req, res) => {
+  app.put("/api/kick-tests/:id", requirePermission("kick", "edit"), async (req, res) => {
     const teamId = getActiveTeamId(req);
     const id = parseInt(req.params.id);
     const { pool } = await import("./db");
@@ -1151,12 +1164,65 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
-  app.delete("/api/kick-tests/:id", requireAuth, async (req, res) => {
+  app.delete("/api/kick-tests/:id", requirePermission("kick", "edit"), async (req, res) => {
     const teamId = getActiveTeamId(req);
     const id = parseInt(req.params.id);
     const { pool } = await import("./db");
     const r = await (pool as any).query(`DELETE FROM kick_tests WHERE id=$1 AND team_id=$2 RETURNING id`, [id, teamId]);
     if (r.rows.length) await (pool as any).query(`DELETE FROM kick_test_entries WHERE kick_test_id=$1`, [id]);
+    res.json({ ok: true });
+  });
+
+  // ── Kick mixes: recipes for blended kick products ──────────────────────────
+  app.get("/api/kick-mixes", requirePermission("kick", "view"), async (req, res) => {
+    const u = req.user as any;
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(
+      `SELECT id, team_id AS "teamId", group_scope AS "groupScope", name, mix_type AS "mixType",
+              roller_temperature AS "rollerTemperature", products, notes,
+              created_at AS "createdAt", created_by_name AS "createdByName"
+       FROM kick_mixes WHERE team_id=$1 ORDER BY id DESC`, [teamId]);
+    const rows = r.rows.filter((row: any) =>
+      userHasGroupAccess(u.groupScope, isEffectiveAdmin(req), row.groupScope || ""));
+    res.json(rows);
+  });
+
+  app.post("/api/kick-mixes", requirePermission("kick", "edit"), async (req, res) => {
+    const u = req.user as any;
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const b = req.body || {};
+    const products = Array.isArray(b.products) ? JSON.stringify(b.products) : null;
+    const r = await (pool as any).query(
+      `INSERT INTO kick_mixes (team_id, group_scope, name, mix_type, roller_temperature, products, notes, created_at, created_by_id, created_by_name)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+      [teamId, resolveCreateGroupScope(req), b.name || "", b.mixType === "klister" ? "klister" : "hardwax",
+       b.mixType === "klister" ? (b.rollerTemperature || null) : null, products, b.notes || null,
+       new Date().toISOString(), u.id, u.name]);
+    res.json({ id: r.rows[0].id });
+  });
+
+  app.put("/api/kick-mixes/:id", requirePermission("kick", "edit"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const b = req.body || {};
+    const products = Array.isArray(b.products) ? JSON.stringify(b.products) : null;
+    const r = await (pool as any).query(
+      `UPDATE kick_mixes SET name=$1, mix_type=$2, roller_temperature=$3, products=$4, notes=$5
+       WHERE id=$6 AND team_id=$7 RETURNING id`,
+      [b.name || "", b.mixType === "klister" ? "klister" : "hardwax",
+       b.mixType === "klister" ? (b.rollerTemperature || null) : null, products, b.notes || null, id, teamId]);
+    if (!r.rows.length) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/kick-mixes/:id", requirePermission("kick", "edit"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    await (pool as any).query(`DELETE FROM kick_mixes WHERE id=$1 AND team_id=$2`, [id, teamId]);
     res.json({ ok: true });
   });
 

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 export * from "./models/chat";
 
-export const PERMISSION_AREAS = ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "raceprep", "raceprepGlide", "suggestions", "liverunsheets"] as const;
+export const PERMISSION_AREAS = ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "kick", "raceprep", "raceprepGlide", "suggestions", "liverunsheets"] as const;
 export type PermissionArea = typeof PERMISSION_AREAS[number];
 export type PermissionLevel = "none" | "view" | "edit";
 export type UserPermissions = Record<PermissionArea, PermissionLevel>;
@@ -19,6 +19,7 @@ export const DEFAULT_PERMISSIONS: UserPermissions = {
   analytics: "none",
   grinding: "none",
   raceskis: "none",
+  kick: "none",
   raceprep: "none",
   raceprepGlide: "none",
   suggestions: "none",
@@ -34,6 +35,7 @@ export const ADMIN_PERMISSIONS: UserPermissions = {
   analytics: "edit",
   grinding: "edit",
   raceskis: "edit",
+  kick: "edit",
   raceprep: "edit",
   raceprepGlide: "edit",
   suggestions: "edit",
@@ -47,7 +49,7 @@ export const ADMIN_PERMISSIONS: UserPermissions = {
 export const TEAM_FEATURES = [
   // Navigation areas (backend-enforced)
   "dashboard", "tests", "testskis", "products", "weather",
-  "analytics", "grinding", "raceskis", "raceprep", "suggestions", "liverunsheets",
+  "analytics", "grinding", "raceskis", "kick", "raceprep", "suggestions", "liverunsheets",
   // Field & runsheet tools
   "runsheet_brackets", "garmin_watch", "mobile_runsheet",
   // Export & backup
@@ -70,6 +72,7 @@ export const FEATURE_LABELS: Record<TeamFeature, string> = {
   analytics: "Analytics & Charts",
   grinding: "Grinding Records",
   raceskis: "Race Skis",
+  kick: "Kick Testing",
   raceprep: "Race Prep Planning",
   suggestions: "Suggestions Engine",
   liverunsheets: "Live Runsheet Monitor",
@@ -96,7 +99,7 @@ export const FEATURE_LABELS: Record<TeamFeature, string> = {
 export const FEATURE_CATEGORIES: { label: string; features: readonly TeamFeature[] }[] = [
   {
     label: "Navigation Areas",
-    features: ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "raceprep", "suggestions", "liverunsheets"],
+    features: ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "kick", "raceprep", "suggestions", "liverunsheets"],
   },
   {
     label: "Field & Runsheet Tools",
@@ -143,7 +146,7 @@ export const PLAN_FEATURE_PRESETS: Record<string, { label: string; color: string
     color: "blue",
     features: [
       "dashboard", "tests", "testskis", "products", "weather",
-      "analytics", "grinding", "raceskis", "raceprep", "suggestions", "liverunsheets",
+      "analytics", "grinding", "raceskis", "kick", "raceprep", "suggestions", "liverunsheets",
       "runsheet_brackets", "garmin_watch", "mobile_runsheet",
       "pdf_export", "excel_export", "google_sheets_backup", "offline_mode",
       "blind_tester", "activity_logging", "column_visibility",
@@ -155,7 +158,7 @@ export const PLAN_FEATURE_PRESETS: Record<string, { label: string; color: string
     color: "purple",
     features: [
       "dashboard", "tests", "testskis", "products", "weather",
-      "analytics", "grinding", "raceskis", "raceprep", "suggestions", "liverunsheets",
+      "analytics", "grinding", "raceskis", "kick", "raceprep", "suggestions", "liverunsheets",
       "runsheet_brackets", "garmin_watch", "mobile_runsheet",
       "pdf_export", "excel_export", "google_sheets_backup", "offline_mode",
       "blind_tester", "activity_logging", "column_visibility",
@@ -642,6 +645,26 @@ export const kickTestEntries = pgTable("kick_test_entries", {
 export const insertKickTestEntrySchema = createInsertSchema(kickTestEntries).omit({ id: true });
 export type InsertKickTestEntry = z.infer<typeof insertKickTestEntrySchema>;
 export type KickTestEntry = typeof kickTestEntries.$inferSelect;
+
+// Kick mixes (#9 follow-up): recipes for blended kick products. `products` is a
+// JSON array of { name, parts } — parts drive the mixing-ratio display.
+// `mixType` is "hardwax" | "klister"; klister mixes carry a roller temperature.
+export const kickMixes = pgTable("kick_mixes", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull(),
+  groupScope: text("group_scope"),
+  name: text("name").notNull(),
+  mixType: text("mix_type").notNull().default("hardwax"),
+  rollerTemperature: text("roller_temperature"),
+  products: text("products"), // JSON: [{ name: string, parts: number }]
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+  createdById: integer("created_by_id").notNull(),
+  createdByName: text("created_by_name").notNull(),
+});
+export const insertKickMixSchema = createInsertSchema(kickMixes).omit({ id: true });
+export type InsertKickMix = z.infer<typeof insertKickMixSchema>;
+export type KickMix = typeof kickMixes.$inferSelect;
 
 // --- Test Ski Regrind History ---
 

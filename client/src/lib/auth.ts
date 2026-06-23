@@ -13,6 +13,7 @@ export type UserPermissions = {
   analytics: PermissionLevel;
   grinding: PermissionLevel;
   raceskis: PermissionLevel;
+  kick: PermissionLevel;
   suggestions: PermissionLevel;
 };
 

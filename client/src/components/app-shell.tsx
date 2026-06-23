@@ -213,7 +213,7 @@ const nav: NavItem[] = [
     color: "text-muted-foreground",
     activeColor: "text-green-700",
     activeBg: "bg-green-50 dark:bg-green-900/20",
-    permArea: "raceskis",
+    permArea: "kick",
   },
   {
     href: "/raceprep",

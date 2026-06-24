@@ -5774,6 +5774,23 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  // Waxer enters/edits the athlete feedback (rating + comment) for a race use,
+  // directly from the ski page — the same data the athlete feedback link sets.
+  app.patch("/api/race-skis/:id/usages/:usageId/feedback", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const skiId = parseInt(req.params.id);
+    const usageId = parseInt(req.params.usageId);
+    const ski = await storage.getRaceSki(skiId);
+    if (!ski) return res.status(404).json({ message: "Not found" });
+    const hasAccess = await storage.hasAthleteAccess(ski.athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const { pool } = await import("./db");
+    await (pool as any).query(
+      `UPDATE ski_race_usages SET athlete_rating = $1, athlete_comment = $2 WHERE id = $3 AND ski_id = $4 AND team_id = $5`,
+      [req.body.athleteRating || null, req.body.athleteComment || null, usageId, skiId, getActiveTeamId(req)]);
+    res.json({ ok: true });
+  });
+
   // Team-wide raced-skis feed for analytics ("which ski pairs were raced in which conditions")
   app.get("/api/ski-race-usages", requirePermission("raceskis", "view"), async (req, res) => {
     const u = userInfo(req);

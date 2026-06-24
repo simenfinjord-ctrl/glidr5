@@ -499,6 +499,59 @@ function RacePrepFeedbackEditor({ prepId, entryId, rating, comment, canEdit, onS
   );
 }
 
+// Waxer enters/edits the athlete feedback for a race USE (compact, inline in the
+// race-usage row). Mirrors RacePrepFeedbackEditor but targets ski_race_usages.
+function RaceUsageFeedbackEditor({ skiId, usageId, rating, comment, canEdit, onSaved, lang }: {
+  skiId: number; usageId: number; rating: string | null; comment: string | null; canEdit: boolean; onSaved: () => void; lang: "no" | "en";
+}) {
+  const L = (no: string, en: string) => (lang === "en" ? en : no);
+  const { toast } = useToast();
+  const [editing, setEditing] = useState(false);
+  const [r, setR] = useState(rating || "");
+  const [c, setC] = useState(comment || "");
+  useEffect(() => { setR(rating || ""); setC(comment || ""); }, [rating, comment]);
+  const save = useMutation({
+    mutationFn: async () => apiRequest("PATCH", `/api/race-skis/${skiId}/usages/${usageId}/feedback`, { athleteRating: r || null, athleteComment: c || null }),
+    onSuccess: () => { onSaved(); setEditing(false); toast({ title: L("Lagret", "Saved") }); },
+    onError: (e: any) => toast({ title: L("Feil", "Error"), description: e?.message, variant: "destructive" }),
+  });
+
+  if (!editing) {
+    if (!rating && !comment) {
+      if (!canEdit) return null;
+      return (
+        <button type="button" onClick={() => setEditing(true)} className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary" data-testid={`add-usage-feedback-${usageId}`}>
+          <MessageSquare className="h-3 w-3" />{L("Legg til tilbakemelding fra utøver", "Add athlete feedback")}
+        </button>
+      );
+    }
+    return (
+      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+        {rating && <span className={cn("rounded-full px-1.5 py-0.5 font-semibold", athleteRatingClass(rating))}>{L("Utøver", "Athlete")}: {rating}</span>}
+        {comment && <span className="text-muted-foreground italic">«{comment}»</span>}
+        {canEdit && <button type="button" onClick={() => setEditing(true)} className="text-muted-foreground hover:text-foreground" title={L("Rediger", "Edit")}><Pencil className="h-3 w-3" /></button>}
+      </div>
+    );
+  }
+  return (
+    <div className="mt-1 space-y-1.5">
+      <div className="flex flex-wrap gap-1">
+        {FEEDBACK_RATINGS.map((opt) => (
+          <button key={opt} type="button" onClick={() => setR(r === opt ? "" : opt)}
+            className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 transition-colors", r === opt ? athleteRatingClass(opt) : "ring-border text-muted-foreground hover:bg-muted")}>
+            {opt}
+          </button>
+        ))}
+      </div>
+      <Input value={c} onChange={(e) => setC(e.target.value)} placeholder={L("Kommentar fra utøver…", "Athlete comment…")} className="h-7 text-[11px]" />
+      <div className="flex justify-end gap-1.5">
+        <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={() => { setEditing(false); setR(rating || ""); setC(comment || ""); }}>{L("Avbryt", "Cancel")}</Button>
+        <Button size="sm" className="h-6 px-2 text-[11px]" onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}</Button>
+      </div>
+    </div>
+  );
+}
+
 // Heuristic interpretation of a ski's feeling notes into one summary sentence.
 // (No LLM available server-side, so this uses sentiment keywords + recurring terms.)
 const FEELING_POS = ["rask", "fort", "kjapp", "god", "bra", "stabil", "fin", "best", "topp", "lett", "smidig", "balansert", "fast", "stable", "good", "great", "smooth", "quick", "nice", "top", "easy", "light", "balanced"];
@@ -3052,11 +3105,7 @@ export default function AthleteDetail() {
                             >
                               <td className="px-4 py-2.5 font-semibold">
                                 <span className="flex items-center gap-1.5">
-                                  {(() => {
-                                    const cid = getSkiColor(ski);
-                                    const ce = SKI_COLORS.find(c => c.id === cid);
-                                    return cid !== "none" && ce?.dot ? <span className={cn("inline-block h-2 w-2 rounded-full shrink-0", ce.dot)} /> : null;
-                                  })()}
+                                  {/* Colour shown only in the Colour column, not next to the Ski ID. */}
                                   {ski.skiId}
                                   {ski.isTrainingSki === 1 && (
                                     <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 dark:text-amber-300" title={L("Treningsski", "Training ski")}>{L("TRENING", "TRAINING")}</span>
@@ -5430,17 +5479,15 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
                       {w.snowType && <span>{w.snowType}</span>}
                     </div>
                   )}
-                  {usage.athleteRating && (
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
-                      <span className={cn("rounded-full px-1.5 py-0.5 font-semibold",
-                        usage.athleteRating === "Competitive+" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" :
-                        usage.athleteRating === "Competitive-" ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300" :
-                        "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300")}>
-                        {L("Utøver", "Athlete")}: {usage.athleteRating}
-                      </span>
-                      {usage.athleteComment && <span className="text-muted-foreground italic">«{usage.athleteComment}»</span>}
-                    </div>
-                  )}
+                  <RaceUsageFeedbackEditor
+                    skiId={ski.id}
+                    usageId={usage.id}
+                    rating={usage.athleteRating}
+                    comment={usage.athleteComment}
+                    canEdit={canEdit}
+                    onSaved={() => queryClient.invalidateQueries({ queryKey: [`/api/race-skis/${ski.id}/usages`] })}
+                    lang={language === "no" ? "no" : "en"}
+                  />
                 </div>
                 {usage.notes && (
                   <div className="flex-1 min-w-0 text-[11px] text-muted-foreground italic border-l border-border/50 pl-2 self-stretch" data-testid={`usage-note-${usage.id}`}>

@@ -285,6 +285,13 @@ function KickTestDialog({ open, onClose, editing, skis, weather }: {
   const updateEntry = (skiId: number, patch: Partial<KickEntry>) => {
     setEntries((prev) => prev.map((e) => (e.kickSkiId === skiId ? { ...e, ...patch } : e)));
   };
+  // Copy the recipe (binder + kick solution) from one ski to another so a shared
+  // recipe doesn't have to be typed twice. Feeling rank/notes stay per-ski.
+  const copyRecipe = (targetSkiId: number, sourceSkiId: number) => {
+    const src = entries.find((e) => e.kickSkiId === sourceSkiId);
+    if (!src) return;
+    updateEntry(targetSkiId, { binder: src.binder, kickSolution: src.kickSolution });
+  };
 
   const save = useMutation({
     mutationFn: async () => {
@@ -373,9 +380,26 @@ function KickTestDialog({ open, onClose, editing, skis, weather }: {
 
           {entries.length > 0 && (
             <div className="space-y-3">
-              {entries.map((e) => (
+              {entries.map((e) => {
+                const recipeSources = entries.filter((o) => o.kickSkiId !== e.kickSkiId && (o.binder?.trim() || o.kickSolution?.trim()));
+                return (
                 <div key={e.kickSkiId} className="rounded-lg border p-3 space-y-2">
-                  <div className="font-medium text-sm">{skiLabel(skiById.get(e.kickSkiId))}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-medium text-sm">{skiLabel(skiById.get(e.kickSkiId))}</div>
+                    {recipeSources.length > 0 && (
+                      <Select value="" onValueChange={(v) => copyRecipe(e.kickSkiId, Number(v))}>
+                        <SelectTrigger className="h-7 w-auto gap-1 text-xs text-muted-foreground" data-testid={`copy-recipe-${e.kickSkiId}`}>
+                          <Copy className="h-3 w-3" />
+                          <SelectValue placeholder={L("Kopier oppskrift fra…", "Copy recipe from…")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {recipeSources.map((o) => (
+                            <SelectItem key={o.kickSkiId} value={String(o.kickSkiId)}>{skiLabel(skiById.get(o.kickSkiId))}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-xs text-muted-foreground">{L("Binder", "Binder")}</label>
@@ -395,7 +419,8 @@ function KickTestDialog({ open, onClose, editing, skis, weather }: {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

@@ -30,6 +30,7 @@ import Grinding from "@/pages/grinding";
 import RaceSkis from "@/pages/race-skis";
 import RacePrep from "@/pages/race-prep";
 import Kick from "@/pages/kick";
+import MissingWeather from "@/pages/missing-weather";
 import AthleteDetail from "@/pages/athlete-detail";
 import Suggestions from "@/pages/suggestions";
 import LiveRunsheets from "@/pages/live-runsheets";
@@ -72,6 +73,7 @@ function Router() {
       <Route path="/testskis/:id" component={SeriesDetail} />
       <Route path="/products/:id" component={ProductDetail} />
       <Route path="/products" component={Products} />
+      <Route path="/weather/missing" component={MissingWeather} />
       <Route path="/weather" component={Weather} />
       <Route path="/tests" component={Tests} />
       <Route path="/tests/new" component={NewTest} />

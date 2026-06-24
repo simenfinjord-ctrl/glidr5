@@ -890,7 +890,7 @@ export default function Dashboard() {
                 </AppLink>
               )}
               {noWeather.length > 0 && (
-                <AppLink href="/weather/new">
+                <AppLink href="/weather/missing">
                   <Card className="fs-card rounded-2xl p-4 flex items-center gap-3 cursor-pointer hover:shadow-md transition-shadow border-amber-200/80">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-900/20">
                       <CloudSun className="h-5 w-5 text-amber-500" />

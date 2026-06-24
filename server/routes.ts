@@ -2849,6 +2849,27 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  // Lightweight weather attach/skip for the "missing weather" dashboard flow —
+  // sets ONLY weather_id / no_weather without touching any other test fields.
+  app.patch("/api/tests/:id/weather", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getTest(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
+    const u = userInfo(req);
+    let hasAccess = (existing as any).createdById === u.id;
+    if (!hasAccess) hasAccess = userHasGroupAccess(u.groupScope, u.isScopeAdmin, existing.groupScope) && u.permissions.tests === "edit";
+    if (!hasAccess && (existing as any).testSkiSource === "raceskis" && (existing as any).athleteId) {
+      hasAccess = await storage.hasAthleteAccess((existing as any).athleteId, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    }
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const { pool } = await import("./db");
+    const noWeather = req.body.noWeather ? 1 : 0;
+    const weatherId = noWeather ? null : (req.body.weatherId ? parseInt(req.body.weatherId) : null);
+    await (pool as any).query(`UPDATE tests SET weather_id = $1, no_weather = $2 WHERE id = $3`, [weatherId, noWeather, id]);
+    res.json({ ok: true });
+  });
+
   // Feeling test: waxers rank ski pairs (1..N) + optional comment → test_entries.feeling_rank / feeling_note
   app.patch("/api/tests/:id/feeling", requireAuth, async (req, res) => {
     const testId = parseInt(req.params.id);

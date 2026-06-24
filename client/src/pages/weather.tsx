@@ -1299,9 +1299,7 @@ export default function WeatherPage() {
                 title={t("weather.noEntries")}
                 description={t("weather.noEntriesDesc")}
                 action={
-                  <AppLink href="/weather/new">
-                    <Button size="sm" variant="outline"><Plus className="mr-1.5 h-3.5 w-3.5" />{t("weather.newEntry")}</Button>
-                  </AppLink>
+                  <Button size="sm" variant="outline" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-3.5 w-3.5" />{t("weather.newEntry")}</Button>
                 }
               />
             </Card>

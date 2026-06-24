@@ -1,7 +1,7 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft, FileDown, ChevronDown, ChevronUp, ChevronRight, ArrowRight } from "lucide-react";
+import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft, FileDown, ChevronDown, ChevronUp, ChevronRight, ArrowRight, Footprints, FileText, Users, Cloud, Sparkles } from "lucide-react";
 import React from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import {
@@ -3339,6 +3339,127 @@ type BrandStat = {
   conditions: { label: string; count: number; avgRank: number | null; avgFeeling: number | null }[];
 };
 
+// Generate a short written insight per brand from what the waxers have entered
+// (best-performing grind/base/structure, conditions, product, overall trend).
+// Deterministic — reads the same aggregated numbers shown in the breakdown.
+function buildBrandNote(b: BrandStat, lang: string): string {
+  const L = (no: string, en: string) => (lang === "no" ? no : en);
+  const num = (n: number | null) => (n == null ? "—" : n.toFixed(1));
+  const parts: string[] = [];
+
+  // Best value in a parameter category (lowest avg rank, needs ≥2 results).
+  const bestIn = (category: string) => {
+    const cat = b.paramBreakdown.find((p) => p.category.toLowerCase() === category.toLowerCase());
+    if (!cat) return null;
+    const ranked = cat.values.filter((v) => v.avgRank != null && v.count >= 2);
+    return ranked.length ? ranked[0] : null;
+  };
+
+  const grind = bestIn("Grind");
+  const base = bestIn("Base");
+  if (grind || base) {
+    const bits: string[] = [];
+    if (grind) bits.push(L(`slip ${grind.value} (snittrang ${num(grind.avgRank)}, ${grind.count} tester)`, `grind ${grind.value} (avg rank ${num(grind.avgRank)}, ${grind.count} tests)`));
+    if (base) bits.push(L(`base ${base.value}`, `base ${base.value}`));
+    parts.push(L(`${b.brand} presterer best med ${bits.join(" og ")}.`, `${b.brand} performs best with ${bits.join(" and ")}.`));
+  }
+
+  // Strongest conditions bucket.
+  const cond = [...b.conditions].filter((c) => c.avgRank != null && c.count >= 2).sort((x, y) => (x.avgRank! - y.avgRank!))[0];
+  if (cond) parts.push(L(`Sterkest i ${cond.label} (snittrang ${num(cond.avgRank)}).`, `Strongest in ${cond.label} (avg rank ${num(cond.avgRank)}).`));
+
+  // Best product (if any product test data).
+  const prod = b.products.filter((p) => p.avgRank != null && p.tests >= 2)[0];
+  if (prod) parts.push(L(`Beste produkt: ${prod.name} (snittrang ${num(prod.avgRank)}).`, `Best product: ${prod.name} (avg rank ${num(prod.avgRank)}).`));
+
+  // Overall trend.
+  if (b.avgRank != null && b.raceTestEntries > 0) {
+    parts.push(L(
+      `Totalt snittrang ${num(b.avgRank)}${b.avgFeeling != null ? ` og følelse ${num(b.avgFeeling)}` : ""} på tvers av merkets ski.`,
+      `Overall avg rank ${num(b.avgRank)}${b.avgFeeling != null ? ` and feeling ${num(b.avgFeeling)}` : ""} across the brand's skis.`,
+    ));
+  }
+
+  return parts.join(" ");
+}
+
+// ── Kick report (#9): the interpreted kick-test reports + recipes, in Analytics.
+type KickRptSki = { id: number; name: string | null; brand: string | null; color: string | null };
+type KickRptEntry = { id?: number; kickSkiId: number; binder: string | null; kickSolution: string | null; feelingRank: number | null; feelingNotes: string | null };
+type KickRptTest = { id: number; date: string; location: string | null; weatherId: number | null; testPersons: string | null; notes: string | null; report: string | null; entries: KickRptEntry[] };
+type KickRptWeather = { id: number; location: string; airTemperatureC: number | null };
+
+function KickReportView() {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { data: tests = [], isLoading } = useQuery<KickRptTest[]>({ queryKey: ["/api/kick-tests"] });
+  const { data: skis = [] } = useQuery<KickRptSki[]>({ queryKey: ["/api/kick-skis"] });
+  const { data: weather = [] } = useQuery<KickRptWeather[]>({ queryKey: ["/api/weather/for-filtering"] });
+  const skiById = useMemo(() => new Map(skis.map((s) => [s.id, s])), [skis]);
+  const weatherById = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);
+  const skiName = (id: number) => { const s = skiById.get(id); return s ? ([s.name, s.brand].filter(Boolean).join(" — ") || `Ski #${s.id}`) : "—"; };
+
+  if (isLoading) return <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground">{L("Laster…", "Loading…")}</Card>;
+  if (tests.length === 0) return <Card className="fs-card rounded-2xl p-6 text-sm text-muted-foreground">{L("Ingen kick-tester ennå. Legg dem inn under Kick.", "No kick tests yet. Add them under Kick.")}</Card>;
+
+  return (
+    <div className="space-y-3" data-testid="kick-report">
+      <p className="text-sm text-muted-foreground">
+        {L("Tolket rapport fra hver kick-test, knyttet til vær/føre — grunnlaget for å forstå hva som gjøres når og gjenskape tidligere oppskrifter.",
+           "Interpreted report from each kick test, tied to weather/conditions — the basis for understanding what works when and recreating past recipes.")}
+      </p>
+      {tests.map((test) => {
+        const w = test.weatherId ? weatherById.get(test.weatherId) : null;
+        return (
+          <Card key={test.id} className="fs-card rounded-2xl p-4">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className="font-semibold">{test.date}</span>
+              {test.location && <span className="inline-flex items-center gap-1 text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{test.location}</span>}
+              {w && <span className="inline-flex items-center gap-1 text-muted-foreground"><Cloud className="h-3.5 w-3.5" />{w.airTemperatureC != null ? `${w.airTemperatureC}°C` : w.location}</span>}
+              {test.testPersons && <span className="inline-flex items-center gap-1 text-muted-foreground"><Users className="h-3.5 w-3.5" />{test.testPersons}</span>}
+            </div>
+            {test.report && (
+              <div className="mt-3 rounded-lg bg-green-50 dark:bg-green-900/15 px-3 py-2 text-sm">
+                <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-green-700 dark:text-green-400 mb-1">
+                  <FileText className="h-3.5 w-3.5" />{L("Rapport", "Report")}
+                </div>
+                {test.report}
+              </div>
+            )}
+            {test.entries.length > 0 && (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-left text-xs text-muted-foreground">
+                    <tr>
+                      <th className="py-1 pr-3 font-medium">{L("Ski", "Ski")}</th>
+                      <th className="py-1 pr-3 font-medium">{L("Binder", "Binder")}</th>
+                      <th className="py-1 pr-3 font-medium">{L("Kick-løsning", "Kick solution")}</th>
+                      <th className="py-1 pr-3 font-medium">{L("Rank", "Rank")}</th>
+                      <th className="py-1 font-medium">{L("Notater", "Notes")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {test.entries.map((e, i) => (
+                      <tr key={e.id ?? i} className="border-t">
+                        <td className="py-1.5 pr-3 font-medium">{skiName(e.kickSkiId)}</td>
+                        <td className="py-1.5 pr-3">{e.binder || "—"}</td>
+                        <td className="py-1.5 pr-3">{e.kickSolution || "—"}</td>
+                        <td className="py-1.5 pr-3">{e.feelingRank ?? "—"}</td>
+                        <td className="py-1.5 text-muted-foreground">{e.feelingNotes || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {test.notes && <p className="mt-3 text-sm text-muted-foreground italic">{test.notes}</p>}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
 function BrandStatsView() {
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
@@ -3402,6 +3523,15 @@ function BrandStatsView() {
               </button>
               {isOpen && (
                 <div className="border-t border-border/40 px-4 py-3 space-y-4">
+                  {/* Written insight generated from what the waxers have entered */}
+                  {(() => { const note = buildBrandNote(b, language); return note ? (
+                    <div className="rounded-lg bg-violet-50 dark:bg-violet-950/20 px-3 py-2 text-sm">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300 mb-1">
+                        <Sparkles className="h-3.5 w-3.5" />{L("Innsikt", "Insight")}
+                      </div>
+                      {note}
+                    </div>
+                  ) : null; })()}
                   {/* Every parameter the waxers have entered, ranked within its category */}
                   {b.paramBreakdown.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -4103,6 +4233,7 @@ export default function Analytics() {
     { id: "racedproducts", label: "Raced Products", icon: <Trophy className="h-4 w-4" /> },
     { id: "racedskis", label: L("Kjørte ski", "Raced Skis"), icon: <Trophy className="h-4 w-4" /> },
     { id: "brands", label: L("Merkestatistikk", "Brand stats"), icon: <Search className="h-4 w-4" /> },
+    ...(can("kick", "view") ? [{ id: "kick", label: "Kick", icon: <Footprints className="h-4 w-4" /> }] : []),
   ];
 
   const { data: grindProfiles = [] } = useQuery<any[]>({
@@ -4512,6 +4643,8 @@ export default function Analytics() {
         {activeTab === "racedskis" && <RacedSkisView />}
 
         {activeTab === "brands" && <BrandStatsView />}
+
+        {activeTab === "kick" && <KickReportView />}
 
       </div>
     </AppShell>

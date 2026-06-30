@@ -49,6 +49,9 @@ type ApiUser = {
   garminWatch: number;
   loginLocked: number;
   failedAttempts: number;
+  createdAt?: string;
+  isAthleteAccess?: number;
+  linkedAthleteId?: number | null;
 };
 
 type ApiTeam = {
@@ -2733,6 +2736,30 @@ export default function Admin() {
     enabled: canManage,
   });
 
+  // Members filter + sort (TA can narrow the list by role and order it).
+  const userRoleOf = (u: ApiUser): "admin" | "teamAdmin" | "athleteAccess" | "member" =>
+    u.isAdmin ? "admin" : u.isTeamAdmin ? "teamAdmin" : u.isAthleteAccess ? "athleteAccess" : "member";
+  const [userRoleFilter, setUserRoleFilter] = useState<"all" | "admin" | "teamAdmin" | "member" | "athleteAccess" | "blind" | "inactive">("all");
+  const [userSort, setUserSort] = useState<"name" | "created" | "role">("name");
+  const [userSortDir, setUserSortDir] = useState<"asc" | "desc">("asc");
+  const displayedUsers = useMemo(() => {
+    const roleRank: Record<string, number> = { admin: 0, teamAdmin: 1, member: 2, athleteAccess: 3 };
+    let list = users.filter((u) => {
+      if (userRoleFilter === "all") return true;
+      if (userRoleFilter === "blind") return !!u.isBlindTester;
+      if (userRoleFilter === "inactive") return !u.isActive;
+      return userRoleOf(u) === userRoleFilter;
+    });
+    list = [...list].sort((a, b) => {
+      let cmp = 0;
+      if (userSort === "name") cmp = (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+      else if (userSort === "created") cmp = (a.createdAt || "").localeCompare(b.createdAt || "");
+      else cmp = (roleRank[userRoleOf(a)] ?? 9) - (roleRank[userRoleOf(b)] ?? 9) || (a.name || "").localeCompare(b.name || "");
+      return userSortDir === "asc" ? cmp : -cmp;
+    });
+    return list;
+  }, [users, userRoleFilter, userSort, userSortDir]);
+
   const { data: apiGroups = [] } = useQuery<ApiGroup[]>({
     queryKey: [`/api/groups${teamScopeParam}`],
     enabled: canManage,
@@ -3972,8 +3999,33 @@ export default function Admin() {
 
         {activeTab === "users" && (
           <div className="flex flex-col gap-4" data-testid="tab-content-users">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">{L("Brukere", "Users")} ({users.length})</h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-foreground">{L("Brukere", "Users")} ({displayedUsers.length}{displayedUsers.length !== users.length ? `/${users.length}` : ""})</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={userRoleFilter} onValueChange={(v) => setUserRoleFilter(v as any)}>
+                  <SelectTrigger className="h-8 w-auto gap-1 text-xs" data-testid="filter-user-role"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{L("Alle roller", "All roles")}</SelectItem>
+                    <SelectItem value="admin">Super Admin</SelectItem>
+                    <SelectItem value="teamAdmin">{L("Lagadmin", "Team Admin")}</SelectItem>
+                    <SelectItem value="member">{L("Medlem", "Member")}</SelectItem>
+                    <SelectItem value="athleteAccess">{L("Utøvertilgang", "Athlete access")}</SelectItem>
+                    <SelectItem value="blind">{L("Blindtestere", "Blind testers")}</SelectItem>
+                    <SelectItem value="inactive">{L("Inaktive", "Inactive")}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={userSort} onValueChange={(v) => setUserSort(v as any)}>
+                  <SelectTrigger className="h-8 w-auto gap-1 text-xs" data-testid="sort-user"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name">{L("Navn", "Name")}</SelectItem>
+                    <SelectItem value="created">{L("Opprettet", "Created")}</SelectItem>
+                    <SelectItem value="role">{L("Rolle", "Role")}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" className="h-8 px-2" onClick={() => setUserSortDir((d) => d === "asc" ? "desc" : "asc")} data-testid="sort-user-dir" title={userSortDir === "asc" ? L("Stigende", "Ascending") : L("Synkende", "Descending")}>
+                  {userSortDir === "asc" ? "↑" : "↓"}
+                </Button>
+              </div>
               <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                 <DialogTrigger asChild>
                   <Button data-testid="button-add-user" className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white">
@@ -3990,7 +4042,7 @@ export default function Admin() {
 
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
               <div className="grid grid-cols-1 gap-1.5">
-                {users.map((u) => {
+                {displayedUsers.map((u) => {
                   const userPerms = parsePermissions(u.permissions);
                   const activeAreas = PERMISSION_AREAS.filter((a) => userPerms[a] !== "none");
                   const totalActive = activeAreas.length;
@@ -4014,10 +4066,15 @@ export default function Admin() {
                           {u.username && <span className="text-xs text-muted-foreground/70">@{u.username}</span>}
                           <span className={cn(
                             "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                            u.isAdmin ? "bg-amber-50 text-amber-600" : u.isTeamAdmin ? "bg-purple-50 text-purple-600" : "bg-muted text-muted-foreground"
+                            u.isAdmin ? "bg-amber-50 text-amber-600" : u.isTeamAdmin ? "bg-purple-50 text-purple-600" : u.isAthleteAccess ? "bg-sky-50 text-sky-600" : "bg-muted text-muted-foreground"
                           )}>
-                            {u.isAdmin ? "Super Admin" : u.isTeamAdmin ? L("Lagadmin", "Team Admin") : L("Medlem", "Member")}
+                            {u.isAdmin ? "Super Admin" : u.isTeamAdmin ? L("Lagadmin", "Team Admin") : u.isAthleteAccess ? L("Utøvertilgang", "Athlete access") : L("Medlem", "Member")}
                           </span>
+                          {u.createdAt && (
+                            <span className="text-[10px] text-muted-foreground/70 whitespace-nowrap" title={L("Opprettet", "Created")}>
+                              {new Date(u.createdAt).toLocaleDateString("no-NO", { year: "numeric", month: "short", day: "numeric" })}
+                            </span>
+                          )}
                           {!!u.isBlindTester && (
                             <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-600">
                               <EyeOff className="inline h-2.5 w-2.5 mr-0.5" />Blind

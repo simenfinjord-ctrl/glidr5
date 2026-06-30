@@ -65,6 +65,11 @@ export default function AthleteFeedback() {
   const byDate: Record<string, Item[]> = {};
   (data?.items ?? []).forEach((it) => { (byDate[it.date] ||= []).push(it); });
   const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+  // An item has feedback if it's saved this session or already had a rating.
+  const hasFeedback = (it: Item) => savedKeys.has(keyOf(it)) || !!it.athleteRating;
+  // The latest race keeps its yellow highlight only until feedback is given.
+  const latestItems = dates[0] ? byDate[dates[0]] : [];
+  const latestNeedsFeedback = latestItems.length > 0 && !latestItems.every(hasFeedback);
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><Spinner /></div>;
   if (isError || !data) {
@@ -94,7 +99,7 @@ export default function AthleteFeedback() {
         ) : (
           <div className="space-y-6">
             {dates.map((date, dateIdx) => {
-              const isLatest = dateIdx === 0; // newest race — highlighted in yellow, shown on top
+              const isLatest = dateIdx === 0 && latestNeedsFeedback; // newest race, until feedback is given
               return (
               <div key={date} className={cn(isLatest && "rounded-2xl bg-amber-50 dark:bg-amber-950/20 ring-1 ring-amber-300 dark:ring-amber-800 p-3 -mx-1")}>
                 <div className="flex items-center gap-2 mb-2">

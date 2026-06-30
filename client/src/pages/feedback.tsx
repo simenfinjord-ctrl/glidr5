@@ -93,10 +93,15 @@ export default function AthleteFeedback() {
           <p className="text-sm text-muted-foreground">{L("Ingen renn å gi tilbakemelding på ennå.", "No races to give feedback on yet.")}</p>
         ) : (
           <div className="space-y-6">
-            {dates.map((date) => (
-              <div key={date}>
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  {fmtDate(date)}{byDate[date][0].location ? ` · ${byDate[date][0].location}` : ""}
+            {dates.map((date, dateIdx) => {
+              const isLatest = dateIdx === 0; // newest race — highlighted in yellow, shown on top
+              return (
+              <div key={date} className={cn(isLatest && "rounded-2xl bg-amber-50 dark:bg-amber-950/20 ring-1 ring-amber-300 dark:ring-amber-800 p-3 -mx-1")}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={cn("text-xs font-semibold uppercase tracking-wider", isLatest ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground")}>
+                    {fmtDate(date)}{byDate[date][0].location ? ` · ${byDate[date][0].location}` : ""}
+                  </div>
+                  {isLatest && <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-amber-950">{L("Siste renn", "Latest race")}</span>}
                 </div>
                 <div className="space-y-3">
                   {byDate[date].map((it) => {
@@ -156,7 +161,8 @@ export default function AthleteFeedback() {
                   })}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
         <p className="mt-8 text-center text-[11px] text-muted-foreground">{L("Drevet av Glidr", "Powered by Glidr")}</p>

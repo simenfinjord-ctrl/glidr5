@@ -1120,6 +1120,23 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
     onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
+  // Broadcast notice (soft "updates in progress" popup for all users)
+  const { data: broadcastData, refetch: refetchBroadcast } = useQuery<{ enabled: boolean; updatedAt: number }>({
+    queryKey: ["/api/broadcast-notice"],
+  });
+  const broadcastEnabled = broadcastData?.enabled ?? false;
+  const toggleBroadcastMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const res = await apiRequest("POST", "/api/admin/broadcast-notice", { enabled });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      refetchBroadcast();
+      toast({ title: data.enabled ? L("Driftsmelding PÅ", "Notice ON") : L("Driftsmelding AV", "Notice OFF"), description: data.enabled ? L("Alle brukere ser nå meldingen om at oppdateringer pågår.", "All users now see the 'updates in progress' notice.") : L("Meldingen er skjult.", "The notice is hidden.") });
+    },
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
+  });
+
   // Active sessions
   const { data: sessions = [], refetch: refetchSessions } = useQuery<ActiveSession[]>({
     queryKey: ["/api/admin/active-sessions"],
@@ -1219,6 +1236,34 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
             </div>
           </div>
         )}
+      </Card>
+
+      {/* Broadcast notice (soft) */}
+      <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <span className="font-semibold text-foreground">{L("Driftsmelding", "Broadcast Notice")}</span>
+              {broadcastEnabled && (
+                <span className="rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide animate-pulse">ACTIVE</span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {L("Viser en lukkbar melding til ALLE brukere om at oppdateringer pågår og at tjenesten kan være ustabil. Den blokkerer ikke bruk — brukere kan lukke den og fortsette. Teksten følger brukerens språk.",
+                 "Shows a dismissible notice to ALL users that updates are in progress and the service may be unstable. It does not block usage — users can dismiss it and continue. The text follows each user's language.")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => toggleBroadcastMutation.mutate(!broadcastEnabled)}
+            disabled={toggleBroadcastMutation.isPending}
+            className={cn("relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none mt-1", broadcastEnabled ? "bg-amber-500" : "bg-muted-foreground/25")}
+            aria-label={L("Veksle driftsmelding", "Toggle broadcast notice")}
+          >
+            <span className={cn("pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform", broadcastEnabled ? "translate-x-[22px]" : "translate-x-[2px]")} />
+          </button>
+        </div>
       </Card>
 
       {/* Emergency lockdown */}

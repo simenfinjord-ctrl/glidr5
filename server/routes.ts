@@ -5190,6 +5190,30 @@ export async function registerRoutes(
     res.json({ enabled: maintenanceMode, reopenAt: maintenanceReopenAt });
   });
 
+  // ── SA broadcast notice ────────────────────────────────────────────────────
+  // A soft, dismissible "updates in progress, expect instability" popup shown to
+  // ALL users. Standard localized text (client-side); SA only toggles it on/off.
+  // Persisted in app_settings so it survives the frequent redeploys.
+  app.get("/api/broadcast-notice", async (_req, res) => {
+    try {
+      const { pool } = await import("./db");
+      const r = await (pool as any).query(`SELECT value FROM app_settings WHERE key = 'broadcast_notice'`);
+      const v = r.rows[0]?.value ? JSON.parse(r.rows[0].value) : { enabled: false, updatedAt: 0 };
+      res.json(v);
+    } catch { res.json({ enabled: false, updatedAt: 0 }); }
+  });
+
+  app.post("/api/admin/broadcast-notice", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const value = JSON.stringify({ enabled: !!req.body.enabled, updatedAt: Date.now() });
+    const { pool } = await import("./db");
+    await (pool as any).query(
+      `INSERT INTO app_settings (key, value) VALUES ('broadcast_notice', $1)
+       ON CONFLICT (key) DO UPDATE SET value = $1`, [value]);
+    res.json(JSON.parse(value));
+  });
+
   // List all active sessions with user info
   app.get("/api/admin/active-sessions", requireAuth, async (req, res) => {
     const u = userInfo(req);

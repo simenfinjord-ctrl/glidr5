@@ -49,6 +49,7 @@ import GetStarted from "@/pages/get-started";
 import OnboardingWizard from "@/components/onboarding-wizard";
 import { ProductTour, useTourCompleted } from "@/components/product-tour";
 import { WhatsNewDialog } from "@/components/whats-new-dialog";
+import { BroadcastNotice } from "@/components/broadcast-notice";
 
 import Login from "@/pages/login";
 import ForgotPassword from "@/pages/forgot-password";
@@ -194,6 +195,7 @@ function AuthGuard() {
 
   return (
     <>
+      {user && <BroadcastNotice />}
       <Router />
       {showOnboarding && <OnboardingWizard onClose={() => setShowOnboarding(false)} />}
       {showTour && <ProductTour onDone={() => setShowTour(false)} />}

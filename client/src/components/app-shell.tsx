@@ -1346,6 +1346,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
               <Menu className="h-4 w-4" />
             </Button>
             <span className="text-sm font-semibold text-foreground truncate">{pageTitle}</span>
+            <AthleteSwitcher />
           </div>
 
           <HeaderControls />
@@ -1399,6 +1400,33 @@ function relTimeAgo(dateStr: string): string {
   const days = Math.floor(hrs / 24);
   if (days < 7) return `${days}d ago`;
   return new Date(dateStr).toLocaleDateString();
+}
+
+// For share-view (athlete-access) accounts holding more than one athlete:
+// a header dropdown to switch which athlete is currently active.
+function AthleteSwitcher() {
+  const { user } = useAuth();
+  const isAthleteAccess = !!(user as any)?.isAthleteAccess;
+  const { data } = useQuery<{ athletes: { id: number; name: string }[]; activeAthleteId: number | null }>({
+    queryKey: ["/api/my/athletes"],
+    enabled: isAthleteAccess,
+  });
+  if (!isAthleteAccess || !data || data.athletes.length <= 1) return null;
+  const switchAthlete = async (id: string) => {
+    try {
+      await apiRequest("POST", "/api/my/active-athlete", { athleteId: parseInt(id) });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      queryClient.invalidateQueries();
+    } catch {}
+  };
+  return (
+    <Select value={String(data.activeAthleteId ?? "")} onValueChange={switchAthlete}>
+      <SelectTrigger className="h-8 w-auto gap-1 text-xs" data-testid="athlete-switcher"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        {data.athletes.map((a) => <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
 }
 
 function InboxDrawer({

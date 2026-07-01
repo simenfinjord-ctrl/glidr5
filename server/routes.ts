@@ -5884,6 +5884,107 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  // ── Share-view accounts ────────────────────────────────────────────────────
+  // A waxer creates a read-only "athlete-access" login that can see only the
+  // athletes it has been granted (via athlete_access). One account can hold
+  // several athletes and switch between them; access can be revoked anytime.
+  app.get("/api/athletes/:id/share-accounts", requirePermission("raceskis", "view"), async (req, res) => {
+    const u = userInfo(req);
+    const athleteId = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    if (!(await storage.hasAthleteAccess(athleteId, u.id, u.isScopeAdmin, teamId))) return res.status(403).json({ message: "Forbidden" });
+    const { pool } = await import("./db");
+    const withAccess = await (pool as any).query(
+      `SELECT us.id, us.name, us.email FROM users us
+       JOIN athlete_access aa ON aa.user_id = us.id
+       WHERE aa.athlete_id = $1 AND us.is_athlete_access = 1 ORDER BY us.name`, [athleteId]);
+    const others = await (pool as any).query(
+      `SELECT id, name, email FROM users
+       WHERE is_athlete_access = 1 AND team_id = $1
+         AND id NOT IN (SELECT user_id FROM athlete_access WHERE athlete_id = $2)
+       ORDER BY name`, [teamId, athleteId]);
+    res.json({ withAccess: withAccess.rows, others: others.rows });
+  });
+
+  app.post("/api/athletes/:id/share-account", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const athleteId = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    if (!(await storage.hasAthleteAccess(athleteId, u.id, u.isScopeAdmin, teamId))) return res.status(403).json({ message: "Forbidden" });
+    const email = String(req.body.email ?? "").trim().toLowerCase();
+    if (!email || !email.includes("@")) return res.status(400).json({ message: "Valid email required" });
+    const pwError = validatePassword(req.body.password);
+    if (pwError) return res.status(400).json({ message: pwError });
+    if (await storage.getUserByEmail(email)) return res.status(409).json({ message: "Email already in use" });
+    const athlete = await storage.getAthlete(athleteId);
+    const { DEFAULT_PERMISSIONS } = await import("@shared/schema");
+    const perms = { ...DEFAULT_PERMISSIONS, dashboard: "view", tests: "view", raceskis: "view", analytics: "view", suggestions: "view" };
+    const hashed = await hashPassword(req.body.password);
+    const name = String(req.body.name ?? "").trim() || email.split("@")[0];
+    const created = await storage.createUser({
+      email, password: hashed, name, username: null as any, groupScope: "",
+      isAdmin: 0, isTeamAdmin: 0, permissions: JSON.stringify(perms),
+      teamId: (athlete as any)?.teamId || teamId, isBlindTester: 0,
+      isAthleteAccess: 1, linkedAthleteId: athleteId,
+      language: "no", createdAt: new Date().toISOString(),
+    } as any);
+    const { pool } = await import("./db");
+    await (pool as any).query(`INSERT INTO athlete_access (athlete_id, user_id) VALUES ($1,$2)`, [athleteId, created.id]);
+    res.json({ id: created.id, email: created.email, name: created.name });
+  });
+
+  app.post("/api/athletes/:id/share-accounts/:userId", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const athleteId = parseInt(req.params.id);
+    const userId = parseInt(req.params.userId);
+    const teamId = getActiveTeamId(req);
+    if (!(await storage.hasAthleteAccess(athleteId, u.id, u.isScopeAdmin, teamId))) return res.status(403).json({ message: "Forbidden" });
+    const target = await storage.getUser(userId);
+    if (!target || (target as any).isAthleteAccess !== 1 || target.teamId !== teamId) return res.status(400).json({ message: "Not a share-view account in this team" });
+    const { pool } = await import("./db");
+    const exists = await (pool as any).query(`SELECT 1 FROM athlete_access WHERE athlete_id=$1 AND user_id=$2`, [athleteId, userId]);
+    if (!exists.rows.length) await (pool as any).query(`INSERT INTO athlete_access (athlete_id, user_id) VALUES ($1,$2)`, [athleteId, userId]);
+    if (!(target as any).linkedAthleteId) await (pool as any).query(`UPDATE users SET linked_athlete_id=$1 WHERE id=$2`, [athleteId, userId]);
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/athletes/:id/share-accounts/:userId", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const athleteId = parseInt(req.params.id);
+    const userId = parseInt(req.params.userId);
+    const teamId = getActiveTeamId(req);
+    if (!(await storage.hasAthleteAccess(athleteId, u.id, u.isScopeAdmin, teamId))) return res.status(403).json({ message: "Forbidden" });
+    const { pool } = await import("./db");
+    await (pool as any).query(`DELETE FROM athlete_access WHERE athlete_id=$1 AND user_id=$2`, [athleteId, userId]);
+    // If this was the account's active athlete, switch to another it still has.
+    const target = await storage.getUser(userId);
+    if (target && (target as any).linkedAthleteId === athleteId) {
+      const next = await (pool as any).query(`SELECT athlete_id FROM athlete_access WHERE user_id=$1 LIMIT 1`, [userId]);
+      await (pool as any).query(`UPDATE users SET linked_athlete_id=$1 WHERE id=$2`, [next.rows[0]?.athlete_id ?? null, userId]);
+    }
+    res.json({ ok: true });
+  });
+
+  // For a share-view account: the athletes it can switch between, and switching.
+  app.get("/api/my/athletes", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(
+      `SELECT a.id, a.name FROM athletes a JOIN athlete_access aa ON aa.athlete_id = a.id
+       WHERE aa.user_id = $1 ORDER BY a.name`, [u.id]);
+    res.json({ athletes: r.rows, activeAthleteId: u.linkedAthleteId ?? null });
+  });
+
+  app.post("/api/my/active-athlete", requireAuth, async (req, res) => {
+    const u = req.user as any;
+    const athleteId = parseInt(req.body.athleteId);
+    const { pool } = await import("./db");
+    const ok = await (pool as any).query(`SELECT 1 FROM athlete_access WHERE athlete_id=$1 AND user_id=$2`, [athleteId, u.id]);
+    if (!ok.rows.length) return res.status(403).json({ message: "No access to this athlete" });
+    await (pool as any).query(`UPDATE users SET linked_athlete_id=$1 WHERE id=$2`, [athleteId, u.id]);
+    res.json({ ok: true });
+  });
+
   // Public (no auth): athlete feedback page data + submit
   app.get("/api/feedback/:token", async (req, res) => {
     const { pool } = await import("./db");

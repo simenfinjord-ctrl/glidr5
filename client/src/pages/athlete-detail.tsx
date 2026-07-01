@@ -54,6 +54,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -649,6 +650,112 @@ function garageCellValue(s: any, key: string): string {
   return v != null && v !== "" ? String(v) : "—";
 }
 
+// Manage read-only "share view" accounts for one athlete (#2): create a new
+// account (email+password) scoped to this athlete, add the athlete to an
+// existing share account, or revoke access.
+function ShareAccountsDialog({ athleteId, athleteName, open, onClose, lang }: {
+  athleteId: number; athleteName: string; open: boolean; onClose: () => void; lang: "no" | "en";
+}) {
+  const L = (no: string, en: string) => (lang === "en" ? en : no);
+  const { toast } = useToast();
+  const key = [`/api/athletes/${athleteId}/share-accounts`];
+  const { data } = useQuery<{ withAccess: { id: number; name: string; email: string }[]; others: { id: number; name: string; email: string }[] }>({
+    queryKey: key, enabled: open,
+  });
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [addUserId, setAddUserId] = useState("");
+  const refresh = () => queryClient.invalidateQueries({ queryKey: key });
+
+  const create = useMutation({
+    mutationFn: async () => apiRequest("POST", `/api/athletes/${athleteId}/share-account`, { email, password, name }),
+    onSuccess: () => { setEmail(""); setPassword(""); setName(""); refresh(); toast({ title: L("Konto opprettet", "Account created") }); },
+    onError: (e: any) => toast({ title: L("Feil", "Error"), description: e?.message, variant: "destructive" }),
+  });
+  const addExisting = useMutation({
+    mutationFn: async () => apiRequest("POST", `/api/athletes/${athleteId}/share-accounts/${addUserId}`, {}),
+    onSuccess: () => { setAddUserId(""); refresh(); toast({ title: L("Lagt til", "Added") }); },
+    onError: (e: any) => toast({ title: L("Feil", "Error"), description: e?.message, variant: "destructive" }),
+  });
+  const revoke = useMutation({
+    mutationFn: async (userId: number) => apiRequest("DELETE", `/api/athletes/${athleteId}/share-accounts/${userId}`),
+    onSuccess: () => { refresh(); toast({ title: L("Tilgang trukket tilbake", "Access revoked") }); },
+    onError: (e: any) => toast({ title: L("Feil", "Error"), description: e?.message, variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{L("Del visning", "Share view")} — {athleteName}</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          {L("En delt konto ser kun utøverne den får tilgang til, skrivebeskyttet. Kontoen vises i Admin og kan oppgraderes der.",
+             "A shared account sees only the athletes it is granted, read-only. The account appears in Admin and can be upgraded there.")}
+        </p>
+
+        <div className="space-y-4">
+          {/* Accounts that already have access */}
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{L("Kontoer med tilgang", "Accounts with access")}</div>
+            {(data?.withAccess ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">{L("Ingen ennå.", "None yet.")}</p>
+            ) : (
+              <div className="space-y-1.5">
+                {data!.withAccess.map((a) => (
+                  <div key={a.id} className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{a.name}</div>
+                      <div className="text-xs text-muted-foreground truncate">{a.email}</div>
+                    </div>
+                    <Button size="sm" variant="ghost" className="text-rose-600 hover:text-rose-700" onClick={() => { if (confirm(L("Trekke tilbake tilgang til denne utøveren?", "Revoke access to this athlete?"))) revoke.mutate(a.id); }}>
+                      {L("Trekk tilbake", "Revoke")}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Add this athlete to an existing share account */}
+          {(data?.others ?? []).length > 0 && (
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{L("Legg til eksisterende konto", "Add to existing account")}</div>
+              <div className="flex items-center gap-2">
+                <Select value={addUserId} onValueChange={setAddUserId}>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder={L("Velg konto…", "Select account…")} /></SelectTrigger>
+                  <SelectContent>
+                    {data!.others.map((o) => <SelectItem key={o.id} value={String(o.id)}>{o.name} · {o.email}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" disabled={!addUserId || addExisting.isPending} onClick={() => addExisting.mutate()}>{L("Legg til", "Add")}</Button>
+              </div>
+            </div>
+          )}
+
+          {/* Create a new share account */}
+          <div className="rounded-lg border p-3 space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{L("Opprett ny delt konto", "Create new share account")}</div>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={L("Navn (valgfritt)", "Name (optional)")} className="h-8" />
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e-post / email" className="h-8" />
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={L("passord", "password")} className="h-8" />
+            <div className="flex justify-end">
+              <Button size="sm" disabled={!email.trim() || !password || create.isPending} onClick={() => create.mutate()}>
+                {create.isPending ? L("Oppretter…", "Creating…") : L("Opprett konto", "Create account")}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>{L("Lukk", "Close")}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function AthleteDetail() {
   const [, params] = useRoute("/raceskis/:id");
   const [, navigate] = useLocation();
@@ -664,6 +771,7 @@ export default function AthleteDetail() {
 
   const [skiDialogOpen, setSkiDialogOpen] = useState(false);
   const [editingSki, setEditingSki] = useState<RaceSki | null>(null);
+  const [shareAccountsOpen, setShareAccountsOpen] = useState(false);
   const [regrindDialogOpen, setRegrindDialogOpen] = useState(false);
   const [regrindSkiId, setRegrindSkiId] = useState<number | null>(null);
   const [accessDialogOpen, setAccessDialogOpen] = useState(false);
@@ -2172,18 +2280,20 @@ export default function AthleteDetail() {
                 variant="outline"
                 size="sm"
                 data-testid="button-share-view"
-                onClick={() => {
-                  const url = `${window.location.origin}/raceskis/${athleteId}?view=athlete-portal`;
-                  navigator.clipboard.writeText(url).then(() => {
-                    toast({ title: "Link copied", description: "Athlete portal link copied to clipboard." });
-                  }).catch(() => {
-                    toast({ title: "Copy failed", description: url, variant: "destructive" });
-                  });
-                }}
+                onClick={() => setShareAccountsOpen(true)}
               >
                 <Link2 className="mr-1.5 h-3.5 w-3.5" />
-                Share View
+                {L("Del visning", "Share view")}
               </Button>
+            )}
+            {shareAccountsOpen && (
+              <ShareAccountsDialog
+                athleteId={athleteId!}
+                athleteName={athlete?.name || ""}
+                open={shareAccountsOpen}
+                onClose={() => setShareAccountsOpen(false)}
+                lang={language === "no" ? "no" : "en"}
+              />
             )}
             {!isAthletePortal && (
               <>

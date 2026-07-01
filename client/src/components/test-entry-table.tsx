@@ -190,6 +190,19 @@ export function TestEntryTable({
 
   return (
     <div className="space-y-2">
+    <style>{`
+@media (max-width: 767px) {
+  .eg-stack { overflow-x: visible !important; border: none; background: transparent; border-radius: 0; }
+  .eg-stack table { min-width: 0 !important; display: block; }
+  .eg-stack thead { display: none; }
+  .eg-stack tbody { display: block; }
+  .eg-stack tbody tr { display: block; border: 1px solid hsl(var(--border)); border-radius: 12px; padding: 6px 12px 10px; margin-bottom: 12px; background: hsl(var(--card)); }
+  .eg-stack tbody td { display: flex; align-items: center; justify-content: space-between; gap: 10px; position: static !important; padding: 6px 0; width: auto !important; }
+  .eg-stack tbody td[data-label]::before { content: attr(data-label); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: hsl(var(--muted-foreground)); flex-shrink: 0; }
+  .eg-stack tbody td input, .eg-stack tbody td select { width: auto !important; min-width: 0; flex: 1; max-width: 64%; }
+  .eg-stack tbody td:not([data-label]):empty { display: none; }
+}
+`}</style>
     {isClassic && (
       <div className="flex flex-wrap items-center gap-3">
         <button
@@ -223,7 +236,7 @@ export function TestEntryTable({
         )}
       </div>
     )}
-    <div className="overflow-x-auto rounded-2xl border bg-card">
+    <div className="eg-stack overflow-x-auto rounded-2xl border bg-card">
       <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${(isGrind ? 300 + extraGrindCols.length * 120 : 560) + distanceLabels.length * 200 + (isClassic ? 80 : 0)}px` }}>
         <thead>
           <tr className="text-left text-xs text-muted-foreground">
@@ -372,7 +385,7 @@ export function TestEntryTable({
                   </div>
                 </td>
                 {!isGrind && (
-                <td className="px-3 py-2">
+                <td className="px-3 py-2" data-label={isRaceSki ? "Raceski" : (language === "no" ? "Produkt" : "Product")}>
                   {isRaceSki ? (
                     <div className="flex flex-col gap-1 min-w-[180px]">
                       <RaceSkiCombobox
@@ -521,7 +534,7 @@ export function TestEntryTable({
                 )}
                 {isGrind && (
                 <>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2" data-label={language === "no" ? "Slip" : "Grind"}>
                     <select
                       value={row.grindProfileId?.toString() || ""}
                       onChange={(e) => {
@@ -561,7 +574,7 @@ export function TestEntryTable({
                     </select>
                   </td>
                   {extraGrindCols.map((col) => (
-                    <td key={col} className="px-3 py-2">
+                    <td key={col} className="px-3 py-2" data-label={GRIND_PARAM_LABELS[col] ?? col}>
                       {col === "stone" ? (
                         <Input
                           value={row.grindStone || ""}
@@ -606,7 +619,7 @@ export function TestEntryTable({
                 )}
                 {row.roundResults.map((rr, roundIdx) => (
                   <>
-                    <td key={`res-${roundIdx}`} className="px-3 py-2">
+                    <td key={`res-${roundIdx}`} className="px-3 py-2" data-label={(distanceLabels[roundIdx] || (language === "no" ? "Resultat" : "Result")) + " (cm)"}>
                       <Input
                         inputMode="decimal"
                         type="number"
@@ -627,10 +640,10 @@ export function TestEntryTable({
                         data-testid={`input-result-${roundIdx}-${row.id}`}
                       />
                     </td>
-                    <td key={`rank-${roundIdx}`} className="px-3 py-2">{rankBadge(rr.rank)}</td>
+                    <td key={`rank-${roundIdx}`} className="px-3 py-2" data-label="Rank">{rankBadge(rr.rank)}</td>
                   </>
                 ))}
-                <td className="px-3 py-2">
+                <td className="px-3 py-2" data-label="Feeling">
                   <div className="flex items-center gap-1.5">
                     <Input
                       inputMode="numeric"
@@ -661,7 +674,7 @@ export function TestEntryTable({
                   </div>
                 </td>
                 {isClassic && (
-                <td className="px-3 py-2">
+                <td className="px-3 py-2" data-label="Kick">
                   <Input
                     inputMode="numeric"
                     type="number"

@@ -1666,6 +1666,74 @@ const ALL_TABS: { id: TabId; labelKey: string; superAdminOnly?: boolean; icon: R
   { id: "guide", labelKey: "admin.tabFeatureGuide", icon: FileText, superAdminOnly: true },
 ];
 
+// Grouped Admin navigation (Overview stands alone on top). Content per tab is
+// unchanged — only the menu is organised into sections.
+const ADMIN_TAB_GROUPS: { labelNo: string; labelEn: string; ids: TabId[] }[] = [
+  { labelNo: "Folk", labelEn: "People", ids: ["users", "groups", "registrations"] },
+  { labelNo: "Overvåking", labelEn: "Monitoring", ids: ["activity", "logins"] },
+  { labelNo: "Data og backup", labelEn: "Data & backup", ids: ["backup", "data", "danger"] },
+  { labelNo: "System", labelEn: "System", ids: ["teams", "security", "accounting", "guide"] },
+];
+
+function AdminNav({ activeTab, setActiveTab, isSuperAdmin }: { activeTab: TabId; setActiveTab: (t: TabId) => void; isSuperAdmin: boolean }) {
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const meta = (id: TabId) => ALL_TABS.find((x) => x.id === id);
+  const canSee = (id: TabId) => { const m = meta(id); return !!m && (!m.superAdminOnly || isSuperAdmin); };
+  const item = (id: TabId) => {
+    const m = meta(id); if (!m || !canSee(id)) return null;
+    const Icon = m.icon;
+    const isDanger = id === "danger";
+    return (
+      <button
+        key={id}
+        data-testid={`tab-${id}`}
+        onClick={() => setActiveTab(id)}
+        className={cn(
+          "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors text-left",
+          activeTab === id
+            ? "bg-green-50 text-green-700 font-medium dark:bg-green-900/20 dark:text-green-400"
+            : isDanger ? "text-red-600 hover:bg-muted" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        <span className="truncate">{t(m.labelKey)}</span>
+      </button>
+    );
+  };
+
+  return (
+    <>
+      {/* Mobile: single dropdown */}
+      <div className="lg:hidden">
+        <Select value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)}>
+          <SelectTrigger data-testid="admin-tab-select"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="overview">{t("admin.tabOverview")}</SelectItem>
+            {ADMIN_TAB_GROUPS.map((g) => g.ids.filter(canSee).map((id) => (
+              <SelectItem key={id} value={id}>{L(g.labelNo, g.labelEn)} · {t(meta(id)!.labelKey)}</SelectItem>
+            )))}
+          </SelectContent>
+        </Select>
+      </div>
+      {/* Desktop: grouped left menu */}
+      <nav className="hidden lg:block w-52 shrink-0 space-y-1" data-testid="admin-nav">
+        {item("overview")}
+        {ADMIN_TAB_GROUPS.map((g) => {
+          const ids = g.ids.filter(canSee);
+          if (ids.length === 0) return null;
+          return (
+            <div key={g.labelEn} className="pt-3">
+              <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">{L(g.labelNo, g.labelEn)}</div>
+              {ids.map((id) => item(id))}
+            </div>
+          );
+        })}
+      </nav>
+    </>
+  );
+}
+
 // #44: per-team Feedback button config (toggle + Google link).
 function FeedbackButtonConfig({ team }: { team: any }) {
   const { language } = useI18n();
@@ -3860,26 +3928,9 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="flex gap-1 border-b border-border overflow-x-auto" data-testid="admin-tab-bar">
-          {ALL_TABS.filter((tab) => !tab.superAdminOnly || isSuperAdmin).map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                data-testid={`tab-${tab.id}`}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? "border-green-600 text-green-700 dark:text-green-400"
-                    : "border-transparent text-muted-foreground hover:text-foreground/80"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {t(tab.labelKey)}
-              </button>
-            );
-          })}
-        </div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:gap-6" data-testid="admin-body">
+        <AdminNav activeTab={activeTab} setActiveTab={setActiveTab} isSuperAdmin={isSuperAdmin} />
+        <div className="min-w-0 flex-1 flex flex-col gap-5">
 
         {activeTab === "overview" && (
           <div className="flex flex-col gap-5" data-testid="tab-content-overview">
@@ -5026,6 +5077,8 @@ export default function Admin() {
             <AccountingTab teams={teams} />
           </div>
         )}
+        </div>
+        </div>
       </div>
     </AppShell>
   );

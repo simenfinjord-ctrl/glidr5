@@ -36,7 +36,7 @@ export function BroadcastNotice() {
   };
 
   return (
-    <div className="sticky top-0 z-50 flex items-start gap-3 border-b border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200" data-testid="broadcast-notice">
+    <div className="sticky top-0 z-50 flex items-start gap-3 border-b border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200" style={{ paddingTop: "max(0.625rem, env(safe-area-inset-top))" }} data-testid="broadcast-notice">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
       <div className="min-w-0 flex-1">
         <span className="font-semibold">{L("Oppdateringer pågår.", "Updates in progress.")}</span>{" "}

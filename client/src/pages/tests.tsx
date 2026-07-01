@@ -2140,37 +2140,7 @@ export default function Tests() {
                 <EmptyState icon={Trophy} title={t("tests.noTests")} description="No tests match the current filters." />
               </div>
             ) : (
-              <>
-              {/* Mobile: card list (the table reflows to tap-friendly cards). */}
-              <div className="md:hidden divide-y divide-border/40" data-testid="cards-tests-overview">
-                {filtered.map((t) => {
-                  const winner = winnersByTest.get(t.id);
-                  const w = t.weatherId ? weatherById.get(t.weatherId) : null;
-                  return (
-                    <div
-                      key={t.id}
-                      className="px-4 py-3 active:bg-muted/30 cursor-pointer"
-                      onClick={() => navigate(`/tests/${t.id}`)}
-                      data-testid={`card-test-${t.id}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium truncate">{t.testName || t.location}</span>
-                        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>{t.testType}</span>
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        <span>{fmtDate(t.date)}</span>
-                        {t.location && <span>· {t.location}</span>}
-                        {w?.airTemperatureC != null && <span>· {w.airTemperatureC}°C</span>}
-                        {!isBlindTester && winner && (
-                          <span className="inline-flex items-center gap-1 text-emerald-600 font-medium"><Trophy className="h-3 w-3" />{winner.productName}</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {/* Desktop: full table */}
-              <div className="hidden md:block overflow-x-auto">
+              <div className="overflow-x-auto">
                 <table className="w-full text-sm" data-testid="table-tests-overview">
                   <thead>
                     <tr className="border-b border-border bg-muted/30 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -2236,7 +2206,6 @@ export default function Tests() {
                   </tbody>
                 </table>
               </div>
-              </>
             )}
           </Card>
         ) : viewMode === "calendar" ? (

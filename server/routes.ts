@@ -3383,50 +3383,40 @@ export async function registerRoutes(
     );
     const comment = result.rows[0];
 
-    // Parse @First_Last mentions (underscores represent spaces) and notify via inbox
-    const mentionTokens = [...content.matchAll(/@([a-zA-Z0-9._-]+)/g)]
-      .map(m => m[1].replace(/_/g, " ").toLowerCase()); // "Simen_Finjord" → "simen finjord"
-    const uniqueMentions = [...new Set(mentionTokens)];
-    if (uniqueMentions.length > 0) {
-      try {
-        const teamId = (u as any).activeTeamId || u.teamId;
-        // Exact case-insensitive name match (avoids false positives from fuzzy match)
+    // Notify via inbox: the test owner (any comment on their test) plus anyone
+    // @mentioned. Best-effort — never fail the comment POST on a notify error.
+    try {
+      const teamId = (u as any).activeTeamId || u.teamId;
+      const testRow = await (pool as any).query(
+        `SELECT test_name, location, date, created_by_id AS "createdById" FROM tests WHERE id = $1`, [testId]);
+      const testLabel = testRow.rows[0]?.test_name || testRow.rows[0]?.location || `Test #${testId}`;
+      const notified = new Set<number>([u.id]); // never notify the commenter
+      const notify = async (toUserId: number, subject: string) => {
+        if (notified.has(toUserId)) return;
+        notified.add(toUserId);
+        await (pool as any).query(
+          `INSERT INTO inbox_messages
+             (team_id, to_user_id, from_user_id, from_name, subject, body, is_read, created_at, action_type, action_data)
+           VALUES ($1,$2,$3,$4,$5,$6,0,NOW(),$7,$8)`,
+          [teamId, toUserId, u.id, u.name, subject, content, "test_comment", JSON.stringify({ testId })]);
+      };
+
+      // The test owner — a new comment on your test.
+      const ownerId = testRow.rows[0]?.createdById;
+      if (ownerId) await notify(ownerId, `${u.name} kommenterte «${testLabel}» / commented on "${testLabel}"`);
+
+      // Then @First_Last mentions — underscores represent spaces.
+      const uniqueMentions = [...new Set([...content.matchAll(/@([a-zA-Z0-9._-]+)/g)].map(m => m[1].replace(/_/g, " ").toLowerCase()))];
+      if (uniqueMentions.length > 0) {
         const mentionedUsers = await (pool as any).query(
           `SELECT id, name FROM users
            WHERE (team_id = $1 OR id IN (SELECT user_id FROM user_team_permissions WHERE team_id = $1))
-             AND LOWER(name) = ANY($2)
-             AND id != $3
-             AND is_active = 1`,
-          [teamId, uniqueMentions, u.id]
-        );
-        if (mentionedUsers.rows.length > 0) {
-          const testRow = await (pool as any).query(
-            `SELECT test_name, location, date FROM tests WHERE id = $1`,
-            [testId]
-          );
-          const testLabel = testRow.rows[0]?.test_name || testRow.rows[0]?.location || `Test #${testId}`;
-          for (const mentioned of mentionedUsers.rows) {
-            await (pool as any).query(
-              `INSERT INTO inbox_messages
-                 (team_id, to_user_id, from_user_id, from_name, subject, body, is_read, created_at, action_type, action_data)
-               VALUES ($1,$2,$3,$4,$5,$6,0,NOW(),$7,$8)`,
-              [
-                teamId,
-                mentioned.id,
-                u.id,
-                u.name,
-                `${u.name} mentioned you in "${testLabel}"`,
-                content,
-                "test_comment",
-                JSON.stringify({ testId }),
-              ]
-            );
-          }
-        }
-      } catch (e) {
-        // Mention notifications are best-effort — don't fail the comment POST
-        console.error("Failed to send mention notifications:", e);
+             AND LOWER(name) = ANY($2) AND id != $3 AND is_active = 1`,
+          [teamId, uniqueMentions, u.id]);
+        for (const m of mentionedUsers.rows) await notify(m.id, `${u.name} nevnte deg i «${testLabel}» / mentioned you in "${testLabel}"`);
       }
+    } catch (e) {
+      console.error("Failed to send comment notifications:", e);
     }
 
     return res.status(201).json(comment);
@@ -5941,6 +5931,21 @@ export async function registerRoutes(
         [rating || null, comment || null, parseInt(id), athleteId, teamId]
       );
     }
+    // Notify the athlete's waxers (inbox) that new feedback came in from the athlete.
+    try {
+      const ath = await (pool as any).query(`SELECT name FROM athletes WHERE id=$1`, [athleteId]);
+      const athleteName = ath.rows[0]?.name || "Athlete";
+      const subject = `${athleteName}: ny tilbakemelding / new feedback${rating ? ` (${rating})` : ""}`;
+      const body = comment ? String(comment) : (rating ? String(rating) : "");
+      const recipients = await (pool as any).query(
+        `SELECT DISTINCT user_id AS "userId" FROM athlete_access WHERE athlete_id = $1`, [athleteId]);
+      for (const r of recipients.rows) {
+        await (pool as any).query(
+          `INSERT INTO inbox_messages (team_id, to_user_id, from_name, subject, body, is_read, created_at, action_type, action_data)
+           VALUES ($1,$2,$3,$4,$5,0,NOW(),$6,$7)`,
+          [teamId, r.userId, athleteName, subject, body, "athlete_feedback", JSON.stringify({ athleteId })]);
+      }
+    } catch (e) { console.error("Failed to send athlete-feedback notifications:", e); }
     res.json({ ok: true });
   });
 

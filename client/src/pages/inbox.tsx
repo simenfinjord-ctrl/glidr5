@@ -290,6 +290,22 @@ export default function Inbox() {
                           </div>
                         );
                       })()}
+                      {msg.action_type === "athlete_feedback" && (() => {
+                        let actionData: { athleteId: number } | null = null;
+                        try { actionData = JSON.parse(msg.action_data ?? ""); } catch {}
+                        if (!actionData?.athleteId) return null;
+                        return (
+                          <div className="mt-3">
+                            <AppLink
+                              href={`/raceskis/${actionData.athleteId}`}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              Go to athlete
+                            </AppLink>
+                          </div>
+                        );
+                      })()}
                       <div className="mt-4 flex items-center justify-end">
                         <Button
                           variant="ghost"

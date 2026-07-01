@@ -661,7 +661,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
   });
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/inbox/unread-count"],
-    enabled: !!user && (isSuperAdmin || isTeamAdmin),
+    enabled: !!user,
     staleTime: 60_000,
     refetchInterval: 60_000,
   });
@@ -675,7 +675,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
   const [expandedMsgId, setExpandedMsgId] = useState<number | null>(null);
   const { data: inboxMessages = [], refetch: refetchInbox } = useQuery<any[]>({
     queryKey: ["/api/inbox"],
-    enabled: !!user && inboxOpen && (isSuperAdmin || isTeamAdmin),
+    enabled: !!user && inboxOpen,
     staleTime: 30_000,
   });
 
@@ -1115,7 +1115,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
         <Sparkles className="h-4 w-4" />
         <WhatsNewDot />
       </Button>
-      {(isSuperAdmin || isTeamAdmin) && (
+      {!!user && (
         <Button variant="ghost" size="sm" data-testid="button-mail"
           onClick={() => setInboxOpen(true)}
           className="relative h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -1411,7 +1411,19 @@ function InboxDrawer({
   setExpandedMsgId: (id: number | null) => void;
   onDelete: (id: number) => void;
 }) {
+  const [, navigate] = useLocation();
   if (!open) return null;
+
+  // Resolve a click-through target from the message's action metadata.
+  const actionHref = (msg: InboxMessage): string | null => {
+    if (!msg.actionType) return null;
+    try {
+      const d = JSON.parse(msg.actionData ?? "");
+      if (msg.actionType === "test_comment" && d.testId) return `/tests/${d.testId}`;
+      if (msg.actionType === "athlete_feedback" && d.athleteId) return `/raceskis/${d.athleteId}`;
+    } catch {}
+    return null;
+  };
 
   const avatarColors = [
     "bg-indigo-500", "bg-emerald-500", "bg-amber-500",
@@ -1504,6 +1516,16 @@ function InboxDrawer({
                         )}
                         {isExpanded && (
                           <p className="text-xs text-foreground mt-2 whitespace-pre-wrap leading-relaxed">{msg.body}</p>
+                        )}
+                        {isExpanded && actionHref(msg) && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); navigate(actionHref(msg)!); onClose(); }}
+                            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted transition-colors"
+                            data-testid={`inbox-goto-${msg.id}`}
+                          >
+                            {msg.actionType === "athlete_feedback" ? "Go to athlete" : "Go to test"} →
+                          </button>
                         )}
                       </div>
                       <Button

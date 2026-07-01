@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import {
   LayoutDashboard, ListChecks, Watch, MoreHorizontal, X,
   Snowflake, CloudSun, Package, BarChart3, Disc3, Trophy,
-  Sparkles, Radio, Shield,
+  Sparkles, Radio, Shield, Footprints, Flag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AppLink } from "@/components/app-link";
@@ -29,15 +29,17 @@ const ALL_NAV = [
   { href: "/weather",       label: "Weather",         icon: CloudSun,        featureArea: null, permArea: "weather",     adminOnly: false },
   { href: "/analytics",     label: "Analytics",       icon: BarChart3,       featureArea: null, permArea: "analytics",   adminOnly: false },
   { href: "/grinding",      label: "Grinding",        icon: Disc3,           featureArea: null, permArea: "grinding",    adminOnly: false },
-  { href: "/raceskis",      label: "Race Skis",       icon: Trophy,          featureArea: null, permArea: "raceskis",    adminOnly: false },
+  { href: "/raceskis",      label: "Athlete Skis",    icon: Trophy,          featureArea: null, permArea: "raceskis",    adminOnly: false },
+  { href: "/kick",          label: "Kick",            icon: Footprints,      featureArea: null, permArea: "kick",        adminOnly: false },
+  { href: "/raceprep",      label: "Race Prep",       icon: Flag,            featureArea: null, permArea: "raceprep",    adminOnly: false },
   { href: "/suggestions",   label: "Suggestions",     icon: Sparkles,        featureArea: null, permArea: "suggestions", adminOnly: false },
   { href: "/live-runsheets",label: "Live Runsheets",  icon: Radio,           featureArea: null, permArea: "liverunsheets", adminOnly: false },
   { href: "/watch-queue",   label: "Watch Queue",     icon: Watch,           featureArea: "garmin_watch", permArea: null, adminOnly: false },
   { href: "/admin",         label: "Admin",           icon: Shield,          featureArea: null, permArea: null,          adminOnly: true  },
 ];
 
-// Primary tabs always shown in bottom bar
-const PRIMARY_HREFS = ["/dashboard", "/tests", "/watch-queue"];
+// Primary tabs always shown in the bottom bar (the rest go in "More").
+const PRIMARY_HREFS = ["/dashboard", "/tests", "/raceskis", "/kick"];
 
 export function MobileNav({ watchQueueCount }: { watchQueueCount?: number }) {
   const [location] = useLocation();
@@ -55,6 +57,8 @@ export function MobileNav({ watchQueueCount }: { watchQueueCount?: number }) {
       "/analytics": "nav.analytics",
       "/grinding": "nav.grinding",
       "/raceskis": "nav.raceskis",
+      "/kick": "nav.kick",
+      "/raceprep": "nav.raceprep",
       "/suggestions": "nav.suggestions",
       "/live-runsheets": "nav.liveRunsheets",
       "/watch-queue": "nav.watchQueue",

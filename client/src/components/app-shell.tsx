@@ -714,16 +714,9 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
   useEffect(() => { setMobileNavEnabled(mobileNavStore.get()); }, []);
 
   // ── First-time mobile mode prompt ──
+  // Obsolete: the bottom nav is now always available on small screens, so we no
+  // longer prompt users to "enable mobile mode". Kept as a no-op for the dialog.
   const [showMobilePrompt, setShowMobilePrompt] = useState(false);
-  useEffect(() => {
-    if (!user) return;
-    try {
-      const alreadySeen = localStorage.getItem(MOBILE_PROMPT_KEY);
-      if (alreadySeen) return;
-      const isMobile = window.innerWidth < 1024 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      if (isMobile) setShowMobilePrompt(true);
-    } catch {}
-  }, [user]);
 
   function handleMobilePromptActivate() {
     mobileNavStore.set(true);
@@ -1198,7 +1191,8 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
           </p>
         </footer>
       </main>
-      {mobileNavEnabled && <div className="lg:hidden"><MobileNav watchQueueCount={watchQueueCount} /></div>}
+      {/* Bottom nav is always available on small screens (mobile-by-default). */}
+      <div className="lg:hidden"><MobileNav watchQueueCount={watchQueueCount} /></div>
     </>
   );
 
@@ -1332,7 +1326,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
 
         {/* ── Top header (48px) ── */}
         <header
-          className="h-12 shrink-0 flex items-center gap-2 px-4 bg-card dark:bg-zinc-900 border-b border-border"
+          className="h-12 shrink-0 flex items-center gap-2 px-4 bg-card dark:bg-zinc-900 border-b border-border sticky top-0 z-30"
           style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
           {/* Left: hamburger (mobile) + page title */}

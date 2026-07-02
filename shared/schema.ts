@@ -539,6 +539,9 @@ export const athleteAccess = pgTable("athlete_access", {
   id: serial("id").primaryKey(),
   athleteId: integer("athlete_id").notNull(),
   userId: integer("user_id").notNull(),
+  // Share-view accounts are read-only by default; canEdit=1 lets the account
+  // edit this specific athlete. (Ignored for regular users, who always edit.)
+  canEdit: integer("can_edit").notNull().default(0),
 });
 
 export const insertAthleteAccessSchema = createInsertSchema(athleteAccess).omit({ id: true });

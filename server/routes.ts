@@ -305,6 +305,7 @@ export async function registerRoutes(
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS pole_height_skate TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS binding_position TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS ski_service_preferences TEXT;
+      ALTER TABLE athlete_access ADD COLUMN IF NOT EXISTS can_edit INTEGER NOT NULL DEFAULT 0;
       CREATE TABLE IF NOT EXISTS kick_skis (
         id SERIAL PRIMARY KEY,
         team_id INTEGER NOT NULL,
@@ -5987,6 +5988,55 @@ export async function registerRoutes(
     const ok = await (pool as any).query(`SELECT 1 FROM athlete_access WHERE athlete_id=$1 AND user_id=$2`, [athleteId, u.id]);
     if (!ok.rows.length) return res.status(403).json({ message: "No access to this athlete" });
     await (pool as any).query(`UPDATE users SET linked_athlete_id=$1 WHERE id=$2`, [athleteId, u.id]);
+    res.json({ ok: true });
+  });
+
+  // TA/Admin: manage which athletes a share-view account can see, and whether it
+  // may edit each. Accounts stay read-only unless an athlete is toggled editable.
+  app.get("/api/users/:id/athlete-access", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const targetId = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    const u = userInfo(req);
+    const target = await storage.getUser(targetId);
+    if (!target || target.teamId !== teamId) return res.status(404).json({ message: "Not found" });
+    const athletes = await storage.listAthletes(u.id, true, teamId);
+    const { pool } = await import("./db");
+    const grants = await (pool as any).query(`SELECT athlete_id AS "athleteId", can_edit AS "canEdit" FROM athlete_access WHERE user_id=$1`, [targetId]);
+    const byId = new Map<number, number>(grants.rows.map((g: any) => [g.athleteId, g.canEdit]));
+    res.json({
+      isAthleteAccess: (target as any).isAthleteAccess === 1,
+      athletes: athletes.map((a: any) => ({ id: a.id, name: a.name, assigned: byId.has(a.id), canEdit: byId.get(a.id) === 1 })),
+    });
+  });
+
+  app.put("/api/users/:id/athlete-access", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const targetId = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    const target = await storage.getUser(targetId);
+    if (!target || target.teamId !== teamId) return res.status(404).json({ message: "Not found" });
+    const grants: { athleteId: number; canEdit: boolean }[] = Array.isArray(req.body.grants) ? req.body.grants : [];
+    const validIds = new Set((await storage.listAthletes(userInfo(req).id, true, teamId)).map((a: any) => a.id));
+    const clean = grants.filter((g) => validIds.has(g.athleteId));
+    const { pool } = await import("./db");
+    await (pool as any).query(`DELETE FROM athlete_access WHERE user_id=$1`, [targetId]);
+    for (const g of clean) {
+      await (pool as any).query(`INSERT INTO athlete_access (athlete_id, user_id, can_edit) VALUES ($1,$2,$3)`, [g.athleteId, targetId, g.canEdit ? 1 : 0]);
+    }
+    // Recompute permissions: read-only base; raceskis "edit" only if ≥1 editable.
+    const anyEdit = clean.some((g) => g.canEdit);
+    const { DEFAULT_PERMISSIONS } = await import("@shared/schema");
+    let perms: any;
+    try { perms = { ...DEFAULT_PERMISSIONS, ...JSON.parse((target as any).permissions || "{}") }; } catch { perms = { ...DEFAULT_PERMISSIONS }; }
+    perms.dashboard = "view"; perms.tests = "view"; perms.analytics = "view"; perms.suggestions = "view";
+    perms.raceskis = anyEdit ? "edit" : "view";
+    await storage.updateUser(targetId, { permissions: JSON.stringify(perms) } as any);
+    // Keep an active athlete that is still granted.
+    const linked = (target as any).linkedAthleteId;
+    if (!clean.some((g) => g.athleteId === linked)) {
+      await (pool as any).query(`UPDATE users SET linked_athlete_id=$1 WHERE id=$2`, [clean[0]?.athleteId ?? null, targetId]);
+    }
     res.json({ ok: true });
   });
 

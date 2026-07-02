@@ -313,7 +313,15 @@ export async function setupAuth(app: Express) {
       const dfRow = await pool.query(`SELECT date_format FROM users WHERE id = $1`, [safe.id]);
       if (dfRow.rows[0]?.date_format) dateFormat = dfRow.rows[0].date_format;
     } catch {}
-    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat, isAthleteAccess: !!(safe as any).isAthleteAccess, linkedAthleteId: (safe as any).linkedAthleteId ?? null });
+    // Share-view accounts: which of their athletes they may edit (canEdit=1).
+    let editableAthleteIds: number[] = [];
+    if ((safe as any).isAthleteAccess) {
+      try {
+        const er = await pool.query(`SELECT athlete_id FROM athlete_access WHERE user_id = $1 AND can_edit = 1`, [safe.id]);
+        editableAthleteIds = er.rows.map((r: any) => r.athlete_id);
+      } catch {}
+    }
+    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat, isAthleteAccess: !!(safe as any).isAthleteAccess, linkedAthleteId: (safe as any).linkedAthleteId ?? null, editableAthleteIds });
   });
 
   app.post("/api/auth/incognito", (req, res) => {

@@ -5531,10 +5531,15 @@ export async function registerRoutes(
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
     const list = await storage.listAthletes(u.id, u.isScopeAdmin, teamId);
-    // Athlete access users can only see their own athlete
+    // Athlete-access users see every athlete they've been granted (athlete_access),
+    // not only their currently-active one — so all show on the Athlete skis page.
     if ((req.user as any).isAthleteAccess === 1) {
+      const { pool } = await import("./db");
+      const acc = await (pool as any).query(`SELECT athlete_id AS "athleteId" FROM athlete_access WHERE user_id = $1`, [u.id]);
+      const ids = new Set<number>(acc.rows.map((r: any) => r.athleteId));
       const linkedId = (req.user as any).linkedAthleteId;
-      return res.json(list.filter((a: any) => a.id === linkedId));
+      if (linkedId) ids.add(linkedId);
+      return res.json(list.filter((a: any) => ids.has(a.id)));
     }
     res.json(list);
   });
@@ -6057,7 +6062,7 @@ export async function registerRoutes(
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
     // Athlete access users may only view their own linked athlete
-    if (u.isAthleteAccess === 1 && u.linkedAthleteId !== athleteId) return res.status(403).json({ message: "Forbidden" });
+    if (u.isAthleteAccess === 1 && !(await storage.hasAthleteAccess(athleteId, u.id, false, teamId))) return res.status(403).json({ message: "Forbidden" });
     const { pool } = await import("./db");
     const result = await (pool as any).query(
       `SELECT id, athlete_id AS "athleteId", team_id AS "teamId", date, race_name AS "raceName",
@@ -6425,7 +6430,7 @@ export async function registerRoutes(
     const u = req.user as any;
     const teamId = u.activeTeamId || u.teamId;
     // Athlete access users may only view their own linked athlete
-    if (u.isAthleteAccess === 1 && u.linkedAthleteId !== athleteId) return res.status(403).json({ message: "Forbidden" });
+    if (u.isAthleteAccess === 1 && !(await storage.hasAthleteAccess(athleteId, u.id, false, teamId))) return res.status(403).json({ message: "Forbidden" });
     const { pool } = await import("./db");
     const result = await (pool as any).query(
       `SELECT

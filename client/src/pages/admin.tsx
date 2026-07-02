@@ -1704,10 +1704,10 @@ function AdminNav({ activeTab, setActiveTab, isSuperAdmin }: { activeTab: TabId;
 
   return (
     <>
-      {/* Mobile: single dropdown */}
-      <div className="lg:hidden">
+      {/* Dropdown: always on mobile; also on desktop for Super Admin (many tabs). */}
+      <div className={isSuperAdmin ? "" : "lg:hidden"}>
         <Select value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)}>
-          <SelectTrigger data-testid="admin-tab-select"><SelectValue /></SelectTrigger>
+          <SelectTrigger className={isSuperAdmin ? "lg:max-w-xs" : undefined} data-testid="admin-tab-select"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="overview">{t("admin.tabOverview")}</SelectItem>
             {ADMIN_TAB_GROUPS.map((g) => g.ids.filter(canSee).map((id) => (
@@ -1716,8 +1716,8 @@ function AdminNav({ activeTab, setActiveTab, isSuperAdmin }: { activeTab: TabId;
           </SelectContent>
         </Select>
       </div>
-      {/* Desktop: horizontal tab bar */}
-      <div className="hidden lg:flex gap-1 border-b border-border overflow-x-auto" data-testid="admin-nav">
+      {/* Desktop horizontal tab bar — Team Admins only (SA uses the dropdown). */}
+      <div className={cn("gap-1 border-b border-border overflow-x-auto", isSuperAdmin ? "hidden" : "hidden lg:flex")} data-testid="admin-nav">
         {ALL_TABS.filter((tab) => canSee(tab.id)).map((tab) => {
           const Icon = tab.icon;
           const isDanger = tab.id === "danger";

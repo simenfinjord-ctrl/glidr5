@@ -4527,8 +4527,17 @@ export default function Analytics() {
         </div>
 
         {/* Tab bar */}
+        {/* Mobile: a single dropdown instead of a cramped icon row */}
+        <div className="sm:hidden">
+          <Select value={activeTab} onValueChange={(v) => setActiveTab(v)}>
+            <SelectTrigger data-testid="analytics-tab-select"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {TABS.map((tab) => <SelectItem key={tab.id} value={tab.id}>{tab.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
         <div
-          className="flex gap-1 border-b border-border overflow-x-auto px-1"
+          className="hidden sm:flex gap-1 border-b border-border overflow-x-auto px-1"
           style={{ backgroundColor: "hsl(var(--primary) / 0.06)" }}
         >
           {TABS.map((tab) => (

@@ -731,6 +731,61 @@ function TeamPermRow({
   );
 }
 
+// Manage a share-view account's athlete grants + per-athlete edit toggle (TA/Admin).
+function ShareAccountAthletesEditor({ userId }: { userId: number }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { toast } = useToast();
+  const key = [`/api/users/${userId}/athlete-access`];
+  const { data } = useQuery<{ isAthleteAccess: boolean; athletes: { id: number; name: string; assigned: boolean; canEdit: boolean }[] }>({ queryKey: key });
+  const [grants, setGrants] = useState<Record<number, { assigned: boolean; canEdit: boolean }>>({});
+  useEffect(() => {
+    if (data?.athletes) {
+      const m: Record<number, { assigned: boolean; canEdit: boolean }> = {};
+      for (const a of data.athletes) m[a.id] = { assigned: a.assigned, canEdit: a.canEdit };
+      setGrants(m);
+    }
+  }, [data]);
+  const save = useMutation({
+    mutationFn: async () => {
+      const arr = Object.entries(grants).filter(([, v]) => v.assigned).map(([id, v]) => ({ athleteId: Number(id), canEdit: v.canEdit }));
+      return apiRequest("PUT", `/api/users/${userId}/athlete-access`, { grants: arr });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: key }); queryClient.invalidateQueries({ queryKey: ["/api/users"] }); toast({ title: L("Tilgang lagret", "Access saved") }); },
+    onError: (e: any) => toast({ title: L("Feil", "Error"), description: e?.message, variant: "destructive" }),
+  });
+  if (!data?.athletes) return null;
+  return (
+    <div className="rounded-lg border border-border p-3 space-y-2">
+      <div className="text-sm font-semibold text-foreground">{L("Utøvertilgang (delt visning)", "Athlete access (share view)")}</div>
+      <p className="text-xs text-muted-foreground">
+        {L("Velg hvilke utøvere kontoen ser. Hak av «Kan redigere» for å la kontoen redigere den utøveren — ellers er den kun lesetilgang.",
+           "Choose which athletes this account sees. Tick 'Can edit' to let it edit that athlete — otherwise it is read-only.")}
+      </p>
+      <div className="max-h-56 overflow-y-auto space-y-1">
+        {data.athletes.map((a) => {
+          const g = grants[a.id] ?? { assigned: false, canEdit: false };
+          return (
+            <div key={a.id} className="flex items-center justify-between gap-2 rounded bg-muted/30 px-2 py-1.5">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={g.assigned} onChange={(e) => setGrants((p) => ({ ...p, [a.id]: { assigned: e.target.checked, canEdit: e.target.checked ? (p[a.id]?.canEdit ?? false) : false } }))} />
+                {a.name}
+              </label>
+              <label className={cn("flex items-center gap-1.5 text-xs cursor-pointer", !g.assigned && "opacity-40")}>
+                <input type="checkbox" disabled={!g.assigned} checked={g.canEdit} onChange={(e) => setGrants((p) => ({ ...p, [a.id]: { assigned: true, canEdit: e.target.checked } }))} />
+                {L("Kan redigere", "Can edit")}
+              </label>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex justify-end">
+        <Button type="button" size="sm" onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending ? L("Lagrer…", "Saving…") : L("Lagre tilgang", "Save access")}</Button>
+      </div>
+    </div>
+  );
+}
+
 function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDone: () => void; allGroups: ApiGroup[]; teams: ApiTeam[] }) {
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
@@ -1027,6 +1082,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
             <FormMessage />
           </FormItem>
         )} />
+        {!!(user as any).isAthleteAccess && <ShareAccountAthletesEditor userId={user.id} />}
         <div className="flex justify-end">
           <Button type="submit" data-testid="button-save-user" disabled={mutation.isPending}>{L("Lagre", "Save")}</Button>
         </div>

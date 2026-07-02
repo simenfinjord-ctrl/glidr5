@@ -44,6 +44,7 @@ import {
   Trash2,
   ChevronDown,
   Flag,
+  CheckCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1460,19 +1461,19 @@ function InboxDrawer({
         onClick={onClose}
       />
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 z-[100] w-full max-w-md bg-card shadow-2xl flex flex-col">
+      <div className="fixed inset-y-0 right-0 z-[100] w-full max-w-md bg-card shadow-2xl flex flex-col" style={{ paddingTop: "env(safe-area-inset-top)", paddingRight: "env(safe-area-inset-right)" }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-          <div className="flex items-center gap-2">
-            <Bell className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Notifications</h2>
+        <div className="flex items-center justify-between gap-2 px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <Bell className="h-4 w-4 text-muted-foreground shrink-0" />
+            <h2 className="text-sm font-semibold truncate">Notifications</h2>
             {messages.filter(m => !m.isRead).length > 0 && (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white shrink-0">
                 {messages.filter(m => !m.isRead).length}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 shrink-0">
             <Button
               variant="ghost"
               size="sm"
@@ -1485,9 +1486,10 @@ function InboxDrawer({
                 } catch {}
               }}
             >
-              Mark all read
+              <span className="hidden sm:inline">Mark all read</span>
+              <CheckCheck className="h-4 w-4 sm:hidden" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onClose}>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={onClose} aria-label="Close" data-testid="inbox-close">
               <X className="h-4 w-4" />
             </Button>
           </div>

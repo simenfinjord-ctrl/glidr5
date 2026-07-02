@@ -413,6 +413,7 @@ export default function TestSkis() {
   const [sortAZ, setSortAZ] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
   const [nameSearch, setNameSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "Glide" | "Grind" | "Structure">("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState<Series | undefined>();
   const [confirmDelete, setConfirmDelete] = useState<Series | undefined>();
@@ -431,9 +432,10 @@ export default function TestSkis() {
   const sortedSeries = useMemo(() => {
     const n = nameSearch.trim().toLowerCase();
     let result = n ? series.filter((s) => s.name.toLowerCase().includes(n)) : series;
+    if (typeFilter !== "all") result = result.filter((s) => s.type === typeFilter);
     if (sortAZ) result = [...result].sort((a, b) => a.name.localeCompare(b.name, "nb"));
     return result;
-  }, [series, sortAZ, nameSearch]);
+  }, [series, sortAZ, nameSearch, typeFilter]);
 
   function seriesTypeLabel(type: string) {
     const map: Record<string, string> = { "Glide": "tests.glide", "Grind": "tests.grind", "Structure": "tests.structure" };
@@ -490,7 +492,7 @@ export default function TestSkis() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("testskis.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="text-testskis-subtitle">
-              {sortedSeries.length}{sortedSeries.length !== series.length ? ` of ${series.length}` : ""} series{archived.length > 0 ? ` · ${archived.length} archived` : ""}
+              {sortedSeries.length}{sortedSeries.length !== series.length ? ` of ${series.length}` : ""} {L("fleets", "fleets")}{archived.length > 0 ? ` · ${archived.length} ${L("arkivert", "archived")}` : ""}
             </p>
           </div>
 
@@ -530,6 +532,16 @@ export default function TestSkis() {
               className={cn("h-9 w-[180px]", !filtersOpen && "hidden sm:block")}
               data-testid="input-search-series"
             />
+
+            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+              <SelectTrigger className={cn("h-9 w-[150px]", !filtersOpen && "hidden sm:flex")} data-testid="filter-series-type"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{L("Alle typer", "All types")}</SelectItem>
+                <SelectItem value="Glide">{t("tests.glide")}</SelectItem>
+                <SelectItem value="Grind">{t("tests.grind")}</SelectItem>
+                <SelectItem value="Structure">{t("tests.structure")}</SelectItem>
+              </SelectContent>
+            </Select>
 
             {archived.length > 0 && (
               <Button

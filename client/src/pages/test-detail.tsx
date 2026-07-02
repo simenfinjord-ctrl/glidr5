@@ -1594,7 +1594,7 @@ export default function TestDetail() {
               {t("testDetail.noEntries")}
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="eg-stack overflow-x-auto">
               <table className="w-full text-sm" data-testid="table-results">
                 <thead>
                   <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground select-none">
@@ -1658,7 +1658,7 @@ export default function TestDetail() {
                           })()}
                         </td>
                         {!isGrind && (
-                          <td className="py-3 pr-5" data-testid={`text-product-${entry.id}`}>
+                          <td className="py-3 pr-5" data-label={t("tests.product")} data-testid={`text-product-${entry.id}`}>
                             {hideDetails ? "" : (
                               productEntries.length > 0 ? (
                                 <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -1676,16 +1676,16 @@ export default function TestDetail() {
                           </td>
                         )}
                         {isGrind && visibleGrindCols.map((col) => (
-                          <td key={col} className="py-3 pr-3 text-sm text-muted-foreground" data-testid={`text-grind-${col}-${entry.id}`}>
+                          <td key={col} className="py-3 pr-3 text-sm text-muted-foreground" data-label={formatGrindColLabel(col)} data-testid={`text-grind-${col}-${entry.id}`}>
                             {getEntryGrindValue(entry, col) ?? <span className="opacity-40">—</span>}
                           </td>
                         ))}
                         {rounds.map((rr, roundIdx) => (
-                          <td key={`res-${roundIdx}`} className="py-3 pr-3 font-mono text-sm" data-testid={`text-result-${roundIdx}-${entry.id}`}>
+                          <td key={`res-${roundIdx}`} className="py-3 pr-3 font-mono text-sm" data-label={((distLabels[roundIdx]?.trim() || L("Resultat", "Result"))) + " (cm)"} data-testid={`text-result-${roundIdx}-${entry.id}`}>
                             {rr.result ?? "—"}
                           </td>
                         ))}
-                        <td className="py-3 pr-3">
+                        <td className="py-3 pr-3" data-label={t("common.rank")}>
                           <div className="flex items-center gap-2">
                             <RankBadge rank={displayRank} size="lg" />
                             {!hideDetails && displayRank === 1 && (
@@ -1698,7 +1698,7 @@ export default function TestDetail() {
                             )}
                           </div>
                         </td>
-                        <td className="py-3" data-testid={`text-feeling-${entry.id}`}>
+                        <td className="py-3" data-label={t("newTest.feeling")} data-testid={`text-feeling-${entry.id}`}>
                           {entry.feelingRank != null ? (
                             <div className="flex flex-col gap-0.5">
                               <span className="inline-flex min-w-8 w-fit items-center justify-center rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-semibold text-violet-700">
@@ -1713,7 +1713,7 @@ export default function TestDetail() {
                           ) : "—"}
                         </td>
                         {isClassic && (
-                        <td className="py-3 pl-3" data-testid={`text-kick-${entry.id}`}>
+                        <td className="py-3 pl-3" data-label={t("newTest.kick")} data-testid={`text-kick-${entry.id}`}>
                           {entry.kickRank != null ? (
                             <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-orange-500/15 px-2 py-0.5 text-xs font-semibold text-orange-700">
                               {entry.kickRank}

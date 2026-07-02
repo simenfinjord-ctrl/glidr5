@@ -2900,7 +2900,7 @@ export default function Admin() {
   async function downloadFullPdf(exportScopeParam?: string) {
     setPdfLoading(true);
     try {
-      const scope = exportScopeParam !== undefined ? exportScopeParam : "";
+      const scope = typeof exportScopeParam === "string" ? exportScopeParam : "";
       const exportRes = await apiRequest("GET", `/api/admin/full-export${scope}`);
       const rawText = await exportRes.text();
       let data: any;
@@ -3919,7 +3919,7 @@ export default function Admin() {
             <Button
               variant="outline"
               data-testid="button-download-pdf"
-              onClick={downloadFullPdf}
+              onClick={() => downloadFullPdf()}
               disabled={pdfLoading}
             >
               {pdfLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}

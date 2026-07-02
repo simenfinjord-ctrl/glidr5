@@ -1181,6 +1181,10 @@ export default function AthleteDetail() {
   const isOwnerOrAdmin =
     user?.isAdmin || user?.isTeamAdmin || (athlete && user?.id === athlete.createdById);
   const hasAthleteAccess = isOwnerOrAdmin || access.some((a) => a.userId === user?.id);
+  // Share-view (athlete-access) accounts are read-only unless the TA has granted
+  // edit on THIS athlete (canEdit → editableAthleteIds).
+  const shareViewReadOnly = !!(user as any)?.isAthleteAccess
+    && !((user as any)?.editableAthleteIds ?? []).includes(athleteId ?? -1);
 
   // Import CSV state
   const [csvImportOpen, setCsvImportOpen] = useState(false);
@@ -2777,7 +2781,7 @@ export default function AthleteDetail() {
 
                 // Ski-pair editing: anyone with access to this athlete may register the ski pair.
                 // (Viewing this page already requires athlete access; the server re-checks.)
-                const canEditSki = !!athleteId && !isAthletePortal;
+                const canEditSki = !!athleteId && !isAthletePortal && !shareViewReadOnly;
                 const skiLang: "no" | "en" = language === "no" ? "no" : "en";
                 const onSkiSaved = () => queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/race-history`] });
 
@@ -2986,7 +2990,7 @@ export default function AthleteDetail() {
                 <Filter className="h-3 w-3 mr-1" />
                 Filter
               </Button>
-              {!isAthletePortal && (
+              {!isAthletePortal && !shareViewReadOnly && (
                 <>
                   <Button
                     variant="outline"
@@ -3252,10 +3256,10 @@ export default function AthleteDetail() {
                                 <td colSpan={visibleGarageColumns.length + 2} className="px-4 py-3 bg-indigo-50/20 dark:bg-indigo-950/10">
                                   <SkiDetailPanel
                                     ski={ski}
-                                    onEdit={() => openEditSki(ski)}
-                                    onArchive={() => { if (confirm("Archive this ski? It can be restored later.")) archiveSkiMutation.mutate(ski.id); }}
-                                    onRegrind={() => openRegrind(ski.id)}
-                                    onDeleteRegrind={(id) => { if (confirm("Delete this regrind record?")) deleteRegrindMutation.mutate(id); }}
+                                    onEdit={shareViewReadOnly ? undefined : () => openEditSki(ski)}
+                                    onArchive={shareViewReadOnly ? undefined : () => { if (confirm("Archive this ski? It can be restored later.")) archiveSkiMutation.mutate(ski.id); }}
+                                    onRegrind={shareViewReadOnly ? undefined : () => openRegrind(ski.id)}
+                                    onDeleteRegrind={shareViewReadOnly ? undefined : (id) => { if (confirm("Delete this regrind record?")) deleteRegrindMutation.mutate(id); }}
                                     raceHistory={raceHistory}
                                     weatherList={weather}
                                   />

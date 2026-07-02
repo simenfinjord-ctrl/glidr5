@@ -1716,20 +1716,29 @@ function AdminNav({ activeTab, setActiveTab, isSuperAdmin }: { activeTab: TabId;
           </SelectContent>
         </Select>
       </div>
-      {/* Desktop: grouped left menu */}
-      <nav className="hidden lg:block w-52 shrink-0 space-y-1" data-testid="admin-nav">
-        {item("overview")}
-        {ADMIN_TAB_GROUPS.map((g) => {
-          const ids = g.ids.filter(canSee);
-          if (ids.length === 0) return null;
+      {/* Desktop: horizontal tab bar */}
+      <div className="hidden lg:flex gap-1 border-b border-border overflow-x-auto" data-testid="admin-nav">
+        {ALL_TABS.filter((tab) => canSee(tab.id)).map((tab) => {
+          const Icon = tab.icon;
+          const isDanger = tab.id === "danger";
           return (
-            <div key={g.labelEn} className="pt-3">
-              <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">{L(g.labelNo, g.labelEn)}</div>
-              {ids.map((id) => item(id))}
-            </div>
+            <button
+              key={tab.id}
+              data-testid={`tab-${tab.id}`}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+                activeTab === tab.id
+                  ? "border-green-600 text-green-700 dark:text-green-400"
+                  : isDanger ? "border-transparent text-red-600 hover:text-red-700" : "border-transparent text-muted-foreground hover:text-foreground/80",
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {t(tab.labelKey)}
+            </button>
           );
         })}
-      </nav>
+      </div>
     </>
   );
 }
@@ -3928,7 +3937,7 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 lg:flex-row lg:gap-6" data-testid="admin-body">
+        <div className="flex flex-col gap-4" data-testid="admin-body">
         <AdminNav activeTab={activeTab} setActiveTab={setActiveTab} isSuperAdmin={isSuperAdmin} />
         <div className="min-w-0 flex-1 flex flex-col gap-5">
 

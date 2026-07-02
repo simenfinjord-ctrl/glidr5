@@ -325,3 +325,18 @@
     animation: highlight-pulse 1.5s ease-in-out infinite;
   }
 }
+
+/* Responsive "stack" pattern: on phones a wide table becomes a card list where
+   each row is a card and each cell shows its data-label. Add class "eg-stack"
+   to the scroll wrapper around a <table> and data-label="..." to each <td>. */
+@media (max-width: 767px) {
+  .eg-stack { overflow-x: visible !important; border: none !important; background: transparent !important; border-radius: 0 !important; }
+  .eg-stack table { min-width: 0 !important; display: block; width: 100%; }
+  .eg-stack thead { display: none; }
+  .eg-stack tbody { display: block; }
+  .eg-stack tbody tr { display: block; border: 1px solid hsl(var(--border)); border-radius: 12px; padding: 6px 12px 10px; margin-bottom: 12px; background: hsl(var(--card)); }
+  .eg-stack tbody td { display: flex; align-items: center; justify-content: space-between; gap: 10px; position: static !important; padding: 6px 0; width: auto !important; text-align: left !important; }
+  .eg-stack tbody td[data-label]::before { content: attr(data-label); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: hsl(var(--muted-foreground)); flex-shrink: 0; }
+  .eg-stack tbody td input, .eg-stack tbody td select { width: auto !important; min-width: 0; flex: 1; max-width: 64%; }
+  .eg-stack tbody td:not([data-label]):empty { display: none; }
+}

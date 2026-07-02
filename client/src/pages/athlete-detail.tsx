@@ -3188,7 +3188,7 @@ export default function AthleteDetail() {
                   </DropdownMenu>
                 </div>
                 <Card className="fs-card rounded-2xl overflow-hidden" data-testid="ski-list-view">
-                  <div className="overflow-x-auto">
+                  <div className="eg-stack overflow-x-auto">
                     <table className="w-full border-separate border-spacing-0 text-sm">
                       <thead>
                         <tr className="text-left text-xs text-muted-foreground border-b select-none">
@@ -3224,7 +3224,7 @@ export default function AthleteDetail() {
                                 </span>
                               </td>
                               {visibleGarageColumns.map((col) => (
-                                <td key={col.key} className={cn("px-3 py-2.5", col.key === "discipline" || col.key === "color" ? "" : "text-muted-foreground")}>
+                                <td key={col.key} data-label={col.label} className={cn("px-3 py-2.5", col.key === "discipline" || col.key === "color" ? "" : "text-muted-foreground")}>
                                   {col.key === "discipline" ? (
                                     <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800 whitespace-nowrap">
                                       {ski.discipline}

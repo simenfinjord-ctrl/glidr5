@@ -105,6 +105,7 @@ function NorwegianContent() {
           <div>
             <h3 className="font-semibold text-foreground mb-2">7. Tilgjengelighet og ansvar</h3>
             <p className="mb-2">Vi tilstreber 99,5 % oppetid, men garanterer ikke uavbrutt tilgang. Glidr er ikke ansvarlig for tap som følge av nedetid, datafeil eller tjenesteforstyrrelser.</p>
+            <p className="mb-2">Glidr kan når som helst, og etter eget skjønn, endre, midlertidig stanse eller permanent avvikle hele eller deler av tjenesten – med eller uten forvarsel. Der det er praktisk mulig gir vi rimelig varsel og mulighet til å eksportere data før en permanent avvikling. Glidr er ikke ansvarlig overfor deg eller tredjepart for slik endring, stans eller avvikling.</p>
             <p>Glidr er uansett ikke ansvarlig for indirekte tap, tap av fortjeneste, konkurranseresultater eller beslutninger tatt på grunnlag av analysene i plattformen.</p>
           </div>
 

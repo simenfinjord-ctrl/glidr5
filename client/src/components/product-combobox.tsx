@@ -14,7 +14,8 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
 type TestType = "Glide" | "Structure" | "Classic" | "Skating" | "Double Poling";
-type ProductCategory = "Glide product" | "Topping product" | "Structure tool";
+// Products are categorised as Paraffin / Liquid / Block / Structure Tool.
+type ProductCategory = "Paraffin" | "Liquid" | "Block" | "Structure Tool";
 
 type Product = {
   id: number;
@@ -24,9 +25,10 @@ type Product = {
 };
 
 function categoriesFor(testType: TestType): ProductCategory[] {
-  if (testType === "Glide" || testType === "Classic" || testType === "Skating" || testType === "Double Poling")
-    return ["Glide product", "Topping product"];
-  return ["Structure tool"];
+  // Glide (and classic/skating) tests use all glide products; Structure tests
+  // only show structure tools.
+  if (testType === "Structure") return ["Structure Tool"];
+  return ["Paraffin", "Liquid", "Block"];
 }
 
 export function ProductCombobox({

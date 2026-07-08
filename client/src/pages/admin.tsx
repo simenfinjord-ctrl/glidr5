@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import {
   Plus, Pencil, DollarSign, Trash2, KeyRound, Check, X, Clock, Download, EyeOff,
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
-  Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle,
+  Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle, Sparkles,
   HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash, RotateCcw,
   MessageSquare, UserPlus, FileText, ExternalLink, LayoutDashboard, CreditCard, Mail,
 } from "lucide-react";
@@ -24,6 +24,7 @@ import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -1208,6 +1209,15 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
     onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
+  // What's new (#9): SA-authored release note shown once to all users.
+  const [whatsNewType, setWhatsNewType] = useState<"feature" | "fix" | "update">("update");
+  const [whatsNewText, setWhatsNewText] = useState("");
+  const publishWhatsNewMutation = useMutation({
+    mutationFn: async () => { const res = await apiRequest("POST", "/api/admin/whats-new", { type: whatsNewType, text: whatsNewText }); return res.json(); },
+    onSuccess: () => { setWhatsNewText(""); queryClient.invalidateQueries({ queryKey: ["/api/whats-new"] }); toast({ title: L("«Nytt i Glidr» publisert", "'What's new' published"), description: L("Vises som popup til alle brukere.", "Shown as a popup to all users.") }); },
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
+  });
+
   // Active sessions
   const { data: sessions = [], refetch: refetchSessions } = useQuery<ActiveSession[]>({
     queryKey: ["/api/admin/active-sessions"],
@@ -1334,6 +1344,34 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
           >
             <span className={cn("pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform", broadcastEnabled ? "translate-x-[22px]" : "translate-x-[2px]")} />
           </button>
+        </div>
+      </Card>
+
+      {/* What's new (#9) */}
+      <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span className="font-semibold text-foreground">{L("Nytt i Glidr", "What's new")}</span>
+        </div>
+        <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+          {L("Publiser en kort melding som vises som popup til alle brukere én gang — bruk denne hver gang du deployer noe nytt.",
+             "Publish a short note shown once as a popup to all users — use this whenever you deploy something new.")}
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Select value={whatsNewType} onValueChange={(v) => setWhatsNewType(v as any)}>
+            <SelectTrigger className="h-9 w-full sm:w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="feature">{L("Ny funksjon", "New feature")}</SelectItem>
+              <SelectItem value="fix">{L("Feilretting", "Bug fix")}</SelectItem>
+              <SelectItem value="update">{L("Oppdatering", "Update")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <Textarea value={whatsNewText} onChange={(e) => setWhatsNewText(e.target.value)} rows={2} className="flex-1" placeholder={L("Hva er nytt? …", "What's new? …")} data-testid="whats-new-text" />
+        </div>
+        <div className="mt-2 flex justify-end">
+          <Button size="sm" onClick={() => publishWhatsNewMutation.mutate()} disabled={publishWhatsNewMutation.isPending || !whatsNewText.trim()} data-testid="button-publish-whats-new">
+            {publishWhatsNewMutation.isPending ? L("Publiserer…", "Publishing…") : L("Publiser", "Publish")}
+          </Button>
         </div>
       </Card>
 

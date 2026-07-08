@@ -5205,6 +5205,30 @@ export async function registerRoutes(
     res.json(JSON.parse(value));
   });
 
+  // ── What's new (#9) ────────────────────────────────────────────────────────
+  // SA-authored release note shown once to every user. Type = feature/fix/update.
+  app.get("/api/whats-new", async (_req, res) => {
+    try {
+      const { pool } = await import("./db");
+      const r = await (pool as any).query(`SELECT value FROM app_settings WHERE key = 'whats_new'`);
+      res.json(r.rows[0]?.value ? JSON.parse(r.rows[0].value) : null);
+    } catch { res.json(null); }
+  });
+
+  app.post("/api/admin/whats-new", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const type = ["feature", "fix", "update"].includes(req.body.type) ? req.body.type : "update";
+    const text = String(req.body.text ?? "").trim().slice(0, 2000);
+    if (!text) return res.status(400).json({ message: "Text required" });
+    const value = JSON.stringify({ id: Date.now(), type, text, updatedAt: Date.now() });
+    const { pool } = await import("./db");
+    await (pool as any).query(
+      `INSERT INTO app_settings (key, value) VALUES ('whats_new', $1)
+       ON CONFLICT (key) DO UPDATE SET value = $1`, [value]);
+    res.json(JSON.parse(value));
+  });
+
   // List all active sessions with user info
   app.get("/api/admin/active-sessions", requireAuth, async (req, res) => {
     const u = userInfo(req);

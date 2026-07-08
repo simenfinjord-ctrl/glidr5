@@ -1,50 +1,59 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
-// #39: a center-screen "What's new" popup shown once per release. Users can
-// opt out of future popups. Bump WHATS_NEW_VERSION and edit the items when you
-// ship notable updates.
+// #9: a center-screen "What's new" popup shown once per release note. The note
+// is authored by the Super Admin (Admin → What's new) with a type
+// (feature / fix / update); it pops up once per note id. Users can opt out.
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 import { useLanguage } from "@/lib/language";
+import { getQueryFn } from "@/lib/queryClient";
 
-export const WHATS_NEW_VERSION = "2026-06-21";
+type WhatsNew = { id: number; type: "feature" | "fix" | "update"; text: string } | null;
 
-const ITEMS: { no: string; en: string }[] = [
-  { no: "Fritekst-ski og -produkt i tester (lånt utstyr) som ikke påvirker analysen.", en: "Free-text ski/product in tests (borrowed gear) excluded from analytics." },
-  { no: "Sorterbare resultatkolonner i race-ski-tester — huskes per smører.", en: "Sortable result columns in race-ski tests — remembered per waxer." },
-  { no: "Kick-solution per skipar på klassisk-tester, og «Rangér på diff/feeling».", en: "Kick solution per ski pair on classic tests, and Rank by diff/feel." },
-  { no: "Testfleets: slipehistorikk og Action-status (Need regrind / In use …).", en: "Testfleets: regrind history and Action status (Need regrind / In use …)." },
-  { no: "Garage: farge-sortering, US-Grind-filter, og «Antall renn» per skipar.", en: "Garage: colour sort, US-Grind filter, and times-raced per ski pair." },
-  { no: "«Ikke legg til vær», valgfri dato på løpsbruk, og Feedback-knapp.", en: "“Do not add weather”, optional race-use date, and a Feedback button." },
-];
-
-const KEY = "glidr-whatsnew-seen";
+const SEEN_KEY = "glidr-whatsnew-seen-id";
 const MUTE_KEY = "glidr-whatsnew-mute";
+
+const TYPE_STYLE: Record<string, string> = {
+  feature: "bg-emerald-100 text-emerald-700 ring-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-300",
+  fix: "bg-amber-100 text-amber-800 ring-amber-300 dark:bg-amber-900/30 dark:text-amber-300",
+  update: "bg-sky-100 text-sky-700 ring-sky-300 dark:bg-sky-900/30 dark:text-sky-300",
+};
 
 export function WhatsNewDialog() {
   const { lang } = useLanguage();
   const L = (no: string, en: string) => (lang === "en" ? en : no);
   const [open, setOpen] = useState(false);
   const [dontShow, setDontShow] = useState(false);
+  const { data } = useQuery<WhatsNew>({
+    queryKey: ["/api/whats-new"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+  });
 
   useEffect(() => {
+    if (!data?.id) return;
     try {
       if (localStorage.getItem(MUTE_KEY) === "1") return;
-      if (localStorage.getItem(KEY) !== WHATS_NEW_VERSION) {
+      if (localStorage.getItem(SEEN_KEY) !== String(data.id)) {
         const t = setTimeout(() => setOpen(true), 1200);
         return () => clearTimeout(t);
       }
     } catch {}
-  }, []);
+  }, [data?.id]);
 
   const close = () => {
     try {
-      localStorage.setItem(KEY, WHATS_NEW_VERSION);
+      if (data?.id) localStorage.setItem(SEEN_KEY, String(data.id));
       if (dontShow) localStorage.setItem(MUTE_KEY, "1");
     } catch {}
     setOpen(false);
   };
+
+  if (!data) return null;
+  const typeLabel = data.type === "feature" ? L("Ny funksjon", "New feature")
+    : data.type === "fix" ? L("Feilretting", "Bug fix")
+    : L("Oppdatering", "Update");
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) close(); }}>
@@ -55,14 +64,12 @@ export function WhatsNewDialog() {
             {L("Nytt i Glidr", "What's new in Glidr")}
           </DialogTitle>
         </DialogHeader>
-        <ul className="space-y-2 text-sm">
-          {ITEMS.map((it, i) => (
-            <li key={i} className="flex items-start gap-2">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-              <span>{L(it.no, it.en)}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-3">
+          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${TYPE_STYLE[data.type] ?? TYPE_STYLE.update}`}>
+            {typeLabel}
+          </span>
+          <p className="text-sm whitespace-pre-wrap leading-relaxed">{data.text}</p>
+        </div>
         <div className="mt-2 flex items-center justify-between gap-3">
           <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
             <input type="checkbox" checked={dontShow} onChange={(e) => setDontShow(e.target.checked)} className="h-3.5 w-3.5" data-testid="whats-new-dont-show" />

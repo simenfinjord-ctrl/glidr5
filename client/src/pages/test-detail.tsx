@@ -1654,7 +1654,11 @@ export default function TestDetail() {
                     // Pair each product with its parsed application (pipe-separated)
                     const appParts = entry.methodology ? entry.methodology.split("|") : [];
                     const productEntries = [
-                      product ? { name: `${product.brand} ${product.name}`, app: parseApplication(appParts[0]?.trim() ?? "").interpreted } : null,
+                      product
+                        ? { name: `${product.brand} ${product.name}`, app: parseApplication(appParts[0]?.trim() ?? "").interpreted }
+                        : ((entry as any).freeTextProduct
+                            ? { name: (entry as any).freeTextProduct as string, app: parseApplication(appParts[0]?.trim() ?? "").interpreted }
+                            : null),
                       ...additionalIds.map((aid, i) => {
                         const p = productsById.get(aid);
                         return p ? { name: `${p.brand} ${p.name}`, app: parseApplication(appParts[i + 1]?.trim() ?? "").interpreted } : null;

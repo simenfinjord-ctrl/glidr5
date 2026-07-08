@@ -93,7 +93,7 @@ function parseSingleToken(raw: string): string {
   const layerMatch = t.match(/^[x*×](\d+)$/) || t.match(/^(\d+)[x*×]$/);
   if (layerMatch) {
     const num = layerMatch[1] ?? layerMatch[2] ?? '?';
-    return `× ${num} stryk`;
+    return `× ${num}`;
   }
 
   // Bare number with no unit → interpret as Celsius (e.g. "200" → "200°C")

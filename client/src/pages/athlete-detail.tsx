@@ -6940,6 +6940,63 @@ function RaceSkiTestCard({
     }
   }, [relevantEntries, reorderMode]);
 
+  // Click a column header to sort this test's result rows in place (like Ski garage).
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const sortValFor = (entry: TestEntry, key: string): string | number | null => {
+    const ski = entry.raceSkiId ? raceSkiById.get(entry.raceSkiId) : undefined;
+    switch (key) {
+      case "skiId": return ski?.skiId ?? entry.skiNumber ?? null;
+      case "serialNumber": return ski?.serialNumber ?? null;
+      case "brand": return ski?.brand ?? null;
+      case "discipline": return ski?.discipline ?? null;
+      case "construction": return ski?.construction ?? null;
+      case "mold": return (ski as any)?.mold ?? null;
+      case "base": return (ski as any)?.base ?? null;
+      case "grind": return ski?.grind ?? null;
+      case "heights": return (ski as any)?.heights ?? null;
+      case "year": return (ski as any)?.year ?? null;
+      case "result": return entry.result0kmCmBehind ?? null;
+      case "rank": return entry.rank0km ?? null;
+      case "feeling": return entry.feelingRank ?? null;
+      case "feelingNote": return (entry as any).feelingNote ?? null;
+      case "kickSolution": return (entry as any).kickSolution ?? null;
+      case "methodology": return entry.methodology ?? null;
+      default: return null;
+    }
+  };
+  const displayEntries = useMemo(() => {
+    if (!sortKey) return relevantEntries;
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...relevantEntries].sort((a, b) => {
+      const va = sortValFor(a, sortKey);
+      const vb = sortValFor(b, sortKey);
+      if (va === null && vb === null) return 0;
+      if (va === null) return 1; // nulls always last
+      if (vb === null) return -1;
+      const na = typeof va === "number" ? va : parseFloat(String(va));
+      const nb = typeof vb === "number" ? vb : parseFloat(String(vb));
+      if (!isNaN(na) && !isNaN(nb)) return (na - nb) * dir;
+      return String(va).localeCompare(String(vb)) * dir;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [relevantEntries, sortKey, sortDir, raceSkiById]);
+  const toggleSort = (key: string) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir("asc"); }
+  };
+  const sortArrow = (key: string) => (sortKey === key ? (sortDir === "asc" ? " ↑" : " ↓") : "");
+  const Th = (key: string, label: string) => (
+    <th
+      className="px-3 py-2 cursor-pointer select-none hover:text-foreground whitespace-nowrap"
+      onClick={() => toggleSort(key)}
+      data-testid={`sort-test-${test.id}-${key}`}
+      title={L("Trykk for å sortere", "Click to sort")}
+    >
+      {label}{sortArrow(key)}
+    </th>
+  );
+
   function moveEntryUp(idx: number) {
     if (idx <= 0) return;
     setOrderedEntries((prev) => {
@@ -7154,27 +7211,27 @@ function RaceSkiTestCard({
               <thead>
                 <tr className="text-left text-muted-foreground">
                   {reorderMode && <th className="px-2 py-2 w-16"></th>}
-                  {activeTestColumns.includes("skiId") && <th className="px-3 py-2">{L("Ski-ID", "Ski ID")}</th>}
-                  {!activeTestColumns.includes("skiId") && <th className="px-3 py-2">Ski</th>}
-                  {activeTestColumns.includes("serialNumber") && <th className="px-3 py-2">{L("Serienr.", "Serial")}</th>}
-                  {activeTestColumns.includes("brand") && <th className="px-3 py-2">{L("Merke", "Brand")}</th>}
-                  {activeTestColumns.includes("discipline") && <th className="px-3 py-2">{L("Stilart", "Discipline")}</th>}
-                  {activeTestColumns.includes("construction") && <th className="px-3 py-2">{L("Konstruksjon", "Construction")}</th>}
-                  {activeTestColumns.includes("mold") && <th className="px-3 py-2">Mold</th>}
-                  {activeTestColumns.includes("base") && <th className="px-3 py-2">Base</th>}
-                  {activeTestColumns.includes("grind") && <th className="px-3 py-2">{L("Slip", "Grind")}</th>}
-                  {activeTestColumns.includes("heights") && <th className="px-3 py-2">{L("Høyder", "Heights")}</th>}
-                  {activeTestColumns.includes("year") && <th className="px-3 py-2">Year</th>}
-                  {activeTestColumns.includes("result") && <th className="px-3 py-2">{L("Resultat", "Result")}</th>}
-                  {activeTestColumns.includes("rank") && <th className="px-3 py-2">Rank</th>}
-                  {activeTestColumns.includes("feeling") && <th className="px-3 py-2">{L("Følelse", "Feeling")}</th>}
-                  {activeTestColumns.includes("feelingNote") && <th className="px-3 py-2">{L("Feeling-notat", "Feeling note")}</th>}
-                  {activeTestColumns.includes("kickSolution") && <th className="px-3 py-2">Kick solution</th>}
-                  {activeTestColumns.includes("methodology") && <th className="px-3 py-2">{L("Metodikk", "Methodology")}</th>}
+                  {activeTestColumns.includes("skiId") && Th("skiId", L("Ski-ID", "Ski ID"))}
+                  {!activeTestColumns.includes("skiId") && Th("skiId", "Ski")}
+                  {activeTestColumns.includes("serialNumber") && Th("serialNumber", L("Serienr.", "Serial"))}
+                  {activeTestColumns.includes("brand") && Th("brand", L("Merke", "Brand"))}
+                  {activeTestColumns.includes("discipline") && Th("discipline", L("Stilart", "Discipline"))}
+                  {activeTestColumns.includes("construction") && Th("construction", L("Konstruksjon", "Construction"))}
+                  {activeTestColumns.includes("mold") && Th("mold", "Mold")}
+                  {activeTestColumns.includes("base") && Th("base", "Base")}
+                  {activeTestColumns.includes("grind") && Th("grind", L("Slip", "Grind"))}
+                  {activeTestColumns.includes("heights") && Th("heights", L("Høyder", "Heights"))}
+                  {activeTestColumns.includes("year") && Th("year", "Year")}
+                  {activeTestColumns.includes("result") && Th("result", L("Resultat", "Result"))}
+                  {activeTestColumns.includes("rank") && Th("rank", "Rank")}
+                  {activeTestColumns.includes("feeling") && Th("feeling", L("Følelse", "Feeling"))}
+                  {activeTestColumns.includes("feelingNote") && Th("feelingNote", L("Feeling-notat", "Feeling note"))}
+                  {activeTestColumns.includes("kickSolution") && Th("kickSolution", "Kick solution")}
+                  {activeTestColumns.includes("methodology") && Th("methodology", L("Metodikk", "Methodology"))}
                 </tr>
               </thead>
               <tbody>
-                {(reorderMode ? orderedEntries : relevantEntries).map((entry, idx) => {
+                {(reorderMode ? orderedEntries : displayEntries).map((entry, idx) => {
                   const linkedSki = entry.raceSkiId ? raceSkiById.get(entry.raceSkiId) : undefined;
                   return (
                   <tr key={entry.id} className="border-t" data-testid={`row-test-result-${entry.id}`}>

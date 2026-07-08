@@ -4265,11 +4265,11 @@ export default function Admin() {
                   return (
                     <div
                       key={u.id}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2"
+                      className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
                       data-testid={`row-user-${u.id}`}
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <span className="text-sm font-medium text-foreground">{u.name}</span>
                           <span className="text-xs text-muted-foreground">{u.email}</span>
                           {u.username && <span className="text-xs text-muted-foreground/70">@{u.username}</span>}
@@ -4317,7 +4317,7 @@ export default function Admin() {
                           {permSummary}{totalActive > 0 && ` — ${permDetail}`}
                         </div>
                       </div>
-                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                      <div className="flex flex-wrap items-center justify-end gap-0.5 flex-shrink-0 border-t border-border/50 pt-2 sm:border-0 sm:pt-0">
                         <button
                           disabled={u.fromOtherTeam}
                           className={cn(

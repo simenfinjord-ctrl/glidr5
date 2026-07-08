@@ -9,6 +9,7 @@ const translations: Record<string, Record<string, string>> = {
     // ── Navigation ──────────────────────────────────────────────────────────
     "nav.dashboard": "Dashboard",
     "nav.tests": "Tests",
+    "nav.allTeamsTests": "All teams",
     "nav.testskis": "Testfleets",
     "nav.products": "Products",
     "nav.weather": "Weather",
@@ -1362,6 +1363,7 @@ const translations: Record<string, Record<string, string>> = {
     // ── Navigasjon ───────────────────────────────────────────────────────────
     "nav.dashboard": "Oversikt",
     "nav.tests": "Tester",
+    "nav.allTeamsTests": "Alle lag",
     "nav.testskis": "Testfleets",
     "nav.products": "Produkter",
     "nav.weather": "Vær",

@@ -21,6 +21,7 @@ import TestSkis from "@/pages/testskis";
 import SeriesDetail from "@/pages/series-detail";
 import Weather from "@/pages/weather";
 import Tests from "@/pages/tests";
+import CrossTeamTests from "@/pages/cross-team-tests";
 import NewTest from "@/pages/new-test";
 import TestDetail from "@/pages/test-detail";
 import EditTest from "@/pages/edit-test";
@@ -78,6 +79,7 @@ function Router() {
       <Route path="/weather/missing" component={MissingWeather} />
       <Route path="/weather" component={Weather} />
       <Route path="/tests" component={Tests} />
+      <Route path="/all-teams-tests" component={CrossTeamTests} />
       <Route path="/tests/new" component={NewTest} />
       <Route path="/tests/:id/edit" component={EditTest} />
       <Route path="/tests/:id" component={TestDetail} />

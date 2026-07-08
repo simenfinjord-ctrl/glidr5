@@ -196,6 +196,54 @@ function verifyTeamOwnership(record: any, req: Request): boolean {
   return record.teamId === teamId;
 }
 
+// Returns the tests visible to a user within ONE team, given that team's
+// resolved permissions/group scope. Mirrors the visibility rules of GET
+// /api/tests and is used by the cross-team combined view.
+async function collectTeamVisibleTests(opts: {
+  teamId: number;
+  perms: any;
+  groupScope: string;
+  isScopeAdmin: boolean;
+  isAthleteAccess: boolean;
+  linkedAthleteId: number | null;
+  athleteIds: number[];
+}): Promise<any[]> {
+  const { teamId, perms, groupScope, isScopeAdmin, isAthleteAccess, linkedAthleteId, athleteIds } = opts;
+  let result: any[] = [];
+  const seen = new Set<number>();
+  if (isScopeAdmin) {
+    const all = await storage.listAllTestsForTeam(teamId);
+    for (const t of all) { result.push(t); seen.add(t.id); }
+  } else if (isAthleteAccess) {
+    if (linkedAthleteId) {
+      const all = await storage.listAllTestsForTeam(teamId);
+      for (const t of all) {
+        if (!seen.has(t.id) && (t as any).testSkiSource === "raceskis" && (t as any).athleteId === linkedAthleteId) {
+          result.push(t); seen.add(t.id);
+        }
+      }
+    }
+  } else {
+    if (perms.tests !== "none") {
+      const scoped = await storage.listTests(groupScope, false, teamId);
+      for (const t of scoped) {
+        if (!seen.has(t.id) && (t as any).testSkiSource !== "raceskis") { result.push(t); seen.add(t.id); }
+      }
+    }
+    if (perms.raceskis !== "none" && athleteIds.length > 0) {
+      const all = await storage.listAllTestsForTeam(teamId);
+      for (const t of all) {
+        if (!seen.has(t.id) && (t as any).testSkiSource === "raceskis" &&
+            (t as any).athleteId && athleteIds.includes((t as any).athleteId)) {
+          result.push(t); seen.add(t.id);
+        }
+      }
+    }
+    if (perms.grinding === "none") result = result.filter((t: any) => t.testType !== "Grind");
+  }
+  return result;
+}
+
 function resolveCreateGroupScope(req: Request): string {
   const u = req.user!;
   const isAdminOrTeamAdmin = u.isAdmin === 1 || u.isTeamAdmin === 1;
@@ -2393,6 +2441,84 @@ export async function registerRoutes(
     }
     const enriched = result.map((t: any) => ({ ...t, seriesName: t.seriesId ? (seriesNameMap[t.seriesId] || null) : null }));
     res.json(enriched);
+  });
+
+  // Cross-team combined test view: tests from every team the caller can access,
+  // each tagged with its team name + weather, so they can search/filter by
+  // location and weather across all their teams at once. Per-team permissions
+  // and group scope are resolved independently for each team — no leakage.
+  app.get("/api/tests/cross-team", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const rawUser = req.user as any;
+    const isAthleteAccess = rawUser.isAthleteAccess === 1;
+    const linkedAthleteId = rawUser.linkedAthleteId ?? null;
+    const { pool: p } = await import("./db");
+
+    // Teams the caller can access: primary + explicit memberships (SA = all).
+    const memberships = await storage.getUserTeams(u.id);
+    let teamIds = [...new Set<number>([u.teamId, ...memberships.map((m: any) => m.teamId)])];
+    const allTeams = await storage.listTeams();
+    if (u.isAdmin) teamIds = allTeams.map((t) => t.id);
+    const teamNameById = new Map<number, string>(allTeams.map((t) => [t.id, t.name]));
+
+    // Per-team permission overrides for this user.
+    const tpRes = await (p as any).query(
+      "SELECT team_id, permissions, group_scope, is_team_admin FROM user_team_permissions WHERE user_id = $1",
+      [u.id]
+    );
+    const overrides = new Map<number, any>(tpRes.rows.map((r: any) => [r.team_id, r]));
+    const athleteIds = await storage.listAthleteIdsForUser(u.id);
+
+    const combined: any[] = [];
+    for (const tid of teamIds) {
+      // Resolve the caller's effective permissions/group scope FOR THIS TEAM.
+      let perms = u.permissions;
+      let groupScope = String(rawUser.groupScope ?? "");
+      let isScopeAdmin = false;
+      if (u.isAdmin) {
+        isScopeAdmin = true;
+      } else if (tid === u.teamId) {
+        perms = parsePermissions(rawUser.permissions, false, rawUser.isTeamAdmin === 1);
+        groupScope = String(rawUser.groupScope ?? "");
+        isScopeAdmin = rawUser.isTeamAdmin === 1;
+      } else {
+        const ov = overrides.get(tid);
+        if (ov) {
+          perms = parsePermissions(ov.permissions, false, ov.is_team_admin === 1);
+          groupScope = String(ov.group_scope ?? rawUser.groupScope ?? "");
+          isScopeAdmin = ov.is_team_admin === 1;
+        } else {
+          // No per-team override → fall back to the user's global permissions.
+          perms = parsePermissions(rawUser.permissions, false, false);
+          groupScope = String(rawUser.groupScope ?? "");
+          isScopeAdmin = false;
+        }
+      }
+
+      const tests = await collectTeamVisibleTests({
+        teamId: tid, perms, groupScope, isScopeAdmin, isAthleteAccess, linkedAthleteId, athleteIds,
+      });
+      if (tests.length === 0) continue;
+
+      // Weather lookup for this team (id → weather record).
+      const weatherList = await storage.listAllWeatherForTeam(tid).catch(() => []);
+      const weatherById = new Map<number, any>((weatherList as any[]).map((w) => [w.id, w]));
+      for (const t of tests) {
+        combined.push({
+          ...t,
+          teamId: tid,
+          teamName: teamNameById.get(tid) ?? `Team ${tid}`,
+          weather: (t as any).weatherId ? (weatherById.get((t as any).weatherId) ?? null) : null,
+        });
+      }
+    }
+    // Newest first by test date, then created.
+    combined.sort((a, b) => {
+      const da = new Date(a.date ?? a.createdAt ?? 0).getTime();
+      const db2 = new Date(b.date ?? b.createdAt ?? 0).getTime();
+      return db2 - da;
+    });
+    res.json(combined);
   });
 
   app.post("/api/tests", requireAuth, async (req, res) => {

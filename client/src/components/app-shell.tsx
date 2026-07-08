@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   ListChecks,
+  Layers,
   Snowflake,
   CloudSun,
   Package,
@@ -103,6 +104,7 @@ type NavItem = {
   permArea?: keyof UserPermissions;
   featureArea?: string;
   adminOnly?: boolean;
+  multiTeamOnly?: boolean; // only shown when the user belongs to more than one team
   section?: string; // i18n key for sidebar section heading
   tourTarget?: string; // data-tour attribute for guided tour
 };
@@ -130,6 +132,17 @@ const nav: NavItem[] = [
     permArea: "tests",
     section: "nav.sectionData",
     tourTarget: "nav-tests",
+  },
+  {
+    href: "/all-teams-tests",
+    label: "All teams",
+    icon: Layers,
+    testId: "link-all-teams-tests",
+    color: "text-muted-foreground",
+    activeColor: "text-green-700",
+    activeBg: "bg-green-50 dark:bg-green-900/20",
+    permArea: "tests",
+    multiTeamOnly: true,
   },
   {
     href: "/analytics",
@@ -355,6 +368,7 @@ function usePageTitle(location: string, visibleNav: NavItem[], t: (k: string) =>
     "/inbox": "shell.inbox",
     "/my-account": "shell.myAccount",
     "/my-team": "team.title",
+    "/all-teams-tests": "nav.allTeamsTests",
   };
 
   // Exact match first
@@ -768,6 +782,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
   const watchQueueCount = watchQueue.filter((q) => q.status === "active").length;
 
   const filteredNav = nav.filter((item) => {
+    if (item.multiTeamOnly && userTeams.length <= 1) return false;
     if (item.adminOnly) return canManage;
     if (isSuperAdmin && !isViewingOwnTeam && isStealthActive) {
       return true;
@@ -814,6 +829,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
     const map: Record<string, string> = {
       "/dashboard": "nav.dashboard",
       "/tests": "nav.tests",
+      "/all-teams-tests": "nav.allTeamsTests",
       "/testskis": "nav.testskis",
       "/products": "nav.products",
       "/weather": "nav.weather",

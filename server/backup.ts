@@ -1636,7 +1636,7 @@ export function startAutoBackup(teamId: number, intervalMs: number = 30 * 60 * 1
   drivePdfIntervals[teamId] = setInterval(async () => {
     try {
       const team = await storage.getTeam(teamId);
-      if (team?.backupSheetUrl && team.driveFolderId) {
+      if (team?.driveFolderId) {
         const driveResult = await runDriveBackupForTeam(teamId);
         console.log(`[DriveBackup] Auto (daily) result for team ${teamId}:`, driveResult.success ? 'OK' : driveResult.error);
       }
@@ -1667,7 +1667,9 @@ export async function initAutoBackups() {
   try {
     const teams = await storage.listTeams();
     for (const team of teams) {
-      if (team.backupSheetUrl) {
+      // Enable the scheduler if EITHER a Sheets backup URL or a Drive folder is
+      // set — the Drive folder link alone is enough for daily JSON+PDF backups.
+      if (team.backupSheetUrl || team.driveFolderId) {
         startAutoBackup(team.id);
         console.log(`[Backup] Auto-backup enabled for team ${team.id} (${team.name})`);
       }

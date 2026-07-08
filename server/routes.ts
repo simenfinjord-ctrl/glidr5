@@ -1316,6 +1316,13 @@ export async function registerRoutes(
       drivePdfFileId: null,
     } as any);
     if (!updated) return res.status(404).json({ message: "Not found" });
+    // Kick the auto-backup scheduler so the daily JSON+PDF backup starts without a
+    // restart. A Drive folder link alone is enough (no Sheets URL required).
+    try {
+      const { startAutoBackup, stopAutoBackup } = await import('./backup');
+      if (folderId || updated.backupSheetUrl) startAutoBackup(id);
+      else stopAutoBackup(id);
+    } catch (e) { console.error('[DriveBackup] scheduler restart failed:', e); }
     res.json(updated);
   });
 

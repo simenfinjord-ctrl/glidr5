@@ -4285,8 +4285,9 @@ export default function Admin() {
                       </div>
                       <div className="flex items-center gap-0.5 flex-shrink-0">
                         <button
+                          disabled={u.fromOtherTeam}
                           className={cn(
-                            "rounded p-1 transition-colors",
+                            "rounded p-1 transition-colors disabled:opacity-30 disabled:pointer-events-none",
                             u.isActive ? "text-green-600 hover:bg-green-50" : "text-red-500 hover:bg-red-50"
                           )}
                           data-testid={`toggle-active-${u.id}`}
@@ -4296,8 +4297,9 @@ export default function Admin() {
                           {u.isActive ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
                         </button>
                         <button
+                          disabled={u.fromOtherTeam}
                           className={cn(
-                            "rounded p-1 transition-colors",
+                            "rounded p-1 transition-colors disabled:opacity-30 disabled:pointer-events-none",
                             u.garminWatch ? "text-sky-500 hover:bg-sky-50" : "text-muted-foreground/40 hover:bg-muted"
                           )}
                           data-testid={`toggle-watch-${u.id}`}
@@ -4326,7 +4328,8 @@ export default function Admin() {
                         </button>
                         )}
                         <button
-                          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground/80"
+                          disabled={u.fromOtherTeam}
+                          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground/80 disabled:opacity-30 disabled:pointer-events-none"
                           data-testid={`button-reset-user-${u.id}`}
                           title={L("Tilbakestill passord", "Reset password")}
                           onClick={() => setResetUser(u)}
@@ -4344,7 +4347,8 @@ export default function Admin() {
                           </button>
                         )}
                         <button
-                          className="rounded p-1 text-orange-500 hover:bg-orange-50"
+                          disabled={u.fromOtherTeam}
+                          className="rounded p-1 text-orange-500 hover:bg-orange-50 disabled:opacity-30 disabled:pointer-events-none"
                           data-testid={`button-force-logout-${u.id}`}
                           title={L("Tving utlogging", "Force logout")}
                           onClick={() => {
@@ -4356,9 +4360,9 @@ export default function Admin() {
                           <LogOut className="h-4.5 w-4.5" />
                         </button>
                         <button
-                          className="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-30"
+                          className="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:pointer-events-none"
                           data-testid={`button-delete-user-${u.id}`}
-                          disabled={u.id === user.id}
+                          disabled={u.id === user.id || u.fromOtherTeam}
                           title={L("Slett bruker", "Delete user")}
                           onClick={() => {
                             if (confirm(`Delete ${u.name}?`)) {

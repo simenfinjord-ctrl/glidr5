@@ -3621,17 +3621,22 @@ export async function registerRoutes(
       try {
         const { pool } = await import("./db");
         const extra = await (pool as any).query(
-          `SELECT u.*, utp.permissions AS "utpPermissions", utp.group_scope AS "utpGroupScope", utp.is_team_admin AS "utpIsTeamAdmin"
+          `SELECT u.id, u.email, u.name, u.username, u.team_id AS "teamId", u.is_admin AS "isAdmin",
+                  u.is_blind_tester AS "isBlindTester", u.is_active AS "isActive", u.garmin_watch AS "garminWatch",
+                  u.login_locked AS "loginLocked", u.failed_attempts AS "failedAttempts", u.created_at AS "createdAt",
+                  u.is_athlete_access AS "isAthleteAccess", u.linked_athlete_id AS "linkedAthleteId",
+                  utp.permissions AS "utpPermissions", utp.group_scope AS "utpGroupScope", utp.is_team_admin AS "utpIsTeamAdmin"
            FROM user_team_permissions utp JOIN users u ON u.id = utp.user_id
            WHERE utp.team_id = $1 AND u.team_id <> $1`, [teamId]);
         for (const r of extra.rows) {
           if (byId.has(r.id)) continue;
+          const { utpPermissions, utpGroupScope, utpIsTeamAdmin, ...base } = r;
           byId.set(r.id, {
-            ...r,
-            permissions: r.utpPermissions ?? r.permissions,
-            groupScope: r.utpGroupScope ?? r.groupScope,
-            isTeamAdmin: r.utpIsTeamAdmin ?? 0,
-            fromOtherTeam: true, homeTeamId: r.team_id,
+            ...base,
+            permissions: utpPermissions ?? "{}",
+            groupScope: utpGroupScope ?? "",
+            isTeamAdmin: utpIsTeamAdmin ?? 0,
+            fromOtherTeam: true, homeTeamId: r.teamId,
           });
         }
       } catch (e) { console.error("[users] multi-team merge failed:", e); }

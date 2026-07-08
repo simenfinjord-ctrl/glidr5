@@ -321,7 +321,13 @@ export async function setupAuth(app: Express) {
         editableAthleteIds = er.rows.map((r: any) => r.athlete_id);
       } catch {}
     }
-    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: safe.isTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat, isAthleteAccess: !!(safe as any).isAthleteAccess, linkedAthleteId: (safe as any).linkedAthleteId ?? null, editableAthleteIds });
+    // Effective team-admin status for the ACTIVE team: global flag on the user's
+    // own team, per-team flag on any other team (TA of one team is not TA of all).
+    const activeTid = safe.activeTeamId ?? safe.teamId;
+    const effectiveIsTeamAdmin = safe.isAdmin === 1
+      ? safe.isTeamAdmin
+      : (activeTid === safe.teamId ? safe.isTeamAdmin : (((req.session as any)?.activeTeamIsAdmin) ? 1 : 0));
+    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: effectiveIsTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat, isAthleteAccess: !!(safe as any).isAthleteAccess, linkedAthleteId: (safe as any).linkedAthleteId ?? null, editableAthleteIds });
   });
 
   app.post("/api/auth/incognito", (req, res) => {

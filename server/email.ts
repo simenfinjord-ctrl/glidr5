@@ -338,6 +338,16 @@ const welcomeCopy: Record<string, {
   },
 };
 
+// Billing/subscription copy only goes out when the SA has turned commercialization
+// on. While Glidr is given away for free we never mention pricing or trials.
+async function isCommercializationOn(): Promise<boolean> {
+  try {
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(`SELECT value FROM app_settings WHERE key = 'commercialization_enabled'`);
+    return r.rows[0]?.value === "true";
+  } catch { return false; }
+}
+
 export async function sendWelcomeEmail(
   to: string,
   name: string,
@@ -345,6 +355,7 @@ export async function sendWelcomeEmail(
 ): Promise<void> {
   const c = welcomeCopy[lang] ?? welcomeCopy.no;
   const appUrl = process.env.APP_URL || "https://glidr.no";
+  const showBilling = await isCommercializationOn();
 
   const strip = (s: string) => s.replace(/<[^>]+>/g, "");
 
@@ -359,9 +370,7 @@ export async function sendWelcomeEmail(
     ...c.pwaAndroid.map(strip), "",
     `--- ${c.tipsTitle} ---`, "",
     ...c.tipsItems.map(strip), "",
-    `--- ${c.subTitle} ---`, "",
-    ...c.subItems.map(strip), "",
-    c.subNote, "",
+    ...(showBilling ? [`--- ${c.subTitle} ---`, "", ...c.subItems.map(strip), "", c.subNote, ""] : []),
     appUrl, "",
     c.footer, "",
     "— The Glidr team",
@@ -423,14 +432,15 @@ export async function sendWelcomeEmail(
         </ul>
       </div>
 
-      <!-- Subscription -->
+      <!-- Subscription (only when commercialization is enabled) -->
+      ${showBilling ? `
       <div style="background:#eff6ff;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
         <p style="font-size:13px;font-weight:700;color:#1e40af;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.05em;">${c.subTitle}</p>
         <ul style="margin:0;padding-left:0;list-style:none;">
           ${c.subItems.map(listItem).join("")}
         </ul>
         <p style="margin:12px 0 0;font-size:12px;color:#6b7280;background:#fff;border-radius:8px;padding:10px 12px;">${c.subNote}</p>
-      </div>
+      </div>` : ""}
 
       ${emailHr()}
       ${emailMeta(c.footer)}

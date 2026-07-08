@@ -219,8 +219,12 @@ function getActiveTeamId(req: Request): number {
 
 function canManageTeam(req: Request): boolean {
   const u = req.user!;
-  // Super Admin or global team admin OR per-team admin for the currently active team
-  if (u.isAdmin === 1 || u.isTeamAdmin === 1) return true;
+  if (u.isAdmin === 1) return true;
+  const activeTeamId = (u as any).activeTeamId || u.teamId;
+  // On the user's own (primary) team, the global team-admin flag applies. On any
+  // OTHER team, admin rights come only from that team's per-team admin flag —
+  // being TA of one team must NOT grant admin on the others.
+  if (activeTeamId === u.teamId) return u.isTeamAdmin === 1;
   return !!(req.session as any)?.activeTeamIsAdmin;
 }
 

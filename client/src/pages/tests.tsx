@@ -1215,6 +1215,12 @@ export default function Tests() {
   const [fromPictureOpen, setFromPictureOpen] = useState(false);
 
   const [sortOrder, setSortOrder] = useState<string>("date-desc");
+  // Day-view result sorting: clicking a column header in any test sorts the rows
+  // of EVERY test for that day by the same parameter (shared across the day).
+  const [dayEntrySort, setDayEntrySort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
+  const toggleDayEntrySort = (key: string) =>
+    setDayEntrySort((prev) => (prev && prev.key === key ? (prev.dir === "asc" ? { key, dir: "desc" } : null) : { key, dir: "asc" }));
+  const daySortArrow = (key: string) => (dayEntrySort?.key === key ? (dayEntrySort.dir === "asc" ? " ↑" : " ↓") : "");
   const [filterSeason, setFilterSeason] = useState<string>("All");
   const [filterType, setFilterType] = useState<string>("All");
   const [filterProduct, setFilterProduct] = useState<string>("All");
@@ -1260,10 +1266,68 @@ export default function Tests() {
     return seasons.sort().reverse();
   }, [tests]);
 
+  // Tests passing every active filter EXCEPT the specific quick-day selection.
+  // Drives both the day chips (so only dates with matching tests appear) and the
+  // final list — a date only shows as a chip if it actually has a matching test.
+  const filteredIgnoringDay = useMemo(() => {
+    return tests.filter((t) => {
+      if (t.testType === "Grind" && !(canViewGrinding && filterType === "Grind")) return false;
+      if (filterSeason !== "All" && getSeason(t.date) !== filterSeason) return false;
+      if (filterType !== "All" && t.testType !== filterType) return false;
+      if (filterLocation && !t.location.toLowerCase().includes(filterLocation.toLowerCase())) return false;
+      if (filterDateFrom && t.date < filterDateFrom) return false;
+      if (filterDateTo && t.date > filterDateTo) return false;
+
+      if (filterProduct !== "All") {
+        const entries = allEntries.filter((e) => e.testId === t.id);
+        const pid = parseInt(filterProduct);
+        if (!entries.some((e) => e.productId === pid)) return false;
+      }
+
+      const w = t.weatherId ? weatherById.get(t.weatherId) : null;
+
+      if (filterSnowType) {
+        const snowLabel = [w?.artificialSnow, w?.naturalSnow, w?.snowType].filter(Boolean).join(" ").toLowerCase();
+        if (!w || !snowLabel.includes(filterSnowType.toLowerCase())) return false;
+      }
+
+      const airMin = filterAirTempMin !== "" ? parseFloat(filterAirTempMin) : null;
+      const airMax = filterAirTempMax !== "" ? parseFloat(filterAirTempMax) : null;
+      const snowMin = filterSnowTempMin !== "" ? parseFloat(filterSnowTempMin) : null;
+      const snowMax = filterSnowTempMax !== "" ? parseFloat(filterSnowTempMax) : null;
+      const [effAirMin, effAirMax] = airMin != null && airMax != null && airMin > airMax ? [airMax, airMin] : [airMin, airMax];
+      const [effSnowMin, effSnowMax] = snowMin != null && snowMax != null && snowMin > snowMax ? [snowMax, snowMin] : [snowMin, snowMax];
+
+      if (effAirMin != null && (!w || (w.airTemperatureC ?? null) == null || w.airTemperatureC! < effAirMin)) return false;
+      if (effAirMax != null && (!w || (w.airTemperatureC ?? null) == null || w.airTemperatureC! > effAirMax)) return false;
+      if (effSnowMin != null && (!w || (w.snowTemperatureC ?? null) == null || w.snowTemperatureC! < effSnowMin)) return false;
+      if (effSnowMax != null && (!w || (w.snowTemperatureC ?? null) == null || w.snowTemperatureC! > effSnowMax)) return false;
+      const [effAirHumMin, effAirHumMax] = (() => { const a = filterAirHumMin ? parseFloat(filterAirHumMin) : null, b = filterAirHumMax ? parseFloat(filterAirHumMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
+      const [effSnowHumMin, effSnowHumMax] = (() => { const a = filterSnowHumMin ? parseFloat(filterSnowHumMin) : null, b = filterSnowHumMax ? parseFloat(filterSnowHumMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
+      const [effCloudMin, effCloudMax] = (() => { const a = filterCloudMin !== "" ? parseFloat(filterCloudMin) : null, b = filterCloudMax !== "" ? parseFloat(filterCloudMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
+      if (effAirHumMin != null && (!w || (w.airHumidityPct ?? null) == null || w.airHumidityPct! < effAirHumMin)) return false;
+      if (effAirHumMax != null && (!w || (w.airHumidityPct ?? null) == null || w.airHumidityPct! > effAirHumMax)) return false;
+      if (effSnowHumMin != null && (!w || (w.snowHumidityPct ?? null) == null || w.snowHumidityPct! < effSnowHumMin)) return false;
+      if (effSnowHumMax != null && (!w || (w.snowHumidityPct ?? null) == null || w.snowHumidityPct! > effSnowHumMax)) return false;
+      if (filterTrackHardness && !(w?.trackHardness ?? "").toLowerCase().includes(filterTrackHardness.toLowerCase())) return false;
+      if (filterSnowHumidityType && !(w?.snowHumidityType ?? "").toLowerCase().includes(filterSnowHumidityType.toLowerCase())) return false;
+      if (filterGrainSize && !(w?.grainSize ?? "").toLowerCase().includes(filterGrainSize.toLowerCase())) return false;
+      if (filterArtSnow && !(w?.artificialSnow ?? "").toLowerCase().includes(filterArtSnow.toLowerCase())) return false;
+      if (filterNatSnow && !(w?.naturalSnow ?? "").toLowerCase().includes(filterNatSnow.toLowerCase())) return false;
+      if (filterPrecipitation && !(w?.precipitation ?? "").toLowerCase().includes(filterPrecipitation.toLowerCase())) return false;
+      if (filterWind && !(w?.wind ?? "").toLowerCase().includes(filterWind.toLowerCase())) return false;
+      if (filterVisibility && !(w?.visibility ?? "").toLowerCase().includes(filterVisibility.toLowerCase())) return false;
+      if (effCloudMin != null && (!w || (w.clouds ?? 999) < effCloudMin)) return false;
+      if (effCloudMax != null && (!w || (w.clouds ?? -999) > effCloudMax)) return false;
+
+      return true;
+    });
+  }, [tests, filterSeason, filterType, filterProduct, filterSnowType, filterLocation, filterDateFrom, filterDateTo, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, filterTrackHardness, filterSnowHumidityType, filterGrainSize, filterArtSnow, filterNatSnow, filterPrecipitation, filterWind, filterVisibility, filterCloudMin, filterCloudMax, allEntries, weatherById, canViewGrinding]);
+
   const availableDates = useMemo(() => {
-    const dates = Array.from(new Set(tests.map((t) => t.date)));
+    const dates = Array.from(new Set(filteredIgnoringDay.map((t) => t.date)));
     return dates.sort().reverse();
-  }, [tests]);
+  }, [filteredIgnoringDay]);
 
   const dateLabelMap = useMemo(() => {
     const locale = language === "no" ? "nb-NO" : "en-US";
@@ -1309,82 +1373,27 @@ export default function Tests() {
   }, [tests, allEntries, productsById]);
 
   const filtered = useMemo(() => {
-    const result = tests.filter((t) => {
-      // Grind tests are only shown when user has grinding access AND explicitly selects "Grind"
-      if (t.testType === "Grind" && !(canViewGrinding && filterType === "Grind")) return false;
-      if (filterSeason !== "All" && getSeason(t.date) !== filterSeason) return false;
-      if (filterType !== "All" && t.testType !== filterType) return false;
-      if (filterLocation && !t.location.toLowerCase().includes(filterLocation.toLowerCase())) return false;
-      if (quickDayDate && t.date !== quickDayDate) return false;
-      if (!quickDayDate && filterDateFrom && t.date < filterDateFrom) return false;
-      if (!quickDayDate && filterDateTo && t.date > filterDateTo) return false;
+    const result = quickDayDate
+      ? filteredIgnoringDay.filter((t) => t.date === quickDayDate)
+      : [...filteredIgnoringDay];
 
-      if (filterProduct !== "All") {
-        const entries = allEntries.filter((e) => e.testId === t.id);
-        const pid = parseInt(filterProduct);
-        if (!entries.some((e) => e.productId === pid)) return false;
+    result.sort((a, b) => {
+      switch (sortOrder) {
+        case "date-asc":
+          return a.date.localeCompare(b.date);
+        case "date-desc":
+          return b.date.localeCompare(a.date);
+        case "location-az":
+          return a.location.localeCompare(b.location);
+        case "location-za":
+          return b.location.localeCompare(a.location);
+        default:
+          return b.date.localeCompare(a.date);
       }
-
-      const w = t.weatherId ? weatherById.get(t.weatherId) : null;
-
-      if (filterSnowType) {
-        const snowLabel = [w?.artificialSnow, w?.naturalSnow, w?.snowType].filter(Boolean).join(" ").toLowerCase();
-        if (!w || !snowLabel.includes(filterSnowType.toLowerCase())) return false;
-      }
-
-      // Temperature filters with auto-swap (handles negative temperature confusion)
-      const airMin = filterAirTempMin !== "" ? parseFloat(filterAirTempMin) : null;
-      const airMax = filterAirTempMax !== "" ? parseFloat(filterAirTempMax) : null;
-      const snowMin = filterSnowTempMin !== "" ? parseFloat(filterSnowTempMin) : null;
-      const snowMax = filterSnowTempMax !== "" ? parseFloat(filterSnowTempMax) : null;
-      const [effAirMin, effAirMax] = airMin != null && airMax != null && airMin > airMax ? [airMax, airMin] : [airMin, airMax];
-      const [effSnowMin, effSnowMax] = snowMin != null && snowMax != null && snowMin > snowMax ? [snowMax, snowMin] : [snowMin, snowMax];
-
-      if (effAirMin != null && (!w || (w.airTemperatureC ?? null) == null || w.airTemperatureC! < effAirMin)) return false;
-      if (effAirMax != null && (!w || (w.airTemperatureC ?? null) == null || w.airTemperatureC! > effAirMax)) return false;
-      if (effSnowMin != null && (!w || (w.snowTemperatureC ?? null) == null || w.snowTemperatureC! < effSnowMin)) return false;
-      if (effSnowMax != null && (!w || (w.snowTemperatureC ?? null) == null || w.snowTemperatureC! > effSnowMax)) return false;
-      // Humidity + cloud — auto-swap inverted ranges
-      const [effAirHumMin, effAirHumMax] = (() => { const a = filterAirHumMin ? parseFloat(filterAirHumMin) : null, b = filterAirHumMax ? parseFloat(filterAirHumMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
-      const [effSnowHumMin, effSnowHumMax] = (() => { const a = filterSnowHumMin ? parseFloat(filterSnowHumMin) : null, b = filterSnowHumMax ? parseFloat(filterSnowHumMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
-      const [effCloudMin, effCloudMax] = (() => { const a = filterCloudMin !== "" ? parseFloat(filterCloudMin) : null, b = filterCloudMax !== "" ? parseFloat(filterCloudMax) : null; return a != null && b != null && a > b ? [b, a] : [a, b]; })();
-      if (effAirHumMin != null && (!w || (w.airHumidityPct ?? null) == null || w.airHumidityPct! < effAirHumMin)) return false;
-      if (effAirHumMax != null && (!w || (w.airHumidityPct ?? null) == null || w.airHumidityPct! > effAirHumMax)) return false;
-      if (effSnowHumMin != null && (!w || (w.snowHumidityPct ?? null) == null || w.snowHumidityPct! < effSnowHumMin)) return false;
-      if (effSnowHumMax != null && (!w || (w.snowHumidityPct ?? null) == null || w.snowHumidityPct! > effSnowHumMax)) return false;
-      if (filterTrackHardness && !(w?.trackHardness ?? "").toLowerCase().includes(filterTrackHardness.toLowerCase())) return false;
-      if (filterSnowHumidityType && !(w?.snowHumidityType ?? "").toLowerCase().includes(filterSnowHumidityType.toLowerCase())) return false;
-      if (filterGrainSize && !(w?.grainSize ?? "").toLowerCase().includes(filterGrainSize.toLowerCase())) return false;
-      if (filterArtSnow && !(w?.artificialSnow ?? "").toLowerCase().includes(filterArtSnow.toLowerCase())) return false;
-      if (filterNatSnow && !(w?.naturalSnow ?? "").toLowerCase().includes(filterNatSnow.toLowerCase())) return false;
-      if (filterPrecipitation && !(w?.precipitation ?? "").toLowerCase().includes(filterPrecipitation.toLowerCase())) return false;
-      if (filterWind && !(w?.wind ?? "").toLowerCase().includes(filterWind.toLowerCase())) return false;
-      if (filterVisibility && !(w?.visibility ?? "").toLowerCase().includes(filterVisibility.toLowerCase())) return false;
-      if (effCloudMin != null && (!w || (w.clouds ?? 999) < effCloudMin)) return false;
-      if (effCloudMax != null && (!w || (w.clouds ?? -999) > effCloudMax)) return false;
-
-      return true;
     });
 
-    {
-      result.sort((a, b) => {
-        switch (sortOrder) {
-          case "date-asc":
-            return a.date.localeCompare(b.date);
-          case "date-desc":
-            return b.date.localeCompare(a.date);
-          case "location-az":
-            return a.location.localeCompare(b.location);
-          case "location-za":
-            return b.location.localeCompare(a.location);
-          default:
-            return b.date.localeCompare(a.date);
-        }
-      });
-    }
-
     return result;
-  }, [tests, filterSeason, filterType, filterProduct, filterSnowType, filterLocation, quickDayDate, filterDateFrom, filterDateTo, filterAirTempMin, filterAirTempMax, filterSnowTempMin, filterSnowTempMax, filterAirHumMin, filterAirHumMax, filterSnowHumMin, filterSnowHumMax, filterTrackHardness, filterSnowHumidityType, filterGrainSize, filterArtSnow, filterNatSnow, filterPrecipitation, filterWind, filterVisibility, filterCloudMin, filterCloudMax, allEntries, weatherById, sortOrder]);
+  }, [filteredIgnoringDay, quickDayDate, sortOrder]);
 
   const hasFilters = filterSeason !== "All" || filterType !== "All" || filterProduct !== "All" || filterSnowType || filterLocation || (filterDateFrom || filterDateTo) || filterAirTempMin || filterAirTempMax || filterSnowTempMin || filterSnowTempMax || filterAirHumMin || filterAirHumMax || filterSnowHumMin || filterSnowHumMax || filterTrackHardness || filterSnowHumidityType || filterGrainSize || filterArtSnow || filterNatSnow || filterPrecipitation || filterWind || filterVisibility || filterCloudMin || filterCloudMax;
 
@@ -1964,7 +1973,35 @@ export default function Tests() {
               {filtered.map((tst) => {
                 const distLabels = getDistanceLabels(tst);
                 const testEntries = allEntries.filter((e) => e.testId === tst.id);
-                const sortedEntries = [...testEntries].sort((a, b) => a.skiNumber - b.skiNumber);
+                const sortedEntries = (() => {
+                  const base = [...testEntries];
+                  if (!dayEntrySort) return base.sort((a, b) => a.skiNumber - b.skiNumber);
+                  const { key, dir } = dayEntrySort;
+                  const mul = dir === "asc" ? 1 : -1;
+                  const valOf = (e: TestEntry): string | number | null => {
+                    const rounds = getEntryRounds(e, getDistanceLabels(tst).length);
+                    switch (key) {
+                      case "ski": return e.skiNumber;
+                      case "product": { const p = e.productId ? productsById.get(e.productId) : null; return p ? `${p.brand} ${p.name}` : null; }
+                      case "rank": return rounds[0]?.rank ?? null;
+                      case "feeling": return e.feelingRank ?? null;
+                      case "kick": return (e as any).kickRank ?? null;
+                      default:
+                        if (key.startsWith("round-")) { const i = parseInt(key.slice(6)); return rounds[i]?.result ?? null; }
+                        return null;
+                    }
+                  };
+                  return base.sort((a, b) => {
+                    const va = valOf(a), vb = valOf(b);
+                    if (va == null && vb == null) return 0;
+                    if (va == null) return 1; // nulls last
+                    if (vb == null) return -1;
+                    const na = typeof va === "number" ? va : parseFloat(String(va));
+                    const nb = typeof vb === "number" ? vb : parseFloat(String(vb));
+                    if (!isNaN(na) && !isNaN(nb)) return (na - nb) * mul;
+                    return String(va).localeCompare(String(vb)) * mul;
+                  });
+                })();
                 const w = tst.weatherId ? weatherById.get(tst.weatherId) : null;
                 const winner = winnersByTest.get(tst.id);
 
@@ -2038,16 +2075,16 @@ export default function Tests() {
                           </colgroup>
                           <thead>
                             <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                              <th className="pb-2 pr-3">{t("tests.skiCol")}</th>
-                              {!hideDayDetails && <th className="pb-2 pr-3">{t("tests.product")}</th>}
+                              <th className="pb-2 pr-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleDayEntrySort("ski")} title={L("Trykk for å sortere alle testene", "Click to sort all tests")}>{t("tests.skiCol")}{daySortArrow("ski")}</th>
+                              {!hideDayDetails && <th className="pb-2 pr-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleDayEntrySort("product")}>{t("tests.product")}{daySortArrow("product")}</th>}
                               {distLabels.map((label, i) => (
-                                <th key={i} className="pb-2 pr-3">
-                                  {label?.trim() || `R${i + 1}`}
+                                <th key={i} className="pb-2 pr-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleDayEntrySort(`round-${i}`)}>
+                                  {label?.trim() || `R${i + 1}`}{daySortArrow(`round-${i}`)}
                                 </th>
                               ))}
-                              <th className="pb-2 pr-3">{t("tests.rank")}</th>
-                              <th className="pb-2">{t("tests.feelCol")}</th>
-                              {tst.testType === "Classic" && <th className="pb-2 pl-2">{t("newTest.kick")}</th>}
+                              <th className="pb-2 pr-3 cursor-pointer select-none hover:text-foreground" onClick={() => toggleDayEntrySort("rank")}>{t("tests.rank")}{daySortArrow("rank")}</th>
+                              <th className="pb-2 cursor-pointer select-none hover:text-foreground" onClick={() => toggleDayEntrySort("feeling")}>{t("tests.feelCol")}{daySortArrow("feeling")}</th>
+                              {tst.testType === "Classic" && <th className="pb-2 pl-2 cursor-pointer select-none hover:text-foreground" onClick={() => toggleDayEntrySort("kick")}>{t("newTest.kick")}{daySortArrow("kick")}</th>}
                             </tr>
                           </thead>
                           <tbody>

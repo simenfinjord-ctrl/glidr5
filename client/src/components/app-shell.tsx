@@ -1316,7 +1316,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
       {sidebarOpen && (
         <>
           <div className="lg:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setSidebarOpen(false)} />
-          <aside className="lg:hidden fixed left-0 top-0 bottom-0 z-50 w-[240px] max-w-[82vw] flex flex-col bg-card dark:bg-zinc-900 border-r border-border shadow-xl overflow-hidden">
+          <aside className="lg:hidden fixed left-0 top-0 bottom-0 z-50 w-[240px] max-w-[82vw] flex flex-col bg-card dark:bg-zinc-900 border-r border-border shadow-xl overflow-hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
             <SidebarContent isMobileDrawer />
           </aside>
         </>

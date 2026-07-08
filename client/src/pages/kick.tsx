@@ -601,8 +601,18 @@ export default function Kick() {
           </div>
         </div>
 
+        {/* Jump-nav so you don't scroll past many test skis to reach tests/mixes */}
+        <div className="sticky top-0 z-10 -mx-1 flex flex-wrap gap-2 bg-background/95 px-1 py-2 backdrop-blur">
+          {[["kick-skis", L("Testski", "Test skis")], ["kick-tests", L("Kick-tester", "Kick tests")], ["kick-mixes", "Mixes"]].map(([id, label]) => (
+            <button key={id} type="button" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="rounded-full border border-border px-3 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
+              {label}
+            </button>
+          ))}
+        </div>
+
         {/* ── Test skis overview ── */}
-        <section>
+        <section id="kick-skis" className="scroll-mt-16">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">{L("Testski", "Test skis")}</h2>
             <Button size="sm" onClick={() => { setEditingSki(null); setDuplicatingSki(null); setSkiDialog(true); }} data-testid="button-add-kick-ski">
@@ -659,7 +669,7 @@ export default function Kick() {
         </section>
 
         {/* ── Kick tests ── */}
-        <section>
+        <section id="kick-tests" className="scroll-mt-16">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">{L("Kick-tester", "Kick tests")}</h2>
             <Button size="sm" onClick={() => { setEditingTest(null); setTestDialog(true); }} data-testid="button-add-kick-test" disabled={skis.length === 0}>
@@ -736,7 +746,7 @@ export default function Kick() {
         </section>
 
         {/* ── Mixes ── */}
-        <section>
+        <section id="kick-mixes" className="scroll-mt-16">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-lg font-semibold">Mixes</h2>

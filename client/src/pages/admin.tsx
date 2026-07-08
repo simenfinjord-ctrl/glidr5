@@ -1166,6 +1166,133 @@ function shortDevice(ua: string): string {
   return [os, br].filter(Boolean).join(" · ") || ua.slice(0, 40);
 }
 
+// An IP is "new" (highlighted red) for the first 24 h after it is first seen for
+// a user; afterwards it reverts to normal. Computed from the login history so an
+// admin can spot logins from an unfamiliar location at a glance.
+function buildIpFirstSeen(logs: LoginLog[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const l of logs) {
+    if (!l.ipAddress) continue;
+    const key = `${l.userId}|${l.ipAddress}`;
+    const t = new Date(l.loginAt).getTime();
+    const prev = m.get(key);
+    if (prev === undefined || t < prev) m.set(key, t);
+  }
+  return m;
+}
+function isNewIp(firstSeen: Map<string, number>, userId: number, ip: string | null): boolean {
+  if (!ip) return false;
+  const t = firstSeen.get(`${userId}|${ip}`);
+  if (t === undefined) return true; // never recorded in history → brand new
+  return Date.now() - t < 24 * 3600 * 1000;
+}
+
+// Active sessions live-view. Placed directly under the Login History so an admin
+// sees who is currently signed in right below the historical logins. Own session
+// is shown but cannot be terminated. New/unfamiliar IPs are flagged in red.
+function ActiveSessionsCard({ currentUserId, loginLogs }: { currentUserId: number; loginLogs: LoginLog[] }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { toast } = useToast();
+  const { data: sessions = [], refetch: refetchSessions } = useQuery<ActiveSession[]>({
+    queryKey: ["/api/admin/active-sessions"],
+    refetchInterval: 15000,
+  });
+  const forceLogoutMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await apiRequest("POST", `/api/admin/force-logout/${userId}`);
+      return res.json();
+    },
+    onSuccess: () => { refetchSessions(); toast({ title: L("Bruker logget ut", "User logged out") }); },
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
+  });
+  const firstSeen = useMemo(() => buildIpFirstSeen(loginLogs), [loginLogs]);
+
+  return (
+    <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-green-500" />
+          <span className="font-semibold text-foreground">{L("Aktive økter", "Active Sessions")}</span>
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {sessions.length}
+          </span>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetchSessions()}>
+          <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+          Refresh
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">{L("Oppdateres automatisk hvert 15. sekund. Din egen økt vises, men kan ikke avsluttes. En ny/ukjent IP vises i rødt i 24 timer.", "Auto-refreshes every 15 s. Your own session is shown but cannot be terminated. A new/unfamiliar IP is shown in red for 24 h.")}</p>
+      {sessions.length === 0 ? (
+        <div className="text-sm text-muted-foreground text-center py-6">{L("Fant ingen aktive økter.", "No active sessions found.")}</div>
+      ) : (
+        <div className="rounded-xl border border-border overflow-hidden">
+          <table className="w-full text-sm" data-testid="table-active-sessions">
+            <thead>
+              <tr className="bg-muted/40 border-b border-border">
+                <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Bruker", "User")}</th>
+                <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("E-post", "Email")}</th>
+                <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("IP / enhet", "IP / device")}</th>
+                <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Utløper", "Expires")}</th>
+                <th className="text-center px-3 py-2 font-medium text-foreground/80 text-xs">{L("Handling", "Action")}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/50">
+              {sessions.map((s) => {
+                const isMe = s.userId === currentUserId;
+                const expires = new Date(s.expiresAt);
+                const hoursLeft = Math.round((expires.getTime() - Date.now()) / 3600000);
+                const newIp = isNewIp(firstSeen, s.userId, s.ipAddress);
+                return (
+                  <tr key={s.sid} className={cn("transition-colors", isMe && "bg-green-50/30 dark:bg-green-900/10")}>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-foreground">{s.userName}</span>
+                        {isMe && <span className="rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 px-1.5 py-0.5 text-[9px] font-bold">{L("DEG", "YOU")}</span>}
+                        {s.isAdmin === 1 && <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 text-[9px] font-bold">SA</span>}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground text-xs">{s.email}</td>
+                    <td className="px-3 py-2 text-xs">
+                      <div className={cn("font-mono", newIp ? "text-red-600 dark:text-red-400 font-semibold" : "text-muted-foreground")} title={newIp ? L("Ny/ukjent IP (siste 24 t)", "New/unfamiliar IP (last 24 h)") : undefined}>{s.ipAddress || "—"}</div>
+                      {s.userAgent && <div className="truncate max-w-[220px] opacity-70 text-muted-foreground" title={s.userAgent}>{shortDevice(s.userAgent)}</div>}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {expires.toLocaleString()} ({hoursLeft}h)
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={isMe || forceLogoutMutation.isPending}
+                        className={cn("h-7 text-xs", !isMe && "text-destructive hover:text-destructive hover:bg-destructive/10")}
+                        data-testid={`button-force-logout-${s.userId}`}
+                        onClick={() => {
+                          if (confirm(`Force logout ${s.userName}?`)) {
+                            forceLogoutMutation.mutate(s.userId);
+                          }
+                        }}
+                      >
+                        {isMe ? "—" : (
+                          <>
+                            <LogOut className="h-3 w-3 mr-1" />
+                            Logout
+                          </>
+                        )}
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId: number }) {
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
@@ -1220,20 +1347,7 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
     onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
-  // Active sessions
-  const { data: sessions = [], refetch: refetchSessions } = useQuery<ActiveSession[]>({
-    queryKey: ["/api/admin/active-sessions"],
-    refetchInterval: 15000,
-  });
-
-  const forceLogoutMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      const res = await apiRequest("POST", `/api/admin/force-logout/${userId}`);
-      return res.json();
-    },
-    onSuccess: () => { refetchSessions(); toast({ title: L("Bruker logget ut", "User logged out") }); },
-    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
-  });
+  // Active sessions live in the Login History tab (see ActiveSessionsCard).
 
   // Emergency lockdown
   const lockdownMutation = useMutation({
@@ -1241,7 +1355,7 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
       const res = await apiRequest("POST", `/api/admin/emergency-lockdown/${teamId}`);
       return res.json();
     },
-    onSuccess: (data) => { refetchSessions(); toast({ title: `Lockdown complete`, description: `${data.loggedOut} session(s) terminated.` }); },
+    onSuccess: (data) => { queryClient.invalidateQueries({ queryKey: ["/api/admin/active-sessions"] }); toast({ title: `Lockdown complete`, description: `${data.loggedOut} session(s) terminated.` }); },
     onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
@@ -1468,88 +1582,6 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
             );
           })}
         </div>
-      </Card>
-
-      {/* Active sessions */}
-      <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-green-500" />
-            <span className="font-semibold text-foreground">{L("Aktive økter", "Active Sessions")}</span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {sessions.length}
-            </span>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => refetchSessions()}>
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-            Refresh
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground mb-3">{L("Oppdateres automatisk hvert 15. sekund. Din egen økt vises, men kan ikke avsluttes.", "Auto-refreshes every 15 s. Your own session is shown but cannot be terminated.")}</p>
-        {sessions.length === 0 ? (
-          <div className="text-sm text-muted-foreground text-center py-6">{L("Fant ingen aktive økter.", "No active sessions found.")}</div>
-        ) : (
-          <div className="rounded-xl border border-border overflow-hidden">
-            <table className="w-full text-sm" data-testid="table-active-sessions">
-              <thead>
-                <tr className="bg-muted/40 border-b border-border">
-                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Bruker", "User")}</th>
-                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("E-post", "Email")}</th>
-                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("IP / enhet", "IP / device")}</th>
-                  <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Utløper", "Expires")}</th>
-                  <th className="text-center px-3 py-2 font-medium text-foreground/80 text-xs">{L("Handling", "Action")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50">
-                {sessions.map((s) => {
-                  const isMe = s.userId === currentUserId;
-                  const expires = new Date(s.expiresAt);
-                  const hoursLeft = Math.round((expires.getTime() - Date.now()) / 3600000);
-                  return (
-                    <tr key={s.sid} className={cn("transition-colors", isMe && "bg-green-50/30 dark:bg-green-900/10")}>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-medium text-foreground">{s.userName}</span>
-                          {isMe && <span className="rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 px-1.5 py-0.5 text-[9px] font-bold">{L("DEG", "YOU")}</span>}
-                          {s.isAdmin === 1 && <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 text-[9px] font-bold">SA</span>}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground text-xs">{s.email}</td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">
-                        <div className="font-mono">{s.ipAddress || "—"}</div>
-                        {s.userAgent && <div className="truncate max-w-[220px] opacity-70" title={s.userAgent}>{shortDevice(s.userAgent)}</div>}
-                      </td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">
-                        {expires.toLocaleString()} ({hoursLeft}h)
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={isMe || forceLogoutMutation.isPending}
-                          className={cn("h-7 text-xs", !isMe && "text-destructive hover:text-destructive hover:bg-destructive/10")}
-                          data-testid={`button-force-logout-${s.userId}`}
-                          onClick={() => {
-                            if (confirm(`Force logout ${s.userName}?`)) {
-                              forceLogoutMutation.mutate(s.userId);
-                            }
-                          }}
-                        >
-                          {isMe ? "—" : (
-                            <>
-                              <LogOut className="h-3 w-3 mr-1" />
-                              Logout
-                            </>
-                          )}
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
       </Card>
     </div>
   );
@@ -2954,6 +2986,8 @@ export default function Admin() {
     queryKey: [`/api/login-logs${teamScopeParam}`],
     enabled: canManage,
   });
+  // First time each (user, IP) pair appears — used to flag new/unfamiliar IPs in red.
+  const loginFirstSeen = useMemo(() => buildIpFirstSeen(loginLogs), [loginLogs]);
 
   const { data: allSeries = [] } = useQuery<any[]>({
     queryKey: ["/api/series"],
@@ -5069,7 +5103,9 @@ export default function Admin() {
                       </tr>
                     </thead>
                     <tbody>
-                      {loginLogs.slice(0, 200).map((log) => (
+                      {loginLogs.slice(0, 200).map((log) => {
+                        const newIp = isNewIp(loginFirstSeen, log.userId, log.ipAddress);
+                        return (
                         <tr key={log.id} className="border-b border-border" data-testid={`row-login-${log.id}`}>
                           <td className="py-2 pr-3 font-medium text-foreground">{log.name}</td>
                           <td className="py-2 pr-3 text-muted-foreground">{log.email}</td>
@@ -5084,17 +5120,21 @@ export default function Admin() {
                               <span className="text-xs text-muted-foreground">{log.action}</span>
                             )}
                           </td>
-                          <td className="py-2 pr-3 font-mono text-xs text-muted-foreground">{log.ipAddress || "—"}</td>
+                          <td className={cn("py-2 pr-3 font-mono text-xs", newIp ? "text-red-600 dark:text-red-400 font-semibold" : "text-muted-foreground")} title={newIp ? L("Ny/ukjent IP (siste 24 t)", "New/unfamiliar IP (last 24 h)") : undefined}>{log.ipAddress || "—"}</td>
                           <td className="py-2 text-muted-foreground">
                             {new Date(log.loginAt).toLocaleString()}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               )}
             </Card>
+
+            {/* Active sessions live-view — directly under the login history (SA only). */}
+            {isSuperAdmin && <ActiveSessionsCard currentUserId={user?.id ?? 0} loginLogs={loginLogs} />}
           </div>
         )}
 

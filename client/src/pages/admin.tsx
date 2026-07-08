@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {
-  Plus, Pencil, DollarSign, Trash2, KeyRound, Check, X, Clock, Download, EyeOff,
+  Plus, Pencil, DollarSign, Trash2, KeyRound, Check, X, Clock, Download, Upload, EyeOff,
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle, Sparkles,
   HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash, RotateCcw,
@@ -252,7 +252,7 @@ type ActivityEntry = {
   groupScope: string;
 };
 
-type TabId = "overview" | "users" | "groups" | "teams" | "security" | "backup" | "activity" | "logins" | "data" | "danger" | "registrations" | "accounting" | "guide";
+type TabId = "overview" | "users" | "groups" | "teams" | "security" | "backup" | "activity" | "logins" | "data" | "danger" | "registrations" | "accounting" | "guide" | "watch";
 
 function parseGroups(groupScope: string): string[] {
   return groupScope.split(",").map((s) => s.trim()).filter(Boolean);
@@ -1799,6 +1799,7 @@ const ALL_TABS: { id: TabId; labelKey: string; superAdminOnly?: boolean; icon: R
   { id: "activity", labelKey: "admin.tabActivityLog", icon: Activity },
   { id: "logins", labelKey: "admin.tabLoginHistory", icon: LogIn },
   { id: "data", labelKey: "admin.tabDataManagement", icon: HardDrive },
+  { id: "watch", labelKey: "admin.tabWatchApp", icon: Watch },
   { id: "danger", labelKey: "admin.tabDangerZone", icon: AlertTriangle },
   { id: "security", labelKey: "admin.tabSecurity", superAdminOnly: true, icon: Shield },
   { id: "registrations", labelKey: "admin.tabRegistrations", superAdminOnly: true, icon: UserPlus },
@@ -1812,6 +1813,7 @@ const ADMIN_TAB_GROUPS: { labelNo: string; labelEn: string; ids: TabId[] }[] = [
   { labelNo: "Folk", labelEn: "People", ids: ["users", "groups", "registrations"] },
   { labelNo: "Overvåking", labelEn: "Monitoring", ids: ["activity", "logins"] },
   { labelNo: "Data og backup", labelEn: "Data & backup", ids: ["backup", "data", "danger"] },
+  { labelNo: "Klokke", labelEn: "Watch", ids: ["watch"] },
   { labelNo: "System", labelEn: "System", ids: ["teams", "security", "accounting", "guide"] },
 ];
 
@@ -5140,6 +5142,8 @@ export default function Admin() {
 
         {activeTab === "data" && <DataManagementTab teamScopeParam={teamScopeParam} downloadFullPdf={downloadFullPdf} pdfLoading={pdfLoading} isSuperAdmin={isSuperAdmin} teams={teams} />}
 
+        {activeTab === "watch" && <WatchAppTab isSuperAdmin={isSuperAdmin} teams={teams} />}
+
         {activeTab === "guide" && (
           <div className="space-y-6">
             <Card className="fs-card rounded-2xl p-6">
@@ -5265,6 +5269,184 @@ export default function Admin() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+type WatchAppMeta = { file: { id: number; filename: string; version: string | null; notes: string | null; uploadedAt: string; uploadedByName: string | null } | null; canDownload: boolean };
+type WatchAppDownload = { id: number; teamId: number | null; teamName: string | null; userId: number | null; userName: string | null; downloadedAt: string };
+
+// #19–21: SA uploads the sideloadable watch-app file; Team Admins granted the
+// "download watch-app" permission download it here to load onto athletes'
+// watches via cable. Every download is logged for the SA overview.
+function WatchAppTab({ isSuperAdmin, teams }: { isSuperAdmin: boolean; teams: ApiTeam[] }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { toast } = useToast();
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const [version, setVersion] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const { data: meta } = useQuery<WatchAppMeta>({ queryKey: ["/api/watch-app/meta"] });
+  const { data: downloads = [] } = useQuery<WatchAppDownload[]>({
+    queryKey: ["/api/watch-app/downloads"],
+    enabled: isSuperAdmin,
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: async (payload: { filename: string; mimeType: string; data: string; version: string; notes: string }) => {
+      const res = await apiRequest("POST", "/api/watch-app", payload);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/watch-app/meta"] });
+      toast({ title: L("Klokkeapp lastet opp", "Watch app uploaded") });
+      setVersion(""); setNotes("");
+      if (fileRef.current) fileRef.current.value = "";
+    },
+    onError: (e: Error) => toast({ title: L("Opplasting mislyktes", "Upload failed"), description: e.message, variant: "destructive" }),
+  });
+
+  const permMutation = useMutation({
+    mutationFn: async (v: { id: number; enabled: boolean }) => {
+      const res = await apiRequest("PUT", `/api/teams/${v.id}/watch-app-permission`, { enabled: v.enabled });
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/teams"] }),
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
+  });
+
+  const onPickFile = (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 3.5 * 1024 * 1024) { toast({ title: L("Filen er for stor (maks 3,5 MB)", "File too large (max 3.5 MB)"), variant: "destructive" }); return; }
+    const reader = new FileReader();
+    reader.onload = () => uploadMutation.mutate({ filename: file.name, mimeType: file.type || "application/octet-stream", data: String(reader.result), version, notes });
+    reader.onerror = () => toast({ title: L("Kunne ikke lese filen", "Could not read file"), variant: "destructive" });
+    reader.readAsDataURL(file);
+  };
+
+  const howTo = (
+    <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <h3 className="text-sm font-semibold text-foreground mb-2">{L("Slik installerer du klokkeappen", "How to install the watch app")}</h3>
+      <ol className="list-decimal pl-5 space-y-1.5 text-xs text-muted-foreground">
+        <li>{L("Last ned klokkeapp-filen med knappen over.", "Download the watch-app file with the button above.")}</li>
+        <li>{L("Koble klokken til datamaskinen med USB-kabel. Klokken vises som en disk (Garmin).", "Connect the watch to the computer with a USB cable. It shows up as a drive (Garmin).")}</li>
+        <li>{L("Kopier filen inn i mappen GARMIN/APPS på klokken.", "Copy the file into the GARMIN/APPS folder on the watch.")}</li>
+        <li>{L("Koble fra klokken trygt og start den på nytt om nødvendig.", "Safely eject the watch and restart it if needed.")}</li>
+        <li>{L("Åpne Glidr-appen på klokken og skriv inn lagets Watch-PIN (se Watch-køen).", "Open the Glidr app on the watch and enter the team's Watch PIN (see the Watch queue).")}</li>
+      </ol>
+    </Card>
+  );
+
+  const canDownload = !!meta?.canDownload;
+
+  return (
+    <div className="flex flex-col gap-4" data-testid="tab-content-watch">
+      {/* Current file + download */}
+      <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <Watch className="h-4 w-4 text-sky-500" />
+          <span className="font-semibold text-foreground">{L("Klokkeapp", "Watch app")}</span>
+        </div>
+        {meta?.file ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm">
+              <div className="font-medium text-foreground">{meta.file.filename}{meta.file.version ? ` · v${meta.file.version}` : ""}</div>
+              <div className="text-xs text-muted-foreground">
+                {L("Lastet opp", "Uploaded")} {new Date(meta.file.uploadedAt).toLocaleString()}{meta.file.uploadedByName ? ` · ${meta.file.uploadedByName}` : ""}
+              </div>
+              {meta.file.notes && <div className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">{meta.file.notes}</div>}
+            </div>
+            {canDownload ? (
+              <a href="/api/watch-app/download" data-testid="link-download-watch-app">
+                <Button size="sm"><Download className="h-4 w-4 mr-1.5" />{L("Last ned klokkeapp", "Download watch app")}</Button>
+              </a>
+            ) : (
+              <span className="text-xs text-muted-foreground">{L("Be Super Admin om nedlastingstilgang.", "Ask the Super Admin for download access.")}</span>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">{L("Ingen klokkeapp er lastet opp ennå.", "No watch app has been uploaded yet.")}</p>
+        )}
+      </Card>
+
+      {(meta?.file || canDownload) && howTo}
+
+      {/* SA-only: upload + per-team permission + download overview */}
+      {isSuperAdmin && (
+        <>
+          <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-3">{L("Last opp ny klokkeapp-fil", "Upload a new watch-app file")}</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">{L("Versjon (valgfritt)", "Version (optional)")}</label>
+                <Input value={version} onChange={(e) => setVersion(e.target.value)} placeholder="1.0.3" className="h-8 text-xs" data-testid="input-watch-app-version" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">{L("Notat (valgfritt)", "Notes (optional)")}</label>
+                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={L("Hva er nytt", "What's new")} className="h-8 text-xs" data-testid="input-watch-app-notes" />
+              </div>
+            </div>
+            <input ref={fileRef} type="file" className="hidden" onChange={(e) => onPickFile(e.target.files?.[0])} data-testid="input-watch-app-file" />
+            <Button size="sm" variant="outline" disabled={uploadMutation.isPending} onClick={() => fileRef.current?.click()}>
+              <Upload className="h-4 w-4 mr-1.5" />{uploadMutation.isPending ? L("Laster opp…", "Uploading…") : L("Velg fil og last opp", "Choose file & upload")}
+            </Button>
+            <p className="mt-2 text-[11px] text-muted-foreground">{L("Erstatter gjeldende fil. Maks 3,5 MB.", "Replaces the current file. Max 3.5 MB.")}</p>
+          </Card>
+
+          <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-1">{L("Nedlastingstilgang per lag", "Download access per team")}</h3>
+            <p className="text-xs text-muted-foreground mb-3">{L("Lagadmins i lag med tilgang kan laste ned klokkeapp-filen.", "Team admins in teams with access can download the watch-app file.")}</p>
+            <div className="flex flex-col gap-1.5">
+              {teams.map((team) => {
+                const enabled = (team as any).watchAppDownload === 1;
+                return (
+                  <div key={team.id} className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
+                    <span className="text-sm">{team.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => permMutation.mutate({ id: team.id, enabled: !enabled })}
+                      disabled={permMutation.isPending}
+                      className={cn("relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors", enabled ? "bg-sky-500" : "bg-muted-foreground/25")}
+                      data-testid={`toggle-watch-app-perm-${team.id}`}
+                    >
+                      <span className={cn("pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform", enabled ? "translate-x-[18px]" : "translate-x-[2px]")} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-3">{L("Nedlastinger (oversikt)", "Downloads (overview)")} ({downloads.length})</h3>
+            {downloads.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{L("Ingen nedlastinger ennå.", "No downloads yet.")}</p>
+            ) : (
+              <div className="max-h-[360px] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                      <th className="pb-2 pr-3">{L("Bruker", "User")}</th>
+                      <th className="pb-2 pr-3">{L("Lag", "Team")}</th>
+                      <th className="pb-2">{L("Tid", "Time")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {downloads.map((d) => (
+                      <tr key={d.id} className="border-b border-border">
+                        <td className="py-2 pr-3 font-medium text-foreground">{d.userName ?? "—"}</td>
+                        <td className="py-2 pr-3 text-muted-foreground">{d.teamName ?? "—"}</td>
+                        <td className="py-2 text-muted-foreground">{new Date(d.downloadedAt).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </>
+      )}
+    </div>
   );
 }
 

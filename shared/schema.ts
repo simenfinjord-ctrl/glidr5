@@ -202,6 +202,8 @@ export const teams = pgTable("teams", {
   feedbackSheetUrl: text("feedback_sheet_url"),
   feedbackEnabled: integer("feedback_enabled").notNull().default(0),
   watchPin: text("watch_pin"),
+  // Whether this team's admins may download the sideloadable watch-app file.
+  watchAppDownload: integer("watch_app_download").notNull().default(0),
   isPaused: integer("is_paused").notNull().default(0),
   // Billing / subscription
   planName: text("plan_name").default("free"),

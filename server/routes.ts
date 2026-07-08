@@ -619,6 +619,35 @@ export async function registerRoutes(
     `);
     await pool.query(`ALTER TABLE test_attachments ADD COLUMN IF NOT EXISTS url TEXT`).catch(() => {});
     await pool.query(`ALTER TABLE tests ADD COLUMN IF NOT EXISTS share_token TEXT`).catch(() => {});
+    // Watch-app distribution (#19–21): SA uploads the Garmin watch-app file that
+    // must be sideloaded via cable; TAs with permission download it from their
+    // Admin page; each download is logged so the SA has an overview.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS watch_app (
+        id SERIAL PRIMARY KEY,
+        filename TEXT NOT NULL,
+        mime_type TEXT NOT NULL DEFAULT 'application/octet-stream',
+        data TEXT,
+        url TEXT,
+        version TEXT,
+        notes TEXT,
+        uploaded_at TEXT NOT NULL,
+        uploaded_by_id INTEGER,
+        uploaded_by_name TEXT
+      )
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS watch_app_downloads (
+        id SERIAL PRIMARY KEY,
+        watch_app_id INTEGER,
+        team_id INTEGER,
+        team_name TEXT,
+        user_id INTEGER,
+        user_name TEXT,
+        downloaded_at TEXT NOT NULL
+      )
+    `);
+    await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS watch_app_download INTEGER NOT NULL DEFAULT 0`).catch(() => {});
     await pool.query(`
       CREATE TABLE IF NOT EXISTS client_errors (
         id SERIAL PRIMARY KEY,
@@ -3456,6 +3485,110 @@ export async function registerRoutes(
     res.setHeader("Content-Type", mime_type);
     res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
     res.send(buf);
+  });
+
+  // ─── Watch-app distribution (#19–21) ────────────────────────────────────────
+  // Whether the caller may download the watch-app file: SA always; a Team Admin
+  // only if their active team has been granted the "download watch-app" permission.
+  async function canDownloadWatchApp(req: Request): Promise<boolean> {
+    const u = req.user as any;
+    if (u?.isAdmin === 1) return true;
+    if (u?.isTeamAdmin !== 1) return false;
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(`SELECT watch_app_download FROM teams WHERE id = $1`, [teamId]);
+    return r.rows[0]?.watch_app_download === 1;
+  }
+
+  // SA uploads (or replaces) the watch-app file. Kept as newest row.
+  app.post("/api/watch-app", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const { filename, mimeType, data, version, notes } = req.body;
+    if (!filename || !data) return res.status(400).json({ message: "filename and data required" });
+    // The global JSON body limit is 5 MB; base64 inflates ~4/3, so the binary
+    // must stay under ~3.5 MB (watch-app files are small).
+    const approxBytes = Math.ceil((String(data).length * 3) / 4);
+    if (approxBytes > 3.5 * 1024 * 1024) return res.status(413).json({ message: "File too large (max 3.5 MB)" });
+    const { pool } = await import("./db");
+    const now = new Date().toISOString();
+    const mime = mimeType || "application/octet-stream";
+    if (r2Enabled) {
+      const base64 = String(data).replace(/^data:[^;]+;base64,/, "");
+      const buf = Buffer.from(base64, "base64");
+      const ext = filename.includes(".") ? filename.split(".").pop() : "bin";
+      const { randomUUID } = await import("crypto");
+      const key = `watch-app/${randomUUID()}.${ext}`;
+      const uploadedKey = await uploadToR2(key, buf, mime);
+      if (!uploadedKey) return res.status(500).json({ message: "R2 upload failed" });
+      await (pool as any).query(
+        `INSERT INTO watch_app (filename, mime_type, data, url, version, notes, uploaded_at, uploaded_by_id, uploaded_by_name) VALUES ($1,$2,'',$3,$4,$5,$6,$7,$8)`,
+        [filename, mime, uploadedKey, version || null, notes || null, now, u.id, u.name]
+      );
+    } else {
+      await (pool as any).query(
+        `INSERT INTO watch_app (filename, mime_type, data, version, notes, uploaded_at, uploaded_by_id, uploaded_by_name) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [filename, mime, data, version || null, notes || null, now, u.id, u.name]
+      );
+    }
+    res.json({ ok: true });
+  });
+
+  // Metadata about the current watch-app file + whether the caller may download it.
+  app.get("/api/watch-app/meta", requireAuth, async (req, res) => {
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(
+      `SELECT id, filename, version, notes, uploaded_at AS "uploadedAt", uploaded_by_name AS "uploadedByName" FROM watch_app ORDER BY id DESC LIMIT 1`
+    );
+    const canDownload = await canDownloadWatchApp(req);
+    res.json({ file: r.rows[0] ?? null, canDownload });
+  });
+
+  // Download the current watch-app file (logs the download for the SA overview).
+  app.get("/api/watch-app/download", requireAuth, async (req, res) => {
+    if (!(await canDownloadWatchApp(req))) return res.status(403).json({ message: "No permission to download the watch app" });
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(`SELECT id, filename, mime_type, data, url FROM watch_app ORDER BY id DESC LIMIT 1`);
+    const row = r.rows[0];
+    if (!row) return res.status(404).json({ message: "No watch-app file uploaded yet" });
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const team = await storage.getTeam(teamId);
+    await (pool as any).query(
+      `INSERT INTO watch_app_downloads (watch_app_id, team_id, team_name, user_id, user_name, downloaded_at) VALUES ($1,$2,$3,$4,$5,$6)`,
+      [row.id, teamId, team?.name ?? null, u.id, u.name, new Date().toISOString()]
+    ).catch(() => {});
+    if (row.url) {
+      const signedUrl = await getR2Url(row.url);
+      if (!signedUrl) return res.status(500).json({ message: "Could not generate download URL" });
+      return res.redirect(302, signedUrl);
+    }
+    const buf = Buffer.from(String(row.data).replace(/^data:[^;]+;base64,/, ""), "base64");
+    res.setHeader("Content-Type", row.mime_type || "application/octet-stream");
+    res.setHeader("Content-Disposition", `attachment; filename="${row.filename}"`);
+    res.send(buf);
+  });
+
+  // SA overview: who has downloaded the watch app, newest first.
+  app.get("/api/watch-app/downloads", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(
+      `SELECT id, team_id AS "teamId", team_name AS "teamName", user_id AS "userId", user_name AS "userName", downloaded_at AS "downloadedAt" FROM watch_app_downloads ORDER BY id DESC LIMIT 500`
+    );
+    res.json(r.rows);
+  });
+
+  // SA grants/revokes a team's permission to download the watch app.
+  app.put("/api/teams/:id/watch-app-permission", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const id = parseInt(req.params.id);
+    const enabled = req.body.enabled ? 1 : 0;
+    const { pool } = await import("./db");
+    await (pool as any).query(`UPDATE teams SET watch_app_download = $1 WHERE id = $2`, [enabled, id]);
+    res.json({ ok: true, enabled: enabled === 1 });
   });
 
   // GET users who can be @mentioned in a test's comments

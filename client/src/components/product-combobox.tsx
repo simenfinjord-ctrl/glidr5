@@ -24,11 +24,9 @@ type Product = {
   name: string;
 };
 
-function categoriesFor(testType: TestType): ProductCategory[] {
-  // Glide (and classic/skating) tests use all glide products; Structure tests
-  // only show structure tools.
-  if (testType === "Structure") return ["Structure Tool"];
-  return ["Paraffin", "Liquid", "Block"];
+// Robust to naming/casing and legacy category values.
+function isStructureTool(category: string): boolean {
+  return /structure|struktur|\btool\b|verkt|rille/i.test(category || "");
 }
 
 export function ProductCombobox({
@@ -48,8 +46,8 @@ export function ProductCombobox({
   const [open, setOpen] = useState(false);
 
   const allowed = useMemo(() => {
-    const cats = new Set<string>(categoriesFor(testType));
-    return products.filter((p) => cats.has(p.category));
+    const structure = testType === "Structure";
+    return products.filter((p) => structure ? isStructureTool(p.category) : !isStructureTool(p.category));
   }, [products, testType]);
 
   const selected = useMemo(() => allowed.find((p) => p.id === value), [allowed, value]);

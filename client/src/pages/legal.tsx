@@ -3,12 +3,12 @@ import { PublicNav } from "@/components/public-nav";
 import { useLanguage } from "@/lib/language";
 
 const sections = [
-  { id: "bruksvilkar", label: "Bruksvilkår" },
-  { id: "personvern", label: "Personvernerklæring" },
-  { id: "databehandler", label: "Databehandleravtale" },
-  { id: "cookies", label: "Informasjonskapsler" },
-  { id: "rettigheter", label: "Dine rettigheter" },
-  { id: "kontakt", label: "Kontakt" },
+  { id: "bruksvilkar", no: "Bruksvilkår", en: "Terms of Service" },
+  { id: "personvern", no: "Personvernerklæring", en: "Privacy Policy" },
+  { id: "databehandler", no: "Databehandleravtale", en: "Data Processing" },
+  { id: "cookies", no: "Informasjonskapsler", en: "Cookies" },
+  { id: "rettigheter", no: "Dine rettigheter", en: "Your Rights" },
+  { id: "kontakt", no: "Kontakt", en: "Contact" },
 ];
 
 export default function Legal() {
@@ -36,7 +36,7 @@ export default function Legal() {
           <div className="flex flex-wrap gap-2 mt-4">
             {sections.map((s) => (
               <a key={s.id} href={`#${s.id}`} className="text-xs rounded-full border px-3 py-1 hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground">
-                {s.label}
+                {lang === "no" ? s.no : s.en}
               </a>
             ))}
           </div>
@@ -85,11 +85,10 @@ function NorwegianContent() {
           </div>
 
           <div>
-            <h3 className="font-semibold text-foreground mb-2">4. Abonnement og betaling</h3>
-            <p className="mb-2"><strong>Gratis plan:</strong> Tilgjengelig uten betalingskort. Grenser gjelder (se prissiden).</p>
-            <p className="mb-2"><strong>Betalte planer:</strong> Faktureres månedlig eller årlig via Stripe. Prøveperiode på 14 dager uten betaling. Betaling ved første fakturadato etter prøveperioden.</p>
-            <p className="mb-2"><strong>Oppsigelse:</strong> Du kan si opp abonnementet ditt når som helst fra kontoinnstillingene. Tilgang opprettholdes til slutten av faktureringsperioden. Ingen refusjon for gjenværende periode.</p>
-            <p><strong>Prisendringer:</strong> Vi varsler med minst 30 dagers varsel ved prisøkninger.</p>
+            <h3 className="font-semibold text-foreground mb-2">4. Bruk, pris og tilgjengelighet</h3>
+            <p className="mb-2"><strong>Gratis bruk:</strong> Glidr tilbys for tiden kostnadsfritt.</p>
+            <p className="mb-2"><strong>Rett til å ta betalt:</strong> Utvikleren forbeholder seg retten til når som helst å innføre betaling for Glidr, og til å endre eller øke prisene. Fortsatt bruk etter at slike vilkår er varslet regnes som aksept.</p>
+            <p><strong>Tilgjengelighet:</strong> Tjenesten leveres «som den er». Utvikleren forbeholder seg retten til når som helst, og uten forhåndsvarsel, å endre, begrense, avbryte eller ta ned Glidr helt — midlertidig eller permanent — uten ansvar for tap som følge av dette.</p>
           </div>
 
           <div>
@@ -167,7 +166,6 @@ function NorwegianContent() {
             <ul className="space-y-1 list-disc list-inside text-muted-foreground">
               <li>Levere og drifte tjenesten</li>
               <li>Autentisering og tilgangskontroll</li>
-              <li>Fakturering og betalingshåndtering (via Stripe)</li>
               <li>Sikkerhetshendelser og misbruksforebygging</li>
               <li>Produktforbedring (anonymisert/aggregert bruksdata)</li>
             </ul>
@@ -186,7 +184,6 @@ function NorwegianContent() {
                 </thead>
                 <tbody>
                   {[
-                    ["Stripe Inc. (USA)", "Betalingshåndtering", "EU-US Data Privacy Framework"],
                     ["OpenAI (USA)", "AI-analyse av testbilder", "Standard kontraktsklausuler (SCC)"],
                     ["Railway / Fly.io", "Serverinfrastruktur", "Innen EU/EØS der mulig"],
                     ["Garmin International", "Klokkeapp-integrasjon", "Brukerens samtykke"],
@@ -250,8 +247,6 @@ function NorwegianContent() {
             <tbody>
               {[
                 ["glidr.sid", "Nødvendig", "Innloggingssesjon", "Inntil 30 dager (husk meg) / nettleserøkt"],
-                ["__stripe_mid", "Nødvendig (betaling)", "Stripe betalingssikkerhet", "1 år"],
-                ["__stripe_sid", "Nødvendig (betaling)", "Stripe betalingssesjon", "30 minutter"],
               ].map(([name, type, purpose, duration]) => (
                 <tr key={name} className="border-t">
                   <td className="px-3 py-2 font-mono font-medium">{name}</td>
@@ -319,10 +314,10 @@ function EnglishContent() {
             <p>Glidr claims no ownership, license, or usage rights over your data. Your data will never be sold, shared with third parties, or used for purposes other than providing the Service.</p>
           </div>
           <div>
-            <h3 className="font-semibold text-foreground mb-2">3. Subscriptions & Billing</h3>
-            <p className="mb-1"><strong>Free plan:</strong> No payment details required. Usage limits apply (see pricing page).</p>
-            <p className="mb-1"><strong>Paid plans:</strong> Billed monthly or annually via Stripe. 14-day free trial; payment begins at the first invoice date after the trial.</p>
-            <p><strong>Cancellation:</strong> Cancel anytime from account settings. Access continues until end of billing period. No refunds for unused time.</p>
+            <h3 className="font-semibold text-foreground mb-2">3. Use, pricing & availability</h3>
+            <p className="mb-1"><strong>Free use:</strong> Glidr is currently offered free of charge.</p>
+            <p className="mb-1"><strong>Right to charge:</strong> The developer reserves the right to introduce charges for Glidr at any time, and to change or increase prices. Continued use after such terms are announced constitutes acceptance.</p>
+            <p><strong>Availability:</strong> The Service is provided "as is". The developer reserves the right, at any time and without prior notice, to modify, limit, suspend or take Glidr down entirely — temporarily or permanently — without liability for any resulting loss.</p>
           </div>
           <div>
             <h3 className="font-semibold text-foreground mb-2">4. Limitation of Liability</h3>
@@ -349,7 +344,7 @@ function EnglishContent() {
           </div>
           <div>
             <h3 className="font-semibold text-foreground mb-2">Third Parties</h3>
-            <p>Stripe (billing), OpenAI (AI image analysis of test sheets — no personal data about athletes is sent), Railway/Fly.io (hosting), Garmin (watch integration), Google (optional Sheets backup). All third-party transfers are covered by EU Standard Contractual Clauses or the EU-US Data Privacy Framework.</p>
+            <p>OpenAI (AI image analysis of test sheets — no personal data about athletes is sent), Railway/Fly.io (hosting), Garmin (watch integration), Google (optional Sheets backup). All third-party transfers are covered by EU Standard Contractual Clauses or the EU-US Data Privacy Framework.</p>
           </div>
           <div>
             <h3 className="font-semibold text-foreground mb-2">Retention</h3>

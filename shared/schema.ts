@@ -529,6 +529,9 @@ export const athletes = pgTable("athletes", {
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),
   teamId: integer("team_id").notNull().default(1),
+  // Archived athletes are hidden from the default Race skis list but kept
+  // (with all their skis/tests) so they can be restored later.
+  archived: integer("archived").notNull().default(0),
 });
 
 export const insertAthleteSchema = createInsertSchema(athletes).omit({ id: true });

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Users, LayoutGrid, List } from "lucide-react";
+import { Plus, Users, LayoutGrid, List, Archive, ArchiveRestore } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -28,6 +28,7 @@ type Athlete = {
   createdAt: string;
   createdById: number;
   createdByName: string;
+  archived?: number;
 };
 
 // Compact profile chips (brand, height, weight, pole, binding) shown per athlete.
@@ -46,7 +47,7 @@ function athleteMetricChips(a: Athlete, lang: string): { label: string; value: s
 }
 
 export default function RaceSkis() {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const { toast } = useToast();
   const { t, language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
@@ -69,9 +70,35 @@ export default function RaceSkis() {
     return "grid";
   });
 
-  const { data: athletes = [] } = useQuery<Athlete[]>({
-    queryKey: ["/api/athletes"],
+  const [showArchived, setShowArchived] = useState(false);
+
+  const { data: allAthletes = [] } = useQuery<Athlete[]>({
+    queryKey: ["/api/athletes?includeArchived=1"],
   });
+  const activeAthletes = allAthletes.filter((a) => !a.archived);
+  const archivedAthletes = allAthletes.filter((a) => a.archived);
+  const athletes = showArchived ? archivedAthletes : activeAthletes;
+
+  const canEdit = can("raceskis", "edit");
+
+  const archiveMutation = useMutation({
+    mutationFn: async (data: { id: number; archived: boolean }) => {
+      const res = await apiRequest("POST", `/api/athletes/${data.id}/archive`, { archived: data.archived });
+      return res.json();
+    },
+    onSuccess: (_r, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/athletes?includeArchived=1"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/athletes"] });
+      toast({ title: vars.archived ? L("Utøver arkivert", "Athlete archived") : L("Utøver gjenopprettet", "Athlete restored") });
+    },
+    onError: (e) => toast({ title: L("Handlingen mislyktes", "Action failed"), description: e instanceof Error ? e.message : "", variant: "destructive" }),
+  });
+
+  const toggleArchive = (e: React.MouseEvent, athlete: Athlete) => {
+    e.preventDefault();
+    e.stopPropagation();
+    archiveMutation.mutate({ id: athlete.id, archived: !athlete.archived });
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; poleHeightSkate: string; bindingPosition: string; skiServicePreferences: string }) => {
@@ -89,6 +116,7 @@ export default function RaceSkis() {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/athletes?includeArchived=1"] });
       queryClient.invalidateQueries({ queryKey: ["/api/athletes"] });
       toast({ title: t("raceskis.athleteAdded") });
       setOpen(false);
@@ -128,6 +156,24 @@ export default function RaceSkis() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Archived toggle */}
+            <button
+              onClick={() => setShowArchived((v) => !v)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors",
+                showArchived
+                  ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                  : "border-border bg-background/60 text-muted-foreground hover:text-foreground",
+              )}
+              data-testid="button-toggle-archived"
+            >
+              <Archive className="h-3.5 w-3.5" />
+              {showArchived ? L("Viser arkiv", "Showing archive") : L("Arkivert", "Archived")}
+              {archivedAthletes.length > 0 && (
+                <span className="rounded-full bg-amber-200/70 px-1.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-800/50 dark:text-amber-200">{archivedAthletes.length}</span>
+              )}
+            </button>
+
             {/* View mode toggle */}
             <div className="flex items-center rounded-lg border border-border bg-background/60 p-0.5" data-testid="view-mode-toggle">
               <button
@@ -252,7 +298,7 @@ export default function RaceSkis() {
             className="fs-card rounded-2xl p-6 text-sm text-muted-foreground"
             data-testid="empty-athletes"
           >
-            {t("raceskis.noAthletes")}
+            {showArchived ? L("Ingen arkiverte utøvere.", "No archived athletes.") : t("raceskis.noAthletes")}
           </Card>
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -298,8 +344,20 @@ export default function RaceSkis() {
                         </div>
                       )}
                     </div>
-                    <div className="inline-flex rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground shrink-0">
-                      {new Date(athlete.createdAt).toLocaleDateString()}
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <div className="inline-flex rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground">
+                        {new Date(athlete.createdAt).toLocaleDateString()}
+                      </div>
+                      {canEdit && (
+                        <button
+                          onClick={(e) => toggleArchive(e, athlete)}
+                          disabled={archiveMutation.isPending}
+                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                          data-testid={`button-archive-athlete-${athlete.id}`}
+                        >
+                          {athlete.archived ? (<><ArchiveRestore className="h-3 w-3" />{L("Gjenopprett", "Restore")}</>) : (<><Archive className="h-3 w-3" />{L("Arkiver", "Archive")}</>)}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </Card>
@@ -346,6 +404,17 @@ export default function RaceSkis() {
                     <span className="text-xs text-muted-foreground shrink-0" data-testid={`text-athlete-created-by-${athlete.id}`}>
                       {athlete.createdByName}
                     </span>
+                    {canEdit && (
+                      <button
+                        onClick={(e) => toggleArchive(e, athlete)}
+                        disabled={archiveMutation.isPending}
+                        className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
+                        data-testid={`button-archive-athlete-${athlete.id}`}
+                        title={athlete.archived ? L("Gjenopprett", "Restore") : L("Arkiver", "Archive")}
+                      >
+                        {athlete.archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                      </button>
+                    )}
                   </div>
                 </AppLink>
               ))}

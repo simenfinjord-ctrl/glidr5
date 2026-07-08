@@ -285,6 +285,7 @@ export async function registerRoutes(
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS notes TEXT;
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS is_training_ski INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS default_ski_brand TEXT;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS archived INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS feeling_note TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS kick_solution TEXT;
       ALTER TABLE test_ski_series ADD COLUMN IF NOT EXISTS action_status TEXT;
@@ -5604,7 +5605,11 @@ export async function registerRoutes(
   app.get("/api/athletes", requirePermission("raceskis", "view"), async (req, res) => {
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
-    const list = await storage.listAthletes(u.id, u.isScopeAdmin, teamId);
+    // Archived athletes are hidden everywhere (new-test/dashboard pickers etc.)
+    // unless the caller explicitly opts in (the Race skis archive view).
+    const includeArchived = req.query.includeArchived === "1";
+    let list = await storage.listAthletes(u.id, u.isScopeAdmin, teamId);
+    if (!includeArchived) list = list.filter((a: any) => !a.archived);
     // Athlete-access users see every athlete they've been granted (athlete_access),
     // not only their currently-active one — so all show on the Athlete skis page.
     if ((req.user as any).isAthleteAccess === 1) {
@@ -5658,9 +5663,23 @@ export async function registerRoutes(
     if (req.body.poleHeightSkate !== undefined) data.poleHeightSkate = req.body.poleHeightSkate || null;
     if (req.body.bindingPosition !== undefined) data.bindingPosition = req.body.bindingPosition || null;
     if (req.body.skiServicePreferences !== undefined) data.skiServicePreferences = req.body.skiServicePreferences || null;
+    if (req.body.archived !== undefined) data.archived = req.body.archived ? 1 : 0;
     const updated = await storage.updateAthlete(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });
     res.json(updated);
+  });
+
+  // Archive / restore an athlete (kept with all skis & tests, hidden from the
+  // default list). Any user with edit access to the athlete may archive it.
+  app.post("/api/athletes/:id/archive", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const hasAccess = await storage.hasAthleteAccess(id, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const archived = req.body.archived ? 1 : 0;
+    const updated = await storage.updateAthlete(id, { archived } as any);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json({ ok: true, archived: archived === 1 });
   });
 
   app.delete("/api/athletes/:id", requirePermission("raceskis", "edit"), async (req, res) => {

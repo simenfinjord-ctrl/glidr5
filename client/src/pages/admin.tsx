@@ -53,6 +53,8 @@ type ApiUser = {
   createdAt?: string;
   isAthleteAccess?: number;
   linkedAthleteId?: number | null;
+  fromOtherTeam?: boolean;
+  homeTeamId?: number;
 };
 
 type ApiTeam = {
@@ -3787,6 +3789,13 @@ export default function Admin() {
     },
   });
 
+  // Remove a "shared from other team" member's access to this team.
+  const removeFromTeamMutation = useMutation({
+    mutationFn: async (userId: number) => { const res = await apiRequest("DELETE", `/api/users/${userId}/teams/${effectiveTeamId}`); return res.json(); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/users${teamScopeParam}`] }); toast({ title: L("Tilgang fjernet", "Access removed") }); },
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
+  });
+
   const createTeamMutation = useMutation({
     mutationFn: async (payload: { name: string; enabledAreas: string[] }) => {
       const res = await apiRequest("POST", "/api/teams", payload);
@@ -4241,6 +4250,11 @@ export default function Admin() {
                               {new Date(u.createdAt).toLocaleDateString("no-NO", { year: "numeric", month: "short", day: "numeric" })}
                             </span>
                           )}
+                          {u.fromOtherTeam && (
+                            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300" title={L("Har hjemmelag i et annet lag", "Primary team is elsewhere")}>
+                              {L("Delt fra annet lag", "Shared from other team")}
+                            </span>
+                          )}
                           {!!u.isBlindTester && (
                             <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-600">
                               <EyeOff className="inline h-2.5 w-2.5 mr-0.5" />Blind
@@ -4292,6 +4306,16 @@ export default function Admin() {
                         >
                           <Watch className="h-4.5 w-4.5" />
                         </button>
+                        {u.fromOtherTeam ? (
+                          <button
+                            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-rose-600"
+                            data-testid={`button-remove-from-team-${u.id}`}
+                            title={L("Fjern fra dette laget", "Remove from this team")}
+                            onClick={() => { if (confirm(L("Fjerne denne brukerens tilgang til laget?", "Remove this user's access to the team?"))) removeFromTeamMutation.mutate(u.id); }}
+                          >
+                            <UserX className="h-4.5 w-4.5" />
+                          </button>
+                        ) : (
                         <button
                           className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground/80"
                           data-testid={`button-edit-user-${u.id}`}
@@ -4300,6 +4324,7 @@ export default function Admin() {
                         >
                           <Pencil className="h-4.5 w-4.5" />
                         </button>
+                        )}
                         <button
                           className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground/80"
                           data-testid={`button-reset-user-${u.id}`}

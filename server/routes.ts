@@ -1494,6 +1494,9 @@ export async function registerRoutes(
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const userId = parseInt(req.params.id);
     const teamId = parseInt(req.params.teamId);
+    const u = req.user!;
+    // Non-SA admins may only manage their own active team.
+    if (u.isAdmin !== 1 && teamId !== getActiveTeamId(req)) return res.status(403).json({ message: "Cannot manage other teams" });
     await storage.removeUserFromTeam(userId, teamId);
     // Reset activeTeamId if the user was currently viewing the removed team
     // This prevents them from being stuck on a team they no longer have access to
@@ -3596,7 +3599,30 @@ export async function registerRoutes(
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const teamId = getAdminTeamScope(req);
     const list = await storage.listUsers(teamId);
-    res.json(list.map(({ password, ...rest }) => rest));
+    const byId = new Map<number, any>(list.map((u: any) => [u.id, u]));
+    // Also include users added to this team via user_team_permissions (their
+    // primary team is elsewhere), shown with their per-team role/permissions and
+    // flagged so the TA can tell them apart / remove them.
+    if (teamId) {
+      try {
+        const { pool } = await import("./db");
+        const extra = await (pool as any).query(
+          `SELECT u.*, utp.permissions AS "utpPermissions", utp.group_scope AS "utpGroupScope", utp.is_team_admin AS "utpIsTeamAdmin"
+           FROM user_team_permissions utp JOIN users u ON u.id = utp.user_id
+           WHERE utp.team_id = $1 AND u.team_id <> $1`, [teamId]);
+        for (const r of extra.rows) {
+          if (byId.has(r.id)) continue;
+          byId.set(r.id, {
+            ...r,
+            permissions: r.utpPermissions ?? r.permissions,
+            groupScope: r.utpGroupScope ?? r.groupScope,
+            isTeamAdmin: r.utpIsTeamAdmin ?? 0,
+            fromOtherTeam: true, homeTeamId: r.team_id,
+          });
+        }
+      } catch (e) { console.error("[users] multi-team merge failed:", e); }
+    }
+    res.json([...byId.values()].map(({ password, utpPermissions, utpGroupScope, utpIsTeamAdmin, ...rest }: any) => rest));
   });
 
   app.post("/api/users", requireAuth, async (req, res) => {

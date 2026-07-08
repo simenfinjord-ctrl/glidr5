@@ -1044,8 +1044,9 @@ export default function AthleteDetail() {
   const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", poleHeightSkate: "", bindingPosition: "", skiServicePreferences: "" });
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
 
+  // Include archived so an archived athlete's profile still opens from the archive.
   const { data: athletes = [] } = useQuery<Athlete[]>({
-    queryKey: ["/api/athletes"],
+    queryKey: ["/api/athletes?includeArchived=1"],
   });
   const athlete = athletes.find((a) => a.id === athleteId);
 
@@ -1654,7 +1655,7 @@ export default function AthleteDetail() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/athletes"] });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.startsWith("/api/athletes") });
       toast({ title: L("Utøver oppdatert", "Athlete updated") });
       setEditAthleteOpen(false);
     },

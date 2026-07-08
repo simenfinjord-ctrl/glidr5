@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Users, LayoutGrid, List, Archive, ArchiveRestore } from "lucide-react";
+import { Plus, Users, LayoutGrid, List, Archive, ArchiveRestore, Search } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -71,13 +71,20 @@ export default function RaceSkis() {
   });
 
   const [showArchived, setShowArchived] = useState(false);
+  const [search, setSearch] = useState("");
 
   const { data: allAthletes = [] } = useQuery<Athlete[]>({
     queryKey: ["/api/athletes?includeArchived=1"],
   });
   const activeAthletes = allAthletes.filter((a) => !a.archived);
   const archivedAthletes = allAthletes.filter((a) => a.archived);
-  const athletes = showArchived ? archivedAthletes : activeAthletes;
+  const q = search.trim().toLowerCase();
+  const matchesSearch = (a: Athlete) =>
+    !q || a.name.toLowerCase().includes(q) || (a.team ?? "").toLowerCase().includes(q) || (a.defaultSkiBrand ?? "").toLowerCase().includes(q);
+  // While searching, span BOTH active and archived athletes so an archived one
+  // is findable without first switching to the archive view; otherwise honour
+  // the archive toggle.
+  const athletes = (q ? allAthletes : (showArchived ? archivedAthletes : activeAthletes)).filter(matchesSearch);
 
   const canEdit = can("raceskis", "edit");
 
@@ -292,13 +299,25 @@ export default function RaceSkis() {
           </div>
         </div>
 
+        {/* Search — spans both active and archived athletes */}
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={L("Søk i aktive og arkiverte løpere…", "Search active and archived athletes…")}
+            className="pl-9"
+            data-testid="input-athlete-search"
+          />
+        </div>
+
         {/* Athletes list */}
         {athletes.length === 0 ? (
           <Card
             className="fs-card rounded-2xl p-6 text-sm text-muted-foreground"
             data-testid="empty-athletes"
           >
-            {showArchived ? L("Ingen arkiverte utøvere.", "No archived athletes.") : t("raceskis.noAthletes")}
+            {q ? L("Ingen løpere samsvarer med søket.", "No athletes match your search.") : showArchived ? L("Ingen arkiverte utøvere.", "No archived athletes.") : t("raceskis.noAthletes")}
           </Card>
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -318,6 +337,12 @@ export default function RaceSkis() {
                         {athlete.name}
                       </div>
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {athlete.archived && (
+                          <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-800">
+                            <Archive className="mr-1 h-3 w-3" />
+                            {L("Arkivert", "Archived")}
+                          </span>
+                        )}
                         {athlete.team && (
                           <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800">
                             <Users className="mr-1 h-3 w-3" />
@@ -382,6 +407,12 @@ export default function RaceSkis() {
                       <span className="font-medium text-sm" data-testid={`text-athlete-name-${athlete.id}`}>
                         {athlete.name}
                       </span>
+                      {athlete.archived && (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-800 align-middle">
+                          <Archive className="mr-1 h-3 w-3" />
+                          {L("Arkivert", "Archived")}
+                        </span>
+                      )}
                       {athleteMetricChips(athlete, language).length > 0 && (
                         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
                           {athleteMetricChips(athlete, language).map((m) => (

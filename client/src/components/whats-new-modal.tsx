@@ -3,14 +3,17 @@ import { X, Sparkles } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/language";
+import { useAuth } from "@/lib/auth";
 import {
-  RELEASES,
-  LATEST_VERSION,
   KIND_LABEL,
+  AUDIENCE_LABEL,
   type ReleaseKind,
-  getSeenVersion,
+  type Audience,
+  roleRank,
+  releasesForRank,
+  latestVersionForRank,
+  hasUnseenReleaseForRank,
   markAsSeen,
-  hasUnseenRelease,
 } from "@/lib/whats-new";
 
 const KIND_STYLE: Record<ReleaseKind, string> = {
@@ -29,17 +32,23 @@ interface WhatsNewModalProps {
 export function WhatsNewModal({ open: controlledOpen, onClose }: WhatsNewModalProps) {
   const { language } = useLanguage();
   const lang = language === "no" ? "no" : "en";
+  const { isSuperAdmin, isTeamAdmin } = useAuth();
+  const rank = roleRank({ isSuperAdmin, isTeamAdmin });
+
+  // Only the releases/items relevant to this account's role.
+  const releases = releasesForRank(rank);
+  const latestForRole = latestVersionForRank(rank);
 
   const [open, setOpen] = useState(false);
 
   // Auto-open once per release for users who haven't seen it yet
   useEffect(() => {
     if (controlledOpen !== undefined) return; // externally controlled
-    if (hasUnseenRelease()) {
+    if (hasUnseenReleaseForRank(rank)) {
       const t = setTimeout(() => setOpen(true), 1200);
       return () => clearTimeout(t);
     }
-  }, []);
+  }, [rank]);
 
   // Sync externally controlled open prop
   useEffect(() => {
@@ -47,12 +56,12 @@ export function WhatsNewModal({ open: controlledOpen, onClose }: WhatsNewModalPr
   }, [controlledOpen]);
 
   function handleClose() {
-    markAsSeen(LATEST_VERSION);
+    if (latestForRole) markAsSeen(latestForRole);
     setOpen(false);
     onClose?.();
   }
 
-  if (!open) return null;
+  if (!open || releases.length === 0) return null;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
@@ -76,7 +85,7 @@ export function WhatsNewModal({ open: controlledOpen, onClose }: WhatsNewModalPr
 
         {/* Releases */}
         <div className="max-h-[60vh] overflow-y-auto divide-y divide-border">
-          {RELEASES.map((release, idx) => (
+          {releases.map((release, idx) => (
             <div key={release.version} className="px-6 py-5">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 px-2 py-0.5 rounded-full">
@@ -94,6 +103,7 @@ export function WhatsNewModal({ open: controlledOpen, onClose }: WhatsNewModalPr
               <ul className="space-y-2">
                 {release.items.map((item, i) => {
                   const kind = (item.kind ?? "new") as ReleaseKind;
+                  const audience = (item.audience ?? "member") as Audience;
                   return (
                     <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground leading-relaxed">
                       <span className="mt-0.5 text-base leading-none flex-shrink-0">{item.emoji}</span>
@@ -101,6 +111,13 @@ export function WhatsNewModal({ open: controlledOpen, onClose }: WhatsNewModalPr
                         <span className={`mr-1.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide align-middle ${KIND_STYLE[kind]}`}>
                           {KIND_LABEL[kind][lang]}
                         </span>
+                        {/* Show who a change is for, but only for admin-oriented items
+                            (members' items carry no tag — no clutter). */}
+                        {audience !== "member" && (
+                          <span className="mr-1.5 inline-block rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide align-middle text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                            {AUDIENCE_LABEL[audience][lang]}
+                          </span>
+                        )}
                         {item[lang]}
                       </span>
                     </li>
@@ -127,15 +144,17 @@ export function WhatsNewModal({ open: controlledOpen, onClose }: WhatsNewModalPr
 
 /** Badge dot shown on top of the notification bell / trigger button. */
 export function WhatsNewDot() {
+  const { isSuperAdmin, isTeamAdmin } = useAuth();
+  const rank = roleRank({ isSuperAdmin, isTeamAdmin });
   const [unseen, setUnseen] = useState(false);
 
   useEffect(() => {
-    setUnseen(hasUnseenRelease());
+    setUnseen(hasUnseenReleaseForRank(rank));
     // Re-check when localStorage changes (other tabs)
-    const handle = () => setUnseen(hasUnseenRelease());
+    const handle = () => setUnseen(hasUnseenReleaseForRank(rank));
     window.addEventListener("storage", handle);
     return () => window.removeEventListener("storage", handle);
-  }, []);
+  }, [rank]);
 
   if (!unseen) return null;
   return (

@@ -476,6 +476,13 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
                 } else {
                   setIsAthleteAccess(false);
                   setLinkedAthleteId(null);
+                  // Team/Super Admins get full page access (server still gates by
+                  // the team's enabled areas).
+                  if (v === "teamadmin" || v === "superadmin") {
+                    const full = Object.fromEntries(PERMISSION_AREAS.map((a) => [a, "edit"])) as UserPermissions;
+                    setPerms(full);
+                    form.setValue("permissions", JSON.stringify(full));
+                  }
                 }
               }}
             >
@@ -960,6 +967,11 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
               onValueChange={(v) => {
                 form.setValue("isAdmin", v === "superadmin");
                 form.setValue("isTeamAdmin", v === "teamadmin");
+                if (v === "teamadmin" || v === "superadmin") {
+                  const full = Object.fromEntries(PERMISSION_AREAS.map((a) => [a, "edit"])) as UserPermissions;
+                  setPerms(full);
+                  form.setValue("permissions", JSON.stringify(full));
+                }
               }}
             >
               <FormControl><SelectTrigger data-testid="select-edit-role"><SelectValue /></SelectTrigger></FormControl>

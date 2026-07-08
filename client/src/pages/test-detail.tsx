@@ -782,6 +782,7 @@ export default function TestDetail() {
     queryKey: [`/api/athletes/${athleteId}/skis?includeArchived=true`],
     enabled: isRaceSkiTest && !!athleteId,
   });
+  const raceSkiByIdSort = useMemo(() => new Map(raceSkisData.map((rs) => [rs.id, rs])), [raceSkisData]);
 
   const skiLabels = useMemo(() => {
     if (isRaceSkiTest) {
@@ -853,6 +854,13 @@ export default function TestDetail() {
     if (key === "kick") return (entry as any).kickRank ?? Number.POSITIVE_INFINITY;
     if (key.startsWith("diff")) { const i = parseInt(key.slice(4)) || 0; const v = rounds[i]?.result; return v ?? Number.POSITIVE_INFINITY; }
     if (key.startsWith("grind:")) { const c = key.slice(6); return String((entry as any)[c] ?? ""); }
+    // Sort by the ski's own parameters (grind, construction, base, …) from the garage.
+    if (key.startsWith("ski:")) {
+      const attr = key.slice(4);
+      const rs = (entry as any).raceSkiId ? raceSkiByIdSort.get((entry as any).raceSkiId) : null;
+      const v = (rs as any)?.[attr];
+      return v == null || v === "" ? "" : String(v);
+    }
     return entry.skiNumber;
   }
   const sortedEntries = useMemo(() => {
@@ -866,7 +874,7 @@ export default function TestDetail() {
     });
     return arr;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entries, testSort, skiLabels, distLabels.length]);
+  }, [entries, testSort, skiLabels, distLabels.length, raceSkiByIdSort]);
 
   // ── Rank basis (#36): diff vs feeling. Diff-rank is ALWAYS what analytics
   // uses (rank0km on the entries); this toggle only changes what the Rank column
@@ -1539,6 +1547,27 @@ export default function TestDetail() {
               )}
             </div>
             <div className="flex items-center gap-2">
+              {isRaceSkiTest && (
+                <Select value={testSort.split("|")[0]} onValueChange={(v) => { const next = `${v}|asc`; setTestSort(next); try { localStorage.setItem("glidr-raceski-test-sort", next); } catch {} }}>
+                  <SelectTrigger className="h-8 w-auto gap-1 text-xs" data-testid="select-test-sort">
+                    <span className="text-muted-foreground">{L("Sortér", "Sort")}:</span><SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="rank">{t("common.rank")}</SelectItem>
+                    <SelectItem value="skiNumber">Ski ID</SelectItem>
+                    <SelectItem value="ski:grind">{L("Slip", "Grind")}</SelectItem>
+                    <SelectItem value="ski:base">{L("Base", "Base")}</SelectItem>
+                    <SelectItem value="ski:construction">{L("Konstruksjon", "Construction")}</SelectItem>
+                    <SelectItem value="ski:mold">{L("Mold", "Mold")}</SelectItem>
+                    <SelectItem value="ski:heights">{L("Høyder", "Heights")}</SelectItem>
+                    <SelectItem value="ski:length">{L("Lengde", "Length")}</SelectItem>
+                    <SelectItem value="ski:year">{L("År", "Year")}</SelectItem>
+                    <SelectItem value="ski:typeOfSki">{L("Ski-type", "Ski type")}</SelectItem>
+                    <SelectItem value="feeling">{t("newTest.feeling")}</SelectItem>
+                    {isClassic && <SelectItem value="kick">{t("newTest.kick")}</SelectItem>}
+                  </SelectContent>
+                </Select>
+              )}
               {!isBlindTester && <>
               {hasWatchAccess && <AddToWatchButton testId={test.id} testName={test.testName || `${test.location} · ${test.date}`} seriesId={test.seriesId} />}
               </>}

@@ -717,6 +717,20 @@ export async function registerRoutes(
     return res.json({ ok: true });
   });
 
+  // SA: view recent client-side crashes (from the error boundary).
+  app.get("/api/admin/client-errors", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    try {
+      const { pool } = await import("./db");
+      const r = await (pool as any).query(
+        `SELECT id, message, stack, component_stack AS "componentStack", label, href,
+                user_agent AS "userAgent", user_id AS "userId", created_at AS "createdAt"
+         FROM client_errors ORDER BY created_at DESC LIMIT 50`);
+      res.json(r.rows);
+    } catch (e: any) { res.status(500).json({ message: e?.message }); }
+  });
+
   // --- Public app settings (no auth required) ---
   // SA-only: send a test email to verify Resend is working
   app.post("/api/admin/test-email", requireAuth, async (req, res) => {

@@ -10,6 +10,7 @@ import { OfflineProvider } from "@/lib/offline-context";
 import { ThemeProvider } from "@/lib/theme";
 import { LanguageProvider } from "@/lib/language";
 import { I18nProvider } from "@/lib/i18n";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { useState, useEffect } from "react";
 import { getAccentColor, applyAccentColor } from "@/lib/accent-color";
 import NotFound from "@/pages/not-found";
@@ -226,7 +227,9 @@ export default function App() {
             <OfflineProvider>
               <TooltipProvider>
                 <Toaster />
-                <AuthGuard />
+                <ErrorBoundary>
+                  <AuthGuard />
+                </ErrorBoundary>
               </TooltipProvider>
             </OfflineProvider>
           </QueryClientProvider>

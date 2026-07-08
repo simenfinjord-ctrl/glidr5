@@ -1,21 +1,63 @@
 /**
  * In-app changelog — "Hva er nytt i Glidr?"
  *
- * Add a new entry at the top of the RELEASES array each time something
- * significant ships. The `version` string is stored in localStorage so
- * users see the dot/badge exactly once per release.
+ * IMPORTANT: Update this on every redeploy. Add a new entry at the top of the
+ * RELEASES array describing what shipped, and bump LATEST_VERSION to the new
+ * entry's `version`. Each item should be tagged with a `kind` so users see at a
+ * glance what is new, updated, fixed or removed. The `version` string is stored
+ * in localStorage so users see the dot/badge exactly once per release.
  *
- * Convention: version = "YYYY-MM" or a semver string.
+ * Convention: version = "YYYY-MM" (add a suffix letter for multiple releases in
+ * the same month, e.g. "2026-07b").
  */
+
+// nytt / oppdatert / rettet / slettet
+export type ReleaseKind = "new" | "updated" | "fixed" | "removed";
+
+export const KIND_LABEL: Record<ReleaseKind, { no: string; en: string }> = {
+  new: { no: "Nytt", en: "New" },
+  updated: { no: "Oppdatert", en: "Updated" },
+  fixed: { no: "Rettet", en: "Fixed" },
+  removed: { no: "Slettet", en: "Removed" },
+};
+
+export interface ReleaseItem {
+  emoji: string;
+  no: string;
+  en: string;
+  kind?: ReleaseKind; // defaults to "new" when omitted
+}
 
 export interface Release {
   version: string;
   date: { no: string; en: string };
   title: { no: string; en: string };
-  items: { emoji: string; no: string; en: string }[];
+  items: ReleaseItem[];
 }
 
 export const RELEASES: Release[] = [
+  {
+    version: "2026-07",
+    date: { no: "Juli 2026", en: "July 2026" },
+    title: { no: "Flere lag, arkivering, klokkeapp og sortering", en: "Multi-team, archiving, watch app & sorting" },
+    items: [
+      { kind: "new", emoji: "🎿", no: "Arkiver utøvere i Race skis og gjenopprett dem senere — arkiverte utøvere skjules fra velgere, men beholder alle skier og tester. Søk dekker både aktive og arkiverte.", en: "Archive athletes in Race skis and restore them later — archived athletes are hidden from pickers but keep all skis and tests. Search covers both active and archived." },
+      { kind: "new", emoji: "🌐", no: "Alle lag – tester: søk og filtrer tester på tvers av alle lagene du har tilgang til, etter lag, snøtype og testtype.", en: "All teams – tests: search and filter tests across every team you can access, by team, snow type and test type." },
+      { kind: "new", emoji: "⌚", no: "Klokkeapp: Super Admin laster opp klokkeapp-filen; lagadmins med tilgang laster den ned under Admin → Klokkeapp for å legge den på utøvernes klokker. Inkluderer oppskrift og nedlastingsoversikt.", en: "Watch app: Super Admin uploads the watch-app file; team admins with permission download it under Admin → Watch app to sideload onto athletes' watches. Includes a how-to and a download overview." },
+      { kind: "new", emoji: "📊", no: "Sorter testresultater der de står: trykk på en kolonneoverskrift (Ski-ID, Slip, Resultat/diff, Rank, Følelse …) på Athlete skis og i dagsvisningen — uten å åpne testen. I dagsvisning påvirker valget alle testene for dagen.", en: "Sort test results in place: click a column header (Ski ID, Grind, Result/diff, Rank, Feeling …) on Athlete skis and in the day view — without opening the test. In the day view the choice affects every test for that day." },
+      { kind: "new", emoji: "🔐", no: "Flere lag per bruker med egne rettigheter per lag. Meny og «Mitt lag» følger det aktive laget.", en: "Users can belong to several teams with their own permissions per team. The menu and My Team reflect the active team." },
+      { kind: "new", emoji: "🔑", no: "Aktive økter ligger nå under Innloggingshistorikk med utlogging per økt. En ny/ukjent IP vises i rødt i 24 timer.", en: "Active sessions now live under Login history with per-session logout. A new/unfamiliar IP is shown in red for 24 hours." },
+      { kind: "new", emoji: "☁️", no: "Daglig backup til Google Drive (JSON + PDF) — lim inn en Drive-mappelenke, så er det nok.", en: "Daily Google Drive backup (JSON + PDF) — just paste a Drive folder link." },
+      { kind: "updated", emoji: "📱", no: "Admin → Brukere fungerer nå ordentlig på mobil.", en: "Admin → Users now works properly on mobile." },
+      { kind: "updated", emoji: "🗓️", no: "Hurtigvalg av dag viser bare datoer som faktisk har tester.", en: "Quick day select only shows dates that actually have tests." },
+      { kind: "updated", emoji: "⚖️", no: "Vilkår og retningslinjer følger nå appspråket, med klausuler om nedstenging og prisendring.", en: "Terms & Policy now follow the app language, with take-down and pricing clauses." },
+      { kind: "updated", emoji: "🧴", no: "Glide-tester viser alle glide-produkter, og fritekstprodukter vises nå i resultatlisten.", en: "Glide tests show all glide products, and free-text products now appear in the result list." },
+      { kind: "fixed", emoji: "🧭", no: "Mobil: lagbytteren er ikke lenger skjult bak «notchen».", en: "Mobile: the team switcher is no longer hidden behind the notch." },
+      { kind: "fixed", emoji: "🧩", no: "Å åpne en arkivert utøvers profil sier ikke lenger «finner ikke utøveren».", en: "Opening an archived athlete's profile no longer says \"athlete not found\"." },
+      { kind: "removed", emoji: "💳", no: "Fjernet alle Stripe-referanser fra Vilkår og retningslinjer.", en: "Removed all Stripe references from Terms & Policy." },
+      { kind: "removed", emoji: "📧", no: "Registrerings-e-posten nevner ikke lenger pris/prøveperiode med mindre kommersialisering er på.", en: "The signup email no longer mentions pricing/trial unless commercialization is on." },
+    ],
+  },
   {
     version: "2026-05d",
     date: { no: "Mai 2026", en: "May 2026" },
@@ -96,7 +138,7 @@ export const RELEASES: Release[] = [
   },
 ];
 
-export const LATEST_VERSION = "2026-05d";
+export const LATEST_VERSION = "2026-07";
 const STORAGE_KEY = "glidr-whats-new-seen";
 
 export function getSeenVersion(): string | null {

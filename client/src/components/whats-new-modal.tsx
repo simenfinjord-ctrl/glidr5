@@ -6,10 +6,19 @@ import { useLanguage } from "@/lib/language";
 import {
   RELEASES,
   LATEST_VERSION,
+  KIND_LABEL,
+  type ReleaseKind,
   getSeenVersion,
   markAsSeen,
   hasUnseenRelease,
 } from "@/lib/whats-new";
+
+const KIND_STYLE: Record<ReleaseKind, string> = {
+  new: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+  updated: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  fixed: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  removed: "bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+};
 
 interface WhatsNewModalProps {
   /** If true, the modal opens immediately (e.g. triggered by clicking the badge). */
@@ -19,7 +28,7 @@ interface WhatsNewModalProps {
 
 export function WhatsNewModal({ open: controlledOpen, onClose }: WhatsNewModalProps) {
   const { language } = useLanguage();
-  const lang = "en" as const;
+  const lang = language === "no" ? "no" : "en";
 
   const [open, setOpen] = useState(false);
 
@@ -83,12 +92,20 @@ export function WhatsNewModal({ open: controlledOpen, onClose }: WhatsNewModalPr
                 {release.title[lang]}
               </p>
               <ul className="space-y-2">
-                {release.items.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground leading-relaxed">
-                    <span className="mt-0.5 text-base leading-none flex-shrink-0">{item.emoji}</span>
-                    <span>{item[lang]}</span>
-                  </li>
-                ))}
+                {release.items.map((item, i) => {
+                  const kind = (item.kind ?? "new") as ReleaseKind;
+                  return (
+                    <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground leading-relaxed">
+                      <span className="mt-0.5 text-base leading-none flex-shrink-0">{item.emoji}</span>
+                      <span>
+                        <span className={`mr-1.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide align-middle ${KIND_STYLE[kind]}`}>
+                          {KIND_LABEL[kind][lang]}
+                        </span>
+                        {item[lang]}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}

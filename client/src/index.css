@@ -148,12 +148,24 @@
     @apply bg-background text-foreground antialiased;
   }
 
+  /* Never let a stray wide element push the page sideways on mobile — this is
+     what makes buttons "fall off" the right edge on small screens. */
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
   h1, h2, h3, h4 {
     font-family: var(--font-display);
   }
 }
 
 @layer utilities {
+  /* Reserve room below the fixed mobile bottom nav (+ home indicator) so the
+     last content isn't hidden behind it. Removed on large screens (no bar). */
+  .app-main-pad { padding-bottom: calc(4.25rem + env(safe-area-inset-bottom)); }
+  @media (min-width: 1024px) { .app-main-pad { padding-bottom: 0; } }
+
   .fs-grid {
     background: hsl(210 50% 88%);
   }

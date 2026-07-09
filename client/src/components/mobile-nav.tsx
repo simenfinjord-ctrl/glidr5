@@ -82,8 +82,8 @@ export function MobileNav({ watchQueueCount }: { watchQueueCount?: number }) {
 
   return (
     <>
-      {/* Bottom bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-lg pb-safe">
+      {/* Bottom bar — clears the home indicator via the bottom safe-area inset. */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-lg" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         <div className="flex items-stretch">
           {primary.map((item) => {
             const active = isActive(item.href);
@@ -131,7 +131,7 @@ export function MobileNav({ watchQueueCount }: { watchQueueCount?: number }) {
       {showMore && (
         <>
           <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setShowMore(false)} />
-          <div className="fixed bottom-[57px] left-0 right-0 z-50 border-t border-border bg-card/98 backdrop-blur-lg shadow-lg">
+          <div className="fixed left-0 right-0 z-50 border-t border-border bg-card/98 backdrop-blur-lg shadow-lg" style={{ bottom: "calc(57px + env(safe-area-inset-bottom))" }}>
             <div className="grid grid-cols-3 gap-px p-3">
               {secondary.map((item) => {
                 const active = isActive(item.href);

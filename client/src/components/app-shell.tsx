@@ -1196,8 +1196,8 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
           You're offline — showing cached data. Changes will not be saved.
         </div>
       )}
-      <main className="flex-1 overflow-y-auto flex flex-col">
-        <div className="flex-1 mx-auto w-full max-w-[1400px] px-4 sm:px-6 py-6">
+      <main className="flex-1 overflow-y-auto flex flex-col app-main-pad">
+        <div className="flex-1 mx-auto w-full min-w-0 max-w-[1400px] px-4 sm:px-6 py-6">
           <ErrorBoundary>{children}</ErrorBoundary>
         </div>
         <footer className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 pb-8 mt-auto">

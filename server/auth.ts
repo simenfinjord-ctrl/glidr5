@@ -327,7 +327,7 @@ export async function setupAuth(app: Express) {
     const effectiveIsTeamAdmin = safe.isAdmin === 1
       ? safe.isTeamAdmin
       : (activeTid === safe.teamId ? safe.isTeamAdmin : (((req.session as any)?.activeTeamIsAdmin) ? 1 : 0));
-    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: effectiveIsTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat, isAthleteAccess: !!(safe as any).isAthleteAccess, linkedAthleteId: (safe as any).linkedAthleteId ?? null, editableAthleteIds });
+    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: effectiveIsTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat, isAthleteAccess: !!(safe as any).isAthleteAccess, linkedAthleteId: (safe as any).linkedAthleteId ?? null, editableAthleteIds, canViewAllTeams: !!(safe as any).canViewAllTeams });
   });
 
   app.post("/api/auth/incognito", (req, res) => {

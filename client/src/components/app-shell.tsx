@@ -782,7 +782,9 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
   const watchQueueCount = watchQueue.filter((q) => q.status === "active").length;
 
   const filteredNav = nav.filter((item) => {
-    if (item.multiTeamOnly && userTeams.length <= 1) return false;
+    // "All teams" needs the TA-granted permission AND >1 team; a Super Admin
+    // always sees it (they can access every team inherently).
+    if (item.multiTeamOnly && !(isSuperAdmin || (user?.canViewAllTeams && userTeams.length > 1))) return false;
     if (item.adminOnly) return canManage;
     if (isSuperAdmin && !isViewingOwnTeam && isStealthActive) {
       return true;

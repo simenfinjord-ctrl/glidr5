@@ -38,6 +38,7 @@ type User = {
   dateFormat?: 'european' | 'american';
   isAthleteAccess?: boolean;
   linkedAthleteId?: number | null;
+  canViewAllTeams?: boolean;
 };
 
 export function useAuth() {

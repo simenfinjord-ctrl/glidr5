@@ -347,6 +347,7 @@ export async function registerRoutes(
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS is_training_ski INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS default_ski_brand TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS archived INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS can_view_all_teams INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS feeling_note TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS kick_solution TEXT;
       ALTER TABLE test_ski_series ADD COLUMN IF NOT EXISTS action_status TEXT;
@@ -2499,8 +2500,15 @@ export async function registerRoutes(
     const linkedAthleteId = rawUser.linkedAthleteId ?? null;
     const { pool: p } = await import("./db");
 
-    // Teams the caller can access: primary + explicit memberships (SA = all).
+    // Access gate: the caller must have been granted the "All teams" permission
+    // (or be a Super Admin) AND belong to more than one team.
     const memberships = await storage.getUserTeams(u.id);
+    const teamCount = new Set<number>([u.teamId, ...memberships.map((m: any) => m.teamId)]).size;
+    if (!u.isAdmin && (rawUser.canViewAllTeams !== 1 || teamCount < 2)) {
+      return res.status(403).json({ message: "No access to the All teams view" });
+    }
+
+    // Teams the caller can access: primary + explicit memberships (SA = all).
     let teamIds = [...new Set<number>([u.teamId, ...memberships.map((m: any) => m.teamId)])];
     const allTeams = await storage.listTeams();
     if (u.isAdmin) teamIds = allTeams.map((t) => t.id);
@@ -2549,6 +2557,9 @@ export async function registerRoutes(
       const weatherList = await storage.listAllWeatherForTeam(tid).catch(() => []);
       const weatherById = new Map<number, any>((weatherList as any[]).map((w) => [w.id, w]));
       for (const t of tests) {
+        // The All-teams view is for glide/product testing only — not athlete
+        // (race-ski) tests, which are private per athlete.
+        if ((t as any).testSkiSource === "raceskis") continue;
         combined.push({
           ...t,
           teamId: tid,
@@ -3908,6 +3919,7 @@ export async function registerRoutes(
                   u.is_blind_tester AS "isBlindTester", u.is_active AS "isActive", u.garmin_watch AS "garminWatch",
                   u.login_locked AS "loginLocked", u.failed_attempts AS "failedAttempts", u.created_at AS "createdAt",
                   u.is_athlete_access AS "isAthleteAccess", u.linked_athlete_id AS "linkedAthleteId",
+                  u.can_view_all_teams AS "canViewAllTeams",
                   utp.permissions AS "utpPermissions", utp.group_scope AS "utpGroupScope", utp.is_team_admin AS "utpIsTeamAdmin"
            FROM user_team_permissions utp JOIN users u ON u.id = utp.user_id
            WHERE utp.team_id = $1 AND u.team_id <> $1`, [teamId]);
@@ -4094,6 +4106,18 @@ export async function registerRoutes(
     const enabled = !!req.body.enabled;
     await (p as any).query("UPDATE users SET garmin_watch = $1 WHERE id = $2", [enabled ? 1 : 0, id]);
     res.json({ ok: true, garminWatch: enabled });
+  });
+
+  // --- "All teams" glide-view access per-user (granted by a Team Admin) ---
+  app.put("/api/users/:id/all-teams-access", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const id = parseInt(req.params.id);
+    const targetUser = await storage.getUser(id);
+    if (!targetUser) return res.status(404).json({ message: "User not found" });
+    const { pool: p } = await import("./db");
+    const enabled = !!req.body.enabled;
+    await (p as any).query("UPDATE users SET can_view_all_teams = $1 WHERE id = $2", [enabled ? 1 : 0, id]);
+    res.json({ ok: true, canViewAllTeams: enabled });
   });
 
   // --- Per-team permissions for multi-team users ---

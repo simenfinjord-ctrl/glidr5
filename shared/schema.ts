@@ -262,6 +262,9 @@ export const users = pgTable("users", {
   avatarUrl: text("avatar_url"),
   isAthleteAccess: integer("is_athlete_access").notNull().default(0),
   linkedAthleteId: integer("linked_athlete_id"),
+  // Granted by a Team Admin: lets a multi-team user open the "All teams" glide
+  // test view (also requires belonging to more than one team).
+  canViewAllTeams: integer("can_view_all_teams").notNull().default(0),
   createdAt: text("created_at"),
 });
 

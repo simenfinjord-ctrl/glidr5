@@ -53,6 +53,7 @@ type ApiUser = {
   createdAt?: string;
   isAthleteAccess?: number;
   linkedAthleteId?: number | null;
+  canViewAllTeams?: number;
   fromOtherTeam?: boolean;
   homeTeamId?: number;
 };
@@ -3828,6 +3829,15 @@ export default function Admin() {
     },
   });
 
+  const toggleAllTeamsMutation = useMutation({
+    mutationFn: async ({ userId, enabled }: { userId: number; enabled: boolean }) => {
+      const res = await apiRequest("PUT", `/api/users/${userId}/all-teams-access`, { enabled });
+      return res.json();
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/users${teamScopeParam}`] }); },
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
+  });
+
   // Remove a "shared from other team" member's access to this team.
   const removeFromTeamMutation = useMutation({
     mutationFn: async (userId: number) => { const res = await apiRequest("DELETE", `/api/users/${userId}/teams/${effectiveTeamId}`); return res.json(); },
@@ -4397,6 +4407,17 @@ export default function Admin() {
                           onClick={() => toggleWatchMutation.mutate({ userId: u.id, enabled: !u.garminWatch })}
                         >
                           <Watch className="h-4.5 w-4.5" />
+                        </button>
+                        <button
+                          className={cn(
+                            "rounded p-1 transition-colors",
+                            u.canViewAllTeams ? "text-indigo-500 hover:bg-indigo-50" : "text-muted-foreground/40 hover:bg-muted"
+                          )}
+                          data-testid={`toggle-all-teams-${u.id}`}
+                          title={u.canViewAllTeams ? L("Trekk tilbake tilgang til «Alle lag»", "Revoke 'All teams' access") : L("Gi tilgang til «Alle lag» (krever flere lag)", "Grant 'All teams' access (requires multiple teams)")}
+                          onClick={() => toggleAllTeamsMutation.mutate({ userId: u.id, enabled: !u.canViewAllTeams })}
+                        >
+                          <Layers className="h-4.5 w-4.5" />
                         </button>
                         {u.fromOtherTeam ? (
                           <button

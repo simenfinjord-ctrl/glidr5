@@ -108,6 +108,25 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Track "last activity" — the last time an authenticated user hit the API.
+  // Throttled to once per 60 s per session to keep it off the DB hot path;
+  // powers the last-activity column in the active-sessions overview.
+  app.use((req, _res, next) => {
+    try {
+      if (req.isAuthenticated?.() && req.user) {
+        const now = Date.now();
+        const last = (req.session as any).lastSeenWrite || 0;
+        if (now - last > 60000) {
+          (req.session as any).lastSeenWrite = now;
+          import("./db").then(({ pool }) => {
+            (pool as any).query("UPDATE users SET last_seen = $1 WHERE id = $2", [new Date().toISOString(), (req.user as any).id]).catch(() => {});
+          }).catch(() => {});
+        }
+      }
+    } catch {}
+    next();
+  });
+
   passport.use(
     new LocalStrategy(
       { usernameField: "username" },

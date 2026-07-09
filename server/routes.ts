@@ -399,6 +399,7 @@ export async function registerRoutes(
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS archived INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS sport_class TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS can_view_all_teams INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS feeling_note TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS kick_solution TEXT;
       ALTER TABLE test_ski_series ADD COLUMN IF NOT EXISTS action_status TEXT;
@@ -5783,13 +5784,26 @@ export async function registerRoutes(
           AND sess::json -> 'passport' ->> 'user' IS NOT NULL
         ORDER BY expire DESC
       `);
-      const userIds: number[] = [...new Set(result.rows.map((r: any) => r.user_id as number))];
+
+      const rows = result.rows;
+      const userIds: number[] = [...new Set(rows.map((r: any) => r.user_id as number))];
       const userDetails: Record<number, any> = {};
       for (const uid of userIds) {
         const found = await storage.getUser(uid);
         if (found) userDetails[uid] = found;
       }
-      const sessions = result.rows.map((row: any) => {
+
+      // Last actual login per user (from the login history).
+      const lastLogin = new Map<number, string>();
+      if (userIds.length > 0) {
+        const ll = await (pool as any).query(
+          `SELECT user_id, MAX(login_at) AS last FROM login_logs WHERE user_id = ANY($1::int[]) AND action = 'login' GROUP BY user_id`,
+          [userIds]
+        ).catch(() => ({ rows: [] }));
+        for (const r of ll.rows) lastLogin.set(r.user_id, r.last);
+      }
+
+      const sessions = rows.map((row: any) => {
         const usr = userDetails[row.user_id];
         return {
           sid: row.sid,
@@ -5801,6 +5815,8 @@ export async function registerRoutes(
           ipAddress: row.ip_address || null,
           userAgent: row.user_agent || null,
           expiresAt: row.expire,
+          lastLoginAt: lastLogin.get(row.user_id) ?? null,
+          lastActivityAt: usr?.lastSeen ?? null,
         };
       });
       res.json(sessions);

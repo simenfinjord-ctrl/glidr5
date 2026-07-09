@@ -1158,6 +1158,8 @@ type ActiveSession = {
   ipAddress: string | null;
   userAgent: string | null;
   expiresAt: string;
+  lastLoginAt?: string | null;
+  lastActivityAt?: string | null;
 };
 
 // Short human-readable device/browser from a user-agent string.
@@ -1237,6 +1239,8 @@ function ActiveSessionsCard({ currentUserId, loginLogs }: { currentUserId: numbe
                 <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Bruker", "User")}</th>
                 <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("E-post", "Email")}</th>
                 <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("IP / enhet", "IP / device")}</th>
+                <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Siste login", "Last login")}</th>
+                <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Siste aktivitet", "Last activity")}</th>
                 <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Utløper", "Expires")}</th>
                 <th className="text-center px-3 py-2 font-medium text-foreground/80 text-xs">{L("Handling", "Action")}</th>
               </tr>
@@ -1260,6 +1264,12 @@ function ActiveSessionsCard({ currentUserId, loginLogs }: { currentUserId: numbe
                     <td className="px-3 py-2 text-xs">
                       <div className={cn("font-mono", newIp ? "text-red-600 dark:text-red-400 font-semibold" : "text-muted-foreground")} title={newIp ? L("Ny/ukjent IP (siste 24 t)", "New/unfamiliar IP (last 24 h)") : undefined}>{s.ipAddress || "—"}</div>
                       {s.userAgent && <div className="truncate max-w-[220px] opacity-70 text-muted-foreground" title={s.userAgent}>{shortDevice(s.userAgent)}</div>}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
+                      {s.lastLoginAt ? new Date(s.lastLoginAt).toLocaleString() : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
+                      {s.lastActivityAt ? new Date(s.lastActivityAt).toLocaleString() : "—"}
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
                       {expires.toLocaleString()} ({hoursLeft}h)

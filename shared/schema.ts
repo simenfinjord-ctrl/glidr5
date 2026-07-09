@@ -266,6 +266,9 @@ export const users = pgTable("users", {
   // Granted by a Team Admin: lets a multi-team user open the "All teams" glide
   // test view (also requires belonging to more than one team).
   canViewAllTeams: integer("can_view_all_teams").notNull().default(0),
+  // Last time the user made an authenticated request (throttled) — powers the
+  // "last activity" column in the active-sessions overview.
+  lastSeen: text("last_seen"),
   createdAt: text("created_at"),
 });
 

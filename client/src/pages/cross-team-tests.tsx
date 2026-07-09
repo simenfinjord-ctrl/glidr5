@@ -473,7 +473,7 @@ export default function CrossTeamTests() {
                       <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{t.date ? new Date(t.date).toLocaleDateString() : "—"}</td>
                       <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{t.startTime || "—"}</td>
                       <td className="px-3 py-2 text-xs">{t.teamName}</td>
-                      <td className="px-3 py-2 text-xs font-medium">{t.testName || t.location}</td>
+                      <td className="px-3 py-2 text-xs font-medium">{t.location || "—"}</td>
                       <td className="px-3 py-2 text-xs"><span className="rounded-full bg-muted px-2 py-0.5 text-[10px]">{t.testType}</span></td>
                       <td className="px-3 py-2 text-xs text-muted-foreground">{t.weather?.snowType || "—"}</td>
                       <td className="px-3 py-2 text-xs text-muted-foreground">{t.weather?.airTemperatureC != null ? `${t.weather.airTemperatureC}°` : "—"}</td>

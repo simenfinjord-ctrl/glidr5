@@ -257,6 +257,34 @@ async function collectTeamVisibleTests(opts: {
   return result;
 }
 
+// Distance/round labels for a test (mirrors the client getDistanceLabels).
+function srvDistanceLabels(t: any): string[] {
+  if (t.distanceLabels) {
+    try { const p = JSON.parse(t.distanceLabels); if (Array.isArray(p) && p.length > 0) return p; } catch {}
+  }
+  const labels: string[] = [t.distanceLabel0km || "0 km"];
+  if (t.distanceLabelXkm) labels.push(t.distanceLabelXkm);
+  return labels;
+}
+// Per-round {result, rank} for an entry (mirrors the client getEntryRounds).
+function srvEntryRounds(e: any, numRounds: number): { result: number | null; rank: number | null }[] {
+  if (e.results) {
+    try {
+      const parsed = JSON.parse(e.results);
+      if (Array.isArray(parsed)) {
+        while (parsed.length < numRounds) parsed.push({ result: null, rank: null });
+        return parsed.slice(0, numRounds);
+      }
+    } catch {}
+  }
+  const r: { result: number | null; rank: number | null }[] = [
+    { result: e.result_0km_cm_behind ?? null, rank: e.rank_0km ?? null },
+  ];
+  if (numRounds > 1) r.push({ result: e.result_xkm_cm_behind ?? null, rank: e.rank_xkm ?? null });
+  while (r.length < numRounds) r.push({ result: null, rank: null });
+  return r;
+}
+
 function resolveCreateGroupScope(req: Request): string {
   const u = req.user!;
   const isAdminOrTeamAdmin = u.isAdmin === 1 || u.isTeamAdmin === 1;
@@ -2502,6 +2530,7 @@ export async function registerRoutes(
     const rawUser = req.user as any;
     const isAthleteAccess = rawUser.isAthleteAccess === 1;
     const linkedAthleteId = rawUser.linkedAthleteId ?? null;
+    const withEntries = req.query.withEntries === "1"; // "Show all" → include result rows
     const { pool: p } = await import("./db");
 
     // Access gate: the caller must have been granted the "All teams" permission
@@ -2557,20 +2586,59 @@ export async function registerRoutes(
       });
       if (tests.length === 0) continue;
 
+      // The All-teams view is for glide/product testing only — not athlete
+      // (race-ski) tests (private per athlete) and not grind tests.
+      const visible = tests.filter((t: any) => t.testSkiSource !== "raceskis" && t.testType !== "Grind");
+      if (visible.length === 0) continue;
+
       // Weather lookup for this team (id → weather record).
       const weatherList = await storage.listAllWeatherForTeam(tid).catch(() => []);
       const weatherById = new Map<number, any>((weatherList as any[]).map((w) => [w.id, w]));
-      for (const t of tests) {
-        // The All-teams view is for glide/product testing only — not athlete
-        // (race-ski) tests (private per athlete) and not grind tests.
-        if ((t as any).testSkiSource === "raceskis") continue;
-        if ((t as any).testType === "Grind") continue;
-        combined.push({
+
+      // When "Show all" is requested, resolve each test's entries + product names
+      // server-side (products live per team) so the client can render complete
+      // result tables across teams.
+      let productName = new Map<number, string>();
+      let entriesByTest = new Map<number, any[]>();
+      if (withEntries) {
+        const pr = await (p as any).query(`SELECT id, brand, name FROM products WHERE team_id = $1`, [tid]).catch(() => ({ rows: [] }));
+        productName = new Map<number, string>(pr.rows.map((r: any) => [r.id, `${r.brand ?? ""} ${r.name ?? ""}`.trim()]));
+        const ids = visible.map((t: any) => t.id);
+        const er = await (p as any).query(`SELECT * FROM test_entries WHERE test_id = ANY($1::int[]) ORDER BY ski_number ASC`, [ids]).catch(() => ({ rows: [] }));
+        for (const e of er.rows) {
+          const arr = entriesByTest.get(e.test_id) ?? [];
+          arr.push(e);
+          entriesByTest.set(e.test_id, arr);
+        }
+      }
+
+      for (const t of visible) {
+        const base: any = {
           ...t,
           teamId: tid,
           teamName: teamNameById.get(tid) ?? `Team ${tid}`,
           weather: (t as any).weatherId ? (weatherById.get((t as any).weatherId) ?? null) : null,
-        });
+        };
+        if (withEntries) {
+          const labels = srvDistanceLabels(t);
+          base.distanceLabels = labels;
+          base.entries = (entriesByTest.get((t as any).id) ?? []).map((e: any) => {
+            const additional = (e.additional_product_ids || "").split(",").map((n: string) => parseInt(n)).filter((n: number) => !isNaN(n) && n > 0);
+            const names = [
+              e.product_id ? (productName.get(e.product_id) || null) : (e.free_text_product || null),
+              ...additional.map((id: number) => productName.get(id) || null),
+            ].filter((x: any): x is string => !!x);
+            return {
+              skiNumber: e.ski_number,
+              productNames: names,
+              methodology: e.methodology || "",
+              rounds: srvEntryRounds(e, labels.length),
+              feelingRank: e.feeling_rank ?? null,
+              kickRank: e.kick_rank ?? null,
+            };
+          });
+        }
+        combined.push(base);
       }
     }
     // Newest first by test date, then created.

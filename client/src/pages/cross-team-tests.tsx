@@ -12,7 +12,17 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useI18n } from "@/lib/i18n";
+import { parseApplication } from "@/lib/parse-application";
 import { cn } from "@/lib/utils";
+
+type CTEntry = {
+  skiNumber: number;
+  productNames: string[];
+  methodology: string;
+  rounds: { result: number | null; rank: number | null }[];
+  feelingRank: number | null;
+  kickRank: number | null;
+};
 
 type CTWeather = {
   snowType?: string | null;
@@ -43,6 +53,8 @@ type CrossTeamTest = {
   createdByName?: string | null;
   seriesName?: string | null;
   weather: CTWeather | null;
+  distanceLabels?: string[];
+  entries?: CTEntry[];
 };
 
 const numv = (s: string) => (s.trim() === "" ? null : parseFloat(s));
@@ -53,12 +65,6 @@ export default function CrossTeamTests() {
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const [, navigate] = useLocation();
 
-  const { data: tests = [], isLoading, error } = useQuery<CrossTeamTest[]>({
-    queryKey: ["/api/tests/cross-team"],
-    queryFn: getQueryFn({ on401: "returnNull" }) as any,
-    retry: false,
-  });
-
   // View: compact cards / list, or the expanded "Show all" day-view grid.
   const [viewMode, setViewMode] = useState<"cards" | "list">(() => {
     try { const s = localStorage.getItem("glidr-allteams-view"); if (s === "list" || s === "cards") return s; } catch {}
@@ -66,6 +72,14 @@ export default function CrossTeamTests() {
   });
   const setView = (m: "cards" | "list") => { setViewMode(m); try { localStorage.setItem("glidr-allteams-view", m); } catch {} };
   const [showAll, setShowAll] = useState(false);
+
+  // "Show all" pulls the same tests but with full result rows resolved server-side.
+  const { data: tests = [], isLoading, error } = useQuery<CrossTeamTest[]>({
+    queryKey: [`/api/tests/cross-team${showAll ? "?withEntries=1" : ""}`],
+    queryFn: getQueryFn({ on401: "returnNull" }) as any,
+    retry: false,
+  });
+
   const [cols, setCols] = useState<1 | 2 | 3>(() => {
     try { const s = parseInt(localStorage.getItem("glidr-allteams-cols") || "2"); if (s === 1 || s === 2 || s === 3) return s as any; } catch {}
     return 2;
@@ -223,6 +237,63 @@ export default function CrossTeamTests() {
     </div>
   );
 
+  const rankBadge = (rank: number | null) => (
+    <span className={cn("inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+      rank === 1 ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" :
+      rank === 2 ? "bg-slate-300/15 text-slate-500 dark:text-slate-300" :
+      rank === 3 ? "bg-amber-700/15 text-amber-700 dark:text-amber-600" :
+      rank != null ? "bg-muted/70 text-foreground" : "text-muted-foreground")}>{rank ?? "—"}</span>
+  );
+
+  // Full result table for a test (used in "Show all"), mirroring the day view.
+  const entryTable = (t: CrossTeamTest) => {
+    const labels = t.distanceLabels ?? [];
+    const entries = t.entries ?? [];
+    if (entries.length === 0) return <div className="mt-2 text-[11px] text-muted-foreground">{L("Ingen resultater", "No results")}</div>;
+    const hasKick = entries.some((e) => e.kickRank != null);
+    return (
+      <div className="mt-2 overflow-x-auto border-t border-border/40 pt-2">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+              <th className="pb-1.5 pr-2">Ski</th>
+              <th className="pb-1.5 pr-2">{L("Produkt", "Product")}</th>
+              {labels.map((lbl, i) => (<th key={i} className="pb-1.5 pr-2">{lbl?.trim() || `R${i + 1}`}</th>))}
+              <th className="pb-1.5 pr-2">Rank</th>
+              <th className="pb-1.5 pr-2">{L("Følelse", "Feel")}</th>
+              {hasKick && <th className="pb-1.5">Kick</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((e, idx) => {
+              const appParts = e.methodology ? e.methodology.split("|") : [];
+              const firstRank = e.rounds[0]?.rank ?? null;
+              return (
+                <tr key={idx} className={cn("border-b border-border/20 last:border-0", firstRank === 1 && "bg-emerald-500/8")}>
+                  <td className="py-1.5 pr-2"><span className="inline-flex h-5 min-w-[1.75rem] items-center justify-center rounded bg-background/50 px-1 text-[11px] font-semibold ring-1 ring-border/50">{e.skiNumber}</span></td>
+                  <td className="py-1.5 pr-2">
+                    {e.productNames.length > 0 ? (
+                      <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+                        {e.productNames.map((name, i) => {
+                          const app = parseApplication(appParts[i]?.trim() ?? "").interpreted;
+                          return <span key={i} className="flex items-baseline gap-1"><span className="font-medium">{name}</span>{app && <span className="text-muted-foreground">{app}</span>}</span>;
+                        })}
+                      </div>
+                    ) : "—"}
+                  </td>
+                  {e.rounds.map((rr, i) => (<td key={i} className="py-1.5 pr-2 font-mono">{rr.result ?? "—"}</td>))}
+                  <td className="py-1.5 pr-2">{rankBadge(firstRank)}</td>
+                  <td className="py-1.5 pr-2">{e.feelingRank != null ? <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{e.feelingRank}</span> : "—"}</td>
+                  {hasKick && <td className="py-1.5">{e.kickRank != null ? e.kickRank : "—"}</td>}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   return (
     <AppShell>
       <div className="flex flex-col gap-4">
@@ -359,6 +430,7 @@ export default function CrossTeamTests() {
                     <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => navigate(`/tests/${t.id}`)} data-testid={`open-crossteam-${t.id}`}>{L("Åpne", "Open")}</Button>
                   </div>
                 </div>
+                {entryTable(t)}
               </Card>
             ))}
           </div>

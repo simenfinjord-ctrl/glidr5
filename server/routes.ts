@@ -2562,8 +2562,9 @@ export async function registerRoutes(
       const weatherById = new Map<number, any>((weatherList as any[]).map((w) => [w.id, w]));
       for (const t of tests) {
         // The All-teams view is for glide/product testing only — not athlete
-        // (race-ski) tests, which are private per athlete.
+        // (race-ski) tests (private per athlete) and not grind tests.
         if ((t as any).testSkiSource === "raceskis") continue;
+        if ((t as any).testType === "Grind") continue;
         combined.push({
           ...t,
           teamId: tid,

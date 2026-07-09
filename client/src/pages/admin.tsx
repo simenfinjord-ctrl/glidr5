@@ -8,7 +8,7 @@ import {
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity, BarChart3,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle, Sparkles,
   HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash, RotateCcw,
-  MessageSquare, UserPlus, FileText, ExternalLink, LayoutDashboard, CreditCard, Mail,
+  MessageSquare, UserPlus, FileText, ExternalLink, LayoutDashboard, CreditCard, Mail, MoreVertical,
 } from "lucide-react";
 import {
   PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS,
@@ -33,6 +33,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
 import { Switch } from "@/components/ui/switch";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 type ApiUser = {
@@ -4432,6 +4433,11 @@ export default function Admin() {
                               <Watch className="inline h-2.5 w-2.5" />Watch
                             </span>
                           )}
+                          {!!u.canViewAllTeams && (
+                            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600 flex items-center gap-0.5 dark:bg-indigo-950/40 dark:text-indigo-300">
+                              <Layers className="inline h-2.5 w-2.5" />{L("Alle lag", "All teams")}
+                            </span>
+                          )}
                           {adminTeamScope !== "current" && teams.length > 0 && (
                             <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-600">
                               {teams.find((t) => t.id === u.teamId)?.name ?? `Team ${u.teamId}`}
@@ -4442,116 +4448,95 @@ export default function Admin() {
                           {permSummary}{totalActive > 0 && ` — ${permDetail}`}
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center justify-end gap-0.5 flex-shrink-0 border-t border-border/50 pt-2 sm:border-0 sm:pt-0">
-                        <button
-                          disabled={u.fromOtherTeam}
-                          className={cn(
-                            "rounded p-1 transition-colors disabled:opacity-30 disabled:pointer-events-none",
-                            u.isActive ? "text-green-600 hover:bg-green-50" : "text-red-500 hover:bg-red-50"
-                          )}
-                          data-testid={`toggle-active-${u.id}`}
-                          title={u.isActive ? L("Deaktiver bruker", "Deactivate user") : L("Aktiver bruker", "Activate user")}
-                          onClick={() => toggleActiveMutation.mutate({ userId: u.id, value: !u.isActive })}
-                        >
-                          {u.isActive ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
-                        </button>
-                        <button
-                          disabled={u.fromOtherTeam}
-                          className={cn(
-                            "rounded p-1 transition-colors disabled:opacity-30 disabled:pointer-events-none",
-                            u.garminWatch ? "text-sky-500 hover:bg-sky-50" : "text-muted-foreground/40 hover:bg-muted"
-                          )}
-                          data-testid={`toggle-watch-${u.id}`}
-                          title={u.garminWatch ? L("Trekk tilbake tilgang til overvåkingskø", "Revoke Watch Queue access") : L("Gi tilgang til overvåkingskø", "Grant Watch Queue access")}
-                          onClick={() => toggleWatchMutation.mutate({ userId: u.id, enabled: !u.garminWatch })}
-                        >
-                          <Watch className="h-4.5 w-4.5" />
-                        </button>
-                        <button
-                          className={cn(
-                            "rounded p-1 transition-colors",
-                            u.canViewAllTeams ? "text-indigo-500 hover:bg-indigo-50" : "text-muted-foreground/40 hover:bg-muted"
-                          )}
-                          data-testid={`toggle-all-teams-${u.id}`}
-                          title={u.canViewAllTeams ? L("Trekk tilbake tilgang til «Alle lag»", "Revoke 'All teams' access") : L("Gi tilgang til «Alle lag» (krever flere lag)", "Grant 'All teams' access (requires multiple teams)")}
-                          onClick={() => toggleAllTeamsMutation.mutate({ userId: u.id, enabled: !u.canViewAllTeams })}
-                        >
-                          <Layers className="h-4.5 w-4.5" />
-                        </button>
-                        {u.fromOtherTeam ? (
-                          <button
-                            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-rose-600"
-                            data-testid={`button-remove-from-team-${u.id}`}
-                            title={L("Fjern fra dette laget", "Remove from this team")}
-                            onClick={() => { if (confirm(L("Fjerne denne brukerens tilgang til laget?", "Remove this user's access to the team?"))) removeFromTeamMutation.mutate(u.id); }}
-                          >
-                            <UserX className="h-4.5 w-4.5" />
-                          </button>
-                        ) : (
-                        <button
-                          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground/80"
-                          data-testid={`button-edit-user-${u.id}`}
-                          title={L("Rediger bruker", "Edit user")}
-                          onClick={() => setEditUser(u)}
-                        >
-                          <Pencil className="h-4.5 w-4.5" />
-                        </button>
-                        )}
-                        <button
-                          disabled={u.fromOtherTeam}
-                          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground/80 disabled:opacity-30 disabled:pointer-events-none"
-                          data-testid={`button-reset-user-${u.id}`}
-                          title={L("Tilbakestill passord", "Reset password")}
-                          onClick={() => setResetUser(u)}
-                        >
-                          <KeyRound className="h-4.5 w-4.5" />
-                        </button>
-                        {!!u.loginLocked && (
-                          <button
-                            className="rounded p-1 text-red-500 hover:bg-red-50"
-                            data-testid={`button-unlock-user-${u.id}`}
-                            title={L("Lås opp konto", "Unlock account")}
-                            onClick={() => unlockMutation.mutate(u.id)}
-                          >
-                            <LockKeyhole className="h-4.5 w-4.5" />
-                          </button>
-                        )}
-                        <button
-                          disabled={u.fromOtherTeam}
-                          className="rounded p-1 text-orange-500 hover:bg-orange-50 disabled:opacity-30 disabled:pointer-events-none"
-                          data-testid={`button-force-logout-${u.id}`}
-                          title={L("Tving utlogging", "Force logout")}
-                          onClick={() => {
-                            if (confirm(`Force logout ${u.name}?`)) {
-                              forceLogoutMutation.mutate(u.id);
-                            }
-                          }}
-                        >
-                          <LogOut className="h-4.5 w-4.5" />
-                        </button>
-                        <button
-                          className="rounded p-1 text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:pointer-events-none"
-                          data-testid={`button-delete-user-${u.id}`}
-                          disabled={u.id === user.id || u.fromOtherTeam}
-                          title={L("Slett bruker", "Delete user")}
-                          onClick={() => {
-                            if (confirm(`Delete ${u.name}?`)) {
-                              deleteMutation.mutate(u.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4.5 w-4.5" />
-                        </button>
-                        {canManage && (
-                          <button
-                            className="rounded p-1 text-violet-500 hover:bg-violet-50"
-                            data-testid={`button-history-user-${u.id}`}
-                            title={L("Vis brukerhistorikk", "View user history")}
-                            onClick={() => setHistoryUser(u)}
-                          >
-                            <Activity className="h-4.5 w-4.5" />
-                          </button>
-                        )}
+                      <div className="flex items-center justify-end flex-shrink-0 border-t border-border/50 pt-2 sm:border-0 sm:pt-0">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                              data-testid={`user-actions-${u.id}`}
+                              title={L("Handlinger", "Actions")}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                              <span className="hidden sm:inline">{L("Valg", "Options")}</span>
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-60">
+                            <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">{L("Funksjoner", "Features")}</DropdownMenuLabel>
+                            {/* Toggle: active. Icon matches the row's status. */}
+                            <DropdownMenuItem
+                              disabled={u.fromOtherTeam}
+                              onSelect={(e) => { e.preventDefault(); toggleActiveMutation.mutate({ userId: u.id, value: !u.isActive }); }}
+                              data-testid={`toggle-active-${u.id}`}
+                              className="gap-2"
+                            >
+                              {u.isActive ? <ToggleRight className="h-4 w-4 text-green-600" /> : <ToggleLeft className="h-4 w-4 text-red-500" />}
+                              <span className="flex-1">{L("Aktiv konto", "Active account")}</span>
+                              <Switch checked={!!u.isActive} onCheckedChange={() => {}} className="pointer-events-none" />
+                            </DropdownMenuItem>
+                            {/* Toggle: watch */}
+                            <DropdownMenuItem
+                              disabled={u.fromOtherTeam}
+                              onSelect={(e) => { e.preventDefault(); toggleWatchMutation.mutate({ userId: u.id, enabled: !u.garminWatch }); }}
+                              data-testid={`toggle-watch-${u.id}`}
+                              className="gap-2"
+                            >
+                              <Watch className="h-4 w-4 text-sky-500" />
+                              <span className="flex-1">{L("Overvåkingskø", "Watch Queue")}</span>
+                              <Switch checked={!!u.garminWatch} onCheckedChange={() => {}} className="pointer-events-none" />
+                            </DropdownMenuItem>
+                            {/* Toggle: all teams */}
+                            <DropdownMenuItem
+                              onSelect={(e) => { e.preventDefault(); toggleAllTeamsMutation.mutate({ userId: u.id, enabled: !u.canViewAllTeams }); }}
+                              data-testid={`toggle-all-teams-${u.id}`}
+                              className="gap-2"
+                            >
+                              <Layers className="h-4 w-4 text-indigo-500" />
+                              <span className="flex-1">{L("Alle lag", "All teams")}</span>
+                              <Switch checked={!!u.canViewAllTeams} onCheckedChange={() => {}} className="pointer-events-none" />
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">{L("Handlinger", "Actions")}</DropdownMenuLabel>
+                            {u.fromOtherTeam ? (
+                              <DropdownMenuItem
+                                className="gap-2 text-rose-600 focus:text-rose-600"
+                                data-testid={`button-remove-from-team-${u.id}`}
+                                onSelect={() => { if (confirm(L("Fjerne denne brukerens tilgang til laget?", "Remove this user's access to the team?"))) removeFromTeamMutation.mutate(u.id); }}
+                              >
+                                <UserX className="h-4 w-4" />{L("Fjern fra laget", "Remove from team")}
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem className="gap-2" data-testid={`button-edit-user-${u.id}`} onSelect={() => setEditUser(u)}>
+                                <Pencil className="h-4 w-4" />{L("Rediger bruker", "Edit user")}
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem className="gap-2" disabled={u.fromOtherTeam} data-testid={`button-reset-user-${u.id}`} onSelect={() => setResetUser(u)}>
+                              <KeyRound className="h-4 w-4" />{L("Tilbakestill passord", "Reset password")}
+                            </DropdownMenuItem>
+                            {!!u.loginLocked && (
+                              <DropdownMenuItem className="gap-2 text-red-600 focus:text-red-600" data-testid={`button-unlock-user-${u.id}`} onSelect={() => unlockMutation.mutate(u.id)}>
+                                <LockKeyhole className="h-4 w-4" />{L("Lås opp konto", "Unlock account")}
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem className="gap-2 text-orange-600 focus:text-orange-600" disabled={u.fromOtherTeam} data-testid={`button-force-logout-${u.id}`} onSelect={() => { if (confirm(`Force logout ${u.name}?`)) forceLogoutMutation.mutate(u.id); }}>
+                              <LogOut className="h-4 w-4" />{L("Tving utlogging", "Force logout")}
+                            </DropdownMenuItem>
+                            {canManage && (
+                              <DropdownMenuItem className="gap-2" data-testid={`button-history-user-${u.id}`} onSelect={() => setHistoryUser(u)}>
+                                <Activity className="h-4 w-4 text-violet-500" />{L("Vis historikk", "View history")}
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="gap-2 text-red-600 focus:text-red-600"
+                              disabled={u.id === user.id || u.fromOtherTeam}
+                              data-testid={`button-delete-user-${u.id}`}
+                              onSelect={() => { if (confirm(`Delete ${u.name}?`)) deleteMutation.mutate(u.id); }}
+                            >
+                              <Trash2 className="h-4 w-4" />{L("Slett bruker", "Delete user")}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   );

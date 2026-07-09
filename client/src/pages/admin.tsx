@@ -3015,6 +3015,16 @@ export default function Admin() {
     queryKey: [`/api/team-usage${teamScopeParam}`],
     enabled: canManage,
   });
+  const restoreMutation = useMutation({
+    mutationFn: async (logId: number) => (await apiRequest("POST", `/api/audit/${logId}/restore`)).json(),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ predicate: (query) => (query.queryKey[0] as string)?.startsWith("/api/activity") });
+      ["/api/tests", "/api/athletes", "/api/products", "/api/weather", "/api/race"].forEach((k) =>
+        queryClient.invalidateQueries({ predicate: (query) => (query.queryKey[0] as string)?.startsWith(k) }));
+      toast({ title: L("Gjenopprettet", "Restored"), description: data?.entityType });
+    },
+    onError: (e: Error) => toast({ title: L("Gjenoppretting mislyktes", "Restore failed"), description: e.message, variant: "destructive" }),
+  });
   const [activityActionFilter, setActivityActionFilter] = useState<string>("all");
   const [expandedActivity, setExpandedActivity] = useState<number | null>(null);
   const activityActions = useMemo(
@@ -5132,7 +5142,7 @@ export default function Admin() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">{L("Alle handlinger", "All actions")}</SelectItem>
-                      <SelectItem value="__deletions__">{L("Kun slettinger", "Deletions only")}</SelectItem>
+                      <SelectItem value="__deletions__">{L("Papirkurv (slettinger — kan gjenopprettes)", "Recycle bin (deletions — restorable)")}</SelectItem>
                       {activityActions.map((a) => (
                         <SelectItem key={a} value={a}>{a}</SelectItem>
                       ))}
@@ -5189,7 +5199,17 @@ export default function Admin() {
                         {open && hasSnap && (
                           <tr className="border-b border-border bg-muted/20" data-testid={`snapshot-activitylog-${a.id}`}>
                             <td colSpan={6} className="px-3 py-2">
-                              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{L("Slettet data (øyeblikksbilde)", "Deleted data (snapshot)")}</div>
+                              <div className="mb-1 flex items-center justify-between gap-2">
+                                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{L("Slettet data (øyeblikksbilde)", "Deleted data (snapshot)")}</div>
+                                {isDelete && ["test", "athlete", "race_ski", "product", "weather"].includes(a.entityType) && (
+                                  <Button size="sm" variant="outline" className="h-7 text-xs"
+                                    disabled={restoreMutation.isPending}
+                                    onClick={(e) => { e.stopPropagation(); if (confirm(L("Gjenopprette denne slettede oppføringen?", "Restore this deleted record?"))) restoreMutation.mutate(a.id); }}
+                                    data-testid={`button-restore-${a.id}`}>
+                                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />{L("Gjenopprett", "Restore")}
+                                  </Button>
+                                )}
+                              </div>
                               <pre className="max-h-80 overflow-auto rounded-lg bg-background/60 p-3 text-[11px] leading-relaxed text-foreground/90 ring-1 ring-border">{pretty}</pre>
                             </td>
                           </tr>

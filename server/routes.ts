@@ -4390,6 +4390,66 @@ export async function registerRoutes(
     res.json(actions);
   });
 
+  // Recover a deleted record from its audit snapshot (the "recycle bin").
+  app.post("/api/audit/:id/restore", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const u = userInfo(req);
+    const logId = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(`SELECT * FROM activity_logs WHERE id = $1`, [logId]);
+    const log = r.rows[0];
+    if (!log) return res.status(404).json({ message: "Log entry not found" });
+    if (log.action !== "deleted" || !log.snapshot) return res.status(400).json({ message: "Nothing to restore for this entry" });
+    if (u.isAdmin !== 1 && log.team_id !== getActiveTeamId(req)) return res.status(403).json({ message: "Cannot restore from another team" });
+    let snap: any;
+    try { snap = JSON.parse(log.snapshot); } catch { return res.status(400).json({ message: "Snapshot is corrupt" }); }
+    const strip = (o: any) => { if (!o) return o; const { id, ...rest } = o; return rest; };
+    // Deleted test entries were snapshotted as raw (snake_case) rows.
+    const mapEntry = (e: any, testId: number) => ({
+      testId, skiNumber: e.ski_number, productId: e.product_id ?? null,
+      additionalProductIds: e.additional_product_ids ?? null, freeTextProduct: e.free_text_product ?? null,
+      methodology: e.methodology ?? "", result0kmCmBehind: e.result_0km_cm_behind ?? null, rank0km: e.rank_0km ?? null,
+      resultXkmCmBehind: e.result_xkm_cm_behind ?? null, rankXkm: e.rank_xkm ?? null, results: e.results ?? null,
+      feelingRank: e.feeling_rank ?? null, feelingNote: e.feeling_note ?? null, kickRank: e.kick_rank ?? null,
+      kickSolution: e.kick_solution ?? null, grindType: e.grind_type ?? null, grindStone: e.grind_stone ?? null,
+      grindPattern: e.grind_pattern ?? null, grindExtraParams: e.grind_extra_params ?? null, grindProfileId: e.grind_profile_id ?? null,
+      raceSkiId: e.race_ski_id ?? null, createdAt: e.created_at ?? new Date().toISOString(),
+      createdById: e.created_by_id ?? u.id, createdByName: e.created_by_name ?? u.name,
+      groupScope: e.group_scope ?? "", teamId: e.team_id ?? getActiveTeamId(req),
+    });
+    let restoredId: number | null = null;
+    try {
+      switch (log.entity_type) {
+        case "product": restoredId = (await storage.createProduct(strip(snap) as any)).id; break;
+        case "weather": restoredId = (await storage.createWeather(strip(snap) as any)).id; break;
+        case "race_ski": restoredId = (await storage.createRaceSki(strip(snap) as any)).id; break;
+        case "athlete": {
+          const a = await storage.createAthlete(strip(snap.athlete ?? snap) as any);
+          for (const ski of (snap.skis ?? [])) { try { await storage.createRaceSki({ ...strip(ski), athleteId: a.id } as any); } catch {} }
+          restoredId = a.id; break;
+        }
+        case "test": {
+          const t = await storage.createTest(strip(snap.test ?? snap) as any);
+          for (const e of (snap.entries ?? [])) { try { await storage.createEntry(mapEntry(e, t.id) as any); } catch {} }
+          restoredId = t.id; break;
+        }
+        default: return res.status(400).json({ message: `Restore not supported for ${log.entity_type}` });
+      }
+    } catch (e: any) {
+      console.error("[audit] restore failed:", e);
+      return res.status(500).json({ message: "Restore failed: " + (e?.message || "unknown") });
+    }
+    // Mark the log so it isn't restored twice, and record the restore action.
+    await (pool as any).query(`UPDATE activity_logs SET action = 'restored' WHERE id = $1`, [logId]).catch(() => {});
+    await storage.createActivityLog({
+      userId: u.id, userName: u.name, action: "restored",
+      entityType: log.entity_type, entityId: restoredId ?? 0,
+      details: `Restored ${log.entity_type}${restoredId ? ` (#${restoredId})` : ""}`,
+      createdAt: new Date().toISOString(), groupScope: u.groupScope, teamId: getActiveTeamId(req),
+    } as any).catch(() => {});
+    res.json({ ok: true, id: restoredId, entityType: log.entity_type });
+  });
+
   // Quota / usage overview for a team (current count vs. limit per resource).
   app.get("/api/team-usage", requireAuth, async (req, res) => {
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });

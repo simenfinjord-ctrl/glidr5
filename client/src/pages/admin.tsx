@@ -1171,27 +1171,6 @@ function shortDevice(ua: string): string {
   return [os, br].filter(Boolean).join(" · ") || ua.slice(0, 40);
 }
 
-// An IP is "new" (highlighted red) for the first 24 h after it is first seen for
-// a user; afterwards it reverts to normal. Computed from the login history so an
-// admin can spot logins from an unfamiliar location at a glance.
-function buildIpFirstSeen(logs: LoginLog[]): Map<string, number> {
-  const m = new Map<string, number>();
-  for (const l of logs) {
-    if (!l.ipAddress) continue;
-    const key = `${l.userId}|${l.ipAddress}`;
-    const t = new Date(l.loginAt).getTime();
-    const prev = m.get(key);
-    if (prev === undefined || t < prev) m.set(key, t);
-  }
-  return m;
-}
-function isNewIp(firstSeen: Map<string, number>, userId: number, ip: string | null): boolean {
-  if (!ip) return false;
-  const t = firstSeen.get(`${userId}|${ip}`);
-  if (t === undefined) return true; // never recorded in history → brand new
-  return Date.now() - t < 24 * 3600 * 1000;
-}
-
 // Active sessions live-view. Placed directly under the Login History so an admin
 // sees who is currently signed in right below the historical logins. Own session
 // is shown but cannot be terminated. New/unfamiliar IPs are flagged in red.
@@ -1211,7 +1190,6 @@ function ActiveSessionsCard({ currentUserId, loginLogs }: { currentUserId: numbe
     onSuccess: () => { refetchSessions(); toast({ title: L("Bruker logget ut", "User logged out") }); },
     onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
-  const firstSeen = useMemo(() => buildIpFirstSeen(loginLogs), [loginLogs]);
 
   return (
     <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -1228,7 +1206,7 @@ function ActiveSessionsCard({ currentUserId, loginLogs }: { currentUserId: numbe
           Refresh
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground mb-3">{L("Oppdateres automatisk hvert 15. sekund. Din egen økt vises, men kan ikke avsluttes. En ny/ukjent IP vises i rødt i 24 timer.", "Auto-refreshes every 15 s. Your own session is shown but cannot be terminated. A new/unfamiliar IP is shown in red for 24 h.")}</p>
+      <p className="text-xs text-muted-foreground mb-3">{L("Oppdateres automatisk hvert 15. sekund. Din egen økt vises, men kan ikke avsluttes.", "Auto-refreshes every 15 s. Your own session is shown but cannot be terminated.")}</p>
       {sessions.length === 0 ? (
         <div className="text-sm text-muted-foreground text-center py-6">{L("Fant ingen aktive økter.", "No active sessions found.")}</div>
       ) : (
@@ -1238,7 +1216,7 @@ function ActiveSessionsCard({ currentUserId, loginLogs }: { currentUserId: numbe
               <tr className="bg-muted/40 border-b border-border">
                 <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Bruker", "User")}</th>
                 <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("E-post", "Email")}</th>
-                <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("IP / enhet", "IP / device")}</th>
+                <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Enhet", "Device")}</th>
                 <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Siste login", "Last login")}</th>
                 <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Siste aktivitet", "Last activity")}</th>
                 <th className="text-left px-3 py-2 font-medium text-foreground/80 text-xs">{L("Utløper", "Expires")}</th>
@@ -1250,7 +1228,6 @@ function ActiveSessionsCard({ currentUserId, loginLogs }: { currentUserId: numbe
                 const isMe = s.userId === currentUserId;
                 const expires = new Date(s.expiresAt);
                 const hoursLeft = Math.round((expires.getTime() - Date.now()) / 3600000);
-                const newIp = isNewIp(firstSeen, s.userId, s.ipAddress);
                 return (
                   <tr key={s.sid} className={cn("transition-colors", isMe && "bg-green-50/30 dark:bg-green-900/10")}>
                     <td className="px-3 py-2">
@@ -1261,9 +1238,8 @@ function ActiveSessionsCard({ currentUserId, loginLogs }: { currentUserId: numbe
                       </div>
                     </td>
                     <td className="px-3 py-2 text-muted-foreground text-xs">{s.email}</td>
-                    <td className="px-3 py-2 text-xs">
-                      <div className={cn("font-mono", newIp ? "text-red-600 dark:text-red-400 font-semibold" : "text-muted-foreground")} title={newIp ? L("Ny/ukjent IP (siste 24 t)", "New/unfamiliar IP (last 24 h)") : undefined}>{s.ipAddress || "—"}</div>
-                      {s.userAgent && <div className="truncate max-w-[220px] opacity-70 text-muted-foreground" title={s.userAgent}>{shortDevice(s.userAgent)}</div>}
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {s.userAgent ? <span className="truncate max-w-[220px]" title={s.userAgent}>{shortDevice(s.userAgent)}</span> : "—"}
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
                       {s.lastLoginAt ? new Date(s.lastLoginAt).toLocaleString() : "—"}
@@ -2090,21 +2066,19 @@ function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser 
                     <thead>
                       <tr className="border-b border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                         <th className="pb-2 pr-3">{L("Dato/tid", "Date/Time")}</th>
-                        <th className="pb-2 pr-3">{L("Handling", "Action")}</th>
-                        <th className="pb-2">{L("IP-adresse", "IP Address")}</th>
+                        <th className="pb-2">{L("Handling", "Action")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {loginLogs.map((l) => (
                         <tr key={l.id} className="border-b border-border/30">
                           <td className="py-1.5 pr-3 tabular-nums text-muted-foreground">{new Date(l.loginAt).toLocaleString()}</td>
-                          <td className="py-1.5 pr-3">
+                          <td className="py-1.5">
                             <span className={cn(
                               "rounded-full px-2 py-0.5 text-[10px] font-medium",
                               l.action === "login" ? "bg-green-50 text-green-700" : "bg-muted text-muted-foreground"
                             )}>{l.action}</span>
                           </td>
-                          <td className="py-1.5 text-muted-foreground font-mono">{l.ipAddress || "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -3004,9 +2978,6 @@ export default function Admin() {
     queryKey: [`/api/login-logs${teamScopeParam}`],
     enabled: canManage,
   });
-  // First time each (user, IP) pair appears — used to flag new/unfamiliar IPs in red.
-  const loginFirstSeen = useMemo(() => buildIpFirstSeen(loginLogs), [loginLogs]);
-
   const { data: allSeries = [] } = useQuery<any[]>({
     queryKey: ["/api/series"],
     enabled: canManage,
@@ -3689,8 +3660,8 @@ export default function Admin() {
       y += 2;
       autoTable(doc, {
         startY: y,
-        head: [["Name", "Email", "IP Address", "Login Time"]],
-        body: data.loginLogs.map((l: any) => [l.name, l.email, l.ipAddress || "—", new Date(l.loginAt).toLocaleString()]),
+        head: [["Name", "Email", "Login Time"]],
+        body: data.loginLogs.map((l: any) => [l.name, l.email, new Date(l.loginAt).toLocaleString()]),
         styles: { fontSize: 8 }, headStyles: hStyle, margin: { left: 14, right: 14 },
       });
 
@@ -5251,13 +5222,11 @@ export default function Admin() {
                         <th className="pb-2 pr-3">{L("Navn", "Name")}</th>
                         <th className="pb-2 pr-3">{L("E-post", "Email")}</th>
                         <th className="pb-2 pr-3">{L("Handling", "Action")}</th>
-                        <th className="pb-2 pr-3">{L("IP-adresse", "IP Address")}</th>
                         <th className="pb-2">{L("Tid", "Time")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {loginLogs.slice(0, 200).map((log) => {
-                        const newIp = isNewIp(loginFirstSeen, log.userId, log.ipAddress);
                         return (
                         <tr key={log.id} className="border-b border-border" data-testid={`row-login-${log.id}`}>
                           <td className="py-2 pr-3 font-medium text-foreground">{log.name}</td>
@@ -5273,7 +5242,6 @@ export default function Admin() {
                               <span className="text-xs text-muted-foreground">{log.action}</span>
                             )}
                           </td>
-                          <td className={cn("py-2 pr-3 font-mono text-xs", newIp ? "text-red-600 dark:text-red-400 font-semibold" : "text-muted-foreground")} title={newIp ? L("Ny/ukjent IP (siste 24 t)", "New/unfamiliar IP (last 24 h)") : undefined}>{log.ipAddress || "—"}</td>
                           <td className="py-2 text-muted-foreground">
                             {new Date(log.loginAt).toLocaleString()}
                           </td>

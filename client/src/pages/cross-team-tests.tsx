@@ -276,7 +276,7 @@ export default function CrossTeamTests() {
                       <div className="flex flex-wrap gap-x-2 gap-y-0.5">
                         {e.productNames.map((name, i) => {
                           const app = parseApplication(appParts[i]?.trim() ?? "").interpreted;
-                          return <span key={i} className="flex items-baseline gap-1"><span className="font-medium">{name}</span>{app && <span className="text-muted-foreground">{app}</span>}</span>;
+                          return <span key={i} className="flex items-baseline gap-1"><button type="button" onClick={(ev) => { ev.stopPropagation(); navigate(`/analytics?tab=products&productName=${encodeURIComponent(name)}`); }} className="font-medium text-left hover:text-primary hover:underline transition-colors" title={L("Se analyse for produktet", "See product analytics")}>{name}</button>{app && <span className="text-muted-foreground">{app}</span>}</span>;
                         })}
                       </div>
                     ) : "—"}

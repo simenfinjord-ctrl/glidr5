@@ -1,5 +1,5 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft, FileDown, ChevronDown, ChevronUp, ChevronRight, ArrowRight, Footprints, FileText, Users, Cloud, Sparkles } from "lucide-react";
 import React from "react";
@@ -969,6 +969,7 @@ function ProductSearchStats({
   productsById,
   testsById,
   weatherById = new Map(),
+  initialProductId = null,
 }: {
   products: Product[];
   tests: Test[];
@@ -976,13 +977,16 @@ function ProductSearchStats({
   productsById: Map<number, Product>;
   testsById: Map<number, Test>;
   weatherById?: Map<number, Weather>;
+  initialProductId?: number | null;
 }) {
   const { t, language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(initialProductId);
   const [open, setOpen] = useState(false);
   const [expandedCombo, setExpandedCombo] = useState<number | null>(null);
   const [expandedApp, setExpandedApp] = useState<string | null>(null);
+  // A deep-linked product may resolve after the catalog loads — select it then.
+  useEffect(() => { if (initialProductId != null) setSelectedProductId(initialProductId); }, [initialProductId]);
 
   const selectedProduct = selectedProductId ? productsById.get(selectedProductId) : null;
 
@@ -3719,10 +3723,10 @@ function BrandStatsView() {
   );
 }
 
-function RacedSkisView() {
+function RacedSkisView({ initialSearch = "" }: { initialSearch?: string }) {
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialSearch);
   const { data: usages = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/ski-race-usages"] });
   const rows = useMemo(() => {
     const norm = q.trim().toLowerCase();
@@ -4145,13 +4149,33 @@ export default function Analytics() {
     enabled: allTestIds.length > 0,
   });
 
+  // Deep-link: /analytics?tab=products&product=<id> or ?tab=racedskis&ski=<skiId>.
+  // Lets a product or ski pair clicked elsewhere open its analytics directly;
+  // browser back returns to the page the user came from.
+  const deepLink = useMemo(() => new URLSearchParams(typeof window !== "undefined" ? window.location.search : ""), []);
+  const initialProductId = deepLink.get("product") ? parseInt(deepLink.get("product")!) : null;
+  const initialSkiSearch = deepLink.get("ski") || "";
+
   const [testTypeFilter, setTestTypeFilter] = useState<string>("All");
   const [seasonFilter, setSeasonFilter] = useState<string>("All");
-  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [activeTab, setActiveTab] = useState<string>(() => deepLink.get("tab") || "overview");
 
   const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const testsById = useMemo(() => new Map(tests.map((t) => [t.id, t])), [tests]);
   const weatherById = useMemo(() => new Map(weather.map((w) => [w.id, w])), [weather]);
+
+  // Resolve a deep-linked product: by id, or by name (used from the All-teams
+  // view where only the product name is known — matches the active team's catalog).
+  const resolvedInitialProductId = useMemo(() => {
+    if (initialProductId != null) return initialProductId;
+    const nm = deepLink.get("productName");
+    if (!nm) return null;
+    const target = nm.trim().toLowerCase();
+    for (const p of products) {
+      if (`${p.brand ?? ""} ${p.name ?? ""}`.trim().toLowerCase() === target) return p.id;
+    }
+    return null;
+  }, [initialProductId, products, deepLink]);
 
   const seasons = useMemo(() => {
     const s = new Set(tests.map(t => getSkiSeason(t.date)));
@@ -4677,6 +4701,7 @@ export default function Analytics() {
               productsById={productsById}
               testsById={testsById}
               weatherById={weatherById}
+              initialProductId={resolvedInitialProductId}
             />
           </ErrorBoundary>
         )}
@@ -4788,7 +4813,7 @@ export default function Analytics() {
           />
         )}
 
-        {activeTab === "racedskis" && <RacedSkisView />}
+        {activeTab === "racedskis" && <RacedSkisView initialSearch={initialSkiSearch} />}
 
         {activeTab === "brands" && <BrandStatsView />}
 

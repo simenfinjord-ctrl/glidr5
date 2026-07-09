@@ -7277,11 +7277,17 @@ function RaceSkiTestCard({
                         </div>
                       </td>
                     )}
-                    {activeTestColumns.includes("skiId") ? (
-                      <td className="px-3 py-1.5 font-medium">{linkedSki?.skiId ?? getSkiLabel(entry)}</td>
-                    ) : (
-                      <td className="px-3 py-1.5 font-medium">{getSkiLabel(entry)}</td>
-                    )}
+                    <td className="px-3 py-1.5 font-medium">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/analytics?tab=racedskis&ski=${encodeURIComponent(linkedSki?.skiId ?? String(entry.skiNumber))}`); }}
+                        className="text-left hover:text-primary hover:underline transition-colors"
+                        title={L("Se analyse for skiparet", "See ski analytics")}
+                        data-testid={`link-ski-analytics-${entry.id}`}
+                      >
+                        {activeTestColumns.includes("skiId") ? (linkedSki?.skiId ?? getSkiLabel(entry)) : getSkiLabel(entry)}
+                      </button>
+                    </td>
                     {activeTestColumns.includes("serialNumber") && (
                       <td className="px-3 py-1.5 text-muted-foreground">{linkedSki?.serialNumber ?? "—"}</td>
                     )}

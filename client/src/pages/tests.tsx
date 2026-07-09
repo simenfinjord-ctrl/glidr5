@@ -2102,12 +2102,12 @@ export default function Tests() {
                               // Pair each product with its parsed application
                               const appParts = entry.methodology ? entry.methodology.split("|") : [];
                               const productEntries = [
-                                product ? { name: `${product.brand} ${product.name}`, app: parseApplication(appParts[0]?.trim() ?? "").interpreted } : null,
+                                product ? { id: product.id, name: `${product.brand} ${product.name}`, app: parseApplication(appParts[0]?.trim() ?? "").interpreted } : null,
                                 ...additionalIds.map((aid, i) => {
                                   const p = productsById.get(aid);
-                                  return p ? { name: `${p.brand} ${p.name}`, app: parseApplication(appParts[i + 1]?.trim() ?? "").interpreted } : null;
+                                  return p ? { id: p.id, name: `${p.brand} ${p.name}`, app: parseApplication(appParts[i + 1]?.trim() ?? "").interpreted } : null;
                                 }),
-                              ].filter((x): x is { name: string; app: string } => !!x);
+                              ].filter((x): x is { id: number; name: string; app: string } => !!x);
                               const rounds = getEntryRounds(entry, distLabels.length);
                               const firstRank = rounds[0]?.rank ?? null;
 
@@ -2131,7 +2131,13 @@ export default function Tests() {
                                         <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                                           {productEntries.map((pe, i) => (
                                             <span key={i} className="flex items-baseline gap-1">
-                                              <span className="font-medium">{pe.name}</span>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); navigate(`/analytics?tab=products&product=${pe.id}`); }}
+                                                className="font-medium text-left hover:text-primary hover:underline transition-colors"
+                                                title={L("Se analyse for produktet", "See product analytics")}
+                                                data-testid={`link-product-analytics-${pe.id}`}
+                                              >{pe.name}</button>
                                               {pe.app && <span className="text-muted-foreground">{pe.app}</span>}
                                             </span>
                                           ))}

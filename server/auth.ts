@@ -274,7 +274,9 @@ export async function setupAuth(app: Express) {
                 name: user.name,
                 loginAt: new Date().toISOString(),
                 ipAddress: ip,
-              });
+                userAgent: req.headers["user-agent"] || null,
+                deviceId: (req.body?.deviceId ? String(req.body.deviceId).slice(0, 64) : null),
+              } as any);
             } catch (_) {}
           }
           const { password, ...safe } = user;

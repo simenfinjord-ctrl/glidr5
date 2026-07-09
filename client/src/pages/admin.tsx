@@ -229,6 +229,8 @@ type LoginLog = {
   ipAddress: string | null;
   action: string;
   details: string | null;
+  userAgent?: string | null;
+  deviceId?: string | null;
 };
 
 type AdminStats = {
@@ -5222,6 +5224,8 @@ export default function Admin() {
                         <th className="pb-2 pr-3">{L("Navn", "Name")}</th>
                         <th className="pb-2 pr-3">{L("E-post", "Email")}</th>
                         <th className="pb-2 pr-3">{L("Handling", "Action")}</th>
+                        <th className="pb-2 pr-3">{L("Enhet", "Device")}</th>
+                        {isSuperAdmin && <th className="pb-2 pr-3">{L("Enhets-ID", "Device ID")}</th>}
                         <th className="pb-2">{L("Tid", "Time")}</th>
                       </tr>
                     </thead>
@@ -5242,6 +5246,8 @@ export default function Admin() {
                               <span className="text-xs text-muted-foreground">{log.action}</span>
                             )}
                           </td>
+                          <td className="py-2 pr-3 text-xs text-muted-foreground">{log.userAgent ? shortDevice(log.userAgent) : "—"}</td>
+                          {isSuperAdmin && <td className="py-2 pr-3 font-mono text-[10px] text-muted-foreground" title={log.deviceId ?? undefined}>{log.deviceId ? log.deviceId.slice(0, 8) : "—"}</td>}
                           <td className="py-2 text-muted-foreground">
                             {new Date(log.loginAt).toLocaleString()}
                           </td>

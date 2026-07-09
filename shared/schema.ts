@@ -518,6 +518,8 @@ export const loginLogs = pgTable("login_logs", {
   ipAddress: text("ip_address"),
   action: text("action").notNull().default("login"),
   details: text("details"),
+  userAgent: text("user_agent"),   // browser/OS at login (device #1)
+  deviceId: text("device_id"),     // first-party random per-browser id (device #3)
 });
 
 export const insertLoginLogSchema = createInsertSchema(loginLogs).omit({ id: true });

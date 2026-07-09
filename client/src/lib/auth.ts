@@ -3,6 +3,21 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest, getQueryFn, queryClient } from "@/lib/queryClient";
 import { setGlidrDateFormat } from "@/lib/utils";
 
+// A stable, first-party random id for THIS browser. Not tied to identity or
+// behaviour — it only lets an admin tell two devices on the same network apart.
+export function getDeviceId(): string {
+  try {
+    let id = localStorage.getItem("glidr-device-id");
+    if (!id) {
+      id = (crypto as any)?.randomUUID?.() ?? `dev-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+      localStorage.setItem("glidr-device-id", id);
+    }
+    return id;
+  } catch {
+    return "unknown";
+  }
+}
+
 export type PermissionLevel = "none" | "view" | "edit";
 export type UserPermissions = {
   dashboard: PermissionLevel;
@@ -57,7 +72,7 @@ export function useAuth() {
   });
 
   const login = async (username: string, password: string, rememberMe?: boolean) => {
-    const res = await apiRequest("POST", "/api/auth/login", { username, password, rememberMe });
+    const res = await apiRequest("POST", "/api/auth/login", { username, password, rememberMe, deviceId: getDeviceId() });
     const data = await res.json();
     await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     return data;

@@ -1250,7 +1250,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
                 <div className={cn("h-1.5 w-1.5 rounded-full shrink-0", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
                 {isSuperAdmin && teams.length > 1 && (
                   <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
-                    <SelectTrigger className="h-8 w-auto min-w-[140px] border-border bg-muted/50 text-xs font-medium" data-testid="select-team">
+                    <SelectTrigger className="h-8 w-auto min-w-[84px] max-w-[130px] sm:min-w-[140px] sm:max-w-none border-border bg-muted/50 text-xs font-medium" data-testid="select-team">
                       <SelectValue placeholder={t("shell.selectTeam")} />
                     </SelectTrigger>
                     <SelectContent>
@@ -1262,7 +1262,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
                 )}
                 {!isSuperAdmin && userTeams.length > 1 && (
                   <Select value={String(activeTeamId)} onValueChange={(val) => switchTeam(parseInt(val))}>
-                    <SelectTrigger className="h-8 w-auto min-w-[140px] border-border bg-muted/50 text-xs font-medium" data-testid="select-user-team">
+                    <SelectTrigger className="h-8 w-auto min-w-[84px] max-w-[130px] sm:min-w-[140px] sm:max-w-none border-border bg-muted/50 text-xs font-medium" data-testid="select-user-team">
                       <SelectValue placeholder={t("shell.selectTeam")} />
                     </SelectTrigger>
                     <SelectContent>

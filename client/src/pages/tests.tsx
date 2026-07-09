@@ -1,6 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { Fragment, useMemo, useState, useRef, useCallback, useEffect } from "react";
-import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus, ChevronDown, Calendar } from "lucide-react";
+import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus, ChevronDown, Calendar, GitCompare } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -1481,6 +1481,12 @@ export default function Tests() {
               <Camera className="h-4 w-4" />
               <span className="hidden sm:inline text-xs">{t("tests.addImage")}</span>
             </Button>
+            <AppLink href="/tests/compare">
+              <Button variant="outline" data-testid="button-compare-tests" title={L("Sammenlign tester", "Compare tests")}>
+                <GitCompare className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">{L("Sammenlign", "Compare")}</span>
+              </Button>
+            </AppLink>
             <AppLink href="/tests/new">
               <Button data-testid="button-new-test" className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
                 <Plus className="mr-2 h-4 w-4" />

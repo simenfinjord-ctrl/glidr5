@@ -2658,6 +2658,48 @@ export async function registerRoutes(
     res.json(combined);
   });
 
+  // Compare up to 4 tests side by side: returns each test with its full result
+  // rows (product names resolved server-side), only for tests the caller may read.
+  app.get("/api/tests/compare", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const ids = String(req.query.ids || "").split(",").map((s) => parseInt(s.trim())).filter((n) => !isNaN(n)).slice(0, 4);
+    if (ids.length === 0) return res.json([]);
+    const { pool: p } = await import("./db");
+    const out: any[] = [];
+    for (const id of ids) {
+      const test = await storage.getTest(id);
+      if (!test || !verifyTeamOwnership(test, req)) continue;
+      let ok = u.isScopeAdmin;
+      if (!ok) {
+        if ((test as any).testSkiSource === "raceskis") {
+          ok = u.permissions.raceskis !== "none" && !!(test as any).athleteId &&
+               await storage.hasAthleteAccess((test as any).athleteId, u.id, false, getActiveTeamId(req));
+        } else {
+          ok = u.permissions.tests !== "none" && userHasGroupAccess(u.groupScope, u.isScopeAdmin, test.groupScope);
+        }
+      }
+      if (!ok) continue;
+      if ((test as any).testType === "Grind" && u.permissions.grinding === "none") continue;
+
+      const tid = (test as any).teamId;
+      const pr = await (p as any).query(`SELECT id, brand, name FROM products WHERE team_id = $1`, [tid]).catch(() => ({ rows: [] }));
+      const productName = new Map<number, string>(pr.rows.map((r: any) => [r.id, `${r.brand ?? ""} ${r.name ?? ""}`.trim()]));
+      const er = await (p as any).query(`SELECT * FROM test_entries WHERE test_id = $1 ORDER BY ski_number ASC`, [id]).catch(() => ({ rows: [] }));
+      const labels = srvDistanceLabels(test);
+      const entries = er.rows.map((e: any) => {
+        const additional = (e.additional_product_ids || "").split(",").map((n: string) => parseInt(n)).filter((n: number) => !isNaN(n) && n > 0);
+        const names = [
+          e.product_id ? (productName.get(e.product_id) || null) : (e.free_text_product || null),
+          ...additional.map((pid: number) => productName.get(pid) || null),
+        ].filter((x: any): x is string => !!x);
+        return { skiNumber: e.ski_number, productNames: names, methodology: e.methodology || "", rounds: srvEntryRounds(e, labels.length), feelingRank: e.feeling_rank ?? null, kickRank: e.kick_rank ?? null };
+      });
+      out.push({ id: test.id, date: test.date, startTime: (test as any).startTime, location: test.location, testName: (test as any).testName, testType: (test as any).testType, teamId: tid, distanceLabels: labels, entries });
+    }
+    out.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    res.json(out);
+  });
+
   app.post("/api/tests", requireAuth, async (req, res) => {
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);

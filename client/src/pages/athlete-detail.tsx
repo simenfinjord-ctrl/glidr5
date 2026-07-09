@@ -96,6 +96,7 @@ type Athlete = {
   poleHeightSkate: string | null;
   bindingPosition: string | null;
   skiServicePreferences: string | null;
+  sportClass: string | null;
   createdAt: string;
   createdById: number;
   createdByName: string;
@@ -1041,7 +1042,8 @@ export default function AthleteDetail() {
     notes: "",
   });
 
-  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", poleHeightSkate: "", bindingPosition: "", skiServicePreferences: "" });
+  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", poleHeightSkate: "", bindingPosition: "", skiServicePreferences: "", sportClass: "" });
+  const sportClassEnabled = !!user?.teamEnabledAreas?.includes("para_team");
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
 
   // Include archived so an archived athlete's profile still opens from the archive.
@@ -1640,7 +1642,7 @@ export default function AthleteDetail() {
   });
 
   const updateAthleteMutation = useMutation({
-    mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; poleHeightSkate: string; bindingPosition: string; skiServicePreferences: string }) => {
+    mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; poleHeightSkate: string; bindingPosition: string; skiServicePreferences: string; sportClass: string }) => {
       const res = await apiRequest("PUT", `/api/athletes/${athleteId}`, {
         name: data.name,
         team: data.team.trim() || null,
@@ -1651,6 +1653,7 @@ export default function AthleteDetail() {
         poleHeightSkate: data.poleHeightSkate.trim() || null,
         bindingPosition: data.bindingPosition.trim() || null,
         skiServicePreferences: data.skiServicePreferences.trim() || null,
+        sportClass: data.sportClass.trim() || null,
       });
       return res.json();
     },
@@ -1816,6 +1819,7 @@ export default function AthleteDetail() {
         heightCm: athlete.heightCm || "", weightKg: athlete.weightKg || "",
         poleHeight: athlete.poleHeight || "", poleHeightSkate: athlete.poleHeightSkate || "", bindingPosition: athlete.bindingPosition || "",
         skiServicePreferences: athlete.skiServicePreferences || "",
+        sportClass: athlete.sportClass || "",
       });
       setEditAthleteOpen(true);
     }
@@ -2248,6 +2252,11 @@ export default function AthleteDetail() {
                 >
                   <Users className="mr-1 h-3 w-3" />
                   {athlete.team}
+                </span>
+              )}
+              {sportClassEnabled && athlete.sportClass && (
+                <span className="inline-flex items-center rounded-full bg-teal-50 dark:bg-teal-950/30 px-2 py-0.5 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-teal-200 dark:ring-teal-800" data-testid="text-athlete-sport-class">
+                  {L("Klasse", "Class")}: {athlete.sportClass}
                 </span>
               )}
               <span className="text-xs text-muted-foreground" data-testid="text-athlete-created-by">
@@ -4771,6 +4780,17 @@ export default function AthleteDetail() {
                 data-testid="input-edit-athlete-team"
               />
             </div>
+            {sportClassEnabled && (
+              <div>
+                <label className="mb-1 block text-sm font-medium">{L("Sport-klasse", "Sport Class")}</label>
+                <Input
+                  value={athleteForm.sportClass}
+                  onChange={(e) => setAthleteForm((f) => ({ ...f, sportClass: e.target.value }))}
+                  placeholder={L("f.eks. LW10, B2, standing", "e.g., LW10, B2, standing")}
+                  data-testid="input-edit-athlete-sport-class"
+                />
+              </div>
+            )}
             <div>
               <label className="mb-1 block text-sm font-medium">{L("Standard skimerke", "Default ski brand")}</label>
               <Input

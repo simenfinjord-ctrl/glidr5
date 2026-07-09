@@ -347,6 +347,7 @@ export async function registerRoutes(
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS is_training_ski INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS default_ski_brand TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS archived INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS sport_class TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS can_view_all_teams INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS feeling_note TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS kick_solution TEXT;
@@ -5979,6 +5980,7 @@ export async function registerRoutes(
       poleHeightSkate: req.body.poleHeightSkate || null,
       bindingPosition: req.body.bindingPosition || null,
       skiServicePreferences: req.body.skiServicePreferences || null,
+      sportClass: req.body.sportClass || null,
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
@@ -6005,6 +6007,7 @@ export async function registerRoutes(
     if (req.body.poleHeightSkate !== undefined) data.poleHeightSkate = req.body.poleHeightSkate || null;
     if (req.body.bindingPosition !== undefined) data.bindingPosition = req.body.bindingPosition || null;
     if (req.body.skiServicePreferences !== undefined) data.skiServicePreferences = req.body.skiServicePreferences || null;
+    if (req.body.sportClass !== undefined) data.sportClass = req.body.sportClass || null;
     if (req.body.archived !== undefined) data.archived = req.body.archived ? 1 : 0;
     const updated = await storage.updateAthlete(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });

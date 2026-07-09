@@ -56,7 +56,7 @@ export const TEAM_FEATURES = [
   "pdf_export", "excel_export", "google_sheets_backup", "offline_mode",
   // Team features
   "blind_tester", "activity_logging", "column_visibility",
-  "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management", "us_grind",
+  "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management", "us_grind", "para_team",
   // Enterprise
   "multi_team", "bulk_export", "custom_groups",
 ] as const;
@@ -91,6 +91,7 @@ export const FEATURE_LABELS: Record<TeamFeature, string> = {
   product_stock: "Product Stock Tracking",
   athlete_management: "Athlete Profiles & Access Control",
   us_grind: "US-Grind tagging",
+  para_team: "Para team",
   multi_team: "Multi-team Support",
   bulk_export: "Bulk Data Export",
   custom_groups: "Custom Group Structures",
@@ -111,7 +112,7 @@ export const FEATURE_CATEGORIES: { label: string; features: readonly TeamFeature
   },
   {
     label: "Team Features",
-    features: ["blind_tester", "activity_logging", "column_visibility", "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management", "us_grind"],
+    features: ["blind_tester", "activity_logging", "column_visibility", "test_ski_regrind", "race_ski_regrind", "product_stock", "athlete_management", "us_grind", "para_team"],
   },
   {
     label: "Enterprise",
@@ -530,6 +531,9 @@ export const athletes = pgTable("athletes", {
   poleHeightSkate: text("pole_height_skate"),     // skating pole height
   bindingPosition: text("binding_position"),
   skiServicePreferences: text("ski_service_preferences"),
+  // Free-text sport class (e.g. Para classification) — shown when the team has
+  // the "para_team" feature enabled by a Super Admin.
+  sportClass: text("sport_class"),
   createdAt: text("created_at").notNull(),
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),

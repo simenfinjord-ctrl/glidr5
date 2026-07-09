@@ -22,6 +22,7 @@ import SeriesDetail from "@/pages/series-detail";
 import Weather from "@/pages/weather";
 import Tests from "@/pages/tests";
 import CrossTeamTests from "@/pages/cross-team-tests";
+import RaceFleet from "@/pages/race-fleet";
 import NewTest from "@/pages/new-test";
 import TestDetail from "@/pages/test-detail";
 import EditTest from "@/pages/edit-test";
@@ -87,6 +88,7 @@ function Router() {
       <Route path="/profile" component={() => <Redirect to="/my-account" />} />
       <Route path="/grinding" component={Grinding} />
       <Route path="/raceskis" component={RaceSkis} />
+      <Route path="/race-fleet" component={RaceFleet} />
       <Route path="/raceskis/:id" component={AthleteDetail} />
       <Route path="/kick" component={Kick} />
       <Route path="/raceprep" component={RacePrep} />

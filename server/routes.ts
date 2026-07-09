@@ -343,6 +343,9 @@ export async function registerRoutes(
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS length TEXT;
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS type_of_ski TEXT;
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS where_received TEXT;
+      ALTER TABLE race_skis ALTER COLUMN athlete_id DROP NOT NULL;
+      ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS team_id INTEGER;
+      ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS is_sitski INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS notes TEXT;
       ALTER TABLE race_skis ADD COLUMN IF NOT EXISTS is_training_ski INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS default_ski_brand TEXT;
@@ -6139,6 +6142,88 @@ export async function registerRoutes(
       createdByName: u.name,
     });
     res.json(ski);
+  });
+
+  // ─── Race fleet (team competition skis not tied to an athlete) ──────────────
+  // Enabled by the "para_team" feature. Fleet skis live in race_skis with a null
+  // athlete_id and a team_id, and may be flagged as a sit-ski.
+  async function requireParaTeam(req: Request, res: Response): Promise<boolean> {
+    const teamId = getActiveTeamId(req);
+    const team = await storage.getTeam(teamId);
+    let enabled = false;
+    try { enabled = !!team?.enabledAreas && JSON.parse(team.enabledAreas).includes("para_team"); } catch {}
+    if (!enabled) { res.status(403).json({ message: "Race fleet is not enabled for this team" }); return false; }
+    return true;
+  }
+
+  app.get("/api/race-fleet", requirePermission("raceskis", "view"), async (req, res) => {
+    if (!(await requireParaTeam(req, res))) return;
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(
+      `SELECT id, serial_number AS "serialNumber", ski_id AS "skiId", brand, discipline, construction, mold, base,
+              grind, heights, year, length, type_of_ski AS "typeOfSki", where_received AS "whereReceived", notes,
+              is_training_ski AS "isTrainingSki", is_sitski AS "isSitski", custom_params AS "customParams",
+              archived_at AS "archivedAt", created_at AS "createdAt", created_by_name AS "createdByName"
+       FROM race_skis WHERE athlete_id IS NULL AND team_id = $1 ORDER BY id DESC`, [teamId]);
+    res.json(r.rows);
+  });
+
+  app.post("/api/race-fleet", requirePermission("raceskis", "edit"), async (req, res) => {
+    if (!(await requireParaTeam(req, res))) return;
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    if (!req.body.skiId || !req.body.discipline) return res.status(400).json({ message: "skiId and discipline are required" });
+    const { pool } = await import("./db");
+    const now = new Date().toISOString();
+    const r = await (pool as any).query(
+      `INSERT INTO race_skis (athlete_id, team_id, serial_number, ski_id, brand, discipline, construction, mold, base,
+              grind, heights, year, length, type_of_ski, where_received, notes, is_training_ski, is_sitski, custom_params,
+              created_at, created_by_id, created_by_name)
+       VALUES (NULL, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING id`,
+      [teamId, req.body.serialNumber || null, req.body.skiId, req.body.brand || null, req.body.discipline,
+       req.body.construction || null, req.body.mold || null, req.body.base || null, req.body.grind || null,
+       req.body.heights || null, req.body.year || null, req.body.length || null, req.body.typeOfSki || null,
+       req.body.whereReceived || null, req.body.notes || null, req.body.isTrainingSki ? 1 : 0,
+       req.body.isSitski ? 1 : 0, req.body.customParams || null, now, u.id, u.name]);
+    res.json({ ok: true, id: r.rows[0]?.id });
+  });
+
+  app.put("/api/race-fleet/:id", requirePermission("raceskis", "edit"), async (req, res) => {
+    if (!(await requireParaTeam(req, res))) return;
+    const teamId = getActiveTeamId(req);
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    // Only fleet skis belonging to the active team may be edited here.
+    const own = await (pool as any).query(`SELECT id FROM race_skis WHERE id = $1 AND athlete_id IS NULL AND team_id = $2`, [id, teamId]);
+    if (own.rows.length === 0) return res.status(404).json({ message: "Not found" });
+    const cols: Record<string, string> = {
+      serialNumber: "serial_number", skiId: "ski_id", brand: "brand", discipline: "discipline", construction: "construction",
+      mold: "mold", base: "base", grind: "grind", heights: "heights", year: "year", length: "length",
+      typeOfSki: "type_of_ski", whereReceived: "where_received", notes: "notes", customParams: "custom_params",
+    };
+    const sets: string[] = []; const vals: any[] = [];
+    for (const [k, col] of Object.entries(cols)) {
+      if (req.body[k] !== undefined) { vals.push(req.body[k] || null); sets.push(`${col} = $${vals.length}`); }
+    }
+    if (req.body.isTrainingSki !== undefined) { vals.push(req.body.isTrainingSki ? 1 : 0); sets.push(`is_training_ski = $${vals.length}`); }
+    if (req.body.isSitski !== undefined) { vals.push(req.body.isSitski ? 1 : 0); sets.push(`is_sitski = $${vals.length}`); }
+    if (sets.length === 0) return res.json({ ok: true });
+    vals.push(id);
+    await (pool as any).query(`UPDATE race_skis SET ${sets.join(", ")} WHERE id = $${vals.length}`, vals);
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/race-fleet/:id", requirePermission("raceskis", "edit"), async (req, res) => {
+    if (!(await requireParaTeam(req, res))) return;
+    const teamId = getActiveTeamId(req);
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const own = await (pool as any).query(`SELECT id FROM race_skis WHERE id = $1 AND athlete_id IS NULL AND team_id = $2`, [id, teamId]);
+    if (own.rows.length === 0) return res.status(404).json({ message: "Not found" });
+    await (pool as any).query(`DELETE FROM race_ski_regrinds WHERE race_ski_id = $1`, [id]).catch(() => {});
+    await (pool as any).query(`DELETE FROM race_skis WHERE id = $1`, [id]);
+    res.json({ ok: true });
   });
 
   app.put("/api/race-skis/:id", requirePermission("raceskis", "edit"), async (req, res) => {

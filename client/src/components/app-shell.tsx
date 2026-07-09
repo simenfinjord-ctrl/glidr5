@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   ListChecks,
   Layers,
+  Boxes,
   Snowflake,
   CloudSun,
   Package,
@@ -220,6 +221,17 @@ const nav: NavItem[] = [
     permArea: "raceskis",
   },
   {
+    href: "/race-fleet",
+    label: "Race fleets",
+    icon: Boxes,
+    testId: "link-race-fleet",
+    color: "text-muted-foreground",
+    activeColor: "text-green-700",
+    activeBg: "bg-green-50 dark:bg-green-900/20",
+    permArea: "raceskis",
+    featureArea: "para_team",
+  },
+  {
     href: "/kick",
     label: "Kick",
     icon: Footprints,
@@ -369,6 +381,7 @@ function usePageTitle(location: string, visibleNav: NavItem[], t: (k: string) =>
     "/my-account": "shell.myAccount",
     "/my-team": "team.title",
     "/all-teams-tests": "nav.allTeamsTests",
+    "/race-fleet": "nav.raceFleet",
   };
 
   // Exact match first
@@ -832,6 +845,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
       "/dashboard": "nav.dashboard",
       "/tests": "nav.tests",
       "/all-teams-tests": "nav.allTeamsTests",
+      "/race-fleet": "nav.raceFleet",
       "/testskis": "nav.testskis",
       "/products": "nav.products",
       "/weather": "nav.weather",

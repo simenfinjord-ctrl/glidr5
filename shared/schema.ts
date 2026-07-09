@@ -580,6 +580,10 @@ export const raceSkis = pgTable("race_skis", {
   isTrainingSki: integer("is_training_ski").notNull().default(0),
   customParams: text("custom_params"),
   archivedAt: text("archived_at"),
+  // Race-fleet skis belong to a team rather than an athlete (athleteId is null,
+  // teamId is set). isSitski flags a sit-ski (para sledge ski).
+  teamId: integer("team_id"),
+  isSitski: integer("is_sitski").notNull().default(0),
   createdAt: text("created_at").notNull(),
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),

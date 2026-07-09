@@ -2921,6 +2921,9 @@ export default function Admin() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [createOpen, setCreateOpen] = useState(false);
+  const [addExistingOpen, setAddExistingOpen] = useState(false);
+  const [addEmail, setAddEmail] = useState("");
+  const [addRole, setAddRole] = useState<"member" | "teamAdmin">("member");
   const [editUser, setEditUser] = useState<ApiUser | undefined>();
   const [resetUser, setResetUser] = useState<ApiUser | undefined>();
   const [historyUser, setHistoryUser] = useState<ApiUser | null>(null);
@@ -3832,6 +3835,22 @@ export default function Admin() {
     onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
   });
 
+  const addExistingMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/teams/${effectiveTeamId}/add-member`, { email: addEmail.trim(), role: addRole });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/users${teamScopeParam}`] });
+      toast({ title: L("Bruker lagt til laget", "User added to team"), description: data?.name });
+      setAddExistingOpen(false); setAddEmail(""); setAddRole("member");
+    },
+    onError: (e: Error) => {
+      const msg = /does not exist/i.test(e.message) ? L("Brukeren finnes ikke i systemet.", "This user does not exist in the system.") : e.message;
+      toast({ title: L("Kunne ikke legge til", "Could not add"), description: msg, variant: "destructive" });
+    },
+  });
+
   const createTeamMutation = useMutation({
     mutationFn: async (payload: { name: string; enabledAreas: string[] }) => {
       const res = await apiRequest("POST", "/api/teams", payload);
@@ -4237,6 +4256,41 @@ export default function Admin() {
                   {userSortDir === "asc" ? "↑" : "↓"}
                 </Button>
               </div>
+              <Dialog open={addExistingOpen} onOpenChange={(v) => { setAddExistingOpen(v); if (!v) { setAddEmail(""); setAddRole("member"); } }}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" data-testid="button-add-existing-user">
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    {L("Legg til eksisterende", "Add existing")}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader><DialogTitle>{L("Legg til eksisterende bruker", "Add existing user")}</DialogTitle></DialogHeader>
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">{L("Gi en bruker fra et annet lag tilgang til dette laget. Brukeren må allerede finnes i Glidr.", "Give a user from another team access to this team. The user must already exist in Glidr.")}</p>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium">{L("E-post", "Email")}</label>
+                      <Input type="email" value={addEmail} onChange={(e) => setAddEmail(e.target.value)} placeholder="navn@lag.no" data-testid="input-add-existing-email"
+                        onKeyDown={(e) => { if (e.key === "Enter" && addEmail.trim()) addExistingMutation.mutate(); }} />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium">{L("Rolle", "Role")}</label>
+                      <Select value={addRole} onValueChange={(v) => setAddRole(v as "member" | "teamAdmin")}>
+                        <SelectTrigger data-testid="select-add-existing-role"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="member">{L("Medlem", "Member")}</SelectItem>
+                          <SelectItem value="teamAdmin">{L("Lagadmin", "Team Admin")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button onClick={() => addExistingMutation.mutate()} disabled={addExistingMutation.isPending || !addEmail.trim()} data-testid="button-submit-add-existing">
+                        {addExistingMutation.isPending ? L("Legger til…", "Adding…") : L("Legg til", "Add")}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
               <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                 <DialogTrigger asChild>
                   <Button data-testid="button-add-user" className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white">

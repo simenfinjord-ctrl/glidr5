@@ -131,17 +131,30 @@ function getEffectiveGroupScope(req: Request): string {
   return req.user!.groupScope;
 }
 
+// Whether the user is a team admin OF THE ACTIVE TEAM. A user who is TA on their
+// home team is only a regular member on other teams unless explicitly made TA
+// there — so they must NOT inherit admin rights (or "see all athletes") on a
+// team where they were merely added as a member.
+function getEffectiveIsTeamAdmin(req: Request): boolean {
+  const u = req.user!;
+  if (u.isAdmin === 1) return true; // Super Admin manages every team
+  const activeTid = (u as any).activeTeamId ?? u.teamId;
+  if (activeTid === u.teamId) return u.isTeamAdmin === 1; // home team
+  return !!(req.session as any)?.activeTeamIsAdmin; // other team → per-team flag
+}
+
 function userInfo(req: Request) {
   const u = req.user!;
-  const perms = parsePermissions(getEffectivePermissionsStr(req), u.isAdmin === 1, u.isTeamAdmin === 1);
+  const effTeamAdmin = getEffectiveIsTeamAdmin(req);
+  const perms = parsePermissions(getEffectivePermissionsStr(req), u.isAdmin === 1, effTeamAdmin);
   return {
     id: u.id,
     email: u.email,
     name: u.name,
     groupScope: getEffectiveGroupScope(req),
     isAdmin: u.isAdmin === 1,
-    isTeamAdmin: u.isTeamAdmin === 1,
-    isScopeAdmin: u.isAdmin === 1 || u.isTeamAdmin === 1,
+    isTeamAdmin: effTeamAdmin,
+    isScopeAdmin: u.isAdmin === 1 || effTeamAdmin,
     teamId: u.teamId,
     activeTeamId: getActiveTeamId(req),
     permissions: perms,
@@ -1597,9 +1610,12 @@ export async function registerRoutes(
     // Non-SA admins may only manage their own active team.
     if (u.isAdmin !== 1 && teamId !== getActiveTeamId(req)) return res.status(403).json({ message: "Cannot manage other teams" });
     await storage.removeUserFromTeam(userId, teamId);
+    const { pool: p2 } = await import("./db");
+    // Also drop any per-team role/permission override so the revoke is complete
+    // (otherwise the user would still appear in the team's Users list).
+    await (p2 as any).query(`DELETE FROM user_team_permissions WHERE user_id = $1 AND team_id = $2`, [userId, teamId]);
     // Reset activeTeamId if the user was currently viewing the removed team
     // This prevents them from being stuck on a team they no longer have access to
-    const { pool: p2 } = await import("./db");
     await (p2 as any).query(
       `UPDATE users SET active_team_id = NULL WHERE id = $1 AND active_team_id = $2`,
       [userId, teamId]
@@ -4127,6 +4143,42 @@ export async function registerRoutes(
       [userId, teamId]
     );
     res.json({ ok: true });
+  });
+
+  // Add an EXISTING user (by email) to a team with a member/team-admin role.
+  // Used by the "Add existing user" button on the Users page. The user gains
+  // access to this team in addition to their home team; revoke via the normal
+  // remove-from-team action.
+  app.post("/api/teams/:teamId/add-member", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const u = req.user!;
+    const teamId = parseInt(req.params.teamId);
+    // A Team Admin may only add members to the team they administer.
+    if (u.isAdmin !== 1 && teamId !== getActiveTeamId(req)) {
+      return res.status(403).json({ message: "Cannot add members to another team" });
+    }
+    const email = String(req.body.email ?? "").trim().toLowerCase();
+    const role = req.body.role === "teamAdmin" ? "teamAdmin" : "member";
+    if (!email) return res.status(400).json({ message: "Email required" });
+    const target = await storage.getUserByEmail(email);
+    if (!target) return res.status(404).json({ message: "User does not exist" });
+    if (target.teamId === teamId) return res.status(400).json({ message: "User is already on this team" });
+    if ((target as any).isAdmin === 1) return res.status(400).json({ message: "Super Admins already have access to every team" });
+
+    // Membership (so they can switch to the team) + per-team role/permissions
+    // (so they appear in the Users list with the right role).
+    await storage.addUserToTeam(target.id, teamId);
+    const isTeamAdmin = role === "teamAdmin" ? 1 : 0;
+    let perms: Record<string, string> = Object.fromEntries(PERMISSION_AREAS.map((a) => [a, "edit"]));
+    if (!isTeamAdmin) perms = await enforceTeamAreas(perms, teamId); // members limited to the team's enabled areas
+    const { pool } = await import("./db");
+    await (pool as any).query(
+      `INSERT INTO user_team_permissions (user_id, team_id, permissions, group_scope, is_team_admin)
+       VALUES ($1, $2, $3, '', $4)
+       ON CONFLICT ON CONSTRAINT utp_user_team_unique DO UPDATE SET permissions = $3, is_team_admin = $4`,
+      [target.id, teamId, JSON.stringify(perms), isTeamAdmin]
+    );
+    res.json({ ok: true, userId: target.id, name: target.name, role });
   });
 
   app.get("/api/login-logs", requireAuth, async (req, res) => {

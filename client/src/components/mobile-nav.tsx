@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import {
   LayoutDashboard, ListChecks, Watch, MoreHorizontal, X,
   Snowflake, CloudSun, Package, BarChart3, Disc3, Trophy,
-  Sparkles, Radio, Shield, Footprints, Flag,
+  Sparkles, Radio, Shield, Footprints, Flag, Layers, Boxes,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AppLink } from "@/components/app-link";
@@ -24,12 +24,14 @@ export function useMobileNav() {
 const ALL_NAV = [
   { href: "/dashboard",     label: "Dashboard",      icon: LayoutDashboard, featureArea: null, permArea: null,          adminOnly: false },
   { href: "/tests",         label: "Tests",           icon: ListChecks,      featureArea: null, permArea: "tests",       adminOnly: false },
+  { href: "/all-teams-tests", label: "All teams",     icon: Layers,          featureArea: null, permArea: "tests",       adminOnly: false, multiTeamOnly: true },
   { href: "/testskis",      label: "Test Skis",       icon: Snowflake,       featureArea: null, permArea: "testskis",    adminOnly: false },
   { href: "/products",      label: "Products",        icon: Package,         featureArea: null, permArea: "products",    adminOnly: false },
   { href: "/weather",       label: "Weather",         icon: CloudSun,        featureArea: null, permArea: "weather",     adminOnly: false },
   { href: "/analytics",     label: "Analytics",       icon: BarChart3,       featureArea: null, permArea: "analytics",   adminOnly: false },
   { href: "/grinding",      label: "Grinding",        icon: Disc3,           featureArea: null, permArea: "grinding",    adminOnly: false },
   { href: "/raceskis",      label: "Athlete Skis",    icon: Trophy,          featureArea: null, permArea: "raceskis",    adminOnly: false },
+  { href: "/race-fleet",    label: "Race fleets",     icon: Boxes,           featureArea: "para_team", permArea: "raceskis", adminOnly: false },
   { href: "/kick",          label: "Kick",            icon: Footprints,      featureArea: null, permArea: "kick",        adminOnly: false },
   { href: "/raceprep",      label: "Race Prep",       icon: Flag,            featureArea: null, permArea: "raceprep",    adminOnly: false },
   { href: "/suggestions",   label: "Suggestions",     icon: Sparkles,        featureArea: null, permArea: "suggestions", adminOnly: false },
@@ -44,7 +46,7 @@ const PRIMARY_HREFS = ["/dashboard", "/tests", "/raceskis", "/kick"];
 export function MobileNav({ watchQueueCount }: { watchQueueCount?: number }) {
   const [location] = useLocation();
   const [showMore, setShowMore] = useState(false);
-  const { can, canManage } = useAuth();
+  const { can, canManage, user, isSuperAdmin, userTeams } = useAuth();
   const { t } = useI18n();
 
   const navLabel = (href: string) => {
@@ -63,12 +65,16 @@ export function MobileNav({ watchQueueCount }: { watchQueueCount?: number }) {
       "/live-runsheets": "nav.liveRunsheets",
       "/watch-queue": "nav.watchQueue",
       "/admin": "nav.admin",
+      "/all-teams-tests": "nav.allTeamsTests",
+      "/race-fleet": "nav.raceFleet",
     };
     return t(map[href] ?? "nav.dashboard");
   };
 
   const visible = ALL_NAV.filter((item) => {
     if (item.adminOnly) return canManage;
+    // "All teams" needs the TA-granted permission AND >1 team (SA always).
+    if ((item as any).multiTeamOnly && !(isSuperAdmin || (user?.canViewAllTeams && userTeams.length > 1))) return false;
     if (item.featureArea && !can(item.featureArea)) return false;
     if (item.permArea && !can(item.permArea)) return false;
     return true;

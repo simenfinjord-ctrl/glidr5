@@ -80,6 +80,16 @@ export default function CrossTeamTests() {
     retry: false,
   });
 
+  // Your active team's product catalog — only these product names can be analysed
+  // (Analytics works on your own team's data), so only they get a clickable link.
+  const { data: myProducts = [] } = useQuery<{ id: number; brand: string | null; name: string | null }[]>({
+    queryKey: ["/api/products"],
+  });
+  const analysableNames = useMemo(
+    () => new Set(myProducts.map((p) => `${p.brand ?? ""} ${p.name ?? ""}`.trim().toLowerCase())),
+    [myProducts],
+  );
+
   const [cols, setCols] = useState<1 | 2 | 3>(() => {
     try { const s = parseInt(localStorage.getItem("glidr-allteams-cols") || "2"); if (s === 1 || s === 2 || s === 3) return s as any; } catch {}
     return 2;
@@ -276,7 +286,15 @@ export default function CrossTeamTests() {
                       <div className="flex flex-wrap gap-x-2 gap-y-0.5">
                         {e.productNames.map((name, i) => {
                           const app = parseApplication(appParts[i]?.trim() ?? "").interpreted;
-                          return <span key={i} className="flex items-baseline gap-1"><button type="button" onClick={(ev) => { ev.stopPropagation(); navigate(`/analytics?tab=products&productName=${encodeURIComponent(name)}`); }} className="font-medium text-left hover:text-primary hover:underline transition-colors" title={L("Se analyse for produktet", "See product analytics")}>{name}</button>{app && <span className="text-muted-foreground">{app}</span>}</span>;
+                          const analysable = analysableNames.has(name.trim().toLowerCase());
+                          return <span key={i} className="flex items-baseline gap-1">
+                            {analysable ? (
+                              <button type="button" onClick={(ev) => { ev.stopPropagation(); navigate(`/analytics?tab=products&productName=${encodeURIComponent(name)}`); }} className="font-medium text-left text-sky-600 dark:text-sky-400 underline decoration-sky-400/60 decoration-1 underline-offset-2 hover:decoration-sky-500 transition-colors" title={L("Se analyse for produktet", "See product analytics")}>{name}</button>
+                            ) : (
+                              <span className="font-medium" title={L("Ikke i ditt lags produkter — kan ikke analyseres", "Not in your team's products — can't be analysed")}>{name}</span>
+                            )}
+                            {app && <span className="text-muted-foreground">{app}</span>}
+                          </span>;
                         })}
                       </div>
                     ) : "—"}

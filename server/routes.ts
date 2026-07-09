@@ -4345,6 +4345,25 @@ export async function registerRoutes(
     res.json(actions);
   });
 
+  // Quota / usage overview for a team (current count vs. limit per resource).
+  app.get("/api/team-usage", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const teamId = getAdminTeamScope(req) ?? getActiveTeamId(req);
+    if (!teamId) return res.status(400).json({ message: "Select a specific team" });
+    const { pool } = await import("./db");
+    const tRes = await (pool as any).query(`SELECT name, max_users, max_groups, max_tests, max_products FROM teams WHERE id = $1`, [teamId]);
+    const t = tRes.rows[0] || {};
+    const count = async (table: string) => parseInt((await (pool as any).query(`SELECT COUNT(*) AS c FROM ${table} WHERE team_id = $1`, [teamId])).rows[0]?.c || "0");
+    const [users, groups, tests, products] = await Promise.all([count("users"), count("groups"), count("tests"), count("products")]);
+    res.json({
+      teamId, teamName: t.name ?? null,
+      users:    { current: users,    limit: t.max_users ?? null },
+      groups:   { current: groups,   limit: t.max_groups ?? null },
+      tests:    { current: tests,    limit: t.max_tests ?? null },
+      products: { current: products, limit: t.max_products ?? null },
+    });
+  });
+
   // Profile - change own password
   app.post("/api/users/me/password", requireAuth, async (req, res) => {
     const u = req.user!;

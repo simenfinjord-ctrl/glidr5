@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {
   Plus, Pencil, DollarSign, Trash2, KeyRound, Check, X, Clock, Download, Upload, EyeOff,
-  Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity,
+  Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity, BarChart3,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle, Sparkles,
   HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash, RotateCcw,
   MessageSquare, UserPlus, FileText, ExternalLink, LayoutDashboard, CreditCard, Mail,
@@ -3025,6 +3025,12 @@ export default function Admin() {
     queryKey: [`/api/activity${teamScopeParam}`],
     enabled: canManage,
   });
+
+  type UsageRes = { teamName: string | null } & Record<"users" | "groups" | "tests" | "products", { current: number; limit: number | null }>;
+  const { data: usage } = useQuery<UsageRes>({
+    queryKey: [`/api/team-usage${teamScopeParam}`],
+    enabled: canManage,
+  });
   const [activityActionFilter, setActivityActionFilter] = useState<string>("all");
   const [expandedActivity, setExpandedActivity] = useState<number | null>(null);
   const activityActions = useMemo(
@@ -4149,6 +4155,44 @@ export default function Admin() {
               <StatCard label={t("admin.statActivities")} value={stats.activityCount} icon={Activity} color="teal" testId="stat-activities" />
             </div>
 
+
+            {usage && (
+              <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-usage">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50">
+                    <BarChart3 className="h-4 w-4 text-sky-600" />
+                  </div>
+                  <h2 className="text-sm font-semibold text-foreground">{L("Forbruk og kvoter", "Usage & quotas")}{usage.teamName ? ` — ${usage.teamName}` : ""}</h2>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {([
+                    [L("Brukere", "Users"), usage.users],
+                    [L("Grupper", "Groups"), usage.groups],
+                    [L("Tester", "Tests"), usage.tests],
+                    [L("Produkter", "Products"), usage.products],
+                  ] as [string, { current: number; limit: number | null }][]).map(([label, u]) => {
+                    const pct = u.limit ? Math.min(100, Math.round((u.current / u.limit) * 100)) : 0;
+                    const near = u.limit != null && pct >= 80;
+                    const full = u.limit != null && u.current >= u.limit;
+                    return (
+                      <div key={label} data-testid={`usage-${label}`}>
+                        <div className="mb-1 flex items-baseline justify-between text-xs">
+                          <span className="font-medium text-foreground">{label}</span>
+                          <span className={cn("tabular-nums", full ? "text-red-600" : near ? "text-amber-600" : "text-muted-foreground")}>
+                            {u.current}{u.limit != null ? ` / ${u.limit}` : ` · ${L("ubegrenset", "unlimited")}`}
+                          </span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                          {u.limit != null && (
+                            <div className={cn("h-full rounded-full transition-all", full ? "bg-red-500" : near ? "bg-amber-500" : "bg-emerald-500")} style={{ width: `${pct}%` }} />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
 
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-recent-activity">
               <div className="flex items-center gap-2 mb-4">

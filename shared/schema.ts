@@ -441,6 +441,9 @@ export const activityLogs = pgTable("activity_logs", {
   entityType: text("entity_type").notNull(),
   entityId: integer("entity_id"),
   details: text("details"),
+  // JSON snapshot of the affected record at delete time — the "chain of custody"
+  // so you can see exactly what was removed if data disappears.
+  snapshot: text("snapshot"),
   createdAt: text("created_at").notNull(),
   groupScope: text("group_scope"),
   teamId: integer("team_id").notNull().default(1),

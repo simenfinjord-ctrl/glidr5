@@ -249,6 +249,7 @@ type ActivityEntry = {
   entityType: string;
   entityId: number;
   details: string;
+  snapshot?: string | null;
   createdAt: string;
   groupScope: string;
 };
@@ -3025,12 +3026,15 @@ export default function Admin() {
     enabled: canManage,
   });
   const [activityActionFilter, setActivityActionFilter] = useState<string>("all");
+  const [expandedActivity, setExpandedActivity] = useState<number | null>(null);
   const activityActions = useMemo(
     () => [...new Set(activities.map((a) => a.action).filter(Boolean))].sort(),
     [activities],
   );
   const filteredActivities = useMemo(
-    () => (activityActionFilter === "all" ? activities : activities.filter((a) => a.action === activityActionFilter)),
+    () => (activityActionFilter === "all" ? activities
+      : activityActionFilter === "__deletions__" ? activities.filter((a) => a.action === "deleted")
+      : activities.filter((a) => a.action === activityActionFilter)),
     [activities, activityActionFilter],
   );
 
@@ -5116,6 +5120,7 @@ export default function Admin() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">{L("Alle handlinger", "All actions")}</SelectItem>
+                      <SelectItem value="__deletions__">{L("Kun slettinger", "Deletions only")}</SelectItem>
                       {activityActions.map((a) => (
                         <SelectItem key={a} value={a}>{a}</SelectItem>
                       ))}
@@ -5139,26 +5144,47 @@ export default function Admin() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredActivities.slice(0, 1000).map((a) => (
-                        <tr key={a.id} className="border-b border-border" data-testid={`row-activitylog-${a.id}`}>
+                      {filteredActivities.slice(0, 1000).map((a) => {
+                        const isDelete = a.action === "deleted";
+                        const hasSnap = !!a.snapshot;
+                        const open = expandedActivity === a.id;
+                        let pretty = "";
+                        if (hasSnap) { try { pretty = JSON.stringify(JSON.parse(a.snapshot as string), null, 2); } catch { pretty = a.snapshot as string; } }
+                        return (
+                        <React.Fragment key={a.id}>
+                        <tr className={cn("border-b border-border", isDelete && "bg-red-50/40 dark:bg-red-950/10", hasSnap && "cursor-pointer")} data-testid={`row-activitylog-${a.id}`} onClick={hasSnap ? () => setExpandedActivity(open ? null : a.id) : undefined}>
                           <td className="py-2 pr-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(a.createdAt).toLocaleString()}</td>
                           <td className="py-2 pr-3 font-medium text-foreground">{a.userName}</td>
                           <td className="py-2 pr-3">
-                            <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-200">{a.action}</span>
+                            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1", isDelete ? "bg-red-50 text-red-700 ring-red-200 dark:bg-red-950/30 dark:text-red-300" : "bg-green-50 text-green-700 ring-green-200")}>{a.action}</span>
                           </td>
                           <td className="py-2 pr-3">
                             {a.entityType && (
                               <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-200">{a.entityType}</span>
                             )}
                           </td>
-                          <td className="py-2 pr-3 text-xs text-muted-foreground max-w-[200px] truncate">{a.details || "—"}</td>
+                          <td className="py-2 pr-3 text-xs text-muted-foreground max-w-[220px] truncate">
+                            {hasSnap && <span className="mr-1 text-muted-foreground">{open ? "▾" : "▸"}</span>}
+                            {a.details || "—"}
+                            {hasSnap && <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{L("øyeblikksbilde", "snapshot")}</span>}
+                          </td>
                           <td className="py-2">
                             {a.groupScope ? (
                               <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">{a.groupScope}</span>
                             ) : "—"}
                           </td>
                         </tr>
-                      ))}
+                        {open && hasSnap && (
+                          <tr className="border-b border-border bg-muted/20" data-testid={`snapshot-activitylog-${a.id}`}>
+                            <td colSpan={6} className="px-3 py-2">
+                              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{L("Slettet data (øyeblikksbilde)", "Deleted data (snapshot)")}</div>
+                              <pre className="max-h-80 overflow-auto rounded-lg bg-background/60 p-3 text-[11px] leading-relaxed text-foreground/90 ring-1 ring-border">{pretty}</pre>
+                            </td>
+                          </tr>
+                        )}
+                        </React.Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

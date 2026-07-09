@@ -285,6 +285,25 @@ function srvEntryRounds(e: any, numRounds: number): { result: number | null; ran
   return r;
 }
 
+// Chain-of-custody: record a deletion with a JSON snapshot of the affected
+// record. ALWAYS logs — never skipped by incognito — so if data disappears you
+// can see exactly what was removed, by whom, and when.
+async function recordDeletion(req: Request, entityType: string, entityId: number | null, label: string, snapshot: any): Promise<void> {
+  try {
+    const u = userInfo(req);
+    let snap: string | null = null;
+    try { snap = snapshot != null ? JSON.stringify(snapshot) : null; } catch { snap = null; }
+    if (snap && snap.length > 40000) snap = snap.slice(0, 40000) + "…";
+    await storage.createActivityLog({
+      userId: u.id, userName: u.name, action: "deleted",
+      entityType, entityId: entityId ?? 0,
+      details: label, snapshot: snap,
+      createdAt: new Date().toISOString(),
+      groupScope: u.groupScope, teamId: getActiveTeamId(req),
+    } as any);
+  } catch (e) { console.error("[audit] recordDeletion failed:", e); }
+}
+
 function resolveCreateGroupScope(req: Request): string {
   const u = req.user!;
   const isAdminOrTeamAdmin = u.isAdmin === 1 || u.isTeamAdmin === 1;
@@ -787,6 +806,7 @@ export async function registerRoutes(
       CREATE INDEX IF NOT EXISTS daily_weather_team_id_idx  ON daily_weather(team_id);
       CREATE INDEX IF NOT EXISTS activity_logs_team_id_idx  ON activity_logs(team_id);
       CREATE INDEX IF NOT EXISTS activity_logs_user_id_idx  ON activity_logs(user_id);
+      ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS snapshot TEXT;
       CREATE INDEX IF NOT EXISTS login_logs_user_id_idx     ON login_logs(user_id);
       CREATE INDEX IF NOT EXISTS race_skis_athlete_id_idx   ON race_skis(athlete_id);
       CREATE INDEX IF NOT EXISTS athlete_access_user_id_idx ON athlete_access(user_id);
@@ -1931,13 +1951,7 @@ export async function registerRoutes(
     const existing = await storage.getProduct(id);
     if (existing && !verifyTeamOwnership(existing, req)) return res.status(403).json({ message: "Forbidden" });
     await storage.deleteProduct(id);
-    if (!isIncognito(req)) try {
-      await storage.createActivityLog({
-        userId: u.id, userName: u.name, action: "deleted",
-        entityType: "product", entityId: id,
-        details: "Product deleted", createdAt: new Date().toISOString(), groupScope: u.groupScope, teamId: getActiveTeamId(req),
-      });
-    } catch (_) {}
+    await recordDeletion(req, "product", id, existing ? `Product deleted: ${existing.brand ?? ""} ${existing.name ?? ""}`.trim() : "Product deleted", existing ?? null);
     res.json({ ok: true });
   });
 
@@ -2389,13 +2403,7 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Forbidden" });
     }
     await storage.deleteWeather(id);
-    if (!isIncognito(req)) try {
-      await storage.createActivityLog({
-        userId: u.id, userName: u.name, action: "deleted",
-        entityType: "weather", entityId: id,
-        details: "Weather deleted", createdAt: new Date().toISOString(), groupScope: existing.groupScope, teamId: getActiveTeamId(req),
-      });
-    } catch (_) {}
+    await recordDeletion(req, "weather", id, `Weather deleted: ${existing.location} (${existing.date})`, existing);
     res.json({ ok: true });
   });
 
@@ -3491,15 +3499,12 @@ export async function registerRoutes(
     if (!hasAccess) {
       return res.status(403).json({ message: "Forbidden" });
     }
+    // Snapshot the test AND its result entries before they cascade away.
+    const { pool: entPool } = await import("./db");
+    const entriesSnap = await (entPool as any).query(`SELECT * FROM test_entries WHERE test_id = $1 ORDER BY ski_number ASC`, [id]).then((r: any) => r.rows).catch(() => []);
     await storage.deleteRunsheetsByTestId(id);
     await storage.deleteTest(id);
-    if (!isIncognito(req)) try {
-      await storage.createActivityLog({
-        userId: u.id, userName: u.name, action: "deleted",
-        entityType: "test", entityId: id,
-        details: "Test deleted", createdAt: new Date().toISOString(), groupScope: existing.groupScope, teamId: getActiveTeamId(req),
-      });
-    } catch (_) {}
+    await recordDeletion(req, "test", id, `Test deleted: ${(existing as any).testName || existing.location} (${existing.date})`, { test: existing, entries: entriesSnap });
     res.json({ ok: true });
   });
 
@@ -4141,8 +4146,13 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Can only manage users in your team" });
       }
     }
+    const target = await storage.getUser(id);
     const deleted = await storage.deleteUser(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
+    if (target) {
+      const { password, totpSecret, totpBackupCodes, ...safe } = target as any;
+      await recordDeletion(req, "user", id, `User deleted: ${target.name} (${target.email})`, safe);
+    }
     res.json({ ok: true });
   });
 
@@ -6107,7 +6117,10 @@ export async function registerRoutes(
     if (!u.isScopeAdmin && athlete.createdById !== u.id) {
       return res.status(403).json({ message: "Only admin or creator can delete" });
     }
+    // Snapshot the athlete AND its skis (both cascade-deleted) before removal.
+    const skis = await storage.listRaceSkis(id).catch(() => []);
     await storage.deleteAthlete(id);
+    await recordDeletion(req, "athlete", id, `Athlete deleted: ${athlete.name}`, { athlete, skis });
     res.json({ ok: true });
   });
 
@@ -7157,6 +7170,7 @@ export async function registerRoutes(
       return res.status(400).json({ message: "Ski must be archived before permanent deletion" });
     }
     await storage.deleteRaceSki(id);
+    await recordDeletion(req, "race_ski", id, `Race ski deleted: ${ski.skiId}${ski.brand ? ` (${ski.brand})` : ""}`, ski);
     res.json({ ok: true });
   });
 

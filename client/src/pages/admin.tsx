@@ -3834,8 +3834,19 @@ export default function Admin() {
       const res = await apiRequest("PUT", `/api/users/${userId}/all-teams-access`, { enabled });
       return res.json();
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/users${teamScopeParam}`] }); },
-    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
+    // Optimistic: flip the icon immediately instead of waiting for a refetch.
+    onMutate: async ({ userId, enabled }) => {
+      const key = [`/api/users${teamScopeParam}`];
+      await queryClient.cancelQueries({ queryKey: key });
+      const prev = queryClient.getQueryData<ApiUser[]>(key);
+      queryClient.setQueryData<ApiUser[]>(key, (old) => old?.map((x) => x.id === userId ? { ...x, canViewAllTeams: enabled ? 1 : 0 } : x));
+      return { prev, key };
+    },
+    onError: (e: Error, _vars, ctx: any) => {
+      if (ctx?.prev) queryClient.setQueryData(ctx.key, ctx.prev);
+      toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" });
+    },
+    onSettled: () => { queryClient.invalidateQueries({ queryKey: [`/api/users${teamScopeParam}`] }); },
   });
 
   // Remove a "shared from other team" member's access to this team.

@@ -352,7 +352,7 @@ export default function RaceSkis() {
                         {athlete.name}
                       </div>
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        {athlete.archived && (
+                        {!!athlete.archived && (
                           <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-800">
                             <Archive className="mr-1 h-3 w-3" />
                             {L("Arkivert", "Archived")}
@@ -427,7 +427,7 @@ export default function RaceSkis() {
                       <span className="font-medium text-sm" data-testid={`text-athlete-name-${athlete.id}`}>
                         {athlete.name}
                       </span>
-                      {athlete.archived && (
+                      {!!athlete.archived && (
                         <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-800 align-middle">
                           <Archive className="mr-1 h-3 w-3" />
                           {L("Arkivert", "Archived")}

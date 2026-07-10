@@ -348,7 +348,35 @@ export async function setupAuth(app: Express) {
     const effectiveIsTeamAdmin = safe.isAdmin === 1
       ? safe.isTeamAdmin
       : (activeTid === safe.teamId ? safe.isTeamAdmin : (((req.session as any)?.activeTeamIsAdmin) ? 1 : 0));
-    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: effectiveIsTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat, isAthleteAccess: !!(safe as any).isAthleteAccess, linkedAthleteId: (safe as any).linkedAthleteId ?? null, editableAthleteIds, canViewAllTeams: !!(safe as any).canViewAllTeams });
+    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: effectiveIsTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat, isAthleteAccess: !!(safe as any).isAthleteAccess, linkedAthleteId: (safe as any).linkedAthleteId ?? null, editableAthleteIds, canViewAllTeams: !!(safe as any).canViewAllTeams, termsAcceptedAt: (safe as any).termsAcceptedAt ?? null });
+  });
+
+  // One-time acceptance of the Terms & Policy. Stores a server-side timestamp +
+  // version as evidence of consent (incl. that the service may be charged for).
+  app.post("/api/auth/accept-terms", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    const version = String(req.body?.version ?? "1").slice(0, 32);
+    const now = new Date().toISOString();
+    try {
+      const { pool } = await import("./db");
+      await (pool as any).query(
+        "UPDATE users SET terms_accepted_at = $1, terms_accepted_version = $2 WHERE id = $3",
+        [now, version, req.user.id]
+      );
+      // Audit trail — never skipped, this is the legal record.
+      await storage.createActivityLog({
+        userId: req.user.id, userName: req.user.name, action: "accepted_terms",
+        entityType: "user", entityId: req.user.id,
+        details: `Accepted Terms & Policy (version ${version})`,
+        createdAt: now, groupScope: req.user.groupScope ?? "", teamId: req.user.teamId,
+      } as any).catch(() => {});
+      res.json({ ok: true, termsAcceptedAt: now });
+    } catch (e) {
+      console.error("[terms] accept failed:", e);
+      res.status(500).json({ message: "Could not record acceptance" });
+    }
   });
 
   app.post("/api/auth/incognito", (req, res) => {

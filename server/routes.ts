@@ -400,6 +400,8 @@ export async function registerRoutes(
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS sport_class TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS can_view_all_teams INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_version TEXT;
       ALTER TABLE login_logs ADD COLUMN IF NOT EXISTS user_agent TEXT;
       ALTER TABLE login_logs ADD COLUMN IF NOT EXISTS device_id TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS feeling_note TEXT;

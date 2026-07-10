@@ -269,6 +269,10 @@ export const users = pgTable("users", {
   // Last time the user made an authenticated request (throttled) — powers the
   // "last activity" column in the active-sessions overview.
   lastSeen: text("last_seen"),
+  // One-time acceptance of the Terms & Policy (incl. that the service may be
+  // charged for). Timestamp + version are the legal evidence of consent.
+  termsAcceptedAt: text("terms_accepted_at"),
+  termsAcceptedVersion: text("terms_accepted_version"),
   createdAt: text("created_at"),
 });
 

@@ -2,15 +2,18 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, Zap } from "lucide-react";
 import { useLanguage, type Lang } from "@/lib/language";
+import { useAppSettings } from "@/lib/app-settings";
 
 export function PublicNav() {
   const [open, setOpen] = useState(false);
   const [location] = useLocation();
   const { lang, setLang } = useLanguage();
+  const { commercializationEnabled } = useAppSettings();
 
+  // Pricing is only shown publicly once the commercialization toggle is ON.
   const links = [
     { href: "/demo", label: "Demo" },
-    { href: "/pricing", label: "Pricing" },
+    ...(commercializationEnabled ? [{ href: "/pricing", label: "Pricing" }] : []),
     { href: "/contact", label: "Contact" },
     { href: "/legal", label: "Legal" },
   ];

@@ -317,18 +317,18 @@ function GarminMockup() {
 
 /* ── Main component ──────────────────────────────────────────────────────────── */
 
-// Real product screenshots served from /images. Replace the PNGs with fresh,
-// logged-in captures to update the gallery — filenames are the contract.
-const SCREENSHOTS: { src: string; no: string; en: string }[] = [
-  { src: "/images/glidr-tests.png", no: "Tester — dagsvisning med resultater og rangering", en: "Tests — day view with results and ranking" },
-  { src: "/images/glidr-analytics.png", no: "Analyse — hvilken voks vinner i hvilke forhold", en: "Analytics — which wax wins in which conditions" },
-  { src: "/images/glidr-raceskis.png", no: "Athlete skis — hele skiparken per utøver", en: "Athlete skis — every athlete's full ski garage" },
-  { src: "/images/glidr-weather.png", no: "Vær — logg forhold eller hent fra værstasjon", en: "Weather — log conditions or pull from your station" },
-  { src: "/images/glidr-products.png", no: "Produkter — katalog og lagerstatus", en: "Products — catalogue and stock" },
-  { src: "/images/glidr-runsheet.png", no: "Live runsheets — følg testingen i sanntid", en: "Live runsheets — follow testing in real time" },
-];
-
+// Live UI recreations of the core workflows — the same components the scene
+// player uses, laid out as a browsable grid so visitors see the actual
+// functionality (results, analytics, weather, stock, AI, watch) at a glance.
 function ScreenshotGallery({ lang }: { lang: "no" | "en" }) {
+  const items: { key: string; el: JSX.Element; no: string; en: string }[] = [
+    { key: "tests", el: <TestMockup />, no: "Tester — live rangering av hvert skipar", en: "Tests — live ranking of every ski pair" },
+    { key: "analytics", el: <AnalyticsMockup />, no: "Analyse — hvilken voks vinner i hvilke forhold", en: "Analytics — which wax wins in which conditions" },
+    { key: "weather", el: <WeatherMockup />, no: "Vær — forhold logget eller fra værstasjon", en: "Weather — logged or from your station" },
+    { key: "products", el: <ProductsMockup />, no: "Produkter — historikk per voks, sted og føre", en: "Products — history per wax, venue and conditions" },
+    { key: "ai", el: <AIMockup />, no: "AI-forslag — anbefaling basert på egne data", en: "AI suggestions — recommendations from your own data" },
+    { key: "watch", el: <GarminMockup />, no: "Garmin-klokke — logg testen fra håndleddet", en: "Garmin watch — log the test from your wrist" },
+  ];
   return (
     <div className="py-16 px-4">
       <div className="mx-auto max-w-5xl">
@@ -336,19 +336,13 @@ function ScreenshotGallery({ lang }: { lang: "no" | "en" }) {
           {lang === "no" ? "Rett fra produktet" : "Straight from the product"}
         </h2>
         <p className="text-muted-foreground text-center mb-10 text-sm">
-          {lang === "no" ? "Ekte skjermbilder — dette er verktøyet smørerne bruker hver dag." : "Real screenshots — this is the tool wax technicians use every day."}
+          {lang === "no" ? "Dette er arbeidsflatene smørerne bruker hver dag." : "These are the workspaces wax technicians use every day."}
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {SCREENSHOTS.map((s) => (
-            <figure key={s.src} className="rounded-2xl border bg-card overflow-hidden shadow-sm">
-              <img
-                src={s.src}
-                alt={lang === "no" ? s.no : s.en}
-                loading="lazy"
-                className="w-full aspect-[8/5] object-cover object-top"
-                onError={(e) => { (e.currentTarget.closest("figure") as HTMLElement).style.display = "none"; }}
-              />
-              <figcaption className="px-4 py-2.5 text-xs text-muted-foreground border-t">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {items.map((s) => (
+            <figure key={s.key} className="rounded-2xl border bg-muted/30 overflow-hidden shadow-sm flex flex-col">
+              <div className="p-4 flex-1">{s.el}</div>
+              <figcaption className="px-4 py-2.5 text-xs text-muted-foreground border-t bg-card">
                 {lang === "no" ? s.no : s.en}
               </figcaption>
             </figure>

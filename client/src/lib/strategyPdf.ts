@@ -2,19 +2,20 @@
 // Generates the confidential Glidr Strategy Document as a clean, print-ready
 // HTML document opened in a new tab. Use browser File → Print → Save as PDF.
 // Super-Admin only (owner document): strategy, product/system, development,
-// commercialization, pricing, IP/rights, exit and risk.
+// commercialization, pricing, IP/rights, exit and risk. English, like all
+// documents in the SA Documents tab.
 
 export function generateStrategyPDF(): void {
-  const genDate = new Date().toLocaleDateString("nb-NO", {
+  const genDate = new Date().toLocaleDateString("en-GB", {
     day: "2-digit", month: "long", year: "numeric",
   });
 
   const html = `<!DOCTYPE html>
-<html lang="nb">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Glidr — Strategidokument (Konfidensielt)</title>
+<title>Glidr — Strategy Document (Confidential)</title>
 <style>
   :root {
     --violet: #6d28d9; --dark: #111827; --muted: #6b7280; --line: #e5e7eb;
@@ -35,16 +36,10 @@ export function generateStrategyPDF(): void {
 
   .section-title { display: flex; align-items: baseline; gap: 10px; border-bottom: 2px solid var(--violet); padding-bottom: 5px; margin: 26px 0 8px; }
   .section-num { font-size: 9pt; font-weight: 700; color: #fff; background: var(--violet); border-radius: 5px; padding: 2px 8px; white-space: nowrap; }
-  .sub-title { font-weight: 700; color: var(--dark); margin: 12px 0 3px; font-size: 11.5pt; }
-
-  .badge { display: inline-block; font-size: 8pt; font-weight: 700; border-radius: 4px; padding: 1px 6px; vertical-align: middle; }
-  .badge-ta { background: #ede9fe; color: var(--violet); }
-  .badge-sa { background: #fef3c7; color: var(--amber); }
 
   .box { border-radius: 8px; padding: 10px 14px; margin: 12px 0; font-size: 10.5pt; border: 1px solid var(--line); }
   .box-info { background: #eff6ff; border-color: #bfdbfe; }
   .box-warning { background: #fffbeb; border-color: #fde68a; }
-  .box-danger { background: #fef2f2; border-color: #fecaca; }
   .box-ok { background: #ecfdf5; border-color: #a7f3d0; }
 
   table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10pt; }
@@ -75,190 +70,191 @@ export function generateStrategyPDF(): void {
 
   <div class="cover">
     <div class="logo">GLIDR</div>
-    <div class="title">Strategidokument</div>
-    <div class="sub">Strategi · System · Utvikling · Kommersialisering · Priser · Rettigheter</div>
-    <div class="meta">STRENGT KONFIDENSIELT · Kun for eier / Super Admin · Generert ${genDate}</div>
+    <div class="title">Strategy Document</div>
+    <div class="sub">Strategy · System · Development · Commercialization · Pricing · Rights</div>
+    <div class="meta">STRICTLY CONFIDENTIAL · Owner / Super Admin only · Generated ${genDate}</div>
   </div>
 
-  <div class="box box-warning"><strong>Konfidensielt eierdokument.</strong> Dette dokumentet inneholder Glidrs forretningsstrategi, priser og immaterielle rettigheter. Det skal ikke deles med lag, forbund eller tredjeparter. Prisspenn er veiledende utgangspunkt som må valideres i marked og kvalitetssikres av regnskapsfører/advokat før avtaler inngås — de er ikke finansielle råd.</div>
+  <div class="box box-warning"><strong>Confidential owner document.</strong> This document contains Glidr's business strategy, pricing and intellectual property. Do not share it with teams, federations or third parties. Pricing ranges are indicative starting points that must be validated in the market and reviewed by an accountant/lawyer before any agreement is signed — they are not financial advice.</div>
 
-  <div class="section-title"><span class="section-num">TOC</span><h2>Innhold</h2></div>
-  <div class="toc-entry"><span>1. Sammendrag &amp; visjon</span><span></span></div>
-  <div class="toc-entry"><span>2. Strategi &amp; posisjonering</span><span></span></div>
-  <div class="toc-entry"><span>3. Marked &amp; kunder</span><span></span></div>
-  <div class="toc-entry"><span>4. Systemet (produkt &amp; teknologi)</span><span></span></div>
-  <div class="toc-entry"><span>5. Utvikling &amp; veikart</span><span></span></div>
-  <div class="toc-entry"><span>6. Kommersialisering</span><span></span></div>
-  <div class="toc-entry"><span>7. Priser</span><span></span></div>
-  <div class="toc-entry"><span>8. Rettigheter (IP &amp; juridisk)</span><span></span></div>
-  <div class="toc-entry"><span>9. Exit &amp; salgbarhet</span><span></span></div>
-  <div class="toc-entry"><span>10. Risiko &amp; tiltak</span><span></span></div>
-  <div class="toc-entry"><span>11. Handlingsplan neste 12 måneder</span><span></span></div>
+  <div class="section-title"><span class="section-num">TOC</span><h2>Contents</h2></div>
+  <div class="toc-entry"><span>1. Summary &amp; vision</span><span></span></div>
+  <div class="toc-entry"><span>2. Strategy &amp; positioning</span><span></span></div>
+  <div class="toc-entry"><span>3. Market &amp; customers</span><span></span></div>
+  <div class="toc-entry"><span>4. The system (product &amp; technology)</span><span></span></div>
+  <div class="toc-entry"><span>5. Development &amp; roadmap</span><span></span></div>
+  <div class="toc-entry"><span>6. Commercialization</span><span></span></div>
+  <div class="toc-entry"><span>7. Pricing</span><span></span></div>
+  <div class="toc-entry"><span>8. Rights (IP &amp; legal)</span><span></span></div>
+  <div class="toc-entry"><span>9. Exit &amp; sellability</span><span></span></div>
+  <div class="toc-entry"><span>10. Risks &amp; mitigations</span><span></span></div>
+  <div class="toc-entry"><span>11. Action plan — next 12 months</span><span></span></div>
 
   <!-- 1 -->
   <div class="page-break"></div>
-  <div class="section-title"><span class="section-num">1</span><h2>Sammendrag &amp; visjon</h2></div>
-  <p>Glidr er et system for ski-testing og smøring som gjør testdata om til trygge, raske beslutninger på renndagen. Det brukes i dag operativt av topp-miljøer (bl.a. det amerikanske skimiljøet) og dekker glidtesting, struktur, slip, kick, race-ski per utøver, værforhold, analyse og race-prep — på tvers av flere lag.</p>
-  <h3>Visjon</h3>
-  <p>Å være den bransjestandarden elite-smøreteam stoler på: et trygt, effektivt og smart system som gjør hverdagen enklere og hjelper dem å ta riktige valg.</p>
-  <h3>Kjerneidé (hvorfor Glidr vinner)</h3>
+  <div class="section-title"><span class="section-num">1</span><h2>Summary &amp; vision</h2></div>
+  <p>Glidr is a ski-testing and waxing system that turns test data into fast, confident race-day decisions. It is used operationally by elite programs (including the U.S. ski community) and covers glide testing, structure, grinding, kick, per-athlete race skis, weather conditions, analytics and race prep — across multiple teams.</p>
+  <h3>Vision</h3>
+  <p>To be the industry standard elite wax teams rely on: a safe, efficient and smart system that makes their day easier and helps them make the right calls.</p>
+  <h3>Core idea (why Glidr wins)</h3>
   <ul>
-    <li><strong>Data + referanse er vollgraven.</strong> Verdien ligger i akkumulerte testdata koblet til forhold, og i å være innbakt hos et anerkjent forbund. Det er vanskelig å kopiere.</li>
-    <li><strong>Beslutning, ikke bare logg.</strong> Neste steg er å gå fra «logg» til «beslutningsmotor» (anbefaling + konfidens) — det ingen konkurrent har.</li>
-    <li><strong>Tillit.</strong> Datatrygghet, sporbarhet, backup og eksport gjør at proffe brukere tør å legge alt inn.</li>
+    <li><strong>Data + reference is the moat.</strong> The value lies in accumulated test data linked to conditions, and in being embedded with a recognised federation. That is hard to copy.</li>
+    <li><strong>Decision, not just a logbook.</strong> The next step is moving from "log" to "decision engine" (recommendation + confidence) — something no competitor has.</li>
+    <li><strong>Trust.</strong> Data safety, traceability, backup and export make professional users willing to put everything in.</li>
   </ul>
 
   <!-- 2 -->
-  <div class="section-title"><span class="section-num">2</span><h2>Strategi &amp; posisjonering</h2></div>
-  <p>Strategien er en <strong>sekvens</strong>, ikke et enten/eller. Rekkefølgen bygger vollgrav før prising:</p>
+  <div class="section-title"><span class="section-num">2</span><h2>Strategy &amp; positioning</h2></div>
+  <p>The strategy is a <strong>sequence</strong>, not an either/or. The order builds the moat before pricing:</p>
   <table>
-    <tr><th>Fase</th><th>Mål</th><th>Utfall</th></tr>
-    <tr><td>1. Pilot (denne vinteren)</td><td>Gi forbundet full tilgang gratis, mot reell bruk</td><td>Herdet produkt, brukerdata, testimonial, referansen «brukt av landslag»</td></tr>
-    <tr><td>2. Konverter</td><td>Gjør pilotforbundet til betalende (årlig lisens)</td><td>Første gjentakende inntekt (ARR), varm og bevist</td></tr>
-    <tr><td>3. Ekspander</td><td>Selg til andre forbund, landslag, klubber (langrenn, skiskyting, alpint …)</td><td>Voksende ARR, flere referanser</td></tr>
-    <tr><td>4. Fordyp</td><td>Beslutningsmotor + integrasjoner øker verdi og innlåsing (positiv: bytting koster)</td><td>Høyere pris + lavere frafall</td></tr>
-    <tr><td>5. (Valgfritt) Exit</td><td>Selg hele forretningen til multiplum av ARR</td><td>Stor engangssum <em>i tillegg til</em> inntekten du bygde</td></tr>
+    <tr><th>Phase</th><th>Goal</th><th>Outcome</th></tr>
+    <tr><td>1. Pilot (this winter)</td><td>Give the federation full access free of charge, in exchange for real use</td><td>Hardened product, usage data, testimonial, the "used by a national team" reference</td></tr>
+    <tr><td>2. Convert</td><td>Turn the pilot federation into a paying customer (annual licence)</td><td>First recurring revenue (ARR), warm and proven</td></tr>
+    <tr><td>3. Expand</td><td>Sell to other federations, national teams, clubs (XC, biathlon, alpine …)</td><td>Growing ARR, more references</td></tr>
+    <tr><td>4. Deepen</td><td>Decision engine + integrations increase value and switching cost</td><td>Higher price + lower churn</td></tr>
+    <tr><td>5. (Optional) Exit</td><td>Sell the whole business at a multiple of ARR</td><td>A large one-off <em>on top of</em> the revenue you built</td></tr>
   </table>
-  <div class="box box-ok"><strong>Posisjonering:</strong> Ikke «enda en app» — et <strong>misjonskritisk fagverktøy</strong> for velfinansierte organisasjoner. Anker verdi mot renn-resultater og kostnaden ved et smøreteam, ikke mot forbrukerpriser.</div>
+  <div class="box box-ok"><strong>Positioning:</strong> Not "another app" — a <strong>mission-critical professional tool</strong> for well-funded organisations. Anchor value against race results and the cost of a wax team, not against consumer pricing.</div>
 
   <!-- 3 -->
-  <div class="section-title"><span class="section-num">3</span><h2>Marked &amp; kunder</h2></div>
-  <h3>Hvem betaler (B2B, organisasjoner)</h3>
+  <div class="section-title"><span class="section-num">3</span><h2>Market &amp; customers</h2></div>
+  <h3>Who pays (B2B, organisations)</h3>
   <ul>
-    <li><strong>Nasjonale forbund / landslag</strong> — primær. Velfinansiert, misjonskritisk behov, årsbudsjett.</li>
-    <li><strong>Elite-klubber og team</strong> — sekundær, større volum, lavere pris.</li>
-    <li><strong>Tilstøtende idretter</strong> — skiskyting, alpint, kombinert, rulleski; samme kjernebehov.</li>
+    <li><strong>National federations / national teams</strong> — primary. Well funded, mission-critical need, annual budgets.</li>
+    <li><strong>Elite clubs and teams</strong> — secondary, higher volume, lower price point.</li>
+    <li><strong>Adjacent sports</strong> — biathlon, alpine, nordic combined, roller ski; same core need.</li>
   </ul>
-  <h3>Verdiforslag</h3>
-  <p>Raskere ski oftere, færre feilvalg på renndagen, sporbarhet og struktur på et arbeid som i dag ofte lever i hoder og regneark. Ett godt valg kan avgjøre et renn — det er verdiankeret.</p>
-  <h3>Konkurranse</h3>
-  <p>Regneark og notater (status quo), interne hjemmesnekrede løsninger, og generelle logg-verktøy. Ingen dekker hele kjeden (test → forhold → analyse → anbefaling → race-prep) spesialisert for smøring. Glidrs forsprang er dybde + referanse.</p>
+  <h3>Value proposition</h3>
+  <p>Faster skis more often, fewer wrong calls on race day, and traceability and structure for work that today lives in heads and spreadsheets. One good call can decide a race — that is the value anchor.</p>
+  <h3>Competition</h3>
+  <p>Spreadsheets and notes (status quo), home-grown internal tools, and generic logging apps. Nobody covers the full chain (test → conditions → analytics → recommendation → race prep) specialised for waxing. Glidr's lead is depth + reference.</p>
 
   <!-- 4 -->
   <div class="page-break"></div>
-  <div class="section-title"><span class="section-num">4</span><h2>Systemet (produkt &amp; teknologi)</h2></div>
-  <h3>Teknisk grunnmur</h3>
+  <div class="section-title"><span class="section-num">4</span><h2>The system (product &amp; technology)</h2></div>
+  <h3>Technical foundation</h3>
   <ul>
-    <li><strong>Frontend:</strong> React + TypeScript (Vite), mobil- og PC-vennlig, flerspråklig (NO/EN).</li>
-    <li><strong>Backend:</strong> Express + PostgreSQL (Drizzle ORM). Rolle-/lag-basert tilgangskontroll.</li>
-    <li><strong>Drift:</strong> Render (web + database). Portabelt oppsett — kan flyttes/selv-hostes.</li>
-    <li><strong>Integrasjoner:</strong> Værstasjoner, Google Sheets/Drive-backup, Garmin-klokkeapp, AI-anbefalinger.</li>
+    <li><strong>Frontend:</strong> React + TypeScript (Vite), mobile- and desktop-friendly, bilingual (NO/EN).</li>
+    <li><strong>Backend:</strong> Express + PostgreSQL (Drizzle ORM). Role- and team-based access control.</li>
+    <li><strong>Hosting:</strong> Render (web + database). Portable setup — can be moved or self-hosted.</li>
+    <li><strong>Integrations:</strong> Weather stations, Google Sheets/Drive backup, Garmin watch app, AI recommendations.</li>
   </ul>
-  <h3>Funksjonsområder</h3>
-  <p>Tester (glid/struktur/slip/kick), produkter &amp; lager, vær &amp; forhold, analyse, race-prep, race-ski per utøver (garasje, slipehistorikk), race fleets (lag-ski), kick, live runsheets, watch-kø, flerlagsstøtte, «Alle lag»-visning, sammenlign tester.</p>
-  <h3>Tillit &amp; drift (det som gjør proffe brukere trygge)</h3>
+  <h3>Feature areas</h3>
+  <p>Tests (glide/structure/grind/kick), products &amp; stock, weather &amp; conditions, analytics, race prep, per-athlete race skis (garage, regrind history), race fleets (team skis), kick, live runsheets, watch queue, multi-team support, the "All teams" view, and test comparison.</p>
+  <h3>Trust &amp; operations (what makes professional users safe)</h3>
   <ul>
-    <li>Rolle-/lag-isolasjon (Super Admin, Team Admin, medlem, utøvertilgang) med per-lag rettigheter.</li>
-    <li>Sporbarhet / revisjonslogg med snapshot av slettede poster (chain of custody).</li>
-    <li>Daglig backup (JSON + PDF) til Google Drive; kvote-/bruksoversikt per lag.</li>
-    <li>Innlogging med enhetssporing (førsteparts, ikke overvåkning) og tvungen utlogging.</li>
+    <li>Role/team isolation (Super Admin, Team Admin, member, athlete access) with per-team permissions.</li>
+    <li>Traceability / audit log with snapshots of deleted records (chain of custody).</li>
+    <li>Daily backup (JSON + PDF) to Google Drive; per-team usage/quota overview.</li>
+    <li>Login with first-party device tracking (not surveillance) and forced logout.</li>
+    <li>One-time Terms acceptance recorded server-side with timestamp + version, enforced by the API.</li>
   </ul>
-  <div class="box box-info"><strong>Prinsipp:</strong> Ingen leverandørinnlåsing. Full dataeksport og portabel kode er både en salgs­fordel <em>og</em> en tillitsfaktor for kundene.</div>
+  <div class="box box-info"><strong>Principle:</strong> No vendor lock-in. Full data export and portable code are both a sales advantage <em>and</em> a trust factor for customers.</div>
 
   <!-- 5 -->
-  <div class="section-title"><span class="section-num">5</span><h2>Utvikling &amp; veikart</h2></div>
-  <h3>Prioritet 1 — Datareliabilitet &amp; bevis (pågår)</h3>
+  <div class="section-title"><span class="section-num">5</span><h2>Development &amp; roadmap</h2></div>
+  <h3>Priority 1 — Data reliability &amp; proof (in progress)</h3>
   <ul>
-    <li>Papirkurv / soft-delete med gjenoppretting (30 dager) — bygger på sporbarheten.</li>
-    <li>Synlig backup-verifisering («Siste vellykkede backup … ✓») med varsel ved feil.</li>
-    <li>Ett-klikks full dataeksport (JSON/Excel) — dreper både datafrykt og innlåsings­frykt.</li>
-    <li>Utvidet revisjonslogg til endringer (før/etter), ikke bare sletting.</li>
+    <li>Recycle bin / soft delete with restore (30 days) — builds on the audit trail.</li>
+    <li>Visible backup verification ("Last successful backup … ✓") with alerts on failure.</li>
+    <li>One-click full data export (JSON/Excel) — kills both data fear and lock-in fear.</li>
+    <li>Extend the audit log to changes (before/after), not only deletions.</li>
   </ul>
-  <h3>Prioritet 2 — Offline som faktisk virker</h3>
-  <p>Se alle data og legg inn tester uten dekning, med kø og konfliktsynk. Gjøres i etapper og testes grundig — halvveis offline er verre enn ingen.</p>
-  <h3>Deretter — Beslutningsmotor (den store verdien)</h3>
+  <h3>Priority 2 — Offline that actually works</h3>
+  <p>See all data and enter tests without coverage, with a sync queue and conflict handling. Built in stages and tested thoroughly — half-working offline is worse than none.</p>
+  <h3>Then — the decision engine (the big value)</h3>
   <ul>
-    <li>Signifikans på resultater («klar vinner» vs «for tett»).</li>
-    <li>Værvarsel-drevet anbefaling med konfidens og støttende tester.</li>
-    <li>Varsel-motor (forhold endret, lavt lager, ski bør slipes, ny pålogging).</li>
+    <li>Statistical significance on results ("clear winner" vs "too close to call").</li>
+    <li>Forecast-driven recommendation with confidence and supporting tests.</li>
+    <li>Alert engine (conditions changed, low stock, ski due for regrind, new login).</li>
   </ul>
-  <h3>Utviklingsprinsipper</h3>
-  <p>Bygg salgbart fra dag én: ren IP, portabilitet, dokumentasjon, verifiserbar backup. Alt som fjerner en kundes «dealbreaker» øker samtidig salgsverdien.</p>
+  <h3>Development principles</h3>
+  <p>Build sellable from day one: clean IP, portability, documentation, verifiable backup. Everything that removes a customer's dealbreaker also increases the sale value.</p>
 
   <!-- 6 -->
-  <div class="section-title"><span class="section-num">6</span><h2>Kommersialisering</h2></div>
-  <h3>Modell: abonnement — ikke engangssalg</h3>
-  <p>Gjentakende årlig inntekt er det som gjør forretningen verdifull. Å selge hele produktet nå (før inntekt) kapper oppsiden. Selg heller <strong>abonnement</strong>, og vurder å selge <em>forretningen</em> senere til et multiplum av ARR.</p>
-  <h3>Pilot-strategi (kritisk)</h3>
-  <div class="box box-warning"><strong>Ramm «gratis i vinter» inn som en pilot, ikke en gave.</strong> Skriftlig, med definert slutt og uttalt intensjon om betaling neste sesong. Ellers blir «gratis» ankeret og forbundet vrir seg unna betaling. Til gjengjeld: bruk sesongen til å hente testimonial, bruksdata og referansen.</div>
-  <h3>Gå-til-marked</h3>
+  <div class="section-title"><span class="section-num">6</span><h2>Commercialization</h2></div>
+  <h3>Model: subscription — not a one-off sale</h3>
+  <p>Recurring annual revenue is what makes the business valuable. Selling the whole product now (before revenue) caps the upside. Sell <strong>subscriptions</strong>, and consider selling the <em>business</em> later at a multiple of ARR.</p>
+  <h3>Pilot strategy (critical)</h3>
+  <div class="box box-warning"><strong>Frame "free this winter" as a pilot, not a gift.</strong> In writing, with a defined end and a stated intention of payment next season. Otherwise "free" becomes the anchor. In return: use the season to collect a testimonial, usage data and the reference.</div>
+  <h3>Go-to-market</h3>
   <ul>
-    <li>Bruk pilotforbundet som referanse for å åpne dører hos andre forbund.</li>
-    <li>Årlige kontrakter tilpasset skisesongen (forbund har årsbudsjett).</li>
-    <li>Oppsalg via nivåer og tillegg (analyse, watch-app, multi-team, beslutningsmotor).</li>
+    <li>Use the pilot federation as the reference that opens doors at other federations.</li>
+    <li>Annual contracts aligned with the ski season (federations run annual budgets).</li>
+    <li>Upsell via tiers and add-ons (analytics, watch app, multi-team, decision engine).</li>
   </ul>
 
   <!-- 7 -->
   <div class="page-break"></div>
-  <div class="section-title"><span class="section-num">7</span><h2>Priser</h2></div>
-  <p class="muted">Verdibasert, ikke kostnadsbasert. Nivådelt lisens per organisasjon, fakturert årlig. Spennene under er <strong>veiledende utgangspunkt å teste</strong> — start høyt, gi heller «grunnleggerrabatt». Valider i marked; ikke finansielle råd.</p>
+  <div class="section-title"><span class="section-num">7</span><h2>Pricing</h2></div>
+  <p class="muted">Value-based, not cost-based. Tiered licence per organisation, billed annually. The ranges below are <strong>indicative starting points to test</strong> — start high and give a "founding customer" discount instead. Validate in the market; not financial advice.</p>
   <table>
-    <tr><th>Plan</th><th>Typisk kunde</th><th>Inkluderer (grovt)</th><th>Veiledende år/organisasjon</th></tr>
-    <tr><td><strong>Free / Pilot</strong></td><td>Referanse-/pilotforbund, prøvebruk</td><td>Full tilgang i avtalt periode</td><td>0 (tidsbegrenset, med intensjon om betaling)</td></tr>
-    <tr><td><strong>Starter</strong></td><td>Liten klubb / enkeltlag</td><td>Tester, produkter, vær, PDF-eksport</td><td>~ noen hundre – 1–2 k</td></tr>
-    <tr><td><strong>Team</strong></td><td>Aktivt lag / mindre program</td><td>+ analyse, slip, forslag, backup, blindtest</td><td>~ 2 k – 6 k</td></tr>
-    <tr><td><strong>Pro</strong></td><td>Elite-program / stort lag</td><td>+ race-ski, kick, race-prep, watch, live runsheets</td><td>~ 6 k – 15 k</td></tr>
-    <tr><td><strong>Enterprise</strong></td><td>Nasjonalt forbund (flere lag)</td><td>Alt + multi-team, bulk-eksport, egendefinerte grupper, prioritert support</td><td>~ 15 k – 25 k+</td></tr>
+    <tr><th>Plan</th><th>Typical customer</th><th>Includes (roughly)</th><th>Indicative per year/org</th></tr>
+    <tr><td><strong>Free / Pilot</strong></td><td>Reference/pilot federation, trials</td><td>Full access for an agreed period</td><td>0 (time-limited, with stated intention of payment)</td></tr>
+    <tr><td><strong>Starter</strong></td><td>Small club / single team</td><td>Tests, products, weather, PDF export</td><td>~ a few hundred – 1–2 k</td></tr>
+    <tr><td><strong>Team</strong></td><td>Active team / smaller program</td><td>+ analytics, grinding, suggestions, backup, blind testing</td><td>~ 2 k – 6 k</td></tr>
+    <tr><td><strong>Pro</strong></td><td>Elite program / large team</td><td>+ race skis, kick, race prep, watch, live runsheets</td><td>~ 6 k – 15 k</td></tr>
+    <tr><td><strong>Enterprise</strong></td><td>National federation (multiple teams)</td><td>Everything + multi-team, bulk export, custom groups, priority support</td><td>~ 15 k – 25 k+</td></tr>
   </table>
-  <p class="muted">Valuta og nivåer tilpasses marked (NOK/USD/EUR). Prisdrivere: antall smørere/utøvere, antall lag, funksjonsnivå, support-nivå.</p>
-  <div class="box box-ok"><strong>Prinsipp:</strong> Riktig pris oppdages, ikke regnes ut. De fleste misjonskritiske B2B-verktøy er <strong>under</strong>priset. Anker mot verdien av ett renn-resultat.</div>
+  <p class="muted">Currency and tiers adapted per market (NOK/USD/EUR). Price drivers: number of technicians/athletes, number of teams, feature tier, support level.</p>
+  <div class="box box-ok"><strong>Principle:</strong> The right price is discovered, not calculated. Most mission-critical B2B tools are <strong>under</strong>priced. Anchor against the value of one race result.</div>
 
   <!-- 8 -->
-  <div class="section-title"><span class="section-num">8</span><h2>Rettigheter (IP &amp; juridisk)</h2></div>
-  <h3>Eierskap</h3>
-  <p>Glidr (kode, design, datamodell, merkevare, domenet glidr.no) eies i sin helhet av grunnleggeren. Hold eierskapet <strong>rent og udelt</strong>: ingen kode med lisenser som blokkerer salg, ingen medforfattere med rettighetskrav. Dokumentér tredjeparts-avhengigheter og lisenser.</p>
-  <h3>Konfidensialitet &amp; konkurransereservasjon</h3>
-  <p>Funksjoner, arbeidsflyt og datamodell er proprietære. Interne dokumenter (funksjonsguide, dette dokumentet) er konfidensielle og skal ikke brukes til å bygge et konkurrerende produkt.</p>
-  <h3>Kundedata &amp; personvern</h3>
+  <div class="section-title"><span class="section-num">8</span><h2>Rights (IP &amp; legal)</h2></div>
+  <h3>Ownership</h3>
+  <p>Glidr (code, design, data model, brand, the glidr.no domain) is wholly owned by the founder. Keep ownership <strong>clean and undivided</strong>: no code under licences that block a sale, no co-authors with claims. Document third-party dependencies and licences.</p>
+  <h3>Confidentiality &amp; non-compete reservation</h3>
+  <p>Features, workflows and the data model are proprietary. Internal documents (feature guide, this document) are confidential and must not be used to build a competing product.</p>
+  <h3>Customer data &amp; privacy</h3>
   <ul>
-    <li>Data tilhører kunden; Glidr er databehandler. Ha en enkel databehandleravtale klar.</li>
-    <li>Kun funksjonelle informasjonskapsler; ingen sporings-/markedsføringskapsler.</li>
-    <li>Overføring av kundedata (f.eks. ved salg) krever varsel/samtykke — enkelt når kjøperen er kunden.</li>
+    <li>Data belongs to the customer; Glidr is the processor. Keep a simple data-processing agreement ready.</li>
+    <li>Functional cookies only; no tracking or marketing cookies.</li>
+    <li>Transferring customer data (e.g. in a sale) requires notice/consent — simple when the buyer is the customer.</li>
   </ul>
-  <h3>Vilkår</h3>
-  <p>Vilkårene forbeholder retten til å ta betalt / justere pris (fortsatt bruk = aksept) og til å endre/begrense tjenesten. Gratis nå betyr ikke gratis for alltid.</p>
+  <h3>Terms</h3>
+  <p>The Terms reserve the right to charge / adjust pricing (continued use = acceptance) and to change or limit the service. Every user actively accepts the Terms once in-app; acceptance is recorded server-side with timestamp and version, and mutating API calls are blocked until the current version is accepted. Free now does not mean free forever.</p>
 
   <!-- 9 -->
-  <div class="section-title"><span class="section-num">9</span><h2>Exit &amp; salgbarhet</h2></div>
-  <p>Enkleste vei er et <strong>asset-salg</strong> (selg produktet/IP-en), helst til noen som allerede bruker det — forbundet selv. Alternativt aksjesalg hvis Glidr er et AS med inntekt.</p>
-  <h3>Salgspakken</h3>
-  <p>Kildekode + IP, domene + merkevare, den kjørende tjenesten (kunder/data/kontrakter), tredjeparts-oppsett, og «slik driftes det»-dokumentasjon.</p>
-  <h3>Klargjøring (det som gjør salget enkelt)</h3>
+  <div class="section-title"><span class="section-num">9</span><h2>Exit &amp; sellability</h2></div>
+  <p>The simplest path is an <strong>asset sale</strong> (sell the product/IP), ideally to someone already using it — the federation itself. Alternatively a share sale if Glidr is incorporated with revenue.</p>
+  <h3>The sale package</h3>
+  <p>Source code + IP, domain + brand, the running service (customers/data/contracts), third-party accounts, and "how to run it" documentation.</p>
+  <h3>Preparation (what makes the sale easy)</h3>
   <ul>
-    <li>Ren IP, portabel kode, verifiserbar backup, full eksport (alt vi bygger nå).</li>
-    <li>Datarom: kode, drifts-doc, kundeliste, inntekter, kostnader.</li>
-    <li>Kort overgangsperiode (1–3 mnd) for trygg overtakelse.</li>
+    <li>Clean IP, portable code, verifiable backup, full export (everything being built now).</li>
+    <li>Data room: code, ops documentation, customer list, revenue, costs.</li>
+    <li>A short transition period (1–3 months) for a safe handover.</li>
   </ul>
-  <div class="box box-info"><strong>Verdivurdering (til orientering):</strong> SaaS prises typisk som et multiplum av årlig gjentakende inntekt (ARR). Uten inntekt verdsettes det på kode + kunderelasjoner + strategisk verdi. Å være innbakt hos et anerkjent forbund er stor strategisk verdi. Konkret pris og skatt: bruk advokat/regnskapsfører.</div>
+  <div class="box box-info"><strong>Valuation (for orientation):</strong> SaaS is typically priced as a multiple of annual recurring revenue (ARR). Without revenue it is valued on code + customer relationships + strategic value. Being embedded with a recognised federation is significant strategic value. For the concrete price and tax: use a lawyer/accountant.</div>
 
   <!-- 10 -->
-  <div class="section-title"><span class="section-num">10</span><h2>Risiko &amp; tiltak</h2></div>
+  <div class="section-title"><span class="section-num">10</span><h2>Risks &amp; mitigations</h2></div>
   <table>
-    <tr><th>Risiko</th><th>Tiltak</th></tr>
-    <tr><td>Datatrygghet (kundens dealbreaker)</td><td>Papirkurv, backup-verifisering, eksport, revisjonslogg (Prioritet 1)</td></tr>
-    <tr><td>Offline i felt (dealbreaker)</td><td>Solid offline i etapper, grundig testet (Prioritet 2)</td></tr>
-    <tr><td>«Gratis» blir permanent</td><td>Skriftlig pilotavtale med betalingsintensjon</td></tr>
-    <tr><td>Leverandøravhengighet (Render, DB)</td><td>Portabel kode, backup, ingen innlåsing</td></tr>
-    <tr><td>Nøkkelpersonrisiko (solo-utvikler)</td><td>Dokumentasjon, ren struktur, gjør drift overførbar; vurder partner/støtte</td></tr>
-    <tr><td>Underprising</td><td>Verdibasert, start høyt, bruk referanse til å forsvare pris</td></tr>
+    <tr><th>Risk</th><th>Mitigation</th></tr>
+    <tr><td>Data safety (the customer's dealbreaker)</td><td>Recycle bin, backup verification, export, audit log (Priority 1)</td></tr>
+    <tr><td>Offline in the field (dealbreaker)</td><td>Solid offline in stages, tested thoroughly (Priority 2)</td></tr>
+    <tr><td>"Free" becomes permanent</td><td>Written pilot agreement with stated payment intention</td></tr>
+    <tr><td>Vendor dependency (Render, DB)</td><td>Portable code, backups, no lock-in</td></tr>
+    <tr><td>Key-person risk (solo developer)</td><td>Documentation, clean structure, transferable operations; consider a partner/support</td></tr>
+    <tr><td>Underpricing</td><td>Value-based, start high, use the reference to defend the price</td></tr>
   </table>
 
   <!-- 11 -->
-  <div class="section-title"><span class="section-num">11</span><h2>Handlingsplan neste 12 måneder</h2></div>
+  <div class="section-title"><span class="section-num">11</span><h2>Action plan — next 12 months</h2></div>
   <ul>
-    <li><strong>Vinter:</strong> Kjør gratis pilot (skriftlig, med betalingsintensjon). Fullfør Prioritet 1 (datareliabilitet). Samle testimonial + bruksdata.</li>
-    <li><strong>Vår:</strong> Fullfør robust offline (Prioritet 2). Etabler databehandleravtale, prisark og pilot→betalt-plan.</li>
-    <li><strong>Sommer:</strong> Konverter pilotforbundet til betalende årsavtale. Start beslutningsmotor (signifikans + anbefaling).</li>
-    <li><strong>Høst:</strong> Ekspander til 1–2 nye forbund/lag med referansen. Bygg ARR.</li>
-    <li><strong>Gjennomgående:</strong> Hold IP rent og produktet salgbart — så exit alltid er en åpen mulighet, ikke en tvang.</li>
+    <li><strong>Winter:</strong> Run the free pilot (in writing, with payment intention). Finish Priority 1 (data reliability). Collect testimonial + usage data.</li>
+    <li><strong>Spring:</strong> Finish robust offline (Priority 2). Establish the data-processing agreement, the pricing sheet and the pilot→paid plan.</li>
+    <li><strong>Summer:</strong> Convert the pilot federation to a paying annual agreement. Start the decision engine (significance + recommendation).</li>
+    <li><strong>Autumn:</strong> Expand to 1–2 new federations/teams using the reference. Build ARR.</li>
+    <li><strong>Throughout:</strong> Keep the IP clean and the product sellable — so an exit stays an open option, never a necessity.</li>
   </ul>
 
   <div class="divider"></div>
-  <p style="text-align:center" class="muted"><strong style="color:var(--dark)">© 2025 Glidr. Med enerett.</strong><br/>Strengt konfidensielt eierdokument. Uautorisert bruk er forbudt.</p>
+  <p style="text-align:center" class="muted"><strong style="color:var(--dark)">© 2025 Glidr. All rights reserved.</strong><br/>Strictly confidential owner document. Unauthorised use is prohibited.</p>
 
   <div class="footer no-print">
-    <span>Glidr Strategidokument — Konfidensielt</span>
-    <span>Generert: ${genDate}</span>
+    <span>Glidr Strategy Document — Confidential</span>
+    <span>Generated: ${genDate}</span>
   </div>
 
 </div>

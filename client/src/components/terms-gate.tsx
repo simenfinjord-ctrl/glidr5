@@ -60,8 +60,8 @@ export function TermsGate() {
             )}
             <p className="mt-2 text-sm text-muted-foreground">
               {L(
-                "Ved å gå videre aksepterer du Glidrs vilkår og retningslinjer. Dette inkluderer at tjenesten kan bli betalingsbelagt, og at priser kan innføres eller endres med varsel. Fortsatt bruk etter en slik endring regnes som aksept.",
-                "By continuing you accept Glidr's Terms & Policy. This includes that the service may become subject to payment, and that pricing may be introduced or changed with notice. Continued use after such a change constitutes acceptance.",
+                "Ved å gå videre bekrefter du at du har lest og aksepterer Glidrs vilkår og retningslinjer for bruk av tjenesten.",
+                "By continuing you confirm that you have read and accept Glidr's Terms & Policy for use of the service.",
               )}
             </p>
             <a
@@ -83,8 +83,8 @@ export function TermsGate() {
               />
               <span>
                 {L(
-                  "Jeg har lest og aksepterer vilkårene, inkludert at tjenesten kan bli betalingsbelagt.",
-                  "I have read and accept the terms, including that the service may be charged for.",
+                  "Jeg har lest og aksepterer vilkårene.",
+                  "I have read and accept the terms.",
                 )}
               </span>
             </label>

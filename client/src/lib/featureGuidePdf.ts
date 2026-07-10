@@ -9,19 +9,37 @@ export function generateFeatureGuidePDF(): void {
   const genDate = new Date().toLocaleDateString("en-GB", {
     day: "2-digit", month: "long", year: "numeric",
   });
-  // The document opens in a blank window, so image URLs must be absolute.
-  const origin = window.location.origin;
-  const SHOTS: [string, string][] = [
-    ["glidr-tests.png", "Tests — day view with results and ranking"],
-    ["glidr-analytics.png", "Analytics — which wax wins in which conditions"],
-    ["glidr-raceskis.png", "Athlete Skis — every athlete's full ski garage"],
-    ["glidr-weather.png", "Weather — log conditions or pull from a weather station"],
-    ["glidr-products.png", "Products — catalogue and stock"],
-    ["glidr-runsheet.png", "Live runsheets — follow testing in real time"],
-  ];
-  const shotsHtml = SHOTS.map(([file, cap]) =>
-    `<figure class="shot"><img src="${origin}/images/${file}" alt="${cap}" onerror="this.closest('figure').style.display='none'"/><figcaption>${cap}</figcaption></figure>`
-  ).join("\n");
+  // Faithful HTML recreations of the core screens (print-safe, always current
+  // with the described feature set — no stale screenshots).
+  const row = (rank: string, name: string, dist: string, hl = false) =>
+    `<div style="display:flex;gap:8px;align-items:center;border-radius:6px;padding:4px 8px;background:${hl ? "#fffbeb" : "#f9fafb"};margin:3px 0;font-size:9pt;">
+      <strong style="width:14px;color:${hl ? "#b45309" : "#9ca3af"}">${rank}</strong>
+      <span style="flex:1;color:#374151">${name}</span>
+      <span style="font-family:monospace;color:#6b7280">${dist}</span>
+    </div>`;
+  const bar = (label: string, pct: number, rank: string, best = false) =>
+    `<div style="display:flex;gap:8px;align-items:center;margin:4px 0;font-size:8.5pt;">
+      <span style="width:58px;color:#9ca3af">${label}</span>
+      <span style="flex:1;height:9px;border-radius:4px;background:#f3f4f6;overflow:hidden;display:block"><span style="display:block;height:100%;width:${pct}%;border-radius:4px;background:${best ? "#0ea5e9" : "#a78bfa"}"></span></span>
+      <strong style="width:22px;text-align:right;color:${best ? "#b45309" : "#9ca3af"}">${rank}</strong>
+    </div>`;
+  const shotsHtml = `
+    <figure class="shot"><div style="padding:10px 12px;">
+      <div style="display:flex;justify-content:space-between;font-size:9pt;margin-bottom:6px;"><strong>Glide Test · Sognefjell · 5 km</strong><span style="color:#059669;font-weight:700;">8 pairs</span></div>
+      ${row("1", "Swix PS6 &nbsp;× 2", "0 cm", true)}${row("2", "Rode R30", "+4 cm")}${row("3", "Toko HF Blue", "+9 cm")}${row("4", "Rex G21", "+13 cm")}
+    </div><figcaption>Tests — live ranking of every ski pair, with product and application</figcaption></figure>
+    <figure class="shot"><div style="padding:10px 12px;">
+      <div style="display:flex;justify-content:space-between;font-size:9pt;margin-bottom:6px;"><strong>Swix PS6 · Snow temperature</strong><span style="color:#059669;font-weight:700;">Best: &lt; −10°C</span></div>
+      ${bar("&lt; −10°C", 30, "1.2", true)}${bar("−10 – −5", 45, "1.8")}${bar("−5 – 0", 60, "2.4")}${bar("&gt; 0°C", 78, "3.1")}
+    </div><figcaption>Analytics — average rank per condition bracket</figcaption></figure>
+    <figure class="shot"><div style="padding:10px 12px;">
+      <div style="display:flex;justify-content:space-between;font-size:9pt;margin-bottom:6px;"><strong>Athlete Skis · garage</strong><span style="color:#1d4ed8;font-weight:700;">14 pairs</span></div>
+      ${row("003", "Madshus · OLY9", "Wins ×4", true)}${row("320", "Madshus · M61F", "Reground 12 Jan")}${row("117", "Fischer · C12-7", "Cold")}
+    </div><figcaption>Athlete Skis — the full garage with grind and regrind history</figcaption></figure>
+    <figure class="shot"><div style="padding:10px 12px;">
+      <div style="font-size:9pt;margin-bottom:6px;"><strong>Weather · pulled from station 11:42</strong></div>
+      ${row("❄", "Snow −6.2°C · Air −3.8°C", "74% RH")}${row("⛸", "Fine grain · Track medium", "Wind light NW")}
+    </div><figcaption>Weather — logged manually or pulled from your own station</figcaption></figure>`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -112,7 +130,7 @@ export function generateFeatureGuidePDF(): void {
   <!-- PRODUCT IN ACTION -->
   <div class="page-break"></div>
   <div class="section-title"><span class="section-num">Shots</span><h2>The Product in Action</h2></div>
-  <p class="muted">Real screenshots from the live platform.</p>
+  <p class="muted">Representative views of the core workflows described in this guide.</p>
   <div class="shot-grid">
 ${shotsHtml}
   </div>

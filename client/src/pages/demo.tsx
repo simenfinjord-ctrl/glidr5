@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { PublicNav } from "@/components/public-nav";
 import { useLanguage } from "@/lib/language";
+import { useAppSettings } from "@/lib/app-settings";
 import {
   ClipboardList, BarChart3, Thermometer, Package, Watch, Camera,
   ChevronRight, Play, Pause, ArrowRight, Check, Zap,
@@ -316,17 +317,60 @@ function GarminMockup() {
 
 /* ── Main component ──────────────────────────────────────────────────────────── */
 
+// Real product screenshots served from /images. Replace the PNGs with fresh,
+// logged-in captures to update the gallery — filenames are the contract.
+const SCREENSHOTS: { src: string; no: string; en: string }[] = [
+  { src: "/images/glidr-tests.png", no: "Tester — dagsvisning med resultater og rangering", en: "Tests — day view with results and ranking" },
+  { src: "/images/glidr-analytics.png", no: "Analyse — hvilken voks vinner i hvilke forhold", en: "Analytics — which wax wins in which conditions" },
+  { src: "/images/glidr-raceskis.png", no: "Athlete skis — hele skiparken per utøver", en: "Athlete skis — every athlete's full ski garage" },
+  { src: "/images/glidr-weather.png", no: "Vær — logg forhold eller hent fra værstasjon", en: "Weather — log conditions or pull from your station" },
+  { src: "/images/glidr-products.png", no: "Produkter — katalog og lagerstatus", en: "Products — catalogue and stock" },
+  { src: "/images/glidr-runsheet.png", no: "Live runsheets — følg testingen i sanntid", en: "Live runsheets — follow testing in real time" },
+];
+
+function ScreenshotGallery({ lang }: { lang: "no" | "en" }) {
+  return (
+    <div className="py-16 px-4">
+      <div className="mx-auto max-w-5xl">
+        <h2 className="text-2xl font-bold text-foreground text-center mb-2">
+          {lang === "no" ? "Rett fra produktet" : "Straight from the product"}
+        </h2>
+        <p className="text-muted-foreground text-center mb-10 text-sm">
+          {lang === "no" ? "Ekte skjermbilder — dette er verktøyet smørerne bruker hver dag." : "Real screenshots — this is the tool wax technicians use every day."}
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {SCREENSHOTS.map((s) => (
+            <figure key={s.src} className="rounded-2xl border bg-card overflow-hidden shadow-sm">
+              <img
+                src={s.src}
+                alt={lang === "no" ? s.no : s.en}
+                loading="lazy"
+                className="w-full aspect-[8/5] object-cover object-top"
+                onError={(e) => { (e.currentTarget.closest("figure") as HTMLElement).style.display = "none"; }}
+              />
+              <figcaption className="px-4 py-2.5 text-xs text-muted-foreground border-t">
+                {lang === "no" ? s.no : s.en}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Demo() {
   const { lang } = useLanguage();
   const L = (no: string, en: string) => (lang === "no" ? no : en);
   const [current, setCurrent] = useState(0);
   const [playing, setPlaying] = useState(true);
+  const { commercializationEnabled } = useAppSettings();
 
   const T = {
     en: {
       badge: "Interactive demo — no sign-up needed",
       title: "See Glidr in action",
-      sub: "From logging a test on the hill to understanding which wax wins in which conditions — Glidr does it all.",
+      sub: "From logging a test on the hill to understanding which wax wins in which conditions — Glidr does it all. Built with and battle-tested by national-team wax technicians.",
       cta1: "Get started",
       cta2: "View pricing",
       featureTitle: "Everything you need",
@@ -339,7 +383,7 @@ export default function Demo() {
     no: {
       badge: "Interaktiv demo — ingen registrering nødvendig",
       title: "Se Glidr i aksjon",
-      sub: "Fra å logge en test i løypa til å forstå hvilken voks som vinner i hvilke forhold — Glidr gjør alt.",
+      sub: "Fra å logge en test i løypa til å forstå hvilken voks som vinner i hvilke forhold — Glidr gjør alt. Utviklet sammen med, og brukt daglig av, smørere på landslagsnivå.",
       cta1: "Kom i gang",
       cta2: "Se priser",
       featureTitle: "Alt du trenger",
@@ -379,10 +423,12 @@ export default function Demo() {
               <Zap className="h-4 w-4" />
               {t.cta1}
             </Link>
-            <Link href="/pricing" className="rounded-xl border border-background/30 text-background px-8 py-3 font-semibold text-sm hover:bg-background/10 flex items-center justify-center gap-2">
-              {t.cta2}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            {commercializationEnabled && (
+              <Link href="/pricing" className="rounded-xl border border-background/30 text-background px-8 py-3 font-semibold text-sm hover:bg-background/10 flex items-center justify-center gap-2">
+                {t.cta2}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -453,6 +499,9 @@ export default function Demo() {
         </div>
       </div>
 
+      {/* ── Real screenshots ── */}
+      <ScreenshotGallery lang={lang} />
+
       {/* ── Feature grid ── */}
       <div className="bg-muted/30 py-16 px-4 border-y">
         <div className="mx-auto max-w-5xl">
@@ -486,10 +535,12 @@ export default function Demo() {
               <Zap className="h-4 w-4" />
               {t.bottomCta1}
             </Link>
-            <Link href="/pricing" className="rounded-xl border px-8 py-3 font-semibold text-sm hover:bg-muted flex items-center justify-center gap-2 text-foreground">
-              {t.bottomCta2}
-              <ChevronRight className="h-4 w-4" />
-            </Link>
+            {commercializationEnabled && (
+              <Link href="/pricing" className="rounded-xl border px-8 py-3 font-semibold text-sm hover:bg-muted flex items-center justify-center gap-2 text-foreground">
+                {t.bottomCta2}
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            )}
           </div>
         </div>
       </div>

@@ -9,6 +9,19 @@ export function generateFeatureGuidePDF(): void {
   const genDate = new Date().toLocaleDateString("en-GB", {
     day: "2-digit", month: "long", year: "numeric",
   });
+  // The document opens in a blank window, so image URLs must be absolute.
+  const origin = window.location.origin;
+  const SHOTS: [string, string][] = [
+    ["glidr-tests.png", "Tests — day view with results and ranking"],
+    ["glidr-analytics.png", "Analytics — which wax wins in which conditions"],
+    ["glidr-raceskis.png", "Athlete Skis — every athlete's full ski garage"],
+    ["glidr-weather.png", "Weather — log conditions or pull from a weather station"],
+    ["glidr-products.png", "Products — catalogue and stock"],
+    ["glidr-runsheet.png", "Live runsheets — follow testing in real time"],
+  ];
+  const shotsHtml = SHOTS.map(([file, cap]) =>
+    `<figure class="shot"><img src="${origin}/images/${file}" alt="${cap}" onerror="this.closest('figure').style.display='none'"/><figcaption>${cap}</figcaption></figure>`
+  ).join("\n");
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -61,6 +74,11 @@ export function generateFeatureGuidePDF(): void {
   .cover .sub { color: var(--muted); margin-top: 6px; }
   .cover .meta { margin-top: 18px; font-size: 9.5pt; color: var(--muted); }
 
+  .shot { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin: 10px 0; page-break-inside: avoid; }
+  .shot img { display: block; width: 100%; }
+  .shot figcaption { padding: 6px 10px; font-size: 9pt; color: var(--muted); border-top: 1px solid var(--line); background: var(--bg-soft); }
+  .shot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
   @media print {
     .no-print { display: none !important; }
     .page-break { page-break-before: always; }
@@ -90,6 +108,14 @@ export function generateFeatureGuidePDF(): void {
   <p>Access to the features described here depends on your account role and the permissions configured for your team. Features marked <span class="badge badge-ta">★ Team Admin</span> require Team Admin privileges; features marked <span class="badge badge-sa">◆ Super Admin</span> are exclusive to Super Admins.</p>
   <div class="box box-warning"><strong>Super Admin access:</strong> Super Admins manage the platform but do not have direct access to an individual team's test data, products, or internal records. They rely on team feedback when investigating issues.</div>
   <p class="muted">© 2025 Glidr. All rights reserved.</p>
+
+  <!-- PRODUCT IN ACTION -->
+  <div class="page-break"></div>
+  <div class="section-title"><span class="section-num">Shots</span><h2>The Product in Action</h2></div>
+  <p class="muted">Real screenshots from the live platform.</p>
+  <div class="shot-grid">
+${shotsHtml}
+  </div>
 
   <!-- CONTENTS -->
   <div class="page-break"></div>

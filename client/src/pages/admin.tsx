@@ -378,6 +378,27 @@ const ATHLETE_ACCESS_PERMISSIONS: UserPermissions = {
   raceskis: "view", suggestions: "view",
 } as UserPermissions;
 
+// Small uppercase section label with a hairline — shared by the redesigned
+// user/team dialogs so long forms read as clear sections instead of one scroll.
+function FormSectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">{children}</span>
+      <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
+// Generate a readable, strong password (no ambiguous chars).
+function generatePassword(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  const arr = new Uint32Array(12);
+  crypto.getRandomValues(arr);
+  let p = "";
+  for (let i = 0; i < 12; i++) p += chars[arr[i] % chars.length];
+  return p + "!2";
+}
+
 function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: () => void; allGroups: ApiGroup[]; defaultTeamId: number; teams: ApiTeam[] }) {
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
@@ -388,6 +409,9 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
   const [selectedTeamId, setSelectedTeamId] = useState(defaultTeamId);
   const [isAthleteAccess, setIsAthleteAccess] = useState(false);
   const [linkedAthleteId, setLinkedAthleteId] = useState<number | null>(null);
+  // The role choice sets sensible permissions; the full matrix stays collapsed
+  // behind "Tilpass" for the rare case where they need adjusting.
+  const [showPermMatrix, setShowPermMatrix] = useState(false);
   const teamChanged = selectedTeamId !== defaultTeamId;
   const { data: teamGroups } = useQuery<ApiGroup[]>({
     queryKey: [`/api/groups?teamScope=${selectedTeamId}`],
@@ -421,21 +445,107 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
     },
   });
 
+  const currentRole = form.watch("isAdmin") ? "superadmin" : form.watch("isTeamAdmin") ? "teamadmin" : isAthleteAccess ? "athleteaccess" : "member";
+  const applyRole = (v: string) => {
+    form.setValue("isAdmin", v === "superadmin");
+    form.setValue("isTeamAdmin", v === "teamadmin");
+    if (v === "athleteaccess") {
+      setIsAthleteAccess(true);
+      form.setValue("isAdmin", false);
+      form.setValue("isTeamAdmin", false);
+      setPerms(ATHLETE_ACCESS_PERMISSIONS);
+      form.setValue("permissions", JSON.stringify(ATHLETE_ACCESS_PERMISSIONS));
+    } else {
+      setIsAthleteAccess(false);
+      setLinkedAthleteId(null);
+      // Team/Super Admins get full page access (server still gates by the
+      // team's enabled areas).
+      if (v === "teamadmin" || v === "superadmin") {
+        const full = Object.fromEntries(PERMISSION_AREAS.map((a) => [a, "edit"])) as UserPermissions;
+        setPerms(full);
+        form.setValue("permissions", JSON.stringify(full));
+      }
+    }
+  };
+  const roleOptions: { key: string; label: string; desc: string }[] = [
+    { key: "member", label: L("Medlem", "Member"), desc: L("Tilgang etter rettigheter", "Access per permissions") },
+    { key: "teamadmin", label: L("Lagadmin", "Team Admin"), desc: L("Full tilgang + admin", "Full access + admin") },
+    ...(isSuperAdmin ? [{ key: "superadmin", label: L("Superadmin", "Super Admin"), desc: L("Hele systemet", "Entire system") }] : []),
+    { key: "athleteaccess", label: L("Utøvertilgang", "Athlete Access"), desc: L("Kun egen utøver", "Own athlete only") },
+  ];
+  const enabledAreaCount = PERMISSION_AREAS.filter((a) => perms[a] !== "none").length;
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
-        <FormField control={form.control} name="name" render={({ field }) => (
-          <FormItem><FormLabel>{L("Navn", "Name")}</FormLabel><FormControl><Input {...field} data-testid="input-user-name" /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="email" render={({ field }) => (
-          <FormItem><FormLabel>{L("E-post", "Email")}</FormLabel><FormControl><Input {...field} data-testid="input-user-email" /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="username" render={({ field }) => (
-          <FormItem><FormLabel>{L("Brukernavn ", "Username ")}<span className="text-xs text-muted-foreground font-normal">(optional — will be derived from email if empty)</span></FormLabel><FormControl><Input {...field} placeholder="e.g. johndoe" autoComplete="off" data-testid="input-user-username" /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="password" render={({ field }) => (
-          <FormItem><FormLabel>{L("Passord", "Password")}</FormLabel><FormControl><Input {...field} type="password" data-testid="input-user-password" /></FormControl><FormMessage /></FormItem>
-        )} />
+        {/* ── Profil ── */}
+        <FormSectionLabel>{L("Profil", "Profile")}</FormSectionLabel>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <FormField control={form.control} name="name" render={({ field }) => (
+            <FormItem><FormLabel>{L("Navn", "Name")}</FormLabel><FormControl><Input {...field} placeholder="Ola Nordmann" data-testid="input-user-name" /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="email" render={({ field }) => (
+            <FormItem><FormLabel>{L("E-post", "Email")}</FormLabel><FormControl><Input {...field} placeholder="navn@lag.no" data-testid="input-user-email" /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="password" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{L("Passord", "Password")}</FormLabel>
+              <div className="flex gap-2">
+                <FormControl><Input {...field} className="font-mono" autoComplete="new-password" data-testid="input-user-password" /></FormControl>
+                <Button type="button" variant="outline" className="shrink-0 text-xs" onClick={() => form.setValue("password", generatePassword())} data-testid="button-generate-password">{L("Generer", "Generate")}</Button>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="username" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{L("Brukernavn", "Username")} <span className="text-xs text-muted-foreground font-normal">({L("valgfritt", "optional")})</span></FormLabel>
+              <FormControl><Input {...field} placeholder={L("auto fra e-post", "auto from email")} autoComplete="off" data-testid="input-user-username" /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+        </div>
+
+        {/* ── Rolle ── */}
+        <FormSectionLabel>{L("Rolle", "Role")}</FormSectionLabel>
+        <div className={cn("grid gap-2", roleOptions.length === 4 ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-3")} data-testid="select-user-role">
+          {roleOptions.map((r) => (
+            <button
+              key={r.key}
+              type="button"
+              onClick={() => applyRole(r.key)}
+              data-testid={`role-card-${r.key}`}
+              className={cn(
+                "rounded-xl border px-3 py-2.5 text-left transition-all",
+                currentRole === r.key
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                  : "border-border hover:bg-muted/40"
+              )}
+            >
+              <p className={cn("text-sm font-medium", currentRole === r.key ? "text-primary" : "text-foreground")}>{r.label}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{r.desc}</p>
+            </button>
+          ))}
+        </div>
+        {isAthleteAccess && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{L("Tilknyttet utøver", "Linked Athlete")}</label>
+            <Select
+              value={linkedAthleteId ? String(linkedAthleteId) : ""}
+              onValueChange={(v) => setLinkedAthleteId(v ? parseInt(v) : null)}
+            >
+              <SelectTrigger><SelectValue placeholder={L("Velg utøver...", "Select athlete...")} /></SelectTrigger>
+              <SelectContent>
+                {athletes.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* ── Tilgang ── */}
+        <FormSectionLabel>{L("Tilgang", "Access")}</FormSectionLabel>
         {isSuperAdmin && teams.length > 1 && (
           <div className="space-y-2">
             <label className="text-sm font-medium">{L("Lag", "Team")}</label>
@@ -457,144 +567,100 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
             </Select>
           </div>
         )}
-        <FormField control={form.control} name="groupScope" render={({ field }) => (
-          <FormItem>
-            <FormLabel>{L("Grupper (velg én eller flere)", "Groups (select one or more)")}</FormLabel>
-            <FormControl>
-              <GroupCheckboxes
-                groupNames={groupNames}
-                selected={selectedGroups}
-                onChange={(groups) => field.onChange(groups.join(","))}
-                testIdPrefix="checkbox-create-group"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )} />
-        <FormField control={form.control} name="isAdmin" render={() => (
-          <FormItem>
-            <FormLabel>{L("Rolle", "Role")}</FormLabel>
-            <Select
-              value={form.watch("isAdmin") ? "superadmin" : form.watch("isTeamAdmin") ? "teamadmin" : isAthleteAccess ? "athleteaccess" : "member"}
-              onValueChange={(v) => {
-                form.setValue("isAdmin", v === "superadmin");
-                form.setValue("isTeamAdmin", v === "teamadmin");
-                if (v === "athleteaccess") {
-                  setIsAthleteAccess(true);
-                  form.setValue("isAdmin", false);
-                  form.setValue("isTeamAdmin", false);
-                  setPerms(ATHLETE_ACCESS_PERMISSIONS);
-                  form.setValue("permissions", JSON.stringify(ATHLETE_ACCESS_PERMISSIONS));
-                } else {
-                  setIsAthleteAccess(false);
-                  setLinkedAthleteId(null);
-                  // Team/Super Admins get full page access (server still gates by
-                  // the team's enabled areas).
-                  if (v === "teamadmin" || v === "superadmin") {
-                    const full = Object.fromEntries(PERMISSION_AREAS.map((a) => [a, "edit"])) as UserPermissions;
-                    setPerms(full);
-                    form.setValue("permissions", JSON.stringify(full));
-                  }
-                }
-              }}
-            >
-              <FormControl><SelectTrigger data-testid="select-user-role"><SelectValue /></SelectTrigger></FormControl>
-              <SelectContent>
-                <SelectItem value="member">{L("Medlem", "Member")}</SelectItem>
-                <SelectItem value="teamadmin">{L("Lagadmin", "Team Admin")}</SelectItem>
-                {isSuperAdmin && <SelectItem value="superadmin">{L("Superadmin", "Super Admin")}</SelectItem>}
-                <SelectItem value="athleteaccess">{L("Utøvertilgang", "Athlete Access")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
-        {isAthleteAccess && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{L("Tilknyttet utøver", "Linked Athlete")}</label>
-            <Select
-              value={linkedAthleteId ? String(linkedAthleteId) : ""}
-              onValueChange={(v) => setLinkedAthleteId(v ? parseInt(v) : null)}
-            >
-              <SelectTrigger><SelectValue placeholder={L("Velg utøver...", "Select athlete...")} /></SelectTrigger>
-              <SelectContent>
-                {athletes.map((a) => (
-                  <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        {groupNames.length > 0 && (
+          <FormField control={form.control} name="groupScope" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{L("Grupper", "Groups")}</FormLabel>
+              <FormControl>
+                <GroupCheckboxes
+                  groupNames={groupNames}
+                  selected={selectedGroups}
+                  onChange={(groups) => field.onChange(groups.join(","))}
+                  testIdPrefix="checkbox-create-group"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
         )}
         {!isAthleteAccess && (
-          <PermissionsMatrix
-            value={perms}
-            onChange={(p) => { setPerms(p); form.setValue("permissions", JSON.stringify(p)); }}
-            testIdPrefix="select-create-perm"
-            onPresetApplied={(blind) => form.setValue("isBlindTester", blind)}
-            disabledAreas={getTeamDisabledAreas(teams, selectedTeamId, isSuperAdmin)}
-          />
+          <div className="rounded-lg border border-border">
+            <button
+              type="button"
+              onClick={() => setShowPermMatrix((v) => !v)}
+              className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left"
+              data-testid="button-toggle-permissions"
+            >
+              <div>
+                <p className="text-sm font-medium">{L("Rettigheter", "Permissions")}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {enabledAreaCount} {L("av", "of")} {PERMISSION_AREAS.length} {L("områder på — satt av rollen", "areas on — set by the role")}
+                </p>
+              </div>
+              <span className="flex items-center gap-1 text-xs text-primary shrink-0">
+                {showPermMatrix ? L("Skjul", "Hide") : L("Tilpass", "Adjust")}
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showPermMatrix && "rotate-180")} />
+              </span>
+            </button>
+            {showPermMatrix && (
+              <div className="border-t border-border p-3">
+                <PermissionsMatrix
+                  value={perms}
+                  onChange={(p) => { setPerms(p); form.setValue("permissions", JSON.stringify(p)); }}
+                  testIdPrefix="select-create-perm"
+                  onPresetApplied={(blind) => form.setValue("isBlindTester", blind)}
+                  disabledAreas={getTeamDisabledAreas(teams, selectedTeamId, isSuperAdmin)}
+                />
+              </div>
+            )}
+          </div>
         )}
-        <FormField control={form.control} name="isBlindTester" render={({ field }) => (
-          <FormItem>
-            <div className="flex items-center gap-3">
-              <label
-                className={cn(
-                  "inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-all",
-                  field.value
-                    ? "border-orange-300 bg-orange-50 text-orange-700 ring-1 ring-orange-200"
-                    : "border-border bg-muted/30 text-muted-foreground hover:bg-background/50"
-                )}
-                data-testid="checkbox-create-blind-tester"
-              >
-                <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} className="sr-only" />
-                <EyeOff className="h-3.5 w-3.5" />
+
+        {/* ── Innstillinger ── */}
+        <FormSectionLabel>{L("Innstillinger", "Settings")}</FormSectionLabel>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2" data-testid="checkbox-send-welcome-email">
+            <label htmlFor="toggle-welcome-email" className="flex cursor-pointer items-center gap-2 text-sm select-none">
+              <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+              {t("admin.sendWelcomeEmail")}
+            </label>
+            <Switch id="toggle-welcome-email" checked={doSendWelcomeEmail} onCheckedChange={setDoSendWelcomeEmail} />
+          </div>
+          <FormField control={form.control} name="isBlindTester" render={({ field }) => (
+            <FormItem className="flex items-center justify-between rounded-lg border border-border px-3 py-2 space-y-0">
+              <label htmlFor="toggle-blind-create" className="flex cursor-pointer items-center gap-2 text-sm select-none" title={L("Produkter og metodikk skjult for denne brukeren", "Products & methodology hidden from this user")}>
+                <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
                 {L("Blindtester", "Blind tester")}
               </label>
-              {field.value && (
-                <span className="text-[10px] text-muted-foreground">{L("Produkter og metodikk skjult for denne brukeren", "Products & methodology hidden from this user")}</span>
-              )}
-            </div>
-          </FormItem>
-        )} />
-        <FormField control={form.control} name="language" render={({ field }) => (
-          <FormItem>
-            <FormLabel>{L("Språk", "Language")}</FormLabel>
-            <Select value={field.value} onValueChange={field.onChange}>
-              <FormControl><SelectTrigger data-testid="select-user-language"><SelectValue /></SelectTrigger></FormControl>
-              <SelectContent>
-                <SelectItem value="no">{L("Norsk", "Norsk")}</SelectItem>
-                <SelectItem value="en">{L("English", "English")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
-        <FormField control={form.control} name="isActive" render={({ field }) => (
-          <FormItem>
-            <FormLabel>{L("Status", "Status")}</FormLabel>
-            <Select value={field.value ? "active" : "inactive"} onValueChange={(v) => field.onChange(v === "active")}>
-              <FormControl><SelectTrigger data-testid="select-user-status"><SelectValue /></SelectTrigger></FormControl>
-              <SelectContent>
-                <SelectItem value="active">{L("Aktiv", "Active")}</SelectItem>
-                <SelectItem value="inactive">{L("Inaktiv", "Inactive")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
-        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5" data-testid="checkbox-send-welcome-email">
-          <label htmlFor="toggle-welcome-email" className="flex cursor-pointer items-center gap-2 text-sm select-none">
-            <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-            {t("admin.sendWelcomeEmail")}
-          </label>
-          <Switch
-            id="toggle-welcome-email"
-            checked={doSendWelcomeEmail}
-            onCheckedChange={setDoSendWelcomeEmail}
-          />
+              <FormControl><Switch id="toggle-blind-create" checked={field.value} onCheckedChange={field.onChange} data-testid="checkbox-create-blind-tester" /></FormControl>
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="isActive" render={({ field }) => (
+            <FormItem className="flex items-center justify-between rounded-lg border border-border px-3 py-2 space-y-0">
+              <label htmlFor="toggle-active-create" className="text-sm cursor-pointer select-none">{L("Aktiv konto", "Active account")}</label>
+              <FormControl><Switch id="toggle-active-create" checked={field.value} onCheckedChange={field.onChange} data-testid="select-user-status" /></FormControl>
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="language" render={({ field }) => (
+            <FormItem className="flex items-center justify-between rounded-lg border border-border px-3 py-1.5 space-y-0">
+              <FormLabel className="text-sm font-normal">{L("Språk", "Language")}</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl><SelectTrigger className="h-8 w-28 text-xs" data-testid="select-user-language"><SelectValue /></SelectTrigger></FormControl>
+                <SelectContent>
+                  <SelectItem value="no">Norsk</SelectItem>
+                  <SelectItem value="en">English</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormItem>
+          )} />
         </div>
-        <div className="flex justify-end">
-          <Button type="submit" data-testid="button-create-user" disabled={mutation.isPending}>{L("Opprett", "Create")}</Button>
+
+        {/* Sticky footer — always visible while the form scrolls */}
+        <div className="sticky bottom-0 -mx-6 -mb-6 mt-2 flex items-center justify-between gap-3 border-t border-border bg-background px-6 py-3">
+          <span className="text-xs text-muted-foreground">{L("Alle felt kan endres senere", "Everything can be changed later")}</span>
+          <Button type="submit" data-testid="button-create-user" disabled={mutation.isPending}>
+            {mutation.isPending ? L("Oppretter…", "Creating…") : L("Opprett bruker", "Create user")}
+          </Button>
         </div>
       </form>
     </Form>

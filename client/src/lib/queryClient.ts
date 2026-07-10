@@ -1,6 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { setCachedData, getCachedData } from "./offline-db";
+import { setCachedData, getCachedData, addMutation, generateId } from "./offline-db";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -26,7 +26,29 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<Response> {
   if (!navigator.onLine && method !== "GET") {
-    throw new OfflineError(method, url, data);
+    // Offline: save the change to the replay queue (works for EVERY page, not
+    // just the few that catch OfflineError), then return a synthetic success so
+    // the mutation's onSuccess runs optimistically. The body is echoed back so
+    // field reads work; server-generated ids are filled in on sync/refresh.
+    try {
+      await addMutation({
+        id: generateId(),
+        method,
+        url,
+        body: data != null ? JSON.stringify(data) : null,
+        timestamp: Date.now(),
+        description: `${method} ${url}`,
+      });
+    } catch {
+      // If we can't even queue it, fall back to the old behaviour so the caller
+      // can handle it explicitly rather than silently losing the change.
+      throw new OfflineError(method, url, data);
+    }
+    try { window.dispatchEvent(new Event("glidr-offline-queued")); } catch {}
+    return new Response(JSON.stringify(data ?? { queuedOffline: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const res = await fetch(url, {

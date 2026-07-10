@@ -18,6 +18,8 @@ import type { UserPermissions, PermissionLevel } from "@shared/schema";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { generateFeatureGuidePDF } from "@/lib/featureGuidePdf";
+import { generateStrategyPDF } from "@/lib/strategyPdf";
+import { generateLetterOfIntentPDF } from "@/lib/letterOfIntentPdf";
 import { generateSalesPDF } from "@/lib/pdf-sales";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/app-shell";
@@ -5316,6 +5318,63 @@ export default function Admin() {
                 </div>
               </div>
             </Card>
+
+            {/* Strategy document (owner / SA only) */}
+            <Card className="fs-card rounded-2xl p-6">
+              <div className="flex items-start gap-4">
+                <div className="rounded-xl bg-indigo-100 dark:bg-indigo-900/30 p-3">
+                  <FileText className="h-6 w-6 text-indigo-600" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-semibold mb-1">{L("Glidr strategidokument", "Glidr Strategy Document")}</h2>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {L("Komplett eierdokument: strategi, system, utvikling, kommersialisering, priser, rettigheter, exit og risiko — grunnlaget for en trygg og bærekraftig fremtid for Glidr.", "Complete owner document: strategy, system, development, commercialization, pricing, rights, exit and risk — the foundation for a safe and sustainable future for Glidr.")}
+                  </p>
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-3 mb-4">
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      <strong>{L("Strengt konfidensielt:", "Strictly confidential:")}</strong> {L("Kun for eier. Del ikke med lag, forbund eller tredjeparter. Prisspenn er veiledende — ikke finansielle råd.", "Owner only. Do not share with teams, federations or third parties. Pricing ranges are indicative — not financial advice.")}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => generateStrategyPDF()}
+                    className="bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white"
+                    data-testid="button-strategy-pdf"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download PDF
+                  </Button>
+                </div>
+              </div>
+            </Card>
+
+            {/* Letter of Intent draft (owner / SA only) */}
+            <Card className="fs-card rounded-2xl p-6">
+              <div className="flex items-start gap-4">
+                <div className="rounded-xl bg-emerald-100 dark:bg-emerald-900/30 p-3">
+                  <FileText className="h-6 w-6 text-emerald-600" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-semibold mb-1">{L("Intensjonsavtale (utkast)", "Letter of Intent (draft)")}</h2>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {L("Utkast til pilotavtale mot US Ski Team: full tilgang i vinter mot tilbakemeldinger, betaling fra neste sesong (bak betalingsmur), og full dataeksport hvis de ikke fortsetter.", "Draft pilot agreement for the U.S. Ski Team: full access this winter in exchange for feedback, paid from next season (behind a paywall), and full data export if they don't continue.")}
+                  </p>
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-3 mb-4">
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      <strong>{L("Utkast — ikke juridisk råd:", "Draft — not legal advice:")}</strong> {L("Må kvalitetssikres av advokat før bruk. Felter i [klammer] fylles ut.", "Must be reviewed by legal counsel before use. Complete the [bracketed] fields.")}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => generateLetterOfIntentPDF()}
+                    className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white"
+                    data-testid="button-loi-pdf"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download PDF
+                  </Button>
+                </div>
+              </div>
+            </Card>
+
             <Card className="fs-card rounded-2xl p-6">
               <div className="flex items-start gap-4">
                 <div className="rounded-xl bg-amber-100 dark:bg-amber-900/30 p-3">

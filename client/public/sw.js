@@ -1,7 +1,8 @@
-const CACHE_NAME = "glidr-v6";
+const CACHE_NAME = "glidr-v7";
 const STATIC_EXTENSIONS = [".js", ".css", ".png", ".jpg", ".svg", ".ico", ".woff", ".woff2"];
-const API_CACHE_NAME = "glidr-api-v6";
-const CACHEABLE_API = ["/api/tests", "/api/products", "/api/groups", "/api/users", "/api/weather", "/api/testskis"];
+const API_CACHE_NAME = "glidr-api-v7";
+// Endpoints that always need a live server and must never be served from cache.
+const NEVER_CACHE_API = ["/api/auth/login", "/api/auth/logout", "/api/watch/", "/api/admin/active-sessions"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(["/"])));
@@ -43,10 +44,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // API caching: network-first, fall back to cache for key endpoints
+  // API caching: network-first for ALL GET endpoints, fall back to the cached
+  // copy when offline so every page can show its last-known data. A cache miss
+  // returns 503 so the app's IndexedDB layer (getQueryFn) can try as a 2nd layer.
   if (url.pathname.startsWith("/api/")) {
-    const isCacheable = CACHEABLE_API.some((p) => url.pathname.startsWith(p));
-    if (!isCacheable) return;
+    const neverCache = NEVER_CACHE_API.some((p) => url.pathname.startsWith(p));
+    if (neverCache) return;
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -58,7 +61,7 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() =>
           caches.match(request, { cacheName: API_CACHE_NAME })
-            .then((cached) => cached || new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json" }, status: 200 }))
+            .then((cached) => cached || new Response(JSON.stringify({ offline: true }), { headers: { "Content-Type": "application/json" }, status: 503 }))
         )
     );
     return;

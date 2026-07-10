@@ -28,12 +28,18 @@ const OfflineContext = createContext<OfflineContextValue | null>(null);
 // Endpoints that are pre-fetched and cached for offline use.
 // These are the pages most likely to be visited in the field.
 const PREFETCH_KEYS = [
+  "/api/auth/me",
+  "/api/user/teams",
   "/api/tests",
   "/api/products",
   "/api/weather",
   "/api/user",
   "/api/skis",
   "/api/athletes",
+  "/api/groups",
+  "/api/testskis",
+  "/api/race-prep",
+  "/api/suggestions",
 ];
 
 export function OfflineProvider({ children }: { children: ReactNode }) {
@@ -208,13 +214,19 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       restoreCacheToQueryClient();
     };
 
+    // apiRequest fires this after auto-queuing an offline write, so the pending
+    // badge updates immediately app-wide.
+    const handleQueued = () => { refreshCount(); };
+
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+    window.addEventListener("glidr-offline-queued", handleQueued);
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("glidr-offline-queued", handleQueued);
     };
-  }, [restoreCacheToQueryClient, syncNow]);
+  }, [restoreCacheToQueryClient, syncNow, refreshCount]);
 
   const queueMutation = useCallback(async (method: string, url: string, body?: unknown, description?: string) => {
     const mutation: QueuedMutation = {

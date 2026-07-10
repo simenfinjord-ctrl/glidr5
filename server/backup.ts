@@ -216,6 +216,11 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
     const RACE_USAGE_TITLE = '🎽 Race Usage';
     const GRINDS_TITLE = '⚙️ Grinds';
     const STOCK_TITLE = '📦 Stock Changes';
+    const KICK_TITLE = '🦵 Kick';
+    const GARAGE_TITLE = '🎿 Ski Garage';
+    const TESTFLEETS_TITLE = '🧊 Testfleets';
+    const PRODUCTS_TITLE = '🧴 Products';
+    const WEATHER_TITLE = '🌦 Weather';
     const groupSheetTitles = groupNames.map(g => `📂 ${sanitizeSheetTitle(g)}`);
     const athleteSheetTitles = allAthletes.map((a: any) => sanitizeSheetTitle(`🏃 ${a.name}`));
 
@@ -232,6 +237,11 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       ...athleteSheetTitles,
       GRINDS_TITLE,
       STOCK_TITLE,
+      KICK_TITLE,
+      GARAGE_TITLE,
+      TESTFLEETS_TITLE,
+      PRODUCTS_TITLE,
+      WEATHER_TITLE,
     ];
 
     // Ensure all sheets exist
@@ -755,6 +765,50 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
     }
     await clearAndWrite(sheets, spreadsheetId, STOCK_TITLE, stockRows);
 
+    // ── Complete-coverage sheets: Kick, Ski Garage, Testfleets, Products, Weather ──
+    // These make the spreadsheet a full reference of the system: every area is
+    // present, so the backup can be used standalone if the app is unavailable.
+    const fleetSkisRes = await (pool as any).query(`SELECT * FROM race_skis WHERE athlete_id IS NULL AND team_id = $1 ORDER BY ski_id`, [teamId]).catch(() => ({ rows: [] }));
+    const kickSkisRes = await (pool as any).query(`SELECT * FROM kick_skis WHERE team_id = $1 ORDER BY name`, [teamId]).catch(() => ({ rows: [] }));
+    const kickTestsRes = await (pool as any).query(`SELECT * FROM kick_tests WHERE team_id = $1 ORDER BY date DESC`, [teamId]).catch(() => ({ rows: [] }));
+    const kickEntriesRes = await (pool as any).query(`SELECT * FROM kick_test_entries WHERE kick_test_id IN (SELECT id FROM kick_tests WHERE team_id = $1)`, [teamId]).catch(() => ({ rows: [] }));
+    const kickMixesRes = await (pool as any).query(`SELECT * FROM kick_mixes WHERE team_id = $1 ORDER BY name`, [teamId]).catch(() => ({ rows: [] }));
+    const kickSkiName = new Map<number, string>(kickSkisRes.rows.map((k: any) => [k.id, k.name]));
+
+    const kickRows: any[][] = [['KICK SKIS'], ['Name', 'Brand', 'Grind', 'Heights', 'Type', 'Color', 'Notes', 'Archived']];
+    for (const k of kickSkisRes.rows) kickRows.push([k.name ?? '', k.brand ?? '', k.grind ?? '', k.heights ?? '', k.type_of_ski ?? '', k.color ?? '', k.notes ?? '', k.archived_at ? 'yes' : '']);
+    kickRows.push([], ['KICK TESTS']);
+    for (const kt of kickTestsRes.rows) {
+      const w = kt.weather_id ? weatherById[kt.weather_id] : null;
+      kickRows.push([`${kt.date ?? ''} — ${kt.location ?? ''}`, kt.test_persons ?? '', w ? `Snow ${w.snowTemperatureC}°C / Air ${w.airTemperatureC}°C` : '', kt.notes ?? '']);
+      kickRows.push(['', 'Ski', 'Binder', 'Kick solution', 'Feeling rank', 'Feeling notes']);
+      for (const e of kickEntriesRes.rows.filter((x: any) => x.kick_test_id === kt.id)) {
+        kickRows.push(['', kickSkiName.get(e.kick_ski_id) ?? e.kick_ski_id, e.binder ?? '', e.kick_solution ?? '', e.feeling_rank ?? '', e.feeling_notes ?? '']);
+      }
+      kickRows.push([]);
+    }
+    kickRows.push(['KICK MIXES'], ['Name', 'Type', 'Hardwax', 'Roller temp', 'Products', 'Notes']);
+    for (const m of kickMixesRes.rows) kickRows.push([m.name ?? '', m.mix_type ?? '', m.hardwax ?? '', m.roller_temperature ?? '', m.products ?? '', m.notes ?? '']);
+    await clearAndWrite(sheets, spreadsheetId, KICK_TITLE, kickRows);
+
+    const garageRows: any[][] = [['Owner', 'Ski ID', 'Serial', 'Brand', 'Discipline', 'Construction', 'Mold', 'Base', 'Grind', 'Heights', 'Year', 'Length', 'Type', 'Training', 'Sitski', 'Archived', 'Notes']];
+    for (const skl of allRaceSkis) garageRows.push([(skl as any).athleteName ?? '', skl.skiId ?? '', skl.serialNumber ?? '', skl.brand ?? '', skl.discipline ?? '', skl.construction ?? '', skl.mold ?? '', skl.base ?? '', skl.grind ?? '', skl.heights ?? '', skl.year ?? '', (skl as any).length ?? '', (skl as any).typeOfSki ?? '', (skl as any).isTrainingSki ? 'yes' : '', (skl as any).isSitski ? 'yes' : '', skl.archivedAt ? 'yes' : '', (skl as any).notes ?? '']);
+    for (const r of fleetSkisRes.rows) garageRows.push(['TEAM FLEET', r.ski_id ?? '', r.serial_number ?? '', r.brand ?? '', r.discipline ?? '', r.construction ?? '', r.mold ?? '', r.base ?? '', r.grind ?? '', r.heights ?? '', r.year ?? '', r.length ?? '', r.type_of_ski ?? '', r.is_training_ski ? 'yes' : '', r.is_sitski ? 'yes' : '', r.archived_at ? 'yes' : '', r.notes ?? '']);
+    await clearAndWrite(sheets, spreadsheetId, GARAGE_TITLE, garageRows);
+
+    const testfleetRows: any[][] = [['Name', 'Discipline', 'Brand', 'Pairs', 'Group', 'Created', 'Notes']];
+    for (const sr of allSeries as any[]) testfleetRows.push([sr.name ?? '', sr.discipline ?? '', sr.brand ?? '', sr.numberOfPairs ?? sr.pairCount ?? '', sr.groupScope ?? '', sr.createdAt ?? '', sr.notes ?? '']);
+    await clearAndWrite(sheets, spreadsheetId, TESTFLEETS_TITLE, testfleetRows);
+
+    const productCatalogRows: any[][] = [['Brand', 'Name', 'Category', 'Stock', 'Group', 'Archived', 'Created']];
+    for (const pr of allProducts as any[]) productCatalogRows.push([pr.brand ?? '', pr.name ?? '', pr.category ?? '', pr.stockQuantity ?? '', pr.groupScope ?? '', '', pr.createdAt ?? '']);
+    for (const pr of allArchivedProducts as any[]) productCatalogRows.push([pr.brand ?? '', pr.name ?? '', pr.category ?? '', pr.stockQuantity ?? '', pr.groupScope ?? '', 'YES', pr.createdAt ?? '']);
+    await clearAndWrite(sheets, spreadsheetId, PRODUCTS_TITLE, productCatalogRows);
+
+    const weatherSheetRows: any[][] = [['Date', 'Time', 'Location', 'Snow °C', 'Air °C', 'Snow hum %', 'Air hum %', 'Snow type', 'Artificial', 'Natural', 'Hum. type', 'Grain', 'Track', 'Precipitation', 'Wind', 'Visibility', 'Clouds %', 'Group']];
+    for (const w of allWeather as any[]) weatherSheetRows.push([w.date ?? '', w.time ?? '', w.location ?? '', w.snowTemperatureC ?? '', w.airTemperatureC ?? '', w.snowHumidityPct ?? '', w.airHumidityPct ?? '', w.snowType ?? '', w.artificialSnow ?? '', w.naturalSnow ?? '', w.snowHumidityType ?? '', w.grainSize ?? '', w.trackHardness ?? '', w.precipitation ?? '', w.wind ?? '', w.visibility ?? '', w.clouds ?? '', w.groupScope ?? '']);
+    await clearAndWrite(sheets, spreadsheetId, WEATHER_TITLE, weatherSheetRows);
+
     // ── 8. OVERVIEW SHEET ─────────────────────────────────────────────────────
     await ensureSheet(sheets, spreadsheetId, OVERVIEW_TITLE);
     const allTestEntries = allEntries.length;
@@ -829,124 +883,116 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
 
 // ── Google Drive backup ───────────────────────────────────────────────────────
 
-// ── Shared JSON export builder (used by Drive backup + download route) ───────
+// ── Shared JSON export engine (used by Drive backup + download routes) ──────
+//
+// FUTURE-PROOF BY DESIGN: instead of a hand-maintained list of tables (which
+// silently rots as features are added), the engine discovers EVERY table in
+// the database at runtime via information_schema:
+//   • tables with a team_id column are included automatically, filtered per team
+//   • known child tables without team_id are included via the parent joins below
+//   • anything else is listed in meta.skippedTables with a reason — a gap is
+//     always VISIBLE in the export itself, never silent
+// New tables added later are therefore picked up automatically (or flagged).
 
-export async function buildTeamJsonExport(teamId: number): Promise<string> {
-  const team = await storage.getTeam(teamId);
-  const [
-    allGroups, allTests, allWeather, allSeries,
-    allProducts, allAthletes, allGrindProfiles,
-    allGrindingRecords, allGrindingSheets, allTeamUsers,
-    allLoginLogs, allActivities,
-  ] = await Promise.all([
-    storage.listGroups(teamId),
-    storage.listAllTestsForTeam(teamId),
-    storage.listAllWeatherForTeam(teamId),
-    storage.listSeries('', true, teamId),
-    storage.listProducts('', true, teamId),
-    storage.listAthletes(0, true, teamId),
-    storage.listGrindProfiles(teamId),
-    storage.listGrindingRecords('', true, teamId),
-    storage.listGrindingSheets('', true, teamId),
-    storage.listUsers(teamId),
-    storage.listLoginLogs(teamId),
-    storage.listActivityLogs(5000, teamId),
-  ]);
+// Never exported: live sessions and reset tokens.
+const EXPORT_SYSTEM_TABLES = new Set(["user_sessions", "password_reset_tokens"]);
+// Columns stripped for safety/size (documented in meta.sanitizedColumns).
+const EXPORT_COLUMN_EXCLUDES: Record<string, string[]> = {
+  users: ["password", "totp_secret", "totp_backup_codes"],
+  test_attachments: ["data"], // binary blobs — metadata + url are kept
+  watch_app: ["data"],        // binary blob — metadata is kept
+};
+// Team filters for child tables that have no team_id of their own.
+const EXPORT_CHILD_JOINS: Record<string, string> = {
+  race_skis: "(team_id = $1 OR athlete_id IN (SELECT id FROM athletes WHERE team_id = $1))",
+  test_entries: "test_id IN (SELECT id FROM tests WHERE team_id = $1)",
+  test_comments: "test_id IN (SELECT id FROM tests WHERE team_id = $1)",
+  test_attachments: "test_id IN (SELECT id FROM tests WHERE team_id = $1)",
+  runsheet_progress: "test_id IN (SELECT id FROM tests WHERE team_id = $1)",
+  race_ski_regrinds: "race_ski_id IN (SELECT rs.id FROM race_skis rs LEFT JOIN athletes a ON a.id = rs.athlete_id WHERE rs.team_id = $1 OR a.team_id = $1)",
+  test_ski_regrinds: "series_id IN (SELECT id FROM test_ski_series WHERE team_id = $1)",
+  athlete_access: "athlete_id IN (SELECT id FROM athletes WHERE team_id = $1)",
+  kick_test_entries: "kick_test_id IN (SELECT id FROM kick_tests WHERE team_id = $1)",
+  race_prep_entries: "race_prep_id IN (SELECT id FROM race_preps WHERE team_id = $1)",
+  user_teams: "team_id = $1",
+};
 
-  const testIds = allTests.map((t: any) => t.id);
-  const allEntries = testIds.length > 0 ? await storage.listAllEntriesForTests(testIds) : [];
-  const entriesByTest: Record<number, any[]> = {};
-  for (const e of allEntries) {
-    if (!entriesByTest[(e as any).testId]) entriesByTest[(e as any).testId] = [];
-    entriesByTest[(e as any).testId].push(e);
+async function dumpAllTables(teamId: number | null, includeOwnerCompliance: boolean): Promise<{ tables: Record<string, any[]>; counts: Record<string, number>; skipped: { table: string; reason: string }[] }> {
+  const { pool } = await import('./db');
+  const colRes = await (pool as any).query(
+    `SELECT table_name, column_name FROM information_schema.columns
+     WHERE table_schema = 'public' ORDER BY table_name, ordinal_position`
+  );
+  const colsByTable = new Map<string, string[]>();
+  for (const r of colRes.rows) {
+    if (!colsByTable.has(r.table_name)) colsByTable.set(r.table_name, []);
+    colsByTable.get(r.table_name)!.push(r.column_name);
   }
 
-  const allRaceSkisNested = await Promise.all(
-    allAthletes.map((ath: any) =>
-      storage.listAllRaceSkisIncludingArchived(ath.id)
-        .then((skis: any[]) => skis.map((s: any) => ({ ...s, athleteName: ath.name })))
-        .catch(() => [] as any[])
-    )
-  );
-  const allRaceSkis: any[] = allRaceSkisNested.flat();
+  const tables: Record<string, any[]> = {};
+  const counts: Record<string, number> = {};
+  const skipped: { table: string; reason: string }[] = [];
 
-  const [raceSkiRegrindsNested, testSkiRegrindsNested] = await Promise.all([
-    Promise.all(allRaceSkis.map((ski: any) =>
-      storage.listRaceSkiRegrinds(ski.id)
-        .then((rs: any[]) => rs.map((r: any) => ({ ...r, skiId: ski.skiId, athleteName: ski.athleteName, brand: ski.brand })))
-        .catch(() => [] as any[])
-    )),
-    Promise.all(allSeries.map((series: any) =>
-      storage.listTestSkiRegrinds(series.id)
-        .then((rs: any[]) => rs.map((r: any) => ({ ...r, seriesName: series.name })))
-        .catch(() => [] as any[])
-    )),
-  ]);
-  const allRaceSkiRegrinds: any[] = raceSkiRegrindsNested.flat();
-  const allTestSkiRegrinds: any[] = testSkiRegrindsNested.flat();
+  for (const [table, columns] of [...colsByTable.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    if (EXPORT_SYSTEM_TABLES.has(table)) { skipped.push({ table, reason: 'system table (sessions/reset tokens) — never exported' }); continue; }
+    const excluded = EXPORT_COLUMN_EXCLUDES[table] ?? [];
+    const selectCols = columns.filter((c) => !excluded.includes(c)).map((c) => `"${c}"`).join(', ');
+    let where = '';
+    let params: any[] = [];
+    if (teamId != null) {
+      if (EXPORT_CHILD_JOINS[table]) { where = ` WHERE ${EXPORT_CHILD_JOINS[table]}`; params = [teamId]; }
+      else if (columns.includes('team_id')) { where = ' WHERE team_id = $1'; params = [teamId]; }
+      else { skipped.push({ table, reason: 'no team link — global table, covered by the Super Admin full-system export' }); continue; }
+    }
+    // Terms-acceptance records are owner-level compliance data — SA only.
+    if (table === 'activity_logs' && !includeOwnerCompliance) {
+      where += (where ? ' AND ' : ' WHERE ') + "action NOT IN ('accepted_terms','terms_reset')";
+    }
+    try {
+      const r = await (pool as any).query(`SELECT ${selectCols} FROM "${table}"${where} ORDER BY 1 ASC`, params);
+      tables[table] = r.rows;
+      counts[table] = r.rows.length;
+    } catch (e: any) {
+      skipped.push({ table, reason: `query failed: ${String(e?.message ?? e).slice(0, 100)}` });
+    }
+  }
+  return { tables, counts, skipped };
+}
 
-  // SELECT * so every column (incl. new ones) is always captured — critical
-  // for a complete restore source (see "no data loss" requirement).
-  const q = async (sql: string) => ((await (pool as any).query(sql, [teamId])).rows as any[]);
-  const racePrepsResult = await (pool as any).query(`SELECT * FROM race_preps WHERE team_id = $1 ORDER BY date DESC`, [teamId]);
-  const racePrepEntriesResult = await (pool as any).query(
-    `SELECT rpe.* FROM race_prep_entries rpe JOIN race_preps rp ON rp.id = rpe.race_prep_id
-     WHERE rp.team_id = $1 ORDER BY rpe.race_prep_id, rpe.athlete_name`, [teamId]
-  );
-  // Previously-missing data tables — included so nothing is lost on restore.
-  const skiRaceUsages = await q(`SELECT * FROM ski_race_usages WHERE team_id = $1`).catch(() => []);
-  const racePrepComments = await q(`SELECT * FROM race_prep_comments WHERE team_id = $1`).catch(() => []);
-  const athleteRaceCalendar = await q(`SELECT * FROM athlete_race_calendar WHERE team_id = $1`).catch(() => []);
-  const feedbackLinks = await q(`SELECT * FROM feedback_links WHERE team_id = $1`).catch(() => []);
-  const userTeamPermissions = await q(`SELECT * FROM user_team_permissions WHERE team_id = $1`).catch(() => []);
-  const watchQueue = await q(`SELECT * FROM watch_queue WHERE team_id = $1`).catch(() => []);
-  // Kick (#9) — test skis, tests and per-ski entries.
-  const kickSkis = await q(`SELECT * FROM kick_skis WHERE team_id = $1`).catch(() => []);
-  const kickTests = await q(`SELECT * FROM kick_tests WHERE team_id = $1`).catch(() => []);
-  const kickTestEntries = await (pool as any).query(
-    `SELECT kte.* FROM kick_test_entries kte JOIN kick_tests kt ON kt.id = kte.kick_test_id WHERE kt.team_id = $1`, [teamId]
-  ).then((r: any) => r.rows).catch(() => []);
-  const kickMixes = await q(`SELECT * FROM kick_mixes WHERE team_id = $1`).catch(() => []);
-  // Athlete access (no team_id column — scope via this team's athletes).
-  const athleteAccess = await (pool as any).query(
-    `SELECT aa.* FROM athlete_access aa JOIN athletes a ON a.id = aa.athlete_id WHERE a.team_id = $1`, [teamId]
-  ).then((r: any) => r.rows).catch(() => []);
-  // Archived products are real data too.
-  const archivedProducts = await storage.listArchivedProducts('', true, teamId).catch(() => [] as any[]);
-
+export async function buildTeamJsonExport(teamId: number, includeOwnerCompliance = false): Promise<string> {
+  const team = await storage.getTeam(teamId);
+  const { tables, counts, skipped } = await dumpAllTables(teamId, includeOwnerCompliance);
   return JSON.stringify({
-    exportedAt: new Date().toISOString(),
-    team: team ?? { id: teamId },
-    tests: allTests,
-    entriesByTest,
-    weather: allWeather,
-    series: allSeries,
-    products: allProducts,
-    archivedProducts,
-    users: allTeamUsers.map(({ password, ...rest }: any) => rest),
-    groups: allGroups,
-    loginLogs: allLoginLogs,
-    activities: allActivities,
-    athletes: allAthletes,
-    athleteAccess,
-    raceSkis: allRaceSkis,
-    grindingRecords: allGrindingRecords,
-    grindingSheets: allGrindingSheets,
-    raceSkiRegrinds: allRaceSkiRegrinds,
-    testSkiRegrinds: allTestSkiRegrinds,
-    grindProfiles: allGrindProfiles,
-    racePreps: racePrepsResult.rows,
-    racePrepEntries: racePrepEntriesResult.rows,
-    skiRaceUsages,
-    racePrepComments,
-    athleteRaceCalendar,
-    feedbackLinks,
-    userTeamPermissions,
-    watchQueue,
-    kickSkis,
-    kickTests,
-    kickTestEntries,
-    kickMixes,
+    meta: {
+      format: 2,
+      scope: 'team',
+      teamId,
+      teamName: team?.name ?? null,
+      exportedAt: new Date().toISOString(),
+      note: 'Complete team export. Every database table is discovered automatically at export time; tables without a team link are listed in skippedTables and are covered by the Super Admin full-system export.',
+      tableCounts: counts,
+      skippedTables: skipped,
+      sanitizedColumns: EXPORT_COLUMN_EXCLUDES,
+    },
+    tables,
+  }, null, 2);
+}
+
+// Full-system export (Super Admin): every table, every team, plus the global
+// tables that have no team link. Same engine, no team filter.
+export async function buildSystemJsonExport(): Promise<string> {
+  const { tables, counts, skipped } = await dumpAllTables(null, true);
+  return JSON.stringify({
+    meta: {
+      format: 2,
+      scope: 'system',
+      exportedAt: new Date().toISOString(),
+      note: 'Complete system export across all teams. Every database table is discovered automatically at export time.',
+      tableCounts: counts,
+      skippedTables: skipped,
+      sanitizedColumns: EXPORT_COLUMN_EXCLUDES,
+    },
+    tables,
   }, null, 2);
 }
 
@@ -981,6 +1027,7 @@ function buildExportHtml(data: {
   testSkiRegrinds: any[]; grindProfiles: any[]; grindingRecords: any[];
   grindingSheets: any[]; activities: any[]; loginLogs: any[];
   racePreps: any[]; racePrepEntries: any[]; raceUsage?: any[];
+  kickSkis?: any[]; kickTests?: any[]; kickEntries?: any[]; kickMixes?: any[]; fleetSkis?: any[];
 }): string {
   const productMap     = new Map(data.products.map((p: any)     => [p.id, p]));
   const raceSkiMap     = new Map(data.raceSkis.map((s: any)     => [s.id, s]));
@@ -1263,6 +1310,41 @@ function buildExportHtml(data: {
 
   // Weather
   if (data.weather.length > 0) {
+  // ── Kick (skis, tests, mixes) ──────────────────────────────────────────────
+  if (data.kickSkis?.length || data.kickTests?.length || data.kickMixes?.length) {
+    if (data.kickSkis?.length) {
+      body += htmlSection(`Kick Skis (${data.kickSkis.length})`, htmlTable(
+        ['Name', 'Brand', 'Grind', 'Heights', 'Type', 'Color', 'Notes', 'Archived'],
+        data.kickSkis.map((k: any) => [esc(k.name), esc(k.brand), esc(k.grind), esc(k.heights), esc(k.type_of_ski), esc(k.color), esc(k.notes), k.archived_at ? 'yes' : '']), true));
+    }
+    if (data.kickTests?.length) {
+      const kickSkiName = new Map<number, string>((data.kickSkis ?? []).map((k: any) => [k.id, k.name]));
+      let kickHtml = '';
+      for (const kt of data.kickTests) {
+        const w = kt.weather_id ? weatherById.get(kt.weather_id) : null;
+        kickHtml += `<p><strong>${esc(kt.date)} — ${esc(kt.location)}</strong>${kt.test_persons ? ' · ' + esc(kt.test_persons) : ''}${w ? ` · Snow ${esc((w as any).snowTemperatureC)}°C / Air ${esc((w as any).airTemperatureC)}°C` : ''}${kt.notes ? '<br/><em>' + esc(kt.notes) + '</em>' : ''}</p>`;
+        const entries = (data.kickEntries ?? []).filter((e: any) => e.kick_test_id === kt.id);
+        if (entries.length) {
+          kickHtml += htmlTable(['Ski', 'Binder', 'Kick solution', 'Feeling', 'Notes'],
+            entries.map((e: any) => [esc(kickSkiName.get(e.kick_ski_id) ?? e.kick_ski_id), esc(e.binder), esc(e.kick_solution), esc(e.feeling_rank), esc(e.feeling_notes)]), true);
+        }
+      }
+      body += htmlSection(`Kick Tests (${data.kickTests.length})`, kickHtml);
+    }
+    if (data.kickMixes?.length) {
+      body += htmlSection(`Kick Mixes (${data.kickMixes.length})`, htmlTable(
+        ['Name', 'Type', 'Hardwax', 'Roller temp', 'Products', 'Notes'],
+        data.kickMixes.map((m: any) => [esc(m.name), esc(m.mix_type), esc(m.hardwax), esc(m.roller_temperature), esc(m.products), esc(m.notes)]), true));
+    }
+  }
+
+  // ── Team race fleet (skis not tied to an athlete) ───────────────────────────
+  if (data.fleetSkis?.length) {
+    body += htmlSection(`Race Fleet — team skis (${data.fleetSkis.length})`, htmlTable(
+      ['Ski ID', 'Serial', 'Brand', 'Discipline', 'Construction', 'Mold', 'Base', 'Grind', 'Heights', 'Year', 'Length', 'Type', 'Sitski', 'Archived', 'Notes'],
+      data.fleetSkis.map((r: any) => [esc(r.ski_id), esc(r.serial_number), esc(r.brand), esc(r.discipline), esc(r.construction), esc(r.mold), esc(r.base), esc(r.grind), esc(r.heights), esc(r.year), esc(r.length), esc(r.type_of_ski), r.is_sitski ? 'yes' : '', r.archived_at ? 'yes' : '', esc(r.notes)]), true));
+  }
+
     body += htmlSection(`Weather Logs (${data.weather.length})`, htmlTable(
       ['Date', 'Time', 'Location', 'Snow °C', 'Air °C', 'Snow Hum%', 'Air Hum%', 'Clouds', 'Wind', 'Precip.', 'Snow Type', 'Grain', 'Track', 'Group'],
       data.weather.map((w: any) => {
@@ -1436,6 +1518,17 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
     entriesByTest[e.testId].push(e);
   }
 
+  // Kick + team race fleet — so the reference PDF covers every area.
+  const { pool: pdfPool } = await import('./db');
+  const pq = (sql: string) => (pdfPool as any).query(sql, [teamId]).then((r: any) => r.rows).catch(() => []);
+  const [kickSkis, kickTests, kickEntries, kickMixes, fleetSkis] = await Promise.all([
+    pq(`SELECT * FROM kick_skis WHERE team_id = $1 ORDER BY name`),
+    pq(`SELECT * FROM kick_tests WHERE team_id = $1 ORDER BY date DESC`),
+    pq(`SELECT * FROM kick_test_entries WHERE kick_test_id IN (SELECT id FROM kick_tests WHERE team_id = $1)`),
+    pq(`SELECT * FROM kick_mixes WHERE team_id = $1 ORDER BY name`),
+    pq(`SELECT * FROM race_skis WHERE athlete_id IS NULL AND team_id = $1 ORDER BY ski_id`),
+  ]);
+
   const allRaceSkisNested = await Promise.all(
     allAthletes.map((ath: any) =>
       storage.listAllRaceSkisIncludingArchived(ath.id)
@@ -1488,6 +1581,7 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
   ).catch(() => ({ rows: [] as any[] }));
 
   const html = buildExportHtml({
+    kickSkis, kickTests, kickEntries, kickMixes, fleetSkis,
     teamName: team?.name ?? 'Glidr',
     tests: allTests,
     entriesByTest,

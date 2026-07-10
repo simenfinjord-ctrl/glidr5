@@ -6035,15 +6035,19 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
                 {pdfLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
                 {pdfLoading ? L("Eksporterer…", "Exporting…") : L("Eksporter PDF", "Export PDF")}
               </Button>
-              <Button size="sm" variant="outline" onClick={async () => {
+              <Button size="sm" variant="outline" data-testid="button-export-json-data" onClick={async () => {
                 try {
-                  const res = await apiRequest("GET", `/api/admin/full-export${exportTeamScopeParam}`);
+                  // Complete export via the auto-discovering engine: every table,
+                  // per team — or the FULL SYSTEM when SA selects "All teams".
+                  const res = await apiRequest("GET", `/api/admin/export-json${exportTeamScopeParam}`);
                   const json = await res.text();
                   const blob = new Blob([json], { type: "application/json" });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement("a");
                   a.href = url;
-                  a.download = `glidr-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                  a.download = exportTeamScopeParam === "?teamScope=all"
+                    ? `glidr-system-backup-${new Date().toISOString().slice(0, 10)}.json`
+                    : `glidr-backup-${new Date().toISOString().slice(0, 10)}.json`;
                   a.click();
                   URL.revokeObjectURL(url);
                 } catch (err: any) {
@@ -6051,7 +6055,7 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
                 }
               }}>
                 <Download className="mr-2 h-3.5 w-3.5" />
-                {L("Last ned JSON", "Download JSON")}
+                {L("Last ned JSON (komplett)", "Download JSON (complete)")}
               </Button>
             </div>
           </div>

@@ -1552,6 +1552,36 @@ export async function registerRoutes(
   });
 
   // ── Download JSON export ──────────────────────────────────────────────────
+  // Complete JSON backup via the auto-discovering export engine.
+  //   ?teamScope=<id> / (TA: own team)  → complete team export
+  //   ?teamScope=all (SA only)          → complete FULL-SYSTEM export, every team
+  app.get("/api/admin/export-json", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const teamId = getAdminTeamScope(req);
+    const { buildTeamJsonExport, buildSystemJsonExport } = await import('./backup');
+    try {
+      await storage.createActivityLog({
+        userId: u.id, userName: u.name, action: "exported_full_data",
+        entityType: "team", entityId: teamId ?? 0,
+        details: teamId == null ? "Full SYSTEM export (JSON, all teams)" : "Complete team export (JSON)",
+        createdAt: new Date().toISOString(), groupScope: u.groupScope.split(",")[0]?.trim() ?? "", teamId: teamId ?? getActiveTeamId(req),
+      } as any);
+    } catch (_) {}
+    let json: string; let filename: string;
+    if (teamId == null) {
+      if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+      json = await buildSystemJsonExport();
+      filename = `glidr-system-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    } else {
+      json = await buildTeamJsonExport(teamId, u.isAdmin);
+      filename = `glidr-team-${teamId}-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    }
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(json);
+  });
+
   app.get("/api/teams/:id/export-json", requireAuth, async (req, res) => {
     const u = req.user!;
     const id = parseInt(req.params.id);
@@ -1561,7 +1591,7 @@ export async function registerRoutes(
     const team = await storage.getTeam(id);
     if (!team) return res.status(404).json({ message: "Not found" });
     const { buildTeamJsonExport } = await import('./backup');
-    const json = await buildTeamJsonExport(id);
+    const json = await buildTeamJsonExport(id, u.isAdmin === 1);
     const filename = `glidr-${team.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-data.json`;
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

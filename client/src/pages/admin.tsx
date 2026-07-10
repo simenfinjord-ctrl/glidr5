@@ -963,145 +963,228 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
     },
   });
 
+  // ── Tabbed layout (Profil / Rettigheter / Lag / Annet) ──
+  const [tab, setTab] = useState<"profile" | "perms" | "teams" | "other">("profile");
+  const teamHasWatch = (() => {
+    const t = teams.find((t) => t.id === selectedTeamId);
+    if (!t || !t.enabledAreas) return false;
+    try { return JSON.parse(t.enabledAreas).includes("garmin_watch"); } catch { return false; }
+  })();
+  const showTeamsTab = isSuperAdmin && teams.length > 1;
+  const showOtherTab = teamHasWatch || isSuperAdmin || !!(user as any).isAthleteAccess;
+  const roleValue = form.watch("isAdmin") ? "superadmin" : form.watch("isTeamAdmin") ? "teamadmin" : "member";
+  const applyEditRole = (v: string) => {
+    form.setValue("isAdmin", v === "superadmin");
+    form.setValue("isTeamAdmin", v === "teamadmin");
+    if (v === "teamadmin" || v === "superadmin") {
+      const full = Object.fromEntries(PERMISSION_AREAS.map((a) => [a, "edit"])) as UserPermissions;
+      setPerms(full);
+      form.setValue("permissions", JSON.stringify(full));
+    }
+  };
+  const editRoleOptions: { key: string; label: string; desc: string }[] = [
+    { key: "member", label: L("Medlem", "Member"), desc: L("Tilgang etter rettigheter", "Access per permissions") },
+    { key: "teamadmin", label: L("Lagadmin", "Team Admin"), desc: L("Full tilgang + admin", "Full access + admin") },
+    ...(isSuperAdmin ? [{ key: "superadmin", label: L("Superadmin", "Super Admin"), desc: L("Hele systemet", "Entire system") }] : []),
+  ];
+  const initials = (user.name || "?").split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+  const roleLabel = user.isAdmin ? "Super Admin" : user.isTeamAdmin ? L("Lagadmin", "Team Admin") : (user as any).isAthleteAccess ? L("Utøvertilgang", "Athlete Access") : L("Medlem", "Member");
+  const tabs: { key: typeof tab; label: string; badge?: number }[] = [
+    { key: "profile", label: L("Profil", "Profile") },
+    { key: "perms", label: L("Rettigheter", "Permissions") },
+    ...(showTeamsTab ? [{ key: "teams" as const, label: L("Lag", "Teams"), badge: memberTeamIds.length + 1 }] : []),
+    ...(showOtherTab ? [{ key: "other" as const, label: L("Annet", "Other") }] : []),
+  ];
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
-        <FormField control={form.control} name="name" render={({ field }) => (
-          <FormItem><FormLabel>{L("Navn", "Name")}</FormLabel><FormControl><Input {...field} data-testid="input-edit-name" /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="email" render={({ field }) => (
-          <FormItem><FormLabel>{L("E-post", "Email")}</FormLabel><FormControl><Input {...field} data-testid="input-edit-email" /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="username" render={({ field }) => (
-          <FormItem><FormLabel>{L("Brukernavn ", "Username ")}<span className="text-xs text-muted-foreground font-normal">(used for login)</span></FormLabel><FormControl><Input {...field} placeholder="e.g. johndoe" autoComplete="off" data-testid="input-edit-username" /></FormControl><FormMessage /></FormItem>
-        )} />
-        {isSuperAdmin && teams.length > 1 && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{L("Hovedlag", "Primary Team")}</label>
-            <Select
-              value={String(selectedTeamId)}
-              onValueChange={(v) => {
-                const newTeamId = parseInt(v);
-                setSelectedTeamId(newTeamId);
-                form.setValue("teamId", newTeamId);
-                form.setValue("groupScope", "");
-              }}
-            >
-              <SelectTrigger data-testid="select-edit-team"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {teams.map((t) => (
-                  <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Identity header */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{initials}</div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{user.name}</p>
+            <p className="truncate text-xs text-muted-foreground">{user.email} · {roleLabel}</p>
           </div>
-        )}
-        {isSuperAdmin && teams.length > 1 && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{L("Tilleggslag", "Additional Teams")}</label>
-            <div className="flex flex-wrap gap-2">
-              {teams.filter((t) => t.id !== selectedTeamId).map((t) => {
-                const isMember = memberTeamIds.includes(t.id);
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => isMember ? removeTeamMutation.mutate(t.id) : addTeamMutation.mutate(t.id)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all",
-                      isMember
-                        ? "border-green-300 bg-green-50 text-green-700"
-                        : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
-                    )}
-                  >
-                    {isMember ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                    {t.name}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-[11px] text-muted-foreground">{L("Klikk for å veksle tilgang. Brukeren kan bytte mellom hovedlag og tilleggslag.", "Click to toggle access. User can switch between primary and additional teams.")}</p>
-          </div>
-        )}
-        <FormField control={form.control} name="groupScope" render={({ field }) => (
-          <FormItem>
-            <FormLabel>{L("Grupper (velg én eller flere)", "Groups (select one or more)")}</FormLabel>
-            <FormControl>
-              <GroupCheckboxes
-                groupNames={groupNames}
-                selected={selectedGroups}
-                onChange={(groups) => field.onChange(groups.join(","))}
-                testIdPrefix="checkbox-edit-group"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )} />
-        <FormField control={form.control} name="isAdmin" render={() => (
-          <FormItem>
-            <FormLabel>{L("Rolle", "Role")}</FormLabel>
-            <Select
-              value={form.watch("isAdmin") ? "superadmin" : form.watch("isTeamAdmin") ? "teamadmin" : "member"}
-              onValueChange={(v) => {
-                form.setValue("isAdmin", v === "superadmin");
-                form.setValue("isTeamAdmin", v === "teamadmin");
-                if (v === "teamadmin" || v === "superadmin") {
-                  const full = Object.fromEntries(PERMISSION_AREAS.map((a) => [a, "edit"])) as UserPermissions;
-                  setPerms(full);
-                  form.setValue("permissions", JSON.stringify(full));
-                }
-              }}
+        </div>
+
+        {/* Tab bar */}
+        <div className="flex gap-0.5 border-b border-border">
+          {tabs.map((tb) => (
+            <button
+              key={tb.key}
+              type="button"
+              onClick={() => setTab(tb.key)}
+              data-testid={`edit-user-tab-${tb.key}`}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+                tab === tb.key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
             >
-              <FormControl><SelectTrigger data-testid="select-edit-role"><SelectValue /></SelectTrigger></FormControl>
-              <SelectContent>
-                <SelectItem value="member">{L("Medlem", "Member")}</SelectItem>
-                <SelectItem value="teamadmin">{L("Lagadmin", "Team Admin")}</SelectItem>
-                {isSuperAdmin && <SelectItem value="superadmin">{L("Superadmin", "Super Admin")}</SelectItem>}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
-        <PermissionsMatrix
-          value={perms}
-          onChange={(p) => { setPerms(p); form.setValue("permissions", JSON.stringify(p)); }}
-          testIdPrefix="select-edit-perm"
-          onPresetApplied={(blind) => form.setValue("isBlindTester", blind)}
-          disabledAreas={getTeamDisabledAreas(teams, selectedTeamId, isSuperAdmin)}
-        />
-        <FormField control={form.control} name="isBlindTester" render={({ field }) => (
-          <FormItem>
-            <div className="flex items-center gap-3">
-              <label
+              {tb.label}
+              {tb.badge != null && (
+                <span className="rounded-full border border-border bg-muted/50 px-1.5 text-[10px] text-muted-foreground">{tb.badge}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Profil ── */}
+        <div className={cn("space-y-3", tab !== "profile" && "hidden")}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField control={form.control} name="name" render={({ field }) => (
+              <FormItem><FormLabel>{L("Navn", "Name")}</FormLabel><FormControl><Input {...field} data-testid="input-edit-name" /></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="email" render={({ field }) => (
+              <FormItem><FormLabel>{L("E-post", "Email")}</FormLabel><FormControl><Input {...field} data-testid="input-edit-email" /></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="username" render={({ field }) => (
+              <FormItem><FormLabel>{L("Brukernavn", "Username")} <span className="text-xs text-muted-foreground font-normal">({L("brukes ved innlogging", "used for login")})</span></FormLabel><FormControl><Input {...field} placeholder="e.g. johndoe" autoComplete="off" data-testid="input-edit-username" /></FormControl><FormMessage /></FormItem>
+            )} />
+          </div>
+          <FormField control={form.control} name="isActive" render={({ field }) => (
+            <FormItem className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5 space-y-0">
+              <label htmlFor="toggle-active-edit" className="text-sm cursor-pointer select-none">{L("Aktiv konto", "Active account")}</label>
+              <FormControl><Switch id="toggle-active-edit" checked={field.value} onCheckedChange={field.onChange} data-testid="select-edit-status" /></FormControl>
+            </FormItem>
+          )} />
+        </div>
+
+        {/* ── Rettigheter ── */}
+        <div className={cn("space-y-3", tab !== "perms" && "hidden")}>
+          <div className={cn("grid gap-2", editRoleOptions.length === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2")} data-testid="select-edit-role">
+            {editRoleOptions.map((r) => (
+              <button
+                key={r.key}
+                type="button"
+                onClick={() => applyEditRole(r.key)}
+                data-testid={`edit-role-card-${r.key}`}
                 className={cn(
-                  "inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-all",
-                  field.value
-                    ? "border-orange-300 bg-orange-50 text-orange-700 ring-1 ring-orange-200"
-                    : "border-border bg-muted/30 text-muted-foreground hover:bg-background/50"
+                  "rounded-xl border px-3 py-2.5 text-left transition-all",
+                  roleValue === r.key ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "border-border hover:bg-muted/40"
                 )}
-                data-testid="checkbox-edit-blind-tester"
               >
-                <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} className="sr-only" />
-                <EyeOff className="h-3.5 w-3.5" />
+                <p className={cn("text-sm font-medium", roleValue === r.key ? "text-primary" : "text-foreground")}>{r.label}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{r.desc}</p>
+              </button>
+            ))}
+          </div>
+          {groupNames.length > 0 && (
+            <FormField control={form.control} name="groupScope" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{L("Grupper", "Groups")}</FormLabel>
+                <FormControl>
+                  <GroupCheckboxes
+                    groupNames={groupNames}
+                    selected={selectedGroups}
+                    onChange={(groups) => field.onChange(groups.join(","))}
+                    testIdPrefix="checkbox-edit-group"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          )}
+          <PermissionsMatrix
+            value={perms}
+            onChange={(p) => { setPerms(p); form.setValue("permissions", JSON.stringify(p)); }}
+            testIdPrefix="select-edit-perm"
+            onPresetApplied={(blind) => form.setValue("isBlindTester", blind)}
+            disabledAreas={getTeamDisabledAreas(teams, selectedTeamId, isSuperAdmin)}
+          />
+          <FormField control={form.control} name="isBlindTester" render={({ field }) => (
+            <FormItem className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5 space-y-0">
+              <label htmlFor="toggle-blind-edit" className="flex cursor-pointer items-center gap-2 text-sm select-none" title={L("Produkter og metodikk skjult for denne brukeren", "Products & methodology hidden from this user")}>
+                <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
                 {L("Blindtester", "Blind tester")}
               </label>
-              {field.value && (
-                <span className="text-[10px] text-muted-foreground">{L("Produkter og metodikk skjult for denne brukeren", "Products & methodology hidden from this user")}</span>
-              )}
+              <FormControl><Switch id="toggle-blind-edit" checked={field.value} onCheckedChange={field.onChange} data-testid="checkbox-edit-blind-tester" /></FormControl>
+            </FormItem>
+          )} />
+        </div>
+
+        {/* ── Lag ── */}
+        {showTeamsTab && (
+          <div className={cn("space-y-3", tab !== "teams" && "hidden")}>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{L("Hovedlag", "Primary Team")}</label>
+              <Select
+                value={String(selectedTeamId)}
+                onValueChange={(v) => {
+                  const newTeamId = parseInt(v);
+                  setSelectedTeamId(newTeamId);
+                  form.setValue("teamId", newTeamId);
+                  form.setValue("groupScope", "");
+                }}
+              >
+                <SelectTrigger data-testid="select-edit-team"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {teams.map((t) => (
+                    <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </FormItem>
-        )} />
-        {/* Garmin Watch Queue access toggle */}
-        {(() => {
-          const teamHasWatch = (() => {
-            const t = teams.find((t) => t.id === selectedTeamId);
-            if (!t || !t.enabledAreas) return false;
-            try { return JSON.parse(t.enabledAreas).includes("garmin_watch"); } catch { return false; }
-          })();
-          if (!teamHasWatch && !isSuperAdmin) return null;
-          return (
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{L("Tilgang til overvåkingskø", "Watch Queue Access")}</label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{L("Tilleggslag", "Additional Teams")}</label>
+              <div className="flex flex-wrap gap-2">
+                {teams.filter((t) => t.id !== selectedTeamId).map((t) => {
+                  const isMember = memberTeamIds.includes(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => isMember ? removeTeamMutation.mutate(t.id) : addTeamMutation.mutate(t.id)}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                        isMember
+                          ? "border-green-300 bg-green-50 text-green-700"
+                          : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
+                      )}
+                    >
+                      {isMember ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                      {t.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground">{L("Klikk for å veksle tilgang. Brukeren kan bytte mellom hovedlag og tilleggslag.", "Click to toggle access. User can switch between primary and additional teams.")}</p>
+            </div>
+            {memberTeamIds.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{L("Tilganger per lag", "Per-team Permissions")}</label>
+                <p className="text-[11px] text-muted-foreground">{L("Overstyr tilganger for bestemte lag denne brukeren tilhører.", "Override permissions for specific teams this user belongs to.")}</p>
+                <div className="space-y-2">
+                  {teams
+                    .filter((t) => memberTeamIds.includes(t.id))
+                    .map((t) => {
+                      const existingPerms = teamPermsData.find((p) => p.team_id === t.id);
+                      return (
+                        <TeamPermRow
+                          key={t.id}
+                          userId={user.id}
+                          team={t}
+                          existingPerms={existingPerms?.permissions ?? null}
+                          existingGroupScope={existingPerms?.group_scope ?? null}
+                          existingIsTeamAdmin={!!(existingPerms as any)?.isTeamAdmin}
+                          allTeams={teams}
+                          isExpanded={expandedTeamPerms === t.id}
+                          onToggle={() => setExpandedTeamPerms(expandedTeamPerms === t.id ? null : t.id)}
+                          onSaved={refetchTeamPerms}
+                          onReset={() => { refetchTeamPerms(); setExpandedTeamPerms(null); }}
+                        />
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Annet ── */}
+        {showOtherTab && (
+          <div className={cn("space-y-3", tab !== "other" && "hidden")}>
+            {(teamHasWatch || isSuperAdmin) && (
               <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5">
                 <div>
                   <div className="text-sm font-medium flex items-center gap-1.5">
@@ -1113,68 +1196,23 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
                     {!teamHasWatch && <span className="ml-1 text-amber-600">(team feature not enabled)</span>}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => garminWatchMutation.mutate(!garminWatchOn)}
+                <Switch
+                  checked={garminWatchOn}
+                  onCheckedChange={() => garminWatchMutation.mutate(!garminWatchOn)}
                   disabled={garminWatchMutation.isPending}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none ${garminWatchOn ? "bg-sky-500" : "bg-muted-foreground/30"}`}
-                  role="switch"
-                  aria-checked={garminWatchOn}
                   data-testid={`toggle-garmin-watch-${user.id}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${garminWatchOn ? "translate-x-6" : "translate-x-1"}`} />
-                </button>
+                />
               </div>
-            </div>
-          );
-        })()}
-
-        {/* Per-team permissions for multi-team users */}
-        {isSuperAdmin && memberTeamIds.length > 0 && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{L("Tilganger per lag", "Per-team Permissions")}</label>
-            <p className="text-[11px] text-muted-foreground">{L("Overstyr tilganger for bestemte lag denne brukeren tilhører.", "Override permissions for specific teams this user belongs to.")}</p>
-            <div className="space-y-2">
-              {teams
-                .filter((t) => memberTeamIds.includes(t.id))
-                .map((t) => {
-                  const existingPerms = teamPermsData.find((p) => p.team_id === t.id);
-                  return (
-                    <TeamPermRow
-                      key={t.id}
-                      userId={user.id}
-                      team={t}
-                      existingPerms={existingPerms?.permissions ?? null}
-                      existingGroupScope={existingPerms?.group_scope ?? null}
-                      existingIsTeamAdmin={!!(existingPerms as any)?.isTeamAdmin}
-                      allTeams={teams}
-                      isExpanded={expandedTeamPerms === t.id}
-                      onToggle={() => setExpandedTeamPerms(expandedTeamPerms === t.id ? null : t.id)}
-                      onSaved={refetchTeamPerms}
-                      onReset={() => { refetchTeamPerms(); setExpandedTeamPerms(null); }}
-                    />
-                  );
-                })}
-            </div>
+            )}
+            {!!(user as any).isAthleteAccess && <ShareAccountAthletesEditor userId={user.id} />}
           </div>
         )}
 
-        <FormField control={form.control} name="isActive" render={({ field }) => (
-          <FormItem>
-            <FormLabel>{L("Status", "Status")}</FormLabel>
-            <Select value={field.value ? "active" : "inactive"} onValueChange={(v) => field.onChange(v === "active")}>
-              <FormControl><SelectTrigger data-testid="select-edit-status"><SelectValue /></SelectTrigger></FormControl>
-              <SelectContent>
-                <SelectItem value="active">{L("Aktiv", "Active")}</SelectItem>
-                <SelectItem value="inactive">{L("Inaktiv", "Inactive")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
-        {!!(user as any).isAthleteAccess && <ShareAccountAthletesEditor userId={user.id} />}
-        <div className="flex justify-end">
-          <Button type="submit" data-testid="button-save-user" disabled={mutation.isPending}>{L("Lagre", "Save")}</Button>
+        {/* Sticky footer */}
+        <div className="sticky bottom-0 -mx-6 -mb-6 mt-2 flex items-center justify-end gap-3 border-t border-border bg-background px-6 py-3">
+          <Button type="submit" data-testid="button-save-user" disabled={mutation.isPending}>
+            {mutation.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}
+          </Button>
         </div>
       </form>
     </Form>

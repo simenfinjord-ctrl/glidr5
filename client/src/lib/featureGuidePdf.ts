@@ -124,7 +124,7 @@ export function generateFeatureGuidePDF(): void {
   <p>This document describes proprietary features, workflows, data models, and user-experience patterns developed by Glidr. Any use of this document — in whole or in part — to design, develop, or improve a competing ski-testing, wax-management, or athlete-performance platform is expressly prohibited.</p>
   <h3>Access &amp; Permissions</h3>
   <p>Access to the features described here depends on your account role and the permissions configured for your team. Features marked <span class="badge badge-ta">★ Team Admin</span> require Team Admin privileges; features marked <span class="badge badge-sa">◆ Super Admin</span> are exclusive to Super Admins.</p>
-  <div class="box box-warning"><strong>Super Admin access:</strong> Super Admins manage the platform but do not have direct access to an individual team's test data, products, or internal records. They rely on team feedback when investigating issues.</div>
+  <div class="box box-warning"><strong>Super Admin access &amp; transparency:</strong> Super Admins manage the platform and can, for support purposes, enter a team's workspace. Every such visit is <strong>always recorded in that team's activity log</strong> — visible to the team's admins as a "support access" entry — with no exceptions. Your team always knows if and when platform support has looked at your workspace.</div>
   <p class="muted">© 2025 Glidr. All rights reserved.</p>
 
   <!-- PRODUCT IN ACTION -->

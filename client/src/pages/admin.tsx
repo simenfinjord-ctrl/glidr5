@@ -5322,17 +5322,18 @@ export default function Admin() {
                     <tbody>
                       {filteredActivities.slice(0, 1000).map((a) => {
                         const isDelete = a.action === "deleted";
+                        const isSaAccess = a.action === "sa_access";
                         const hasSnap = !!a.snapshot;
                         const open = expandedActivity === a.id;
                         let pretty = "";
                         if (hasSnap) { try { pretty = JSON.stringify(JSON.parse(a.snapshot as string), null, 2); } catch { pretty = a.snapshot as string; } }
                         return (
                         <React.Fragment key={a.id}>
-                        <tr className={cn("border-b border-border", isDelete && "bg-red-50/40 dark:bg-red-950/10", hasSnap && "cursor-pointer")} data-testid={`row-activitylog-${a.id}`} onClick={hasSnap ? () => setExpandedActivity(open ? null : a.id) : undefined}>
+                        <tr className={cn("border-b border-border", isDelete && "bg-red-50/40 dark:bg-red-950/10", isSaAccess && "bg-indigo-50/40 dark:bg-indigo-950/10", hasSnap && "cursor-pointer")} data-testid={`row-activitylog-${a.id}`} onClick={hasSnap ? () => setExpandedActivity(open ? null : a.id) : undefined}>
                           <td className="py-2 pr-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(a.createdAt).toLocaleString()}</td>
                           <td className="py-2 pr-3 font-medium text-foreground">{a.userName}</td>
                           <td className="py-2 pr-3">
-                            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1", isDelete ? "bg-red-50 text-red-700 ring-red-200 dark:bg-red-950/30 dark:text-red-300" : "bg-green-50 text-green-700 ring-green-200")}>{a.action}</span>
+                            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1", isDelete ? "bg-red-50 text-red-700 ring-red-200 dark:bg-red-950/30 dark:text-red-300" : isSaAccess ? "bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-300" : "bg-green-50 text-green-700 ring-green-200")}>{isSaAccess ? "support access" : a.action}</span>
                           </td>
                           <td className="py-2 pr-3">
                             {a.entityType && (

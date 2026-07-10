@@ -1645,6 +1645,29 @@ export async function registerRoutes(
       delete (req.session as any).incognitoBeforeStealth;
     }
 
+    // Access-transparency log ("innsynslogg"): when a Super Admin enters a team
+    // they are not a member of, the visit is recorded in THAT team's activity
+    // log — visible to the team's admins. ALWAYS logged, including stealth and
+    // incognito: trust through transparency, never silent access. Throttled to
+    // one entry per SA+team per hour so repeated switching doesn't spam.
+    if (u.isAdmin === 1 && !isExplicitMember) {
+      try {
+        const { pool: pAcc } = await import("./db");
+        const recent = await (pAcc as any).query(
+          `SELECT id FROM activity_logs WHERE action = 'sa_access' AND user_id = $1 AND team_id = $2 AND created_at >= $3 LIMIT 1`,
+          [u.id, teamId, new Date(Date.now() - 3600000).toISOString()]
+        );
+        if (recent.rows.length === 0) {
+          await storage.createActivityLog({
+            userId: u.id, userName: u.name, action: "sa_access",
+            entityType: "team", entityId: teamId,
+            details: "Glidr support (Super Admin) accessed this team's workspace",
+            createdAt: new Date().toISOString(), groupScope: "", teamId,
+          } as any);
+        }
+      } catch (e) { console.error("[access-log] failed:", e); }
+    }
+
     // Resolve per-team permissions and group scope for users switching to a non-primary team
     if (u.isAdmin !== 1 && teamId !== u.teamId) {
       try {

@@ -1,8 +1,9 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 // One-time blocking Terms & Policy acceptance. Every user (existing and new)
 // must accept once before continuing; acceptance is recorded server-side with
-// timestamp + version as legal evidence. Bump TERMS_VERSION if the terms change
-// materially and users must re-accept.
+// timestamp + version as legal evidence. Bump CURRENT_TERMS_VERSION in
+// shared/schema.ts if the terms change materially — everyone re-accepts, and
+// the server blocks mutating API calls until they do.
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { FileText, ExternalLink } from "lucide-react";
@@ -11,8 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-
-export const TERMS_VERSION = "2026-07";
+import { CURRENT_TERMS_VERSION } from "@shared/schema";
 
 export function TermsGate() {
   const { user } = useAuth();
@@ -22,14 +22,17 @@ export function TermsGate() {
 
   const acceptMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/auth/accept-terms", { version: TERMS_VERSION });
+      const res = await apiRequest("POST", "/api/auth/accept-terms", { version: CURRENT_TERMS_VERSION });
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
   });
 
-  // Only gate logged-in users who have never accepted.
-  if (!user || user.termsAcceptedAt) return null;
+  // Gate users who never accepted, AND everyone again when the terms version
+  // is bumped (material changes require fresh consent).
+  const accepted = !!user?.termsAcceptedAt && (user as any)?.termsAcceptedVersion === CURRENT_TERMS_VERSION;
+  if (!user || accepted) return null;
+  const isUpdate = !!user.termsAcceptedAt; // accepted before, but an older version
 
   return (
     <Dialog open>
@@ -46,8 +49,15 @@ export function TermsGate() {
           </div>
           <div>
             <h2 className="text-base font-semibold text-foreground">
-              {L("Vilkår og retningslinjer", "Terms & Policy")}
+              {isUpdate
+                ? L("Vilkårene er oppdatert", "The terms have been updated")
+                : L("Vilkår og retningslinjer", "Terms & Policy")}
             </h2>
+            {isUpdate && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {L(`Ny versjon: ${CURRENT_TERMS_VERSION}. Du må akseptere på nytt for å fortsette.`, `New version: ${CURRENT_TERMS_VERSION}. Please accept again to continue.`)}
+              </p>
+            )}
             <p className="mt-2 text-sm text-muted-foreground">
               {L(
                 "Ved å gå videre aksepterer du Glidrs vilkår og retningslinjer. Dette inkluderer at tjenesten kan bli betalingsbelagt, og at priser kan innføres eller endres med varsel. Fortsatt bruk etter en slik endring regnes som aksept.",

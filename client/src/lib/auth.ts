@@ -55,6 +55,7 @@ type User = {
   linkedAthleteId?: number | null;
   canViewAllTeams?: boolean;
   termsAcceptedAt?: string | null;
+  termsAcceptedVersion?: string | null;
 };
 
 export function useAuth() {

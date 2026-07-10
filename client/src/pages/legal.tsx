@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { PublicNav } from "@/components/public-nav";
 import { useLanguage } from "@/lib/language";
+import { CURRENT_TERMS_VERSION } from "@shared/schema";
 
 const sections = [
   { id: "bruksvilkar", no: "Bruksvilkår", en: "Terms of Service" },
@@ -26,10 +27,10 @@ export default function Legal() {
               {lang === "no" ? "Vilkår og personvern" : "Terms & Privacy"}
             </h1>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground" data-testid="legal-version">
             {lang === "no"
-              ? `Sist oppdatert: mai 2026 · Glidr drives av Simen Finjord, Norge`
-              : `Last updated: May 2026 · Glidr is operated by Simen Finjord, Norway`}
+              ? `Versjon ${CURRENT_TERMS_VERSION} · Sist oppdatert: juli 2026 · Glidr drives av Simen Finjord, Norge`
+              : `Version ${CURRENT_TERMS_VERSION} · Last updated: July 2026 · Glidr is operated by Simen Finjord, Norway`}
           </p>
 
           {/* Nav */}

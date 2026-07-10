@@ -8,7 +8,7 @@ import { type Express, type Request } from "express";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { pool } from "./db";
-import { type User, type UserPermissions, DEFAULT_PERMISSIONS, ADMIN_PERMISSIONS } from "@shared/schema";
+import { type User, type UserPermissions, DEFAULT_PERMISSIONS, ADMIN_PERMISSIONS, CURRENT_TERMS_VERSION } from "@shared/schema";
 
 export async function hashPassword(plain: string): Promise<string> {
   return bcrypt.hash(plain, 10);
@@ -125,6 +125,21 @@ export async function setupAuth(app: Express) {
       }
     } catch {}
     next();
+  });
+
+  // Server-side terms enforcement: mutating API calls are blocked until the
+  // user has accepted the CURRENT terms version. GETs pass so the app can
+  // render and show the acceptance gate; auth/logging endpoints are exempt so
+  // the gate itself (and error reporting) keeps working.
+  const TERMS_EXEMPT_PREFIXES = ["/api/auth/", "/api/client-errors", "/api/action-log"];
+  app.use((req, res, next) => {
+    if (!req.path.startsWith("/api")) return next();
+    if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return next();
+    if (!req.isAuthenticated?.() || !req.user) return next();
+    const u = req.user as any;
+    if (u.termsAcceptedAt && u.termsAcceptedVersion === CURRENT_TERMS_VERSION) return next();
+    if (TERMS_EXEMPT_PREFIXES.some((p) => req.path.startsWith(p))) return next();
+    return res.status(403).json({ message: "Terms must be accepted before using the service", code: "TERMS_NOT_ACCEPTED" });
   });
 
   passport.use(
@@ -348,7 +363,7 @@ export async function setupAuth(app: Express) {
     const effectiveIsTeamAdmin = safe.isAdmin === 1
       ? safe.isTeamAdmin
       : (activeTid === safe.teamId ? safe.isTeamAdmin : (((req.session as any)?.activeTeamIsAdmin) ? 1 : 0));
-    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: effectiveIsTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat, isAthleteAccess: !!(safe as any).isAthleteAccess, linkedAthleteId: (safe as any).linkedAthleteId ?? null, editableAthleteIds, canViewAllTeams: !!(safe as any).canViewAllTeams, termsAcceptedAt: (safe as any).termsAcceptedAt ?? null });
+    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: effectiveIsTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat, isAthleteAccess: !!(safe as any).isAthleteAccess, linkedAthleteId: (safe as any).linkedAthleteId ?? null, editableAthleteIds, canViewAllTeams: !!(safe as any).canViewAllTeams, termsAcceptedAt: (safe as any).termsAcceptedAt ?? null, termsAcceptedVersion: (safe as any).termsAcceptedVersion ?? null, currentTermsVersion: CURRENT_TERMS_VERSION });
   });
 
   // One-time acceptance of the Terms & Policy. Stores a server-side timestamp +
@@ -357,22 +372,24 @@ export async function setupAuth(app: Express) {
     if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    const version = String(req.body?.version ?? "1").slice(0, 32);
+    // The server is the source of truth for which version was accepted.
+    const version = CURRENT_TERMS_VERSION;
     const now = new Date().toISOString();
+    const device = String(req.headers["user-agent"] ?? "").slice(0, 150);
     try {
       const { pool } = await import("./db");
       await (pool as any).query(
         "UPDATE users SET terms_accepted_at = $1, terms_accepted_version = $2 WHERE id = $3",
         [now, version, req.user.id]
       );
-      // Audit trail — never skipped, this is the legal record.
+      // Audit trail — never skipped, this is the legal record (incl. device context).
       await storage.createActivityLog({
         userId: req.user.id, userName: req.user.name, action: "accepted_terms",
         entityType: "user", entityId: req.user.id,
-        details: `Accepted Terms & Policy (version ${version})`,
+        details: `Accepted Terms & Policy (version ${version})${device ? ` — ${device}` : ""}`,
         createdAt: now, groupScope: req.user.groupScope ?? "", teamId: req.user.teamId,
       } as any).catch(() => {});
-      res.json({ ok: true, termsAcceptedAt: now });
+      res.json({ ok: true, termsAcceptedAt: now, termsAcceptedVersion: version });
     } catch (e) {
       console.error("[terms] accept failed:", e);
       res.status(500).json({ message: "Could not record acceptance" });

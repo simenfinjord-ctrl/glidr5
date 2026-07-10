@@ -5,6 +5,11 @@ import { z } from "zod";
 
 export * from "./models/chat";
 
+// Current version of the Terms & Policy. Bump this when the terms change
+// materially — every user is then re-prompted to accept, and the server blocks
+// mutating API calls until they do. Shared so client and server always agree.
+export const CURRENT_TERMS_VERSION = "2026-07";
+
 export const PERMISSION_AREAS = ["dashboard", "tests", "testskis", "products", "weather", "analytics", "grinding", "raceskis", "kick", "raceprep", "raceprepGlide", "suggestions", "liverunsheets"] as const;
 export type PermissionArea = typeof PERMISSION_AREAS[number];
 export type PermissionLevel = "none" | "view" | "edit";

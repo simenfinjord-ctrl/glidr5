@@ -813,12 +813,15 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
     // ── Reorder sheets logically ──────────────────────────────────────────────
     await reorderSheets(sheets, spreadsheetId, orderedTitles);
 
-    await storage.updateTeam(teamId, { lastBackupAt: now });
+    // Success clears any previous failure so the status card shows ✓ truthfully.
+    await storage.updateTeam(teamId, { lastBackupAt: now, lastBackupError: null, lastBackupErrorAt: null } as any);
     return { success: true };
 
   } catch (err: any) {
     console.error('[Backup] Error for team', teamId, err);
-    return { success: false, error: err.message || 'Unknown error' };
+    const msg = (err.message || 'Unknown error').slice(0, 300);
+    await storage.updateTeam(teamId, { lastBackupError: msg, lastBackupErrorAt: new Date().toISOString() } as any).catch(() => {});
+    return { success: false, error: msg };
   }
 }
 
@@ -1594,9 +1597,14 @@ export async function runDriveBackupForTeam(teamId: number): Promise<{ success: 
     }
 
     // ── Save file IDs to DB ────────────────────────────────────────────────
+    // A successful Drive backup counts as a successful backup (some teams use
+    // only the Drive folder), so it also refreshes the ✓-status and clears errors.
     await storage.updateTeam(teamId, {
       driveJsonFileId: jsonFileId,
       drivePdfFileId: pdfFileId ?? undefined,
+      lastBackupAt: new Date().toISOString(),
+      lastBackupError: null,
+      lastBackupErrorAt: null,
     } as any);
 
     console.log(`[DriveBackup] Done for team ${teamId} — JSON: ${jsonFileId}, PDF: ${pdfFileId ?? 'failed'}`);
@@ -1604,7 +1612,9 @@ export async function runDriveBackupForTeam(teamId: number): Promise<{ success: 
 
   } catch (err: any) {
     console.error('[DriveBackup] Error for team', teamId, err);
-    return { success: false, error: err.message || 'Unknown error' };
+    const msg = `[Drive] ${(err.message || 'Unknown error')}`.slice(0, 300);
+    await storage.updateTeam(teamId, { lastBackupError: msg, lastBackupErrorAt: new Date().toISOString() } as any).catch(() => {});
+    return { success: false, error: msg };
   }
 }
 

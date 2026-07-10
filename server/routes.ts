@@ -402,6 +402,8 @@ export async function registerRoutes(
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_version TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_backup_error TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_backup_error_at TEXT;
       ALTER TABLE login_logs ADD COLUMN IF NOT EXISTS user_agent TEXT;
       ALTER TABLE login_logs ADD COLUMN IF NOT EXISTS device_id TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS feeling_note TEXT;

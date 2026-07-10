@@ -202,6 +202,10 @@ export const teams = pgTable("teams", {
   superAdminAccess: integer("super_admin_access").notNull().default(1),
   backupSheetUrl: text("backup_sheet_url"),
   lastBackupAt: text("last_backup_at"),
+  // Visible backup verification: latest failure (message + when). Cleared on
+  // the next successful backup so the status card can show ✓ / ⚠ truthfully.
+  lastBackupError: text("last_backup_error"),
+  lastBackupErrorAt: text("last_backup_error_at"),
   productSheetUrl: text("product_sheet_url"),
   productSheetGroup: text("product_sheet_group"),
   lastProductSyncAt: text("last_product_sync_at"),

@@ -69,6 +69,8 @@ type ApiTeam = {
   enabledAreas: string | null;
   backupSheetUrl: string | null;
   lastBackupAt: string | null;
+  lastBackupError?: string | null;
+  lastBackupErrorAt?: string | null;
   isPaused?: number;
   // Billing fields (camelCase from Drizzle)
   planName?: string;
@@ -5036,11 +5038,35 @@ export default function Admin() {
                           <span className="ml-1 text-xs">{L("Sikkerhetskopi", "Backup")}</span>
                         </Button>
                       </div>
-                      {team.lastBackupAt && (
-                        <div className="text-[10px] text-muted-foreground">
-                          Last backup: {new Date(team.lastBackupAt).toLocaleString()}
-                        </div>
-                      )}
+                      {/* Visible backup verification: ✓ on success, ⚠ + reason on failure. */}
+                      {(() => {
+                        const errAt = team.lastBackupErrorAt ? new Date(team.lastBackupErrorAt).getTime() : 0;
+                        const okAt = team.lastBackupAt ? new Date(team.lastBackupAt).getTime() : 0;
+                        const failing = !!team.lastBackupError && errAt >= okAt;
+                        if (failing) {
+                          return (
+                            <div className="rounded-md bg-red-50 dark:bg-red-950/30 px-2 py-1 text-[10px] text-red-700 dark:text-red-300" data-testid={`backup-status-${team.id}`}>
+                              ⚠ {L("Siste backup FEILET", "Last backup FAILED")} {team.lastBackupErrorAt ? new Date(team.lastBackupErrorAt).toLocaleString() : ""} — {team.lastBackupError}
+                              {okAt > 0 && <span className="block text-red-600/70 dark:text-red-400/70">{L("Siste vellykkede:", "Last successful:")} {new Date(team.lastBackupAt!).toLocaleString()}</span>}
+                            </div>
+                          );
+                        }
+                        if (okAt > 0) {
+                          return (
+                            <div className="rounded-md bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 text-[10px] text-emerald-700 dark:text-emerald-300" data-testid={`backup-status-${team.id}`}>
+                              ✓ {L("Siste vellykkede backup:", "Last successful backup:")} {new Date(team.lastBackupAt!).toLocaleString()}
+                            </div>
+                          );
+                        }
+                        if (team.backupSheetUrl || (team as any).driveFolderId) {
+                          return (
+                            <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 px-2 py-1 text-[10px] text-amber-700 dark:text-amber-300" data-testid={`backup-status-${team.id}`}>
+                              {L("Konfigurert — ingen backup fullført ennå", "Configured — no backup completed yet")}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   );
                 })}

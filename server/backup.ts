@@ -820,7 +820,9 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
   } catch (err: any) {
     console.error('[Backup] Error for team', teamId, err);
     const msg = (err.message || 'Unknown error').slice(0, 300);
+    const wasHealthy = !team.lastBackupError;
     await storage.updateTeam(teamId, { lastBackupError: msg, lastBackupErrorAt: new Date().toISOString() } as any).catch(() => {});
+    if (wasHealthy) await notifyBackupFailure(teamId, team.name, msg);
     return { success: false, error: msg };
   }
 }
@@ -1613,9 +1615,31 @@ export async function runDriveBackupForTeam(teamId: number): Promise<{ success: 
   } catch (err: any) {
     console.error('[DriveBackup] Error for team', teamId, err);
     const msg = `[Drive] ${(err.message || 'Unknown error')}`.slice(0, 300);
+    const wasHealthy = !team.lastBackupError;
     await storage.updateTeam(teamId, { lastBackupError: msg, lastBackupErrorAt: new Date().toISOString() } as any).catch(() => {});
+    if (wasHealthy) await notifyBackupFailure(teamId, team.name, msg);
     return { success: false, error: msg };
   }
+}
+
+// Notify every active Super Admin (in-app inbox) when a team's backup STARTS
+// failing. Only fires on the transition healthy→failing so the 30-min scheduler
+// doesn't spam; the status card in Admin → Backup shows the ongoing state.
+async function notifyBackupFailure(teamId: number, teamName: string | null | undefined, message: string): Promise<void> {
+  try {
+    const { pool } = await import('./db');
+    const sas = await (pool as any).query(`SELECT id FROM users WHERE is_admin = 1 AND is_active = 1`);
+    const now = new Date().toISOString();
+    const subject = `⚠ Backup failed${teamName ? ` — ${teamName}` : ''}`;
+    const body = `The scheduled backup for ${teamName ?? `team ${teamId}`} failed: ${message}\n\nIt will keep retrying automatically. See Admin → Backup for the current status.`;
+    for (const r of sas.rows) {
+      await (pool as any).query(
+        `INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at, team_name)
+         VALUES ($1, 'Glidr System', $2, $3, 0, $4, $5)`,
+        [r.id, subject, body, now, teamName ?? null]
+      );
+    }
+  } catch (e) { console.error('[Backup] failure notification failed:', e); }
 }
 
 const backupIntervals: Record<number, NodeJS.Timeout> = {};

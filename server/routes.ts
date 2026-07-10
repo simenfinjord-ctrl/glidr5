@@ -202,9 +202,15 @@ function userHasGroupAccess(userGroupScope: string, isAdmin: boolean, recordGrou
 }
 
 function verifyTeamOwnership(record: any, req: Request): boolean {
-  if (!record || record.teamId == null) return true;
+  if (!record) return true;
   const u = req.user!;
   if (u.isAdmin === 1) return true;
+  // A record whose teamId column is explicitly NULL belongs to no team and is
+  // denied for non-SA (legacy safety net — team columns are NOT NULL today).
+  // `undefined` means the record type simply has no teamId field; those checks
+  // are handled elsewhere, so we don't block them here.
+  if (record.teamId === null) return false;
+  if (record.teamId === undefined) return true;
   const teamId = getActiveTeamId(req);
   return record.teamId === teamId;
 }
@@ -302,6 +308,39 @@ async function recordDeletion(req: Request, entityType: string, entityId: number
       groupScope: u.groupScope, teamId: getActiveTeamId(req),
     } as any);
   } catch (e) { console.error("[audit] recordDeletion failed:", e); }
+}
+
+// Change-audit: record an EDIT with a before/after snapshot of only the fields
+// that actually changed. ALWAYS logs — never skipped by incognito — so admins
+// can see exactly who changed what, and what the value was before.
+async function recordChange(req: Request, entityType: string, entityId: number | null, label: string, before: any, after: any): Promise<void> {
+  try {
+    if (!before || !after) return;
+    const changedBefore: Record<string, unknown> = {};
+    const changedAfter: Record<string, unknown> = {};
+    const keys = new Set<string>([...Object.keys(before ?? {}), ...Object.keys(after ?? {})]);
+    keys.delete("password");
+    for (const k of keys) {
+      const b = (before as any)[k];
+      const a = (after as any)[k];
+      let same = false;
+      try { same = JSON.stringify(b ?? null) === JSON.stringify(a ?? null); } catch { same = b === a; }
+      if (!same) { changedBefore[k] = b ?? null; changedAfter[k] = a ?? null; }
+    }
+    const changedKeys = Object.keys(changedAfter);
+    if (changedKeys.length === 0) return; // nothing actually changed
+    let snap: string | null = null;
+    try { snap = JSON.stringify({ before: changedBefore, after: changedAfter }); } catch { snap = null; }
+    if (snap && snap.length > 40000) snap = snap.slice(0, 40000) + "…";
+    const u = userInfo(req);
+    await storage.createActivityLog({
+      userId: u.id, userName: u.name, action: "updated",
+      entityType, entityId: entityId ?? 0,
+      details: `${label} — ${changedKeys.join(", ")}`, snapshot: snap,
+      createdAt: new Date().toISOString(),
+      groupScope: u.groupScope, teamId: getActiveTeamId(req),
+    } as any);
+  } catch (e) { console.error("[audit] recordChange failed:", e); }
 }
 
 function resolveCreateGroupScope(req: Request): string {
@@ -1911,6 +1950,7 @@ export async function registerRoutes(
     if (req.body.name !== undefined) data.name = req.body.name;
     const updated = await storage.updateProduct(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });
+    await recordChange(req, "product", id, `Product edited: ${existing.brand ?? ""} ${existing.name ?? ""}`.trim(), existing, updated);
     res.json(updated);
   });
 
@@ -2397,6 +2437,7 @@ export async function registerRoutes(
       testQuality: req.body.testQuality ?? null,
       snowType: req.body.snowType?.trim() || null,
     });
+    await recordChange(req, "weather", id, `Weather edited: ${existing.location} (${existing.date})`, existing, updated);
     res.json(updated);
   });
 
@@ -3150,6 +3191,7 @@ export async function registerRoutes(
     }
 
     const updated = await storage.updateTest(id, testData);
+    await recordChange(req, "test", id, `Test edited: ${(existing as any).testName || existing.location} (${existing.date})`, existing, updated);
 
     if (req.body.entries) {
       await storage.deleteEntriesByTestId(id);
@@ -6276,8 +6318,10 @@ export async function registerRoutes(
     if (req.body.skiServicePreferences !== undefined) data.skiServicePreferences = req.body.skiServicePreferences || null;
     if (req.body.sportClass !== undefined) data.sportClass = req.body.sportClass || null;
     if (req.body.archived !== undefined) data.archived = req.body.archived ? 1 : 0;
+    const before = await storage.getAthlete(id);
     const updated = await storage.updateAthlete(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });
+    await recordChange(req, "athlete", id, `Athlete edited: ${updated.name}`, before, updated);
     res.json(updated);
   });
 
@@ -6518,6 +6562,7 @@ export async function registerRoutes(
     if (req.body.isTrainingSki !== undefined) data.isTrainingSki = req.body.isTrainingSki ? 1 : 0;
     if (req.body.customParams !== undefined) data.customParams = req.body.customParams;
     const updated = await storage.updateRaceSki(id, data);
+    await recordChange(req, "race_ski", id, `Race ski edited: ${ski.skiId}${ski.brand ? ` (${ski.brand})` : ""}`, ski, updated);
     res.json(updated);
   });
 

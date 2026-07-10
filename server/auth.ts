@@ -93,8 +93,11 @@ export async function setupAuth(app: Express) {
       httpOnly: true,
       maxAge: DEFAULT_MAX_AGE,
       secure: process.env.SCREENSHOT_MODE === "1" ? false : true,
-      sameSite: process.env.SCREENSHOT_MODE === "1" ? "lax" as const : "none" as const,
-      ...(process.env.SCREENSHOT_MODE === "1" ? {} : { partitioned: true }),
+      // CSRF protection: "lax" means the session cookie is NOT sent on
+      // cross-site POST/PUT/DELETE, so a malicious site cannot fire
+      // authenticated writes. Glidr is served same-origin and is never
+      // embedded in iframes, so "none"/partitioned is not needed.
+      sameSite: "lax" as const,
     } as any,
     store: new PgStore({
       pool: pool as any,

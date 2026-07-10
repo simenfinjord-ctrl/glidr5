@@ -5,10 +5,14 @@ import {
   removeMutation,
   getMutationCount,
   addFailedMutation,
+  getAllFailedMutations,
+  removeFailedMutation,
+  getFailedCount,
   setCachedData,
   getCachedData,
   generateId,
   type QueuedMutation,
+  type FailedMutation,
 } from "./offline-db";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "./language";
@@ -17,7 +21,11 @@ import { queryClient } from "./queryClient";
 interface OfflineContextValue {
   isOnline: boolean;
   pendingCount: number;
+  failedCount: number;
   isSyncing: boolean;
+  getFailedList: () => Promise<FailedMutation[]>;
+  retryFailed: (id: string) => Promise<void>;
+  dismissFailed: (id: string) => Promise<void>;
   queueMutation: (method: string, url: string, body?: unknown, description?: string) => Promise<void>;
   syncNow: () => Promise<void>;
   cacheQueryData: (key: string, data: unknown) => Promise<void>;
@@ -46,6 +54,7 @@ const PREFETCH_KEYS = [
 export function OfflineProvider({ children }: { children: ReactNode }) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingCount, setPendingCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const { toast } = useToast();
   const { lang } = useLanguage();
@@ -58,6 +67,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const refreshCount = useCallback(async () => {
     const count = await getMutationCount();
     setPendingCount(count);
+    setFailedCount(await getFailedCount().catch(() => 0));
   }, []);
 
   useEffect(() => {
@@ -270,6 +280,27 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     await refreshCount();
   }, [refreshCount]);
 
+  // Failed writes (rejected by the server during sync) — list, retry, dismiss.
+  const getFailedList = useCallback(async () => {
+    const list = await getAllFailedMutations();
+    return list.sort((a, b) => b.failedAt - a.failedAt);
+  }, []);
+
+  const retryFailed = useCallback(async (id: string) => {
+    const list = await getAllFailedMutations();
+    const f = list.find((x) => x.id === id);
+    if (!f) return;
+    await addMutation({ id: f.id, method: f.method, url: f.url, body: f.body, timestamp: Date.now(), description: f.description });
+    await removeFailedMutation(id);
+    await refreshCount();
+    await syncNow();
+  }, [refreshCount, syncNow]);
+
+  const dismissFailed = useCallback(async (id: string) => {
+    await removeFailedMutation(id);
+    await refreshCount();
+  }, [refreshCount]);
+
   const cacheQueryData = useCallback(async (key: string, data: unknown) => {
     await setCachedData(key, data);
   }, []);
@@ -283,7 +314,11 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       value={{
         isOnline,
         pendingCount,
+        failedCount,
         isSyncing,
+        getFailedList,
+        retryFailed,
+        dismissFailed,
         queueMutation,
         syncNow,
         cacheQueryData,

@@ -582,9 +582,15 @@ function DesktopOnboardingPrompt({ onKeepSidebar, onSwitchTop }: { onKeepSidebar
 export function AppShell({ children, activeNav }: { children: ReactNode; activeNav?: string }) {
   const [location, navigate] = useLocation();
   const { user, logout, can, isSuperAdmin, isTeamAdmin, canManage, switchTeam, toggleIncognito, toggleStealth, isViewingOtherTeam, isStealthActive, userTeams, userTeamsLoading } = useAuth();
-  const { isOnline, pendingCount, isSyncing, syncNow } = useOffline();
+  const { isOnline, pendingCount, failedCount, isSyncing, syncNow, getFailedList, retryFailed, dismissFailed } = useOffline();
+  // Failed offline writes (rejected by the server) — reviewable, never silent.
+  const [failedOpen, setFailedOpen] = useState(false);
+  const [failedItems, setFailedItems] = useState<Awaited<ReturnType<typeof getFailedList>>>([]);
+  useEffect(() => {
+    if (failedOpen) getFailedList().then(setFailedItems).catch(() => setFailedItems([]));
+  }, [failedOpen, failedCount]);
   const { theme, toggle: toggleTheme } = useTheme();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   useGlobalShortcuts();
   const [reportOpen, setReportOpen] = useState(false);
   const { commercializationEnabled } = useAppSettings();
@@ -1111,6 +1117,50 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
           <span className="sm:hidden text-xs">{pendingCount}</span>
         </Button>
       )}
+      {failedCount > 0 && (
+        <Button variant="ghost" size="sm" data-testid="button-failed-writes"
+          onClick={() => setFailedOpen(true)}
+          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-8"
+        >
+          <AlertTriangle className="mr-1 h-4 w-4" />
+          <span className="hidden sm:inline text-xs">{failedCount} {language === "no" ? "avvist" : "rejected"}</span>
+          <span className="sm:hidden text-xs">{failedCount}</span>
+        </Button>
+      )}
+      <Dialog open={failedOpen} onOpenChange={setFailedOpen}>
+        <DialogContent className="max-w-lg" data-testid="dialog-failed-writes">
+          <DialogHeader>
+            <DialogTitle>{language === "no" ? "Endringer avvist av serveren" : "Changes rejected by the server"}</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            {language === "no"
+              ? "Disse offline-endringene ble avvist under synkronisering. Ingenting er slettet — prøv på nytt eller forkast."
+              : "These offline changes were rejected during sync. Nothing has been deleted — retry or dismiss them."}
+          </p>
+          <div className="max-h-80 space-y-2 overflow-y-auto">
+            {failedItems.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">{language === "no" ? "Ingen avviste endringer." : "No rejected changes."}</p>
+            ) : failedItems.map((f) => (
+              <div key={f.id} className="rounded-lg border border-border bg-muted/30 p-3 text-xs" data-testid={`failed-write-${f.id}`}>
+                <div className="font-medium text-foreground">{f.description}</div>
+                <div className="mt-0.5 text-red-600 dark:text-red-400">{f.error}</div>
+                <div className="mt-0.5 text-muted-foreground">{new Date(f.failedAt).toLocaleString()}</div>
+                <div className="mt-2 flex gap-2">
+                  <Button size="sm" variant="outline" className="h-7 text-xs" disabled={!isOnline}
+                    onClick={() => retryFailed(f.id)} data-testid={`button-retry-${f.id}`}>
+                    <RefreshCw className="mr-1 h-3 w-3" />{language === "no" ? "Prøv igjen" : "Retry"}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground"
+                    onClick={() => { if (confirm(language === "no" ? "Forkaste denne endringen permanent?" : "Discard this change permanently?")) dismissFailed(f.id); }}
+                    data-testid={`button-dismiss-${f.id}`}>
+                    <Trash2 className="mr-1 h-3 w-3" />{language === "no" ? "Forkast" : "Dismiss"}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
       {isSuperAdmin && isViewingOtherTeam && (
         <Button variant="ghost" size="sm" data-testid="button-stealth-toggle"
           onClick={() => toggleStealth(!user?.stealth)}

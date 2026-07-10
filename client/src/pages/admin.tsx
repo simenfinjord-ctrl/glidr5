@@ -3067,11 +3067,16 @@ export default function Admin() {
   const userRoleOf = (u: ApiUser): "admin" | "teamAdmin" | "athleteAccess" | "member" =>
     u.isAdmin ? "admin" : u.isTeamAdmin ? "teamAdmin" : u.isAthleteAccess ? "athleteAccess" : "member";
   const [userRoleFilter, setUserRoleFilter] = useState<"all" | "admin" | "teamAdmin" | "member" | "athleteAccess" | "blind" | "inactive">("all");
+  // Origin filter: everyone / only the team's own users / only users shared in
+  // from other teams (fromOtherTeam).
+  const [userOriginFilter, setUserOriginFilter] = useState<"all" | "own" | "shared">("all");
   const [userSort, setUserSort] = useState<"name" | "created" | "role">("name");
   const [userSortDir, setUserSortDir] = useState<"asc" | "desc">("asc");
   const displayedUsers = useMemo(() => {
     const roleRank: Record<string, number> = { admin: 0, teamAdmin: 1, member: 2, athleteAccess: 3 };
     let list = users.filter((u) => {
+      if (userOriginFilter === "own" && u.fromOtherTeam) return false;
+      if (userOriginFilter === "shared" && !u.fromOtherTeam) return false;
       if (userRoleFilter === "all") return true;
       if (userRoleFilter === "blind") return !!u.isBlindTester;
       if (userRoleFilter === "inactive") return !u.isActive;
@@ -3085,7 +3090,7 @@ export default function Admin() {
       return userSortDir === "asc" ? cmp : -cmp;
     });
     return list;
-  }, [users, userRoleFilter, userSort, userSortDir]);
+  }, [users, userRoleFilter, userOriginFilter, userSort, userSortDir]);
 
   const { data: apiGroups = [] } = useQuery<ApiGroup[]>({
     queryKey: [`/api/groups${teamScopeParam}`],
@@ -4421,6 +4426,15 @@ export default function Admin() {
                     <SelectItem value="athleteAccess">{L("Utøvertilgang", "Athlete access")}</SelectItem>
                     <SelectItem value="blind">{L("Blindtestere", "Blind testers")}</SelectItem>
                     <SelectItem value="inactive">{L("Inaktive", "Inactive")}</SelectItem>
+                  </SelectContent>
+                </Select>
+                {/* Origin: hide/show users shared in from other teams */}
+                <Select value={userOriginFilter} onValueChange={(v) => setUserOriginFilter(v as any)}>
+                  <SelectTrigger className="h-8 w-auto gap-1 text-xs" data-testid="filter-user-origin"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{L("Alle lag", "All teams")}</SelectItem>
+                    <SelectItem value="own">{L("Kun eget lag", "Own team only")}</SelectItem>
+                    <SelectItem value="shared">{L("Kun delte fra andre lag", "Only shared from other teams")}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={userSort} onValueChange={(v) => setUserSort(v as any)}>

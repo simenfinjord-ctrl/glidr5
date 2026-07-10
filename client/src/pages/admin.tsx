@@ -1871,15 +1871,29 @@ function TeamFeaturesDialog({
   const toggleFeature = (feat: string) =>
     setFeatures((prev) => prev.includes(feat) ? prev.filter((f) => f !== feat) : [...prev, feat]);
 
+  // Accordion: one feature category expanded at a time (chips inside).
+  const [openCat, setOpenCat] = useState<string | null>(null);
+  const CATEGORY_ICONS: Record<string, React.ElementType> = {
+    "Navigation Areas": LayoutDashboard,
+    "Field & Runsheet Tools": Watch,
+    "Export & Backup": Download,
+    "Team Features": Users,
+    "Enterprise": Building2,
+  };
+  const planLabel = detectedPlan ? PLAN_FEATURE_PRESETS[detectedPlan].label : L("Egendefinert", "Custom");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl max-h-[88vh] flex flex-col gap-0 p-0">
         {/* Header */}
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
-          <Settings2 className="h-4 w-4 text-muted-foreground" />
-          <span className="font-semibold text-foreground">{L("Funksjonstilgang", "Feature Access")}</span>
-          <span className="text-muted-foreground">·</span>
-          <span className="text-sm text-muted-foreground">{team.name}</span>
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Settings2 className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate">{L("Laginnstillinger", "Team settings")} · {team.name}</p>
+            <p className="text-xs text-muted-foreground">{planLabel} · {features.length} {L("av", "of")} {TEAM_FEATURES.length} {L("funksjoner på", "features on")}</p>
+          </div>
         </div>
 
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
@@ -1892,7 +1906,7 @@ function TeamFeaturesDialog({
           {/* Plan presets */}
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-              Subscription plan
+              {L("Abonnementsplan", "Subscription plan")}
             </div>
             <div className="grid grid-cols-4 gap-2">
               {Object.entries(PLAN_FEATURE_PRESETS).map(([key, preset]) => {
@@ -1923,55 +1937,63 @@ function TeamFeaturesDialog({
             )}
           </div>
 
-          {/* Feature toggles grouped by category */}
+          {/* Feature categories — collapsed summary rows, chips when expanded */}
           {FEATURE_CATEGORIES.map((cat) => {
             const enabledCount = cat.features.filter((f) => features.includes(f)).length;
+            const offNames = cat.features
+              .filter((f) => !features.includes(f))
+              .map((f) => FEATURE_LABELS[f as keyof typeof FEATURE_LABELS]);
+            const isOpen = openCat === cat.label;
+            const Icon = CATEGORY_ICONS[cat.label] ?? Settings2;
+            const summary = enabledCount === cat.features.length
+              ? L("Alle på", "All on")
+              : offNames.length <= 2
+                ? `${enabledCount} ${L("av", "of")} ${cat.features.length} ${L("på", "on")} — ${offNames.join(", ")} ${L("er av", "off")}`
+                : `${enabledCount} ${L("av", "of")} ${cat.features.length} ${L("på", "on")}`;
             return (
-              <div key={cat.label}>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {cat.label}
+              <div key={cat.label} className={cn("rounded-xl border transition-colors", isOpen ? "border-primary/40 bg-primary/[0.03]" : "border-border")}>
+                <button
+                  type="button"
+                  onClick={() => setOpenCat(isOpen ? null : cat.label)}
+                  className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
+                  data-testid={`team-feature-cat-${cat.label.replace(/\s+/g, "-").toLowerCase()}`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Icon className={cn("h-4 w-4 shrink-0", isOpen ? "text-primary" : "text-muted-foreground")} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{cat.label}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{summary}</p>
+                    </div>
+                  </div>
+                  <span className={cn("flex items-center gap-1 text-xs shrink-0", isOpen ? "text-primary" : "text-muted-foreground")}>
+                    {isOpen ? L("Skjul", "Hide") : L("Vis", "Show")}
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
                   </span>
-                  <div className="flex-1 h-px bg-border" />
-                  <span className="text-[10px] text-muted-foreground tabular-nums">
-                    {enabledCount}/{cat.features.length}
-                  </span>
-                </div>
-                <div className="rounded-xl border border-border overflow-hidden">
-                  {cat.features.map((feat, fi) => {
-                    const on = features.includes(feat);
-                    return (
-                      <button
-                        key={feat}
-                        type="button"
-                        onClick={() => toggleFeature(feat)}
-                        className={cn(
-                          "w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-muted/40 group",
-                          fi > 0 && "border-t border-border/50"
-                        )}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          {feat === "garmin_watch" && <Watch className="h-3 w-3 text-muted-foreground flex-shrink-0" />}
-                          <span className={cn("text-sm truncate", on ? "text-foreground" : "text-muted-foreground/60")}>
-                            {FEATURE_LABELS[feat as keyof typeof FEATURE_LABELS]}
-                          </span>
-                        </div>
-                        {/* Toggle switch */}
-                        <span
+                </button>
+                {isOpen && (
+                  <div className="flex flex-wrap gap-1.5 border-t border-border/60 p-3">
+                    {cat.features.map((feat) => {
+                      const on = features.includes(feat);
+                      return (
+                        <button
+                          key={feat}
+                          type="button"
+                          onClick={() => toggleFeature(feat)}
+                          data-testid={`team-feature-${feat}`}
                           className={cn(
-                            "relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ml-3",
-                            on ? "bg-green-500" : "bg-muted-foreground/25"
+                            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
+                            on
+                              ? "border-primary/50 bg-primary/10 text-primary ring-1 ring-primary/20"
+                              : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
                           )}
                         >
-                          <span className={cn(
-                            "pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform",
-                            on ? "translate-x-[18px]" : "translate-x-[2px]"
-                          )} />
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                          {on ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                          {FEATURE_LABELS[feat as keyof typeof FEATURE_LABELS]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1980,11 +2002,11 @@ function TeamFeaturesDialog({
         {/* Footer */}
         <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/20">
           <span className="text-[11px] text-muted-foreground">
-            {features.length} / {TEAM_FEATURES.length} features enabled
+            {features.length} {L("av", "of")} {TEAM_FEATURES.length} {L("funksjoner på", "features on")}
           </span>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-              Cancel
+              {L("Avbryt", "Cancel")}
             </Button>
             <Button
               size="sm"
@@ -4596,7 +4618,10 @@ export default function Admin() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader><DialogTitle>{L("Opprett bruker", "Create user")}</DialogTitle></DialogHeader>
+                  <DialogHeader>
+                    <DialogTitle>{L("Opprett bruker", "Create user")}</DialogTitle>
+                    <p className="text-xs text-muted-foreground">{L("Rollen bestemmer rettighetene — finjuster under Tilgang ved behov.", "The role sets the permissions — fine-tune under Access if needed.")}</p>
+                  </DialogHeader>
                   <CreateUserForm onDone={() => setCreateOpen(false)} allGroups={apiGroups} defaultTeamId={effectiveTeamId} teams={teams} />
                 </DialogContent>
               </Dialog>
@@ -4773,7 +4798,8 @@ export default function Admin() {
 
             <Dialog open={!!editUser} onOpenChange={(v) => { if (!v) setEditUser(undefined); }}>
               <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>{L("Rediger bruker", "Edit user")}</DialogTitle></DialogHeader>
+                {/* Identity header inside the form doubles as the visible title. */}
+                <DialogHeader className="sr-only"><DialogTitle>{L("Rediger bruker", "Edit user")}</DialogTitle></DialogHeader>
                 {editUser && <EditUserForm user={editUser} onDone={() => setEditUser(undefined)} allGroups={apiGroups} teams={teams} />}
               </DialogContent>
             </Dialog>
@@ -5149,17 +5175,10 @@ export default function Admin() {
               {/* New team form */}
               <div className="mt-4 rounded-xl border border-border bg-muted/20 p-4 space-y-3">
                 <div className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">{L("Nytt lag", "New team")}</div>
-                <Input
-                  value={newTeamName}
-                  onChange={(e) => setNewTeamName(e.target.value)}
-                  placeholder={L("Lagnavn…", "Team name…")}
-                  className="h-8 text-sm"
-                  data-testid="input-new-team"
-                />
                 {/* Plan preset buttons for new team */}
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-1.5">{L("Abonnementsplan", "Subscription plan")}</div>
-                  <div className="grid grid-cols-4 gap-1.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {Object.entries(PLAN_FEATURE_PRESETS).map(([key, preset]) => {
                       const isActive = (() => {
                         const pf = [...preset.features].sort();
@@ -5177,21 +5196,33 @@ export default function Admin() {
                             isActive ? cn(s.active, "ring-2 ring-offset-1") : s.inactive
                           )}
                         >
-                          {preset.label}
+                          <div>{preset.label}</div>
+                          <div className="text-[10px] font-normal opacity-60 mt-0.5">{preset.features.length} {L("funksjoner", "features")}</div>
                         </button>
                       );
                     })}
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  data-testid="button-add-team"
-                  disabled={!newTeamName.trim() || createTeamMutation.isPending}
-                  onClick={() => createTeamMutation.mutate({ name: newTeamName.trim(), enabledAreas: newTeamAreas })}
-                >
-                  <Plus className="mr-1 h-4 w-4" />
-                  Add team
-                </Button>
+                <div className="flex gap-2">
+                  <Input
+                    value={newTeamName}
+                    onChange={(e) => setNewTeamName(e.target.value)}
+                    placeholder={L("Lagnavn…", "Team name…")}
+                    className="h-9 text-sm flex-1"
+                    data-testid="input-new-team"
+                    onKeyDown={(e) => { if (e.key === "Enter" && newTeamName.trim()) createTeamMutation.mutate({ name: newTeamName.trim(), enabledAreas: newTeamAreas }); }}
+                  />
+                  <Button
+                    size="sm"
+                    className="h-9 shrink-0"
+                    data-testid="button-add-team"
+                    disabled={!newTeamName.trim() || createTeamMutation.isPending}
+                    onClick={() => createTeamMutation.mutate({ name: newTeamName.trim(), enabledAreas: newTeamAreas })}
+                  >
+                    <Plus className="mr-1 h-4 w-4" />
+                    {createTeamMutation.isPending ? L("Oppretter…", "Creating…") : L("Opprett lag", "Create team")}
+                  </Button>
+                </div>
               </div>
             </Card>
           </div>

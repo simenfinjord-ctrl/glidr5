@@ -1578,7 +1578,119 @@ function SecurityTab({ teams, currentUserId }: { teams: ApiTeam[]; currentUserId
           })}
         </div>
       </Card>
+
+      {/* Terms acceptance overview — owner-level compliance data (SA only). */}
+      <TermsAcceptanceCard />
     </div>
+  );
+}
+
+type TermsUserRow = {
+  id: number; name: string; email: string;
+  teamId: number | null; teamName: string | null; isActive: number;
+  termsAcceptedAt: string | null; termsAcceptedVersion: string | null;
+};
+
+// Who has accepted the Terms & Policy (and which version), with the ability to
+// reset a user's acceptance so the gate reappears for them on next load.
+function TermsAcceptanceCard() {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { toast } = useToast();
+  const [q, setQ] = useState("");
+
+  const { data } = useQuery<{ currentVersion: string; users: TermsUserRow[] }>({
+    queryKey: ["/api/admin/terms-acceptances"],
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: async (userId: number) => (await apiRequest("DELETE", `/api/admin/terms-acceptances/${userId}`)).json(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/terms-acceptances"] });
+      toast({ title: L("Aksept tilbakestilt", "Acceptance reset"), description: L("Brukeren får vilkårsdialogen på nytt ved neste innlasting.", "The user will see the terms dialog again on next load.") });
+    },
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
+  });
+
+  const users = data?.users ?? [];
+  const cur = data?.currentVersion;
+  const norm = q.trim().toLowerCase();
+  const filtered = users.filter((u) =>
+    !norm || u.name.toLowerCase().includes(norm) || u.email.toLowerCase().includes(norm) || (u.teamName ?? "").toLowerCase().includes(norm));
+  const acceptedCurrent = users.filter((u) => u.termsAcceptedAt && u.termsAcceptedVersion === cur).length;
+  const notAccepted = users.filter((u) => !u.termsAcceptedAt).length;
+  const oldVersion = users.length - acceptedCurrent - notAccepted;
+
+  return (
+    <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-terms-acceptance">
+      <div className="flex flex-wrap items-center gap-2 mb-1">
+        <FileText className="h-4 w-4 text-emerald-600" />
+        <span className="font-semibold text-foreground">{L("Vilkårsaksept", "Terms acceptance")}</span>
+        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+          {L("versjon", "version")} {cur ?? "—"}
+        </span>
+        <div className="ml-auto flex flex-wrap gap-1.5 text-[10px] font-medium">
+          <span className="rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 dark:bg-emerald-900/30 dark:text-emerald-300">✓ {acceptedCurrent}</span>
+          {oldVersion > 0 && <span className="rounded-full bg-amber-50 text-amber-700 px-2 py-0.5 dark:bg-amber-900/30 dark:text-amber-300">{L("eldre versjon", "older version")} {oldVersion}</span>}
+          <span className="rounded-full bg-red-50 text-red-700 px-2 py-0.5 dark:bg-red-900/30 dark:text-red-300">{L("ikke akseptert", "not accepted")} {notAccepted}</span>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        {L("Kun synlig for Super Admin. Tilbakestill en aksept for å vise dialogen på nytt for brukeren.", "Visible to Super Admins only. Reset an acceptance to show the dialog again for that user.")}
+      </p>
+      <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L("Søk navn, e-post eller lag…", "Search name, email or team…")} className="mb-3 h-8 max-w-xs text-xs" data-testid="input-terms-search" />
+      <div className="max-h-[420px] overflow-y-auto rounded-xl border border-border">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-muted/40 border-b border-border text-left text-xs">
+              <th className="px-3 py-2 font-medium text-foreground/80">{L("Bruker", "User")}</th>
+              <th className="px-3 py-2 font-medium text-foreground/80">{L("Lag", "Team")}</th>
+              <th className="px-3 py-2 font-medium text-foreground/80">Status</th>
+              <th className="px-3 py-2 font-medium text-foreground/80 text-center">{L("Handling", "Action")}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/50">
+            {filtered.map((u) => {
+              const acceptedCur = !!u.termsAcceptedAt && u.termsAcceptedVersion === cur;
+              const acceptedOld = !!u.termsAcceptedAt && !acceptedCur;
+              return (
+                <tr key={u.id} data-testid={`row-terms-${u.id}`}>
+                  <td className="px-3 py-2">
+                    <span className="font-medium text-foreground">{u.name}</span>
+                    <span className="block text-[11px] text-muted-foreground">{u.email}</span>
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{u.teamName ?? "—"}</td>
+                  <td className="px-3 py-2 text-xs">
+                    {acceptedCur ? (
+                      <span className="text-emerald-700 dark:text-emerald-300">✓ {new Date(u.termsAcceptedAt!).toLocaleString()} <span className="text-muted-foreground">(v{u.termsAcceptedVersion})</span></span>
+                    ) : acceptedOld ? (
+                      <span className="text-amber-700 dark:text-amber-300">{L("Eldre versjon", "Older version")} (v{u.termsAcceptedVersion ?? "?"}) — {L("blir spurt på nytt", "will be re-prompted")}</span>
+                    ) : (
+                      <span className="text-red-600 dark:text-red-400">{L("Ikke akseptert", "Not accepted")}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    {u.termsAcceptedAt ? (
+                      <Button
+                        variant="ghost" size="sm"
+                        className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                        disabled={resetMutation.isPending}
+                        data-testid={`button-reset-terms-${u.id}`}
+                        onClick={() => { if (confirm(L(`Tilbakestille aksepten for ${u.name}? Dialogen vises på nytt for brukeren.`, `Reset acceptance for ${u.name}? The dialog will be shown again.`))) resetMutation.mutate(u.id); }}
+                      >
+                        {L("Tilbakestill", "Reset")}
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   );
 }
 // ─────────────────────────────────────────────────────────────────────────────

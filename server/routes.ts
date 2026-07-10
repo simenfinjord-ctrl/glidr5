@@ -30,7 +30,7 @@ async function checkTeamLimit(teamId: number, resource: "users" | "groups" | "te
   const current = parseInt(countRes.rows[0]?.cnt || "0");
   return { allowed: current < limit, limit, current };
 }
-import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, runsheetProgress, watchSessions, watchQueue, teams, tests, testEntries, users, testSkiSeries, products, dailyWeather, raceSkis } from "@shared/schema";
+import { type PermissionArea, type PermissionLevel, PERMISSION_AREAS, DEFAULT_PERMISSIONS, CURRENT_TERMS_VERSION, runsheetProgress, watchSessions, watchQueue, teams, tests, testEntries, users, testSkiSeries, products, dailyWeather, raceSkis } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, and, sql, inArray } from "drizzle-orm";
 async function enforceTeamAreas(perms: Record<string, string>, teamId: number | undefined): Promise<Record<string, string>> {
@@ -4382,7 +4382,7 @@ export async function registerRoutes(
     const teamId = getAdminTeamScope(req);
     let logs = await storage.listActivityLogs(limit, teamId);
     // Terms-acceptance records are owner-level compliance data — SA only.
-    if (userInfo(req).isAdmin !== true) logs = logs.filter((l: any) => l.action !== "accepted_terms");
+    if (userInfo(req).isAdmin !== true) logs = logs.filter((l: any) => l.action !== "accepted_terms" && l.action !== "terms_reset");
     if (actionFilter) logs = logs.filter((l: any) => l.action === actionFilter);
     res.json(logs);
   });
@@ -4392,9 +4392,47 @@ export async function registerRoutes(
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const teamId = getAdminTeamScope(req);
     let logs = await storage.listActivityLogs(10000, teamId);
-    if (userInfo(req).isAdmin !== true) logs = logs.filter((l: any) => l.action !== "accepted_terms");
+    if (userInfo(req).isAdmin !== true) logs = logs.filter((l: any) => l.action !== "accepted_terms" && l.action !== "terms_reset");
     const actions = [...new Set(logs.map((l: any) => l.action).filter(Boolean))].sort();
     res.json(actions);
+  });
+
+  // ── Terms acceptance overview (SA only) ─────────────────────────────────────
+  // Who has accepted which version of the Terms & Policy — and the ability to
+  // reset one user's acceptance so the gate reappears for them.
+  app.get("/api/admin/terms-acceptances", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(
+      `SELECT u.id, u.name, u.email, u.team_id AS "teamId", t.name AS "teamName",
+              u.is_active AS "isActive",
+              u.terms_accepted_at AS "termsAcceptedAt",
+              u.terms_accepted_version AS "termsAcceptedVersion"
+       FROM users u LEFT JOIN teams t ON t.id = u.team_id
+       ORDER BY u.terms_accepted_at NULLS FIRST, u.name ASC`
+    );
+    res.json({ currentVersion: CURRENT_TERMS_VERSION, users: r.rows });
+  });
+
+  app.delete("/api/admin/terms-acceptances/:userId", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
+    const id = parseInt(req.params.userId);
+    const target = await storage.getUser(id);
+    if (!target) return res.status(404).json({ message: "User not found" });
+    const { pool } = await import("./db");
+    await (pool as any).query(
+      `UPDATE users SET terms_accepted_at = NULL, terms_accepted_version = NULL WHERE id = $1`, [id]
+    );
+    // Audited (SA-only visibility, like accepted_terms itself).
+    await storage.createActivityLog({
+      userId: u.id, userName: u.name, action: "terms_reset",
+      entityType: "user", entityId: id,
+      details: `Reset terms acceptance for ${target.name} (${target.email})`,
+      createdAt: new Date().toISOString(), groupScope: u.groupScope, teamId: target.teamId,
+    } as any).catch(() => {});
+    res.json({ ok: true });
   });
 
   // Recover a deleted record from its audit snapshot (the "recycle bin").
@@ -5329,7 +5367,7 @@ export async function registerRoutes(
       storage.listGroups(teamId),
       storage.listLoginLogs(teamId),
       // Terms-acceptance records are owner-level compliance data — SA only.
-      storage.listActivityLogs(5000, teamId).then((ls: any[]) => u.isAdmin ? ls : ls.filter((l: any) => l.action !== "accepted_terms")),
+      storage.listActivityLogs(5000, teamId).then((ls: any[]) => u.isAdmin ? ls : ls.filter((l: any) => l.action !== "accepted_terms" && l.action !== "terms_reset")),
       storage.listAthletes(u.id, true, teamId),
     ]);
     const testIds = allTests.map((t: any) => t.id);
@@ -5698,7 +5736,7 @@ export async function registerRoutes(
       ),
       (pg as any).query(
         `SELECT id, user_id, user_name, action, entity_type, entity_id, details, created_at, team_id
-         FROM activity_logs WHERE user_id = $1 AND created_at >= $2 AND action <> 'accepted_terms' ORDER BY created_at DESC LIMIT 200`,
+         FROM activity_logs WHERE user_id = $1 AND created_at >= $2 AND action NOT IN ('accepted_terms','terms_reset') ORDER BY created_at DESC LIMIT 200`,
         [targetId, sinceIso]
       ),
     ]);
@@ -5746,7 +5784,7 @@ export async function registerRoutes(
       ),
       (pg as any).query(
         `SELECT id, user_id, user_name, action, entity_type, entity_id, details, created_at, team_id
-         FROM activity_logs WHERE user_id = $1 AND created_at >= $2 AND action <> 'accepted_terms' ORDER BY created_at DESC LIMIT 200`,
+         FROM activity_logs WHERE user_id = $1 AND created_at >= $2 AND action NOT IN ('accepted_terms','terms_reset') ORDER BY created_at DESC LIMIT 200`,
         [targetId, sinceIso]
       ),
     ]);

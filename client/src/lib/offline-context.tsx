@@ -4,6 +4,7 @@ import {
   getAllMutations,
   removeMutation,
   getMutationCount,
+  addFailedMutation,
   setCachedData,
   getCachedData,
   generateId,
@@ -100,6 +101,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       const sorted = mutations.sort((a, b) => a.timestamp - b.timestamp);
       let successCount = 0;
       let failCount = 0;
+      const failedDescriptions: string[] = [];
 
       for (const m of sorted) {
         try {
@@ -114,8 +116,14 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
             await removeMutation(m.id);
             successCount++;
           } else if (res.status >= 400 && res.status < 500) {
+            // Server rejected the change. NEVER drop it silently — move it to
+            // the failed store with the server's reason so it can be inspected.
+            let reason = `HTTP ${res.status}`;
+            try { reason = `${res.status}: ${(await res.text()).slice(0, 200)}`; } catch {}
+            await addFailedMutation({ ...m, error: reason, failedAt: Date.now() }).catch(() => {});
             await removeMutation(m.id);
             failCount++;
+            failedDescriptions.push(m.description);
           } else {
             break;
           }
@@ -139,8 +147,8 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         toast({
           title: tr("Synkroniseringsfeil", "Sync error"),
           description: tr(
-            `${failCount} endring${failCount > 1 ? "er" : ""} kunne ikke synkroniseres.`,
-            `${failCount} change${failCount > 1 ? "s" : ""} could not be synced.`,
+            `${failCount} endring${failCount > 1 ? "er" : ""} ble avvist av serveren: ${failedDescriptions.slice(0, 3).join(", ")}${failCount > 3 ? " …" : ""}`,
+            `${failCount} change${failCount > 1 ? "s" : ""} rejected by the server: ${failedDescriptions.slice(0, 3).join(", ")}${failCount > 3 ? " …" : ""}`,
           ),
           variant: "destructive",
         });
@@ -189,6 +197,27 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
           // Silently skip — prefetch is best-effort
         }
       }
+
+      // Also pre-cache the RESULT ROWS of the most recent tests, so tests can
+      // be opened (not just listed) without coverage in the field.
+      try {
+        const tests = (queryClient.getQueryData(["/api/tests"]) as any[]) ?? [];
+        const recent = [...tests]
+          .sort((a, b) => String(b?.date ?? "").localeCompare(String(a?.date ?? "")))
+          .slice(0, 20);
+        for (const t of recent) {
+          const entriesKey = `/api/tests/${t.id}/entries`;
+          if (queryClient.getQueryData([entriesKey]) != null) continue;
+          try {
+            const r = await fetch(entriesKey, { credentials: "include" });
+            if (r.ok) {
+              const entries = await r.json();
+              queryClient.setQueryData([entriesKey], entries);
+              await setCachedData(entriesKey, entries);
+            }
+          } catch { /* best-effort */ }
+        }
+      } catch { /* best-effort */ }
     };
 
     // Delay slightly so the app has time to finish its own initial queries first

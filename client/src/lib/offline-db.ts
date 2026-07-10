@@ -1,7 +1,7 @@
 import { openDB, type IDBPDatabase } from "idb";
 
 const DB_NAME = "glidr-offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export interface QueuedMutation {
   id: string;
@@ -10,6 +10,13 @@ export interface QueuedMutation {
   body: string | null;
   timestamp: number;
   description: string;
+}
+
+// A queued change the server rejected (4xx) during sync. Kept — never silently
+// dropped — so the user can see exactly what didn't make it and why.
+export interface FailedMutation extends QueuedMutation {
+  error: string;
+  failedAt: number;
 }
 
 export interface CachedData {
@@ -29,6 +36,9 @@ function getDB() {
         }
         if (!db.objectStoreNames.contains("cache")) {
           db.createObjectStore("cache", { keyPath: "key" });
+        }
+        if (!db.objectStoreNames.contains("failed")) {
+          db.createObjectStore("failed", { keyPath: "id" });
         }
       },
     });
@@ -59,6 +69,27 @@ export async function clearAllMutations(): Promise<void> {
 export async function getMutationCount(): Promise<number> {
   const db = await getDB();
   return db.count("mutations");
+}
+
+// ── Failed writes (rejected by the server during sync) ───────────────────────
+export async function addFailedMutation(f: FailedMutation): Promise<void> {
+  const db = await getDB();
+  await db.put("failed", f);
+}
+
+export async function getAllFailedMutations(): Promise<FailedMutation[]> {
+  const db = await getDB();
+  return db.getAll("failed");
+}
+
+export async function removeFailedMutation(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete("failed", id);
+}
+
+export async function getFailedCount(): Promise<number> {
+  const db = await getDB();
+  return db.count("failed");
 }
 
 export async function setCachedData(key: string, data: unknown): Promise<void> {

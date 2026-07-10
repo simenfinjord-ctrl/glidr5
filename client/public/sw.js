@@ -1,6 +1,6 @@
-const CACHE_NAME = "glidr-v7";
+const CACHE_NAME = "glidr-v8";
 const STATIC_EXTENSIONS = [".js", ".css", ".png", ".jpg", ".svg", ".ico", ".woff", ".woff2"];
-const API_CACHE_NAME = "glidr-api-v7";
+const API_CACHE_NAME = "glidr-api-v8";
 // Endpoints that always need a live server and must never be served from cache.
 const NEVER_CACHE_API = ["/api/auth/login", "/api/auth/logout", "/api/watch/", "/api/admin/active-sessions"];
 

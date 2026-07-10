@@ -17,7 +17,20 @@ if (import.meta.env.VITE_POSTHOG_KEY) {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((reg) => {
+        // Actively check for new deploys: on load, whenever the app regains
+        // focus, and every 30 min. Without this a device (PWA/phone) can keep
+        // running a stale cached bundle for a long time and miss new features
+        // like the terms gate.
+        reg.update().catch(() => {});
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") reg.update().catch(() => {});
+        });
+        setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000);
+      })
+      .catch(() => {});
   });
 }
 

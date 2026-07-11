@@ -8,7 +8,7 @@ import {
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity, BarChart3,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle, Sparkles,
   HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash, RotateCcw,
-  MessageSquare, UserPlus, FileText, ExternalLink, LayoutDashboard, CreditCard, Mail, MoreVertical,
+  MessageSquare, UserPlus, FileText, ExternalLink, LayoutDashboard, CreditCard, Mail, MoreVertical, Search,
 } from "lucide-react";
 import {
   PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS,
@@ -3244,7 +3244,7 @@ export default function Admin() {
       return userSortDir === "asc" ? cmp : -cmp;
     });
     return list;
-  }, [users, userRoleFilter, userOriginFilter, userSort, userSortDir]);
+  }, [users, userSearch, userRoleFilter, userOriginFilter, userSort, userSortDir]);
 
   const { data: apiGroups = [] } = useQuery<ApiGroup[]>({
     queryKey: [`/api/groups${teamScopeParam}`],
@@ -4689,6 +4689,16 @@ export default function Admin() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-foreground">{L("Brukere", "Users")} ({displayedUsers.length}{displayedUsers.length !== users.length ? `/${users.length}` : ""})</h2>
               <div className="flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    placeholder={L("Søk navn eller e-post…", "Search name or email…")}
+                    className="h-8 w-[190px] pl-8 text-xs"
+                    data-testid="input-user-search"
+                  />
+                </div>
                 <Select value={userRoleFilter} onValueChange={(v) => setUserRoleFilter(v as any)}>
                   <SelectTrigger className="h-8 w-auto gap-1 text-xs" data-testid="filter-user-role"><SelectValue /></SelectTrigger>
                   <SelectContent>

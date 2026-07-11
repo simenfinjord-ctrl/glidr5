@@ -87,15 +87,47 @@ async function formatFlatTestSheet(sheets: any, spreadsheetId: string, sheetId: 
     req.push({ repeatCell: { range: { sheetId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: 0, endColumnIndex: totalCols }, cell: { userEnteredFormat: { backgroundColor: { red: 0.996, green: 0.953, blue: 0.78 } } }, fields: 'userEnteredFormat.backgroundColor' } });
   }
   // Column widths: dates/ids narrow, text columns wide + wrapped.
-  const widths: [number, number][] = [[0, 80], [1, 95], [2, 120], [3, 150], [4, 90], [5, 110], [6, 90], [7, 260], [8, 55], [9, 70], [10, 180], [11, 200], [12, 160], [13, 60], [14, 160], [15, 55], [16, 150], [17, 70], [18, 55], [19, 70], [20, 55]];
+  const widths: [number, number][] = [[0, 80], [1, 95], [2, 120], [3, 150], [4, 90], [5, 110], [6, 90], [7, 260], [8, 55], [9, 70], [10, 180], [11, 200], [12, 160], [13, 70], [14, 55], [15, 70], [16, 55], [17, 60], [18, 160], [19, 60], [20, 150]];
   for (const [col, px] of widths) {
     if (col >= totalCols) continue;
     req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col, endIndex: col + 1 }, properties: { pixelSize: px }, fields: 'pixelSize' } });
   }
-  for (const wrapCol of [7, 11, 14, 16]) { // Notes, Application, Feeling Note, Kick Solution
+  for (const wrapCol of [7, 11, 18, 20]) { // Notes, Application, Feeling Note, Kick Solution
     req.push({ repeatCell: { range: { sheetId, startRowIndex: headerRow + 1, startColumnIndex: wrapCol, endColumnIndex: wrapCol + 1 }, cell: { userEnteredFormat: { wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat.wrapStrategy' } });
   }
   // Send in chunks — big teams can produce many per-row requests.
+  for (let i = 0; i < req.length; i += 300) {
+    await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: req.slice(i, i + 300) } });
+  }
+}
+
+// Same visual language as the flat test sheets, adapted to the athlete
+// sheets' sectioned layout (skis → regrinds → tests).
+async function formatAthleteSheet(sheets: any, spreadsheetId: string, sheetId: number, opts: {
+  sectionRows: number[]; colHeaderRows: number[]; testTitleRows: number[]; winnerRows: number[];
+}) {
+  const WIDE = 24; // generous band width — athlete tables vary in column count
+  const req: any[] = [];
+  req.push({ repeatCell: { range: { sheetId }, cell: { userEnteredFormat: {} }, fields: 'userEnteredFormat' } });
+  req.push({ updateSheetProperties: { properties: { sheetId, gridProperties: { frozenRowCount: 2 } }, fields: 'gridProperties.frozenRowCount' } });
+  // Athlete name title
+  req.push({ repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { textFormat: { bold: true, fontSize: 14 } } }, fields: 'userEnteredFormat.textFormat' } });
+  // Section bands: dark slate, white bold
+  for (const r of opts.sectionRows) {
+    req.push({ repeatCell: { range: { sheetId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: 0, endColumnIndex: WIDE }, cell: { userEnteredFormat: { backgroundColor: { red: 0.122, green: 0.161, blue: 0.216 }, textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } } } }, fields: 'userEnteredFormat(backgroundColor,textFormat)' } });
+  }
+  // Column headers: light gray, bold
+  for (const r of opts.colHeaderRows) {
+    req.push({ repeatCell: { range: { sheetId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: 0, endColumnIndex: WIDE }, cell: { userEnteredFormat: { backgroundColor: { red: 0.925, green: 0.937, blue: 0.945 }, textFormat: { bold: true } } }, fields: 'userEnteredFormat(backgroundColor,textFormat)' } });
+  }
+  // Test title bands: green, bold — one glance shows where each test starts
+  for (const r of opts.testTitleRows) {
+    req.push({ repeatCell: { range: { sheetId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: 0, endColumnIndex: WIDE }, cell: { userEnteredFormat: { backgroundColor: { red: 0.82, green: 0.96, blue: 0.878 }, textFormat: { bold: true } } }, fields: 'userEnteredFormat(backgroundColor,textFormat)' } });
+  }
+  // Winning rows: soft amber
+  for (const r of opts.winnerRows) {
+    req.push({ repeatCell: { range: { sheetId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: 0, endColumnIndex: WIDE }, cell: { userEnteredFormat: { backgroundColor: { red: 0.996, green: 0.953, blue: 0.78 } } }, fields: 'userEnteredFormat.backgroundColor' } });
+  }
   for (let i = 0; i < req.length; i += 300) {
     await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: req.slice(i, i + 300) } });
   }
@@ -447,10 +479,11 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
     const FLAT_COL_HEADER = [
       // Test metadata
       'Test ID', 'Date', 'Location', 'Test Name', 'Group', 'Series', 'Type', 'Notes',
-      // Entry data
+      // Entry data — results/ranks sit right next to the product/grind/ski
+      // columns so a row reads naturally left-to-right.
       'Ski #', 'Ski ID', 'Product', 'Application / Method', 'Grind Used',
-      'Feeling Rank', 'Feeling Note', 'Kick Rank', 'Kick Solution',
       'Result 1', 'Rank 1', 'Result 2', 'Rank 2',
+      'Feeling Rank', 'Feeling Note', 'Kick Rank', 'Kick Solution',
       // Weather / conditions (all fields)
       'Snow Temp °C', 'Air Temp °C', 'Snow Humidity %', 'Air Humidity %',
       'Snow Type', 'Snow Humidity Type', 'Track Hardness',
@@ -534,8 +567,8 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
             (test as any).testName || '', (test as any).groupScope || '', seriesName, (test as any).testType,
             (test as any).notes || '',
             entry.skiNumber, skiIdStr, productName, entry.methodology || '', grindUsed,
-            entry.feelingRank ?? '', entry.feelingNote ?? '', entry.kickRank ?? '', entry.kickSolution ?? '',
             res1, rank1, res2, rank2,
+            entry.feelingRank ?? '', entry.feelingNote ?? '', entry.kickRank ?? '', entry.kickSolution ?? '',
             ...wCols,
           ]);
         };
@@ -715,9 +748,12 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
         .sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
 
       const rows: any[][] = [];
-      const bolds: number[] = [];
-      const h = (label: string) => { bolds.push(rows.length); rows.push([label]); };
-      const cols = (...headers: string[]) => { bolds.push(rows.length); rows.push(headers); };
+      const sectionRows: number[] = [];   // '=== SECTION ===' bands
+      const colHeaderRows: number[] = []; // column-header rows
+      const testTitleRows: number[] = []; // '--- Test #x ---' bands
+      const winnerRows: number[] = [];    // rank-1 entry rows
+      const h = (label: string) => { sectionRows.push(rows.length); rows.push([label]); };
+      const cols = (...headers: string[]) => { colHeaderRows.push(rows.length); rows.push(headers); };
 
       rows.push([`ATHLETE: ${athlete.name}`]);
       rows.push(['Team', athlete.team || '', 'Created', athlete.createdAt || '']);
@@ -749,21 +785,25 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
         const distLabels = parseDistanceLabels((test as any).distanceLabels);
         const w = (test as any).weatherId ? weatherById[(test as any).weatherId] : null;
 
-        bolds.push(rows.length);
+        testTitleRows.push(rows.length);
         rows.push([`--- Test #${test.id}: ${(test as any).testName || test.location} ---`]);
         rows.push(['Date', test.date, 'Location', test.location, 'Type', (test as any).testType]);
         if (w) rows.push(['Weather', `Snow ${w.snowTemperatureC ?? '?'}°C`, `Air ${w.airTemperatureC ?? '?'}°C`, `Type: ${w.snowType || '—'}`, `Track: ${w.trackHardness || '—'}`]);
         if ((test as any).notes) rows.push(['Notes', (test as any).notes]);
 
-        const headerRow = ['Ski #', 'Race Ski ID', 'Feeling Rank', 'Feeling Note'];
-        if ((test as any).testType === 'Classic') headerRow.push('Kick Rank');
+        // Results/ranks sit right next to the ski so each row reads naturally.
+        const headerRow = ['Ski #', 'Race Ski ID'];
         if (distLabels.length > 0) {
           for (const label of distLabels) { headerRow.push(`Result ${label}`); headerRow.push(`Rank ${label}`); }
         } else {
           if ((test as any).distanceLabel0km) { headerRow.push(`Result ${(test as any).distanceLabel0km}`); headerRow.push(`Rank ${(test as any).distanceLabel0km}`); }
+          else { headerRow.push('Result 1', 'Rank 1'); }
           if ((test as any).distanceLabelXkm) { headerRow.push(`Result ${(test as any).distanceLabelXkm}`); headerRow.push(`Rank ${(test as any).distanceLabelXkm}`); }
+          else { headerRow.push('Result 2', 'Rank 2'); }
         }
-        bolds.push(rows.length);
+        headerRow.push('Feeling Rank', 'Feeling Note');
+        if ((test as any).testType === 'Classic') headerRow.push('Kick Rank', 'Kick Solution');
+        colHeaderRows.push(rows.length);
         rows.push(headerRow);
 
         for (const entry of entries) {
@@ -772,25 +812,28 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
             const rs = allRaceSkis.find(s => s.id === entry.raceSkiId);
             if (rs) skiLabel = `${rs.skiId} (${rs.brand || ''} ${rs.grind || ''})`;
           }
-          const row: any[] = [entry.skiNumber, skiLabel, entry.feelingRank ?? '', entry.feelingNote ?? ''];
-          if ((test as any).testType === 'Classic') row.push(entry.kickRank ?? '');
+          const rounds = parseResultsArray(entry.results);
+          const row: any[] = [entry.skiNumber, skiLabel];
+          let firstRank: any = null;
           if (distLabels.length > 0) {
-            const rounds = parseResultsArray(entry.results);
             for (let ri = 0; ri < distLabels.length; ri++) {
               const r = rounds[ri];
               row.push(r?.result ?? entry.result0kmCmBehind ?? '');
               row.push(r?.rank ?? entry.rank0km ?? '');
+              if (ri === 0) firstRank = r?.rank ?? entry.rank0km ?? null;
             }
+          } else if (rounds.length > 0) {
+            row.push(rounds[0]?.result ?? ''); row.push(rounds[0]?.rank ?? '');
+            row.push(rounds[1]?.result ?? ''); row.push(rounds[1]?.rank ?? '');
+            firstRank = rounds[0]?.rank ?? null;
           } else {
-            const rounds = parseResultsArray(entry.results);
-            if (rounds.length > 0) {
-              row.push(rounds[0]?.result ?? ''); row.push(rounds[0]?.rank ?? '');
-              if (rounds.length > 1) { row.push(rounds[1]?.result ?? ''); row.push(rounds[1]?.rank ?? ''); }
-            } else {
-              row.push(entry.result0kmCmBehind ?? ''); row.push(entry.rank0km ?? '');
-              row.push(entry.resultXkmCmBehind ?? ''); row.push(entry.rankXkm ?? '');
-            }
+            row.push(entry.result0kmCmBehind ?? ''); row.push(entry.rank0km ?? '');
+            row.push(entry.resultXkmCmBehind ?? ''); row.push(entry.rankXkm ?? '');
+            firstRank = entry.rank0km ?? null;
           }
+          row.push(entry.feelingRank ?? '', entry.feelingNote ?? '');
+          if ((test as any).testType === 'Classic') row.push(entry.kickRank ?? '', entry.kickSolution ?? '');
+          if (Number(firstRank) === 1) winnerRows.push(rows.length);
           rows.push(row);
         }
         rows.push([]);
@@ -799,7 +842,10 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       await clearAndWrite(sheets, spreadsheetId, sheetTitle, rows);
       const athMeta = await sheets.spreadsheets.get({ spreadsheetId });
       const athSheetId = athMeta.data.sheets?.find((s: any) => s.properties?.title === sheetTitle)?.properties?.sheetId;
-      if (athSheetId !== undefined) await boldRows(sheets, spreadsheetId, athSheetId, bolds).catch(() => {});
+      if (athSheetId !== undefined) {
+        await formatAthleteSheet(sheets, spreadsheetId, athSheetId, { sectionRows, colHeaderRows, testTitleRows, winnerRows })
+          .catch((e) => console.warn('[Backup] athlete format failed:', e));
+      }
     }
 
     // ── 6. GRINDS SHEET ───────────────────────────────────────────────────────

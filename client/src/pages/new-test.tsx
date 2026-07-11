@@ -730,24 +730,43 @@ export default function NewTest() {
                   />
                 </div>
 
-                <div className="lg:col-span-3">
+                <div className="lg:col-span-8">
                   <FormField
                     control={form.control}
                     name="weatherId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="flex items-center justify-between mb-1">
-                          <FormLabel className="mb-0">{t("newTest.weather")}</FormLabel>
-                          <div className="flex items-center gap-3">
-                            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none" data-testid="checkbox-no-weather">
-                              <input
-                                type="checkbox"
-                                checked={noWeather}
-                                onChange={(e) => { setNoWeather(e.target.checked); if (e.target.checked) field.onChange(undefined); }}
-                                className="h-3.5 w-3.5"
-                              />
-                              {language === "no" ? "Ikke legg til vær" : "Do not add weather"}
-                            </label>
+                    render={({ field }) => {
+                      const weatherMode: "none" | "pick" | "auto" = noWeather ? "none" : (pickWeather || field.value) ? "pick" : "auto";
+                      return (
+                        <FormItem>
+                          <FormLabel>{t("newTest.weather")}</FormLabel>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex w-fit gap-1 rounded-lg border border-border bg-muted/30 p-1">
+                              <button
+                                type="button"
+                                onClick={() => { setNoWeather(false); setPickWeather(false); field.onChange(undefined); }}
+                                className={cn("flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors", weatherMode === "auto" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                                data-testid="option-weather-auto"
+                              >
+                                <Zap className="h-3 w-3" />
+                                {t("newTest.auto")}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setNoWeather(false); setPickWeather(true); }}
+                                className={cn("rounded-md px-2.5 py-1 text-xs font-medium transition-colors", weatherMode === "pick" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                                data-testid="button-weather-pick"
+                              >
+                                {language === "no" ? "Velg måling" : "Pick record"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setNoWeather(true); setPickWeather(false); field.onChange(undefined); }}
+                                className={cn("rounded-md px-2.5 py-1 text-xs font-medium transition-colors", weatherMode === "none" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                                data-testid="checkbox-no-weather"
+                              >
+                                {language === "no" ? "Uten vær" : "No weather"}
+                              </button>
+                            </div>
                             <button
                               type="button"
                               disabled={noWeather}
@@ -760,58 +779,58 @@ export default function NewTest() {
                                 });
                                 setManualWeatherOpen(true);
                               }}
-                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                              className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                              data-testid="button-add-manual-weather"
                             >
                               <CloudSun className="h-3 w-3" />
-                              {t("newTest.addManualWeather") ?? "+ Add manual"}
+                              {language === "no" ? "Manuelt" : "Manual"}
                             </button>
+                            {/* Live receipt for the auto match, so it's obvious what will be linked */}
+                            {weatherMode === "auto" && (
+                              autoWeather ? (
+                                <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400" data-testid="text-auto-weather-match">
+                                  <Check className="h-3 w-3" />
+                                  {autoWeather.location} {autoWeather.time} · {autoWeather.airTemperatureC}°C
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground" data-testid="text-auto-weather-none">
+                                  {language === "no" ? "Ingen måling matcher dato/sted ennå" : "No record matches date/location yet"}
+                                </span>
+                              )
+                            )}
                           </div>
-                        </div>
-                        <div className={noWeather ? "opacity-40 pointer-events-none" : ""}>
-                        <Select
-                          value={field.value ?? "__auto__"}
-                          onValueChange={(v) => {
-                            field.onChange(v === "__auto__" ? undefined : v);
-                          }}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-test-weather">
-                              <SelectValue
-                                placeholder={
-                                  autoWeather
-                                    ? `Auto: ${autoWeather.location} ${autoWeather.time}`
-                                    : t("newTest.selectWeather")
-                                }
-                              />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem
-                              value="__auto__"
-                              data-testid="option-weather-auto"
+                          {weatherMode === "pick" && (
+                            <Select
+                              value={field.value ?? ""}
+                              onValueChange={(v) => field.onChange(v || undefined)}
                             >
-                              {t("newTest.auto")}
-                            </SelectItem>
-                            {weather.map((w) => (
-                              <SelectItem
-                                key={w.id}
-                                value={String(w.id)}
-                                data-testid={`option-weather-${w.id}`}
-                              >
-                                {fmtDate(w.date)} · {w.location} · {w.time} · Air {w.airTemperatureC}°C
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                              <FormControl>
+                                <SelectTrigger className="mt-1.5" data-testid="select-test-weather">
+                                  <SelectValue placeholder={t("newTest.selectWeather")} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {weather.map((w) => (
+                                  <SelectItem
+                                    key={w.id}
+                                    value={String(w.id)}
+                                    data-testid={`option-weather-${w.id}`}
+                                  >
+                                    {fmtDate(w.date)} · {w.location} · {w.time} · Air {w.airTemperatureC}°C
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
                 </div>
 
                 {userGroups.length > 1 && watchTestType !== "Grind" && (
-                  <div className="lg:col-span-2">
+                  <div className="lg:col-span-4">
                     <FormField
                       control={form.control}
                       name="groupScope"
@@ -839,25 +858,38 @@ export default function NewTest() {
                   </div>
                 )}
 
-                <div className={userGroups.length > 1 ? "lg:col-span-6" : "lg:col-span-8"}>
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("common.notes")}</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            {...field}
-                            rows={2}
-                            placeholder={L("Valgfrie notater…", "Optional notes…")}
-                            data-testid="input-test-notes"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div className="lg:col-span-12">
+                  {/* Notes stay collapsed behind a quiet link until needed. */}
+                  {!showNotes && !form.watch("notes") ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowNotes(true)}
+                      className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                      data-testid="button-add-notes"
+                    >
+                      <Plus className="h-3 w-3" />
+                      {L("Legg til notat", "Add note")}
+                    </button>
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("common.notes")}</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              rows={2}
+                              placeholder={L("Valgfrie notater…", "Optional notes…")}
+                              data-testid="input-test-notes"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
               </div>
@@ -895,6 +927,15 @@ export default function NewTest() {
         )}
 
         <div>
+          {/* Results section header — mirrors the numbered card header above */}
+          <div className="mb-2 flex flex-wrap items-center gap-2.5">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">2</span>
+            <p className="text-sm font-semibold text-foreground">{L("Resultater", "Results")}</p>
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+              <Zap className="h-2.5 w-2.5" />
+              {L("Rangeres automatisk", "Ranked automatically")}
+            </span>
+          </div>
           <TestEntryTable
             testType={watchTestType}
             products={products}

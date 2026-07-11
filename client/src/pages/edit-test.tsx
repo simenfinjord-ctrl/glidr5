@@ -617,23 +617,16 @@ export default function EditTest() {
               className="space-y-4"
             >
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                {can("raceskis") && (
+                {/* The ski source is fixed at creation: race-ski tests are made from
+                    the Athlete Skis page, everything else uses Testfleets. Switching
+                    it on an existing test only creates confusion (entries reference
+                    one world or the other), so it is shown read-only — and only for
+                    race-ski tests, where the context matters. */}
+                {can("raceskis") && testSkiSource === "raceskis" && (
                   <div className="lg:col-span-2">
                     <div className="space-y-2">
                       <label className="text-sm font-medium leading-none">{L("Skikilde", "Ski source")}</label>
-                      <Select
-                        value={testSkiSource}
-                        onValueChange={(v) => {
-                          setTestSkiSource(v as "series" | "raceskis");
-                          const currentType = form.getValues("testType");
-                          if (v === "raceskis" && ["Glide", "Structure", "Grind"].includes(currentType)) {
-                            form.setValue("testType", "Classic");
-                          }
-                          if (v === "series" && ["Classic", "Skating", "Double Poling"].includes(currentType)) {
-                            form.setValue("testType", "Glide");
-                          }
-                        }}
-                      >
+                      <Select value={testSkiSource} disabled>
                         <SelectTrigger data-testid="select-ski-source">
                           <SelectValue />
                         </SelectTrigger>

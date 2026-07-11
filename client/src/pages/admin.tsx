@@ -3287,6 +3287,12 @@ export default function Admin() {
     queryKey: [`/api/team-usage${teamScopeParam}`],
     enabled: canManage,
   });
+
+  // Dashboard "needs attention": new interest registrations (SA only).
+  const { data: adminRegistrations = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/registrations"],
+    enabled: isSuperAdmin,
+  });
   const restoreMutation = useMutation({
     mutationFn: async (logId: number) => (await apiRequest("POST", `/api/audit/${logId}/restore`)).json(),
     onSuccess: (data: any) => {
@@ -4410,6 +4416,119 @@ export default function Admin() {
 
         {activeTab === "overview" && (
           <div className="flex flex-col gap-5" data-testid="tab-content-overview">
+            {/* ── Control-room dashboard: status cards + needs-attention ── */}
+            {(() => {
+              const today = new Date().toISOString().slice(0, 10);
+              const scopedTeams = isSuperAdmin
+                ? (adminTeamScope === "all" ? teams : teams.filter((tm) => tm.id === effectiveTeamId))
+                : teams.filter((tm) => tm.id === (user?.teamId ?? -1));
+              const configured = scopedTeams.filter((tm) => tm.backupSheetUrl || (tm as any).driveFolderId);
+              const isFresh = (ts: string | null) => !!ts && (Date.now() - new Date(ts).getTime()) < 26 * 3600 * 1000;
+              const staleBackups = configured.filter((tm) => !isFresh(tm.lastBackupAt));
+              const missingDrive = scopedTeams.filter((tm) => !(tm as any).driveFolderId);
+              const lockedUsers = users.filter((u) => !!u.loginLocked);
+              const termsMissing = users.filter((u) => !!u.isActive && !u.isAthleteAccess && !(u as any).fromOtherTeam && !(u as any).termsAcceptedAt);
+              const newRegs = isSuperAdmin ? adminRegistrations.filter((r: any) => (r.status ?? "new") === "new") : [];
+              const activityToday = activities.filter((a) => a.createdAt?.slice(0, 10) === today).length;
+
+              const tone = {
+                green: "text-emerald-600 dark:text-emerald-400",
+                amber: "text-amber-600 dark:text-amber-400",
+                red: "text-red-600 dark:text-red-400",
+                muted: "text-muted-foreground",
+              } as const;
+              const dot = { green: "bg-emerald-500", amber: "bg-amber-500", red: "bg-red-500", muted: "bg-muted-foreground/40" } as const;
+
+              const backupTone: keyof typeof tone = configured.length === 0 ? "muted" : staleBackups.length > 0 ? "amber" : "green";
+              const backupValue = configured.length === 0
+                ? L("Ikke satt opp", "Not set up")
+                : staleBackups.length > 0
+                  ? `${staleBackups.length} ${L("på etterskudd", "behind")}`
+                  : scopedTeams.length === 1 && configured[0]?.lastBackupAt
+                    ? new Date(configured[0].lastBackupAt as string).toLocaleString(undefined, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+                    : L("Alle oppdatert", "All up to date");
+              const usersTone: keyof typeof tone = usage?.users.limit != null
+                ? (usage.users.current >= usage.users.limit ? "red" : usage.users.current / usage.users.limit >= 0.8 ? "amber" : "green")
+                : "muted";
+              const usersValue = usage ? `${usage.users.current}${usage.users.limit != null ? ` ${L("av", "of")} ${usage.users.limit}` : ""}` : String(stats.userCount);
+              const termsTone: keyof typeof tone = termsMissing.length > 0 ? "amber" : "green";
+
+              const statusCards: { label: string; value: string; toneKey: keyof typeof tone; tab: TabId; testId: string }[] = [
+                { label: "Backup", value: backupValue, toneKey: backupTone, tab: "backup", testId: "status-backup" },
+                { label: L("Brukere", "Users"), value: usersValue, toneKey: usersTone, tab: "users", testId: "status-users" },
+                { label: L("Vilkår", "Terms"), value: termsMissing.length > 0 ? `${termsMissing.length} ${L("mangler", "missing")}` : L("Alle har akseptert", "All accepted"), toneKey: termsTone, tab: "users", testId: "status-terms" },
+                { label: L("Aktivitet i dag", "Activity today"), value: String(activityToday), toneKey: activityToday > 0 ? "green" : "muted", tab: "activity", testId: "status-activity" },
+              ];
+
+              const attention: { label: string; action: string; tab: TabId; toneKey: keyof typeof tone; testId: string }[] = [
+                ...(lockedUsers.length > 0 ? [{ label: `${lockedUsers.length} ${L("konto(er) er låst etter mislykkede innlogginger", "account(s) locked after failed logins")}`, action: L("Se hvem", "See who"), tab: "users" as TabId, toneKey: "red" as const, testId: "attention-locked" }] : []),
+                ...(termsMissing.length > 0 ? [{ label: `${termsMissing.length} ${L("bruker(e) har ikke akseptert vilkårene", "user(s) have not accepted the terms")}`, action: L("Se hvem", "See who"), tab: "users" as TabId, toneKey: "amber" as const, testId: "attention-terms" }] : []),
+                ...(newRegs.length > 0 ? [{ label: `${newRegs.length} ${L("ny(e) interesse-registrering(er)", "new interest registration(s)")}`, action: L("Behandle", "Handle"), tab: "registrations" as TabId, toneKey: "amber" as const, testId: "attention-registrations" }] : []),
+                ...(missingDrive.length > 0 && isSuperAdmin ? [{ label: `${missingDrive.length} ${L("lag mangler Drive-mappe for backup", "team(s) missing a Drive folder for backup")}`, action: L("Koble til", "Connect"), tab: "backup" as TabId, toneKey: "amber" as const, testId: "attention-drive" }] : []),
+                ...(staleBackups.length > 0 ? [{ label: `${staleBackups.length} ${L("lag har backup eldre enn 24 timer", "team(s) have a backup older than 24 hours")}`, action: L("Sjekk", "Check"), tab: "backup" as TabId, toneKey: "amber" as const, testId: "attention-backup" }] : []),
+              ];
+
+              return (
+                <>
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="dashboard-status-cards">
+                    {statusCards.map((c) => (
+                      <button
+                        key={c.testId}
+                        type="button"
+                        onClick={() => setActiveTab(c.tab)}
+                        className="rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/30"
+                        data-testid={c.testId}
+                      >
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <span className={cn("h-1.5 w-1.5 rounded-full", dot[c.toneKey])} />
+                          {c.label}
+                        </div>
+                        <div className={cn("mt-1 text-lg font-semibold tabular-nums", tone[c.toneKey])}>{c.value}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-needs-attention">
+                    <div className="mb-3 flex items-center gap-2">
+                      <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-900/30">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <h2 className="text-sm font-semibold text-foreground">{L("Trenger oppmerksomhet", "Needs attention")}</h2>
+                      {attention.length > 0 && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">{attention.length}</span>
+                      )}
+                    </div>
+                    {attention.length === 0 ? (
+                      <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400" data-testid="attention-all-clear">
+                        <Check className="h-4 w-4" />
+                        {L("Alt ser bra ut — ingenting krever oppmerksomhet.", "All clear — nothing needs attention.")}
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {attention.map((a) => (
+                          <button
+                            key={a.testId}
+                            type="button"
+                            onClick={() => setActiveTab(a.tab)}
+                            className={cn(
+                              "flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
+                              a.toneKey === "red"
+                                ? "border-red-200 bg-red-50/60 hover:bg-red-50 dark:border-red-900/50 dark:bg-red-950/20"
+                                : "border-amber-200 bg-amber-50/60 hover:bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20"
+                            )}
+                            data-testid={a.testId}
+                          >
+                            <span className="min-w-0 truncate text-foreground/90">{a.label}</span>
+                            <span className={cn("shrink-0 text-xs font-medium", tone[a.toneKey])}>{a.action} →</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
+                </>
+              );
+            })()}
+
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <StatCard label={t("admin.statUsers")} value={stats.userCount} icon={Users} color="blue" testId="stat-users" />
               <StatCard label={t("admin.statTests")} value={stats.testCount} icon={FlaskConical} color="emerald" testId="stat-tests" />

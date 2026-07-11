@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, EyeOff, Eye, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch, ImageIcon, MessageSquare, Send, Link2, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, EyeOff, Eye, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch, ImageIcon, MessageSquare, Send, Link2, ChevronLeft, ChevronRight, MoreHorizontal, Plus } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -1128,6 +1128,15 @@ export default function TestDetail() {
   const grindParams = isGrind && test.grindParameters ? (() => { try { return JSON.parse(test.grindParameters); } catch { return {}; } })() : {};
   const testTypeBadgeClass = test.testType === "Glide" ? "fs-badge-glide" : test.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure";
 
+  // Winner chip in the title row (hidden in blind mode / when details are hidden).
+  const winnerEntry = sortedEntries.find((e: any) => e.rank0km === 1);
+  const winnerName = (() => {
+    if (!winnerEntry) return null;
+    if ((winnerEntry as any).freeTextProduct) return (winnerEntry as any).freeTextProduct as string;
+    const p = winnerEntry.productId ? productsById.get(winnerEntry.productId) : null;
+    return p ? `${p.brand ?? ""} ${p.name ?? ""}`.trim() : null;
+  })();
+
   return (
     <AppShell activeNav={isRaceSkiTest ? "/raceskis" : undefined}>
       <div className="flex flex-col gap-5">
@@ -1245,49 +1254,14 @@ export default function TestDetail() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <div className="hidden sm:flex items-center gap-2 flex-wrap justify-end">
-              {sortedEntries.length >= 2 && (
-                <Button variant="outline" size="sm" onClick={() => setShowRunsheet(true)} data-testid="button-complete-runsheet">
-                  <Trophy className="mr-2 h-4 w-4" />
-                  {t("testDetail.runsheet")}
-                </Button>
-              )}
-              {(test as any)?.runsheetBracket && (
-                <Button variant="outline" size="sm" onClick={() => setShowReviewRunsheet(true)} data-testid="button-review-runsheet">
-                  <ClipboardList className="mr-2 h-4 w-4" />
-                  {t("testDetail.runsheet")}
-                </Button>
-              )}
-              {isSuperAdmin && (
-                <Button variant="outline" size="sm" onClick={() => setShowShareDialog(true)} data-testid="button-share-test">
-                  <Share2 className="mr-2 h-4 w-4" />
-                  {t("testDetail.shareLink")}
-                </Button>
-              )}
-              {canEditTests && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={copyLinkLoading}
-                  data-testid="button-copy-link"
-                  onClick={copyPublicLink}
-                >
-                  <Link2 className="mr-2 h-4 w-4" />
-                  Copy link
-                </Button>
-              )}
-              <AppLink href={`/tests/new?duplicate=${id}`} testId="link-duplicate-test">
-                <Button variant="outline" size="sm" data-testid="button-duplicate-test">
-                  <Copy className="mr-2 h-4 w-4" />
-                  {t("newTest.duplicateTest")}
-                </Button>
-              </AppLink>
-              <Button variant="outline" size="sm" onClick={generatePDF} disabled={pdfLoading} className="gap-1.5 cursor-pointer" data-testid="button-download-pdf">
-                <FileText className="h-4 w-4" />
+            {/* Desktop: two primary actions + everything else in one ⋯ menu, so the
+                header never becomes a wall of buttons. */}
+            <div className="hidden sm:flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={generatePDF} disabled={pdfLoading} data-testid="button-download-pdf">
+                <FileText className="mr-2 h-4 w-4" />
                 {pdfLoading ? "Generating…" : "PDF"}
               </Button>
               <Button
-                variant="outline"
                 size="sm"
                 data-testid="button-edit-test"
                 onClick={openEditTest}
@@ -1295,13 +1269,49 @@ export default function TestDetail() {
                 <Pencil className="mr-2 h-4 w-4" />
                 {t("testDetail.editTest")}
               </Button>
-              <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" data-testid="button-delete-test">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" data-testid="button-test-more" aria-label={L("Flere valg", "More options")}>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {sortedEntries.length >= 2 && (
+                    <DropdownMenuItem onClick={() => setShowRunsheet(true)} data-testid="button-complete-runsheet">
+                      <Trophy className="mr-2 h-4 w-4" />
+                      {t("testDetail.runsheet")}
+                    </DropdownMenuItem>
+                  )}
+                  {(test as any)?.runsheetBracket && (
+                    <DropdownMenuItem onClick={() => setShowReviewRunsheet(true)} data-testid="button-review-runsheet">
+                      <ClipboardList className="mr-2 h-4 w-4" />
+                      {t("testDetail.runsheet")}
+                    </DropdownMenuItem>
+                  )}
+                  {isSuperAdmin && (
+                    <DropdownMenuItem onClick={() => setShowShareDialog(true)} data-testid="button-share-test">
+                      <Share2 className="mr-2 h-4 w-4" />
+                      {t("testDetail.shareLink")}
+                    </DropdownMenuItem>
+                  )}
+                  {canEditTests && (
+                    <DropdownMenuItem onClick={copyPublicLink} disabled={copyLinkLoading} data-testid="button-copy-link">
+                      <Link2 className="mr-2 h-4 w-4" />
+                      Copy link
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => setLocation(`/tests/new?duplicate=${id}`)} data-testid="button-duplicate-test">
+                    <Copy className="mr-2 h-4 w-4" />
+                    {t("newTest.duplicateTest")}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteDialog(true)} data-testid="button-delete-test">
                     <Trash2 className="mr-2 h-4 w-4" />
                     {t("testDetail.deleteTest")}
-                  </Button>
-                </AlertDialogTrigger>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>{t("testDetail.deleteTest")}</AlertDialogTitle>
@@ -1331,8 +1341,21 @@ export default function TestDetail() {
             <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", testTypeBadgeClass)} data-testid="badge-test-type">
               {test.testType}
             </span>
+            {winnerName && !hideDetails && !isBlindTester && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800" data-testid="badge-test-winner">
+                <Trophy className="h-3 w-3" />
+                {winnerName}
+              </span>
+            )}
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">{fmtDate(test.date)} · {seriesById.get(test.seriesId) ?? "Series"} · {test.groupScope}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {fmtDate(test.date)}
+            {(test as any).startTime ? ` · ${(test as any).startTime}` : ""}
+            {" · "}{test.location}
+            {seriesById.get(test.seriesId) ? ` · ${seriesById.get(test.seriesId)}` : ""}
+            {test.groupScope ? ` · ${test.groupScope}` : ""}
+            {(test as any).createdByName ? ` · ${(test as any).createdByName}` : ""}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -1412,6 +1435,25 @@ export default function TestDetail() {
             </div>
           </Card>
 
+          {!weather && !isGrind && (
+            <Card className="fs-card rounded-2xl p-4 sm:p-5 border-dashed" data-testid="card-test-no-weather">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted/60">
+                  <Snowflake className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <h2 className="text-base font-semibold text-muted-foreground">{t("testDetail.weather")}</h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {L("Ingen værdata er koblet til denne testen.", "No weather data is linked to this test.")}
+              </p>
+              {canEditTests && (
+                <Button variant="outline" size="sm" className="mt-3" onClick={openEditTest} data-testid="button-link-weather">
+                  <Plus className="mr-2 h-4 w-4" />
+                  {L("Koble til vær", "Link weather")}
+                </Button>
+              )}
+            </Card>
+          )}
           {weather && (
             <Card className="fs-card rounded-2xl p-4 sm:p-5" data-testid="card-test-weather">
               <div className="flex items-center gap-2 mb-4">
@@ -1764,9 +1806,10 @@ export default function TestDetail() {
           )}
         </Card>
 
-        <AttachmentsSection testId={test.id} />
-
-        <CommentsSection testId={test.id} />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
+          <AttachmentsSection testId={test.id} />
+          <CommentsSection testId={test.id} />
+        </div>
 
         {sortedEntries.length >= 2 && (
           <RunsheetDialog

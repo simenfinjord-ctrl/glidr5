@@ -3181,6 +3181,8 @@ export default function Admin() {
   const [addEmail, setAddEmail] = useState("");
   const [addRole, setAddRole] = useState<"member" | "teamAdmin">("member");
   const [editUser, setEditUser] = useState<ApiUser | undefined>();
+  // Shared-in user whose per-team access (for THIS team) a TA is managing.
+  const [sharedPermUser, setSharedPermUser] = useState<ApiUser | undefined>();
   const [resetUser, setResetUser] = useState<ApiUser | undefined>();
   const [historyUser, setHistoryUser] = useState<ApiUser | null>(null);
   const [newGroupName, setNewGroupName] = useState("");
@@ -3321,8 +3323,10 @@ export default function Admin() {
 
   const groupNames = apiGroups.map((g) => g.name);
 
+  // Follow the ACTIVE team, not the home team — a user who is team admin of
+  // another team (shared in + made TA there) administers that team, not home.
   const effectiveTeamId = adminTeamScope === "all" || adminTeamScope === "current"
-    ? (user?.teamId ?? 1)
+    ? ((user as any)?.activeTeamId ?? user?.teamId ?? 1)
     : parseInt(adminTeamScope);
 
   // Keep newGroupTeamId in sync with the selected admin scope so creating a group
@@ -4430,9 +4434,13 @@ export default function Admin() {
               const staleBackups = configured.filter((tm) => !isFresh(tm.lastBackupAt));
               const missingDrive = scopedTeams.filter((tm) => !(tm as any).driveFolderId);
               const lockedUsers = users.filter((u) => !!u.loginLocked);
-              const termsMissing = users.filter((u) => !!u.isActive && !u.isAthleteAccess && !(u as any).fromOtherTeam && !(u as any).termsAcceptedAt);
+              // Terms acceptance is Super Admin business — never shown to Team Admins.
+              const termsMissing = isSuperAdmin
+                ? users.filter((u) => !!u.isActive && !u.isAthleteAccess && !(u as any).fromOtherTeam && !(u as any).termsAcceptedAt)
+                : [];
               const newRegs = isSuperAdmin ? adminRegistrations.filter((r: any) => (r.status ?? "new") === "new") : [];
               const activityToday = activities.filter((a) => a.createdAt?.slice(0, 10) === today).length;
+              const loginsToday = loginLogs.filter((l) => l.loginAt?.slice(0, 10) === today).length;
 
               const tone = {
                 green: "text-emerald-600 dark:text-emerald-400",
@@ -4459,7 +4467,10 @@ export default function Admin() {
               const statusCards: { label: string; value: string; toneKey: keyof typeof tone; tab: TabId; testId: string }[] = [
                 { label: "Backup", value: backupValue, toneKey: backupTone, tab: "backup", testId: "status-backup" },
                 { label: L("Brukere", "Users"), value: usersValue, toneKey: usersTone, tab: "users", testId: "status-users" },
-                { label: L("Vilkår", "Terms"), value: termsMissing.length > 0 ? `${termsMissing.length} ${L("mangler", "missing")}` : L("Alle har akseptert", "All accepted"), toneKey: termsTone, tab: "users", testId: "status-terms" },
+                // Terms card is SA-only; TAs get today's logins instead.
+                ...(isSuperAdmin
+                  ? [{ label: L("Vilkår", "Terms"), value: termsMissing.length > 0 ? `${termsMissing.length} ${L("mangler", "missing")}` : L("Alle har akseptert", "All accepted"), toneKey: termsTone, tab: "users" as TabId, testId: "status-terms" }]
+                  : [{ label: L("Innlogginger i dag", "Logins today"), value: String(loginsToday), toneKey: (loginsToday > 0 ? "green" : "muted") as keyof typeof tone, tab: "logins" as TabId, testId: "status-logins" }]),
                 { label: L("Aktivitet i dag", "Activity today"), value: String(activityToday), toneKey: activityToday > 0 ? "green" : "muted", tab: "activity", testId: "status-activity" },
               ];
 
@@ -4907,13 +4918,18 @@ export default function Admin() {
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">{L("Handlinger", "Actions")}</DropdownMenuLabel>
                             {u.fromOtherTeam ? (
-                              <DropdownMenuItem
-                                className="gap-2 text-rose-600 focus:text-rose-600"
-                                data-testid={`button-remove-from-team-${u.id}`}
-                                onSelect={() => { if (confirm(L("Fjerne denne brukerens tilgang til laget?", "Remove this user's access to the team?"))) removeFromTeamMutation.mutate(u.id); }}
-                              >
-                                <UserX className="h-4 w-4" />{L("Fjern fra laget", "Remove from team")}
-                              </DropdownMenuItem>
+                              <>
+                                <DropdownMenuItem className="gap-2" data-testid={`button-shared-perms-${u.id}`} onSelect={() => setSharedPermUser(u)}>
+                                  <Settings2 className="h-4 w-4" />{L("Administrer tilgang her", "Manage access here")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="gap-2 text-rose-600 focus:text-rose-600"
+                                  data-testid={`button-remove-from-team-${u.id}`}
+                                  onSelect={() => { if (confirm(L("Fjerne denne brukerens tilgang til laget?", "Remove this user's access to the team?"))) removeFromTeamMutation.mutate(u.id); }}
+                                >
+                                  <UserX className="h-4 w-4" />{L("Fjern fra laget", "Remove from team")}
+                                </DropdownMenuItem>
+                              </>
                             ) : (
                               <DropdownMenuItem className="gap-2" data-testid={`button-edit-user-${u.id}`} onSelect={() => setEditUser(u)}>
                                 <Pencil className="h-4 w-4" />{L("Rediger bruker", "Edit user")}
@@ -4958,6 +4974,43 @@ export default function Admin() {
                 {/* Identity header inside the form doubles as the visible title. */}
                 <DialogHeader className="sr-only"><DialogTitle>{L("Rediger bruker", "Edit user")}</DialogTitle></DialogHeader>
                 {editUser && <EditUserForm user={editUser} onDone={() => setEditUser(undefined)} allGroups={apiGroups} teams={teams} />}
+              </DialogContent>
+            </Dialog>
+
+            {/* Per-team access for a user shared in from another team — the
+                receiving team's admin is the first line for this. */}
+            <Dialog open={!!sharedPermUser} onOpenChange={(v) => { if (!v) setSharedPermUser(undefined); }}>
+              <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{L("Tilgang på dette laget", "Access on this team")}</DialogTitle>
+                  <p className="text-xs text-muted-foreground">
+                    {sharedPermUser?.name} · {L("styrer kun hva brukeren kan se og gjøre hos", "only controls what the user can see and do in")} {teams.find((tm) => tm.id === effectiveTeamId)?.name ?? L("dette laget", "this team")}
+                  </p>
+                </DialogHeader>
+                {sharedPermUser && (() => {
+                  const team = teams.find((tm) => tm.id === effectiveTeamId);
+                  if (!team) return null;
+                  return (
+                    <TeamPermRow
+                      userId={sharedPermUser.id}
+                      team={team}
+                      existingPerms={sharedPermUser.permissions ?? null}
+                      existingGroupScope={sharedPermUser.groupScope ?? null}
+                      existingIsTeamAdmin={!!sharedPermUser.isTeamAdmin}
+                      allTeams={teams}
+                      isExpanded
+                      onToggle={() => {}}
+                      onSaved={() => {
+                        queryClient.invalidateQueries({ queryKey: [`/api/users${teamScopeParam}`] });
+                        setSharedPermUser(undefined);
+                      }}
+                      onReset={() => {
+                        queryClient.invalidateQueries({ queryKey: [`/api/users${teamScopeParam}`] });
+                        setSharedPermUser(undefined);
+                      }}
+                    />
+                  );
+                })()}
               </DialogContent>
             </Dialog>
 

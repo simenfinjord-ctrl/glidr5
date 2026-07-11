@@ -4367,12 +4367,18 @@ export async function registerRoutes(
   app.get("/api/users/:id/team-permissions", requireAuth, async (req, res) => {
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const userId = parseInt(req.params.id);
+    const u = req.user!;
     const { pool: p } = await import("./db");
     const result = await (p as any).query(
       "SELECT team_id, permissions, group_scope, is_team_admin FROM user_team_permissions WHERE user_id = $1",
       [userId]
     );
-    res.json(result.rows.map((r: any) => ({ ...r, isTeamAdmin: r.is_team_admin === 1 || r.is_team_admin === true })));
+    // A TA only sees the override for the team they administer — other teams'
+    // configuration of the same user is not their business.
+    const rows = u.isAdmin === 1
+      ? result.rows
+      : result.rows.filter((r: any) => r.team_id === getActiveTeamId(req));
+    res.json(rows.map((r: any) => ({ ...r, isTeamAdmin: r.is_team_admin === 1 || r.is_team_admin === true })));
   });
 
   app.put("/api/users/:id/team-permissions/:teamId", requireAuth, async (req, res) => {
@@ -4380,15 +4386,24 @@ export async function registerRoutes(
     const userId = parseInt(req.params.id);
     const teamId = parseInt(req.params.teamId);
     const u = req.user!;
-    // Team admins can only manage users within their own team
+    const { pool: p } = await import("./db");
+    // The RECEIVING team's admin is the first line for shared users: a TA may
+    // set per-team permissions for the team they currently administer — and
+    // only for users already shared into (or belonging to) that team.
     if (u.isAdmin !== 1) {
-      if (teamId !== u.teamId) return res.status(403).json({ message: "Cannot manage permissions for other teams" });
+      if (teamId !== getActiveTeamId(req)) return res.status(403).json({ message: "Cannot manage permissions for other teams" });
+      const member = await (p as any).query(
+        `SELECT 1 FROM user_teams WHERE user_id = $1 AND team_id = $2
+         UNION SELECT 1 FROM user_team_permissions WHERE user_id = $1 AND team_id = $2
+         UNION SELECT 1 FROM users WHERE id = $1 AND team_id = $2 LIMIT 1`,
+        [userId, teamId]
+      );
+      if (member.rows.length === 0) return res.status(403).json({ message: "User is not shared with this team" });
     }
     let perms = sanitizePermissions(req.body.permissions);
     if (u.isAdmin !== 1) {
       perms = await enforceTeamAreas(perms, teamId);
     }
-    const { pool: p } = await import("./db");
     const groupScope = req.body.groupScope !== undefined ? String(req.body.groupScope) : "";
     const isTeamAdmin = req.body.isTeamAdmin ? 1 : 0;
     await (p as any).query(
@@ -4404,6 +4419,10 @@ export async function registerRoutes(
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const userId = parseInt(req.params.id);
     const teamId = parseInt(req.params.teamId);
+    const u = req.user!;
+    if (u.isAdmin !== 1 && teamId !== getActiveTeamId(req)) {
+      return res.status(403).json({ message: "Cannot manage permissions for other teams" });
+    }
     const { pool: p } = await import("./db");
     await (p as any).query(
       "DELETE FROM user_team_permissions WHERE user_id = $1 AND team_id = $2",

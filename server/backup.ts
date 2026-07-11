@@ -1073,7 +1073,11 @@ async function dumpAllTables(teamId: number | null, includeOwnerCompliance: bool
 
   for (const [table, columns] of [...colsByTable.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
     if (EXPORT_SYSTEM_TABLES.has(table)) { skipped.push({ table, reason: 'system table (sessions/reset tokens) — never exported' }); continue; }
-    const excluded = EXPORT_COLUMN_EXCLUDES[table] ?? [];
+    const excluded = [
+      ...(EXPORT_COLUMN_EXCLUDES[table] ?? []),
+      // Terms acceptance is owner-level compliance data — only SA exports carry it.
+      ...(!includeOwnerCompliance && table === 'users' ? ['terms_accepted_at', 'terms_accepted_version'] : []),
+    ];
     const selectCols = columns.filter((c) => !excluded.includes(c)).map((c) => `"${c}"`).join(', ');
     let where = '';
     let params: any[] = [];

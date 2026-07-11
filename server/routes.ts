@@ -4158,7 +4158,12 @@ export async function registerRoutes(
         }
       } catch (e) { console.error("[users] multi-team merge failed:", e); }
     }
-    res.json([...byId.values()].map(({ password, utpPermissions, utpGroupScope, utpIsTeamAdmin, ...rest }: any) => rest));
+    // Terms acceptance is owner-level compliance data — stripped for everyone
+    // except the Super Admin so no TA surface can ever show it.
+    const includeTerms = userInfo(req).isAdmin === true;
+    res.json([...byId.values()].map(({ password, utpPermissions, utpGroupScope, utpIsTeamAdmin, termsAcceptedAt, termsAcceptedVersion, ...rest }: any) =>
+      includeTerms ? { ...rest, termsAcceptedAt, termsAcceptedVersion } : rest
+    ));
   });
 
   app.post("/api/users", requireAuth, async (req, res) => {
@@ -5527,7 +5532,8 @@ export async function registerRoutes(
       weather: allWeather,
       series: allSeries,
       products: allProducts,
-      users: allUsers.map(({ password, ...rest }) => rest),
+      users: allUsers.map(({ password, termsAcceptedAt, termsAcceptedVersion, ...rest }: any) =>
+        u.isAdmin ? { ...rest, termsAcceptedAt, termsAcceptedVersion } : rest),
       groups: allGroups,
       loginLogs: allLoginLogs,
       activities: allActivities,

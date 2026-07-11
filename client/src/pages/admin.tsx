@@ -5343,7 +5343,7 @@ export default function Admin() {
                 <h2 className="text-sm font-semibold text-foreground">{L("Google Drive-sikkerhetskopi", "Google Drive Backup")}</h2>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
-                Connect a Google Shared Drive folder for fully automatic uploads every 30 minutes.
+                Connect a Google Shared Drive folder — Glidr uploads a complete JSON + PDF backup for the team automatically every day at 23:59, plus on demand.
                 The same files as the Export Tools buttons (PDF + JSON) are saved automatically.
               </p>
 

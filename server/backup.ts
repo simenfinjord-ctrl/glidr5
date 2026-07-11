@@ -1761,11 +1761,10 @@ async function notifyBackupFailure(teamId: number, teamName: string | null | und
 }
 
 const backupIntervals: Record<number, NodeJS.Timeout> = {};
-// PDF/Drive backup runs on its own slower interval — it launches headless
-// Chromium (Puppeteer), which is memory-heavy, so we keep it infrequent (2h)
-// and separate from the cheap 30-min Google Sheets backup.
+// JSON+PDF Drive backup runs once daily at 23:59 (Europe/Oslo) — it launches
+// headless Chromium (Puppeteer) for the PDF, which is memory-heavy, so it is
+// kept separate from the cheap 30-min Google Sheets backup.
 const drivePdfIntervals: Record<number, NodeJS.Timeout> = {};
-const PDF_BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // once daily (Chromium is memory-heavy)
 
 export function startAutoBackup(teamId: number, intervalMs: number = 30 * 60 * 1000) {
   stopAutoBackup(teamId);

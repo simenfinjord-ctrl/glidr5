@@ -29,7 +29,9 @@ async function clearAndWrite(sheets: any, spreadsheetId: string, sheetTitle: str
     await sheets.spreadsheets.values.update({
       spreadsheetId,
       range: `'${sheetTitle}'!A1`,
-      valueInputOption: 'USER_ENTERED',
+      // RAW keeps values exactly as written — ski IDs like "003" stay text
+      // instead of being parsed into the number 3.
+      valueInputOption: 'RAW',
       requestBody: { values: rows },
     });
   }
@@ -84,11 +86,19 @@ async function reorderSheets(sheets: any, spreadsheetId: string, orderedTitles: 
         index++;
       }
     }
-    // Append any sheets not in our ordered list at the end
+    // Managed sheets that are no longer in the ordered list (deleted athletes,
+    // removed groups, renamed tabs) are DELETED so the spreadsheet always
+    // mirrors the current state of Glidr. Only our own emoji-prefixed tabs are
+    // touched — any sheet the team created manually is left alone (moved last).
+    const MANAGED_PREFIXES = ['📋', '👥', '🧪', '📐', '⛷️', '🏁', '🎽', '⚙️', '📦', '🦵', '🎿', '🧊', '🧴', '🌦', '📂', '🏃'];
     for (const [title, sheetId] of sheetMap.entries()) {
       if (!orderedTitles.includes(title)) {
-        requests.push({ updateSheetProperties: { properties: { sheetId, index }, fields: 'index' } });
-        index++;
+        if (MANAGED_PREFIXES.some((pfx) => title.startsWith(pfx))) {
+          requests.push({ deleteSheet: { sheetId } });
+        } else {
+          requests.push({ updateSheetProperties: { properties: { sheetId, index }, fields: 'index' } });
+          index++;
+        }
       }
     }
     if (requests.length > 0) {
@@ -225,6 +235,8 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
     const athleteSheetTitles = allAthletes.map((a: any) => sanitizeSheetTitle(`🏃 ${a.name}`));
 
     // Logical sheet order
+    // Logical order: overview & people first, then tests (product/structure/
+    // grind/kick), race day, per-athlete sheets, equipment, and reference data.
     const orderedTitles = [
       OVERVIEW_TITLE,
       TEAM_TITLE,
@@ -232,15 +244,15 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       PRODUCT_TESTS_TITLE,
       STRUCTURE_TESTS_TITLE,
       GRIND_TESTS_TITLE,
+      KICK_TITLE,
       RACE_PREPS_TITLE,
       RACE_USAGE_TITLE,
       ...athleteSheetTitles,
-      GRINDS_TITLE,
-      STOCK_TITLE,
-      KICK_TITLE,
       GARAGE_TITLE,
       TESTFLEETS_TITLE,
+      GRINDS_TITLE,
       PRODUCTS_TITLE,
+      STOCK_TITLE,
       WEATHER_TITLE,
     ];
 
@@ -373,6 +385,12 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       }).filter(Boolean).join(' + ');
     };
 
+    // Lookups so every test row can show the human ski ID and the grind used.
+    const raceSkiByIdFlat: Record<number, any> = {};
+    for (const rsk of allRaceSkis) raceSkiByIdFlat[rsk.id] = rsk;
+    const grindProfileById: Record<number, any> = {};
+    for (const gpf of allGrindProfiles as any[]) grindProfileById[gpf.id] = gpf;
+
     // Helper: build flat entry rows for a list of tests
     // Each test gets a bold header row, then one entry row per ski entry.
     // All 15 weather/conditions fields are included on every row.
@@ -380,7 +398,8 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       // Test metadata
       'Test ID', 'Date', 'Location', 'Test Name', 'Group', 'Series', 'Type', 'Notes',
       // Entry data
-      'Ski #', 'Product', 'Application / Method', 'Feeling Rank', 'Kick Rank',
+      'Ski #', 'Ski ID', 'Product', 'Application / Method', 'Grind Used',
+      'Feeling Rank', 'Feeling Note', 'Kick Rank', 'Kick Solution',
       'Result 1', 'Rank 1', 'Result 2', 'Rank 2',
       // Weather / conditions (all fields)
       'Snow Temp °C', 'Air Temp °C', 'Snow Humidity %', 'Air Humidity %',
@@ -421,7 +440,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
           (test as any).testName || '', (test as any).groupScope || '', seriesName, (test as any).testType,
           (test as any).notes || '',
           // Entry columns blank on header row
-          '', '', '', '', '', '', '', '', '',
+          '', '', '', '', '', '', '', '', '', '', '', '', '',
           ...wCols,
         ]);
 
@@ -453,12 +472,17 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
             res1 = entry.result0kmCmBehind ?? ''; rank1 = entry.rank0km ?? '';
             res2 = entry.resultXkmCmBehind ?? ''; rank2 = entry.rankXkm ?? '';
           }
+          const linkedSki = entry.raceSkiId ? raceSkiByIdFlat[entry.raceSkiId] : null;
+          const skiIdStr = linkedSki ? `${linkedSki.skiId ?? ''}` : '';
+          const gp = entry.grindProfileId ? grindProfileById[entry.grindProfileId] : null;
+          const grindUsed = [gp?.name, entry.grindStone, entry.grindPattern, entry.grindType, entry.grindExtraParams]
+            .filter(Boolean).join(' · ');
           rows.push([
             test.id, test.date, test.location,
             (test as any).testName || '', (test as any).groupScope || '', seriesName, (test as any).testType,
             (test as any).notes || '',
-            entry.skiNumber, productName, entry.methodology || '',
-            entry.feelingRank ?? '', entry.kickRank ?? '',
+            entry.skiNumber, skiIdStr, productName, entry.methodology || '', grindUsed,
+            entry.feelingRank ?? '', entry.feelingNote ?? '', entry.kickRank ?? '', entry.kickSolution ?? '',
             res1, rank1, res2, rank2,
             ...wCols,
           ]);
@@ -1759,19 +1783,63 @@ export function startAutoBackup(teamId: number, intervalMs: number = 30 * 60 * 1
     }
   }, intervalMs);
 
-  // Heavy PDF/Drive backup once daily (Puppeteer/Chromium is memory-heavy) — only
-  // if a Drive folder is set. Manual "Backup to Drive" still runs on demand.
-  drivePdfIntervals[teamId] = setInterval(async () => {
+  // Heavy JSON+PDF Drive backup: once daily AT 23:59 (Europe/Oslo), not on a
+  // rolling 24h timer — a rolling timer resets on every deploy and therefore
+  // never fired on frequently-deployed servers. Scheduled with setTimeout and
+  // re-armed after each run.
+  const scheduleDriveDaily = () => {
+    drivePdfIntervals[teamId] = setTimeout(async () => {
+      try {
+        const team = await storage.getTeam(teamId);
+        if (team?.driveFolderId) {
+          const driveResult = await runDriveBackupForTeam(teamId);
+          console.log(`[DriveBackup] Daily 23:59 result for team ${teamId}:`, driveResult.success ? 'OK' : driveResult.error);
+        }
+      } catch (err) {
+        console.error(`[DriveBackup] Daily 23:59 failed for team ${teamId}:`, err);
+      } finally {
+        scheduleDriveDaily();
+      }
+    }, msUntilNextOslo2359()) as any;
+  };
+  scheduleDriveDaily();
+
+  // Catch-up: if the last successful backup is more than ~25h old (e.g. the
+  // server was asleep or redeployed over 23:59), run one Drive backup shortly
+  // after boot so the daily files are never silently missing.
+  (async () => {
     try {
       const team = await storage.getTeam(teamId);
       if (team?.driveFolderId) {
-        const driveResult = await runDriveBackupForTeam(teamId);
-        console.log(`[DriveBackup] Auto (daily) result for team ${teamId}:`, driveResult.success ? 'OK' : driveResult.error);
+        const last = team.lastBackupAt ? new Date(team.lastBackupAt).getTime() : 0;
+        if (Date.now() - last > 25 * 3600 * 1000) {
+          setTimeout(async () => {
+            try {
+              const r = await runDriveBackupForTeam(teamId);
+              console.log(`[DriveBackup] Catch-up result for team ${teamId}:`, r.success ? 'OK' : r.error);
+            } catch (e) { console.error(`[DriveBackup] Catch-up failed for team ${teamId}:`, e); }
+          }, 2 * 60 * 1000);
+        }
       }
-    } catch (err) {
-      console.error(`[DriveBackup] Auto (daily) failed for team ${teamId}:`, err);
+    } catch {}
+  })();
+}
+
+// Milliseconds until the next 23:59 in Europe/Oslo (handles CET/CEST).
+function msUntilNextOslo2359(): number {
+  const now = new Date();
+  for (let addDay = 0; addDay <= 1; addDay++) {
+    const day = new Date(now.getTime() + addDay * 86400000);
+    const osloDate = day.toLocaleDateString('sv-SE', { timeZone: 'Europe/Oslo' }); // YYYY-MM-DD
+    for (const offset of ['+01:00', '+02:00']) {
+      const candidate = new Date(`${osloDate}T23:59:00${offset}`);
+      const check = candidate.toLocaleString('sv-SE', { timeZone: 'Europe/Oslo' });
+      if (check.startsWith(`${osloDate} 23:59`) && candidate.getTime() > now.getTime()) {
+        return candidate.getTime() - now.getTime();
+      }
     }
-  }, PDF_BACKUP_INTERVAL_MS);
+  }
+  return 60 * 60 * 1000; // defensive fallback: an hour
 }
 
 export function stopAutoBackup(teamId: number) {

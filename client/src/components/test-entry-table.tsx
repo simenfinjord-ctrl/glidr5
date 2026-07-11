@@ -1,10 +1,10 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ProductCombobox } from "@/components/product-combobox";
 import { RaceSkiCombobox } from "@/components/raceski-combobox";
-import { PlusCircle, X, Plus, ArrowUp, ArrowDown } from "lucide-react";
+import { PlusCircle, X, Plus, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 
@@ -239,70 +239,60 @@ export function TestEntryTable({
     <div className="eg-stack overflow-x-auto rounded-2xl border bg-card">
       <table className="w-full border-separate border-spacing-0" style={{ minWidth: `${(isGrind ? 300 + extraGrindCols.length * 120 : 560) + distanceLabels.length * 200 + (isClassic ? 80 : 0)}px` }}>
         <thead>
-          <tr className="text-left text-xs text-muted-foreground">
-            <th className="sticky left-0 z-10 bg-card px-3 py-3">Ski No.</th>
-            {!isGrind && <th className="px-3 py-3">{isRaceSki ? "Raceski" : "Product(s)"}</th>}
-            {isGrind && <th className="px-3 py-3">Grind Profile</th>}
+          <tr className="border-b border-border bg-muted/30 text-left text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <th className="sticky left-0 z-10 bg-card px-3 py-2.5 font-medium">Ski</th>
+            {!isGrind && <th className="px-3 py-2.5 font-medium">{isRaceSki ? "Raceski" : (language === "no" ? "Produkt og applikasjon" : "Product & application")}</th>}
+            {isGrind && <th className="px-3 py-2.5 font-medium">{language === "no" ? "Slip" : "Grind profile"}</th>}
             {isGrind && extraGrindCols.map((col) => (
-              <th key={col} className="px-3 py-3">{GRIND_PARAM_LABELS[col] ?? col}</th>
+              <th key={col} className="px-3 py-2.5 font-medium">{GRIND_PARAM_LABELS[col] ?? col}</th>
             ))}
             {distanceLabels.map((label, roundIdx) => (
-              <th key={roundIdx} className="px-3 py-3" colSpan={2}>
-                <div className="flex items-center gap-1">
-                  <Input
-                    value={label}
-                    onChange={(e) => {
-                      const next = [...distanceLabels];
-                      next[roundIdx] = e.target.value;
-                      onDistanceLabelsChange(next);
-                    }}
-                    className="h-7 w-24 text-xs bg-background"
-                    placeholder={t("tests.roundLabel", { n: roundIdx + 1 })}
-                    data-testid={`input-distance-label-${roundIdx}`}
-                  />
-                  {distanceLabels.length > 1 && (
-                    <button
-                      type="button"
-                      className="text-red-400 hover:text-red-300 transition-colors"
-                      onClick={() => removeRound(roundIdx)}
-                      data-testid={`button-remove-round-${roundIdx}`}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </th>
+              <Fragment key={roundIdx}>
+                <th className="px-3 py-1.5 font-medium">
+                  <div className="flex items-center gap-1">
+                    {/* Label reads as text until you hover/focus — click to rename the distance. */}
+                    <Input
+                      value={label}
+                      onChange={(e) => {
+                        const next = [...distanceLabels];
+                        next[roundIdx] = e.target.value;
+                        onDistanceLabelsChange(next);
+                      }}
+                      className="h-6 w-20 rounded-md border-transparent bg-transparent px-1 text-[10px] font-medium uppercase tracking-wider shadow-none hover:border-border focus:border-border focus:bg-background"
+                      placeholder={t("tests.roundLabel", { n: roundIdx + 1 })}
+                      data-testid={`input-distance-label-${roundIdx}`}
+                    />
+                    <span className="normal-case text-muted-foreground/60">(cm)</span>
+                    {distanceLabels.length > 1 && (
+                      <button
+                        type="button"
+                        className="text-red-400 hover:text-red-500 transition-colors"
+                        onClick={() => removeRound(roundIdx)}
+                        data-testid={`button-remove-round-${roundIdx}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                </th>
+                <th className="px-2 py-2.5 text-center font-medium">Rank</th>
+              </Fragment>
             ))}
-            <th className="px-3 py-3">{language === "no" ? "Feeling + notat" : "Feeling + note"}</th>
-            {isClassic && <th className="px-3 py-3">Kick</th>}
-            <th className="px-1 py-3">
+            <th className="px-3 py-2.5 font-medium">{language === "no" ? "Følelse + notat" : "Feeling + note"}</th>
+            {isClassic && <th className="px-3 py-2.5 font-medium">Kick</th>}
+            <th className="px-1 py-1.5 text-right">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                className="h-6 px-2 text-xs normal-case tracking-normal text-primary hover:text-primary hover:bg-primary/10"
                 onClick={addRound}
                 data-testid="button-add-round"
               >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                Round
+                <Plus className="h-3 w-3 mr-1" />
+                {language === "no" ? "Runde" : "Round"}
               </Button>
             </th>
-          </tr>
-          <tr className="text-left text-[10px] text-muted-foreground/70 uppercase tracking-wider">
-            <th className="sticky left-0 z-10 bg-card"></th>
-            {!isGrind && <th></th>}
-            {isGrind && <th></th>}
-            {isGrind && extraGrindCols.map((col) => <th key={col}></th>)}
-            {distanceLabels.map((_, roundIdx) => (
-              <>
-                <th key={`res-${roundIdx}`} className="px-3 pb-1">Result (cm)</th>
-                <th key={`rank-${roundIdx}`} className="px-3 pb-1">Rank</th>
-              </>
-            ))}
-            <th></th>
-            {isClassic && <th></th>}
-            <th></th>
           </tr>
         </thead>
         <tbody className="text-sm">
@@ -312,35 +302,40 @@ export function TestEntryTable({
             const rankBadge = (rank: number | null) => (
               <div
                 className={cn(
-                  "inline-flex min-w-10 items-center justify-center rounded-full px-2 py-1 text-xs font-semibold",
+                  "inline-flex min-w-7 items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
                   rank === 1
-                    ? "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400"
+                    ? "bg-yellow-500/90 text-white shadow-sm"
                     : rank === 2
-                      ? "bg-slate-300/15 text-slate-500 dark:text-slate-300"
+                      ? "border border-border bg-muted/60 text-foreground/80"
                       : rank === 3
-                        ? "bg-amber-700/15 text-amber-700 dark:text-amber-600"
-                        : "bg-muted/70 text-foreground",
+                        ? "bg-amber-600/15 text-amber-700 dark:text-amber-500"
+                        : rank != null
+                          ? "bg-muted/60 text-muted-foreground"
+                          : "text-muted-foreground/40",
                 )}
               >
-                {rank ?? "—"}
+                {rank ?? "–"}
               </div>
             );
+
+            // Winner row gets a subtle tint, matching the day view.
+            const topRank = row.roundResults[0]?.rank ?? null;
 
             return (
               <tr
                 key={row.id}
                 className={cn(
-                  "border-t",
-                  idx % 2 === 0 ? "bg-card" : "bg-muted/30",
+                  "border-t transition-colors",
+                  topRank === 1 ? "bg-emerald-500/[0.06]" : "bg-card hover:bg-muted/20",
                 )}
               >
                 <td className="sticky left-0 z-10 bg-inherit px-3 py-2">
-                  <div className="flex items-center gap-1.5">
-                    <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1">
+                    <div className="flex flex-col">
                       <button
                         type="button"
                         disabled={idx === 0}
-                        className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:hover:bg-transparent transition-colors"
+                        className="flex h-4 w-5 items-center justify-center rounded text-muted-foreground/50 hover:text-foreground hover:bg-muted disabled:opacity-15 disabled:hover:bg-transparent transition-colors"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -351,12 +346,12 @@ export function TestEntryTable({
                         }}
                         data-testid={`button-move-up-${row.id}`}
                       >
-                        <ArrowUp className="h-3.5 w-3.5" />
+                        <ChevronUp className="h-3.5 w-3.5" />
                       </button>
                       <button
                         type="button"
                         disabled={idx === rows.length - 1}
-                        className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:hover:bg-transparent transition-colors"
+                        className="flex h-4 w-5 items-center justify-center rounded text-muted-foreground/50 hover:text-foreground hover:bg-muted disabled:opacity-15 disabled:hover:bg-transparent transition-colors"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -367,13 +362,13 @@ export function TestEntryTable({
                         }}
                         data-testid={`button-move-down-${row.id}`}
                       >
-                        <ArrowDown className="h-3.5 w-3.5" />
+                        <ChevronDown className="h-3.5 w-3.5" />
                       </button>
                     </div>
                     <div
                       className={cn(
-                        "inline-flex h-9 items-center justify-center rounded-xl border bg-background text-sm font-semibold px-2",
-                        isRaceSki ? "min-w-14" : "w-14",
+                        "inline-flex h-8 items-center justify-center rounded-lg border bg-muted/40 text-xs font-semibold px-2",
+                        isRaceSki ? "min-w-12" : "w-10",
                       )}
                       data-testid={`text-ski-number-${row.id}`}
                     >
@@ -398,23 +393,26 @@ export function TestEntryTable({
                         }}
                         testId={`select-raceski-${row.id}`}
                       />
-                      <Input
-                        value={row.freeTextProduct ?? ""}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          // Free-text ski (e.g. borrowed) — not in the garage, excluded from analytics.
-                          const next = rows.map((r) => (r.id === row.id ? { ...r, freeTextProduct: v || null, raceSkiId: v ? undefined : r.raceSkiId } : r));
-                          setRows(next);
-                        }}
-                        className="h-6 text-[11px] bg-background/60 border-dashed px-2"
-                        placeholder={language === "no" ? "…eller fritekst (lånt ski – ikke i analyse)" : "…or free text (borrowed ski – excluded from analytics)"}
-                        data-testid={`input-freetext-ski-${row.id}`}
-                      />
+                      {/* Free text only while no garage ski is picked — quiet ghost field. */}
+                      {(!row.raceSkiId || row.freeTextProduct) && (
+                        <Input
+                          value={row.freeTextProduct ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            // Free-text ski (e.g. borrowed) — not in the garage, excluded from analytics.
+                            const next = rows.map((r) => (r.id === row.id ? { ...r, freeTextProduct: v || null, raceSkiId: v ? undefined : r.raceSkiId } : r));
+                            setRows(next);
+                          }}
+                          className="h-6 rounded-md border-transparent bg-transparent px-1 text-[11px] shadow-none placeholder:text-muted-foreground/50 hover:border-border focus:border-border focus:bg-background"
+                          placeholder={language === "no" ? "…eller fritekst (lånt ski – ikke i analyse)" : "…or free text (borrowed ski – excluded from analytics)"}
+                          data-testid={`input-freetext-ski-${row.id}`}
+                        />
+                      )}
                     </div>
                   ) : (
                   <div className="flex items-start gap-1.5 flex-wrap">
                     {/* Primary product block */}
-                    <div className="flex flex-col gap-1 min-w-[140px]">
+                    <div className="flex flex-col gap-0.5 min-w-[150px]">
                       <ProductCombobox
                         testType={testType as "Glide" | "Structure" | "Classic" | "Skating" | "Double Poling"}
                         products={products}
@@ -425,18 +423,21 @@ export function TestEntryTable({
                         }}
                         testId={`input-product-${row.id}`}
                       />
-                      <Input
-                        value={row.freeTextProduct ?? ""}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          // Free-text product (e.g. borrowed) — excluded from analytics.
-                          const next = rows.map((r) => (r.id === row.id ? { ...r, freeTextProduct: v || null, productId: v ? undefined : r.productId } : r));
-                          setRows(next);
-                        }}
-                        className="h-6 text-[11px] bg-background/60 border-dashed px-2"
-                        placeholder={language === "no" ? "…eller fritekst (lånt – ikke i analyse)" : "…or free text (borrowed – excluded)"}
-                        data-testid={`input-freetext-product-${row.id}`}
-                      />
+                      {/* Free text only while no product is picked — quiet ghost field. */}
+                      {(!row.productId || row.freeTextProduct) && (
+                        <Input
+                          value={row.freeTextProduct ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            // Free-text product (e.g. borrowed) — excluded from analytics.
+                            const next = rows.map((r) => (r.id === row.id ? { ...r, freeTextProduct: v || null, productId: v ? undefined : r.productId } : r));
+                            setRows(next);
+                          }}
+                          className="h-6 rounded-md border-transparent bg-transparent px-1 text-[11px] shadow-none placeholder:text-muted-foreground/50 hover:border-border focus:border-border focus:bg-background"
+                          placeholder={language === "no" ? "…eller fritekst (lånt – ikke i analyse)" : "…or free text (borrowed – excluded)"}
+                          data-testid={`input-freetext-product-${row.id}`}
+                        />
+                      )}
                       <Input
                         value={row.applications?.[0] ?? ""}
                         onChange={(e) => {
@@ -449,7 +450,7 @@ export function TestEntryTable({
                           );
                           setRows(next);
                         }}
-                        className="h-6 text-[11px] bg-background/60 border-dashed px-2"
+                        className="h-6 rounded-md border-transparent bg-transparent px-1 text-[11px] shadow-none placeholder:text-muted-foreground/50 hover:border-border focus:border-border focus:bg-background"
                         placeholder={t("tests.appInputPlaceholder")}
                         data-testid={`input-application-0-${row.id}`}
                       />
@@ -505,17 +506,17 @@ export function TestEntryTable({
                               );
                               setRows(next);
                             }}
-                            className="h-6 text-[11px] bg-background/60 border-dashed px-2"
+                            className="h-6 rounded-md border-transparent bg-transparent px-1 text-[11px] shadow-none placeholder:text-muted-foreground/50 hover:border-border focus:border-border focus:bg-background"
                             placeholder={t("tests.appInputPlaceholder")}
                             data-testid={`input-application-${addIdx + 1}-${row.id}`}
                           />
                         </div>
                       </div>
                     ))}
-                    {/* Add product button */}
+                    {/* Add product — quiet text link, per the approved mockup */}
                     <button
                       type="button"
-                      className="mt-1.5 flex items-center justify-center h-7 w-7 rounded-md text-emerald-400 hover:bg-emerald-500/15 transition-colors flex-shrink-0"
+                      className="mt-2 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-primary hover:bg-primary/10 transition-colors flex-shrink-0"
                       onClick={() => {
                         const updated = [...additionalIds, 0];
                         const next = rows.map((r) =>
@@ -524,9 +525,10 @@ export function TestEntryTable({
                         setRows(next);
                       }}
                       data-testid={`button-add-product-${row.id}`}
-                      title="Add product"
+                      title={language === "no" ? "Legg til produkt" : "Add product"}
                     >
-                      <Plus className="h-3.5 w-3.5" />
+                      <Plus className="h-3 w-3" />
+                      {language === "no" ? "produkt" : "product"}
                     </button>
                   </div>
                   )}
@@ -564,7 +566,7 @@ export function TestEntryTable({
                           setRows(next);
                         }
                       }}
-                      className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                      className="h-8 w-full rounded-lg border bg-background px-2 text-xs"
                       data-testid={`select-grind-profile-${row.id}`}
                     >
                       <option value="">— Select grind —</option>
@@ -582,7 +584,7 @@ export function TestEntryTable({
                             const next = rows.map((r) => (r.id === row.id ? { ...r, grindStone: e.target.value || undefined } : r));
                             setRows(next);
                           }}
-                          className="h-9 bg-background"
+                          className="h-8 bg-background text-xs"
                           placeholder={t("tests.productPlaceholder")}
                           data-testid={`input-grind-stone-${row.id}`}
                         />
@@ -593,7 +595,7 @@ export function TestEntryTable({
                             const next = rows.map((r) => (r.id === row.id ? { ...r, grindPattern: e.target.value || undefined } : r));
                             setRows(next);
                           }}
-                          className="h-9 bg-background"
+                          className="h-8 bg-background text-xs"
                           placeholder={t("tests.structurePlaceholder")}
                           data-testid={`input-grind-pattern-${row.id}`}
                         />
@@ -608,7 +610,7 @@ export function TestEntryTable({
                             );
                             setRows(next);
                           }}
-                          className="h-9 bg-background"
+                          className="h-8 bg-background text-xs"
                           placeholder="—"
                           data-testid={`input-grind-extra-${col}-${row.id}`}
                         />
@@ -620,44 +622,48 @@ export function TestEntryTable({
                 {row.roundResults.map((rr, roundIdx) => (
                   <>
                     <td key={`res-${roundIdx}`} className="px-3 py-2" data-label={(distanceLabels[roundIdx] || (language === "no" ? "Resultat" : "Result")) + " (cm)"}>
-                      <Input
-                        inputMode="decimal"
-                        type="number"
-                        value={rr.result ?? ""}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          const num = v === "" ? null : Number(v);
-                          const next = rows.map((r) => {
-                            if (r.id !== row.id) return r;
-                            const newRounds = [...r.roundResults];
-                            newRounds[roundIdx] = { ...newRounds[roundIdx], result: Number.isNaN(num) ? null : num };
-                            return { ...r, roundResults: newRounds };
-                          });
-                          setRows(next);
-                        }}
-                        className="h-9 w-20 bg-background"
-                        placeholder="0"
-                        data-testid={`input-result-${roundIdx}-${row.id}`}
-                      />
+                      <div className="relative">
+                        {/* type=text + inputMode keeps the numeric keyboard but kills the browser spinner */}
+                        <Input
+                          inputMode="decimal"
+                          type="text"
+                          value={rr.result ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            const num = v === "" ? null : Number(v.replace(",", "."));
+                            const next = rows.map((r) => {
+                              if (r.id !== row.id) return r;
+                              const newRounds = [...r.roundResults];
+                              newRounds[roundIdx] = { ...newRounds[roundIdx], result: Number.isNaN(num) ? newRounds[roundIdx].result : num };
+                              return { ...r, roundResults: newRounds };
+                            });
+                            setRows(next);
+                          }}
+                          className="h-8 w-20 bg-background pr-8 text-right font-mono tabular-nums"
+                          placeholder="0"
+                          data-testid={`input-result-${roundIdx}-${row.id}`}
+                        />
+                        <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[10px] text-muted-foreground/60">cm</span>
+                      </div>
                     </td>
-                    <td key={`rank-${roundIdx}`} className="px-3 py-2" data-label="Rank">{rankBadge(rr.rank)}</td>
+                    <td key={`rank-${roundIdx}`} className="px-2 py-2 text-center" data-label="Rank">{rankBadge(rr.rank)}</td>
                   </>
                 ))}
-                <td className="px-3 py-2" data-label="Feeling">
+                <td className="px-3 py-2" data-label={language === "no" ? "Følelse" : "Feeling"}>
                   <div className="flex items-center gap-1.5">
+                    {/* Free number entry — numeric keyboard on mobile, no spinner */}
                     <Input
                       inputMode="numeric"
-                      type="number"
-                      min={1}
+                      type="text"
                       value={row.feelingRank ?? ""}
                       onChange={(e) => {
                         const v = e.target.value;
-                        const num = v === "" ? null : Number(v);
-                        const next = rows.map((r) => (r.id === row.id ? { ...r, feelingRank: Number.isNaN(num) ? null : num } : r));
+                        const num = v === "" ? null : Number(v.replace(",", "."));
+                        const next = rows.map((r) => (r.id === row.id ? { ...r, feelingRank: Number.isNaN(num) ? r.feelingRank : num } : r));
                         setRows(next);
                       }}
-                      className="h-9 w-14 bg-background"
-                      placeholder="—"
+                      className="h-8 w-12 bg-background text-center font-mono tabular-nums"
+                      placeholder="–"
                       data-testid={`input-feeling-${row.id}`}
                     />
                     <Input
@@ -667,7 +673,7 @@ export function TestEntryTable({
                         const next = rows.map((r) => (r.id === row.id ? { ...r, feelingNote: v } : r));
                         setRows(next);
                       }}
-                      className="h-9 w-36 bg-background"
+                      className="h-8 w-36 rounded-md border-transparent bg-transparent px-1.5 text-xs shadow-none placeholder:text-muted-foreground/50 hover:border-border focus:border-border focus:bg-background"
                       placeholder={feelingNotePlaceholder}
                       data-testid={`input-feeling-note-${row.id}`}
                     />
@@ -677,17 +683,16 @@ export function TestEntryTable({
                 <td className="px-3 py-2" data-label="Kick">
                   <Input
                     inputMode="numeric"
-                    type="number"
-                    min={1}
+                    type="text"
                     value={row.kickRank ?? ""}
                     onChange={(e) => {
                       const v = e.target.value;
-                      const num = v === "" ? null : Number(v);
-                      const next = rows.map((r) => (r.id === row.id ? { ...r, kickRank: Number.isNaN(num) ? null : num } : r));
+                      const num = v === "" ? null : Number(v.replace(",", "."));
+                      const next = rows.map((r) => (r.id === row.id ? { ...r, kickRank: Number.isNaN(num) ? r.kickRank : num } : r));
                       setRows(next);
                     }}
-                    className="h-9 w-16 bg-background"
-                    placeholder="—"
+                    className="h-8 w-12 bg-background text-center font-mono tabular-nums"
+                    placeholder="–"
                     data-testid={`input-kick-${row.id}`}
                   />
                   {showKickSolution && (
@@ -716,6 +721,7 @@ export function TestEntryTable({
           type="button"
           variant="outline"
           size="sm"
+          className="w-full border-dashed text-muted-foreground hover:text-foreground"
           data-testid="button-add-ski-pair-inline"
           onClick={() =>
             setRows([

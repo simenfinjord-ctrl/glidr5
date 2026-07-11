@@ -501,8 +501,12 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       return { rows, boldIndices };
     };
 
-    // 🧪 Product Tests — all tests that are NOT Structure and NOT Grind
-    const productTestsFiltered = allTests.filter((t: any) => !['Structure', 'Grind'].includes((t as any).testType));
+    // 🧪 Product Tests — all tests that are NOT Structure and NOT Grind.
+    // Athlete race-ski tests are excluded here: they live on each athlete's
+    // own 🏃 sheet (orphaned race-ski tests without an athlete are kept so
+    // nothing is ever lost).
+    const isAthleteRaceskiTest = (t: any) => t.testSkiSource === 'raceskis' && !!t.athleteId;
+    const productTestsFiltered = allTests.filter((t: any) => !['Structure', 'Grind'].includes((t as any).testType) && !isAthleteRaceskiTest(t));
     await ensureSheet(sheets, spreadsheetId, PRODUCT_TESTS_TITLE);
     {
       const { rows: ptRows, boldIndices: ptBolds } = buildFlatTestRows(productTestsFiltered);
@@ -520,7 +524,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
     }
 
     // 📐 Structure Tests
-    const structureTests = allTests.filter((t: any) => (t as any).testType === 'Structure');
+    const structureTests = allTests.filter((t: any) => (t as any).testType === 'Structure' && !isAthleteRaceskiTest(t));
     await ensureSheet(sheets, spreadsheetId, STRUCTURE_TESTS_TITLE);
     {
       const { rows: stRows, boldIndices: stBolds } = buildFlatTestRows(structureTests);
@@ -538,7 +542,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
     }
 
     // ⛷️ Grind Tests
-    const grindTestsList = allTests.filter((t: any) => (t as any).testType === 'Grind');
+    const grindTestsList = allTests.filter((t: any) => (t as any).testType === 'Grind' && !isAthleteRaceskiTest(t));
     await ensureSheet(sheets, spreadsheetId, GRIND_TESTS_TITLE);
     {
       const { rows: gtRows, boldIndices: gtBolds } = buildFlatTestRows(grindTestsList);
@@ -867,7 +871,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       [OVERVIEW_TITLE, 'This summary page'],
       [TEAM_TITLE, 'All team members and roles'],
       ...groupSheetTitles.map((t, i) => [t, `Products, Test Ski Series, Weather for group "${groupNames[i]}"`]),
-      [PRODUCT_TESTS_TITLE, `All product tests (Glide, Classic, Skating, Double Poling) — flat table, ${productTestsFiltered.length} tests`],
+      [PRODUCT_TESTS_TITLE, `All product tests (Glide, Classic, Skating, Double Poling) — flat table, ${productTestsFiltered.length} tests. Athlete race-ski tests live on each athlete's 🏃 sheet`],
       [STRUCTURE_TESTS_TITLE, `All structure tests — flat table, ${structureTests.length} tests`],
       [GRIND_TESTS_TITLE, `All grind tests — flat table, ${grindTestsList.length} tests`],
       [RACE_PREPS_TITLE, 'All race preps with products, application, weather and per-athlete entries'],

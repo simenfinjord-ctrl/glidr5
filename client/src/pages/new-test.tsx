@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ChevronLeft, Save, Sparkles, ClipboardList, CloudSun } from "lucide-react";
+import { ChevronLeft, Save, Sparkles, ClipboardList, CloudSun, Plus, Check, Zap } from "lucide-react";
 import { useOffline } from "@/lib/offline-context";
 import { OfflineError } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
@@ -32,7 +32,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { fmtDate } from "@/lib/utils";
+import { fmtDate, cn } from "@/lib/utils";
 import { TestEntryTable, type EntryRow, type RoundResult, type RaceSkiOption, type GrindProfile, cleanAdditionalIds } from "@/components/test-entry-table";
 import { RunsheetDialog, type BracketResult } from "@/components/runsheet-dialog";
 import { ManualWeatherDialog } from "@/components/manual-weather-dialog";

@@ -161,6 +161,10 @@ export default function NewTest() {
   const [runsheetOpen, setRunsheetOpen] = useState(false);
   const [manualWeatherOpen, setManualWeatherOpen] = useState(false);
   const [noWeather, setNoWeather] = useState(false);
+  // Weather picker UI: "auto" (match by date/location), "pick" (choose a record), "none".
+  const [pickWeather, setPickWeather] = useState(false);
+  // Notes are collapsed behind a "+ add note" link until used.
+  const [showNotes, setShowNotes] = useState(false);
   const [weatherDefaults, setWeatherDefaults] = useState<{ date?: string; time?: string; location?: string; groupScope?: string }>({});
 
   // Grind column visibility: only include stone/pattern if at least one profile uses them
@@ -478,7 +482,13 @@ export default function NewTest() {
           </div>
         </div>
 
-        <Card className="fs-card rounded-2xl p-4 sm:p-5">
+        <Card className="fs-card rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-2.5 border-b border-border bg-muted/20 px-4 py-3 sm:px-5">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">1</span>
+            <p className="text-sm font-semibold text-foreground">{L("Testdetaljer", "Test details")}</p>
+            <p className="ml-auto hidden text-xs text-muted-foreground sm:block">{L("Type og dato er alt som kreves", "Type and date are all that's required")}</p>
+          </div>
+          <div className="p-4 sm:p-5">
           <Form {...form}>
             <form
               id="new-test-form"
@@ -538,7 +548,7 @@ export default function NewTest() {
                     general New test page only Testfleets is selectable; when started as
                     a race-ski test the source is locked. */}
                 {can("raceskis") && isRaceSkiFlow && (
-                  <div className="lg:col-span-2">
+                  <div className="lg:col-span-3">
                     <div className="space-y-2">
                       <label className="text-sm font-medium leading-none">{t("newTest.skiSource")}</label>
                       <Select value={testSkiSource} disabled>
@@ -554,7 +564,7 @@ export default function NewTest() {
                   </div>
                 )}
                 {testSkiSource === "series" && (
-                <div className={can("raceskis") && isRaceSkiFlow ? "lg:col-span-2" : "lg:col-span-3"}>
+                <div className="lg:col-span-3">
                   <FormField
                     control={form.control}
                     name="seriesId"
@@ -589,50 +599,53 @@ export default function NewTest() {
                 </div>
                 )}
 
-                <div className="lg:col-span-2">
+                <div className="order-first lg:col-span-12">
                   <FormField
                     control={form.control}
                     name="testType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("newTest.type")}</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={(v) => {
-                            field.onChange(v);
-                            form.setValue("seriesId", "", { shouldValidate: false });
-                            setRows((prev) =>
-                              prev.map((r) => ({ ...r, productId: undefined })),
-                            );
-                          }}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-test-type">
-                              <SelectValue placeholder={L("Velg", "Select")} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {testSkiSource !== "raceskis" && (
-                              <>
-                                <SelectItem value="Glide">{t("tests.glide")}</SelectItem>
-                                <SelectItem value="Structure">{t("tests.structure")}</SelectItem>
-                              </>
-                            )}
-                            {testSkiSource === "raceskis" && (
-                              <>
-                                <SelectItem value="Classic">{t("tests.classic")}</SelectItem>
-                                <SelectItem value="Skating">{t("tests.skating")}</SelectItem>
-                                <SelectItem value="Double Poling">{t("tests.doublePole")}</SelectItem>
-                              </>
-                            )}
-                            {can("grinding") && testSkiSource !== "raceskis" && (
-                              <SelectItem value="Grind">{t("tests.grind")}</SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const typeOptions: { value: TestType; label: string }[] = testSkiSource === "raceskis"
+                        ? [
+                            { value: "Classic", label: t("tests.classic") },
+                            { value: "Skating", label: t("tests.skating") },
+                            { value: "Double Poling", label: t("tests.doublePole") },
+                          ]
+                        : [
+                            { value: "Glide", label: t("tests.glide") },
+                            { value: "Structure", label: t("tests.structure") },
+                            ...(can("grinding") ? [{ value: "Grind" as TestType, label: t("tests.grind") }] : []),
+                          ];
+                      return (
+                        <FormItem>
+                          <FormLabel>{t("newTest.type")}</FormLabel>
+                          <div className="flex w-fit flex-wrap gap-1 rounded-lg border border-border bg-muted/30 p-1" data-testid="select-test-type">
+                            {typeOptions.map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => {
+                                  field.onChange(opt.value);
+                                  form.setValue("seriesId", "", { shouldValidate: false });
+                                  setRows((prev) =>
+                                    prev.map((r) => ({ ...r, productId: undefined })),
+                                  );
+                                }}
+                                className={cn(
+                                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                                  field.value === opt.value
+                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                    : "text-muted-foreground hover:text-foreground"
+                                )}
+                                data-testid={`option-type-${opt.value.replace(/\s+/g, "-").toLowerCase()}`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
                 </div>
 
@@ -676,7 +689,7 @@ export default function NewTest() {
                   />
                 </div>
 
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-3">
                   <FormField
                     control={form.control}
                     name="location"
@@ -697,7 +710,7 @@ export default function NewTest() {
                   />
                 </div>
 
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-3">
                   <FormField
                     control={form.control}
                     name="testName"
@@ -850,6 +863,7 @@ export default function NewTest() {
               </div>
             </form>
           </Form>
+          </div>
         </Card>
 
         {/* Grind column chooser */}

@@ -51,6 +51,56 @@ async function boldRows(sheets: any, spreadsheetId: string, sheetId: number, row
   }
 }
 
+// Rich formatting for the flat test sheets so tests are easy to tell apart:
+//   • all stale formatting wiped first (values.clear leaves formats behind)
+//   • frozen title/header rows + first 3 columns
+//   • dark column-header band (weather segment tinted blue so the two column
+//     groups read separately), white bold text
+//   • each test's header row gets a green band in bold
+//   • rank-1 (winning) entry rows get a soft amber highlight
+//   • sensible column widths + wrapped Notes/Application columns
+async function formatFlatTestSheet(sheets: any, spreadsheetId: string, sheetId: number, opts: {
+  totalCols: number;
+  headerRow: number;          // 0-based row index of the column-header row
+  testHeaderRows: number[];   // 0-based row indices of the "▶ Test #x" rows
+  winnerRows: number[];       // 0-based row indices of rank-1 entry rows
+  weatherStartCol: number;    // first weather column (tints the header segment)
+}) {
+  const req: any[] = [];
+  const { totalCols, headerRow, weatherStartCol } = opts;
+  // Wipe every previous format so shrinking data never leaves ghost styling.
+  req.push({ repeatCell: { range: { sheetId }, cell: { userEnteredFormat: {} }, fields: 'userEnteredFormat' } });
+  // Freeze header rows + identifying columns.
+  req.push({ updateSheetProperties: { properties: { sheetId, gridProperties: { frozenRowCount: headerRow + 1, frozenColumnCount: 3 } }, fields: 'gridProperties.frozenRowCount,gridProperties.frozenColumnCount' } });
+  // Title rows.
+  req.push({ repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 2 }, cell: { userEnteredFormat: { textFormat: { bold: true, fontSize: 12 } } }, fields: 'userEnteredFormat.textFormat' } });
+  // Column header: dark slate with white bold text …
+  req.push({ repeatCell: { range: { sheetId, startRowIndex: headerRow, endRowIndex: headerRow + 1, startColumnIndex: 0, endColumnIndex: totalCols }, cell: { userEnteredFormat: { backgroundColor: { red: 0.122, green: 0.161, blue: 0.216 }, textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } }, wrapStrategy: 'CLIP', verticalAlignment: 'MIDDLE' } }, fields: 'userEnteredFormat(backgroundColor,textFormat,wrapStrategy,verticalAlignment)' } });
+  // … with the weather segment in blue so the groups are visually distinct.
+  req.push({ repeatCell: { range: { sheetId, startRowIndex: headerRow, endRowIndex: headerRow + 1, startColumnIndex: weatherStartCol, endColumnIndex: totalCols }, cell: { userEnteredFormat: { backgroundColor: { red: 0.145, green: 0.278, blue: 0.47 } } }, fields: 'userEnteredFormat.backgroundColor' } });
+  // Green band per test header row.
+  for (const r of opts.testHeaderRows) {
+    req.push({ repeatCell: { range: { sheetId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: 0, endColumnIndex: totalCols }, cell: { userEnteredFormat: { backgroundColor: { red: 0.82, green: 0.96, blue: 0.878 }, textFormat: { bold: true } } }, fields: 'userEnteredFormat(backgroundColor,textFormat)' } });
+  }
+  // Soft amber for winning (rank 1) rows.
+  for (const r of opts.winnerRows) {
+    req.push({ repeatCell: { range: { sheetId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: 0, endColumnIndex: totalCols }, cell: { userEnteredFormat: { backgroundColor: { red: 0.996, green: 0.953, blue: 0.78 } } }, fields: 'userEnteredFormat.backgroundColor' } });
+  }
+  // Column widths: dates/ids narrow, text columns wide + wrapped.
+  const widths: [number, number][] = [[0, 80], [1, 95], [2, 120], [3, 150], [4, 90], [5, 110], [6, 90], [7, 260], [8, 55], [9, 70], [10, 180], [11, 200], [12, 160], [13, 60], [14, 160], [15, 55], [16, 150], [17, 70], [18, 55], [19, 70], [20, 55]];
+  for (const [col, px] of widths) {
+    if (col >= totalCols) continue;
+    req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col, endIndex: col + 1 }, properties: { pixelSize: px }, fields: 'pixelSize' } });
+  }
+  for (const wrapCol of [7, 11, 14, 16]) { // Notes, Application, Feeling Note, Kick Solution
+    req.push({ repeatCell: { range: { sheetId, startRowIndex: headerRow + 1, startColumnIndex: wrapCol, endColumnIndex: wrapCol + 1 }, cell: { userEnteredFormat: { wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat.wrapStrategy' } });
+  }
+  // Send in chunks — big teams can produce many per-row requests.
+  for (let i = 0; i < req.length; i += 300) {
+    await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: req.slice(i, i + 300) } });
+  }
+}
+
 type RoundResult = { result: number | null; rank: number | null };
 
 function parseResultsArray(resultsJson: string | null): RoundResult[] {
@@ -408,9 +458,10 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       'Clouds (x/8)', 'Visibility', 'Wind', 'Precipitation', 'Test Quality',
     ];
 
-    const buildFlatTestRows = (tests: any[]): { rows: any[][], boldIndices: number[] } => {
+    const buildFlatTestRows = (tests: any[]): { rows: any[][], boldIndices: number[], winnerIndices: number[] } => {
       const rows: any[][] = [];
       const boldIndices: number[] = [];
+      const winnerIndices: number[] = [];
 
       // Global column header
       boldIndices.push(rows.length);
@@ -472,6 +523,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
             res1 = entry.result0kmCmBehind ?? ''; rank1 = entry.rank0km ?? '';
             res2 = entry.resultXkmCmBehind ?? ''; rank2 = entry.rankXkm ?? '';
           }
+          if (Number(rank1) === 1) winnerIndices.push(rows.length);
           const linkedSki = entry.raceSkiId ? raceSkiByIdFlat[entry.raceSkiId] : null;
           const skiIdStr = linkedSki ? `${linkedSki.skiId ?? ''}` : '';
           const gp = entry.grindProfileId ? grindProfileById[entry.grindProfileId] : null;
@@ -498,7 +550,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
         rows.push([]);
       }
 
-      return { rows, boldIndices };
+      return { rows, boldIndices, winnerIndices };
     };
 
     // 🧪 Product Tests — all tests that are NOT Structure and NOT Grind.
@@ -509,7 +561,7 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
     const productTestsFiltered = allTests.filter((t: any) => !['Structure', 'Grind'].includes((t as any).testType) && !isAthleteRaceskiTest(t));
     await ensureSheet(sheets, spreadsheetId, PRODUCT_TESTS_TITLE);
     {
-      const { rows: ptRows, boldIndices: ptBolds } = buildFlatTestRows(productTestsFiltered);
+      const { rows: ptRows, boldIndices: ptBolds, winnerIndices: ptWins } = buildFlatTestRows(productTestsFiltered);
       const header: any[][] = [
         [`PRODUCT TESTS — ${team.name}`],
         [`Generated: ${now}  |  Total: ${productTestsFiltered.length} tests`],
@@ -520,14 +572,18 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       await clearAndWrite(sheets, spreadsheetId, PRODUCT_TESTS_TITLE, header);
       const ptMeta = await sheets.spreadsheets.get({ spreadsheetId });
       const ptSheetId = ptMeta.data.sheets?.find((s: any) => s.properties?.title === PRODUCT_TESTS_TITLE)?.properties?.sheetId;
-      if (ptSheetId !== undefined) await boldRows(sheets, spreadsheetId, ptSheetId, [0, ...shiftedBolds]).catch(() => {});
+      if (ptSheetId !== undefined) await formatFlatTestSheet(sheets, spreadsheetId, ptSheetId, {
+        totalCols: FLAT_COL_HEADER.length, headerRow: 3,
+        testHeaderRows: shiftedBolds.filter(i => i !== 3),
+        winnerRows: ptWins.map(i => i + 3), weatherStartCol: 21,
+      }).catch((e) => console.warn('[Backup] format failed:', e));
     }
 
     // 📐 Structure Tests
     const structureTests = allTests.filter((t: any) => (t as any).testType === 'Structure' && !isAthleteRaceskiTest(t));
     await ensureSheet(sheets, spreadsheetId, STRUCTURE_TESTS_TITLE);
     {
-      const { rows: stRows, boldIndices: stBolds } = buildFlatTestRows(structureTests);
+      const { rows: stRows, boldIndices: stBolds, winnerIndices: stWins } = buildFlatTestRows(structureTests);
       const header: any[][] = [
         [`STRUCTURE TESTS — ${team.name}`],
         [`Generated: ${now}  |  Total: ${structureTests.length} tests`],
@@ -538,14 +594,18 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       await clearAndWrite(sheets, spreadsheetId, STRUCTURE_TESTS_TITLE, header);
       const stMeta = await sheets.spreadsheets.get({ spreadsheetId });
       const stSheetId = stMeta.data.sheets?.find((s: any) => s.properties?.title === STRUCTURE_TESTS_TITLE)?.properties?.sheetId;
-      if (stSheetId !== undefined) await boldRows(sheets, spreadsheetId, stSheetId, [0, ...shiftedBolds]).catch(() => {});
+      if (stSheetId !== undefined) await formatFlatTestSheet(sheets, spreadsheetId, stSheetId, {
+        totalCols: FLAT_COL_HEADER.length, headerRow: 3,
+        testHeaderRows: shiftedBolds.filter(i => i !== 3),
+        winnerRows: stWins.map(i => i + 3), weatherStartCol: 21,
+      }).catch((e) => console.warn('[Backup] format failed:', e));
     }
 
     // ⛷️ Grind Tests
     const grindTestsList = allTests.filter((t: any) => (t as any).testType === 'Grind' && !isAthleteRaceskiTest(t));
     await ensureSheet(sheets, spreadsheetId, GRIND_TESTS_TITLE);
     {
-      const { rows: gtRows, boldIndices: gtBolds } = buildFlatTestRows(grindTestsList);
+      const { rows: gtRows, boldIndices: gtBolds, winnerIndices: gtWins } = buildFlatTestRows(grindTestsList);
       const header: any[][] = [
         [`GRIND TESTS — ${team.name}`],
         [`Generated: ${now}  |  Total: ${grindTestsList.length} tests`],
@@ -556,7 +616,11 @@ export async function runBackupForTeam(teamId: number): Promise<{ success: boole
       await clearAndWrite(sheets, spreadsheetId, GRIND_TESTS_TITLE, header);
       const gtMeta = await sheets.spreadsheets.get({ spreadsheetId });
       const gtSheetId = gtMeta.data.sheets?.find((s: any) => s.properties?.title === GRIND_TESTS_TITLE)?.properties?.sheetId;
-      if (gtSheetId !== undefined) await boldRows(sheets, spreadsheetId, gtSheetId, [0, ...shiftedBolds]).catch(() => {});
+      if (gtSheetId !== undefined) await formatFlatTestSheet(sheets, spreadsheetId, gtSheetId, {
+        totalCols: FLAT_COL_HEADER.length, headerRow: 3,
+        testHeaderRows: shiftedBolds.filter(i => i !== 3),
+        winnerRows: gtWins.map(i => i + 3), weatherStartCol: 21,
+      }).catch((e) => console.warn('[Backup] format failed:', e));
     }
 
     // ── 4. RACE PREPS SHEET ───────────────────────────────────────────────────

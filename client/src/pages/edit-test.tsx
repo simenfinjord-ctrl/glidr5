@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ChevronLeft, Save, Sparkles, CloudSun } from "lucide-react";
+import { ChevronLeft, Save, Sparkles, CloudSun, Plus, Check, Zap } from "lucide-react";
 import { useOffline } from "@/lib/offline-context";
 import { OfflineError } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
@@ -32,7 +32,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { fmtDate } from "@/lib/utils";
+import { fmtDate, cn } from "@/lib/utils";
 import { TestEntryTable, type EntryRow, type RoundResult, type RaceSkiOption, type GrindProfile, cleanAdditionalIds } from "@/components/test-entry-table";
 import { Spinner } from "@/components/ui/spinner";
 import { ManualWeatherDialog } from "@/components/manual-weather-dialog";
@@ -254,6 +254,10 @@ export default function EditTest() {
   const [visibleGrindCols, setVisibleGrindCols] = useState<string[]>([]);
   const [manualWeatherOpen, setManualWeatherOpen] = useState(false);
   const [noWeather, setNoWeather] = useState(false);
+  // Weather picker UI: "auto" (match by date/location), "pick" (choose a record), "none".
+  const [pickWeather, setPickWeather] = useState(false);
+  // Notes are collapsed behind a "+ add note" link until used.
+  const [showNotes, setShowNotes] = useState(false);
   const [weatherDefaults, setWeatherDefaults] = useState<{ date?: string; time?: string; location?: string; groupScope?: string }>({});
 
   const form = useForm<FormValues>({
@@ -549,7 +553,12 @@ export default function EditTest() {
           </div>
         </div>
 
-        <Card className="fs-card rounded-2xl p-4 sm:p-5">
+        <Card className="fs-card rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-2.5 border-b border-border bg-muted/20 px-4 py-3 sm:px-5">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">1</span>
+            <p className="text-sm font-semibold text-foreground">{L("Testdetaljer", "Test details")}</p>
+          </div>
+          <div className="p-4 sm:p-5">
           <Form {...form}>
             <form
               id="edit-test-form"
@@ -665,51 +674,56 @@ export default function EditTest() {
                 </div>
                 )}
 
-                <div className="lg:col-span-2">
+                <div className="order-first lg:col-span-12">
                   <FormField
                     control={form.control}
                     name="testType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("newTest.type")}</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={(v) => {
-                            field.onChange(v);
-                            form.setValue("seriesId", "", { shouldValidate: false });
-                            setRows((prev) =>
-                              prev.map((r) => ({ ...r, productId: undefined })),
-                            );
-                          }}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-test-type">
-                              <SelectValue placeholder={L("Velg", "Select")} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {/* Always render all possible types for the current source so
-                                Radix UI can match the stored value even before auth loads */}
-                            {testSkiSource !== "raceskis" && (
-                              <>
-                                <SelectItem value="Glide">{t("tests.glide")}</SelectItem>
-                                <SelectItem value="Structure">{t("tests.structure")}</SelectItem>
-                                <SelectItem value="Classic">{t("tests.classic")}</SelectItem>
-                                <SelectItem value="Grind">{t("tests.grind")}</SelectItem>
-                              </>
-                            )}
-                            {testSkiSource === "raceskis" && (
-                              <>
-                                <SelectItem value="Classic">{t("tests.classic")}</SelectItem>
-                                <SelectItem value="Skating">{t("tests.skating")}</SelectItem>
-                                <SelectItem value="Double Poling">{t("tests.doublePole")}</SelectItem>
-                              </>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      // All possible types for the current source, so the stored value
+                      // always has a matching segment (legacy Classic on series incl.).
+                      const typeOptions: { value: string; label: string }[] = testSkiSource === "raceskis"
+                        ? [
+                            { value: "Classic", label: t("tests.classic") },
+                            { value: "Skating", label: t("tests.skating") },
+                            { value: "Double Poling", label: t("tests.doublePole") },
+                          ]
+                        : [
+                            { value: "Glide", label: t("tests.glide") },
+                            { value: "Structure", label: t("tests.structure") },
+                            { value: "Classic", label: t("tests.classic") },
+                            { value: "Grind", label: t("tests.grind") },
+                          ];
+                      return (
+                        <FormItem>
+                          <FormLabel>{t("newTest.type")}</FormLabel>
+                          <div className="flex w-fit flex-wrap gap-1 rounded-lg border border-border bg-muted/30 p-1" data-testid="select-test-type">
+                            {typeOptions.map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => {
+                                  field.onChange(opt.value);
+                                  form.setValue("seriesId", "", { shouldValidate: false });
+                                  setRows((prev) =>
+                                    prev.map((r) => ({ ...r, productId: undefined })),
+                                  );
+                                }}
+                                className={cn(
+                                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                                  field.value === opt.value
+                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                    : "text-muted-foreground hover:text-foreground"
+                                )}
+                                data-testid={`option-type-${opt.value.replace(/\s+/g, "-").toLowerCase()}`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
                 </div>
 
@@ -745,7 +759,7 @@ export default function EditTest() {
                   />
                 </div>
 
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-3">
                   <FormField
                     control={form.control}
                     name="location"
@@ -766,7 +780,7 @@ export default function EditTest() {
                   />
                 </div>
 
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-3">
                   <FormField
                     control={form.control}
                     name="testName"
@@ -782,24 +796,43 @@ export default function EditTest() {
                   />
                 </div>
 
-                <div className="lg:col-span-3">
+                <div className="lg:col-span-8">
                   <FormField
                     control={form.control}
                     name="weatherId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="flex items-center justify-between mb-1">
-                          <FormLabel className="mb-0">{t("newTest.weather")}</FormLabel>
-                          <div className="flex items-center gap-3">
-                            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none" data-testid="checkbox-no-weather">
-                              <input
-                                type="checkbox"
-                                checked={noWeather}
-                                onChange={(e) => { setNoWeather(e.target.checked); if (e.target.checked) field.onChange(undefined); }}
-                                className="h-3.5 w-3.5"
-                              />
-                              {language === "no" ? "Ikke legg til vær" : "Do not add weather"}
-                            </label>
+                    render={({ field }) => {
+                      const weatherMode: "none" | "pick" | "auto" = noWeather ? "none" : (pickWeather || field.value) ? "pick" : "auto";
+                      return (
+                        <FormItem>
+                          <FormLabel>{t("newTest.weather")}</FormLabel>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex w-fit gap-1 rounded-lg border border-border bg-muted/30 p-1">
+                              <button
+                                type="button"
+                                onClick={() => { setNoWeather(false); setPickWeather(false); field.onChange(undefined); }}
+                                className={cn("flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors", weatherMode === "auto" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                                data-testid="option-weather-auto"
+                              >
+                                <Zap className="h-3 w-3" />
+                                {t("newTest.auto")}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setNoWeather(false); setPickWeather(true); }}
+                                className={cn("rounded-md px-2.5 py-1 text-xs font-medium transition-colors", weatherMode === "pick" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                                data-testid="button-weather-pick"
+                              >
+                                {language === "no" ? "Velg måling" : "Pick record"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setNoWeather(true); setPickWeather(false); field.onChange(undefined); }}
+                                className={cn("rounded-md px-2.5 py-1 text-xs font-medium transition-colors", weatherMode === "none" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                                data-testid="checkbox-no-weather"
+                              >
+                                {language === "no" ? "Uten vær" : "No weather"}
+                              </button>
+                            </div>
                             <button
                               type="button"
                               disabled={noWeather}
@@ -812,51 +845,54 @@ export default function EditTest() {
                                 });
                                 setManualWeatherOpen(true);
                               }}
-                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                              className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                              data-testid="button-add-manual-weather"
                             >
                               <CloudSun className="h-3 w-3" />
-                              {t("newTest.addManualWeather") ?? "+ Add manual"}
+                              {language === "no" ? "Manuelt" : "Manual"}
                             </button>
+                            {/* Live receipt for the auto match, so it's obvious what will be linked */}
+                            {weatherMode === "auto" && (
+                              autoWeather ? (
+                                <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400" data-testid="text-auto-weather-match">
+                                  <Check className="h-3 w-3" />
+                                  {autoWeather.location} {autoWeather.time} · {autoWeather.airTemperatureC}°C
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground" data-testid="text-auto-weather-none">
+                                  {language === "no" ? "Ingen måling matcher dato/sted ennå" : "No record matches date/location yet"}
+                                </span>
+                              )
+                            )}
                           </div>
-                        </div>
-                        <div className={noWeather ? "opacity-40 pointer-events-none" : ""}>
-                        <Select
-                          value={field.value ?? "__auto__"}
-                          onValueChange={(v) => {
-                            field.onChange(v === "__auto__" ? undefined : v);
-                          }}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-test-weather">
-                              <SelectValue
-                                placeholder={
-                                  autoWeather
-                                    ? `Auto: ${autoWeather.location} ${autoWeather.time}`
-                                    : t("newTest.selectWeather")
-                                }
-                              />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="__auto__" data-testid="option-weather-auto">
-                              Auto
-                            </SelectItem>
-                            {weather.map((w) => (
-                              <SelectItem key={w.id} value={String(w.id)} data-testid={`option-weather-${w.id}`}>
-                                {fmtDate(w.date)} · {w.location} · {w.time} · Air {w.airTemperatureC}°C
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                          {weatherMode === "pick" && (
+                            <Select
+                              value={field.value ?? ""}
+                              onValueChange={(v) => field.onChange(v || undefined)}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="mt-1.5" data-testid="select-test-weather">
+                                  <SelectValue placeholder={t("newTest.selectWeather")} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {weather.map((w) => (
+                                  <SelectItem key={w.id} value={String(w.id)} data-testid={`option-weather-${w.id}`}>
+                                    {fmtDate(w.date)} · {w.location} · {w.time} · Air {w.airTemperatureC}°C
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
                 </div>
 
                 {userGroups.length > 1 && watchTestType !== "Grind" && (
-                  <div className="lg:col-span-2">
+                  <div className="lg:col-span-4">
                     <FormField
                       control={form.control}
                       name="groupScope"
@@ -884,30 +920,44 @@ export default function EditTest() {
                   </div>
                 )}
 
-                <div className={userGroups.length > 1 ? "lg:col-span-6" : "lg:col-span-8"}>
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("common.notes")}</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            {...field}
-                            rows={2}
-                            placeholder={L("Valgfrie notater…", "Optional notes…")}
-                            data-testid="input-test-notes"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div className="lg:col-span-12">
+                  {/* Notes stay collapsed behind a quiet link until needed. */}
+                  {!showNotes && !form.watch("notes") ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowNotes(true)}
+                      className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                      data-testid="button-add-notes"
+                    >
+                      <Plus className="h-3 w-3" />
+                      {L("Legg til notat", "Add note")}
+                    </button>
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("common.notes")}</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              rows={2}
+                              placeholder={L("Valgfrie notater…", "Optional notes…")}
+                              data-testid="input-test-notes"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
               </div>
             </form>
           </Form>
+          </div>
         </Card>
 
         {/* Grind column chooser */}
@@ -939,6 +989,15 @@ export default function EditTest() {
         )}
 
         <div>
+          {/* Results section header — mirrors the numbered card header above */}
+          <div className="mb-2 flex flex-wrap items-center gap-2.5">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">2</span>
+            <p className="text-sm font-semibold text-foreground">{L("Resultater", "Results")}</p>
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+              <Zap className="h-2.5 w-2.5" />
+              {L("Rangeres automatisk", "Ranked automatically")}
+            </span>
+          </div>
           <TestEntryTable
             testType={watchTestType}
             products={products}
@@ -953,7 +1012,7 @@ export default function EditTest() {
             visibleGrindCols={visibleGrindCols}
           />
           <div className="mt-2 text-xs text-muted-foreground" data-testid="text-ranking-hint">
-            Ranking uses dense ranking: same result = same rank. Click "+ Round" to add more distance tests.
+            {t("newTest.rankingHint")}
           </div>
         </div>
       </div>

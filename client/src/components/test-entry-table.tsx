@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ProductCombobox } from "@/components/product-combobox";
 import { RaceSkiCombobox } from "@/components/raceski-combobox";
-import { PlusCircle, X, Plus, ChevronUp, ChevronDown } from "lucide-react";
+import { X, Plus, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 

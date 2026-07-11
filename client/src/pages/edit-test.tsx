@@ -639,7 +639,7 @@ export default function EditTest() {
                   </div>
                 )}
                 {testSkiSource === "series" && (
-                <div className={can("raceskis") ? "lg:col-span-2" : "lg:col-span-3"}>
+                <div className="lg:col-span-3">
                   <FormField
                     control={form.control}
                     name="seriesId"

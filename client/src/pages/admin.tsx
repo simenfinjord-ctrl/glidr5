@@ -3223,9 +3223,12 @@ export default function Admin() {
   const [userOriginFilter, setUserOriginFilter] = useState<"all" | "own" | "shared">("all");
   const [userSort, setUserSort] = useState<"name" | "created" | "role">("name");
   const [userSortDir, setUserSortDir] = useState<"asc" | "desc">("asc");
+  const [userSearch, setUserSearch] = useState("");
   const displayedUsers = useMemo(() => {
     const roleRank: Record<string, number> = { admin: 0, teamAdmin: 1, member: 2, athleteAccess: 3 };
+    const uq = userSearch.trim().toLowerCase();
     let list = users.filter((u) => {
+      if (uq && !(`${u.name} ${u.email} ${u.username ?? ""}`.toLowerCase().includes(uq))) return false;
       if (userOriginFilter === "own" && u.fromOtherTeam) return false;
       if (userOriginFilter === "shared" && !u.fromOtherTeam) return false;
       if (userRoleFilter === "all") return true;

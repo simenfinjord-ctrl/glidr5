@@ -1379,8 +1379,14 @@ export async function registerRoutes(
     const teamId = getActiveTeamId(req);
     const id = parseInt(req.params.id);
     const { pool } = await import("./db");
+    // Recycle bin: snapshot the test + entries before they disappear.
+    const snapT = await (pool as any).query(`SELECT * FROM kick_tests WHERE id=$1 AND team_id=$2`, [id, teamId]);
+    const snapE = await (pool as any).query(`SELECT * FROM kick_test_entries WHERE kick_test_id=$1`, [id]);
     const r = await (pool as any).query(`DELETE FROM kick_tests WHERE id=$1 AND team_id=$2 RETURNING id`, [id, teamId]);
-    if (r.rows.length) await (pool as any).query(`DELETE FROM kick_test_entries WHERE kick_test_id=$1`, [id]);
+    if (r.rows.length) {
+      await (pool as any).query(`DELETE FROM kick_test_entries WHERE kick_test_id=$1`, [id]);
+      await recordDeletion(req, "kick_test", id, `Kick test deleted: ${snapT.rows[0]?.location ?? id} (${snapT.rows[0]?.date ?? ""})`, { test: snapT.rows[0] ?? null, entries: snapE.rows });
+    }
     res.json({ ok: true });
   });
 
@@ -1433,7 +1439,9 @@ export async function registerRoutes(
     const teamId = getActiveTeamId(req);
     const id = parseInt(req.params.id);
     const { pool } = await import("./db");
-    await (pool as any).query(`DELETE FROM kick_mixes WHERE id=$1 AND team_id=$2`, [id, teamId]);
+    const snap = await (pool as any).query(`SELECT * FROM kick_mixes WHERE id=$1 AND team_id=$2`, [id, teamId]);
+    const r = await (pool as any).query(`DELETE FROM kick_mixes WHERE id=$1 AND team_id=$2 RETURNING id`, [id, teamId]);
+    if (r.rows.length) await recordDeletion(req, "kick_mix", id, `Kick mix deleted: ${snap.rows[0]?.name ?? id}`, snap.rows[0] ?? null);
     res.json({ ok: true });
   });
 
@@ -1824,8 +1832,11 @@ export async function registerRoutes(
   app.delete("/api/groups/:id", requireAuth, async (req, res) => {
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const id = parseInt(req.params.id);
+    const { pool: pGrp } = await import("./db");
+    const snap = await (pGrp as any).query(`SELECT * FROM groups WHERE id=$1`, [id]);
     const deleted = await storage.deleteGroup(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
+    await recordDeletion(req, "group", id, `Group deleted: ${snap.rows[0]?.name ?? id}`, snap.rows[0] ?? null);
     res.json({ ok: true });
   });
 
@@ -4562,6 +4573,20 @@ export async function registerRoutes(
       createdById: e.created_by_id ?? u.id, createdByName: e.created_by_name ?? u.name,
       groupScope: e.group_scope ?? "", teamId: e.team_id ?? getActiveTeamId(req),
     });
+    // Generic restore for snapshots stored as raw (snake_case) DB rows: rebuild
+    // the INSERT from the snapshot's own columns, minus id, plus FK overrides.
+    const rawRestore = async (table: string, row: any, overrides: Record<string, any> = {}): Promise<number | null> => {
+      if (!row) return null;
+      const data: Record<string, any> = { ...row, ...overrides };
+      delete data.id;
+      const cols = Object.keys(data);
+      const r2 = await (pool as any).query(
+        `INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(", ")}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(", ")}) RETURNING id`,
+        cols.map((c) => data[c])
+      );
+      return r2.rows[0]?.id ?? null;
+    };
+
     let restoredId: number | null = null;
     try {
       switch (log.entity_type) {
@@ -4577,6 +4602,24 @@ export async function registerRoutes(
           const t = await storage.createTest(strip(snap.test ?? snap) as any);
           for (const e of (snap.entries ?? [])) { try { await storage.createEntry(mapEntry(e, t.id) as any); } catch {} }
           restoredId = t.id; break;
+        }
+        case "group": restoredId = await rawRestore("groups", snap); break;
+        case "kick_mix": restoredId = await rawRestore("kick_mixes", snap); break;
+        case "kick_test": {
+          const nid = await rawRestore("kick_tests", snap.test ?? snap);
+          if (nid != null) for (const e of (snap.entries ?? [])) { try { await rawRestore("kick_test_entries", e, { kick_test_id: nid }); } catch {} }
+          restoredId = nid; break;
+        }
+        case "race_prep": {
+          const nid = await rawRestore("race_preps", snap.prep ?? snap);
+          if (nid != null) for (const e of (snap.entries ?? [])) { try { await rawRestore("race_prep_entries", e, { race_prep_id: nid }); } catch {} }
+          restoredId = nid; break;
+        }
+        case "race_prep_entry": restoredId = await rawRestore("race_prep_entries", snap); break;
+        case "race_fleet_ski": {
+          const nid = await rawRestore("race_skis", snap.ski ?? snap);
+          if (nid != null) for (const rg of (snap.regrinds ?? [])) { try { await rawRestore("race_ski_regrinds", rg, { race_ski_id: nid }); } catch {} }
+          restoredId = nid; break;
         }
         default: return res.status(400).json({ message: `Restore not supported for ${log.entity_type}` });
       }
@@ -6589,10 +6632,12 @@ export async function registerRoutes(
     const teamId = getActiveTeamId(req);
     const id = parseInt(req.params.id);
     const { pool } = await import("./db");
-    const own = await (pool as any).query(`SELECT id FROM race_skis WHERE id = $1 AND athlete_id IS NULL AND team_id = $2`, [id, teamId]);
+    const own = await (pool as any).query(`SELECT * FROM race_skis WHERE id = $1 AND athlete_id IS NULL AND team_id = $2`, [id, teamId]);
     if (own.rows.length === 0) return res.status(404).json({ message: "Not found" });
+    const snapRegrinds = await (pool as any).query(`SELECT * FROM race_ski_regrinds WHERE race_ski_id = $1`, [id]).catch(() => ({ rows: [] }));
     await (pool as any).query(`DELETE FROM race_ski_regrinds WHERE race_ski_id = $1`, [id]).catch(() => {});
     await (pool as any).query(`DELETE FROM race_skis WHERE id = $1`, [id]);
+    await recordDeletion(req, "race_fleet_ski", id, `Fleet ski deleted: ${own.rows[0]?.ski_id ?? id}`, { ski: own.rows[0], regrinds: snapRegrinds.rows });
     res.json({ ok: true });
   });
 
@@ -7148,8 +7193,11 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const teamId = u.activeTeamId || u.teamId;
     const { pool } = await import("./db");
+    const snapP = await (pool as any).query(`SELECT * FROM race_preps WHERE id = $1 AND team_id = $2`, [id, teamId]);
+    const snapPE = await (pool as any).query(`SELECT * FROM race_prep_entries WHERE race_prep_id = $1`, [id]);
     await (pool as any).query(`DELETE FROM race_prep_entries WHERE race_prep_id = $1`, [id]);
-    await (pool as any).query(`DELETE FROM race_preps WHERE id = $1 AND team_id = $2`, [id, teamId]);
+    const rDel = await (pool as any).query(`DELETE FROM race_preps WHERE id = $1 AND team_id = $2 RETURNING id`, [id, teamId]);
+    if (rDel.rows.length) await recordDeletion(req, "race_prep", id, `Race prep deleted: ${snapP.rows[0]?.location ?? id} (${snapP.rows[0]?.date ?? ""})`, { prep: snapP.rows[0] ?? null, entries: snapPE.rows });
     return res.json({ ok: true });
   });
 
@@ -7360,8 +7408,10 @@ export async function registerRoutes(
     const eid = parseInt(req.params.eid);
     if (!await getRacePrepForTeam(prepId, teamId)) return res.status(403).json({ message: "Forbidden" });
     const { pool } = await import("./db");
+    const snapE1 = await (pool as any).query(`SELECT * FROM race_prep_entries WHERE id=$1 AND race_prep_id=$2`, [eid, prepId]);
     // Verify entry belongs to this race prep before deleting
-    await (pool as any).query(`DELETE FROM race_prep_entries WHERE id=$1 AND race_prep_id=$2`, [eid, prepId]);
+    const rDel = await (pool as any).query(`DELETE FROM race_prep_entries WHERE id=$1 AND race_prep_id=$2 RETURNING id`, [eid, prepId]);
+    if (rDel.rows.length) await recordDeletion(req, "race_prep_entry", eid, `Race prep entry deleted: ${snapE1.rows[0]?.athlete_name ?? eid}`, snapE1.rows[0] ?? null);
     return res.json({ ok: true });
   });
 

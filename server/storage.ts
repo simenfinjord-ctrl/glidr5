@@ -883,9 +883,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async purgeOldActivityLogs(beforeDate: string, teamId?: number): Promise<number> {
+    // Purging must never destroy the safety nets:
+    //  - deletion snapshots ARE the recycle bin (the only copy of deleted data)
+    //  - accepted_terms rows are the legal evidence of consent
+    const protectedRows = sql`NOT (${activityLogs.action} = 'deleted' AND ${activityLogs.snapshot} IS NOT NULL) AND ${activityLogs.action} <> 'accepted_terms'`;
     const condition = teamId
-      ? and(sql`${activityLogs.createdAt} < ${beforeDate}`, eq(activityLogs.teamId, teamId))
-      : sql`${activityLogs.createdAt} < ${beforeDate}`;
+      ? and(sql`${activityLogs.createdAt} < ${beforeDate}`, eq(activityLogs.teamId, teamId), protectedRows)
+      : and(sql`${activityLogs.createdAt} < ${beforeDate}`, protectedRows);
     const result = await db.delete(activityLogs).where(condition).returning();
     return result.length;
   }

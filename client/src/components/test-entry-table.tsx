@@ -364,6 +364,21 @@ export function TestEntryTable({
                       >
                         <ChevronDown className="h-3.5 w-3.5" />
                       </button>
+                      <button
+                        type="button"
+                        className="flex h-4 w-5 items-center justify-center rounded text-muted-foreground/40 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                        title={language === "no" ? "Fjern rad" : "Remove entry"}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (!confirm(language === "no" ? `Fjerne rad ${row.skiNumber}?` : `Remove entry ${row.skiNumber}?`)) return;
+                          const next = rows.filter((r) => r.id !== row.id).map((r, i) => ({ ...r, skiNumber: i + 1 }));
+                          setRows(next);
+                        }}
+                        data-testid={`button-remove-entry-${row.id}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                     <div
                       className={cn(

@@ -2852,6 +2852,97 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
     return priced.monthly;
   }
 
+  // Full priced breakdown for a team (features, limits, discount) — feeds the
+  // per-team plan-specification PDF that can be attached to the invoice.
+  function teamPriceDetail(team: ApiTeam) {
+    return computeTeamPrice({
+      planName: team.planName ?? (team as any).plan_name,
+      enabledAreas: (team as any).enabledAreas ?? (team as any).enabled_areas,
+      maxUsers: team.maxUsers ?? (team as any).max_users,
+      maxGroups: team.maxGroups ?? (team as any).max_groups,
+      billingPeriod: team.billingPeriod ?? (team as any).billing_period,
+      customPrice: team.customPrice ?? (team as any).custom_price,
+      discountPercent: (team as any).discountPercent ?? (team as any).discount_percent,
+    }, builderPricing ?? null, { ...DEFAULT_PRICES, ...(planPrices as any) });
+  }
+
+  // Plan specification PDF — one page per team: every enabled feature with its
+  // price, limits, discount and totals. Made to be attached to the invoice.
+  function downloadPlanSpecPdf(team: ApiTeam) {
+    const priced = teamPriceDetail(team);
+    const doc = new jsPDF();
+    const today = new Date().toLocaleDateString("no-NO", { day: "numeric", month: "long", year: "numeric" });
+    const perMo = L(" kr/mnd", " NOK/mo");
+    let y = 20;
+
+    doc.setFontSize(18); doc.setFont("helvetica", "bold");
+    doc.text("Glidr", 14, y);
+    doc.setFontSize(12); doc.setFont("helvetica", "normal");
+    doc.text(L("Plan-spesifikasjon (vedlegg til faktura)", "Plan specification (invoice attachment)"), 14, y + 7);
+    y += 18;
+    doc.setFontSize(10); doc.setTextColor(110);
+    doc.text(`${L("Lag", "Team")}: ${team.name}`, 14, y);
+    doc.text(`${L("Generert", "Generated")}: ${today}`, 120, y);
+    y += 5;
+    const plan = (team.planName ?? (team as any).plan_name ?? "free");
+    const period = (team.billingPeriod ?? (team as any).billing_period ?? "monthly") as string;
+    doc.text(`${L("Plan", "Plan")}: ${plan}`, 14, y);
+    doc.text(`${L("Fakturering", "Billing")}: ${period === "annual" ? L("årlig (10 mnd pris)", "annual (10 months' price)") : L("månedlig", "monthly")}`, 120, y);
+    doc.setTextColor(0);
+    y += 10;
+
+    const line = (label: string, amount: string, bold = false) => {
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.setFontSize(10);
+      doc.text(label, 14, y);
+      doc.text(amount, 196, y, { align: "right" });
+      y += 6;
+    };
+    const divider = () => { doc.setDrawColor(200); doc.line(14, y - 3, 196, y - 3); y += 2; };
+
+    if (priced.dynamic && priced.breakdown) {
+      line(L("Kjerneplattform (tester, produkter, vær, dashboard)", "Core platform (tests, products, weather, dashboard)"), L("Gratis", "Free"));
+      for (const fl of priced.breakdown.featureLines) {
+        line((FEATURE_LABELS as any)[fl.label] ?? fl.label, `${fl.amount}${perMo}`);
+      }
+      if (priced.breakdown.userLine) {
+        line(`${L("Brukere", "Users")}: ${team.maxUsers ?? (team as any).max_users} (${priced.breakdown.userLine.label})`, `${priced.breakdown.userLine.amount}${perMo}`);
+      }
+      if (priced.breakdown.groupLine) {
+        line(`${L("Grupper", "Groups")}: ${team.maxGroups ?? (team as any).max_groups} (${priced.breakdown.groupLine.label})`, `${priced.breakdown.groupLine.amount}${perMo}`);
+      }
+      divider();
+      line(L("Sum per måned", "Subtotal per month"), `${priced.breakdown.monthlyTotal}${perMo}`, true);
+    } else {
+      line(`${L("Abonnement", "Subscription")} — ${plan}`, priced.baseMonthly != null ? `${priced.baseMonthly}${perMo}` : "—", true);
+      // Enabled features listed without individual prices (fixed-price plan).
+      let features: string[] = [];
+      try { features = JSON.parse((team as any).enabledAreas ?? (team as any).enabled_areas ?? "[]"); } catch {}
+      if (features.length > 0) {
+        y += 2;
+        doc.setFontSize(9); doc.setTextColor(110);
+        doc.text(L("Inkluderte funksjoner:", "Included features:"), 14, y); y += 5;
+        const labels = features.map((f) => (FEATURE_LABELS as any)[f] ?? f);
+        const wrapped = doc.splitTextToSize(labels.join(" · "), 180);
+        doc.text(wrapped, 14, y); y += wrapped.length * 4.5 + 3;
+        doc.setFontSize(10); doc.setTextColor(0);
+      }
+    }
+
+    if (priced.discountPercent > 0 && priced.baseMonthly != null && priced.monthly != null) {
+      line(`${L("Rabatt", "Discount")} (${priced.discountPercent}%)`, `−${priced.baseMonthly - priced.monthly}${perMo}`);
+    }
+    divider();
+    line(L("Totalt per måned", "Total per month"), priced.monthly != null ? `${priced.monthly}${perMo}` : "—", true);
+    line(period === "annual" ? L("Faktureres årlig", "Billed annually") : L("Faktureres månedlig", "Billed monthly"), priced.period != null ? `${priced.period} ${period === "annual" ? L("kr/år", "NOK/yr") : L("kr/mnd", "NOK/mo")}` : "—", true);
+    y += 4;
+    doc.setFontSize(8); doc.setTextColor(130);
+    doc.text(L("Alle priser i NOK inkl. mva. Spesifikasjonen gjenspeiler lagets oppsett på genereringstidspunktet.", "All prices in NOK incl. VAT. This specification reflects the team's configuration at the time of generation."), 14, y);
+
+    doc.save(`glidr-plan-${team.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
+
   function addPeriod(date: Date, period: string): Date {
     const d = new Date(date);
     if (period === "annual") d.setFullYear(d.getFullYear() + 1);
@@ -3003,16 +3094,34 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
             <Button variant="outline" size="sm" data-testid="button-export-invoice-csv" onClick={() => {
               // Invoice basis: one row per paying team, ready for the accountant.
               const esc = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-              const header = ["Team", "Plan", L("Pris (NOK)", "Price (NOK)"), L("Periode", "Period"), L("Neste fakturering", "Next billing"), L("Status", "Status"), L("Notater", "Notes")];
+              const header = ["Team", "Plan", L("Pris (NOK)", "Price (NOK)"), L("Rabatt %", "Discount %"), L("Periode", "Period"), L("Neste fakturering", "Next billing"), L("Status", "Status"), L("Funksjoner (pris/mnd)", "Features (price/mo)"), L("Notater", "Notes")];
               const rows = payingTeams.map((tm) => {
                 const st = teamState(tm);
+                const priced = teamPriceDetail(tm);
+                // Per-feature spec: "Analytics 99; Kick 149; +2 users 58" for
+                // dynamic plans, or the plain feature list for fixed plans.
+                let spec = "";
+                if (priced.dynamic && priced.breakdown) {
+                  spec = [
+                    ...priced.breakdown.featureLines.map((fl) => `${(FEATURE_LABELS as any)[fl.label] ?? fl.label} ${fl.amount}`),
+                    ...(priced.breakdown.userLine ? [`${priced.breakdown.userLine.label} ${priced.breakdown.userLine.amount}`] : []),
+                    ...(priced.breakdown.groupLine ? [`${priced.breakdown.groupLine.label} ${priced.breakdown.groupLine.amount}`] : []),
+                  ].join("; ");
+                } else {
+                  try {
+                    const feats: string[] = JSON.parse((tm as any).enabledAreas ?? (tm as any).enabled_areas ?? "[]");
+                    spec = feats.map((f) => (FEATURE_LABELS as any)[f] ?? f).join("; ");
+                  } catch { /* leave empty */ }
+                }
                 return [
                   tm.name,
                   (tm.planName ?? (tm as any).plan_name ?? ""),
                   effectivePrice(tm) ?? "",
+                  priced.discountPercent || "",
                   (tm.billingPeriod ?? (tm as any).billing_period ?? "monthly"),
                   (tm.nextBillingDate ?? (tm as any).next_billing_date ?? ""),
                   st.kind,
+                  spec,
                   (tm as any).notes ?? "",
                 ];
               });
@@ -3080,6 +3189,14 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                     </div>
                   </div>
                   <div className="flex gap-2 flex-shrink-0 items-center">
+                    <button
+                      title={L("Plan-spesifikasjon (PDF) — vedlegg til faktura", "Plan specification (PDF) — invoice attachment")}
+                      onClick={() => downloadPlanSpecPdf(team)}
+                      className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      data-testid={`button-plan-spec-pdf-${team.id}`}
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                    </button>
                     {(state.kind === "ready" || state.kind === "pending") && (
                       <Button
                         size="sm"

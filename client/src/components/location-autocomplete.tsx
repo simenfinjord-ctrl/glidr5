@@ -16,6 +16,8 @@ type Props = {
   inputClassName?: string;
   /** Called when user commits a value (Enter or selection) */
   onCommit?: (value: string) => void;
+  /** Override the suggestion source (defaults to the team's location history) */
+  options?: string[];
 };
 
 /**
@@ -44,17 +46,27 @@ export function LocationAutocomplete({
   });
 
   const suggestions = useCallback((): string[] => {
-    if (!value || value.length < 1) return [];
-    const q = value.toLowerCase();
+    const q = (value || "").trim().toLowerCase();
+    // Empty field: offer the whole team vocabulary so people pick an existing
+    // spelling instead of inventing a new one.
+    if (!q) return allLocations.slice(0, 10);
     return allLocations
       .filter((loc) => loc.toLowerCase().includes(q) && loc.toLowerCase() !== q)
       .slice(0, 8);
   }, [value, allLocations])();
 
+  // The field already holding a known location verbatim means the user is done —
+  // don't keep the list open over it (ArrowDown reopens explicitly).
+  const isExactMatch = allLocations.some(
+    (l) => l.toLowerCase() === (value || "").trim().toLowerCase()
+  );
+
   useEffect(() => {
-    setIsOpen(suggestions.length > 0);
+    const focused = document.activeElement === inputRef.current;
+    setIsOpen(focused && !isExactMatch && suggestions.length > 0);
     setActiveIndex(-1);
-  }, [suggestions.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, suggestions.length]);
 
   const handleSelect = (loc: string) => {
     onChange(loc);
@@ -108,7 +120,7 @@ export function LocationAutocomplete({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => suggestions.length > 0 && setIsOpen(true)}
+          onFocus={() => suggestions.length > 0 && !isExactMatch && setIsOpen(true)}
           placeholder={placeholder}
           data-testid={testId}
           className={cn("pl-8", inputClassName)}

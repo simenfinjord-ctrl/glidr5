@@ -4858,11 +4858,13 @@ export async function registerRoutes(
     try {
       const result = await (pg as any).query(
         `SELECT DISTINCT location FROM (
-           SELECT location FROM tests       WHERE team_id = $1 AND location IS NOT NULL AND location != ''
+           SELECT location FROM tests         WHERE team_id = $1 AND location IS NOT NULL AND location != ''
            UNION
-           SELECT location FROM weather     WHERE team_id = $1 AND location IS NOT NULL AND location != ''
+           SELECT location FROM daily_weather WHERE team_id = $1 AND location IS NOT NULL AND location != ''
            UNION
-           SELECT location FROM race_preps  WHERE team_id = $1 AND location IS NOT NULL AND location != ''
+           SELECT location FROM kick_tests    WHERE team_id = $1 AND location IS NOT NULL AND location != ''
+           UNION
+           SELECT location FROM race_preps    WHERE team_id = $1 AND location IS NOT NULL AND location != ''
          ) AS all_locations
          ORDER BY location`,
         [teamId]
@@ -9789,6 +9791,110 @@ RULES:
     // Send email notification to owner
     sendInterestNotification({ contactName, email, phone, teamName, planName, userCount, billingPeriod, notes }).catch(() => {});
     res.json({ ok: true });
+  });
+
+  // --- Self-service team signup (plan builder) ---
+  // Public: a new customer composes their own plan (features + limits), accepts
+  // billing, and gets a real team with themselves as Team Admin & contact person.
+  // Only available while the SA commercialization toggle is ON — enforced here,
+  // not just in the UI. Price is recomputed server-side from shared/pricing.
+  const selfSignupLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, message: { message: "Too many signup attempts. Try again later." } });
+  app.post("/api/signup/self-service", selfSignupLimit, async (req, res) => {
+    try {
+      const rows = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'commercialization_enabled'`);
+      const row = ((rows as any).rows ?? rows)[0];
+      if (row?.value === "false") return res.status(403).json({ message: "Self-service signup is not available" });
+    } catch { /* default open, same as /api/settings/public */ }
+
+    const { teamName, contactName, email, password, features, maxUsers, maxGroups, billingPeriod, acceptBilling } = req.body;
+    if (!teamName?.trim() || !contactName?.trim() || !email?.trim() || !password) {
+      return res.status(400).json({ message: "teamName, contactName, email and password are required" });
+    }
+    if (acceptBilling !== true) return res.status(400).json({ message: "You must accept that usage will be invoiced" });
+    const pwError = validatePassword(password);
+    if (pwError) return res.status(400).json({ message: pwError });
+    const existing = await storage.getUserByEmail(email.trim().toLowerCase());
+    if (existing) return res.status(409).json({ message: "Email already in use" });
+
+    // Authoritative price & config — never trust the client's number.
+    const { computeCustomPrice, sanitizeFeatureSelection, clampLimit } = await import("@shared/pricing");
+    const chosenFeatures = sanitizeFeatureSelection(features);
+    const cfg = {
+      features: chosenFeatures,
+      maxUsers: clampLimit("users", Number(maxUsers)),
+      maxGroups: clampLimit("groups", Number(maxGroups)),
+      billingPeriod: billingPeriod === "annual" ? "annual" as const : "monthly" as const,
+    };
+    const price = computeCustomPrice(cfg);
+    const now = new Date().toISOString();
+
+    // 1) The team — enabled areas exactly as composed, limits as chosen.
+    const team = await storage.createTeam({
+      name: teamName.trim(),
+      createdAt: now,
+      enabledAreas: JSON.stringify(chosenFeatures),
+      planName: "custom",
+      customPrice: price.monthlyTotal,
+      billingPeriod: cfg.billingPeriod,
+      maxUsers: cfg.maxUsers,
+      maxGroups: cfg.maxGroups,
+      notes: `Self-service signup ${now} — contact: ${contactName.trim()} <${email.trim().toLowerCase()}>. Accepted billing: ${price.periodTotal} NOK/${cfg.billingPeriod === "annual" ? "yr" : "mo"} (monthly base ${price.monthlyTotal} NOK).`,
+    } as any);
+
+    // 2) The first user — Team Admin and contact person.
+    const emailNorm = email.trim().toLowerCase();
+    let usernameToSet = emailNorm.split("@")[0].replace(/[^a-z0-9._-]/g, "") || "user";
+    const { pool: pgSignup } = await import("./db");
+    let finalUsername = usernameToSet;
+    let suffix = 2;
+    while (true) {
+      const existingUn = await (pgSignup as any).query(`SELECT id FROM users WHERE LOWER(username) = $1`, [finalUsername]);
+      if (existingUn.rows.length === 0) break;
+      finalUsername = `${usernameToSet}${suffix++}`;
+    }
+    const allEdit = Object.fromEntries(PERMISSION_AREAS.map((a) => [a, "edit"]));
+    const created = await storage.createUser({
+      email: emailNorm,
+      password: await hashPassword(password),
+      name: contactName.trim(),
+      username: finalUsername,
+      groupScope: "",
+      isAdmin: 0,
+      isTeamAdmin: 1,
+      permissions: JSON.stringify(allEdit),
+      teamId: team.id,
+      isBlindTester: 0,
+      language: req.body.language === "en" ? "en" : "no",
+      createdAt: now,
+    } as any);
+
+    // 3) Visibility for the SA: registration row (existing Registrations tab),
+    // inbox message, and an activity-log entry on the new team.
+    await db.execute(sql`
+      INSERT INTO interest_registrations (created_at, contact_name, email, phone, team_name, plan_name, user_count, group_count, billing_period, invoice_address, notes, status)
+      VALUES (${now}, ${contactName.trim()}, ${emailNorm}, ${req.body.phone ?? null}, ${teamName.trim()}, 'custom (self-service)', ${cfg.maxUsers}, ${cfg.maxGroups}, ${cfg.billingPeriod}, ${req.body.invoiceAddress ?? null},
+        ${`Self-service: team #${team.id} created automatically. ${price.monthlyTotal} NOK/mo (${price.periodTotal} NOK/${cfg.billingPeriod === "annual" ? "yr" : "mo"}). Features: ${chosenFeatures.join(", ")}`}, 'converted')
+    `).catch(() => {});
+    try {
+      const saUsers = await db.execute(sql`SELECT id FROM users WHERE is_admin = 1`);
+      for (const sa of ((saUsers as any).rows ?? saUsers)) {
+        await db.execute(sql`
+          INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at)
+          VALUES (${sa.id}, 'Glidr System', ${"Nytt lag opprettet (selvbetjening): " + teamName.trim()},
+            ${`${contactName.trim()} (${emailNorm}) opprettet laget «${teamName.trim()}» via selvbetjening. Pris: ${price.monthlyTotal} NOK/mnd (${cfg.billingPeriod}). Brukergrense: ${cfg.maxUsers}, grupper: ${cfg.maxGroups}. Fakturering er akseptert. Se Admin → Teams.`},
+            0, ${now})
+        `);
+      }
+    } catch { /* best-effort */ }
+    await storage.createActivityLog({
+      userId: created.id, userName: created.name, action: "team_signup",
+      entityType: "team", entityId: team.id,
+      details: `Team created via self-service signup — billing accepted (${price.monthlyTotal} NOK/mo, ${cfg.billingPeriod})`,
+      createdAt: now, groupScope: "", teamId: team.id,
+    } as any).catch(() => {});
+
+    sendWelcomeEmail(created.email, created.name, created.language ?? "no").catch(() => {});
+    res.json({ ok: true, teamId: team.id, username: finalUsername });
   });
 
   app.get("/api/admin/registrations", requireAuth, async (req, res) => {

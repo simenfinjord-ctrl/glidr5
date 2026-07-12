@@ -26,6 +26,8 @@ type Athlete = {
   bindingPosition: string | null;
   skiServicePreferences: string | null;
   sportClass: string | null;
+  mainWaxerId: number | null;
+  mainWaxerName: string | null;
   createdAt: string;
   createdById: number;
   createdByName: string;
@@ -367,6 +369,11 @@ export default function RaceSkis() {
                         {sportClassEnabled && athlete.sportClass && (
                           <span className="inline-flex items-center rounded-full bg-teal-50 dark:bg-teal-950/30 px-2 py-0.5 text-[10px] font-medium text-teal-700 dark:text-teal-300 ring-1 ring-teal-200 dark:ring-teal-800" data-testid={`athlete-sport-class-${athlete.id}`}>
                             {L("Klasse", "Class")}: {athlete.sportClass}
+                          </span>
+                        )}
+                        {athlete.mainWaxerName && (
+                          <span className="inline-flex items-center rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800" data-testid={`athlete-main-waxer-${athlete.id}`}>
+                            {L("Smører", "Waxer")}: {athlete.mainWaxerName}
                           </span>
                         )}
                         <span className="text-xs text-muted-foreground" data-testid={`text-athlete-created-by-${athlete.id}`}>

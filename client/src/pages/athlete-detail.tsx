@@ -97,6 +97,8 @@ type Athlete = {
   bindingPosition: string | null;
   skiServicePreferences: string | null;
   sportClass: string | null;
+  mainWaxerId: number | null;
+  mainWaxerName: string | null;
   createdAt: string;
   createdById: number;
   createdByName: string;
@@ -1042,7 +1044,12 @@ export default function AthleteDetail() {
     notes: "",
   });
 
-  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", poleHeightSkate: "", bindingPosition: "", skiServicePreferences: "", sportClass: "" });
+  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", poleHeightSkate: "", bindingPosition: "", skiServicePreferences: "", sportClass: "", mainWaxerId: "" });
+  // Team members for the main-waxer selector (loaded when the edit dialog opens).
+  const { data: teamMembers = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/team/members"],
+    enabled: editAthleteOpen,
+  });
   const sportClassEnabled = !!user?.teamEnabledAreas?.includes("para_team");
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
 
@@ -1642,7 +1649,7 @@ export default function AthleteDetail() {
   });
 
   const updateAthleteMutation = useMutation({
-    mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; poleHeightSkate: string; bindingPosition: string; skiServicePreferences: string; sportClass: string }) => {
+    mutationFn: async (data: { name: string; team: string; brand: string; heightCm: string; weightKg: string; poleHeight: string; poleHeightSkate: string; bindingPosition: string; skiServicePreferences: string; sportClass: string; mainWaxerId: string }) => {
       const res = await apiRequest("PUT", `/api/athletes/${athleteId}`, {
         name: data.name,
         team: data.team.trim() || null,
@@ -1654,6 +1661,7 @@ export default function AthleteDetail() {
         bindingPosition: data.bindingPosition.trim() || null,
         skiServicePreferences: data.skiServicePreferences.trim() || null,
         sportClass: data.sportClass.trim() || null,
+        mainWaxerId: data.mainWaxerId ? parseInt(data.mainWaxerId) : null,
       });
       return res.json();
     },
@@ -1820,6 +1828,7 @@ export default function AthleteDetail() {
         poleHeight: athlete.poleHeight || "", poleHeightSkate: athlete.poleHeightSkate || "", bindingPosition: athlete.bindingPosition || "",
         skiServicePreferences: athlete.skiServicePreferences || "",
         sportClass: athlete.sportClass || "",
+        mainWaxerId: athlete.mainWaxerId != null ? String(athlete.mainWaxerId) : "",
       });
       setEditAthleteOpen(true);
     }
@@ -2257,6 +2266,11 @@ export default function AthleteDetail() {
               {sportClassEnabled && athlete.sportClass && (
                 <span className="inline-flex items-center rounded-full bg-teal-50 dark:bg-teal-950/30 px-2 py-0.5 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-teal-200 dark:ring-teal-800" data-testid="text-athlete-sport-class">
                   {L("Klasse", "Class")}: {athlete.sportClass}
+                </span>
+              )}
+              {athlete.mainWaxerName && (
+                <span className="inline-flex items-center rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-800" data-testid="text-athlete-main-waxer">
+                  {L("Smører", "Waxer")}: {athlete.mainWaxerName}
                 </span>
               )}
               <span className="text-xs text-muted-foreground" data-testid="text-athlete-created-by">
@@ -4791,6 +4805,28 @@ export default function AthleteDetail() {
                 />
               </div>
             )}
+            <div>
+              <label className="mb-1 block text-sm font-medium">{L("Hovedsmører", "Main waxer")}</label>
+              <Select
+                value={athleteForm.mainWaxerId || "none"}
+                onValueChange={(v) => setAthleteForm((f) => ({ ...f, mainWaxerId: v === "none" ? "" : v }))}
+              >
+                <SelectTrigger data-testid="select-edit-athlete-main-waxer">
+                  <SelectValue placeholder={L("Ikke satt", "Not set")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{L("Ingen (ikke satt)", "None (not set)")}</SelectItem>
+                  {teamMembers.map((m) => (
+                    <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                  ))}
+                  {/* Current waxer no longer on the team — keep them selectable so the value isn't silently lost */}
+                  {athlete.mainWaxerId != null && !teamMembers.some((m) => m.id === athlete.mainWaxerId) && (
+                    <SelectItem value={String(athlete.mainWaxerId)}>{athlete.mainWaxerName ?? `#${athlete.mainWaxerId}`}</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">{L("Kan byttes når utøveren bytter smører.", "Change this when the athlete switches waxer.")}</p>
+            </div>
             <div>
               <label className="mb-1 block text-sm font-medium">{L("Standard skimerke", "Default ski brand")}</label>
               <Input

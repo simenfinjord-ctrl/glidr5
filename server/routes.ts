@@ -437,6 +437,13 @@ export async function registerRoutes(
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS default_ski_brand TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS archived INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS sport_class TEXT;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS main_waxer_id INTEGER;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS main_waxer_name TEXT;
+      -- Super Admin accounts are never team members: they access every team by
+      -- role alone, leaving only the access-transparency log behind. Strip any
+      -- membership/share rows that may exist for them (idempotent).
+      DELETE FROM user_teams WHERE user_id IN (SELECT id FROM users WHERE is_admin = 1);
+      DELETE FROM user_team_permissions WHERE user_id IN (SELECT id FROM users WHERE is_admin = 1);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS can_view_all_teams INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at TEXT;
@@ -1683,12 +1690,13 @@ export async function registerRoutes(
       delete (req.session as any).incognitoBeforeStealth;
     }
 
-    // Access-transparency log ("innsynslogg"): when a Super Admin enters a team
-    // they are not a member of, the visit is recorded in THAT team's activity
-    // log — visible to the team's admins. ALWAYS logged, including stealth and
-    // incognito: trust through transparency, never silent access. Throttled to
-    // one entry per SA+team per hour so repeated switching doesn't spam.
-    if (u.isAdmin === 1 && !isExplicitMember) {
+    // Access-transparency log ("innsynslogg"): when a Super Admin enters a team,
+    // the visit is recorded in THAT team's activity log — visible to the team's
+    // admins. SAs are never team members, so this applies to EVERY team they
+    // enter. ALWAYS logged, including stealth and incognito: trust through
+    // transparency, never silent access. Throttled to one entry per SA+team per
+    // hour so repeated switching doesn't spam.
+    if (u.isAdmin === 1) {
       try {
         const { pool: pAcc } = await import("./db");
         const recent = await (pAcc as any).query(
@@ -1757,6 +1765,10 @@ export async function registerRoutes(
     if (!teamId) return res.status(400).json({ message: "teamId required" });
     const team = await storage.getTeam(teamId);
     if (!team) return res.status(404).json({ message: "Team not found" });
+    const targetUser = await storage.getUser(userId);
+    if ((targetUser as any)?.isAdmin === 1) {
+      return res.status(400).json({ message: "Super Admins already have access to every team" });
+    }
     await storage.addUserToTeam(userId, teamId);
     res.json({ ok: true });
   });
@@ -4139,7 +4151,10 @@ export async function registerRoutes(
   app.get("/api/users", requireAuth, async (req, res) => {
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const teamId = getAdminTeamScope(req);
-    const list = await storage.listUsers(teamId);
+    let list = await storage.listUsers(teamId);
+    // Super Admin accounts are never team members — they must not appear in any
+    // team's user list. They remain visible only in the SA all-teams system view.
+    if (teamId) list = list.filter((u: any) => u.isAdmin !== 1);
     const byId = new Map<number, any>(list.map((u: any) => [u.id, u]));
     // Also include users added to this team via user_team_permissions (their
     // primary team is elsewhere), shown with their per-team role/permissions and
@@ -4387,6 +4402,11 @@ export async function registerRoutes(
     const teamId = parseInt(req.params.teamId);
     const u = req.user!;
     const { pool: p } = await import("./db");
+    // Super Admins are never shared into teams — they access everything by role.
+    const targetShared = await storage.getUser(userId);
+    if ((targetShared as any)?.isAdmin === 1) {
+      return res.status(400).json({ message: "Super Admins already have access to every team" });
+    }
     // The RECEIVING team's admin is the first line for shared users: a TA may
     // set per-team permissions for the team they currently administer — and
     // only for users already shared into (or belonging to) that team.
@@ -4793,6 +4813,8 @@ export async function registerRoutes(
 
       const members = rows
         .filter((u) => u.isActive === 1 || u.isActive === true)
+        // Super Admins are not team members — never listed on My Team.
+        .filter((u) => u.isAdmin !== 1)
         .map((u) => ({
           id: u.id,
           name: u.name,
@@ -6439,6 +6461,20 @@ export async function registerRoutes(
     if (req.body.skiServicePreferences !== undefined) data.skiServicePreferences = req.body.skiServicePreferences || null;
     if (req.body.sportClass !== undefined) data.sportClass = req.body.sportClass || null;
     if (req.body.archived !== undefined) data.archived = req.body.archived ? 1 : 0;
+    // Main waxer: reassignable when the athlete switches technician. Name is
+    // resolved server-side so the client can't write an arbitrary label.
+    if (req.body.mainWaxerId !== undefined) {
+      const wid = req.body.mainWaxerId != null && req.body.mainWaxerId !== "" ? parseInt(String(req.body.mainWaxerId)) : null;
+      if (wid == null || isNaN(wid)) {
+        data.mainWaxerId = null;
+        data.mainWaxerName = null;
+      } else {
+        const waxer = await storage.getUser(wid);
+        if (!waxer) return res.status(400).json({ message: "Waxer not found" });
+        data.mainWaxerId = waxer.id;
+        data.mainWaxerName = waxer.name;
+      }
+    }
     const before = await storage.getAthlete(id);
     const updated = await storage.updateAthlete(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });

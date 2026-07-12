@@ -555,6 +555,10 @@ export const athletes = pgTable("athletes", {
   // Free-text sport class (e.g. Para classification) — shown when the team has
   // the "para_team" feature enabled by a Super Admin.
   sportClass: text("sport_class"),
+  // Main waxer responsible for this athlete — reassignable when the athlete
+  // switches technician. Name denormalized like createdByName.
+  mainWaxerId: integer("main_waxer_id"),
+  mainWaxerName: text("main_waxer_name"),
   createdAt: text("created_at").notNull(),
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),

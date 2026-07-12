@@ -1045,10 +1045,10 @@ export default function AthleteDetail() {
   });
 
   const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", poleHeightSkate: "", bindingPosition: "", skiServicePreferences: "", sportClass: "", mainWaxerId: "" });
-  // Team members for the main-waxer selector (loaded when the edit dialog opens).
+  // Team members for the main-waxer selector (TA/SA only, loaded when the edit dialog opens).
   const { data: teamMembers = [] } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/team/members"],
-    enabled: editAthleteOpen,
+    enabled: editAthleteOpen && canManage,
   });
   const sportClassEnabled = !!user?.teamEnabledAreas?.includes("para_team");
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
@@ -1661,7 +1661,8 @@ export default function AthleteDetail() {
         bindingPosition: data.bindingPosition.trim() || null,
         skiServicePreferences: data.skiServicePreferences.trim() || null,
         sportClass: data.sportClass.trim() || null,
-        mainWaxerId: data.mainWaxerId ? parseInt(data.mainWaxerId) : null,
+        // Only TAs/SAs may reassign the main waxer — omit the field entirely for others.
+        ...(canManage ? { mainWaxerId: data.mainWaxerId ? parseInt(data.mainWaxerId) : null } : {}),
       });
       return res.json();
     },
@@ -4805,28 +4806,35 @@ export default function AthleteDetail() {
                 />
               </div>
             )}
-            <div>
-              <label className="mb-1 block text-sm font-medium">{L("Hovedsmører", "Main waxer")}</label>
-              <Select
-                value={athleteForm.mainWaxerId || "none"}
-                onValueChange={(v) => setAthleteForm((f) => ({ ...f, mainWaxerId: v === "none" ? "" : v }))}
-              >
-                <SelectTrigger data-testid="select-edit-athlete-main-waxer">
-                  <SelectValue placeholder={L("Ikke satt", "Not set")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{L("Ingen (ikke satt)", "None (not set)")}</SelectItem>
-                  {teamMembers.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
-                  ))}
-                  {/* Current waxer no longer on the team — keep them selectable so the value isn't silently lost */}
-                  {athlete.mainWaxerId != null && !teamMembers.some((m) => m.id === athlete.mainWaxerId) && (
-                    <SelectItem value={String(athlete.mainWaxerId)}>{athlete.mainWaxerName ?? `#${athlete.mainWaxerId}`}</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              <p className="mt-1 text-xs text-muted-foreground">{L("Kan byttes når utøveren bytter smører.", "Change this when the athlete switches waxer.")}</p>
-            </div>
+            {canManage ? (
+              <div>
+                <label className="mb-1 block text-sm font-medium">{L("Hovedsmører", "Main waxer")}</label>
+                <Select
+                  value={athleteForm.mainWaxerId || "none"}
+                  onValueChange={(v) => setAthleteForm((f) => ({ ...f, mainWaxerId: v === "none" ? "" : v }))}
+                >
+                  <SelectTrigger data-testid="select-edit-athlete-main-waxer">
+                    <SelectValue placeholder={L("Ikke satt", "Not set")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{L(`Standard (${athlete.createdByName})`, `Default (${athlete.createdByName})`)}</SelectItem>
+                    {teamMembers.map((m) => (
+                      <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                    ))}
+                    {/* Current waxer no longer on the team — keep them selectable so the value isn't silently lost */}
+                    {athlete.mainWaxerId != null && !teamMembers.some((m) => m.id === athlete.mainWaxerId) && (
+                      <SelectItem value={String(athlete.mainWaxerId)}>{athlete.mainWaxerName ?? `#${athlete.mainWaxerId}`}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-xs text-muted-foreground">{L("Byttes når utøveren bytter smører. Den forrige smøreren beholder delt tilgang til utøverens data.", "Change this when the athlete switches waxer. The previous waxer keeps shared access to the athlete's data.")}</p>
+              </div>
+            ) : athlete.mainWaxerName ? (
+              <div>
+                <label className="mb-1 block text-sm font-medium">{L("Hovedsmører", "Main waxer")}</label>
+                <p className="text-sm text-muted-foreground">{athlete.mainWaxerName} <span className="text-xs">({L("byttes av lagadmin", "changed by a team admin")})</span></p>
+              </div>
+            ) : null}
             <div>
               <label className="mb-1 block text-sm font-medium">{L("Standard skimerke", "Default ski brand")}</label>
               <Input

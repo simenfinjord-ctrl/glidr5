@@ -439,6 +439,8 @@ export async function registerRoutes(
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS sport_class TEXT;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS main_waxer_id INTEGER;
       ALTER TABLE athletes ADD COLUMN IF NOT EXISTS main_waxer_name TEXT;
+      -- The creating waxer is the main waxer until a TA assigns someone else.
+      UPDATE athletes SET main_waxer_id = created_by_id, main_waxer_name = created_by_name WHERE main_waxer_id IS NULL;
       -- Super Admin accounts are never team members: they access every team by
       -- role alone, leaving only the access-transparency log behind. Strip any
       -- membership/share rows that may exist for them (idempotent).
@@ -6422,6 +6424,16 @@ export async function registerRoutes(
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
     const now = new Date().toISOString();
+    // Main waxer defaults to the creating waxer; only a TA/SA may pick someone else.
+    let mainWaxerId: number | null = u.id;
+    let mainWaxerName: string | null = u.name;
+    if (req.body.mainWaxerId !== undefined && u.isScopeAdmin) {
+      const wid = req.body.mainWaxerId != null && req.body.mainWaxerId !== "" ? parseInt(String(req.body.mainWaxerId)) : null;
+      if (wid != null && !isNaN(wid)) {
+        const waxer = await storage.getUser(wid);
+        if (waxer) { mainWaxerId = waxer.id; mainWaxerName = waxer.name; }
+      }
+    }
     const athlete = await storage.createAthlete({
       name: req.body.name,
       team: req.body.team || null,
@@ -6433,13 +6445,15 @@ export async function registerRoutes(
       bindingPosition: req.body.bindingPosition || null,
       skiServicePreferences: req.body.skiServicePreferences || null,
       sportClass: req.body.sportClass || null,
+      mainWaxerId,
+      mainWaxerName,
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
       teamId,
     });
     const accessUserIds: number[] = req.body.accessUserIds || [];
-    const allAccessIds = [...new Set([...accessUserIds, u.id])];
+    const allAccessIds = [...new Set([...accessUserIds, u.id, ...(mainWaxerId != null ? [mainWaxerId] : [])])];
     await storage.setAthleteAccess(athlete.id, allAccessIds);
     res.json(athlete);
   });
@@ -6461,13 +6475,16 @@ export async function registerRoutes(
     if (req.body.skiServicePreferences !== undefined) data.skiServicePreferences = req.body.skiServicePreferences || null;
     if (req.body.sportClass !== undefined) data.sportClass = req.body.sportClass || null;
     if (req.body.archived !== undefined) data.archived = req.body.archived ? 1 : 0;
-    // Main waxer: reassignable when the athlete switches technician. Name is
+    // Main waxer: only Team Admins / Super Admins may reassign it. Name is
     // resolved server-side so the client can't write an arbitrary label.
     if (req.body.mainWaxerId !== undefined) {
+      if (!u.isScopeAdmin) return res.status(403).json({ message: "Only a team admin can change the main waxer" });
       const wid = req.body.mainWaxerId != null && req.body.mainWaxerId !== "" ? parseInt(String(req.body.mainWaxerId)) : null;
       if (wid == null || isNaN(wid)) {
-        data.mainWaxerId = null;
-        data.mainWaxerName = null;
+        // "Cleared" means back to the default rule: the creator is the main waxer.
+        const ath = await storage.getAthlete(id);
+        data.mainWaxerId = ath?.createdById ?? null;
+        data.mainWaxerName = ath?.createdByName ?? null;
       } else {
         const waxer = await storage.getUser(wid);
         if (!waxer) return res.status(400).json({ message: "Waxer not found" });
@@ -6478,6 +6495,20 @@ export async function registerRoutes(
     const before = await storage.getAthlete(id);
     const updated = await storage.updateAthlete(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });
+    // On a main-waxer handover: the OLD waxer keeps regular shared access so
+    // they can still see the athlete's data, and the NEW waxer is granted
+    // access so they can work with the athlete right away.
+    if (data.mainWaxerId !== undefined && before && before.mainWaxerId !== updated.mainWaxerId) {
+      const { pool: pAcc } = await import("./db");
+      for (const uid of [before.mainWaxerId, updated.mainWaxerId]) {
+        if (uid == null) continue;
+        await (pAcc as any).query(
+          `INSERT INTO athlete_access (athlete_id, user_id)
+           SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM athlete_access WHERE athlete_id = $1 AND user_id = $2)`,
+          [id, uid]
+        );
+      }
+    }
     await recordChange(req, "athlete", id, `Athlete edited: ${updated.name}`, before, updated);
     res.json(updated);
   });

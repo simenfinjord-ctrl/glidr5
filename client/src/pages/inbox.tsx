@@ -174,7 +174,7 @@ export default function Inbox() {
                   key={msg.id}
                   className={cn(
                     "overflow-hidden transition-shadow",
-                    isUnread ? "border-blue-300 shadow-sm dark:border-blue-700" : "border-border"
+                    isUnread ? "border-primary/50 shadow-sm" : "border-border"
                   )}
                   data-testid={`inbox-message-${msg.id}`}
                 >
@@ -186,7 +186,7 @@ export default function Inbox() {
                   >
                     <div className="mt-0.5 shrink-0">
                       {isUnread ? (
-                        <Mail className="h-4 w-4 text-blue-500" />
+                        <Mail className="h-4 w-4 text-primary" />
                       ) : (
                         <MailOpen className="h-4 w-4 text-muted-foreground" />
                       )}
@@ -197,7 +197,7 @@ export default function Inbox() {
                           {msg.subject}
                         </span>
                         {isUnread && (
-                          <span className="inline-flex h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+                          <span className="inline-flex h-2 w-2 rounded-full bg-primary shrink-0" />
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">

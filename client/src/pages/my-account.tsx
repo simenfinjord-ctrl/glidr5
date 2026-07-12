@@ -104,7 +104,7 @@ function AvatarSection() {
 
       {/* Current avatar preview */}
       <div className="flex items-center gap-4">
-        <div className="h-16 w-16 rounded-full overflow-hidden border border-border shrink-0 bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center">
+        <div className="h-16 w-16 rounded-full overflow-hidden border border-border shrink-0 bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
           {(selected || currentAvatar) ? (
             <img
               src={selected ?? currentAvatar}
@@ -1065,7 +1065,7 @@ export default function MyAccount() {
           <div className="space-y-4">
             {/* Profile header with avatar */}
             <div className="flex items-center gap-4 mb-2">
-              <div className="h-14 w-14 rounded-full overflow-hidden border border-border shrink-0 bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center">
+              <div className="h-14 w-14 rounded-full overflow-hidden border border-border shrink-0 bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="avatar" className="h-full w-full object-cover" />
                 ) : (
@@ -1550,7 +1550,7 @@ export default function MyAccount() {
     <AppShell>
       <div data-testid="text-my-account-title">
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-3 mb-6">
-          <User className="h-7 w-7 text-blue-500" />
+          <User className="h-7 w-7 text-primary" />
           {t("account.title")}
         </h1>
 

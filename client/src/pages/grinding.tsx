@@ -2363,7 +2363,7 @@ export default function Grinding() {
               <button
                 type="button"
                 onClick={() => setUsGrindOnly((v) => !v)}
-                className={cn("shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold ring-1 transition-colors", usGrindOnly ? "bg-blue-600 text-white ring-blue-600" : "ring-border text-muted-foreground hover:bg-muted")}
+                className={cn("shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold ring-1 transition-colors", usGrindOnly ? "bg-primary text-primary-foreground ring-primary" : "ring-border text-muted-foreground hover:bg-muted")}
                 data-testid="button-filter-us-grind"
                 title={L("Vis bare US-Grind", "Show only US-Grind")}
               >

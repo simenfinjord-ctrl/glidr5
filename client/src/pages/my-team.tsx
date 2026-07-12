@@ -65,8 +65,8 @@ function MemberAvatar({ member, size = "sm" }: { member: TeamMember; size?: "sm"
     : "h-9 w-9 rounded-full object-cover border border-border shrink-0";
 
   const fallbackCls = size === "lg"
-    ? "h-14 w-14 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-sm font-bold text-white shrink-0"
-    : "h-9 w-9 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0";
+    ? "h-14 w-14 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-sm font-bold text-white shrink-0"
+    : "h-9 w-9 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-[10px] font-bold text-white shrink-0";
 
   if (member.avatarUrl) {
     return (
@@ -90,7 +90,7 @@ function RoleBadge({ isTeamAdmin }: { isTeamAdmin: boolean }) {
   const L = (no: string, en: string) => (language === "no" ? no : en);
   if (isTeamAdmin) {
     return (
-      <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-300">
+      <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
         <Shield className="h-2.5 w-2.5" />
         {L("Admin", "Admin")}
       </span>

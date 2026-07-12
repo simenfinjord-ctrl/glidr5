@@ -305,7 +305,7 @@ function CommentText({ text }: { text: string }) {
     <p className="mt-0.5 text-sm text-foreground/90 whitespace-pre-wrap break-words">
       {parts.map((part, i) =>
         /^@[a-zA-Z0-9._-]+/.test(part) ? (
-          <span key={i} className="font-semibold text-blue-600 dark:text-blue-400">
+          <span key={i} className="font-semibold text-primary">
             {/* Show @First Last (spaces back in) */}
             @{part.slice(1).replace(/_/g, " ")}
           </span>
@@ -461,8 +461,8 @@ function CommentsSection({ testId }: { testId: number }) {
   return (
     <div className="fs-card rounded-2xl p-4 sm:p-6 space-y-4">
       <div className="flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50">
-          <MessageSquare className="h-4 w-4 text-blue-600" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+          <MessageSquare className="h-4 w-4 text-primary" />
         </div>
         <h2 className="text-base font-semibold">{L("Kommentarer", "Comments")}</h2>
         {comments.length > 0 && (
@@ -529,7 +529,7 @@ function CommentsSection({ testId }: { testId: number }) {
                   className={cn(
                     "flex w-full items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
                     i === mentionIdx
-                      ? "bg-blue-600 text-white"
+                      ? "bg-primary text-primary-foreground"
                       : "hover:bg-muted text-foreground",
                   )}
                 >

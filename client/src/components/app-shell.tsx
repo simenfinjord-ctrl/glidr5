@@ -984,7 +984,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
           sidebarCollapsed ? "justify-center px-1 py-2" : "px-2 py-1.5",
         )}
       >
-        <div className="h-[26px] w-[26px] shrink-0 rounded-full overflow-hidden bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-[9px] font-bold text-white">
+        <div className="h-[26px] w-[26px] shrink-0 rounded-full overflow-hidden bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-[9px] font-bold text-white">
           {(user as any)?.avatarUrl ? (
             <img src={(user as any).avatarUrl} alt={user?.name} className="h-full w-full object-cover" />
           ) : (

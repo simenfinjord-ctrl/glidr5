@@ -7,6 +7,7 @@ import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { LocationAutocomplete } from "@/components/location-autocomplete";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -122,6 +123,7 @@ export default function CrossTeamTests() {
 
   const teamOptions = useMemo(() => Array.from(new Map(tests.map((t) => [t.teamId, t.teamName])).entries()), [tests]);
   const typeOptions = useMemo(() => Array.from(new Set(tests.map((t) => t.testType).filter(Boolean))).sort(), [tests]);
+  const locationOptions = useMemo(() => Array.from(new Set(tests.map((t) => t.location).filter(Boolean))).sort(), [tests]);
   const distinct = (get: (w: CTWeather) => string | null | undefined) =>
     Array.from(new Set(tests.map((t) => t.weather ? get(t.weather) : null).filter(Boolean) as string[])).sort();
   const artOptions = useMemo(() => distinct((w) => w.artificialSnow), [tests]);
@@ -359,7 +361,7 @@ export default function CrossTeamTests() {
                   {typeOptions.map((tp) => (<SelectItem key={tp} value={tp}>{tp}</SelectItem>))}
                 </SelectContent>
               </Select>
-              <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={L("Sted", "Location")} className="h-9 text-xs" data-testid="filter-crossteam-location" />
+              <LocationAutocomplete value={location} onChange={setLocation} placeholder={L("Sted", "Location")} inputClassName="h-9 text-xs" data-testid="filter-crossteam-location" options={locationOptions} />
               <Input value={snowType} onChange={(e) => setSnowType(e.target.value)} placeholder={L("Snøtype", "Snow type")} className="h-9 text-xs" data-testid="filter-crossteam-snowtype" />
               <div className="flex items-center gap-1 col-span-2 sm:col-span-1">
                 <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 text-xs" title={L("Fra dato", "Date from")} />

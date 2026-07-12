@@ -34,16 +34,19 @@ export function LocationAutocomplete({
   searchMode = false,
   inputClassName,
   onCommit,
+  options,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { data: allLocations = [] } = useQuery<string[]>({
+  const { data: historyLocations = [] } = useQuery<string[]>({
     queryKey: ["/api/locations/history"],
     staleTime: 5 * 60 * 1000,
+    enabled: !options,
   });
+  const allLocations = options ?? historyLocations;
 
   const suggestions = useCallback((): string[] => {
     const q = (value || "").trim().toLowerCase();

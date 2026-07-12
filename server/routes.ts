@@ -4857,6 +4857,67 @@ export async function registerRoutes(
     return res.json({ ok: true, avatarUrl });
   });
 
+  // PATCH /api/team/plan — a Team Admin adjusts THEIR OWN team's plan
+  // composition (features + limits). Only while commercialization is ON and
+  // only for teams on the dynamic "custom" plan — fixed plans go through SA.
+  // The invoice sum follows automatically since custom plans are priced live.
+  app.patch("/api/team/plan", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Team admin only" });
+    const u = req.user as any;
+    const teamId = getActiveTeamId(req);
+    try {
+      const rows = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'commercialization_enabled'`);
+      const row = ((rows as any).rows ?? rows)[0];
+      if (row?.value === "false") return res.status(403).json({ message: "Plan self-service is not available" });
+    } catch { /* default open */ }
+    const team = await storage.getTeam(teamId);
+    if (!team) return res.status(404).json({ message: "Team not found" });
+    if ((team.planName ?? "free") !== "custom") {
+      return res.status(400).json({ message: "This team is on a fixed plan — contact Glidr to change it" });
+    }
+    const { sanitizeFeatureSelection, clampLimit, computeCustomPrice } = await import("@shared/pricing");
+    const features = sanitizeFeatureSelection(req.body.features);
+    const maxUsers = req.body.maxUsers !== undefined ? clampLimit("users", Number(req.body.maxUsers)) : (team.maxUsers ?? null);
+    const maxGroups = req.body.maxGroups !== undefined ? clampLimit("groups", Number(req.body.maxGroups)) : (team.maxGroups ?? null);
+    const { pool: pPlan } = await import("./db");
+    await (pPlan as any).query(
+      `UPDATE teams SET enabled_areas = $1, max_users = $2, max_groups = $3 WHERE id = $4`,
+      [JSON.stringify(features), maxUsers, maxGroups, teamId]
+    );
+    // Traceability: plan change log + team activity + SA inbox heads-up with the new price.
+    let overrides: any = null;
+    try {
+      const or = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'plan_builder_pricing'`);
+      const orow = ((or as any).rows ?? or)[0];
+      if (orow?.value) overrides = JSON.parse(orow.value);
+    } catch { /* defaults */ }
+    const priced = computeCustomPrice({ features, maxUsers: maxUsers ?? 1, maxGroups: maxGroups ?? 1, billingPeriod: (team.billingPeriod as any) === "annual" ? "annual" : "monthly" }, overrides);
+    const now = new Date().toISOString();
+    await (pPlan as any).query(
+      `INSERT INTO plan_change_log (team_id, team_name, changed_at, changed_by, old_plan, new_plan, old_price, new_price, billing_period, notes)
+       VALUES ($1,$2,$3,$4,'custom','custom',$5,$6,$7,$8)`,
+      [teamId, team.name, now, u.name || u.email || null, team.customPrice ?? null, priced.monthlyTotal, team.billingPeriod ?? "monthly", "Changed by Team Admin (self-service)"]
+    ).catch(() => {});
+    await storage.createActivityLog({
+      userId: u.id, userName: u.name, action: "plan_changed",
+      entityType: "team", entityId: teamId,
+      details: `Team plan adjusted by TA — new monthly price ${priced.monthlyTotal} NOK`,
+      createdAt: now, groupScope: "", teamId,
+    } as any).catch(() => {});
+    try {
+      const saUsers = await db.execute(sql`SELECT id FROM users WHERE is_admin = 1`);
+      for (const sa of ((saUsers as any).rows ?? saUsers)) {
+        await db.execute(sql`
+          INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at)
+          VALUES (${sa.id}, 'Glidr System', ${"Planendring: " + team.name},
+            ${`${u.name} (TA) endret planen for «${team.name}». Ny månedspris: ${priced.monthlyTotal} NOK. Brukere: ${maxUsers ?? "-"}, grupper: ${maxGroups ?? "-"}. Se Admin → Accounting.`},
+            0, ${now})
+        `);
+      }
+    } catch { /* best-effort */ }
+    res.json({ ok: true, monthlyTotal: priced.monthlyTotal });
+  });
+
   // GET /api/team/members — members of the caller's active team
   app.get("/api/team/members", requireAuth, async (req, res) => {
     const teamId = getActiveTeamId(req);
@@ -6215,6 +6276,14 @@ export async function registerRoutes(
     // Fetch current team state for change log
     const currentResult = await (pool as any).query(`SELECT * FROM teams WHERE id = $1`, [teamId]);
     const currentTeam = currentResult.rows[0];
+
+    // Custom plans: SA may set the feature composition directly — the price
+    // follows dynamically from the current price list.
+    if (req.body.features !== undefined && (planName === "custom" || (!planName && currentTeam?.plan_name === "custom"))) {
+      const { sanitizeFeatureSelection } = await import("@shared/pricing");
+      const feats = sanitizeFeatureSelection(req.body.features);
+      await (pool as any).query(`UPDATE teams SET enabled_areas = $1 WHERE id = $2`, [JSON.stringify(feats), teamId]);
+    }
 
     if (planName && planName !== "custom") {
       const preset = PLAN_FEATURE_PRESETS[planName];

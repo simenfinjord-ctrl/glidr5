@@ -15,7 +15,8 @@ import {
   TEAM_FEATURES, FEATURE_LABELS, FEATURE_CATEGORIES, PLAN_FEATURE_PRESETS,
 } from "@shared/schema";
 import type { UserPermissions, PermissionLevel } from "@shared/schema";
-import { computeTeamPrice } from "@shared/pricing";
+import { computeTeamPrice, computeCustomPrice, CORE_FEATURES } from "@shared/pricing";
+import { useAppSettings } from "@/lib/app-settings";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { generateFeatureGuidePDF } from "@/lib/featureGuidePdf";
@@ -262,7 +263,7 @@ type ActivityEntry = {
   groupScope: string;
 };
 
-type TabId = "overview" | "users" | "groups" | "teams" | "security" | "backup" | "activity" | "logins" | "data" | "danger" | "registrations" | "accounting" | "guide" | "watch";
+type TabId = "overview" | "users" | "groups" | "teams" | "security" | "backup" | "activity" | "logins" | "data" | "danger" | "registrations" | "accounting" | "guide" | "watch" | "plan";
 
 function parseGroups(groupScope: string): string[] {
   return groupScope.split(",").map((s) => s.trim()).filter(Boolean);
@@ -2038,6 +2039,7 @@ const ALL_TABS: { id: TabId; labelKey: string; superAdminOnly?: boolean; icon: R
   { id: "security", labelKey: "admin.tabSecurity", superAdminOnly: true, icon: Shield },
   { id: "registrations", labelKey: "admin.tabRegistrations", superAdminOnly: true, icon: UserPlus },
   { id: "accounting" as TabId, labelKey: "admin.tabAccounting", superAdminOnly: true, icon: CreditCard },
+  { id: "plan", labelKey: "admin.tabTeamPlan", icon: CreditCard },
   { id: "guide", labelKey: "admin.tabFeatureGuide", icon: FileText, superAdminOnly: true },
 ];
 
@@ -2048,15 +2050,173 @@ const ADMIN_TAB_GROUPS: { labelNo: string; labelEn: string; ids: TabId[] }[] = [
   { labelNo: "Personer", labelEn: "People", ids: ["users", "groups", "registrations"] },
   { labelNo: "Logger", labelEn: "Logs", ids: ["activity", "logins", "security"] },
   { labelNo: "Data", labelEn: "Data", ids: ["backup", "data", "danger"] },
-  { labelNo: "System", labelEn: "System", ids: ["teams", "watch", "accounting", "guide"] },
+  { labelNo: "System", labelEn: "System", ids: ["teams", "watch", "accounting", "plan", "guide"] },
 ];
+
+// TA self-service: adjust the OWN team's plan (features + limits) while
+// commercialization is on. Only "custom" teams are editable — the price
+// follows live from the current price list; fixed plans go through Glidr.
+function TeamPlanTab({ teams }: { teams: ApiTeam[] }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const activeTeamId = (user as any)?.activeTeamId ?? user?.teamId;
+  const team = teams.find((tm) => tm.id === activeTeamId);
+
+  const { data: pricing } = useQuery<any>({
+    queryKey: ["/api/settings/plan-builder-pricing"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings/plan-builder-pricing");
+      return res.ok ? res.json() : null;
+    },
+  });
+
+  const [feats, setFeats] = useState<string[] | null>(null);
+  const [maxUsers, setMaxUsers] = useState<string>("");
+  const [maxGroups, setMaxGroups] = useState<string>("");
+  useEffect(() => {
+    if (!team) return;
+    try { setFeats(JSON.parse((team as any).enabledAreas ?? (team as any).enabled_areas ?? "[]")); } catch { setFeats([]); }
+    setMaxUsers(String(team.maxUsers ?? (team as any).max_users ?? 3));
+    setMaxGroups(String(team.maxGroups ?? (team as any).max_groups ?? 1));
+  }, [team?.id]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("PATCH", "/api/team/plan", {
+        features: feats ?? [],
+        maxUsers: parseInt(maxUsers) || 1,
+        maxGroups: parseInt(maxGroups) || 1,
+      });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({ title: L("Plan oppdatert", "Plan updated"), description: L(`Ny månedspris: ${data.monthlyTotal} kr`, `New monthly price: ${data.monthlyTotal} NOK`) });
+    },
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
+  });
+
+  if (!team) return <Card className="rounded-2xl p-6 text-sm text-muted-foreground">{L("Fant ikke laget.", "Team not found.")}</Card>;
+  const plan = (team.planName ?? (team as any).plan_name ?? "free").toLowerCase();
+  const discount = Math.min(100, Math.max(0, Number((team as any).discountPercent ?? (team as any).discount_percent) || 0));
+
+  if (plan !== "custom") {
+    return (
+      <Card className="rounded-2xl p-6 space-y-2">
+        <h3 className="font-semibold">{L("Lagets plan", "Team plan")} — {team.name}</h3>
+        <p className="text-sm text-muted-foreground">
+          {L(`Laget er på planen «${plan}». Kontakt Glidr (hei@glidr.no) for å endre funksjoner eller bytte til en fleksibel plan.`,
+             `The team is on the "${plan}" plan. Contact Glidr (hei@glidr.no) to change features or switch to a flexible plan.`)}
+        </p>
+      </Card>
+    );
+  }
+
+  const selected = feats ?? [];
+  const live = computeCustomPrice({
+    features: selected as any,
+    maxUsers: parseInt(maxUsers) || 1,
+    maxGroups: parseInt(maxGroups) || 1,
+    billingPeriod: ((team.billingPeriod ?? (team as any).billing_period) === "annual" ? "annual" : "monthly"),
+  }, pricing ?? null);
+  const discounted = Math.round(live.monthlyTotal * (1 - discount / 100));
+  const toggleF = (f: string) => setFeats((prev) => {
+    const cur = prev ?? [];
+    return cur.includes(f) ? cur.filter((x) => x !== f) : [...cur, f];
+  });
+
+  return (
+    <div className="flex flex-col gap-5">
+      <Card className="rounded-2xl p-6 space-y-4">
+        <div>
+          <h3 className="font-semibold">{L("Lagets plan", "Team plan")} — {team.name}</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            {L("Velg funksjonene laget skal ha. Prisen beregnes automatisk og faktureres fra neste periode.",
+               "Pick the features your team needs. The price is computed automatically and invoiced from the next period.")}
+          </p>
+        </div>
+        <div className="space-y-3">
+          {FEATURE_CATEGORIES.map((cat) => (
+            <div key={cat.label}>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{cat.label}</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                {cat.features.map((f) => {
+                  const isCore = (CORE_FEATURES as readonly string[]).includes(f);
+                  const on = isCore || selected.includes(f);
+                  const price = pricing?.featurePrices?.[f] ?? 0;
+                  return (
+                    <button key={f} type="button" disabled={isCore} onClick={() => toggleF(f)}
+                      data-testid={`teamplan-feature-${f}`}
+                      className={cn("flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left text-xs",
+                        isCore ? "border-border bg-muted/40 cursor-default" : on ? "border-primary bg-primary/10" : "border-border hover:border-foreground/30")}>
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <span className={cn("flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border", on ? "bg-primary border-primary text-primary-foreground" : "border-border")}>
+                          {on && <Check className="h-2.5 w-2.5" />}
+                        </span>
+                        <span className="truncate">{(FEATURE_LABELS as any)[f]}</span>
+                      </span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">
+                        {isCore ? L("Inkludert", "Included") : price > 0 ? `${price} ${L("kr/mnd", "NOK/mo")}` : L("Gratis", "Free")}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-3 max-w-md">
+          <div className="space-y-1">
+            <label className="text-xs font-medium">{L("Maks brukere", "Max users")}</label>
+            <Input type="number" min="1" className="h-8" value={maxUsers} onChange={(e) => setMaxUsers(e.target.value)} data-testid="input-teamplan-users" />
+            <p className="text-[10px] text-muted-foreground">{pricing?.users?.included ?? 3} {L("inkludert, deretter", "included, then")} {pricing?.users?.perExtra ?? 29} {L("kr/mnd per stk", "NOK/mo each")}</p>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium">{L("Maks grupper", "Max groups")}</label>
+            <Input type="number" min="1" className="h-8" value={maxGroups} onChange={(e) => setMaxGroups(e.target.value)} data-testid="input-teamplan-groups" />
+            <p className="text-[10px] text-muted-foreground">{pricing?.groups?.included ?? 1} {L("inkludert, deretter", "included, then")} {pricing?.groups?.perExtra ?? 49} {L("kr/mnd per stk", "NOK/mo each")}</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-between border-t border-border pt-3">
+          <div>
+            <div className="text-sm font-medium">{L("Ny månedspris", "New monthly price")}{discount > 0 ? ` (−${discount}% ${L("rabatt", "discount")})` : ""}</div>
+            <div className="text-[11px] text-muted-foreground">{L("Alle priser i NOK inkl. mva.", "All prices in NOK incl. VAT.")}</div>
+          </div>
+          <div className="text-xl font-bold tabular-nums" data-testid="text-teamplan-total">{discounted.toLocaleString("no-NO")} {L("kr/mnd", "NOK/mo")}</div>
+        </div>
+        <div className="flex justify-end">
+          <Button
+            disabled={saveMutation.isPending}
+            data-testid="button-save-team-plan"
+            onClick={() => {
+              if (confirm(L(`Bekreft planendring: ny månedspris blir ${discounted} kr inkl. mva. Endringen gjelder fra neste fakturering.`,
+                            `Confirm plan change: the new monthly price is ${discounted} NOK incl. VAT, effective from the next invoice.`))) {
+                saveMutation.mutate();
+              }
+            }}
+          >{saveMutation.isPending ? L("Lagrer…", "Saving…") : L("Lagre plan", "Save plan")}</Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
 
 function AdminNav({ activeTab, setActiveTab, isSuperAdmin }: { activeTab: TabId; setActiveTab: (t: TabId) => void; isSuperAdmin: boolean }) {
   const { t, language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const [navQuery, setNavQuery] = useState("");
   const meta = (id: TabId) => ALL_TABS.find((x) => x.id === id);
-  const canSee = (id: TabId) => { const m = meta(id); return !!m && (!m.superAdminOnly || isSuperAdmin); };
+  const { commercializationEnabled } = useAppSettings();
+  const canSee = (id: TabId) => {
+    const m = meta(id);
+    if (!m) return false;
+    // The TA self-service plan page only exists while commercialization is on.
+    if (id === "plan" && !commercializationEnabled) return false;
+    return !m.superAdminOnly || isSuperAdmin;
+  };
   // Sidebar display names — a couple differ from the tab labelKeys per the mockup.
   const navLabel = (id: TabId) => {
     if (id === "activity") return L("Aktivitet + papirkurv", "Activity + recycle bin");
@@ -2759,6 +2919,23 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
     onError: () => toast({ title: t("common.error"), variant: "destructive" }),
   });
 
+  // ── Feature price-list editor (plan builder) ─────────────────────
+  const [editingBuilder, setEditingBuilder] = useState(false);
+  const [builderForm, setBuilderForm] = useState<any>({ features: {} });
+  const saveBuilderMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("PATCH", "/api/admin/plan-builder-pricing", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/plan-builder-pricing"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      setEditingBuilder(false);
+      toast({ title: L("Prisliste lagret", "Price list saved"), description: L("Alle dynamiske lagpriser er oppdatert.", "All dynamic team prices are updated.") });
+    },
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+  });
+
   // ── Billing records ───────────────────────────────────────────────
   const { data: records = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/billing"],
@@ -3068,16 +3245,30 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
     .filter((r: any) => r.paid_at)
     .sort((a: any, b: any) => new Date(b.paid_at).getTime() - new Date(a.paid_at).getTime());
 
+  // Sent, not yet paid (most recently sent first)
+  const sentRecords = [...records]
+    .filter((r: any) => r.invoiced_at && !r.paid_at)
+    .sort((a: any, b: any) => new Date(b.invoiced_at).getTime() - new Date(a.invoiced_at).getTime());
+
+  // All-time revenue and a 12-month forward projection from today's dynamic prices.
+  const totalRevenue = paidRecords.reduce((s: number, r: any) => s + (r.amount ?? 0), 0);
+  const projected12mo = payingTeams.reduce((s, tm) => {
+    const priced = teamPriceDetail(tm);
+    return s + (priced.monthly ?? 0) * 12;
+  }, 0);
+
   // ── Render ────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-5">
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
+          { label: L("Totale inntekter (betalt)", "Total revenue (paid)"), value: `${totalRevenue.toLocaleString("no-NO")} NOK`, color: "text-foreground" },
           { label: t("admin.billingPaidThisYear"), value: `${paidThisYear.toLocaleString("no-NO")} NOK`, color: "text-green-600" },
           { label: t("admin.billingOutstanding"), value: `${outstanding.toLocaleString("no-NO")} NOK`, color: outstanding > 0 ? "text-amber-600" : "text-muted-foreground" },
           { label: t("admin.billingEstimatedRest"), value: `${estimatedRest.toLocaleString("no-NO")} NOK`, color: "text-blue-600" },
+          { label: L("Neste 12 mnd (prognose)", "Next 12 mo (projected)"), value: `${projected12mo.toLocaleString("no-NO")} NOK`, color: "text-primary" },
         ].map((c) => (
           <Card key={c.label} className="rounded-2xl p-4">
             <div className="text-xs text-muted-foreground mb-1">{c.label}</div>
@@ -3286,6 +3477,113 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
           ))}
         </div>
       </Card>
+
+      {/* Feature price list — the source of every dynamic (custom) plan price */}
+      <Card className="rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="font-semibold text-sm">{L("Prisliste — funksjoner (plan-bygger)", "Price list — features (plan builder)")}</h3>
+          {!editingBuilder ? (
+            <Button variant="outline" size="sm" data-testid="button-edit-feature-prices" onClick={() => {
+              const f: Record<string, string> = {};
+              for (const feat of TEAM_FEATURES) f[feat] = String(builderPricing?.featurePrices?.[feat] ?? 0);
+              setBuilderForm({
+                features: f,
+                usersIncluded: String(builderPricing?.users?.included ?? 3),
+                usersPerExtra: String(builderPricing?.users?.perExtra ?? 29),
+                groupsIncluded: String(builderPricing?.groups?.included ?? 1),
+                groupsPerExtra: String(builderPricing?.groups?.perExtra ?? 49),
+              });
+              setEditingBuilder(true);
+            }}>{L("Rediger", "Edit")}</Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEditingBuilder(false)}>{L("Avbryt", "Cancel")}</Button>
+              <Button size="sm" disabled={saveBuilderMutation.isPending} data-testid="button-save-feature-prices" onClick={() => {
+                const featurePrices: Record<string, number> = {};
+                for (const [k, v] of Object.entries(builderForm.features)) {
+                  const n = parseFloat(v as string); if (!isNaN(n) && n >= 0) featurePrices[k] = n;
+                }
+                saveBuilderMutation.mutate({
+                  featurePrices,
+                  users: { included: parseFloat(builderForm.usersIncluded) || 0, perExtra: parseFloat(builderForm.usersPerExtra) || 0 },
+                  groups: { included: parseFloat(builderForm.groupsIncluded) || 0, perExtra: parseFloat(builderForm.groupsPerExtra) || 0 },
+                });
+              }}>{L("Lagre", "Save")}</Button>
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">{L("Endringer her slår umiddelbart inn i alle custom-lags fakturasum og i plan-byggeren for nye lag.", "Changes here immediately affect every custom team's invoice sum and the plan builder for new teams.")}</p>
+        <div className="space-y-4">
+          {FEATURE_CATEGORIES.map((cat) => (
+            <div key={cat.label}>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{cat.label}</div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-4">
+                {cat.features.map((feat) => {
+                  const isCore = (CORE_FEATURES as readonly string[]).includes(feat);
+                  const cur = builderPricing?.featurePrices?.[feat] ?? 0;
+                  return (
+                    <div key={feat} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="truncate text-xs">{(FEATURE_LABELS as any)[feat]}</span>
+                      {isCore ? (
+                        <span className="text-xs text-muted-foreground shrink-0">{L("Gratis (kjerne)", "Free (core)")}</span>
+                      ) : editingBuilder ? (
+                        <Input type="number" className="h-7 w-20 text-xs text-right shrink-0"
+                          value={builderForm.features[feat] ?? "0"}
+                          onChange={(e) => setBuilderForm((f: any) => ({ ...f, features: { ...f.features, [feat]: e.target.value } }))} />
+                      ) : (
+                        <span className="text-xs font-semibold tabular-nums shrink-0">{cur} {L("kr/mnd", "NOK/mo")}</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{L("Grenser", "Limits")}</div>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 text-sm">
+              {[
+                { label: L("Brukere inkludert", "Users included"), key: "usersIncluded", cur: builderPricing?.users?.included ?? 3, unit: "" },
+                { label: L("Pris per ekstra bruker", "Per extra user"), key: "usersPerExtra", cur: builderPricing?.users?.perExtra ?? 29, unit: L("kr/mnd", "NOK/mo") },
+                { label: L("Grupper inkludert", "Groups included"), key: "groupsIncluded", cur: builderPricing?.groups?.included ?? 1, unit: "" },
+                { label: L("Pris per ekstra gruppe", "Per extra group"), key: "groupsPerExtra", cur: builderPricing?.groups?.perExtra ?? 49, unit: L("kr/mnd", "NOK/mo") },
+              ].map((row) => (
+                <div key={row.key} className="flex items-center justify-between gap-2">
+                  <span className="text-xs">{row.label}</span>
+                  {editingBuilder ? (
+                    <Input type="number" className="h-7 w-20 text-xs text-right shrink-0"
+                      value={(builderForm as any)[row.key] ?? ""}
+                      onChange={(e) => setBuilderForm((f: any) => ({ ...f, [row.key]: e.target.value }))} />
+                  ) : (
+                    <span className="text-xs font-semibold tabular-nums shrink-0">{row.cur} {row.unit}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Sent invoices (awaiting payment) */}
+      {sentRecords.length > 0 && (
+        <Card className="rounded-2xl p-5">
+          <h3 className="font-semibold text-sm mb-4">{L("Sendte fakturaer (venter på betaling)", "Sent invoices (awaiting payment)")}</h3>
+          <div className="flex flex-col gap-2">
+            {sentRecords.map((r: any) => (
+              <div key={r.id} className="flex items-center gap-3 rounded-xl border border-border bg-muted/10 px-3 py-2.5 text-sm">
+                <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
+                  <span className="font-medium">{r.team_name}</span>
+                  <span className="font-bold">{r.amount.toLocaleString("no-NO")} {r.currency}</span>
+                  {r.description && <span className="text-xs text-muted-foreground truncate">{r.description}</span>}
+                </div>
+                <span className="text-xs text-blue-600 dark:text-blue-400 flex-shrink-0 whitespace-nowrap">
+                  {L("Sendt", "Sent")} {new Date(r.invoiced_at).toLocaleDateString("no-NO")} · {L("forfall", "due")} {new Date(r.due_date).toLocaleDateString("no-NO")}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Paid history */}
       {paidRecords.length > 0 && (
@@ -4386,6 +4684,15 @@ export default function Admin() {
     },
   });
 
+  // Current feature price list — used for the live total in the plan dialog.
+  const { data: adminBuilderPricing } = useQuery<any>({
+    queryKey: ["/api/settings/plan-builder-pricing"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings/plan-builder-pricing");
+      return res.ok ? res.json() : null;
+    },
+  });
+
   const setPlanMutation = useMutation({
     mutationFn: async ({ id, ...data }: { id: number; planName?: string; maxUsers?: number | null; maxGroups?: number | null; maxTests?: number | null; maxProducts?: number | null }) => {
       const res = await apiRequest("PATCH", `/api/admin/teams/${id}/plan`, data);
@@ -5346,7 +5653,7 @@ export default function Admin() {
 
             {/* Edit Plan dialog */}
             <Dialog open={!!editPlanTeam} onOpenChange={(o) => { if (!o) setEditPlanTeam(null); }}>
-              <DialogContent>
+              <DialogContent className={editPlanForm.planName === "custom" ? "sm:max-w-2xl max-h-[90vh] overflow-y-auto" : undefined}>
                 <DialogHeader><DialogTitle>{t("admin.editPlanTitle")} — {editPlanTeam?.name}</DialogTitle></DialogHeader>
                 <div className="flex flex-col gap-3 pt-1">
                   <div className="space-y-1">
@@ -5363,6 +5670,61 @@ export default function Admin() {
                       <p className="text-[11px] text-muted-foreground">{L("Custom prises dynamisk fra lagets funksjoner og grenser mot gjeldende prisliste.", "Custom is priced dynamically from the team's features and limits against the current price list.")}</p>
                     )}
                   </div>
+                  {editPlanForm.planName === "custom" && (() => {
+                    const feats: string[] = editPlanForm.features ?? [];
+                    const toggleF = (f: string) => setEditPlanForm((prev: any) => ({
+                      ...prev,
+                      features: (prev.features ?? []).includes(f) ? (prev.features ?? []).filter((x: string) => x !== f) : [...(prev.features ?? []), f],
+                    }));
+                    const live = computeCustomPrice({
+                      features: feats as any,
+                      maxUsers: parseInt(editPlanForm.maxUsers) || 1,
+                      maxGroups: parseInt(editPlanForm.maxGroups) || 1,
+                      billingPeriod: editPlanForm.billingPeriod === "annual" ? "annual" : "monthly",
+                    }, adminBuilderPricing ?? null);
+                    const disc = Math.min(100, Math.max(0, parseFloat(editPlanForm.discountPercent) || 0));
+                    return (
+                      <div className="space-y-3 rounded-xl border border-border p-3">
+                        <div className="text-xs font-semibold">{L("Funksjoner (pris/mnd)", "Features (price/mo)")}</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                          {FEATURE_CATEGORIES.flatMap((cat) => cat.features).map((f) => {
+                            const isCore = (CORE_FEATURES as readonly string[]).includes(f);
+                            const on = isCore || feats.includes(f);
+                            const price = adminBuilderPricing?.featurePrices?.[f] ?? 0;
+                            return (
+                              <button key={f} type="button" disabled={isCore} onClick={() => toggleF(f)}
+                                className={cn("flex items-center justify-between gap-2 rounded-lg border px-2 py-1.5 text-left text-xs",
+                                  isCore ? "border-border bg-muted/40 cursor-default" : on ? "border-primary bg-primary/10" : "border-border hover:border-foreground/30")}>
+                                <span className="flex items-center gap-1.5 min-w-0">
+                                  <span className={cn("flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border", on ? "bg-primary border-primary text-primary-foreground" : "border-border")}>
+                                    {on && <Check className="h-2.5 w-2.5" />}
+                                  </span>
+                                  <span className="truncate">{(FEATURE_LABELS as any)[f]}</span>
+                                </span>
+                                <span className="shrink-0 tabular-nums text-muted-foreground">{isCore ? L("Kjerne", "Core") : price > 0 ? `${price}` : "0"}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium">{L("Maks brukere", "Max users")}</label>
+                            <Input type="number" className="h-8" value={editPlanForm.maxUsers} onChange={(e) => setEditPlanForm((f: any) => ({ ...f, maxUsers: e.target.value }))} />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium">{L("Maks grupper", "Max groups")}</label>
+                            <Input type="number" className="h-8" value={editPlanForm.maxGroups} onChange={(e) => setEditPlanForm((f: any) => ({ ...f, maxGroups: e.target.value }))} />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between border-t border-border pt-2 text-sm">
+                          <span className="font-medium">{L("Beregnet pris", "Computed price")}{disc > 0 ? ` (−${disc}%)` : ""}</span>
+                          <span className="font-bold tabular-nums" data-testid="text-plan-live-total">
+                            {Math.round(live.monthlyTotal * (1 - disc / 100)).toLocaleString("no-NO")} {L("kr/mnd", "NOK/mo")}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {editPlanForm.planName !== "custom" && (
                     <div className="space-y-1">
                       <label className="text-sm font-medium">{t("admin.editPlanCustomPrice")}</label>
@@ -5403,6 +5765,11 @@ export default function Admin() {
                           billingPeriod: editPlanForm.billingPeriod,
                           nextBillingDate: editPlanForm.nextBillingDate || null,
                           discountPercent: editPlanForm.discountPercent !== "" ? Math.min(100, Math.max(0, parseFloat(editPlanForm.discountPercent) || 0)) : 0,
+                          ...(editPlanForm.planName === "custom" ? {
+                            features: editPlanForm.features ?? [],
+                            maxUsers: editPlanForm.maxUsers !== "" ? parseInt(editPlanForm.maxUsers) : null,
+                            maxGroups: editPlanForm.maxGroups !== "" ? parseInt(editPlanForm.maxGroups) : null,
+                          } : {}),
                         } as any);
                         setEditPlanTeam(null);
                       }}
@@ -5528,7 +5895,7 @@ export default function Admin() {
                         <Button variant="ghost" size="sm" title={L("Sett grenser", "Set limits")} onClick={() => { setLimitsTeam(team); setLimitsForm({ maxUsers: team.maxUsers ?? team.max_users ?? "", maxGroups: team.maxGroups ?? team.max_groups ?? "", maxTests: team.maxTests ?? team.max_tests ?? "", maxProducts: team.maxProducts ?? team.max_products ?? "" }); }}>
                           <Hash className="h-4 w-4 text-muted-foreground" />
                         </Button>
-                        <Button variant="ghost" size="sm" title={L("Rediger plan / fakturering", "Edit plan / billing")} onClick={() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "", discountPercent: String((team as any).discountPercent ?? (team as any).discount_percent ?? 0) }); }}>
+                        <Button variant="ghost" size="sm" title={L("Rediger plan / fakturering", "Edit plan / billing")} onClick={() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "", discountPercent: String((team as any).discountPercent ?? (team as any).discount_percent ?? 0), features: (() => { try { return JSON.parse((team as any).enabledAreas ?? (team as any).enabled_areas ?? "[]"); } catch { return []; } })(), maxUsers: String(team.maxUsers ?? (team as any).max_users ?? ""), maxGroups: String(team.maxGroups ?? (team as any).max_groups ?? "") }); }}>
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </Button>
                         <Button variant="ghost" size="sm" title={L("Planhistorikk", "Plan history")} onClick={() => setHistoryTeam(team)}>
@@ -6140,6 +6507,8 @@ export default function Admin() {
         {activeTab === "registrations" && (
           <RegistrationsTab />
         )}
+
+        {activeTab === "plan" && <TeamPlanTab teams={teams} />}
 
         {activeTab === "accounting" && isSuperAdmin && (
           <div className="flex flex-col gap-5">

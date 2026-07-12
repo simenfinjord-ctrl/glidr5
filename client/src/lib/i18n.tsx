@@ -1266,6 +1266,7 @@ const translations: Record<string, Record<string, string>> = {
 
     // ── Accounting (Super Admin) ─────────────────────────────────────────────
     "admin.tabAccounting": "Accounting",
+    "admin.tabTeamPlan": "Team plan",
     "admin.accountingTotalPaid": "Total received",
     "admin.accountingPendingInvoice": "To invoice",
     "admin.accountingPendingPayment": "Awaiting payment",
@@ -2580,6 +2581,7 @@ const translations: Record<string, Record<string, string>> = {
 
     // ── Regnskap (Super Admin) ───────────────────────────────────────────────
     "admin.tabAccounting": "Regnskap",
+    "admin.tabTeamPlan": "Lagets plan",
     "admin.accountingTotalPaid": "Totalt mottatt",
     "admin.accountingPendingInvoice": "Skal faktureres",
     "admin.accountingPendingPayment": "Venter på betaling",

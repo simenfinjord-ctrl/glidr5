@@ -5,7 +5,7 @@
 // feeling rank + notes), and an interpreted report tied to weather/conditions.
 import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Footprints, Pencil, Trash2, Cloud, MapPin, Users, FileText, Copy } from "lucide-react";
+import { Plus, Footprints, Pencil, Trash2, Cloud, MapPin, Users, FileText, Copy, FlaskConical, Layers } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -614,7 +614,12 @@ export default function Kick() {
         {/* ── Test skis overview ── */}
         <section id="kick-skis" className="scroll-mt-16">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold">{L("Testski", "Test skis")}</h2>
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+                <Footprints className="h-4 w-4 text-primary" />
+              </div>
+              <h2 className="text-lg font-semibold">{L("Testski", "Test skis")}</h2>
+            </div>
             <Button size="sm" onClick={() => { setEditingSki(null); setDuplicatingSki(null); setSkiDialog(true); }} data-testid="button-add-kick-ski">
               <Plus className="mr-1.5 h-4 w-4" />{L("Legg til ski", "Add ski")}
             </Button>
@@ -671,7 +676,12 @@ export default function Kick() {
         {/* ── Kick tests ── */}
         <section id="kick-tests" className="scroll-mt-16">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold">{L("Kick-tester", "Kick tests")}</h2>
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+                <FlaskConical className="h-4 w-4 text-primary" />
+              </div>
+              <h2 className="text-lg font-semibold">{L("Kick-tester", "Kick tests")}</h2>
+            </div>
             <Button size="sm" onClick={() => { setEditingTest(null); setTestDialog(true); }} data-testid="button-add-kick-test" disabled={skis.length === 0}>
               <Plus className="mr-1.5 h-4 w-4" />{L("Legg til kick-test", "Add kick test")}
             </Button>
@@ -748,9 +758,14 @@ export default function Kick() {
         {/* ── Mixes ── */}
         <section id="kick-mixes" className="scroll-mt-16">
           <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-lg font-semibold">Mixes</h2>
-              <p className="text-sm text-muted-foreground">{L("Oppskrifter for blandede festeprodukter.", "Recipes for blended kick products.")}</p>
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+                <Layers className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">Mixes</h2>
+                <p className="text-sm text-muted-foreground">{L("Oppskrifter for blandede festeprodukter.", "Recipes for blended kick products.")}</p>
+              </div>
             </div>
             <Button size="sm" onClick={() => { setEditingMix(null); setMixDialog(true); }} data-testid="button-add-kick-mix">
               <Plus className="mr-1.5 h-4 w-4" />{L("Legg til blanding", "Add mix")}

@@ -423,9 +423,12 @@ function ProductDetailInner() {
 
         {/* ── Test history ────────────────────────────────────────────────── */}
         <div>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            {L("Testhistorikk", "Test History")}
-          </h2>
+          <div className="mb-3 flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+              <History className="h-4 w-4 text-primary" />
+            </div>
+            <h2 className="text-base font-semibold">{L("Testhistorikk", "Test History")}</h2>
+          </div>
 
           {isLoading ? (
             <Card className="fs-card rounded-2xl p-8 text-center text-sm text-muted-foreground" data-testid="loading-history">
@@ -637,9 +640,12 @@ function ProductDetailInner() {
           {/* APPLICATION ANALYTICS */}
           {appStats.length > 0 && (
             <div className="mt-6">
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                {L("Applikasjonsinnsikt", "Application Insights")}
-              </h2>
+              <div className="mb-3 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                </div>
+                <h2 className="text-base font-semibold">{L("Applikasjonsinnsikt", "Application Insights")}</h2>
+              </div>
               <Card className="overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -682,9 +688,13 @@ function ProductDetailInner() {
         {/* ── Race Prep History ────────────────────────────────────────────── */}
         {racePreps.length > 0 && (
           <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              {L("Raceprep-historikk", "Race Prep History")} — {racePreps.length} {racePreps.length !== 1 ? L("race", "races") : L("race", "race")}
-            </h2>
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+                <Flag className="h-4 w-4 text-primary" />
+              </div>
+              <h2 className="text-base font-semibold">{L("Raceprep-historikk", "Race Prep History")}</h2>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{racePreps.length}</span>
+            </div>
             <Card className="fs-card rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">

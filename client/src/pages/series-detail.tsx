@@ -143,7 +143,9 @@ function SeriesRegrindHistory({ seriesId, currentGrind }: { seriesId: number; cu
     <Card className="fs-card rounded-2xl p-4 sm:p-5" data-testid="card-series-regrinds">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Disc3 className="h-4 w-4 text-primary" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+            <Disc3 className="h-4 w-4 text-primary" />
+          </div>
           <h2 className="text-base font-semibold">{L("Slipehistorikk", "Regrind history")}</h2>
           {currentGrind && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{L("Nåværende", "Current")}: {currentGrind}</span>}
         </div>

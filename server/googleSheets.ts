@@ -80,17 +80,60 @@ async function getReplitClient() {
 
 // ─── Public API ─────────────────────────────────────────────────────────────
 
+// --- Quota resilience -------------------------------------------------------
+// The Sheets API caps "read requests per minute per user" (default 60/min).
+// A backup run makes dozens of calls, so overlapping runs can trip the cap.
+// Instead of failing the whole run, wait out the minute window and retry.
+function isQuotaError(e: any): boolean {
+  const status = e?.code ?? e?.response?.status;
+  const msg = String(e?.message ?? e ?? "");
+  return status === 429 || /quota exceeded/i.test(msg) || /rate limit/i.test(msg) || /RESOURCE_EXHAUSTED/i.test(msg);
+}
+
+async function callWithQuotaRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let delayMs = 35_000; // past the per-minute window on the first retry
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (!isQuotaError(e) || attempt >= 4) throw e;
+      console.warn(`[Sheets] Quota hit — waiting ${Math.round(delayMs / 1000)}s, retry ${attempt}/3`);
+      await new Promise((r) => setTimeout(r, delayMs));
+      delayMs = Math.min(delayMs * 2, 120_000);
+    }
+  }
+}
+
+/** Wrap the API methods we use so every call transparently retries on quota errors. */
+function wrapQuotaRetry(sheets: any) {
+  if (!sheets?.spreadsheets || (sheets as any).__quotaWrapped) return sheets;
+  const wrap = (obj: any, key: string) => {
+    if (typeof obj?.[key] !== "function") return;
+    const orig = obj[key].bind(obj);
+    obj[key] = (...args: any[]) => callWithQuotaRetry(() => orig(...args));
+  };
+  wrap(sheets.spreadsheets, "get");
+  wrap(sheets.spreadsheets, "batchUpdate");
+  wrap(sheets.spreadsheets, "create");
+  if (sheets.spreadsheets.values) {
+    for (const m of ["get", "update", "clear", "append", "batchGet", "batchUpdate"]) wrap(sheets.spreadsheets.values, m);
+  }
+  (sheets as any).__quotaWrapped = true;
+  return sheets;
+}
+
 /**
  * Returns a Google Sheets client using whichever auth method is available.
- * Throws if neither is configured.
+ * Throws if neither is configured. Every client is wrapped so quota (429)
+ * errors are retried with backoff instead of failing the whole backup run.
  */
 export async function getUncachableGoogleSheetClient() {
   // Prefer service account (works on Render, any host)
   const saClient = getServiceAccountClient();
-  if (saClient) return saClient;
+  if (saClient) return wrapQuotaRetry(saClient);
 
   // Fall back to Replit connector
-  return getReplitClient();
+  return wrapQuotaRetry(await getReplitClient());
 }
 
 /**

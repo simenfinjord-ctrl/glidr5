@@ -1884,10 +1884,12 @@ const backupIntervals: Record<number, NodeJS.Timeout> = {};
 // kept separate from the cheap 30-min Google Sheets backup.
 const drivePdfIntervals: Record<number, NodeJS.Timeout> = {};
 
-export function startAutoBackup(teamId: number, intervalMs: number = 30 * 60 * 1000) {
+export function startAutoBackup(teamId: number, intervalMs: number = 30 * 60 * 1000, staggerMs: number = 0) {
   stopAutoBackup(teamId);
-  // Cheap Sheets backup every 30 min (no Chromium).
-  backupIntervals[teamId] = setInterval(async () => {
+  // Cheap Sheets backup every 30 min (no Chromium). Teams are staggered
+  // (staggerMs) so they don't all hit the Sheets API quota window at once —
+  // clearInterval also clears timeouts, so stopAutoBackup works in both states.
+  const tick = async () => {
     try {
       const team = await storage.getTeam(teamId);
       if (team?.backupSheetUrl) {
@@ -1898,7 +1900,10 @@ export function startAutoBackup(teamId: number, intervalMs: number = 30 * 60 * 1
     } catch (err) {
       console.error(`[Backup] Auto-backup failed for team ${teamId}:`, err);
     }
-  }, intervalMs);
+  };
+  backupIntervals[teamId] = setTimeout(() => {
+    backupIntervals[teamId] = setInterval(tick, intervalMs);
+  }, staggerMs) as any;
 
   // Heavy JSON+PDF Drive backup: once daily AT 23:59 (Europe/Oslo), not on a
   // rolling 24h timer — a rolling timer resets on every deploy and therefore
@@ -1979,12 +1984,15 @@ export function stopAllAutoBackups() {
 export async function initAutoBackups() {
   try {
     const teams = await storage.listTeams();
+    let idx = 0;
     for (const team of teams) {
       // Enable the scheduler if EITHER a Sheets backup URL or a Drive folder is
       // set — the Drive folder link alone is enough for daily JSON+PDF backups.
       if (team.backupSheetUrl || team.driveFolderId) {
-        startAutoBackup(team.id);
-        console.log(`[Backup] Auto-backup enabled for team ${team.id} (${team.name})`);
+        // Stagger teams 3 min apart so their 30-min ticks never coincide and
+        // pile up against the Sheets per-minute quota.
+        startAutoBackup(team.id, undefined, idx++ * 3 * 60 * 1000);
+        console.log(`[Backup] Auto-backup enabled for team ${team.id} (${team.name}), offset ${(idx - 1) * 3} min`);
       }
     }
   } catch (err) {

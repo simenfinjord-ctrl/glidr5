@@ -1143,8 +1143,13 @@ export async function registerRoutes(
       const list = await storage.listTeams();
       return res.json(list);
     }
-    const team = await storage.getTeam(u.teamId);
-    res.json(team ? [team] : []);
+    // Non-SA: every team the user belongs to — primary AND teams they are
+    // shared into. Admin surfaces (e.g. the per-team access dialog for shared
+    // users) need the ACTIVE team resolvable even when it isn't the primary.
+    const memberships = await storage.getUserTeams(u.id);
+    const ids = new Set<number>([u.teamId, ...memberships.map((m) => m.teamId)]);
+    const all = await storage.listTeams();
+    res.json(all.filter((t) => ids.has(t.id)));
   });
 
   app.post("/api/teams", requireAuth, async (req, res) => {

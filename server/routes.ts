@@ -452,6 +452,7 @@ export async function registerRoutes(
       ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_version TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_backup_error TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_backup_error_at TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS discount_percent REAL NOT NULL DEFAULT 0;
       ALTER TABLE login_logs ADD COLUMN IF NOT EXISTS user_agent TEXT;
       ALTER TABLE login_logs ADD COLUMN IF NOT EXISTS device_id TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS feeling_note TEXT;
@@ -967,6 +968,53 @@ export async function registerRoutes(
     } catch {
       res.json({ free: 0, starter: 490, team: 790, pro: 1490, enterprise: null });
     }
+  });
+
+  // GET /api/settings/plan-builder-pricing — public: effective per-feature
+  // pricing for the self-service plan builder (defaults merged with the SA's
+  // overrides from app_settings). The signup endpoint computes from the same
+  // source, so what the visitor sees is exactly what is billed.
+  app.get("/api/settings/plan-builder-pricing", async (_req, res) => {
+    const { resolvePricing } = await import("@shared/pricing");
+    let overrides: any = null;
+    try {
+      const rows = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'plan_builder_pricing'`);
+      const row = ((rows as any).rows ?? rows)[0];
+      if (row?.value) overrides = JSON.parse(row.value);
+    } catch { /* defaults */ }
+    res.json(resolvePricing(overrides));
+  });
+
+  // PATCH /api/admin/plan-builder-pricing — SA only: override feature prices
+  // and limit pricing for the plan builder. Merged with existing overrides.
+  app.patch("/api/admin/plan-builder-pricing", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    let current: any = {};
+    try {
+      const rows = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'plan_builder_pricing'`);
+      const row = ((rows as any).rows ?? rows)[0];
+      if (row?.value) current = JSON.parse(row.value);
+    } catch { /* start empty */ }
+    const clean = (o: any) => {
+      const out: Record<string, number> = {};
+      for (const [k, v] of Object.entries(o ?? {})) {
+        const n = Number(v);
+        if (!isNaN(n) && n >= 0) out[k] = n;
+      }
+      return out;
+    };
+    const merged = {
+      featurePrices: { ...(current.featurePrices ?? {}), ...clean(req.body.featurePrices) },
+      users: { ...(current.users ?? {}), ...clean(req.body.users) },
+      groups: { ...(current.groups ?? {}), ...clean(req.body.groups) },
+    };
+    await db.execute(sql`
+      INSERT INTO app_settings (key, value) VALUES ('plan_builder_pricing', ${JSON.stringify(merged)})
+      ON CONFLICT (key) DO UPDATE SET value = ${JSON.stringify(merged)}
+    `);
+    const { resolvePricing } = await import("@shared/pricing");
+    res.json(resolvePricing(merged));
   });
 
   // PATCH /api/admin/plan-prices — SA only, update global plan prices
@@ -6157,6 +6205,13 @@ export async function registerRoutes(
     const { PLAN_FEATURE_PRESETS } = await import("@shared/schema");
     const { pool } = await import("./db");
 
+    // Percent discount (0–100) — applied on top of whatever price model the
+    // team uses (dynamic custom pricing or fixed plan price).
+    if (req.body.discountPercent !== undefined) {
+      const d = Math.min(100, Math.max(0, Number(req.body.discountPercent) || 0));
+      await (pool as any).query(`UPDATE teams SET discount_percent = $1 WHERE id = $2`, [d, teamId]);
+    }
+
     // Fetch current team state for change log
     const currentResult = await (pool as any).query(`SELECT * FROM teams WHERE id = $1`, [teamId]);
     const currentTeam = currentResult.rows[0];
@@ -9821,8 +9876,15 @@ RULES:
     const existing = await storage.getUserByEmail(email.trim().toLowerCase());
     if (existing) return res.status(409).json({ message: "Email already in use" });
 
-    // Authoritative price & config — never trust the client's number.
+    // Authoritative price & config — never trust the client's number. Uses the
+    // same SA pricing overrides the public builder displays.
     const { computeCustomPrice, sanitizeFeatureSelection, clampLimit } = await import("@shared/pricing");
+    let pricingOverrides: any = null;
+    try {
+      const povRows = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'plan_builder_pricing'`);
+      const povRow = ((povRows as any).rows ?? povRows)[0];
+      if (povRow?.value) pricingOverrides = JSON.parse(povRow.value);
+    } catch { /* defaults */ }
     const chosenFeatures = sanitizeFeatureSelection(features);
     const cfg = {
       features: chosenFeatures,
@@ -9830,7 +9892,7 @@ RULES:
       maxGroups: clampLimit("groups", Number(maxGroups)),
       billingPeriod: billingPeriod === "annual" ? "annual" as const : "monthly" as const,
     };
-    const price = computeCustomPrice(cfg);
+    const price = computeCustomPrice(cfg, pricingOverrides);
     const now = new Date().toISOString();
 
     // 1) The team — enabled areas exactly as composed, limits as chosen.

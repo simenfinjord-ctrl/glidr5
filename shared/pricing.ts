@@ -63,6 +63,46 @@ export type CustomPlanConfig = {
   billingPeriod: "monthly" | "annual";
 };
 
+/**
+ * SA-editable overrides, stored in app_settings under 'plan_builder_pricing'.
+ * Anything not overridden falls back to the defaults in this file.
+ */
+export type PricingOverrides = {
+  featurePrices?: Partial<Record<TeamFeature, number>>;
+  users?: { included?: number; perExtra?: number };
+  groups?: { included?: number; perExtra?: number };
+};
+
+export type EffectivePricing = {
+  featurePrices: Partial<Record<TeamFeature, number>>;
+  users: { included: number; perExtra: number; min: number; max: number };
+  groups: { included: number; perExtra: number; min: number; max: number };
+};
+
+export function resolvePricing(overrides?: PricingOverrides | null): EffectivePricing {
+  const num = (v: unknown, fallback: number) =>
+    typeof v === "number" && !isNaN(v) && v >= 0 ? v : fallback;
+  const featurePrices: Partial<Record<TeamFeature, number>> = { ...FEATURE_PRICES };
+  if (overrides?.featurePrices) {
+    for (const [k, v] of Object.entries(overrides.featurePrices)) {
+      featurePrices[k as TeamFeature] = num(v, FEATURE_PRICES[k as TeamFeature] ?? 0);
+    }
+  }
+  return {
+    featurePrices,
+    users: {
+      included: num(overrides?.users?.included, LIMIT_PRICING.users.included),
+      perExtra: num(overrides?.users?.perExtra, LIMIT_PRICING.users.perExtra),
+      min: LIMIT_PRICING.users.min, max: LIMIT_PRICING.users.max,
+    },
+    groups: {
+      included: num(overrides?.groups?.included, LIMIT_PRICING.groups.included),
+      perExtra: num(overrides?.groups?.perExtra, LIMIT_PRICING.groups.perExtra),
+      min: LIMIT_PRICING.groups.min, max: LIMIT_PRICING.groups.max,
+    },
+  };
+}
+
 export type PriceLine = { label: string; amount: number };
 
 export type PriceBreakdown = {
@@ -89,22 +129,26 @@ export function clampLimit(kind: "users" | "groups", value: unknown): number {
   return Math.min(cfg.max, Math.max(cfg.min, n));
 }
 
-export function computeCustomPrice(config: CustomPlanConfig): PriceBreakdown {
+export function computeCustomPrice(config: CustomPlanConfig, overrides?: PricingOverrides | null): PriceBreakdown {
+  const pricing = resolvePricing(overrides);
   const features = sanitizeFeatureSelection(config.features);
   const maxUsers = clampLimit("users", config.maxUsers);
   const maxGroups = clampLimit("groups", config.maxGroups);
 
   const featureLines: PriceLine[] = features
-    .map((f) => ({ label: f, amount: FEATURE_PRICES[f] ?? 0 }))
+    // Core features are always included free — never billed, even if a price
+    // override accidentally names one of them.
+    .filter((f) => !(CORE_FEATURES as readonly string[]).includes(f))
+    .map((f) => ({ label: f, amount: pricing.featurePrices[f] ?? 0 }))
     .filter((l) => l.amount > 0);
 
-  const extraUsers = Math.max(0, maxUsers - LIMIT_PRICING.users.included);
-  const extraGroups = Math.max(0, maxGroups - LIMIT_PRICING.groups.included);
+  const extraUsers = Math.max(0, maxUsers - pricing.users.included);
+  const extraGroups = Math.max(0, maxGroups - pricing.groups.included);
   const userLine: PriceLine | null = extraUsers > 0
-    ? { label: `+${extraUsers} users`, amount: extraUsers * LIMIT_PRICING.users.perExtra }
+    ? { label: `+${extraUsers} users`, amount: extraUsers * pricing.users.perExtra }
     : null;
   const groupLine: PriceLine | null = extraGroups > 0
-    ? { label: `+${extraGroups} groups`, amount: extraGroups * LIMIT_PRICING.groups.perExtra }
+    ? { label: `+${extraGroups} groups`, amount: extraGroups * pricing.groups.perExtra }
     : null;
 
   const monthlyTotal =
@@ -116,4 +160,70 @@ export function computeCustomPrice(config: CustomPlanConfig): PriceBreakdown {
   const periodTotal = billingPeriod === "annual" ? monthlyTotal * ANNUAL_MONTHS : monthlyTotal;
 
   return { featureLines, userLine, groupLine, monthlyTotal, periodTotal, billingPeriod };
+}
+
+// ── Dynamic team pricing ─────────────────────────────────────────────────────
+// Existing teams follow the CURRENT price list: a team on the "custom" plan is
+// priced live from its enabled features + limits, so changing the price list
+// (or the team's features) automatically changes what the team is billed.
+// Fixed-plan teams keep their plan/custom price. A per-team percent discount
+// applies on top in both models.
+
+export type TeamPriceInput = {
+  planName?: string | null;
+  enabledAreas?: string | null;      // JSON array string, as stored on teams
+  maxUsers?: number | null;
+  maxGroups?: number | null;
+  billingPeriod?: string | null;
+  customPrice?: number | null;
+  discountPercent?: number | null;
+};
+
+export type TeamPrice = {
+  /** Monthly price before discount, or null when unknown (e.g. enterprise "contact us"). */
+  baseMonthly: number | null;
+  discountPercent: number;
+  /** Monthly price after discount (rounded to whole NOK). */
+  monthly: number | null;
+  /** Amount billed per period after discount (annual = 10 months). */
+  period: number | null;
+  billingPeriod: "monthly" | "annual";
+  /** True when priced live from features (custom plan) rather than a fixed number. */
+  dynamic: boolean;
+  breakdown: PriceBreakdown | null;
+};
+
+export function computeTeamPrice(
+  team: TeamPriceInput,
+  overrides?: PricingOverrides | null,
+  planPrices?: Record<string, number | null> | null
+): TeamPrice {
+  const billingPeriod = team.billingPeriod === "annual" ? "annual" as const : "monthly" as const;
+  const discountPercent = Math.min(100, Math.max(0, Number(team.discountPercent) || 0));
+  const plan = (team.planName ?? "free").toLowerCase();
+
+  let baseMonthly: number | null = null;
+  let dynamic = false;
+  let breakdown: PriceBreakdown | null = null;
+
+  if (plan === "custom") {
+    let features: TeamFeature[] = [];
+    try { features = JSON.parse(team.enabledAreas || "[]"); } catch {}
+    breakdown = computeCustomPrice({
+      features,
+      maxUsers: team.maxUsers ?? LIMIT_PRICING.users.included,
+      maxGroups: team.maxGroups ?? LIMIT_PRICING.groups.included,
+      billingPeriod,
+    }, overrides);
+    baseMonthly = breakdown.monthlyTotal;
+    dynamic = true;
+  } else if (team.customPrice != null) {
+    baseMonthly = team.customPrice;
+  } else if (planPrices && planPrices[plan] !== undefined) {
+    baseMonthly = planPrices[plan];
+  }
+
+  const monthly = baseMonthly == null ? null : Math.round(baseMonthly * (1 - discountPercent / 100));
+  const period = monthly == null ? null : (billingPeriod === "annual" ? monthly * ANNUAL_MONTHS : monthly);
+  return { baseMonthly, discountPercent, monthly, period, billingPeriod, dynamic, breakdown };
 }

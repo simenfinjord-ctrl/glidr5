@@ -4,7 +4,8 @@ import { PublicNav } from "@/components/public-nav";
 import { useLanguage } from "@/lib/language";
 import { useAppSettings } from "@/lib/app-settings";
 import { FEATURE_CATEGORIES, FEATURE_LABELS, type TeamFeature } from "@shared/schema";
-import { CORE_FEATURES, FEATURE_PRICES, LIMIT_PRICING, computeCustomPrice } from "@shared/pricing";
+import { CORE_FEATURES, LIMIT_PRICING, computeCustomPrice, resolvePricing, type EffectivePricing } from "@shared/pricing";
+import { useQuery } from "@tanstack/react-query";
 import { Check, Mail, Phone, FileText, ArrowRight, ArrowLeft, ChevronRight, Sparkles, Users, Layers, Receipt } from "lucide-react";
 
 const CONTENT = {
@@ -260,9 +261,22 @@ function PlanBuilder({ lang }: { lang: "en" | "no" }) {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ username: string } | null>(null);
 
+  // Effective pricing — the SA can override feature prices and limit pricing;
+  // the server bills from the same source, so this is always what's charged.
+  const { data: serverPricing } = useQuery<EffectivePricing>({
+    queryKey: ["/api/settings/plan-builder-pricing"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings/plan-builder-pricing");
+      if (!res.ok) throw new Error();
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+  const pricing = serverPricing ?? resolvePricing(null);
+
   const price = useMemo(
-    () => computeCustomPrice({ features: [...selected], maxUsers, maxGroups, billingPeriod }),
-    [selected, maxUsers, maxGroups, billingPeriod]
+    () => computeCustomPrice({ features: [...selected], maxUsers, maxGroups, billingPeriod }, pricing),
+    [selected, maxUsers, maxGroups, billingPeriod, pricing]
   );
 
   function toggle(f: TeamFeature) {
@@ -342,13 +356,13 @@ function PlanBuilder({ lang }: { lang: "en" | "no" }) {
         ))}
         {price.userLine && (
           <div className="flex justify-between gap-3">
-            <span>{t.usersLabel}: {maxUsers} ({t.includedInBase(LIMIT_PRICING.users.included)})</span>
+            <span>{t.usersLabel}: {maxUsers} ({t.includedInBase(pricing.users.included)})</span>
             <span className="shrink-0 tabular-nums">{price.userLine.amount} kr{t.perMonth}</span>
           </div>
         )}
         {price.groupLine && (
           <div className="flex justify-between gap-3">
-            <span>{t.groupsLabel}: {maxGroups} ({t.includedInBase(LIMIT_PRICING.groups.included)})</span>
+            <span>{t.groupsLabel}: {maxGroups} ({t.includedInBase(pricing.groups.included)})</span>
             <span className="shrink-0 tabular-nums">{price.groupLine.amount} kr{t.perMonth}</span>
           </div>
         )}
@@ -385,7 +399,7 @@ function PlanBuilder({ lang }: { lang: "en" | "no" }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {cat.features.map((f) => {
                     const isCore = (CORE_FEATURES as readonly string[]).includes(f);
-                    const priceMo = FEATURE_PRICES[f] ?? 0;
+                    const priceMo = pricing.featurePrices[f] ?? 0;
                     const on = selected.has(f);
                     return (
                       <button
@@ -425,7 +439,7 @@ function PlanBuilder({ lang }: { lang: "en" | "no" }) {
                     className={`${inputCls} mt-2`} value={maxUsers}
                     onChange={(e) => setMaxUsers(Math.min(LIMIT_PRICING.users.max, Math.max(LIMIT_PRICING.users.min, parseInt(e.target.value) || LIMIT_PRICING.users.min)))}
                     data-testid="input-plan-users" />
-                  <p className="mt-1 text-[11px] text-muted-foreground">{t.includedInBase(LIMIT_PRICING.users.included)}, {t.perExtra(LIMIT_PRICING.users.perExtra)}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{t.includedInBase(pricing.users.included)}, {t.perExtra(pricing.users.perExtra)}</p>
                 </div>
                 <div className="rounded-xl border border-border p-3">
                   <label className="flex items-center gap-1.5 text-sm font-medium"><Layers className="h-3.5 w-3.5" />{t.groupsLabel}</label>
@@ -433,7 +447,7 @@ function PlanBuilder({ lang }: { lang: "en" | "no" }) {
                     className={`${inputCls} mt-2`} value={maxGroups}
                     onChange={(e) => setMaxGroups(Math.min(LIMIT_PRICING.groups.max, Math.max(LIMIT_PRICING.groups.min, parseInt(e.target.value) || LIMIT_PRICING.groups.min)))}
                     data-testid="input-plan-groups" />
-                  <p className="mt-1 text-[11px] text-muted-foreground">{t.includedInBase(LIMIT_PRICING.groups.included)}, {t.perExtra(LIMIT_PRICING.groups.perExtra)}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{t.includedInBase(pricing.groups.included)}, {t.perExtra(pricing.groups.perExtra)}</p>
                 </div>
               </div>
             </div>

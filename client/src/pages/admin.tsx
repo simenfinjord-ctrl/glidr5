@@ -15,6 +15,7 @@ import {
   TEAM_FEATURES, FEATURE_LABELS, FEATURE_CATEGORIES, PLAN_FEATURE_PRESETS,
 } from "@shared/schema";
 import type { UserPermissions, PermissionLevel } from "@shared/schema";
+import { computeTeamPrice } from "@shared/pricing";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { generateFeatureGuidePDF } from "@/lib/featureGuidePdf";
@@ -2714,6 +2715,15 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
       return res.ok ? res.json() : {};
     },
   });
+  // Current plan-builder price list — custom teams are priced live from this,
+  // so a price change here immediately changes every custom team's invoice sum.
+  const { data: builderPricing } = useQuery<any>({
+    queryKey: ["/api/settings/plan-builder-pricing"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings/plan-builder-pricing");
+      return res.ok ? res.json() : null;
+    },
+  });
 
   // ── Plan price editor state ───────────────────────────────────────
   const [editingPrices, setEditingPrices] = useState(false);
@@ -2825,13 +2835,21 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
     free: 0, starter: 490, team: 790, pro: 1490, enterprise: 0,
   };
 
+  // Dynamic pricing: custom-plan teams are priced LIVE from their enabled
+  // features + limits against the current price list, and the per-team percent
+  // discount applies on top — so price-list edits, feature toggles and
+  // discounts all flow straight into the invoice basis.
   function effectivePrice(team: ApiTeam): number | null {
-    const cp = team.customPrice ?? (team as any).custom_price;
-    if (cp != null) return cp;
-    const plan = (team.planName ?? (team as any).plan_name ?? "free").toLowerCase();
-    const pp = (planPrices as any)[plan];
-    if (pp != null) return pp;
-    return DEFAULT_PRICES[plan] ?? null;
+    const priced = computeTeamPrice({
+      planName: team.planName ?? (team as any).plan_name,
+      enabledAreas: (team as any).enabledAreas ?? (team as any).enabled_areas,
+      maxUsers: team.maxUsers ?? (team as any).max_users,
+      maxGroups: team.maxGroups ?? (team as any).max_groups,
+      billingPeriod: team.billingPeriod ?? (team as any).billing_period,
+      customPrice: team.customPrice ?? (team as any).custom_price,
+      discountPercent: (team as any).discountPercent ?? (team as any).discount_percent,
+    }, builderPricing ?? null, { ...DEFAULT_PRICES, ...(planPrices as any) });
+    return priced.monthly;
   }
 
   function addPeriod(date: Date, period: string): Date {
@@ -2979,7 +2997,37 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
 
       {/* Billing schedule */}
       <Card className="rounded-2xl p-5">
-        <h3 className="font-semibold text-sm mb-4">{t("admin.billingScheduleTitle")}</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-sm">{t("admin.billingScheduleTitle")}</h3>
+          {payingTeams.length > 0 && (
+            <Button variant="outline" size="sm" data-testid="button-export-invoice-csv" onClick={() => {
+              // Invoice basis: one row per paying team, ready for the accountant.
+              const esc = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+              const header = ["Team", "Plan", L("Pris (NOK)", "Price (NOK)"), L("Periode", "Period"), L("Neste fakturering", "Next billing"), L("Status", "Status"), L("Notater", "Notes")];
+              const rows = payingTeams.map((tm) => {
+                const st = teamState(tm);
+                return [
+                  tm.name,
+                  (tm.planName ?? (tm as any).plan_name ?? ""),
+                  effectivePrice(tm) ?? "",
+                  (tm.billingPeriod ?? (tm as any).billing_period ?? "monthly"),
+                  (tm.nextBillingDate ?? (tm as any).next_billing_date ?? ""),
+                  st.kind,
+                  (tm as any).notes ?? "",
+                ];
+              });
+              const csv = "﻿" + [header, ...rows].map((r) => r.map(esc).join(";")).join("\n");
+              const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = `glidr-fakturagrunnlag-${new Date().toISOString().slice(0, 10)}.csv`;
+              a.click();
+              URL.revokeObjectURL(a.href);
+            }}>
+              <FileText className="h-3.5 w-3.5 mr-1.5" />{L("Eksporter fakturagrunnlag (CSV)", "Export invoice basis (CSV)")}
+            </Button>
+          )}
+        </div>
         {isLoading ? (
           <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 rounded-xl bg-muted/40 animate-pulse" />)}</div>
         ) : payingTeams.length === 0 ? (
@@ -5189,15 +5237,27 @@ export default function Admin() {
                     <Select value={editPlanForm.planName} onValueChange={(v) => setEditPlanForm((f: any) => ({ ...f, planName: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {["free","starter","team","pro","enterprise"].map((p) => (
+                        {["free","starter","team","pro","enterprise","custom"].map((p) => (
                           <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {editPlanForm.planName === "custom" && (
+                      <p className="text-[11px] text-muted-foreground">{L("Custom prises dynamisk fra lagets funksjoner og grenser mot gjeldende prisliste.", "Custom is priced dynamically from the team's features and limits against the current price list.")}</p>
+                    )}
                   </div>
+                  {editPlanForm.planName !== "custom" && (
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium">{t("admin.editPlanCustomPrice")}</label>
+                      <Input type="number" value={editPlanForm.customPrice} onChange={(e) => setEditPlanForm((f: any) => ({ ...f, customPrice: e.target.value }))} placeholder="0" />
+                    </div>
+                  )}
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">{t("admin.editPlanCustomPrice")}</label>
-                    <Input type="number" value={editPlanForm.customPrice} onChange={(e) => setEditPlanForm((f: any) => ({ ...f, customPrice: e.target.value }))} placeholder="0" />
+                    <label className="text-sm font-medium">{L("Rabatt (%)", "Discount (%)")}</label>
+                    <Input type="number" min="0" max="100" value={editPlanForm.discountPercent}
+                      onChange={(e) => setEditPlanForm((f: any) => ({ ...f, discountPercent: e.target.value }))} placeholder="0"
+                      data-testid="input-plan-discount" />
+                    <p className="text-[11px] text-muted-foreground">{L("Trekkes fra den beregnede prisen — gjelder både faste og dynamiske planer.", "Deducted from the computed price — applies to fixed and dynamic plans alike.")}</p>
                   </div>
                   <div className="space-y-1">
                     <label className="text-sm font-medium">{t("admin.editPlanBillingPeriod")}</label>
@@ -5221,9 +5281,11 @@ export default function Admin() {
                         setPlanMutation.mutate({
                           id: editPlanTeam!.id,
                           planName: editPlanForm.planName,
-                          customPrice: editPlanForm.customPrice !== "" ? parseFloat(editPlanForm.customPrice) : null,
+                          // Custom plans are priced dynamically — never freeze a number.
+                          customPrice: editPlanForm.planName === "custom" ? null : (editPlanForm.customPrice !== "" ? parseFloat(editPlanForm.customPrice) : null),
                           billingPeriod: editPlanForm.billingPeriod,
                           nextBillingDate: editPlanForm.nextBillingDate || null,
+                          discountPercent: editPlanForm.discountPercent !== "" ? Math.min(100, Math.max(0, parseFloat(editPlanForm.discountPercent) || 0)) : 0,
                         } as any);
                         setEditPlanTeam(null);
                       }}
@@ -5349,7 +5411,7 @@ export default function Admin() {
                         <Button variant="ghost" size="sm" title={L("Sett grenser", "Set limits")} onClick={() => { setLimitsTeam(team); setLimitsForm({ maxUsers: team.maxUsers ?? team.max_users ?? "", maxGroups: team.maxGroups ?? team.max_groups ?? "", maxTests: team.maxTests ?? team.max_tests ?? "", maxProducts: team.maxProducts ?? team.max_products ?? "" }); }}>
                           <Hash className="h-4 w-4 text-muted-foreground" />
                         </Button>
-                        <Button variant="ghost" size="sm" title={L("Rediger plan / fakturering", "Edit plan / billing")} onClick={() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "" }); }}>
+                        <Button variant="ghost" size="sm" title={L("Rediger plan / fakturering", "Edit plan / billing")} onClick={() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "", discountPercent: String((team as any).discountPercent ?? (team as any).discount_percent ?? 0) }); }}>
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </Button>
                         <Button variant="ghost" size="sm" title={L("Planhistorikk", "Plan history")} onClick={() => setHistoryTeam(team)}>

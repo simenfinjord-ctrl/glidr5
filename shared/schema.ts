@@ -224,6 +224,8 @@ export const teams = pgTable("teams", {
   trialEndsAt: text("trial_ends_at"),
   // Custom billing fields (set by SA)
   customPrice: real("custom_price"),
+  // Percent discount applied to the computed/each price (0–100, set by SA).
+  discountPercent: real("discount_percent").notNull().default(0),
   billingPeriod: text("billing_period").default("monthly"),
   nextBillingDate: text("next_billing_date"),
   maxUsers: integer("max_users"),

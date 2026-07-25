@@ -2341,19 +2341,37 @@ function FeedbackButtonConfig({ team }: { team: any }) {
     },
     onError: (e: any) => toast({ title: L("Feil", "Error"), description: e?.message, variant: "destructive" }),
   });
+  // Collapsed status row — config only when expanded.
+  const [open, setOpen] = useState(false);
+  const isOn = team.feedbackEnabled === 1;
   return (
-    <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
-      <div className="text-xs font-semibold text-foreground/80">{team.name}</div>
-      <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="h-4 w-4" data-testid={`toggle-feedback-${team.id}`} />
-        {L("Vis Feedback-knapp i menyen", "Show Feedback button in the sidebar")}
-      </label>
-      <div className="flex items-center gap-2">
-        <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://docs.google.com/..." className="h-8 text-xs flex-1" data-testid={`input-feedback-url-${team.id}`} />
-        <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending} data-testid={`button-save-feedback-${team.id}`}>
-          {save.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}
-        </Button>
+    <div className="rounded-xl border border-border bg-muted/20">
+      <div
+        role="button" tabIndex={0}
+        className="flex w-full items-center gap-2.5 px-3 py-2.5 cursor-pointer select-none"
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setOpen((v) => !v); }}
+        data-testid={`feedback-row-${team.id}`}
+      >
+        <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", isOn ? "bg-emerald-500" : "bg-muted-foreground/30")} />
+        <span className="text-sm font-medium text-foreground">{team.name}</span>
+        <span className="text-[11px] text-muted-foreground flex-1">{isOn ? L("Feedback-knapp på", "Feedback button on") : L("Av", "Off")}</span>
+        {open ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
       </div>
+      {open && (
+        <div className="px-3 pb-3 space-y-2">
+          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+            <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="h-4 w-4" data-testid={`toggle-feedback-${team.id}`} />
+            {L("Vis Feedback-knapp i menyen", "Show Feedback button in the sidebar")}
+          </label>
+          <div className="flex items-center gap-2">
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://docs.google.com/..." className="h-8 text-xs flex-1" data-testid={`input-feedback-url-${team.id}`} />
+            <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending} data-testid={`button-save-feedback-${team.id}`}>
+              {save.isPending ? L("Lagrer…", "Saving…") : L("Lagre", "Save")}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -5006,6 +5024,7 @@ export default function Admin() {
 
   const [backupSheetInputs, setBackupSheetInputs] = useState<Record<number, string>>({});
   const [expandedBackupTeam, setExpandedBackupTeam] = useState<number | null>(null);
+  const [expandedDriveTeam, setExpandedDriveTeam] = useState<number | null>(null);
   const [driveFolderInputs, setDriveFolderInputs] = useState<Record<number, string>>({});
 
   if (!user) return null;
@@ -6288,8 +6307,8 @@ export default function Admin() {
                 </div>
                 <h2 className="text-sm font-semibold text-foreground">Feedback</h2>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">{L("Slå på en Feedback-knapp over søkefeltet som åpner et Google-ark for laget.", "Enable a Feedback button above the search bar that opens a Google sheet for the team.")}</p>
-              <div className="space-y-4">
+              <p className="text-xs text-muted-foreground mb-3">{L("Slå på en Feedback-knapp over søkefeltet som åpner et Google-ark for laget.", "Enable a Feedback button above the search bar that opens a Google sheet for the team.")}</p>
+              <div className="space-y-1.5">
                 {(isSuperAdmin ? teams : teams.filter((t) => t.id === user?.teamId)).map((team) => (
                   <FeedbackButtonConfig key={`feedback-${team.id}`} team={team} />
                 ))}
@@ -6423,24 +6442,58 @@ export default function Admin() {
 
               {/* ── Shared Drive auto-upload (Google Workspace only) ── */}
               {teams.some(t => !(t as any).driveFolderId) && (
-              <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20 p-3 mb-3 text-[11px] text-amber-800 dark:text-amber-300 space-y-1">
-                <p className="font-semibold">{L("⚠ Automatisk Drive-opplasting krever en delt disk (Google Workspace)", "⚠ Automatic Drive upload requires a Shared Drive (Google Workspace)")}</p>
+              <details className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20 p-3 mb-3 text-[11px] text-amber-800 dark:text-amber-300 space-y-1">
+                <summary className="font-semibold cursor-pointer select-none">{L("⚠ Automatisk Drive-opplasting krever en delt disk (Google Workspace) — vis oppsett", "⚠ Automatic Drive upload requires a Shared Drive (Google Workspace) — show setup")}</summary>
                 <p>{L("Google-tjenestekontoer kan ikke lagre filer i en personlig My Drive. For å bruke automatisk opplasting trenger du en ", "Google service accounts cannot store files in a personal My Drive. To use automatic upload you need a ")}<strong>{L("Delt disk", "Shared Drive")}</strong>{L(" (tilgjengelig på Google Workspace / G Suite):", " (available on Google Workspace / G Suite):")}</p>
                 <ol className="list-decimal pl-4 space-y-1 mt-1">
                   <li>{L("Opprett en", "In Google Drive, create a")} <strong>{L("Delt disk", "Shared Drive")}</strong>{L(" i Google Drive (ikke en vanlig mappe).", " (not a regular folder).")}</li>
                   <li>{L("Klikk", "Click")} <strong>{L("Administrer medlemmer", "Manage members")}</strong>{L(" → legg til tjenestekontoens e-post (vist i det grønne kortet over) som ", " → add the service account email (shown in the green card above) as ")}<strong>{L("Bidragsyter", "Contributor")}</strong>.</li>
                   <li>{L("Kopier URL-en til den delte disken og lim den inn nedenfor.", "Copy the Shared Drive URL and paste it below.")}</li>
                 </ol>
-              </div>
+              </details>
               )}
-              <div className="space-y-3">
+              <div className="space-y-1.5">
                 {teams.map((team) => {
                   const driveInputVal = driveFolderInputs[team.id] ?? (team as any).driveFolderId ?? '';
                   const driveHasChanged = driveInputVal !== ((team as any).driveFolderId ?? '');
                   const hasDriveFolder = !!(team as any).driveFolderId;
+                  const driveOpen = expandedDriveTeam === team.id;
                   return (
-                    <div key={`drive-${team.id}`} className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
-                      <div className="text-xs font-medium text-foreground">{team.name} — Shared Drive URL</div>
+                    <div key={`drive-${team.id}`} className="rounded-xl border border-border bg-muted/20">
+                      <div
+                        role="button" tabIndex={0}
+                        className="flex w-full items-center gap-2.5 px-3 py-2.5 cursor-pointer select-none"
+                        onClick={() => setExpandedDriveTeam(driveOpen ? null : team.id)}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpandedDriveTeam(driveOpen ? null : team.id); }}
+                        data-testid={`drive-row-${team.id}`}
+                      >
+                        <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", hasDriveFolder ? "bg-emerald-500" : "bg-muted-foreground/30")} />
+                        <span className="text-sm font-medium text-foreground">{team.name}</span>
+                        <span className="text-[11px] text-muted-foreground flex-1">
+                          {hasDriveFolder ? L("Tilkoblet — lastes opp daglig 23:59", "Connected — uploads daily at 23:59") : L("Ikke satt opp", "Not set up")}
+                        </span>
+                        <Button
+                          size="sm" variant="outline" className="h-7"
+                          disabled={!hasDriveFolder || runDriveBackupMutation.isPending}
+                          onClick={(e) => { e.stopPropagation(); runDriveBackupMutation.mutate(team.id); }}
+                          title={L("Last opp nå", "Upload now")}
+                        >
+                          {runDriveBackupMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        </Button>
+                        {hasDriveFolder && (
+                          <a
+                            href={`https://drive.google.com/drive/folders/${(team as any).driveFolderId}`}
+                            target="_blank" rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs font-medium text-primary hover:underline shrink-0"
+                          >
+                            {L("Åpne", "Open")} ↗
+                          </a>
+                        )}
+                        {driveOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+                      </div>
+                      {driveOpen && (
+                      <div className="px-3 pb-3">
                       <div className="flex gap-2 items-center">
                         <input
                           className="flex-1 rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-mono"
@@ -6458,30 +6511,9 @@ export default function Admin() {
                         >
                           <Check className="h-3.5 w-3.5" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={!hasDriveFolder || runDriveBackupMutation.isPending}
-                          onClick={() => runDriveBackupMutation.mutate(team.id)}
-                        >
-                          {runDriveBackupMutation.isPending ? (
-                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Download className="h-3.5 w-3.5" />
-                          )}
-                          <span className="ml-1 text-xs">{L("Last opp nå", "Upload now")}</span>
-                        </Button>
-                        {hasDriveFolder && (
-                          <a
-                            href={`https://drive.google.com/drive/folders/${(team as any).driveFolderId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
-                          >
-                            Open ↗
-                          </a>
-                        )}
                       </div>
+                      </div>
+                      )}
                     </div>
                   );
                 })}

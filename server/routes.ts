@@ -1658,6 +1658,38 @@ export async function registerRoutes(
     res.send(json);
   });
 
+  // ── System disaster-recovery dump (SA only) ──────────────────────────────
+  // RAW nightly full-database snapshot to the SA's private Drive folder.
+  const getDumpSetting = async (key: string): Promise<string | null> => {
+    try {
+      const rows = await db.execute(sql`SELECT value FROM app_settings WHERE key = ${key}`);
+      return (((rows as any).rows ?? rows)[0]?.value as string) ?? null;
+    } catch { return null; }
+  };
+  app.get("/api/admin/system-dump", requireAuth, async (req, res) => {
+    if ((req.user as any).isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    res.json({
+      folderId: await getDumpSetting("system_dump_folder_id"),
+      lastAt: await getDumpSetting("system_dump_last_at"),
+      lastError: (await getDumpSetting("system_dump_last_error")) || null,
+    });
+  });
+  app.post("/api/admin/system-dump/settings", requireAuth, async (req, res) => {
+    if ((req.user as any).isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    const folderId = String(req.body.folderId ?? "").trim();
+    await db.execute(sql`
+      INSERT INTO app_settings (key, value) VALUES ('system_dump_folder_id', ${folderId})
+      ON CONFLICT (key) DO UPDATE SET value = ${folderId}
+    `);
+    res.json({ ok: true });
+  });
+  app.post("/api/admin/system-dump/run", requireAuth, async (req, res) => {
+    if ((req.user as any).isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    const { runSystemDump } = await import("./backup");
+    const result = await runSystemDump();
+    res.status(result.success ? 200 : 500).json(result);
+  });
+
   app.get("/api/teams/:id/export-json", requireAuth, async (req, res) => {
     const u = req.user!;
     const id = parseInt(req.params.id);

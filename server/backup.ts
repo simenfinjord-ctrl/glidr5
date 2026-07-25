@@ -2025,7 +2025,128 @@ export async function initAutoBackups() {
         console.log(`[Backup] Auto-backup enabled for team ${team.id} (${team.name}), offset ${(idx - 1) * 3} min`);
       }
     }
+    // Nightly RAW system dump (disaster recovery) — runs after team backups.
+    scheduleSystemDump();
   } catch (err) {
     console.error('[Backup] Failed to init auto-backups:', err);
   }
+}
+
+// ── System disaster-recovery dump ────────────────────────────────────────────
+// A RAW copy of the entire database as JSON: every table, every column —
+// including password hashes and 2FA secrets, which the normal exports strip.
+// This is the copy that can rebuild the system bit for bit, and it only ever
+// goes to the Super Admin's own private Drive folder. Runs nightly after the
+// team backups; can be triggered manually from Data Management.
+
+async function getAppSetting(key: string): Promise<string | null> {
+  const { pool } = await import('./db');
+  const r = await (pool as any).query(`SELECT value FROM app_settings WHERE key = $1`, [key]);
+  return r.rows[0]?.value ?? null;
+}
+
+async function setAppSetting(key: string, value: string): Promise<void> {
+  const { pool } = await import('./db');
+  await (pool as any).query(
+    `INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`,
+    [key, value]
+  );
+}
+
+export async function buildDisasterDumpJson(): Promise<string> {
+  const { pool } = await import('./db');
+  const tRes = await (pool as any).query(
+    `SELECT table_name FROM information_schema.tables
+     WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name`
+  );
+  const tables: Record<string, any[]> = {};
+  const counts: Record<string, number> = {};
+  for (const row of tRes.rows) {
+    const table = row.table_name;
+    if (table === 'user_sessions') continue; // transient, huge, useless in a restore
+    try {
+      const r = await (pool as any).query(`SELECT * FROM "${table}"`);
+      tables[table] = r.rows;
+      counts[table] = r.rows.length;
+    } catch (e) {
+      tables[table] = [];
+      counts[table] = -1;
+    }
+  }
+  return JSON.stringify({
+    meta: {
+      format: 3,
+      scope: 'disaster-recovery',
+      exportedAt: new Date().toISOString(),
+      note: 'RAW full-database snapshot — every table and column, including credential hashes. Restores the system bit for bit. Keep private.',
+      tableCounts: counts,
+    },
+    tables,
+  });
+}
+
+export async function runSystemDump(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const folderRaw = await getAppSetting('system_dump_folder_id');
+    if (!folderRaw) return { success: false, error: 'No Drive folder configured' };
+    const driveClient = getGoogleDriveClient();
+    if (!driveClient) return { success: false, error: 'Google Drive not available (service account required)' };
+    const { drive } = driveClient;
+    const folderId = extractDriveFolderId(folderRaw);
+
+    const json = await buildDisasterDumpJson();
+    const { Readable } = await import('stream');
+    let fileId = await getAppSetting('system_dump_file_id');
+    if (fileId) {
+      try {
+        await drive.files.update({
+          fileId,
+          supportsAllDrives: true,
+          media: { mimeType: 'application/json', body: Readable.from([json]) },
+        });
+      } catch {
+        fileId = null; // file deleted in Drive — recreate below
+      }
+    }
+    if (!fileId) {
+      const created = await drive.files.create({
+        supportsAllDrives: true,
+        requestBody: { name: 'glidr-SYSTEM-disaster-recovery.json', parents: [folderId] },
+        media: { mimeType: 'application/json', body: Readable.from([json]) },
+        fields: 'id',
+      });
+      fileId = created.data.id!;
+      await setAppSetting('system_dump_file_id', fileId);
+    }
+    await setAppSetting('system_dump_last_at', new Date().toISOString());
+    await setAppSetting('system_dump_last_error', '');
+    console.log('[SystemDump] Disaster-recovery dump uploaded to Drive');
+    return { success: true };
+  } catch (e: any) {
+    const msg = e?.message ?? String(e);
+    await setAppSetting('system_dump_last_error', msg).catch(() => {});
+    console.error('[SystemDump] failed:', msg);
+    return { success: false, error: msg };
+  }
+}
+
+let systemDumpTimer: NodeJS.Timeout | null = null;
+export function scheduleSystemDump() {
+  if (systemDumpTimer) clearTimeout(systemDumpTimer);
+  // 00:14 Oslo — after the 23:59 team backups have finished.
+  const delay = msUntilNextOslo2359() + 15 * 60 * 1000;
+  systemDumpTimer = setTimeout(async () => {
+    try { await runSystemDump(); } catch { /* logged inside */ }
+    scheduleSystemDump(); // chain the next night
+  }, delay);
+  // Boot catch-up: if the last dump is >25h old (deploys reset timers), run soon.
+  (async () => {
+    try {
+      const folder = await getAppSetting('system_dump_folder_id');
+      if (!folder) return;
+      const lastAt = await getAppSetting('system_dump_last_at');
+      const stale = !lastAt || Date.now() - new Date(lastAt).getTime() > 25 * 3600 * 1000;
+      if (stale) setTimeout(() => { runSystemDump().catch(() => {}); }, 4 * 60 * 1000);
+    } catch { /* best-effort */ }
+  })();
 }

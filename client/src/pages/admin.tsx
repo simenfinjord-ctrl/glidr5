@@ -6879,6 +6879,73 @@ function WatchAppTab({ isSuperAdmin, teams }: { isSuperAdmin: boolean; teams: Ap
   );
 }
 
+// SA-only: nightly RAW full-database snapshot (disaster recovery) to a private
+// Drive folder — the copy that restores Glidr bit for bit if everything fails.
+function SystemDumpCard() {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { toast } = useToast();
+  const { data: status, refetch } = useQuery<{ folderId: string | null; lastAt: string | null; lastError: string | null }>({
+    queryKey: ["/api/admin/system-dump"],
+  });
+  const [folder, setFolder] = useState<string | null>(null);
+  const folderValue = folder ?? status?.folderId ?? "";
+  const [running, setRunning] = useState(false);
+
+  return (
+    <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-system-dump">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+          <Database className="h-4 w-4 text-primary" />
+        </div>
+        <h2 className="text-sm font-semibold text-foreground">{L("Systemkopi (katastrofegjenoppretting)", "System snapshot (disaster recovery)")}</h2>
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        {L("Rå kopi av HELE databasen — alle tabeller og kolonner, inkludert passord-hasher — lastes til din private Drive-mappe hver natt (ca. 00:15). Dette er kopien som kan gjenoppbygge Glidr bit for bit.",
+           "RAW copy of the ENTIRE database — every table and column, including password hashes — uploaded to your private Drive folder nightly (~00:15). This is the copy that can rebuild Glidr bit for bit.")}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          className="h-8 max-w-md text-xs"
+          placeholder={L("Lim inn Drive-mappe-URL eller ID", "Paste Drive folder URL or ID")}
+          value={folderValue}
+          onChange={(e) => setFolder(e.target.value)}
+          data-testid="input-system-dump-folder"
+        />
+        <Button size="sm" variant="outline" data-testid="button-save-system-dump" onClick={async () => {
+          try {
+            await apiRequest("POST", "/api/admin/system-dump/settings", { folderId: folderValue });
+            refetch();
+            toast({ title: L("Lagret", "Saved") });
+          } catch (e) { toast({ title: L("Feil", "Error"), description: e instanceof Error ? e.message : "", variant: "destructive" }); }
+        }}>{L("Lagre", "Save")}</Button>
+        <Button size="sm" disabled={running || !folderValue} data-testid="button-run-system-dump" onClick={async () => {
+          setRunning(true);
+          try {
+            await apiRequest("POST", "/api/admin/system-dump/run");
+            refetch();
+            toast({ title: L("Systemkopi lastet opp", "System snapshot uploaded"), description: L("Sjekk Drive-mappen din.", "Check your Drive folder.") });
+          } catch (e) {
+            toast({ title: L("Kjøring feilet", "Run failed"), description: e instanceof Error ? e.message : "", variant: "destructive" });
+          } finally { setRunning(false); }
+        }}>
+          {running ? <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <HardDrive className="h-3.5 w-3.5 mr-1.5" />}
+          {running ? L("Kjører…", "Running…") : L("Kjør nå", "Run now")}
+        </Button>
+      </div>
+      <div className="mt-2 text-[11px]">
+        {status?.lastError ? (
+          <span className="text-red-600">⚠ {L("Siste kjøring feilet", "Last run failed")}: {status.lastError}</span>
+        ) : status?.lastAt ? (
+          <span className="text-emerald-600">✓ {L("Sist vellykket", "Last successful")}: {new Date(status.lastAt).toLocaleString()}</span>
+        ) : (
+          <span className="text-muted-foreground">{L("Ingen kjøringer ennå.", "No runs yet.")}</span>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSuperAdmin, teams }: { teamScopeParam: string; downloadFullPdf: (scope?: string) => void; pdfLoading: boolean; isSuperAdmin: boolean; teams: ApiTeam[] }) {
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
@@ -7250,6 +7317,8 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
           </div>
         </div>
       </Card>
+
+      {isSuperAdmin && <SystemDumpCard />}
 
       <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm" data-testid="card-maintenance">
         <div className="flex items-center gap-2 mb-4">

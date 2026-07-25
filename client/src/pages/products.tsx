@@ -1061,6 +1061,7 @@ export default function Products() {
                             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold opacity-60", categoryBadgeClass(p.category))}>
                               {p.category}
                             </span>
+                            {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}
                           </td>
                           <td className="px-4 py-2.5">
                             <AppLink href={`/products/${p.id}`} className="font-medium hover:text-amber-600 transition-colors">
@@ -1104,6 +1105,7 @@ export default function Products() {
                     <AppLink href={`/products/${p.id}`} className="min-w-0 flex-1 group">
                       <div className="flex items-center gap-2">
                         <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold opacity-60", categoryBadgeClass(p.category))}>{p.category}</span>
+                            {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}
                         <span className="text-sm font-medium text-foreground group-hover:text-amber-600 transition-colors">{p.brand} {p.name}</span>
                       </div>
                       {p.archivedAt && (
@@ -1302,7 +1304,7 @@ export default function Products() {
                         return (
                           <tr key={p.id} className="border-t border-border hover:bg-muted/20 transition-colors">
                             <td className="px-4 py-2.5">
-                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap", categoryBadgeClass(p.category))}>
+                              {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}<span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap", categoryBadgeClass(p.category))}>
                                 {p.category}
                               </span>
                             </td>

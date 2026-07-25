@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {
-  Plus, Pencil, DollarSign, Trash2, KeyRound, Check, X, Clock, Download, Upload, EyeOff, Eye,
+  Plus, Pencil, DollarSign, Trash2, KeyRound, Check, X, Clock, Download, Upload, EyeOff, Eye, GitBranch,
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity, BarChart3,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle, Sparkles,
   HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash, RotateCcw,
@@ -4842,6 +4842,35 @@ export default function Admin() {
   const [editPlanTeam, setEditPlanTeam] = useState<ApiTeam | null>(null);
   const [editPlanForm, setEditPlanForm] = useState<any>({});
 
+  // Parent/child relation (SA): link a child team to a parent + shared areas.
+  const [parentTeamDialog, setParentTeamDialog] = useState<ApiTeam | null>(null);
+  const [parentForm, setParentForm] = useState<any>({ parentTeamId: null, sharedAreas: [] });
+  const saveParentMutation = useMutation({
+    mutationFn: async ({ id, ...data }: any) => {
+      const res = await apiRequest("PATCH", `/api/admin/teams/${id}/parent`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      setParentTeamDialog(null);
+      toast({ title: L("Lagret", "Saved") });
+    },
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
+  });
+  const emancipateMutation = useMutation({
+    mutationFn: async ({ id, withCopy }: { id: number; withCopy: boolean }) => {
+      const res = await apiRequest("POST", `/api/admin/teams/${id}/emancipate`, { withCopy });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+      setParentTeamDialog(null);
+      const copiedStr = Object.entries(data.copied ?? {}).map(([t, n]) => `${t}: ${n}`).join(", ");
+      toast({ title: L("Laget er nå selvstendig", "Team is now independent"), description: copiedStr ? `${L("Kopiert", "Copied")}: ${copiedStr}` : L("Ingen data kopiert.", "No data copied.") });
+    },
+    onError: (e: Error) => toast({ title: L("Feil", "Error"), description: e.message, variant: "destructive" }),
+  });
+
   const [notesTeam, setNotesTeam] = useState<ApiTeam | null>(null);
   const [notesValue, setNotesValue] = useState("");
 
@@ -5920,6 +5949,80 @@ export default function Admin() {
               </DialogContent>
             </Dialog>
 
+            {/* Parent/child team dialog (SA) */}
+            <Dialog open={!!parentTeamDialog} onOpenChange={(o) => { if (!o) setParentTeamDialog(null); }}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>{L("Moderlag / datterlag", "Parent / child team")} — {parentTeamDialog?.name}</DialogTitle>
+                  <p className="text-xs text-muted-foreground">{L("Et datterlag er et selvstendig lag som får lesetilgang til moderlagets data i valgte områder. Moderlagets TA-er kan administrere datterlaget (logges i deres aktivitetslogg).", "A child team is an independent team with read access to the parent's data in the selected areas. The parent's TAs can administer the child team (logged in their activity log).")}</p>
+                </DialogHeader>
+                <div className="space-y-4 pt-1">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">{L("Moderlag", "Parent team")}</label>
+                    <Select value={parentForm.parentTeamId != null ? String(parentForm.parentTeamId) : "none"}
+                      onValueChange={(v) => setParentForm((f: any) => ({ ...f, parentTeamId: v === "none" ? null : parseInt(v) }))}>
+                      <SelectTrigger data-testid="select-parent-team"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{L("Ingen (selvstendig lag)", "None (independent team)")}</SelectItem>
+                        {teams.filter((tm) => tm.id !== parentTeamDialog?.id && !((tm as any).parentTeamId ?? (tm as any).parent_team_id)).map((tm) => (
+                          <SelectItem key={tm.id} value={String(tm.id)}>{tm.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {parentForm.parentTeamId != null && (
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium">{L("Delte områder (lesetilgang fra moderlaget)", "Shared areas (read access from the parent)")}</label>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {[
+                          { key: "tests", label: L("Tester", "Tests") },
+                          { key: "products", label: L("Produkter", "Products") },
+                          { key: "kick", label: "Kick" },
+                          { key: "weather", label: L("Vær", "Weather") },
+                        ].map((a) => {
+                          const on = (parentForm.sharedAreas ?? []).includes(a.key);
+                          return (
+                            <button key={a.key} type="button" data-testid={`shared-area-${a.key}`}
+                              onClick={() => setParentForm((f: any) => ({ ...f, sharedAreas: on ? f.sharedAreas.filter((x: string) => x !== a.key) : [...(f.sharedAreas ?? []), a.key] }))}
+                              className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-left text-xs",
+                                on ? "border-primary bg-primary/10" : "border-border hover:border-foreground/30")}>
+                              <span className={cn("flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border", on ? "bg-primary border-primary text-primary-foreground" : "border-border")}>
+                                {on && <Check className="h-2.5 w-2.5" />}
+                              </span>
+                              {a.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => setParentTeamDialog(null)}>{t("common.cancel")}</Button>
+                    <Button disabled={saveParentMutation.isPending} data-testid="button-save-parent-team"
+                      onClick={() => saveParentMutation.mutate({ id: parentTeamDialog!.id, parentTeamId: parentForm.parentTeamId, sharedAreas: parentForm.sharedAreas })}>
+                      {t("common.save")}
+                    </Button>
+                  </div>
+                  {((parentTeamDialog as any)?.parentTeamId ?? (parentTeamDialog as any)?.parent_team_id) && (
+                    <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-900/10 p-3 space-y-2">
+                      <div className="text-sm font-semibold">{L("Gjør selvstendig", "Make independent")}</div>
+                      <p className="text-xs text-muted-foreground">{L("Laget beholder alle egne data og mister innsynet i moderlaget. Velg om de også skal få en kopi av det delte de kunne se.", "The team keeps all its own data and loses access to the parent. Choose whether they also get a copy of the shared data they could see.")}</p>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" disabled={emancipateMutation.isPending} data-testid="button-emancipate-no-copy"
+                          onClick={() => { if (confirm(L("Gjøre laget selvstendig UTEN kopi av delte data?", "Make the team independent WITHOUT a copy of shared data?"))) emancipateMutation.mutate({ id: parentTeamDialog!.id, withCopy: false }); }}>
+                          {L("Uten kopi", "Without copy")}
+                        </Button>
+                        <Button size="sm" disabled={emancipateMutation.isPending} data-testid="button-emancipate-with-copy"
+                          onClick={() => { if (confirm(L("Gjøre laget selvstendig MED kopi av alt delt de kunne se?", "Make the team independent WITH a copy of everything shared they could see?"))) emancipateMutation.mutate({ id: parentTeamDialog!.id, withCopy: true }); }}>
+                          {L("Med kopi", "With copy")}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+
             {/* Notes dialog */}
             <Dialog open={!!notesTeam} onOpenChange={(o) => { if (!o) setNotesTeam(null); }}>
               <DialogContent className="sm:max-w-md">
@@ -6038,6 +6141,15 @@ export default function Admin() {
                         </Button>
                         <Button variant="ghost" size="sm" title={L("Rediger plan / fakturering", "Edit plan / billing")} onClick={() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "", discountPercent: String((team as any).discountPercent ?? (team as any).discount_percent ?? 0), features: (() => { try { return JSON.parse((team as any).enabledAreas ?? (team as any).enabled_areas ?? "[]"); } catch { return []; } })(), maxUsers: String(team.maxUsers ?? (team as any).max_users ?? ""), maxGroups: String(team.maxGroups ?? (team as any).max_groups ?? "") }); }}>
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button variant="ghost" size="sm" title={L("Moderlag / datterlag", "Parent / child team")} data-testid={`button-parent-team-${team.id}`} onClick={() => {
+                          setParentTeamDialog(team);
+                          setParentForm({
+                            parentTeamId: (team as any).parentTeamId ?? (team as any).parent_team_id ?? null,
+                            sharedAreas: (() => { try { return JSON.parse((team as any).sharedAreas ?? (team as any).shared_areas ?? "[]"); } catch { return []; } })(),
+                          });
+                        }}>
+                          <GitBranch className="h-4 w-4 text-muted-foreground" />
                         </Button>
                         <Button variant="ghost" size="sm" title={L("Planhistorikk", "Plan history")} onClick={() => setHistoryTeam(team)}>
                           <Clock className="h-4 w-4 text-muted-foreground" />

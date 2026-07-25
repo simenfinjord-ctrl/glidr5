@@ -1945,7 +1945,8 @@ export default function Tests() {
                             <td className="px-4 py-3 font-medium">{t.testName || t.location}</td>
                             <td className="px-4 py-3">{t.location}</td>
                             <td className="px-4 py-3">
-                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
+                              {(t as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300 shrink-0">{(t as any).sharedFromTeam}</span>)}
+                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
                                 {t.testType}
                               </span>
                             </td>
@@ -2040,6 +2041,7 @@ export default function Tests() {
                             {tst.testName || tst.location}
                           </span>
                         </AppLink>
+                        {(tst as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300 shrink-0">{(tst as any).sharedFromTeam}</span>)}
                         <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", tst.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
                           {tst.testType}
                         </span>
@@ -2219,7 +2221,8 @@ export default function Tests() {
                           <td className="px-4 py-3 font-medium">{t.testName || t.location}</td>
                           <td className="px-4 py-3">{t.location}</td>
                           <td className="px-4 py-3">
-                            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
+                            {(t as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300 shrink-0">{(t as any).sharedFromTeam}</span>)}
+                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
                               {t.testType}
                             </span>
                           </td>
@@ -2285,7 +2288,8 @@ export default function Tests() {
                         <div className="min-w-0 flex-1">
                           {/* Title row: type badge + test name */}
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold shrink-0", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
+                            {(t as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300 shrink-0">{(t as any).sharedFromTeam}</span>)}
+                        <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold shrink-0", t.testType === "Glide" ? "fs-badge-glide" : "fs-badge-structure")}>
                               {t.testType}
                             </span>
                             <span className="text-sm font-semibold group-hover:text-primary transition-colors truncate">

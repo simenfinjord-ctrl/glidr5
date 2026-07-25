@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 import { ArrowLeft, EyeOff, Eye, MapPin, Calendar, Clock, Thermometer, Droplets, Snowflake, Award, FlaskConical, Pencil, Trash2, FileText, Copy, Trophy, ClipboardList, Share2, Watch, ImageIcon, MessageSquare, Send, Link2, ChevronLeft, ChevronRight, MoreHorizontal, Plus } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { AppShell } from "@/components/app-shell";
@@ -557,7 +558,7 @@ export default function TestDetail() {
   const [, params] = useRoute("/tests/:id");
   const id = params?.id;
   const testId = id ? parseInt(id) : NaN;
-  const { isBlindTester, isSuperAdmin, can } = useAuth();
+  const { isBlindTester, isSuperAdmin, can, canManage } = useAuth();
   const { t, language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const lang = language === "no" ? "no" : "en";
@@ -610,6 +611,23 @@ export default function TestDetail() {
   };
   // ────────────────────────────────────────────────────────────────────────
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  // Parent-team curation: hide this test / single ski pairs from child teams.
+  const [showChildVisibility, setShowChildVisibility] = useState(false);
+  const { data: childTeams = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/child-teams"],
+    enabled: canManage,
+  });
+  const { data: childExclusions = [] } = useQuery<{ entityType: string; entityId: number }[]>({
+    queryKey: ["/api/child-visibility"],
+    enabled: showChildVisibility,
+  });
+  const childVisMutation = useMutation({
+    mutationFn: async ({ hide, entityType, entityId }: { hide: boolean; entityType: string; entityId: number }) => {
+      if (hide) await apiRequest("POST", "/api/child-visibility", { entityType, entityId });
+      else await apiRequest("DELETE", `/api/child-visibility?entityType=${entityType}&entityId=${entityId}`);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/child-visibility"] }),
+  });
   const [showRunsheet, setShowRunsheet] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
@@ -1129,6 +1147,8 @@ export default function TestDetail() {
   const testTypeBadgeClass = test.testType === "Glide" ? "fs-badge-glide" : test.testType === "Grind" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" : "fs-badge-structure";
 
   // Winner chip in the title row (hidden in blind mode / when details are hidden).
+  // Shared read-only view: this test belongs to the parent team.
+  const isShared = !!(test as any)?.readOnly;
   const winnerEntry = sortedEntries.find((e: any) => e.rank0km === 1);
   const winnerName = (() => {
     if (!winnerEntry) return null;
@@ -1189,6 +1209,11 @@ export default function TestDetail() {
             {/* Mobile: collapse all actions into a single "Options" dropdown so they
                 don't overflow horizontally on narrow screens. */}
             <div className="sm:hidden">
+              {isShared ? (
+                <Button variant="outline" size="sm" onClick={generatePDF} disabled={pdfLoading}>
+                  <FileText className="mr-2 h-4 w-4" />PDF
+                </Button>
+              ) : (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" data-testid="button-test-options">
@@ -1253,6 +1278,7 @@ export default function TestDetail() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              )}
             </div>
             {/* Desktop: two primary actions + everything else in one ⋯ menu, so the
                 header never becomes a wall of buttons. */}
@@ -1261,6 +1287,7 @@ export default function TestDetail() {
                 <FileText className="mr-2 h-4 w-4" />
                 {pdfLoading ? "Generating…" : "PDF"}
               </Button>
+              {!isShared && (
               <Button
                 size="sm"
                 data-testid="button-edit-test"
@@ -1269,6 +1296,8 @@ export default function TestDetail() {
                 <Pencil className="mr-2 h-4 w-4" />
                 {t("testDetail.editTest")}
               </Button>
+              )}
+              {!isShared && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" data-testid="button-test-more" aria-label={L("Flere valg", "More options")}>
@@ -1304,6 +1333,12 @@ export default function TestDetail() {
                     <Copy className="mr-2 h-4 w-4" />
                     {t("newTest.duplicateTest")}
                   </DropdownMenuItem>
+                  {canManage && childTeams.length > 0 && (
+                    <DropdownMenuItem onClick={() => setShowChildVisibility(true)} data-testid="button-child-visibility">
+                      <EyeOff className="mr-2 h-4 w-4" />
+                      {L("Synlighet for datterlag", "Child-team visibility")}
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteDialog(true)} data-testid="button-delete-test">
                     <Trash2 className="mr-2 h-4 w-4" />
@@ -1311,6 +1346,7 @@ export default function TestDetail() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              )}
               <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -1341,6 +1377,11 @@ export default function TestDetail() {
             <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", testTypeBadgeClass)} data-testid="badge-test-type">
               {test.testType}
             </span>
+            {isShared && (
+              <span className="inline-flex items-center rounded-full bg-violet-100 dark:bg-violet-900/30 px-3 py-1 text-xs font-semibold text-violet-700 dark:text-violet-300" data-testid="badge-test-shared">
+                {(test as any).sharedFromTeam} · {L("kun lesetilgang", "read-only")}
+              </span>
+            )}
             {winnerName && !hideDetails && !isBlindTester && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800" data-testid="badge-test-winner">
                 <Trophy className="h-3 w-3" />
@@ -1831,6 +1872,51 @@ export default function TestDetail() {
             watchOperatorName={(test as any).watchOperatorName}
           />
         )}
+
+        {/* Parent-team curation: hide the whole test or single ski pairs from
+            child teams. Hidden pairs are removed and ranks recomputed in the
+            child's view. */}
+        <Dialog open={showChildVisibility} onOpenChange={setShowChildVisibility}>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{L("Synlighet for datterlag", "Child-team visibility")}</DialogTitle>
+              <p className="text-xs text-muted-foreground">
+                {L(`Gjelder ${childTeams.map((c) => c.name).join(", ")}. Skjulte skipar fjernes helt fra deres visning — rank og resultat beregnes på nytt uten dem.`,
+                   `Applies to ${childTeams.map((c) => c.name).join(", ")}. Hidden ski pairs are removed entirely from their view — ranks and results are recomputed without them.`)}
+              </p>
+            </DialogHeader>
+            {(() => {
+              const isHidden = (type: string, eid: number) => childExclusions.some((x) => x.entityType === type && x.entityId === eid);
+              const testHidden = isHidden("test", test.id);
+              return (
+                <div className="space-y-3">
+                  <label className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5 text-sm">
+                    <span className="font-medium">{L("Skjul hele testen", "Hide the whole test")}</span>
+                    <Switch checked={testHidden} disabled={childVisMutation.isPending}
+                      onCheckedChange={(v) => childVisMutation.mutate({ hide: v, entityType: "test", entityId: test.id })} />
+                  </label>
+                  {!testHidden && (
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-semibold text-muted-foreground">{L("Skjul enkelt-skipar", "Hide single ski pairs")}</div>
+                      {sortedEntries.map((e: any) => {
+                        const prod = e.productId ? productsById.get(e.productId) : null;
+                        const label = `#${e.skiNumber}${prod ? ` · ${(prod as any).brand ? (prod as any).brand + " " : ""}${(prod as any).name}` : (e as any).freeTextProduct ? ` · ${(e as any).freeTextProduct}` : ""}`;
+                        const hidden = isHidden("test_entry", e.id);
+                        return (
+                          <label key={e.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
+                            <span className={cn(hidden && "line-through text-muted-foreground")}>{label}</span>
+                            <Switch checked={hidden} disabled={childVisMutation.isPending}
+                              onCheckedChange={(v) => childVisMutation.mutate({ hide: v, entityType: "test_entry", entityId: e.id })} />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={feelingOpen} onOpenChange={setFeelingOpen}>
             <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">

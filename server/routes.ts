@@ -161,6 +161,77 @@ function userInfo(req: Request) {
   };
 }
 
+// ── Parent/child team sharing ────────────────────────────────────────────────
+// A child team reads the parent's data in the shared areas. Everything shared
+// is strictly read-only and marked sharedFromTeam; the parent can hide whole
+// tests, single ski pairs or products via child_visibility_exclusions — hidden
+// pairs are removed and ranks/results recomputed so the child sees a complete,
+// consistent test.
+
+async function getParentShare(teamId: number | null | undefined): Promise<{ parentTeamId: number; parentName: string; sharedAreas: string[] } | null> {
+  if (!teamId) return null;
+  const { pool } = await import("./db");
+  const r = await (pool as any).query(
+    `SELECT t.parent_team_id AS pid, p.name FROM teams t JOIN teams p ON p.id = t.parent_team_id WHERE t.id = $1`, [teamId]);
+  if (!r.rows.length || !r.rows[0].pid) return null;
+  const s = await (pool as any).query(`SELECT shared_areas FROM teams WHERE id = $1`, [teamId]);
+  let areas: string[] = [];
+  try { areas = JSON.parse(s.rows[0]?.shared_areas || "[]"); } catch { /* none */ }
+  return { parentTeamId: r.rows[0].pid, parentName: r.rows[0].name, sharedAreas: areas };
+}
+
+async function getChildExclusions(parentTeamId: number): Promise<{ tests: Set<number>; entries: Set<number>; products: Set<number> }> {
+  const { pool } = await import("./db");
+  const r = await (pool as any).query(
+    `SELECT entity_type, entity_id FROM child_visibility_exclusions WHERE parent_team_id = $1`, [parentTeamId]);
+  const out = { tests: new Set<number>(), entries: new Set<number>(), products: new Set<number>() };
+  for (const row of r.rows) {
+    if (row.entity_type === "test") out.tests.add(row.entity_id);
+    else if (row.entity_type === "test_entry") out.entries.add(row.entity_id);
+    else if (row.entity_type === "product") out.products.add(row.entity_id);
+  }
+  return out;
+}
+
+/** Does the active team have child teams (is it a parent)? */
+async function listChildTeams(teamId: number): Promise<{ id: number; name: string }[]> {
+  const { pool } = await import("./db");
+  const r = await (pool as any).query(`SELECT id, name FROM teams WHERE parent_team_id = $1`, [teamId]);
+  return r.rows;
+}
+
+// Recompute per-round cm-behind and ranks for the remaining (visible) entries:
+// new best pair becomes the 0-point, everything re-ranked per round. Feeling
+// and kick ranks are renumbered compactly in their existing order.
+function recomputeSharedEntries(entries: any[]): any[] {
+  const parseResults = (e: any): { result: number | null; rank: number | null }[] => {
+    try { const a = JSON.parse(e.results || "[]"); return Array.isArray(a) ? a : []; } catch { return []; }
+  };
+  const parsed = entries.map((e) => ({ e, rounds: parseResults(e) }));
+  const maxRounds = Math.max(0, ...parsed.map((p) => p.rounds.length));
+  for (let r = 0; r < maxRounds; r++) {
+    const inRound = parsed.filter((p) => p.rounds[r] && p.rounds[r].result != null && !isNaN(Number(p.rounds[r].result)));
+    if (inRound.length === 0) continue;
+    const best = Math.min(...inRound.map((p) => Number(p.rounds[r].result)));
+    const order = [...inRound].sort((a, b) => Number(a.rounds[r].result) - Number(b.rounds[r].result));
+    order.forEach((p, i) => {
+      p.rounds[r] = { ...p.rounds[r], result: Math.round((Number(p.rounds[r].result) - best) * 100) / 100, rank: i + 1 };
+    });
+  }
+  const renumber = (key: string) => {
+    const ranked = parsed.filter((p) => p.e[key] != null).sort((a, b) => a.e[key] - b.e[key]);
+    ranked.forEach((p, i) => { p.e = { ...p.e, [key]: i + 1 }; });
+  };
+  renumber("feelingRank");
+  renumber("kickRank");
+  return parsed.map((p) => ({
+    ...p.e,
+    results: JSON.stringify(p.rounds),
+    result0kmCmBehind: p.rounds[0]?.result ?? null,
+    rank0km: p.rounds[0]?.rank ?? null,
+  }));
+}
+
 function requirePermission(area: PermissionArea, level: PermissionLevel) {
   return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated() || !req.user) {
@@ -454,6 +525,18 @@ export async function registerRoutes(
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_backup_error TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_backup_error_at TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS discount_percent REAL NOT NULL DEFAULT 0;
+      -- Parent/child teams: a child team is fully independent but gets READ
+      -- access to the parent's data in the areas listed in shared_areas.
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS parent_team_id INTEGER;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS shared_areas TEXT;
+      CREATE TABLE IF NOT EXISTS child_visibility_exclusions (
+        id SERIAL PRIMARY KEY,
+        parent_team_id INTEGER NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id INTEGER NOT NULL,
+        created_at TEXT,
+        created_by_name TEXT
+      );
       ALTER TABLE login_logs ADD COLUMN IF NOT EXISTS user_agent TEXT;
       ALTER TABLE login_logs ADD COLUMN IF NOT EXISTS device_id TEXT;
       ALTER TABLE test_entries ADD COLUMN IF NOT EXISTS feeling_note TEXT;
@@ -1198,6 +1281,10 @@ export async function registerRoutes(
     const memberships = await storage.getUserTeams(u.id);
     const ids = new Set<number>([u.teamId, ...memberships.map((m) => m.teamId)]);
     const all = await storage.listTeams();
+    // Parent-team TAs also see (and administer) their child teams.
+    if (u.isTeamAdmin === 1) {
+      for (const t of all) if ((t as any).parentTeamId === u.teamId) ids.add(t.id);
+    }
     res.json(all.filter((t) => ids.has(t.id)));
   });
 
@@ -1331,6 +1418,16 @@ export async function registerRoutes(
        FROM kick_skis WHERE team_id=$1 AND archived_at IS NULL ORDER BY id DESC`, [teamId]);
     const rows = r.rows.filter((row: any) =>
       userHasGroupAccess(u.groupScope, isEffectiveAdmin(req), row.groupScope || ""));
+    // Child team: parent's kick skis (read-only) so shared kick tests resolve.
+    const share = await getParentShare(teamId);
+    if (share && share.sharedAreas.includes("kick")) {
+      const pr = await (pool as any).query(
+        `SELECT id, team_id AS "teamId", group_scope AS "groupScope", name, brand, grind, heights,
+                type_of_ski AS "typeOfSki", color, notes, archived_at AS "archivedAt",
+                created_at AS "createdAt", created_by_id AS "createdById", created_by_name AS "createdByName"
+         FROM kick_skis WHERE team_id=$1 AND archived_at IS NULL ORDER BY id DESC`, [share.parentTeamId]);
+      for (const row of pr.rows) rows.push({ ...row, sharedFromTeam: share.parentName, readOnly: true });
+    }
     res.json(rows);
   });
 
@@ -1391,6 +1488,30 @@ export async function registerRoutes(
       entries = er.rows;
     }
     for (const t of tests) t.entries = entries.filter((e) => e.kickTestId === t.id);
+    // Child team: append the parent's kick tests (read-only).
+    const share = await getParentShare(teamId);
+    if (share && share.sharedAreas.includes("kick")) {
+      const ptr = await (pool as any).query(
+        `SELECT id, team_id AS "teamId", group_scope AS "groupScope", date, location,
+                weather_id AS "weatherId", no_weather AS "noWeather", test_persons AS "testPersons",
+                notes, report, created_at AS "createdAt", created_by_name AS "createdByName"
+         FROM kick_tests WHERE team_id=$1 ORDER BY date DESC, id DESC`, [share.parentTeamId]);
+      const pids = ptr.rows.map((t: any) => t.id);
+      let pEntries: any[] = [];
+      if (pids.length) {
+        const per = await (pool as any).query(
+          `SELECT id, kick_test_id AS "kickTestId", kick_ski_id AS "kickSkiId", binder,
+                  kick_solution AS "kickSolution", feeling_rank AS "feelingRank", feeling_notes AS "feelingNotes"
+           FROM kick_test_entries WHERE kick_test_id = ANY($1::int[])`, [pids]);
+        pEntries = per.rows;
+      }
+      for (const t of ptr.rows) {
+        t.entries = pEntries.filter((e: any) => e.kickTestId === t.id);
+        t.sharedFromTeam = share.parentName;
+        t.readOnly = true;
+        tests.push(t);
+      }
+    }
     res.json(tests);
   });
 
@@ -1465,6 +1586,16 @@ export async function registerRoutes(
        FROM kick_mixes WHERE team_id=$1 ORDER BY id DESC`, [teamId]);
     const rows = r.rows.filter((row: any) =>
       userHasGroupAccess(u.groupScope, isEffectiveAdmin(req), row.groupScope || ""));
+    // Child team: parent's kick mixes (read-only).
+    const shareMix = await getParentShare(teamId);
+    if (shareMix && shareMix.sharedAreas.includes("kick")) {
+      const pr = await (pool as any).query(
+        `SELECT id, team_id AS "teamId", group_scope AS "groupScope", name, mix_type AS "mixType",
+                roller_temperature AS "rollerTemperature", products, notes,
+                created_at AS "createdAt", created_by_name AS "createdByName"
+         FROM kick_mixes WHERE team_id=$1 ORDER BY id DESC`, [shareMix.parentTeamId]);
+      for (const row of pr.rows) rows.push({ ...row, sharedFromTeam: shareMix.parentName, readOnly: true });
+    }
     res.json(rows);
   });
 
@@ -1760,8 +1891,10 @@ export async function registerRoutes(
     const team = await storage.getTeam(teamId);
     if (!team) return res.status(404).json({ message: "Team not found" });
 
-    // Super admins can switch to any team; regular users can only switch to their own teams
-    if (u.isAdmin !== 1) {
+    // Super admins can switch to any team; regular users can only switch to their
+    // own teams — plus TAs of a PARENT team may enter its child teams.
+    const isParentTa = u.isAdmin !== 1 && u.isTeamAdmin === 1 && (team as any).parentTeamId === u.teamId;
+    if (u.isAdmin !== 1 && !isParentTa) {
       const memberships = await storage.getUserTeams(u.id);
       const allowed = memberships.map((m) => m.teamId);
       // Also always allow their primary teamId
@@ -1807,6 +1940,31 @@ export async function registerRoutes(
       } catch (e) { console.error("[access-log] failed:", e); }
     }
 
+    // Parent-team TAs administer child teams like SA does — not listed as
+    // members, but every visit is recorded in the CHILD team's activity log.
+    if (isParentTa) {
+      (req.session as any).effectivePermissions = null;
+      (req.session as any).effectiveGroupScope = "";
+      (req.session as any).activeTeamIsAdmin = true;
+      try {
+        const { pool: pAcc2 } = await import("./db");
+        const recent = await (pAcc2 as any).query(
+          `SELECT id FROM activity_logs WHERE action = 'parent_access' AND user_id = $1 AND team_id = $2 AND created_at >= $3 LIMIT 1`,
+          [u.id, teamId, new Date(Date.now() - 3600000).toISOString()]
+        );
+        if (recent.rows.length === 0) {
+          const parentTeam = await storage.getTeam(u.teamId);
+          await storage.createActivityLog({
+            userId: u.id, userName: u.name, action: "parent_access",
+            entityType: "team", entityId: teamId,
+            details: `${parentTeam?.name ?? "Parent team"} (moderlag) accessed this team's workspace`,
+            createdAt: new Date().toISOString(), groupScope: "", teamId,
+          } as any);
+        }
+      } catch (e) { console.error("[parent-access-log] failed:", e); }
+      return req.session.save(() => res.json({ ok: true }));
+    }
+
     // Resolve per-team permissions and group scope for users switching to a non-primary team
     if (u.isAdmin !== 1 && teamId !== u.teamId) {
       try {
@@ -1847,6 +2005,12 @@ export async function registerRoutes(
     const teamIds = [...new Set([u.teamId, ...memberships.map((m) => m.teamId)])];
     const allTeams = await storage.listTeams();
     const userTeams = allTeams.filter((t) => teamIds.includes(t.id));
+    // Parent-team TAs also get their child teams in the switcher.
+    if (u.isTeamAdmin === 1) {
+      for (const t of allTeams) {
+        if ((t as any).parentTeamId === u.teamId && !teamIds.includes(t.id)) userTeams.push(t);
+      }
+    }
     res.json(userTeams);
   });
 
@@ -2072,7 +2236,17 @@ export async function registerRoutes(
   app.get("/api/products", requirePermission("products", "view"), async (req, res) => {
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
-    const list = await storage.listProducts(u.groupScope, u.isScopeAdmin, teamId);
+    const list: any[] = await storage.listProducts(u.groupScope, u.isScopeAdmin, teamId);
+    // Child team: append the parent's shared products (read-only, curated).
+    const share = await getParentShare(teamId);
+    if (share && share.sharedAreas.includes("products")) {
+      const excl = await getChildExclusions(share.parentTeamId);
+      const parentList = await storage.listProducts("", true, share.parentTeamId);
+      for (const p of parentList) {
+        if (excl.products.has(p.id)) continue;
+        list.push({ ...p, sharedFromTeam: share.parentName, readOnly: true });
+      }
+    }
     res.json(list);
   });
 
@@ -2742,7 +2916,32 @@ export async function registerRoutes(
       const seriesList = await db.select({ id: testSkiSeries.id, name: testSkiSeries.name }).from(testSkiSeries).where(inArray(testSkiSeries.id, seriesIds));
       for (const s of seriesList) seriesNameMap[s.id] = s.name;
     }
-    const enriched = result.map((t: any) => ({ ...t, seriesName: t.seriesId ? (seriesNameMap[t.seriesId] || null) : null }));
+    let enriched = result.map((t: any) => ({ ...t, seriesName: t.seriesId ? (seriesNameMap[t.seriesId] || null) : null }));
+
+    // Child team: append the parent's shared tests (read-only, curated).
+    const share = await getParentShare(teamId);
+    if (share && share.sharedAreas.includes("tests")) {
+      const excl = await getChildExclusions(share.parentTeamId);
+      const parentTests = await storage.listAllTestsForTeam(share.parentTeamId);
+      const pIds = parentTests.filter((t: any) => !excl.tests.has(t.id)).map((t: any) => t.id);
+      const pSeriesIds = [...new Set(parentTests.filter((t: any) => t.seriesId).map((t: any) => t.seriesId))];
+      let pSeriesNames: Record<number, string> = {};
+      if (pSeriesIds.length > 0) {
+        const sl = await db.select({ id: testSkiSeries.id, name: testSkiSeries.name }).from(testSkiSeries).where(inArray(testSkiSeries.id, pSeriesIds as number[]));
+        for (const s of sl) pSeriesNames[s.id] = s.name;
+      }
+      for (const t of parentTests) {
+        if (!pIds.includes(t.id)) continue;
+        // Athlete race-ski tests stay private to the parent's athletes.
+        if ((t as any).testSkiSource === "raceskis") continue;
+        enriched.push({
+          ...t,
+          seriesName: (t as any).seriesId ? (pSeriesNames[(t as any).seriesId] || null) : null,
+          sharedFromTeam: share.parentName,
+          readOnly: true,
+        });
+      }
+    }
     res.json(enriched);
   });
 
@@ -3114,7 +3313,18 @@ export async function registerRoutes(
     const test = await storage.getTest(id);
     if (!test) return res.status(404).json({ message: "Not found" });
     const u = userInfo(req);
-    if (!verifyTeamOwnership(test, req)) return res.status(403).json({ message: "Forbidden" });
+    if (!verifyTeamOwnership(test, req)) {
+      // Child team reading a shared parent test — read-only, and never a test
+      // the parent has hidden.
+      const share = await getParentShare(getActiveTeamId(req));
+      if (share && share.sharedAreas.includes("tests") && (test as any).teamId === share.parentTeamId && (test as any).testSkiSource !== "raceskis") {
+        const excl = await getChildExclusions(share.parentTeamId);
+        if (!excl.tests.has(test.id) && u.permissions.tests !== "none") {
+          return res.json({ ...test, sharedFromTeam: share.parentName, readOnly: true });
+        }
+      }
+      return res.status(403).json({ message: "Forbidden" });
+    }
     // Permissions are enforced retroactively — losing access removes all prior tests
     let hasAccess = false;
     if (u.isScopeAdmin) {
@@ -4213,7 +4423,20 @@ export async function registerRoutes(
     const u = userInfo(req);
     const test = await storage.getTest(testId);
     if (!test) return res.status(404).json({ message: "Not found" });
-    if (!verifyTeamOwnership(test, req)) return res.status(403).json({ message: "Forbidden" });
+    if (!verifyTeamOwnership(test, req)) {
+      // Shared parent test → curated, recomputed entry view for the child.
+      const share = await getParentShare(getActiveTeamId(req));
+      if (share && share.sharedAreas.includes("tests") && (test as any).teamId === share.parentTeamId && (test as any).testSkiSource !== "raceskis" && u.permissions.tests !== "none") {
+        const excl = await getChildExclusions(share.parentTeamId);
+        if (!excl.tests.has(test.id)) {
+          const all = await storage.listEntries(testId);
+          const visible = all.filter((e: any) => !excl.entries.has(e.id) && !(e.productId != null && excl.products.has(e.productId)));
+          const changed = visible.length !== all.length;
+          return res.json(changed ? recomputeSharedEntries(visible) : visible);
+        }
+      }
+      return res.status(403).json({ message: "Forbidden" });
+    }
     // Own tests always accessible
     let hasAccess = (test as any).createdById === u.id;
     if (!hasAccess) hasAccess = userHasGroupAccess(u.groupScope, u.isScopeAdmin, test.groupScope) && u.permissions.tests !== "none";
@@ -6590,6 +6813,191 @@ export async function registerRoutes(
   });
 
   // GET /api/admin/billing — all records, ordered by due date
+  // ── Parent/child team management ─────────────────────────────────────────
+  // SA: link/unlink a child team to a parent and choose the shared areas.
+  app.patch("/api/admin/teams/:id/parent", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    const teamId = parseInt(req.params.id);
+    const parentTeamId = req.body.parentTeamId != null && req.body.parentTeamId !== "" ? parseInt(String(req.body.parentTeamId)) : null;
+    if (parentTeamId === teamId) return res.status(400).json({ message: "A team cannot be its own parent" });
+    if (parentTeamId != null) {
+      const parent = await storage.getTeam(parentTeamId);
+      if (!parent) return res.status(404).json({ message: "Parent team not found" });
+      if ((parent as any).parentTeamId) return res.status(400).json({ message: "Nested child teams are not supported (one level only)" });
+    }
+    const allowedAreas = ["tests", "products", "kick", "weather"];
+    const sharedAreas = Array.isArray(req.body.sharedAreas)
+      ? req.body.sharedAreas.filter((a: any) => allowedAreas.includes(a))
+      : [];
+    const { pool: pPar } = await import("./db");
+    await (pPar as any).query(
+      `UPDATE teams SET parent_team_id = $1, shared_areas = $2 WHERE id = $3`,
+      [parentTeamId, parentTeamId != null ? JSON.stringify(sharedAreas) : null, teamId]
+    );
+    res.json({ ok: true, parentTeamId, sharedAreas: parentTeamId != null ? sharedAreas : [] });
+  });
+
+  // Child teams of the caller's ACTIVE team (drives the curation UI).
+  app.get("/api/child-teams", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.json([]);
+    res.json(await listChildTeams(getActiveTeamId(req)));
+  });
+
+  // Curation: what the parent hides from its child teams.
+  app.get("/api/child-visibility", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const { pool: pCv } = await import("./db");
+    const r = await (pCv as any).query(
+      `SELECT id, entity_type AS "entityType", entity_id AS "entityId", created_at AS "createdAt", created_by_name AS "createdByName"
+       FROM child_visibility_exclusions WHERE parent_team_id = $1`, [getActiveTeamId(req)]);
+    res.json(r.rows);
+  });
+  app.post("/api/child-visibility", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const entityType = String(req.body.entityType ?? "");
+    const entityId = parseInt(String(req.body.entityId ?? ""));
+    if (!["test", "test_entry", "product"].includes(entityType) || !entityId) {
+      return res.status(400).json({ message: "entityType (test|test_entry|product) and entityId required" });
+    }
+    const { pool: pCv } = await import("./db");
+    await (pCv as any).query(
+      `INSERT INTO child_visibility_exclusions (parent_team_id, entity_type, entity_id, created_at, created_by_name)
+       SELECT $1, $2, $3, $4, $5
+       WHERE NOT EXISTS (SELECT 1 FROM child_visibility_exclusions WHERE parent_team_id = $1 AND entity_type = $2 AND entity_id = $3)`,
+      [teamId, entityType, entityId, new Date().toISOString(), u.name]);
+    res.json({ ok: true });
+  });
+  app.delete("/api/child-visibility", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const entityType = String(req.query.entityType ?? req.body?.entityType ?? "");
+    const entityId = parseInt(String(req.query.entityId ?? req.body?.entityId ?? ""));
+    const { pool: pCv } = await import("./db");
+    await (pCv as any).query(
+      `DELETE FROM child_visibility_exclusions WHERE parent_team_id = $1 AND entity_type = $2 AND entity_id = $3`,
+      [getActiveTeamId(req), entityType, entityId]);
+    res.json({ ok: true });
+  });
+
+  // SA: emancipate a child team — it becomes fully independent. Optionally the
+  // parent's shared (visible, curated) data is COPIED into the child first, so
+  // they keep exactly what they could see.
+  app.post("/api/admin/teams/:id/emancipate", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    const teamId = parseInt(req.params.id);
+    const team = await storage.getTeam(teamId);
+    if (!team || !(team as any).parentTeamId) return res.status(400).json({ message: "Team has no parent" });
+    const withCopy = req.body.withCopy === true;
+    const share = await getParentShare(teamId);
+    const { pool: pEm } = await import("./db");
+    const copied: Record<string, number> = {};
+
+    if (withCopy && share) {
+      const excl = await getChildExclusions(share.parentTeamId);
+      const colCache = new Map<string, string[]>();
+      const colsOf = async (t: string) => {
+        if (!colCache.has(t)) {
+          const r = await (pEm as any).query(
+            `SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1`, [t]);
+          colCache.set(t, r.rows.map((x: any) => x.column_name));
+        }
+        return colCache.get(t)!;
+      };
+      const insertRow = async (table: string, row: any, overrides: Record<string, any>) => {
+        const valid = await colsOf(table);
+        const data: Record<string, any> = {};
+        for (const [k, v] of Object.entries(row)) if (k !== "id" && valid.includes(k)) data[k] = v;
+        Object.assign(data, overrides);
+        const cols = Object.keys(data);
+        const r = await (pEm as any).query(
+          `INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(",")}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(",")}) RETURNING id`,
+          cols.map((c) => data[c]));
+        copied[table] = (copied[table] ?? 0) + 1;
+        return r.rows[0]?.id ?? null;
+      };
+      const productMap = new Map<number, number>();
+      if (share.sharedAreas.includes("products")) {
+        const pr = await (pEm as any).query(`SELECT * FROM products WHERE team_id = $1`, [share.parentTeamId]);
+        for (const p of pr.rows) {
+          if (excl.products.has(p.id)) continue;
+          const nid = await insertRow("products", p, { team_id: teamId, group_scope: "" });
+          if (nid != null) productMap.set(p.id, nid);
+        }
+      }
+      if (share.sharedAreas.includes("tests")) {
+        const tr = await (pEm as any).query(
+          `SELECT * FROM tests WHERE team_id = $1 AND (test_ski_source IS NULL OR test_ski_source <> 'raceskis')`, [share.parentTeamId]);
+        for (const t of tr.rows) {
+          if (excl.tests.has(t.id)) continue;
+          const ntid = await insertRow("tests", t, { team_id: teamId, group_scope: "", series_id: null, weather_id: null, athlete_id: null });
+          if (ntid == null) continue;
+          const er = await (pEm as any).query(`SELECT * FROM test_entries WHERE test_id = $1`, [t.id]);
+          const visible = er.rows.filter((e: any) => !excl.entries.has(e.id) && !(e.product_id != null && excl.products.has(e.product_id)));
+          const camel = visible.map((e: any) => ({
+            ...e, productId: e.product_id, results: e.results,
+            result0kmCmBehind: e.result_0km_cm_behind, rank0km: e.rank_0km,
+            feelingRank: e.feeling_rank, kickRank: e.kick_rank,
+          }));
+          const recomputed = visible.length !== er.rows.length ? recomputeSharedEntries(camel) : camel;
+          for (const e of recomputed) {
+            await insertRow("test_entries", {
+              ...Object.fromEntries(Object.entries(e).filter(([k]) => !["productId", "result0kmCmBehind", "rank0km", "feelingRank", "kickRank"].includes(k))),
+              results: e.results,
+              result_0km_cm_behind: e.result0kmCmBehind,
+              rank_0km: e.rank0km,
+              feeling_rank: e.feelingRank,
+              kick_rank: e.kickRank,
+              product_id: e.productId != null ? (productMap.get(e.productId) ?? null) : null,
+              race_ski_id: null,
+            }, { test_id: ntid });
+          }
+        }
+      }
+      if (share.sharedAreas.includes("kick")) {
+        const skiMap = new Map<number, number>();
+        const ks = await (pEm as any).query(`SELECT * FROM kick_skis WHERE team_id = $1 AND archived_at IS NULL`, [share.parentTeamId]);
+        for (const s of ks.rows) {
+          const nid = await insertRow("kick_skis", s, { team_id: teamId, group_scope: "" });
+          if (nid != null) skiMap.set(s.id, nid);
+        }
+        const kt = await (pEm as any).query(`SELECT * FROM kick_tests WHERE team_id = $1`, [share.parentTeamId]);
+        for (const t of kt.rows) {
+          const ntid = await insertRow("kick_tests", t, { team_id: teamId, group_scope: "", weather_id: null });
+          if (ntid == null) continue;
+          const ke = await (pEm as any).query(`SELECT * FROM kick_test_entries WHERE kick_test_id = $1`, [t.id]);
+          for (const e of ke.rows) {
+            const mappedSki = skiMap.get(e.kick_ski_id);
+            if (mappedSki == null) continue;
+            await insertRow("kick_test_entries", e, { kick_test_id: ntid, kick_ski_id: mappedSki });
+          }
+        }
+        const km = await (pEm as any).query(`SELECT * FROM kick_mixes WHERE team_id = $1`, [share.parentTeamId]);
+        for (const m of km.rows) await insertRow("kick_mixes", m, { team_id: teamId, group_scope: "" });
+      }
+    }
+
+    await (pEm as any).query(`UPDATE teams SET parent_team_id = NULL, shared_areas = NULL WHERE id = $1`, [teamId]);
+    const now = new Date().toISOString();
+    await storage.createActivityLog({
+      userId: (u as any).id, userName: (u as any).name, action: "team_emancipated",
+      entityType: "team", entityId: teamId,
+      details: `Team made independent${withCopy ? ` — shared data copied (${Object.entries(copied).map(([t, n]) => `${t}:${n}`).join(", ") || "nothing"})` : " — no data copy"}`,
+      createdAt: now, groupScope: "", teamId,
+    } as any).catch(() => {});
+    if (share) {
+      await storage.createActivityLog({
+        userId: (u as any).id, userName: (u as any).name, action: "team_emancipated",
+        entityType: "team", entityId: teamId,
+        details: `Child team «${team.name}» made independent — sharing ended`,
+        createdAt: now, groupScope: "", teamId: share.parentTeamId,
+      } as any).catch(() => {});
+    }
+    res.json({ ok: true, copied });
+  });
+
   app.get("/api/admin/billing", requireAuth, async (req, res) => {
     const u = userInfo(req);
     if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });

@@ -1,6 +1,9 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { Fragment, useMemo } from "react";
 import { useRoute } from "wouter";
+import { useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/lib/auth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -195,6 +198,26 @@ function ProductDetailInner() {
   const [, params] = useRoute("/products/:id");
   const productId = params?.id ? parseInt(params.id, 10) : null;
 
+  // Parent-team curation: hide this product (and every ski pair using it) from
+  // child teams.
+  const { canManage } = useAuth();
+  const { data: childTeams = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/child-teams"],
+    enabled: canManage,
+  });
+  const { data: childExclusions = [] } = useQuery<{ entityType: string; entityId: number }[]>({
+    queryKey: ["/api/child-visibility"],
+    enabled: canManage && childTeams.length > 0,
+  });
+  const hiddenForChildren = childExclusions.some((x) => x.entityType === "product" && x.entityId === productId);
+  const childVisMutation = useMutation({
+    mutationFn: async (hide: boolean) => {
+      if (hide) await apiRequest("POST", "/api/child-visibility", { entityType: "product", entityId: productId });
+      else await apiRequest("DELETE", `/api/child-visibility?entityType=product&entityId=${productId}`);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/child-visibility"] }),
+  });
+
   const { data: allProducts = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
@@ -359,6 +382,17 @@ function ProductDetailInner() {
               <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700">
                 {L("Arkivert", "Archived")}
               </span>
+            )}
+            {canManage && childTeams.length > 0 && (
+              <button
+                type="button"
+                data-testid="button-toggle-child-product"
+                title={L("Skjul/vis dette produktet (og alle skipar som bruker det) for datterlag", "Hide/show this product (and every ski pair using it) for child teams")}
+                onClick={() => childVisMutation.mutate(!hiddenForChildren)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 transition-colors ${hiddenForChildren ? "bg-amber-50 text-amber-700 ring-amber-300 dark:bg-amber-900/20 dark:text-amber-300" : "ring-border text-muted-foreground hover:bg-muted"}`}
+              >
+                {hiddenForChildren ? L("Skjult for datterlag", "Hidden from child teams") : L("Synlig for datterlag", "Visible to child teams")}
+              </button>
             )}
             <h1
               className="text-2xl sm:text-3xl font-bold"

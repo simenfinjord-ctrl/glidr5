@@ -697,6 +697,9 @@ export default function Kick() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                         <span className="font-semibold">{test.date}</span>
+                        {(test as any).sharedFromTeam && (
+                          <span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(test as any).sharedFromTeam}</span>
+                        )}
                         {test.location && <span className="inline-flex items-center gap-1 text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{test.location}</span>}
                         {w && <span className="inline-flex items-center gap-1 text-muted-foreground"><Cloud className="h-3.5 w-3.5" />{w.airTemperatureC != null ? `${w.airTemperatureC}°C` : w.location}</span>}
                         {test.testPersons && <span className="inline-flex items-center gap-1 text-muted-foreground"><Users className="h-3.5 w-3.5" />{test.testPersons}</span>}

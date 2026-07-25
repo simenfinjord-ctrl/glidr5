@@ -4957,9 +4957,28 @@ export async function registerRoutes(
     const teamId = getActiveTeamId(req);
     if (!teamId) return res.status(400).json({ message: "No active team" });
     try {
-      // Fetch all active users whose primary team matches the caller's active team.
-      // users.teamId is the authoritative membership field — no cross-team join needed.
+      // Active users with the team as PRIMARY team, plus users SHARED into the
+      // team (user_teams / user_team_permissions) — a shared-in waxer is just
+      // as much a member of this team's daily work as a primary member.
       const rows = await storage.listUsers(teamId);
+      try {
+        const { pool } = await import("./db");
+        const shared = await (pool as any).query(
+          `SELECT DISTINCT u.* FROM users u
+           WHERE u.team_id <> $1 AND (
+             u.id IN (SELECT user_id FROM user_teams WHERE team_id = $1)
+             OR u.id IN (SELECT user_id FROM user_team_permissions WHERE team_id = $1)
+           )`, [teamId]);
+        const have = new Set(rows.map((r: any) => r.id));
+        for (const r of shared.rows) {
+          if (have.has(r.id)) continue;
+          rows.push({
+            ...r,
+            isActive: r.is_active, isAdmin: r.is_admin, isTeamAdmin: r.is_team_admin,
+            groupScope: r.group_scope, avatarUrl: r.avatar_url, createdAt: r.created_at,
+          } as any);
+        }
+      } catch (e) { console.error("[team/members] shared merge failed:", e); }
 
       const members = rows
         .filter((u) => u.isActive === 1 || u.isActive === true)
@@ -6665,12 +6684,24 @@ export async function registerRoutes(
     // access so they can work with the athlete right away.
     if (data.mainWaxerId !== undefined && before && before.mainWaxerId !== updated.mainWaxerId) {
       const { pool: pAcc } = await import("./db");
-      for (const uid of [before.mainWaxerId, updated.mainWaxerId]) {
-        if (uid == null) continue;
+      // Old waxer: regular shared access (view of the athlete's data).
+      if (before.mainWaxerId != null) {
         await (pAcc as any).query(
           `INSERT INTO athlete_access (athlete_id, user_id)
            SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM athlete_access WHERE athlete_id = $1 AND user_id = $2)`,
-          [id, uid]
+          [id, before.mainWaxerId]
+        );
+      }
+      // New waxer: full main-waxer capabilities — access WITH edit rights.
+      if (updated.mainWaxerId != null) {
+        await (pAcc as any).query(
+          `INSERT INTO athlete_access (athlete_id, user_id, can_edit)
+           SELECT $1, $2, 1 WHERE NOT EXISTS (SELECT 1 FROM athlete_access WHERE athlete_id = $1 AND user_id = $2)`,
+          [id, updated.mainWaxerId]
+        );
+        await (pAcc as any).query(
+          `UPDATE athlete_access SET can_edit = 1 WHERE athlete_id = $1 AND user_id = $2`,
+          [id, updated.mainWaxerId]
         );
       }
     }

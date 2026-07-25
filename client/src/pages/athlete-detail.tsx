@@ -2993,6 +2993,7 @@ export default function AthleteDetail() {
                   data-testid="button-garage-grid"
                 >
                   <LayoutGrid className="h-3 w-3" />
+                  <span>{L("Kort", "Cards")}</span>
                 </button>
                 <button
                   onClick={() => setGarageView("list")}
@@ -3003,6 +3004,7 @@ export default function AthleteDetail() {
                   data-testid="button-garage-list"
                 >
                   <List className="h-3 w-3" />
+                  <span>{L("Tabell", "Table")}</span>
                 </button>
               </div>
               <Button
@@ -3042,6 +3044,28 @@ export default function AthleteDetail() {
           </div>
 
           <CollapsibleContent>
+            {/* Always-visible discipline quick filter — one tap to see only
+                classic or only skate skis, on any screen size. */}
+            <div className="mt-3 flex items-center gap-1.5" data-testid="garage-discipline-chips">
+              {[
+                { v: "all", label: L("Alle", "All") },
+                { v: "Classic", label: L("Klassisk", "Classic") },
+                { v: "Skating", label: L("Skøyte", "Skate") },
+              ].map((c) => (
+                <button
+                  key={c.v}
+                  type="button"
+                  onClick={() => setGarageDisciplineFilter(c.v)}
+                  data-testid={`chip-garage-discipline-${c.v}`}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-medium ring-1 transition-colors",
+                    garageDisciplineFilter === c.v ? "bg-primary text-primary-foreground ring-primary" : "ring-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
             {/* Filter bar */}
             {showGarageFilters && (
               <div className="flex flex-wrap items-center gap-2 mt-3" data-testid="garage-filter-bar">
@@ -5245,8 +5269,11 @@ function SkiSuggestionsSection({
       <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-4">
         <CollapsibleTrigger asChild>
           <button className="flex items-center gap-2 cursor-pointer select-none group" data-testid="toggle-ski-suggestions">
-            <Snowflake className="h-4 w-4 text-sky-500" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+              <Snowflake className="h-4 w-4 text-primary" />
+            </div>
             <h2 className="text-lg font-semibold">{t("suggestions.skiTitle")}</h2>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{L("Trykk for å åpne", "Tap to open")}</span>
             {open ? (
               <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
             ) : (
@@ -7270,6 +7297,31 @@ function RaceSkiTestCard({
               )}
             </div>
           )}
+          {/* Mobile sort control — column-header taps are unreliable on touch,
+              so phones get an explicit sort dropdown with a direction toggle. */}
+          <div className="mb-2 flex items-center gap-2 sm:hidden">
+            <Select value={sortKey ?? "none"} onValueChange={(v) => { if (v === "none") { setSortKey(null); } else { setSortKey(v); setSortDir("asc"); } }}>
+              <SelectTrigger className="h-8 flex-1 text-xs" data-testid={`select-mobile-sort-${test.id}`}>
+                <SelectValue placeholder={L("Sorter etter…", "Sort by…")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{L("Ingen sortering", "No sorting")}</SelectItem>
+                <SelectItem value="skiId">{L("Ski-ID", "Ski ID")}</SelectItem>
+                <SelectItem value="brand">{L("Merke", "Brand")}</SelectItem>
+                <SelectItem value="grind">{L("Slip", "Grind")}</SelectItem>
+                <SelectItem value="result">{L("Resultat", "Result")}</SelectItem>
+                <SelectItem value="rank">Rank</SelectItem>
+                <SelectItem value="feeling">{L("Følelse", "Feeling")}</SelectItem>
+                <SelectItem value="year">{L("Årgang", "Year")}</SelectItem>
+              </SelectContent>
+            </Select>
+            {sortKey && (
+              <Button variant="outline" size="sm" className="h-8 px-3 text-xs" data-testid={`button-mobile-sort-dir-${test.id}`}
+                onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}>
+                {sortDir === "asc" ? "↑" : "↓"}
+              </Button>
+            )}
+          </div>
           <div className="overflow-x-auto rounded-xl border bg-card/50">
             <table className="w-full border-separate border-spacing-0 text-xs">
               <thead>

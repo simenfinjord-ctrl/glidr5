@@ -7,7 +7,7 @@ import {
   Plus, Pencil, DollarSign, Trash2, KeyRound, Check, X, Clock, Download, Upload, EyeOff, Eye, GitBranch,
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity, BarChart3,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle, Sparkles,
-  HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash, RotateCcw,
+  HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, ChevronRight, LockKeyhole, Hash, RotateCcw,
   MessageSquare, UserPlus, FileText, ExternalLink, LayoutDashboard, CreditCard, Mail, MoreVertical, MoreHorizontal, Search,
 } from "lucide-react";
 import {
@@ -3386,11 +3386,26 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
   }, 0);
 
   // ── Render ────────────────────────────────────────────────────────
+  const jumpTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   return (
     <div className="flex flex-col gap-5">
+      {/* Section jump nav — one long page, but never lost in it */}
+      <div className="flex flex-wrap gap-1.5" data-testid="accounting-nav">
+        {[
+          { id: "acct-key", label: L("Nøkkeltall", "Key figures") },
+          { id: "acct-billing", label: L("Fakturering", "Billing") },
+          { id: "acct-prices", label: L("Priser", "Prices") },
+          { id: "acct-history", label: L("Historikk", "History") },
+        ].map((sct) => (
+          <button key={sct.id} type="button" onClick={() => jumpTo(sct.id)}
+            className="rounded-full px-3 py-1 text-xs font-medium ring-1 ring-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            {sct.label}
+          </button>
+        ))}
+      </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div id="acct-key" className="scroll-mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
           { label: L("Totale inntekter (betalt)", "Total revenue (paid)"), value: `${totalRevenue.toLocaleString("no-NO")} NOK`, color: "text-foreground" },
           { label: t("admin.billingPaidThisYear"), value: `${paidThisYear.toLocaleString("no-NO")} NOK`, color: "text-green-600" },
@@ -3406,7 +3421,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
       </div>
 
       {/* Billing schedule */}
-      <Card className="rounded-2xl p-5">
+      <Card id="acct-billing" className="scroll-mt-4 rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-sm">{t("admin.billingScheduleTitle")}</h3>
           {payingTeams.length > 0 && (
@@ -3560,7 +3575,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
       </Card>
 
       {/* Plan price editor */}
-      <Card className="rounded-2xl p-5">
+      <Card id="acct-prices" className="scroll-mt-4 rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-sm">{t("admin.billingPricesTitle")}</h3>
           {!editingPrices ? (
@@ -3715,7 +3730,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
 
       {/* Paid history */}
       {paidRecords.length > 0 && (
-        <Card className="rounded-2xl p-5">
+        <Card id="acct-history" className="scroll-mt-4 rounded-2xl p-5">
           <h3 className="font-semibold text-sm mb-4">{t("admin.billingHistory")}</h3>
           <div className="flex flex-col gap-2">
             {paidRecords.map((r: any) => {
@@ -3906,12 +3921,23 @@ export default function Admin() {
     () => [...new Set(activities.map((a) => a.action).filter(Boolean))].sort(),
     [activities],
   );
-  const filteredActivities = useMemo(
-    () => (activityActionFilter === "all" ? activities
+  // Quick category chips (created/changed/deleted/access) on top of the
+  // exact-action dropdown — one tap to narrow the stream.
+  const [activityCategory, setActivityCategory] = useState<string>("all");
+  const activityCategoryOf = (action: string): string => {
+    if (/creat|added|import|signup/.test(action)) return "created";
+    if (/edit|updat|renam|chang|moved|restor/.test(action)) return "changed";
+    if (/delet|remov|purge/.test(action)) return "deleted";
+    if (/access|exported|viewed|login|stealth/.test(action)) return "access";
+    return "other";
+  };
+  const filteredActivities = useMemo(() => {
+    let list = activityActionFilter === "all" ? activities
       : activityActionFilter === "__deletions__" ? activities.filter((a) => a.action === "deleted")
-      : activities.filter((a) => a.action === activityActionFilter)),
-    [activities, activityActionFilter],
-  );
+      : activities.filter((a) => a.action === activityActionFilter);
+    if (activityCategory !== "all") list = list.filter((a) => activityCategoryOf(a.action) === activityCategory);
+    return list;
+  }, [activities, activityActionFilter, activityCategory]);
 
   const groupNames = apiGroups.map((g) => g.name);
 
@@ -4979,6 +5005,7 @@ export default function Admin() {
   });
 
   const [backupSheetInputs, setBackupSheetInputs] = useState<Record<number, string>>({});
+  const [expandedBackupTeam, setExpandedBackupTeam] = useState<number | null>(null);
   const [driveFolderInputs, setDriveFolderInputs] = useState<Record<number, string>>({});
 
   if (!user) return null;
@@ -6276,13 +6303,53 @@ export default function Admin() {
                 <h2 className="text-sm font-semibold text-foreground">{L("Google Sheets-sikkerhetskopi", "Google Sheets Backup")}</h2>
               </div>
               <p className="text-xs text-muted-foreground mb-4">{L("Lim inn en Google Sheets-URL for å sikkerhetskopiere alle data. Sikkerhetskopier kjøres automatisk hvert 30. minutt og kan også startes manuelt.", "Paste a Google Sheets URL to back up all data. Backups run automatically every 30 minutes and can also be triggered manually.")}</p>
-              <div className="space-y-4">
+              <div className="space-y-1.5">
                 {(isSuperAdmin ? teams : teams.filter((t) => t.id === user?.teamId)).map((team) => {
                   const inputVal = backupSheetInputs[team.id] ?? team.backupSheetUrl ?? '';
                   const hasChanged = inputVal !== (team.backupSheetUrl ?? '');
+                  // Collapsed status row per team: dot + last-run at a glance,
+                  // URL/config only when expanded — no wall of URL fields.
+                  const errAtRow = team.lastBackupErrorAt ? new Date(team.lastBackupErrorAt).getTime() : 0;
+                  const okAtRow = team.lastBackupAt ? new Date(team.lastBackupAt).getTime() : 0;
+                  const rowFailing = !!team.lastBackupError && errAtRow >= okAtRow;
+                  const rowConfigured = !!team.backupSheetUrl;
+                  const isOpen = expandedBackupTeam === team.id;
                   return (
-                    <div key={`backup-${team.id}`} className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
-                      {isSuperAdmin && <div className="text-xs font-semibold text-foreground/80">{team.name}</div>}
+                    <div key={`backup-${team.id}`} className={cn("rounded-xl border bg-muted/20", rowFailing ? "border-red-200 dark:border-red-900" : "border-border")}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left cursor-pointer select-none"
+                        onClick={() => setExpandedBackupTeam(isOpen ? null : team.id)}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpandedBackupTeam(isOpen ? null : team.id); }}
+                        data-testid={`backup-row-${team.id}`}
+                      >
+                        <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full",
+                          rowFailing ? "bg-red-500" : okAtRow > 0 ? "bg-emerald-500" : rowConfigured ? "bg-amber-400" : "bg-muted-foreground/30")} />
+                        <span className="text-sm font-medium text-foreground">{team.name}</span>
+                        <span className="text-[11px] text-muted-foreground truncate flex-1">
+                          {rowFailing
+                            ? `${L("Feilet", "Failed")} ${team.lastBackupErrorAt ? new Date(team.lastBackupErrorAt).toLocaleString() : ""}`
+                            : okAtRow > 0
+                            ? `${L("Sist", "Last")}: ${new Date(team.lastBackupAt!).toLocaleString()}`
+                            : rowConfigured
+                            ? L("Ingen backup fullført ennå", "No backup completed yet")
+                            : L("Ikke satt opp", "Not set up")}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7"
+                          data-testid={`button-run-backup-${team.id}`}
+                          disabled={!team.backupSheetUrl || runBackupMutation.isPending}
+                          onClick={(e) => { e.stopPropagation(); runBackupMutation.mutate(team.id); }}
+                        >
+                          {runBackupMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                        </Button>
+                        {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+                      </div>
+                      {isOpen && (
+                      <div className="px-3 pb-3 space-y-2">
                       <div className="flex items-center gap-2">
                         <Input
                           value={inputVal}
@@ -6302,20 +6369,6 @@ export default function Admin() {
                           }}
                         >
                           <Check className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          data-testid={`button-run-backup-${team.id}`}
-                          disabled={!team.backupSheetUrl || runBackupMutation.isPending}
-                          onClick={() => runBackupMutation.mutate(team.id)}
-                        >
-                          {runBackupMutation.isPending ? (
-                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Download className="h-3.5 w-3.5" />
-                          )}
-                          <span className="ml-1 text-xs">{L("Sikkerhetskopi", "Backup")}</span>
                         </Button>
                       </div>
                       {/* Visible backup verification: ✓ on success, ⚠ + reason on failure. */}
@@ -6347,6 +6400,8 @@ export default function Admin() {
                         }
                         return null;
                       })()}
+                      </div>
+                      )}
                     </div>
                   );
                 })}
@@ -6457,6 +6512,23 @@ export default function Admin() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="mb-3 flex flex-wrap gap-1.5" data-testid="activity-category-chips">
+                {[
+                  { v: "all", label: L("Alle", "All") },
+                  { v: "created", label: L("Opprettet", "Created") },
+                  { v: "changed", label: L("Endret", "Changed") },
+                  { v: "deleted", label: L("Slettet", "Deleted") },
+                  { v: "access", label: L("Innsyn og eksport", "Access & exports") },
+                  { v: "other", label: L("Annet", "Other") },
+                ].map((c) => (
+                  <button key={c.v} type="button" onClick={() => setActivityCategory(c.v)}
+                    data-testid={`activity-chip-${c.v}`}
+                    className={cn("rounded-full px-3 py-1 text-xs font-medium ring-1 transition-colors",
+                      activityCategory === c.v ? "bg-primary text-primary-foreground ring-primary" : "ring-border text-muted-foreground hover:bg-muted")}>
+                    {c.label}
+                  </button>
+                ))}
               </div>
               {filteredActivities.length === 0 ? (
                 <p className="text-sm text-muted-foreground" data-testid="empty-activity-log">{L("Ingen aktivitet registrert ennå.", "No activity recorded yet.")}</p>

@@ -8,7 +8,7 @@ import {
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity, BarChart3,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle, Sparkles,
   HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, ChevronRight, LockKeyhole, Hash, RotateCcw,
-  MessageSquare, UserPlus, FileText, ExternalLink, LayoutDashboard, CreditCard, Mail, MoreVertical, MoreHorizontal, Search,
+  MessageSquare, UserPlus, FileText, ExternalLink, LayoutDashboard, CreditCard, Mail, MoreVertical, MoreHorizontal, Search, ClipboardCheck,
 } from "lucide-react";
 import {
   PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS,
@@ -2547,6 +2547,71 @@ function AccessPreviewDialog({ user: pu, teams, onClose }: { user: ApiUser | nul
                   );
                 })}
               </div>
+            </div>
+
+            {/* The menu exactly as the user sees it — computed with the same
+                rules as the app shell: team areas ∪ shared areas, role grants,
+                per-user permissions and the special roles. */}
+            <div>
+              <div className="text-xs font-semibold mb-1.5">{L("Menyen slik brukeren ser den", "The menu as the user sees it")}</div>
+              {(() => {
+                const t2 = (k: string) => k; // labels resolved below
+                let sharedAreasArr: string[] = [];
+                try { sharedAreasArr = team && (team as any).sharedAreas ? JSON.parse((team as any).sharedAreas) : []; } catch { /* none */ }
+                const enabledSet = enabledAreas ? new Set([...enabledAreas, ...sharedAreasArr]) : null;
+                const isTesterU = !!(pu as any).isTester;
+                const isAthleteU = !!(pu as any).isAthleteAccess;
+                const athleteAllowed = ["dashboard", "tests", "raceskis", "analytics", "suggestions"];
+                const watchOn = !enabledSet || enabledSet.has("garmin_watch");
+                const NAV: { key: string; label: string }[] = [
+                  { key: "dashboard", label: "Dashboard" },
+                  { key: "tests", label: L("Tester", "Tests") },
+                  { key: "analytics", label: "Analytics" },
+                  { key: "suggestions", label: "Suggestions" },
+                  { key: "weather", label: L("Vær", "Weather") },
+                  { key: "testskis", label: "Testfleets" },
+                  { key: "products", label: L("Produkter", "Products") },
+                  { key: "grinding", label: "Grinding" },
+                  { key: "raceskis", label: "Athlete Skis" },
+                  { key: "kick", label: "Kick" },
+                  { key: "raceprep", label: "Race Prep" },
+                  { key: "liverunsheets", label: "Live Runsheets" },
+                ];
+                const rows: { label: string; visible: boolean; reason?: string }[] = NAV.map((n) => {
+                  if (isTesterU) return { label: n.label, visible: false, reason: L("tester-rolle", "tester role") };
+                  if (isAthleteU && !athleteAllowed.includes(n.key)) return { label: n.label, visible: false, reason: L("utøvertilgang", "athlete access") };
+                  const teamOff = !!enabledSet && !enabledSet.has(n.key);
+                  if (teamOff) return { label: n.label, visible: false, reason: L("av for laget", "off for team") };
+                  const lvl = roleGivesAll ? "edit" : (perms[n.key] ?? "none");
+                  if (lvl === "none") return { label: n.label, visible: false, reason: L("ingen tilgang", "no access") };
+                  return { label: n.label, visible: true };
+                });
+                rows.push({ label: "Watch Queue", visible: isTesterU || (watchOn && (roleGivesAll || !!(pu as any).garminWatch)), reason: isTesterU ? undefined : (!watchOn ? L("av for laget", "off for team") : L("krever Garmin-flagg", "needs Garmin flag")) });
+                if (!isTesterU && !isAthleteU) {
+                  rows.push({ label: "My Team", visible: true });
+                  rows.push({ label: "Admin", visible: roleGivesAll, reason: roleGivesAll ? undefined : L("kun admin-rolle", "admin role only") });
+                }
+                void t2;
+                return (
+                  <div className="rounded-xl border border-border p-2.5">
+                    <div className="flex flex-wrap gap-1.5">
+                      {rows.map((r) => (
+                        <span key={r.label} className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]",
+                          r.visible ? "bg-primary/10 text-primary font-medium" : "bg-muted text-muted-foreground line-through"
+                        )} title={r.visible ? undefined : r.reason}>
+                          {r.label}
+                          {!r.visible && r.reason && <span className="no-underline text-[9px] opacity-70">({r.reason})</span>}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-[10px] text-muted-foreground">
+                      {!!(pu as any).isBlindTester && <>{L("Blind-tester: ser aldri produktnavn i tester, runsheets eller analyser. ", "Blind tester: never sees product names in tests, runsheets or analytics. ")}</>}
+                      {L("Gjennomstrekede områder finnes ikke i menyen deres.", "Struck-through areas do not exist in their menu.")}
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
 
             {teamPerms.length > 0 && (
@@ -6743,6 +6808,27 @@ export default function Admin() {
 
         {activeTab === "guide" && (
           <div className="space-y-6">
+            {/* Test protocol — step-by-step verification checklist, own tab */}
+            <Card className="fs-card rounded-2xl p-6">
+              <div className="flex items-start gap-4">
+                <div className="rounded-xl bg-primary/10 p-3">
+                  <ClipboardCheck className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-semibold mb-1">{L("Testprotokoll", "Test protocol")}</h2>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {L("Steg-for-steg-verifisering av hele plattformen: bekreft hvert steg som OK eller marker mangler med notat. Fremdriften lagres automatisk og deles mellom enheter.",
+                       "Step-by-step verification of the entire platform: confirm each step OK or flag issues with a note. Progress is saved automatically and shared across devices.")}
+                  </p>
+                  <Button asChild data-testid="button-open-test-protocol">
+                    <a href="/test-protocol" target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      {L("Åpne testprotokollen", "Open the test protocol")}
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            </Card>
             <Card className="fs-card rounded-2xl p-6">
               <div className="flex items-start gap-4">
                 <div className="rounded-xl bg-violet-100 dark:bg-violet-900/30 p-3">

@@ -1108,6 +1108,43 @@ export async function registerRoutes(
     res.json(resolvePricing(merged));
   });
 
+  // ── Test protocol (SA) ─────────────────────────────────────────────────────
+  // Step-by-step verification checklist state: per-step OK / issue + note,
+  // persisted in app_settings so progress survives sessions and devices.
+  app.get("/api/admin/test-protocol", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    try {
+      const rows = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'test_protocol_state'`);
+      const row = ((rows as any).rows ?? rows)[0];
+      res.json(row?.value ? JSON.parse(row.value) : {});
+    } catch { res.json({}); }
+  });
+  app.put("/api/admin/test-protocol", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    let current: Record<string, any> = {};
+    try {
+      const rows = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'test_protocol_state'`);
+      const row = ((rows as any).rows ?? rows)[0];
+      if (row?.value) current = JSON.parse(row.value);
+    } catch { /* start empty */ }
+    if (req.body.reset === true) {
+      current = {};
+    } else {
+      const stepId = String(req.body.stepId ?? "");
+      if (!stepId) return res.status(400).json({ message: "stepId required" });
+      const status = req.body.status === "ok" || req.body.status === "issue" ? req.body.status : null;
+      if (status == null) delete current[stepId];
+      else current[stepId] = { status, note: String(req.body.note ?? ""), at: new Date().toISOString(), by: u.name };
+    }
+    await db.execute(sql`
+      INSERT INTO app_settings (key, value) VALUES ('test_protocol_state', ${JSON.stringify(current)})
+      ON CONFLICT (key) DO UPDATE SET value = ${JSON.stringify(current)}
+    `);
+    res.json(current);
+  });
+
   // PATCH /api/admin/plan-prices — SA only, update global plan prices
   app.patch("/api/admin/plan-prices", requireAuth, async (req, res) => {
     const u = req.user!;

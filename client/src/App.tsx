@@ -28,6 +28,7 @@ import NewTest from "@/pages/new-test";
 import TestDetail from "@/pages/test-detail";
 import EditTest from "@/pages/edit-test";
 import Admin from "@/pages/admin";
+import TestProtocol from "@/pages/test-protocol";
 import Analytics from "@/pages/analytics";
 import Profile from "@/pages/profile";
 import Grinding from "@/pages/grinding";
@@ -102,6 +103,7 @@ function Router() {
       <Route path="/my-team" component={MyTeam} />
       <Route path="/suggestions" component={Suggestions} />
       <Route path="/admin" component={Admin} />
+      <Route path="/test-protocol" component={TestProtocol} />
       <Route path="/overview" component={Overview} />
       <Route path="/what-is-glidr" component={WhatIsGlidr} />
       <Route path="/logo-preview" component={LogoPreview} />

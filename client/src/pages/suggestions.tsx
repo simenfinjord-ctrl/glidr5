@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { productLabel } from "@/lib/product-label";
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -323,8 +324,8 @@ function ComboRow({ rank, combo, productsById }: {
   const p1 = productsById.get(combo.product1Id);
   const p2 = productsById.get(combo.product2Id);
   if (!p1 || !p2) return null;
-  const p1Name = `${p1.brand} ${p1.name}`;
-  const p2Name = `${p2.brand} ${p2.name}`;
+  const p1Name = productLabel(p1);
+  const p2Name = productLabel(p2);
 
   return (
     <div className={cn(
@@ -534,7 +535,7 @@ export default function Suggestions() {
         if (s.partners.size > 0) {
           const [topId, topCount] = [...s.partners.entries()].sort((a, b) => b[1] - a[1])[0];
           const partner = productsById.get(topId);
-          if (partner) bestCombo = { name: `${partner.brand} ${partner.name}`, count: topCount };
+          if (partner) bestCombo = { name: productLabel(partner), count: topCount };
         }
         const conf: "High" | "Medium" | "Low" =
           usingFallback ? "Low" :
@@ -884,7 +885,7 @@ export default function Suggestions() {
                     {computed.glideProducts.map((r, idx) => {
                       const p = productsById.get(r.productId);
                       if (!p) return null;
-                      return <ProductRow key={r.productId} rank={idx + 1} productName={`${p.brand} ${p.name}`} result={r} />;
+                      return <ProductRow key={r.productId} rank={idx + 1} productName={productLabel(p)} result={r} />;
                     })}
                   </div>
                 )}
@@ -920,7 +921,7 @@ export default function Suggestions() {
                     {computed.structureProducts.map((r, idx) => {
                       const p = productsById.get(r.productId);
                       if (!p) return null;
-                      return <ProductRow key={r.productId} rank={idx + 1} productName={`${p.brand} ${p.name}`} result={r} />;
+                      return <ProductRow key={r.productId} rank={idx + 1} productName={productLabel(p)} result={r} />;
                     })}
                   </div>
                 )}

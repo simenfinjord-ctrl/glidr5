@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { productLabel } from "@/lib/product-label";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
@@ -1738,13 +1739,13 @@ export default function TestDetail() {
                     const appParts = entry.methodology ? entry.methodology.split("|") : [];
                     const productEntries = [
                       product
-                        ? { name: `${product.brand} ${product.name}`, app: parseApplication(appParts[0]?.trim() ?? "").interpreted }
+                        ? { name: productLabel(product), app: parseApplication(appParts[0]?.trim() ?? "").interpreted }
                         : ((entry as any).freeTextProduct
                             ? { name: (entry as any).freeTextProduct as string, app: parseApplication(appParts[0]?.trim() ?? "").interpreted }
                             : null),
                       ...additionalIds.map((aid, i) => {
                         const p = productsById.get(aid);
-                        return p ? { name: `${p.brand} ${p.name}`, app: parseApplication(appParts[i + 1]?.trim() ?? "").interpreted } : null;
+                        return p ? { name: productLabel(p), app: parseApplication(appParts[i + 1]?.trim() ?? "").interpreted } : null;
                       }),
                     ].filter((x): x is { name: string; app: string } => !!x);
 

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { productLabel } from "@/lib/product-label";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Radio, Trophy, User, Calendar, MapPin, Snowflake, LayoutGrid, LayoutList, Filter, Watch, ExternalLink } from "lucide-react";
@@ -135,7 +136,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
     staleTime: 120_000,
   });
   const productBySki = useMemo(() => {
-    const pmap = new Map(liveProducts.map((p: any) => [p.id, `${p.brand ? p.brand + " " : ""}${p.name}`.trim()]));
+    const pmap = new Map(liveProducts.map((p: any) => [p.id, productLabel(p)]));
     const m = new Map<number, string>();
     for (const e of liveEntries) {
       if (e.productId != null && pmap.has(e.productId)) m.set(e.skiNumber, pmap.get(e.productId)!);

@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useMemo, useState, useEffect } from "react";
+import { productLabel } from "@/lib/product-label";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft, FileDown, ChevronDown, ChevronUp, ChevronRight, ArrowRight, Footprints, FileText, Users, Cloud, Sparkles } from "lucide-react";
 import React from "react";
@@ -402,7 +403,7 @@ function OverviewStats({
       .map(([pid, s]) => {
         const p = productsById.get(pid);
         return {
-          name: p ? `${p.brand} ${p.name}` : `#${pid}`,
+          name: p ? productLabel(p) : `#${pid}`,
           appearances: s.appearances,
           avgRank: parseFloat((s.ranks.reduce((a, b) => a + b, 0) / s.ranks.length).toFixed(2)),
           winRate: parseFloat(((s.wins / s.ranks.length) * 100).toFixed(1)),
@@ -416,7 +417,7 @@ function OverviewStats({
     const mostUsed = Array.from(pStats.entries())
       .map(([pid, s]) => {
         const p = productsById.get(pid);
-        return { name: p ? `${p.brand} ${p.name}` : `#${pid}`, appearances: s.appearances };
+        return { name: p ? productLabel(p) : `#${pid}`, appearances: s.appearances };
       })
       .sort((a, b) => b.appearances - a.appearances)
       .slice(0, 8);
@@ -702,7 +703,7 @@ function FormTracker({ allEntries, productsById, testsById }: {
       if (!test) continue;
       if (!pData.has(e.productId)) {
         const p = productsById.get(e.productId);
-        pData.set(e.productId, { name: p ? `${p.brand} ${p.name}` : `#${e.productId}`, rankedEntries: [] });
+        pData.set(e.productId, { name: p ? productLabel(p) : `#${e.productId}`, rankedEntries: [] });
       }
       pData.get(e.productId)!.rankedEntries.push({ date: test.date, rank });
     }
@@ -882,7 +883,7 @@ function BestProductsByConditions({
       .map(([pid, s]) => {
         const p = productsById.get(pid);
         return {
-          name: p ? `${p.brand} ${p.name}` : `#${pid}`,
+          name: p ? productLabel(p) : `#${pid}`,
           avgRank: parseFloat((s.totalRank / s.count).toFixed(2)),
           wins: s.wins,
           tests: s.count,
@@ -1201,7 +1202,7 @@ function ProductSearchStats({
               data-testid="button-product-search"
             >
               <span className={cn("truncate", !selectedProduct && "text-muted-foreground")}>
-                {selectedProduct ? `${selectedProduct.brand} ${selectedProduct.name}` : "Search for a product..."}
+                {selectedProduct ? productLabel(selectedProduct) : "Search for a product..."}
               </span>
               <ChevronsUpDown className="h-4 w-4 opacity-60" />
             </Button>
@@ -1215,7 +1216,7 @@ function ProductSearchStats({
                   {products.map((p) => (
                     <CommandItem
                       key={p.id}
-                      value={`${p.brand} ${p.name}`}
+                      value={`${p.brand} ${p.name} ${p.category ?? ""}`}
                       onSelect={() => {
                         setSelectedProductId(p.id);
                         setOpen(false);
@@ -1451,8 +1452,8 @@ function ProductSearchStats({
                         const partner = productsById.get(c.partnerId);
                         const selParsed = c.selectedApp ? parseApplication(c.selectedApp) : null;
                         const partParsed = c.partnerApp ? parseApplication(c.partnerApp) : null;
-                        const selName = selectedProduct ? `${selectedProduct.brand} ${selectedProduct.name}` : "—";
-                        const partName = partner ? `${partner.brand} ${partner.name}` : `#${c.partnerId}`;
+                        const selName = selectedProduct ? productLabel(selectedProduct) : "—";
+                        const partName = partner ? productLabel(partner) : `#${c.partnerId}`;
                         const isOpen = expandedCombo === c.partnerId;
                         // Find all test results that contain this partner product
                         const comboTests = stats.testResults.filter(({ entry }) => {
@@ -1913,7 +1914,7 @@ function CombinationSearch({
               <CommandEmpty>{L("Ingen treff.", "No matches.")}</CommandEmpty>
               <CommandGroup>
                 {products.filter((p) => !productIds.includes(p.id)).map((p) => (
-                  <CommandItem key={p.id} value={`${p.brand} ${p.name}`} onSelect={() => {
+                  <CommandItem key={p.id} value={`${p.brand} ${p.name} ${p.category ?? ""}`} onSelect={() => {
                     setProductIds([...productIds, p.id]);
                     setAddOpen(false);
                   }}>
@@ -1944,7 +1945,7 @@ function CombinationSearch({
           const p = productsById.get(pid);
           return (
             <span key={pid} className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 dark:bg-violet-900/40 px-3 py-1 text-sm font-medium text-violet-800 dark:text-violet-200">
-              {p ? `${p.brand} ${p.name}` : `#${pid}`}
+              {p ? productLabel(p) : `#${pid}`}
               <button
                 onClick={() => setProductIds(productIds.filter((id) => id !== pid))}
                 className="ml-0.5 rounded-full hover:bg-violet-200 dark:hover:bg-violet-800 p-0.5 transition-colors"
@@ -2570,7 +2571,7 @@ export function ProductCompare({
                   {products.filter((p) => !selectedIds.includes(p.id)).map((p) => (
                     <CommandItem
                       key={p.id}
-                      value={`${p.brand} ${p.name}`}
+                      value={`${p.brand} ${p.name} ${p.category ?? ""}`}
                       onSelect={() => addProduct(p.id)}
                       data-testid={`option-compare-product-${p.id}`}
                     >
@@ -4220,7 +4221,7 @@ export default function Analytics() {
       const point: any = { month };
       for (const pid of topProductIds) {
         const p = productsById.get(pid);
-        const key = p ? `${p.brand} ${p.name}` : `Product ${pid}`;
+        const key = p ? productLabel(p) : `Product ${pid}`;
         point[key] = wins.get(pid)?.get(month) || 0;
       }
       return point;
@@ -4246,7 +4247,7 @@ export default function Analytics() {
       .map(([pid, r]) => {
         const p = productsById.get(pid);
         return {
-          name: p ? `${p.brand} ${p.name}` : `#${pid}`,
+          name: p ? productLabel(p) : `#${pid}`,
           avgRank: parseFloat((r.reduce((a, b) => a + b, 0) / r.length).toFixed(2)),
           tests: r.length,
         };
@@ -4340,7 +4341,7 @@ export default function Analytics() {
       .map(([pid, s]) => {
         const p = productsById.get(pid);
         return {
-          name: p ? `${p.brand} ${p.name}` : `#${pid}`,
+          name: p ? productLabel(p) : `#${pid}`,
           appearances: s.appearances,
           avgRank: parseFloat((s.ranks.reduce((a, b) => a + b, 0) / s.ranks.length).toFixed(2)),
           winRate: parseFloat(((s.wins / s.ranks.length) * 100).toFixed(1)),

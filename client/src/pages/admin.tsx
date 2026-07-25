@@ -6760,19 +6760,28 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
 
   const [xlsLoading, setXlsLoading] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [importSelections, setImportSelections] = useState({
-    series: true,
-    products: true,
-    tests: true,
-    weather: true,
-  });
 
-  const importOptions = [
-    { key: "series" as const, label: "Test Series" },
-    { key: "products" as const, label: "Products" },
-    { key: "tests" as const, label: "Tests & Results" },
-    { key: "weather" as const, label: "Weather Logs" },
-  ];
+  // Every data area, matching EXPORT_AREA_TABLES on the server. Used for BOTH
+  // the selective JSON download and the import.
+  const DATA_AREAS = [
+    { key: "tests",      label: L("Tester & resultater", "Tests & Results") },
+    { key: "testfleets", label: L("Testfleets (serier + slip)", "Testfleets (series + regrinds)") },
+    { key: "products",   label: L("Produkter", "Products") },
+    { key: "weather",    label: L("Vær", "Weather") },
+    { key: "athletes",   label: L("Utøvere & skipark", "Athletes & Race Skis") },
+    { key: "kick",       label: "Kick" },
+    { key: "raceprep",   label: "Race Prep" },
+    { key: "grinding",   label: "Grinding" },
+    { key: "runsheets",  label: L("Runsheets & Watch", "Runsheets & Watch"), exportOnly: true },
+    { key: "people",     label: L("Brukere, grupper & logger", "Users, groups & logs"), exportOnly: true },
+  ] as const;
+  const [importSelections, setImportSelections] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(DATA_AREAS.map((a) => [a.key, true]))
+  );
+  const [exportSelections, setExportSelections] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(DATA_AREAS.map((a) => [a.key, true]))
+  );
+  const importOptions = DATA_AREAS.filter((a) => !(a as any).exportOnly);
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -6781,24 +6790,33 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
     try {
       const text = await file.text();
       const raw = JSON.parse(text);
-      const data = {
-        series: importSelections.series ? raw.series : [],
-        products: importSelections.products ? raw.products : [],
-        tests: importSelections.tests ? raw.tests : [],
-        entriesByTest: importSelections.tests ? raw.entriesByTest : {},
-        weather: importSelections.weather ? raw.weather : [],
-      };
-      const res = await apiRequest("POST", "/api/admin/import", data);
-      const result = await res.json();
-      const parts = [];
-      if (importSelections.series) parts.push(`${result.imported.series} series`);
-      if (importSelections.products) parts.push(`${result.imported.products} products`);
-      if (importSelections.tests) parts.push(`${result.imported.tests} tests`);
-      if (importSelections.weather) parts.push(`${result.imported.weather} weather logs`);
-      toast({
-        title: L("Import fullført", "Import complete"),
-        description: `Imported: ${parts.join(", ")}. Skipped: ${result.imported.skipped} duplicates.`,
-      });
+      const selectedAreas = importOptions.filter((o) => importSelections[o.key]).map((o) => o.key);
+      let result: any;
+      if (raw?.meta?.format === 2 && raw.tables) {
+        // Complete (format 2) export — server dedupes and remaps ids per area.
+        const res = await apiRequest("POST", "/api/admin/import-v2", { tables: raw.tables, areas: selectedAreas });
+        result = await res.json();
+        const parts = Object.entries(result.imported ?? {}).map(([t, n]) => `${t}: ${n}`);
+        toast({
+          title: L("Import fullført", "Import complete"),
+          description: `${parts.length ? parts.join(", ") : L("Ingenting nytt", "Nothing new")} — ${result.skipped} ${L("duplikater hoppet over", "duplicates skipped")}${result.errors ? `, ${result.errors} ${L("rader feilet", "rows failed")}` : ""}`,
+        });
+      } else {
+        // Legacy export format (series/products/tests/weather arrays).
+        const data = {
+          series: importSelections.testfleets ? raw.series : [],
+          products: importSelections.products ? raw.products : [],
+          tests: importSelections.tests ? raw.tests : [],
+          entriesByTest: importSelections.tests ? raw.entriesByTest : {},
+          weather: importSelections.weather ? raw.weather : [],
+        };
+        const res = await apiRequest("POST", "/api/admin/import", data);
+        result = await res.json();
+        toast({
+          title: L("Import fullført", "Import complete"),
+          description: `${result.imported.series} series, ${result.imported.products} products, ${result.imported.tests} tests, ${result.imported.weather} weather. Skipped: ${result.imported.skipped}.`,
+        });
+      }
       queryClient.invalidateQueries();
     } catch (err: any) {
       toast({ title: L("Import mislyktes", "Import failed"), description: err.message, variant: "destructive" });
@@ -6953,7 +6971,24 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="rounded-xl border border-border bg-muted/30 p-4">
             <h3 className="text-sm font-medium text-foreground mb-1">{L("PDF-eksport", "PDF Export")}</h3>
-            <p className="text-xs text-muted-foreground mb-3">{L("Eksporter alle appdata som et omfattende PDF-dokument.", "Export all app data as a comprehensive PDF document.")}</p>
+            <p className="text-xs text-muted-foreground mb-2">{L("Eksporter alle appdata som et omfattende PDF-dokument.", "Export all app data as a comprehensive PDF document.")}</p>
+            {/* Area selection for the JSON download — all checked = everything */}
+            <div className="mb-3 flex flex-wrap gap-1.5" data-testid="export-area-selection">
+              {DATA_AREAS.map((a) => (
+                <button
+                  key={a.key}
+                  type="button"
+                  onClick={() => setExportSelections((prev) => ({ ...prev, [a.key]: !prev[a.key] }))}
+                  data-testid={`export-area-${a.key}`}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 transition-colors",
+                    exportSelections[a.key] ? "bg-primary/10 text-primary ring-primary/40" : "ring-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" data-testid="button-export-pdf-data" onClick={() => downloadFullPdf(exportTeamScopeParam)} disabled={pdfLoading}>
                 {pdfLoading ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
@@ -6963,7 +6998,11 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
                 try {
                   // Complete export via the auto-discovering engine: every table,
                   // per team — or the FULL SYSTEM when SA selects "All teams".
-                  const res = await apiRequest("GET", `/api/admin/export-json${exportTeamScopeParam}`);
+                  // Unchecked areas are left out (core config always included).
+                  const chosen = DATA_AREAS.filter((a) => exportSelections[a.key]).map((a) => a.key);
+                  const areasParam = chosen.length === DATA_AREAS.length ? "" :
+                    `${exportTeamScopeParam ? "&" : "?"}areas=${chosen.join(",")}`;
+                  const res = await apiRequest("GET", `/api/admin/export-json${exportTeamScopeParam}${areasParam}`);
                   const json = await res.text();
                   const blob = new Blob([json], { type: "application/json" });
                   const url = URL.createObjectURL(blob);

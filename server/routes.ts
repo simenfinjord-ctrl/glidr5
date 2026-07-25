@@ -1638,13 +1638,18 @@ export async function registerRoutes(
         createdAt: new Date().toISOString(), groupScope: u.groupScope.split(",")[0]?.trim() ?? "", teamId: teamId ?? getActiveTeamId(req),
       } as any);
     } catch (_) {}
+    // Optional ?areas=tests,kick,… — filters the export to the checked data
+    // areas; tables no area claims (teams/settings) are always included.
+    const areas = typeof req.query.areas === "string" && req.query.areas.trim() !== ""
+      ? String(req.query.areas).split(",").map((s) => s.trim()).filter(Boolean)
+      : null;
     let json: string; let filename: string;
     if (teamId == null) {
       if (!u.isAdmin) return res.status(403).json({ message: "Super Admin only" });
-      json = await buildSystemJsonExport();
+      json = await buildSystemJsonExport(areas);
       filename = `glidr-system-backup-${new Date().toISOString().slice(0, 10)}.json`;
     } else {
-      json = await buildTeamJsonExport(teamId, u.isAdmin);
+      json = await buildTeamJsonExport(teamId, u.isAdmin, areas);
       filename = `glidr-team-${teamId}-backup-${new Date().toISOString().slice(0, 10)}.json`;
     }
     res.setHeader('Content-Type', 'application/json');
@@ -4379,6 +4384,22 @@ export async function registerRoutes(
     const target = await storage.getUser(id);
     const deleted = await storage.deleteUser(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
+    // Full account cleanup — no trace of the ACCOUNT remains anywhere: logins,
+    // devices, sessions, memberships, shares, personal inbox and pending
+    // invitations/reset tokens all go. Data the user CREATED stays (their name
+    // is denormalized onto it), and the team activity log is kept by design.
+    try {
+      const { pool: pDel } = await import("./db");
+      await (pDel as any).query(`DELETE FROM login_logs WHERE user_id = $1`, [id]);
+      await (pDel as any).query(`DELETE FROM user_teams WHERE user_id = $1`, [id]);
+      await (pDel as any).query(`DELETE FROM user_team_permissions WHERE user_id = $1`, [id]);
+      await (pDel as any).query(`DELETE FROM athlete_access WHERE user_id = $1`, [id]);
+      await (pDel as any).query(`DELETE FROM inbox_messages WHERE to_user_id = $1`, [id]);
+      await (pDel as any).query(`DELETE FROM password_reset_tokens WHERE user_id = $1`, [id]).catch(() => {});
+      await (pDel as any).query(`DELETE FROM invitations WHERE email = $1`, [target?.email ?? ""]).catch(() => {});
+      // Kill any live sessions so the account is signed out everywhere instantly.
+      await (pDel as any).query(`DELETE FROM session WHERE sess->'passport'->>'user' = $1`, [String(id)]).catch(() => {});
+    } catch (e) { console.error("[user-delete] cleanup failed:", e); }
     if (target) {
       const { password, totpSecret, totpBackupCodes, ...safe } = target as any;
       await recordDeletion(req, "user", id, `User deleted: ${target.name} (${target.email})`, safe);
@@ -5818,6 +5839,127 @@ export async function registerRoutes(
       });
     } catch (_) {}
     res.json({ ok: true });
+  });
+
+  // Import for the complete (format 2) JSON export: every data area, with
+  // duplicate detection on natural keys and foreign-key remapping so a file
+  // from another install (or an older backup) lands cleanly in THIS team.
+  app.post("/api/admin/import-v2", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req) ?? u.teamId;
+    const tables = req.body?.tables;
+    const areas: string[] | null = Array.isArray(req.body?.areas) ? req.body.areas : null;
+    if (!tables || typeof tables !== "object") return res.status(400).json({ message: "Invalid import file (expected format 2 with a tables object)" });
+    const { pool: pImp } = await import("./db");
+
+    const colCache = new Map<string, string[]>();
+    const colsOf = async (t: string): Promise<string[]> => {
+      if (!colCache.has(t)) {
+        const r = await (pImp as any).query(
+          `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1`, [t]);
+        colCache.set(t, r.rows.map((x: any) => x.column_name));
+      }
+      return colCache.get(t)!;
+    };
+
+    const counts: Record<string, number> = {};
+    let skipped = 0;
+    let errors = 0;
+
+    // ID maps: old id in the file → id in this database (deduped or inserted).
+    const maps: Record<string, Map<any, number>> = {
+      products: new Map(), test_ski_series: new Map(), daily_weather: new Map(),
+      grind_profiles: new Map(), athletes: new Map(), race_skis: new Map(),
+      kick_skis: new Map(), kick_tests: new Map(), race_preps: new Map(), tests: new Map(),
+    };
+
+    // Ordered import plan. keys = natural key for duplicate detection (checked
+    // AFTER fk remap); fk maps old references to this database; requiredFk rows
+    // are skipped when the reference can't be resolved, optional fks are nulled.
+    const SPECS: { area: string; table: string; keys: string[]; fk?: Record<string, string>; requiredFk?: string[] }[] = [
+      { area: "products",   table: "products",          keys: ["brand", "name"] },
+      { area: "testfleets", table: "test_ski_series",   keys: ["name", "type"] },
+      { area: "testfleets", table: "test_ski_regrinds", keys: ["series_id", "date"], fk: { series_id: "test_ski_series" }, requiredFk: ["series_id"] },
+      { area: "weather",    table: "daily_weather",     keys: ["date", "location"] },
+      { area: "grinding",   table: "grind_profiles",    keys: ["name"] },
+      { area: "athletes",   table: "athletes",          keys: ["name"] },
+      { area: "athletes",   table: "race_skis",         keys: ["athlete_id", "ski_id"], fk: { athlete_id: "athletes" }, requiredFk: ["athlete_id"] },
+      { area: "athletes",   table: "race_ski_regrinds", keys: ["race_ski_id", "date"], fk: { race_ski_id: "race_skis" }, requiredFk: ["race_ski_id"] },
+      { area: "athletes",   table: "ski_race_usages",   keys: ["race_ski_id", "date"], fk: { race_ski_id: "race_skis", athlete_id: "athletes" }, requiredFk: ["race_ski_id"] },
+      { area: "kick",       table: "kick_skis",         keys: ["name"] },
+      { area: "kick",       table: "kick_mixes",        keys: ["name"] },
+      { area: "kick",       table: "kick_tests",        keys: ["date", "location"] },
+      { area: "kick",       table: "kick_test_entries", keys: ["kick_test_id", "kick_ski_id"], fk: { kick_test_id: "kick_tests", kick_ski_id: "kick_skis" }, requiredFk: ["kick_test_id", "kick_ski_id"] },
+      { area: "raceprep",   table: "race_preps",        keys: ["date", "location"] },
+      { area: "raceprep",   table: "race_prep_entries", keys: ["race_prep_id", "athlete_id"], fk: { race_prep_id: "race_preps", athlete_id: "athletes" }, requiredFk: ["race_prep_id"] },
+      { area: "tests",      table: "tests",             keys: ["date", "location", "created_at"], fk: { series_id: "test_ski_series", athlete_id: "athletes", weather_id: "daily_weather" } },
+      { area: "tests",      table: "test_entries",      keys: ["test_id", "ski_number"], fk: { test_id: "tests", product_id: "products", race_ski_id: "race_skis" }, requiredFk: ["test_id"] },
+    ];
+
+    const keyOf = (row: any, keys: string[]) => keys.map((k) => String(row[k] ?? "").toLowerCase()).join("|");
+
+    for (const spec of SPECS) {
+      if (areas && !areas.includes(spec.area)) continue;
+      const rows = Array.isArray(tables[spec.table]) ? tables[spec.table] : [];
+      if (rows.length === 0) continue;
+      const valid = await colsOf(spec.table);
+      if (valid.length === 0) continue;
+      const hasTeam = valid.includes("team_id");
+
+      const existing = await (pImp as any).query(
+        `SELECT * FROM "${spec.table}"${hasTeam ? " WHERE team_id = $1" : ""}`,
+        hasTeam ? [teamId] : []);
+      const exByKey = new Map<string, number>(existing.rows.map((r: any) => [keyOf(r, spec.keys), r.id]));
+
+      for (const raw of rows) {
+        try {
+          const row: Record<string, any> = {};
+          for (const [k, v] of Object.entries(raw)) {
+            if (k !== "id" && valid.includes(k)) row[k] = v;
+          }
+          // Remap foreign keys to THIS database's ids.
+          let unresolvable = false;
+          for (const [col, refTable] of Object.entries(spec.fk ?? {})) {
+            const old = (raw as any)[col];
+            if (old == null) continue;
+            const mapped = maps[refTable]?.get(old);
+            if (mapped != null) row[col] = mapped;
+            else if (spec.requiredFk?.includes(col)) { unresolvable = true; break; }
+            else row[col] = null;
+          }
+          if (unresolvable) { skipped++; continue; }
+          if (hasTeam) row.team_id = teamId;
+
+          const k = keyOf(row, spec.keys);
+          const existingId = exByKey.get(k);
+          if (existingId != null) {
+            maps[spec.table]?.set((raw as any).id, existingId);
+            skipped++;
+            continue;
+          }
+          const cols = Object.keys(row);
+          const r2 = await (pImp as any).query(
+            `INSERT INTO "${spec.table}" (${cols.map((c) => `"${c}"`).join(", ")}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(", ")}) RETURNING id`,
+            cols.map((c) => row[c]));
+          const nid = r2.rows[0]?.id;
+          if (nid != null) {
+            maps[spec.table]?.set((raw as any).id, nid);
+            exByKey.set(k, nid);
+            counts[spec.table] = (counts[spec.table] ?? 0) + 1;
+          }
+        } catch (e) { errors++; }
+      }
+    }
+
+    await storage.createActivityLog({
+      userId: u.id, userName: u.name, action: "imported_data",
+      entityType: "team", entityId: teamId,
+      details: `JSON import (v2): ${Object.entries(counts).map(([t, n]) => `${t}:${n}`).join(", ") || "nothing new"} — ${skipped} duplicates skipped${errors ? `, ${errors} rows failed` : ""}`,
+      createdAt: new Date().toISOString(), groupScope: "", teamId,
+    } as any).catch(() => {});
+
+    res.json({ ok: true, imported: counts, skipped, errors });
   });
 
   app.post("/api/admin/import", requireAuth, async (req, res) => {

@@ -1101,9 +1101,38 @@ async function dumpAllTables(teamId: number | null, includeOwnerCompliance: bool
   return { tables, counts, skipped };
 }
 
-export async function buildTeamJsonExport(teamId: number, includeOwnerCompliance = false): Promise<string> {
+// Data areas → tables, for selective export/import. Tables not claimed by any
+// area (teams, settings, billing …) are ALWAYS included so a filtered export
+// stays restorable. Keep in sync with the checkbox lists in the admin UI.
+export const EXPORT_AREA_TABLES: Record<string, string[]> = {
+  tests:      ['tests', 'test_entries', 'test_attachments', 'test_comments'],
+  testfleets: ['test_ski_series', 'test_ski_regrinds'],
+  products:   ['products'],
+  weather:    ['daily_weather'],
+  athletes:   ['athletes', 'athlete_access', 'race_skis', 'race_ski_regrinds', 'ski_race_usages', 'athlete_race_calendar', 'feedback_links'],
+  kick:       ['kick_skis', 'kick_tests', 'kick_test_entries', 'kick_mixes'],
+  raceprep:   ['race_preps', 'race_prep_entries', 'race_prep_comments'],
+  grinding:   ['grind_profiles', 'grinding_records', 'grinding_sheets'],
+  runsheets:  ['runsheets', 'runsheet_progress', 'watch_queue', 'watch_sessions'],
+  people:     ['users', 'groups', 'user_teams', 'user_team_permissions', 'activity_logs', 'login_logs', 'inbox_messages', 'invitations'],
+};
+
+/** Keep only tables in the selected areas, plus every table no area claims. */
+function filterTablesByAreas(tables: Record<string, any[]>, areas?: string[] | null): Record<string, any[]> {
+  if (!areas || areas.length === 0) return tables;
+  const claimed = new Set(Object.values(EXPORT_AREA_TABLES).flat());
+  const wanted = new Set(areas.flatMap((a) => EXPORT_AREA_TABLES[a] ?? []));
+  const out: Record<string, any[]> = {};
+  for (const [name, rows] of Object.entries(tables)) {
+    if (!claimed.has(name) || wanted.has(name)) out[name] = rows;
+  }
+  return out;
+}
+
+export async function buildTeamJsonExport(teamId: number, includeOwnerCompliance = false, areas?: string[] | null): Promise<string> {
   const team = await storage.getTeam(teamId);
-  const { tables, counts, skipped } = await dumpAllTables(teamId, includeOwnerCompliance);
+  const { tables: allTables, counts, skipped } = await dumpAllTables(teamId, includeOwnerCompliance);
+  const tables = filterTablesByAreas(allTables, areas);
   return JSON.stringify({
     meta: {
       format: 2,
@@ -1122,8 +1151,9 @@ export async function buildTeamJsonExport(teamId: number, includeOwnerCompliance
 
 // Full-system export (Super Admin): every table, every team, plus the global
 // tables that have no team link. Same engine, no team filter.
-export async function buildSystemJsonExport(): Promise<string> {
-  const { tables, counts, skipped } = await dumpAllTables(null, true);
+export async function buildSystemJsonExport(areas?: string[] | null): Promise<string> {
+  const { tables: allTables, counts, skipped } = await dumpAllTables(null, true);
+  const tables = filterTablesByAreas(allTables, areas);
   return JSON.stringify({
     meta: {
       format: 2,

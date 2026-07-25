@@ -328,6 +328,12 @@ export async function setupAuth(app: Express) {
               const team = await storage.getTeam(effectiveTeamId);
               if (team?.enabledAreas) {
                 teamEnabledAreas = JSON.parse(team.enabledAreas);
+                // Areas shared from a parent team count as enabled so the
+                // child team's nav shows them (read-only shared views).
+                try {
+                  const sharedA: string[] = JSON.parse((team as any).sharedAreas || "[]");
+                  for (const a of sharedA) if (teamEnabledAreas && !teamEnabledAreas.includes(a)) teamEnabledAreas.push(a);
+                } catch { /* none */ }
               }
             } catch {}
           }
@@ -364,6 +370,12 @@ export async function setupAuth(app: Express) {
         const team = await storage.getTeam(effectiveTeamId);
         if (team?.enabledAreas) {
           teamEnabledAreas = JSON.parse(team.enabledAreas);
+                // Areas shared from a parent team count as enabled so the
+                // child team's nav shows them (read-only shared views).
+                try {
+                  const sharedA: string[] = JSON.parse((team as any).sharedAreas || "[]");
+                  for (const a of sharedA) if (teamEnabledAreas && !teamEnabledAreas.includes(a)) teamEnabledAreas.push(a);
+                } catch { /* none */ }
         }
       } catch {}
     }

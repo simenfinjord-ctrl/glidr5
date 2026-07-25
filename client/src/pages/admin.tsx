@@ -6033,6 +6033,7 @@ export default function Admin() {
                           { key: "products", label: L("Produkter", "Products") },
                           { key: "kick", label: "Kick" },
                           { key: "weather", label: L("Vær", "Weather") },
+                          { key: "grinding", label: "Grinding" },
                         ].map((a) => {
                           const on = (parentForm.sharedAreas ?? []).includes(a.key);
                           return (

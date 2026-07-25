@@ -245,6 +245,13 @@ function requirePermission(area: PermissionArea, level: PermissionLevel) {
           const team = await storage.getTeam(effectiveTeamId);
           if (team?.enabledAreas) {
             const enabled: string[] = JSON.parse(team.enabledAreas);
+            // Child teams: areas shared from the parent count as enabled — the
+            // child must be able to OPEN e.g. Kick to see the shared data even
+            // when the area isn't part of their own plan.
+            try {
+              const sa: string[] = JSON.parse((team as any).sharedAreas || "[]");
+              for (const a of sa) if (!enabled.includes(a)) enabled.push(a);
+            } catch { /* no shared areas */ }
             if (!enabled.includes(area)) {
               return res.status(403).json({ message: "This area is not enabled for your team" });
             }
@@ -2934,6 +2941,8 @@ export async function registerRoutes(
         if (!pIds.includes(t.id)) continue;
         // Athlete race-ski tests stay private to the parent's athletes.
         if ((t as any).testSkiSource === "raceskis") continue;
+        // Grind tests are their own shared area — never implied by 'tests'.
+        if ((t as any).testType === "Grind" && !share.sharedAreas.includes("grinding")) continue;
         enriched.push({
           ...t,
           seriesName: (t as any).seriesId ? (pSeriesNames[(t as any).seriesId] || null) : null,
@@ -3317,7 +3326,8 @@ export async function registerRoutes(
       // Child team reading a shared parent test — read-only, and never a test
       // the parent has hidden.
       const share = await getParentShare(getActiveTeamId(req));
-      if (share && share.sharedAreas.includes("tests") && (test as any).teamId === share.parentTeamId && (test as any).testSkiSource !== "raceskis") {
+      if (share && share.sharedAreas.includes("tests") && (test as any).teamId === share.parentTeamId && (test as any).testSkiSource !== "raceskis"
+          && ((test as any).testType !== "Grind" || share.sharedAreas.includes("grinding"))) {
         const excl = await getChildExclusions(share.parentTeamId);
         if (!excl.tests.has(test.id) && u.permissions.tests !== "none") {
           return res.json({ ...test, sharedFromTeam: share.parentName, readOnly: true });
@@ -4426,7 +4436,8 @@ export async function registerRoutes(
     if (!verifyTeamOwnership(test, req)) {
       // Shared parent test → curated, recomputed entry view for the child.
       const share = await getParentShare(getActiveTeamId(req));
-      if (share && share.sharedAreas.includes("tests") && (test as any).teamId === share.parentTeamId && (test as any).testSkiSource !== "raceskis" && u.permissions.tests !== "none") {
+      if (share && share.sharedAreas.includes("tests") && (test as any).teamId === share.parentTeamId && (test as any).testSkiSource !== "raceskis" && u.permissions.tests !== "none"
+          && ((test as any).testType !== "Grind" || share.sharedAreas.includes("grinding"))) {
         const excl = await getChildExclusions(share.parentTeamId);
         if (!excl.tests.has(test.id)) {
           const all = await storage.listEntries(testId);
@@ -6826,7 +6837,7 @@ export async function registerRoutes(
       if (!parent) return res.status(404).json({ message: "Parent team not found" });
       if ((parent as any).parentTeamId) return res.status(400).json({ message: "Nested child teams are not supported (one level only)" });
     }
-    const allowedAreas = ["tests", "products", "kick", "weather"];
+    const allowedAreas = ["tests", "products", "kick", "weather", "grinding"];
     const sharedAreas = Array.isArray(req.body.sharedAreas)
       ? req.body.sharedAreas.filter((a: any) => allowedAreas.includes(a))
       : [];

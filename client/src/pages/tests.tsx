@@ -1671,7 +1671,7 @@ export default function Tests() {
                   onChange={setFilterLocation}
                   placeholder={t("common.location")}
                   data-testid="input-filter-location"
-                  sources="tests"
+                  options={[...new Set(tests.map((tt: any) => tt.location).filter(Boolean))].sort() as string[]}
                 />
               </div>
               {/* Extras: product, snow type */}

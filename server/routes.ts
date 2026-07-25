@@ -4578,13 +4578,15 @@ export async function registerRoutes(
     if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
     const id = parseInt(req.params.id);
     const { pool } = await import("./db");
-    const r = await (pool as any).query(`DELETE FROM login_logs WHERE id = $1 RETURNING user_name, team_id`, [id]);
+    // login_logs has no team column — resolve the row's team via its user.
+    const r = await (pool as any).query(`DELETE FROM login_logs WHERE id = $1 RETURNING name, user_id`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: "Not found" });
+    const owner = await storage.getUser(r.rows[0].user_id).catch(() => null);
     await storage.createActivityLog({
       userId: u.id, userName: u.name, action: "login_log_deleted",
       entityType: "login_log", entityId: id,
-      details: `Login-history row removed (${r.rows[0].user_name ?? id})`,
-      createdAt: new Date().toISOString(), groupScope: "", teamId: r.rows[0].team_id ?? null,
+      details: `Login-history row removed (${r.rows[0].name ?? id})`,
+      createdAt: new Date().toISOString(), groupScope: "", teamId: owner?.teamId ?? (u as any).activeTeamId ?? u.teamId,
     } as any).catch(() => {});
     res.json({ ok: true });
   });
@@ -4595,7 +4597,9 @@ export async function registerRoutes(
     const teamId = parseInt(String(req.query.teamId ?? ""));
     if (!teamId) return res.status(400).json({ message: "teamId required" });
     const { pool } = await import("./db");
-    const r = await (pool as any).query(`DELETE FROM login_logs WHERE team_id = $1`, [teamId]);
+    // login_logs has no team column — scope via the team's users.
+    const r = await (pool as any).query(
+      `DELETE FROM login_logs WHERE user_id IN (SELECT id FROM users WHERE team_id = $1)`, [teamId]);
     await storage.createActivityLog({
       userId: u.id, userName: u.name, action: "login_log_deleted",
       entityType: "login_log", entityId: teamId,

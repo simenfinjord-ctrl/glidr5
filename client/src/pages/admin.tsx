@@ -6413,7 +6413,8 @@ export default function Admin() {
               {loginLogs.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{L("Ingen innlogginger registrert ennå.", "No login records yet.")}</p>
               ) : (
-                <div className="max-h-[600px] overflow-y-auto">
+                /* pr-3 keeps the delete column clear of the overlay scrollbar */
+                <div className="max-h-[600px] overflow-y-auto pr-3">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
@@ -6453,10 +6454,16 @@ export default function Admin() {
                               <button
                                 title={L("Slett rad", "Delete row")}
                                 data-testid={`button-delete-login-${log.id}`}
-                                className="p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                onClick={async () => {
-                                  await apiRequest("DELETE", `/api/login-logs/${log.id}`);
-                                  queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith("/api/login-logs") });
+                                className="p-1.5 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await apiRequest("DELETE", `/api/login-logs/${log.id}`);
+                                    queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith("/api/login-logs") });
+                                    toast({ title: L("Rad slettet", "Row deleted") });
+                                  } catch (err) {
+                                    toast({ title: L("Sletting mislyktes", "Delete failed"), description: err instanceof Error ? err.message : "", variant: "destructive" });
+                                  }
                                 }}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />

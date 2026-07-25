@@ -8,7 +8,7 @@ import {
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity, BarChart3,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle, Sparkles,
   HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash, RotateCcw,
-  MessageSquare, UserPlus, FileText, ExternalLink, LayoutDashboard, CreditCard, Mail, MoreVertical, Search,
+  MessageSquare, UserPlus, FileText, ExternalLink, LayoutDashboard, CreditCard, Mail, MoreVertical, MoreHorizontal, Search,
 } from "lucide-react";
 import {
   PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS,
@@ -5499,8 +5499,16 @@ export default function Admin() {
                             </span>
                           )}
                         </div>
+                        {/* Compact access summary — the full area list lives in the
+                            tooltip and the Options dropdown, not on every row. */}
                         <div className="mt-0.5 text-[11px] text-muted-foreground truncate" title={permDetail} data-testid={`text-perm-summary-${u.id}`}>
-                          {permSummary}{totalActive > 0 && ` — ${permDetail}`}
+                          {(() => {
+                            const offAreas = PERMISSION_AREAS.filter((a) => userPerms[a] === "none");
+                            if (totalActive === 0) return <span className="text-red-500">{L("Ingen tilganger", "No access")}</span>;
+                            if (offAreas.length === 0) return L("Alle områder", "All areas");
+                            if (offAreas.length <= 3) return `${L("Alle unntatt", "All except")} ${offAreas.map((a) => t(`nav.${a}`)).join(", ")}`;
+                            return `${totalActive} ${L("av", "of")} ${PERMISSION_AREAS.length} ${L("områder", "areas")}`;
+                          })()}
                         </div>
                       </div>
                       <div className="flex items-center justify-end flex-shrink-0 border-t border-border/50 pt-2 sm:border-0 sm:pt-0">
@@ -6099,78 +6107,80 @@ export default function Admin() {
                           {!!team.isPaused && <> · <span className="text-red-500 font-medium">{L("Ingen medlemmer kan logge inn", "All members cannot log in")}</span></>}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        {team.isDefault !== 1 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            data-testid={`button-set-default-team-${team.id}`}
-                            onClick={() => setDefaultTeamMutation.mutate(team.id)}
-                            disabled={setDefaultTeamMutation.isPending}
-                            title={L("Sett som standard", "Set as default")}
-                          >
-                            <Shield className="h-4 w-4 text-green-500" />
-                          </Button>
-                        )}
+                      <div className="flex items-center gap-1.5">
+                        {/* One labelled primary action + everything else in a
+                            named menu — no more wall of mystery icons. */}
                         <Button
-                          variant="ghost"
-                          size="sm"
-                          data-testid={`button-pause-team-${team.id}`}
-                          title={team.isPaused ? L("Opphev lagpause", "Unpause team") : L("Sett laget på pause — medlemmer kan ikke logge inn", "Pause team — members cannot log in")}
-                          disabled={pauseTeamMutation.isPending}
-                          onClick={() => {
-                            const willPause = !team.isPaused;
-                            if (willPause && !confirm(`Pause "${team.name}"? All team members will be unable to log in while paused.`)) return;
-                            pauseTeamMutation.mutate({ id: team.id, paused: willPause });
-                          }}
-                          className={cn(team.isPaused ? "text-red-600 hover:text-red-700 hover:bg-red-50" : "text-muted-foreground hover:text-amber-600 hover:bg-amber-50")}
-                        >
-                          {team.isPaused ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-                        </Button>
-                        <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           data-testid={`button-configure-team-${team.id}`}
-                          title={L("Konfigurer funksjoner", "Configure features")}
                           onClick={() => setConfiguringTeam(team)}
                         >
-                          <Settings2 className="h-4 w-4" />
+                          <Settings2 className="h-3.5 w-3.5 mr-1.5" />
+                          {L("Funksjoner", "Features")}
                         </Button>
-                        <Button variant="ghost" size="sm" title={L("Sett grenser", "Set limits")} onClick={() => { setLimitsTeam(team); setLimitsForm({ maxUsers: team.maxUsers ?? team.max_users ?? "", maxGroups: team.maxGroups ?? team.max_groups ?? "", maxTests: team.maxTests ?? team.max_tests ?? "", maxProducts: team.maxProducts ?? team.max_products ?? "" }); }}>
-                          <Hash className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                        <Button variant="ghost" size="sm" title={L("Rediger plan / fakturering", "Edit plan / billing")} onClick={() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "", discountPercent: String((team as any).discountPercent ?? (team as any).discount_percent ?? 0), features: (() => { try { return JSON.parse((team as any).enabledAreas ?? (team as any).enabled_areas ?? "[]"); } catch { return []; } })(), maxUsers: String(team.maxUsers ?? (team as any).max_users ?? ""), maxGroups: String(team.maxGroups ?? (team as any).max_groups ?? "") }); }}>
-                          <DollarSign className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                        <Button variant="ghost" size="sm" title={L("Moderlag / datterlag", "Parent / child team")} data-testid={`button-parent-team-${team.id}`} onClick={() => {
-                          setParentTeamDialog(team);
-                          setParentForm({
-                            parentTeamId: (team as any).parentTeamId ?? (team as any).parent_team_id ?? null,
-                            sharedAreas: (() => { try { return JSON.parse((team as any).sharedAreas ?? (team as any).shared_areas ?? "[]"); } catch { return []; } })(),
-                          });
-                        }}>
-                          <GitBranch className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                        <Button variant="ghost" size="sm" title={L("Planhistorikk", "Plan history")} onClick={() => setHistoryTeam(team)}>
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                        <Button variant="ghost" size="sm" title={L("Rediger notater", "Edit notes")} onClick={() => { setNotesTeam(team); setNotesValue(team.notes ?? ""); }}>
-                          <MessageSquare className={cn("h-4 w-4", team.notes ? "text-blue-500" : "text-muted-foreground")} />
-                        </Button>
-                        {team.isDefault !== 1 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            data-testid={`button-delete-team-${team.id}`}
-                            onClick={() => {
-                              if (confirm(`Delete team "${team.name}"? All data belonging to this team will be orphaned.`)) {
-                                deleteTeamMutation.mutate(team.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" data-testid={`button-team-options-${team.id}`}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-60">
+                            <DropdownMenuItem className="gap-2" onSelect={() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "", discountPercent: String((team as any).discountPercent ?? (team as any).discount_percent ?? 0), features: (() => { try { return JSON.parse((team as any).enabledAreas ?? (team as any).enabled_areas ?? "[]"); } catch { return []; } })(), maxUsers: String(team.maxUsers ?? (team as any).max_users ?? ""), maxGroups: String(team.maxGroups ?? (team as any).max_groups ?? "") }); }}>
+                              <DollarSign className="h-4 w-4 text-muted-foreground" />{L("Plan og fakturering", "Plan & billing")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="gap-2" onSelect={() => { setLimitsTeam(team); setLimitsForm({ maxUsers: team.maxUsers ?? team.max_users ?? "", maxGroups: team.maxGroups ?? team.max_groups ?? "", maxTests: team.maxTests ?? team.max_tests ?? "", maxProducts: team.maxProducts ?? team.max_products ?? "" }); }}>
+                              <Hash className="h-4 w-4 text-muted-foreground" />{L("Grenser (brukere, grupper …)", "Limits (users, groups …)")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="gap-2" data-testid={`button-parent-team-${team.id}`} onSelect={() => {
+                              setParentTeamDialog(team);
+                              setParentForm({
+                                parentTeamId: (team as any).parentTeamId ?? (team as any).parent_team_id ?? null,
+                                sharedAreas: (() => { try { return JSON.parse((team as any).sharedAreas ?? (team as any).shared_areas ?? "[]"); } catch { return []; } })(),
+                              });
+                            }}>
+                              <GitBranch className="h-4 w-4 text-muted-foreground" />{L("Moderlag / datterlag", "Parent / child team")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="gap-2" onSelect={() => setHistoryTeam(team)}>
+                              <Clock className="h-4 w-4 text-muted-foreground" />{L("Planhistorikk", "Plan history")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="gap-2" onSelect={() => { setNotesTeam(team); setNotesValue(team.notes ?? ""); }}>
+                              <MessageSquare className={cn("h-4 w-4", team.notes ? "text-primary" : "text-muted-foreground")} />{L("Notater", "Notes")}{team.notes ? " •" : ""}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {team.isDefault !== 1 && (
+                              <DropdownMenuItem className="gap-2" data-testid={`button-set-default-team-${team.id}`} disabled={setDefaultTeamMutation.isPending} onSelect={() => setDefaultTeamMutation.mutate(team.id)}>
+                                <Shield className="h-4 w-4 text-green-500" />{L("Sett som standardlag", "Set as default team")}
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              className={cn("gap-2", team.isPaused ? "" : "text-amber-600 focus:text-amber-600")}
+                              data-testid={`button-pause-team-${team.id}`}
+                              disabled={pauseTeamMutation.isPending}
+                              onSelect={() => {
+                                const willPause = !team.isPaused;
+                                if (willPause && !confirm(`Pause "${team.name}"? All team members will be unable to log in while paused.`)) return;
+                                pauseTeamMutation.mutate({ id: team.id, paused: willPause });
+                              }}
+                            >
+                              {team.isPaused ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+                              {team.isPaused ? L("Opphev lagpause", "Unpause team") : L("Pause laget (ingen innlogging)", "Pause team (no logins)")}
+                            </DropdownMenuItem>
+                            {team.isDefault !== 1 && (
+                              <DropdownMenuItem
+                                className="gap-2 text-red-600 focus:text-red-600"
+                                data-testid={`button-delete-team-${team.id}`}
+                                onSelect={() => {
+                                  if (confirm(`Delete team "${team.name}"? All data belonging to this team will be orphaned.`)) {
+                                    deleteTeamMutation.mutate(team.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />{L("Slett lag", "Delete team")}
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                       </div>
                       {team.notes && (

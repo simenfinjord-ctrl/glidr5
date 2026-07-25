@@ -64,6 +64,11 @@ export function ProductCombobox({
           <span className={cn("truncate", !selected && "text-muted-foreground")}>
             {selected ? `${selected.brand} ${selected.name}` : "Select product"}
           </span>
+          {selected && !isStructureTool(selected.category) && (
+            <span className="ml-1.5 shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {selected.category}
+            </span>
+          )}
           <ChevronsUpDown className="h-4 w-4 opacity-60" />
         </Button>
       </PopoverTrigger>
@@ -78,7 +83,7 @@ export function ProductCombobox({
                 return (
                   <CommandItem
                     key={p.id}
-                    value={`${p.brand} ${p.name}`}
+                    value={`${p.brand} ${p.name} ${p.category}`}
                     onSelect={() => {
                       onChange(p.id);
                       setOpen(false);
@@ -86,6 +91,10 @@ export function ProductCombobox({
                     data-testid={`option-product-${p.id}`}
                   >
                     <span className="truncate">{p.brand} {p.name}</span>
+                    {/* Product form (Paraffin / Liquid / Block) — visible while picking */}
+                    <span className="ml-2 shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      {p.category}
+                    </span>
                     <Check className={cn("ml-auto h-4 w-4", isSelected ? "opacity-100" : "opacity-0")} />
                   </CommandItem>
                 );

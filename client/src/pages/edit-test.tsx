@@ -765,7 +765,7 @@ export default function EditTest() {
                             onChange={field.onChange}
                             data-testid="input-test-location"
                             placeholder={L("f.eks. Park City", "e.g., Park City")}
-                          />
+                           sources="tests" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

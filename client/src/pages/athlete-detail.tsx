@@ -3528,7 +3528,7 @@ export default function AthleteDetail() {
                       placeholder={L("Sted…", "Location…")}
                       className="min-w-[140px]"
                       inputClassName="h-8 text-xs"
-                    />
+                     sources="tests" />
                     {/* Extra: Sort */}
                     <Select value={testSortBy} onValueChange={setTestSortBy}>
                       <SelectTrigger className="h-8 min-w-[130px] text-xs" data-testid="select-test-sort">
@@ -3830,7 +3830,7 @@ export default function AthleteDetail() {
                         onChange={(v) => setTestForm((f) => ({ ...f, location: v }))}
                         placeholder="e.g., Davos"
                         data-testid="input-test-location"
-                      />
+                       sources="tests" />
                     </div>
                     <div>
                       <label className="mb-1 block text-sm font-medium">{L("Testtype", "Test Type")}</label>

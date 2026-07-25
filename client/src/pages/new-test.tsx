@@ -702,7 +702,7 @@ export default function NewTest() {
                             onChange={field.onChange}
                             data-testid="input-test-location"
                             placeholder={t("newTest.locationPlaceholder")}
-                          />
+                           sources="tests" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

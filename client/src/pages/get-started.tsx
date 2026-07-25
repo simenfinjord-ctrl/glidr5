@@ -570,8 +570,9 @@ export default function GetStarted() {
   const { commercializationEnabled } = useAppSettings();
   const t = CONTENT[lang];
   const [mode, setMode] = useState<"build" | "form" | "contact" | null>(null);
-  // Self-service is the default entry when commercialization is on.
-  const activeMode = mode ?? (commercializationEnabled ? "build" : "form");
+  // Self-service is the default entry when commercialization is on. When it is
+  // OFF the whole signup surface is hidden — only direct contact remains.
+  const activeMode = commercializationEnabled ? (mode ?? "build") : "contact";
   const [fields, setFields] = useState(INITIAL);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -631,18 +632,20 @@ export default function GetStarted() {
       </div>
 
       <div className={`mx-auto px-4 pt-8 ${activeMode === "build" ? "max-w-5xl" : "max-w-3xl"}`}>
-        {/* Mode toggle */}
-        <div className={`grid gap-3 mb-8 ${commercializationEnabled ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2"}`}>
-          {commercializationEnabled && modeBtn("build",
-            <Sparkles className={`h-5 w-5 mb-2 ${activeMode === "build" ? "text-foreground" : "text-muted-foreground"}`} />,
-            t.modeBuild.title, t.modeBuild.sub)}
-          {modeBtn("form",
-            <FileText className={`h-5 w-5 mb-2 ${activeMode === "form" ? "text-foreground" : "text-muted-foreground"}`} />,
-            t.modeForm.title, t.modeForm.sub)}
-          {modeBtn("contact",
-            <Mail className={`h-5 w-5 mb-2 ${activeMode === "contact" ? "text-foreground" : "text-muted-foreground"}`} />,
-            t.modeContact.title, t.modeContact.sub)}
-        </div>
+        {/* Mode toggle — hidden entirely while commercialization is off */}
+        {commercializationEnabled && (
+          <div className="grid gap-3 mb-8 grid-cols-1 sm:grid-cols-3">
+            {modeBtn("build",
+              <Sparkles className={`h-5 w-5 mb-2 ${activeMode === "build" ? "text-foreground" : "text-muted-foreground"}`} />,
+              t.modeBuild.title, t.modeBuild.sub)}
+            {modeBtn("form",
+              <FileText className={`h-5 w-5 mb-2 ${activeMode === "form" ? "text-foreground" : "text-muted-foreground"}`} />,
+              t.modeForm.title, t.modeForm.sub)}
+            {modeBtn("contact",
+              <Mail className={`h-5 w-5 mb-2 ${activeMode === "contact" ? "text-foreground" : "text-muted-foreground"}`} />,
+              t.modeContact.title, t.modeContact.sub)}
+          </div>
+        )}
 
         {/* Self-service plan builder */}
         {activeMode === "build" && commercializationEnabled && <PlanBuilder lang={lang} />}
@@ -672,13 +675,15 @@ export default function GetStarted() {
                 </div>
               </div>
             </div>
-            <div className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">
-              {t.contact.switchPrompt}{" "}
-              <button onClick={() => setMode("form")} className="underline font-medium text-foreground">
-                {t.contact.switchLink}
-              </button>{" "}
-              {t.contact.switchSuffix}
-            </div>
+            {commercializationEnabled && (
+              <div className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">
+                {t.contact.switchPrompt}{" "}
+                <button onClick={() => setMode("form")} className="underline font-medium text-foreground">
+                  {t.contact.switchLink}
+                </button>{" "}
+                {t.contact.switchSuffix}
+              </div>
+            )}
           </div>
         )}
 

@@ -413,10 +413,12 @@ export default function Demo() {
           <h1 className="text-4xl sm:text-5xl font-bold mb-4">{t.title}</h1>
           <p className="text-background/70 text-lg max-w-xl mx-auto mb-8">{t.sub}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/get-started" className="rounded-xl bg-background text-foreground px-8 py-3 font-semibold text-sm hover:bg-background/90 flex items-center justify-center gap-2">
-              <Zap className="h-4 w-4" />
-              {t.cta1}
-            </Link>
+            {commercializationEnabled && (
+              <Link href="/get-started" className="rounded-xl bg-background text-foreground px-8 py-3 font-semibold text-sm hover:bg-background/90 flex items-center justify-center gap-2">
+                <Zap className="h-4 w-4" />
+                {t.cta1}
+              </Link>
+            )}
             {commercializationEnabled && (
               <Link href="/pricing" className="rounded-xl border border-background/30 text-background px-8 py-3 font-semibold text-sm hover:bg-background/10 flex items-center justify-center gap-2">
                 {t.cta2}
@@ -525,10 +527,12 @@ export default function Demo() {
           <h2 className="text-3xl font-bold text-foreground mb-4">{t.bottomTitle}</h2>
           <p className="text-muted-foreground mb-8">{t.bottomSub}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/get-started" className="rounded-xl bg-foreground text-background px-8 py-3 font-semibold text-sm hover:opacity-90 flex items-center justify-center gap-2">
-              <Zap className="h-4 w-4" />
-              {t.bottomCta1}
-            </Link>
+            {commercializationEnabled && (
+              <Link href="/get-started" className="rounded-xl bg-foreground text-background px-8 py-3 font-semibold text-sm hover:opacity-90 flex items-center justify-center gap-2">
+                <Zap className="h-4 w-4" />
+                {t.bottomCta1}
+              </Link>
+            )}
             {commercializationEnabled && (
               <Link href="/pricing" className="rounded-xl border px-8 py-3 font-semibold text-sm hover:bg-muted flex items-center justify-center gap-2 text-foreground">
                 {t.bottomCta2}

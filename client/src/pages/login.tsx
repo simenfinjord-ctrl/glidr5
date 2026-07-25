@@ -259,12 +259,15 @@ export default function Login() {
                     {isSubmitting ? t("auth.signingIn") : t("auth.signIn")}
                   </Button>
 
-                  <div className="text-center pt-2">
-                    <span className="text-sm text-muted-foreground">{t("auth.newUser")} </span>
-                    <Link href="/get-started" className="text-sm font-medium text-foreground underline underline-offset-4 hover:opacity-70">
-                      {t("auth.getStartedLink")}
-                    </Link>
-                  </div>
+                  {/* Self-service entry — only while commercialization is on */}
+                  {commercializationEnabled && (
+                    <div className="text-center pt-2">
+                      <span className="text-sm text-muted-foreground">{t("auth.newUser")} </span>
+                      <Link href="/get-started" className="text-sm font-medium text-foreground underline underline-offset-4 hover:opacity-70">
+                        {t("auth.getStartedLink")}
+                      </Link>
+                    </div>
+                  )}
                 </form>
               </Form>
             )}

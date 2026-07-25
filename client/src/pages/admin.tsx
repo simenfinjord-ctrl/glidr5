@@ -6279,6 +6279,21 @@ export default function Admin() {
                   <Clock className="h-4 w-4 text-indigo-600" />
                 </div>
                 <h2 className="text-sm font-semibold text-foreground">{L("Innloggingshistorikk", "Login History")} ({loginLogs.length})</h2>
+                {isSuperAdmin && loginLogs.length > 0 && (
+                  <Button
+                    variant="ghost" size="sm" className="ml-auto text-xs text-muted-foreground hover:text-red-600"
+                    data-testid="button-clear-login-history"
+                    onClick={async () => {
+                      const tid = user?.activeTeamId ?? user?.teamId;
+                      if (!tid) return;
+                      if (!confirm(L("Slette HELE innloggingshistorikken for dette laget?", "Delete this team's ENTIRE login history?"))) return;
+                      await apiRequest("DELETE", `/api/login-logs?teamId=${tid}`);
+                      queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith("/api/login-logs") });
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />{L("Tøm for laget", "Clear for team")}
+                  </Button>
+                )}
               </div>
               {loginLogs.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{L("Ingen innlogginger registrert ennå.", "No login records yet.")}</p>
@@ -6293,6 +6308,7 @@ export default function Admin() {
                         <th className="pb-2 pr-3">{L("Enhet", "Device")}</th>
                         {isSuperAdmin && <th className="pb-2 pr-3">{L("Enhets-ID", "Device ID")}</th>}
                         <th className="pb-2">{L("Tid", "Time")}</th>
+                        {isSuperAdmin && <th className="pb-2" />}
                       </tr>
                     </thead>
                     <tbody>
@@ -6317,6 +6333,21 @@ export default function Admin() {
                           <td className="py-2 text-muted-foreground">
                             {new Date(log.loginAt).toLocaleString()}
                           </td>
+                          {isSuperAdmin && (
+                            <td className="py-2 pl-2 text-right">
+                              <button
+                                title={L("Slett rad", "Delete row")}
+                                data-testid={`button-delete-login-${log.id}`}
+                                className="p-1 rounded text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                onClick={async () => {
+                                  await apiRequest("DELETE", `/api/login-logs/${log.id}`);
+                                  queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith("/api/login-logs") });
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </td>
+                          )}
                         </tr>
                         );
                       })}

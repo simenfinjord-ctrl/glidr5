@@ -42,9 +42,11 @@ export function PublicNav() {
           <Link href="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground px-3 py-1.5">
             Log in
           </Link>
-          <Link href="/get-started" className="text-sm font-semibold bg-foreground text-background px-4 py-1.5 rounded-lg hover:opacity-90 transition-opacity">
-            Get started
-          </Link>
+          {commercializationEnabled && (
+            <Link href="/get-started" className="text-sm font-semibold bg-foreground text-background px-4 py-1.5 rounded-lg hover:opacity-90 transition-opacity">
+              Get started
+            </Link>
+          )}
           <button
             onClick={() => setLang(lang === "en" ? "no" : "en")}
             className="text-xs font-semibold px-2 py-1 rounded border border-border hover:bg-muted transition-colors text-muted-foreground"
@@ -79,9 +81,11 @@ export function PublicNav() {
             <Link href="/login" className="flex-1 text-center text-sm font-medium border border-border rounded-lg py-2 hover:bg-muted" onClick={() => setOpen(false)}>
               Log in
             </Link>
-            <Link href="/get-started" className="flex-1 text-center text-sm font-semibold bg-foreground text-background rounded-lg py-2 hover:opacity-90" onClick={() => setOpen(false)}>
-              Get started
-            </Link>
+            {commercializationEnabled && (
+              <Link href="/get-started" className="flex-1 text-center text-sm font-semibold bg-foreground text-background rounded-lg py-2 hover:opacity-90" onClick={() => setOpen(false)}>
+                Get started
+              </Link>
+            )}
           </div>
         </div>
       )}

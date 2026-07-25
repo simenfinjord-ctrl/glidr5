@@ -78,7 +78,7 @@ export async function setupAuth(app: Express) {
 
   const PgStore = pgSession(session);
 
-  const REMEMBER_ME_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
+  const REMEMBER_ME_MAX_AGE = 3 * 24 * 60 * 60 * 1000;
   const DEFAULT_MAX_AGE = 24 * 60 * 60 * 1000;
 
   const sessionSecret = process.env.SESSION_SECRET;

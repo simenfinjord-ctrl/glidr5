@@ -4550,6 +4550,40 @@ export async function registerRoutes(
     res.json(logs.filter((l: any) => (l.action ?? "login") === "login"));
   });
 
+  // SA only: remove login-history rows (single row, or a whole team's history).
+  // The deletion itself is recorded in the activity log so SA keeps a trace.
+  app.delete("/api/login-logs/:id", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    const id = parseInt(req.params.id);
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(`DELETE FROM login_logs WHERE id = $1 RETURNING user_name, team_id`, [id]);
+    if (!r.rows.length) return res.status(404).json({ message: "Not found" });
+    await storage.createActivityLog({
+      userId: u.id, userName: u.name, action: "login_log_deleted",
+      entityType: "login_log", entityId: id,
+      details: `Login-history row removed (${r.rows[0].user_name ?? id})`,
+      createdAt: new Date().toISOString(), groupScope: "", teamId: r.rows[0].team_id ?? null,
+    } as any).catch(() => {});
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/login-logs", requireAuth, async (req, res) => {
+    const u = req.user!;
+    if (u.isAdmin !== 1) return res.status(403).json({ message: "Super Admin only" });
+    const teamId = parseInt(String(req.query.teamId ?? ""));
+    if (!teamId) return res.status(400).json({ message: "teamId required" });
+    const { pool } = await import("./db");
+    const r = await (pool as any).query(`DELETE FROM login_logs WHERE team_id = $1`, [teamId]);
+    await storage.createActivityLog({
+      userId: u.id, userName: u.name, action: "login_log_deleted",
+      entityType: "login_log", entityId: teamId,
+      details: `Login history cleared for team ${teamId} (${r.rowCount} rows)`,
+      createdAt: new Date().toISOString(), groupScope: "", teamId,
+    } as any).catch(() => {});
+    res.json({ ok: true, deleted: r.rowCount });
+  });
+
   app.post("/api/action-log", requireAuth, async (req, res) => {
     const u = userInfo(req);
     const { action, details } = req.body;
@@ -10321,8 +10355,8 @@ RULES:
       req.session.regenerate((err) => {
         if (err) { reject(err); return; }
         // Set remember-me maxAge BEFORE logIn so passport's internal session.save()
-        // persists the 30-day expiry to the Postgres session store (see auth.ts login).
-        if (rememberMe) req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+        // persists the 3-day expiry to the Postgres session store (see auth.ts login).
+        if (rememberMe) req.session.cookie.maxAge = 3 * 24 * 60 * 60 * 1000;
         resolve();
       })
     );

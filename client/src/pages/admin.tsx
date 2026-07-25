@@ -332,6 +332,7 @@ const userSchema = z.object({
   isAdmin: z.boolean(),
   isTeamAdmin: z.boolean(),
   isBlindTester: z.boolean(),
+  isTester: z.boolean().default(false),
   permissions: z.string(),
   isActive: z.boolean(),
   teamId: z.number().optional(),
@@ -346,6 +347,7 @@ const editSchema = z.object({
   isAdmin: z.boolean(),
   isTeamAdmin: z.boolean(),
   isBlindTester: z.boolean(),
+  isTester: z.boolean().default(false),
   permissions: z.string(),
   isActive: z.boolean(),
   teamId: z.number().optional(),
@@ -427,7 +429,7 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
   const groupNames = effectiveGroups.filter((g) => g.teamId === selectedTeamId).map((g) => g.name);
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
-    defaultValues: { name: "", email: "", username: "", password: "Password123!", groupScope: groupNames[0] || "", isAdmin: false, isTeamAdmin: false, isBlindTester: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true, teamId: defaultTeamId, language: "no" },
+    defaultValues: { name: "", email: "", username: "", password: "Password123!", groupScope: groupNames[0] || "", isAdmin: false, isTeamAdmin: false, isBlindTester: false, isTester: false, permissions: JSON.stringify(DEFAULT_PERMISSIONS), isActive: true, teamId: defaultTeamId, language: "no" },
   });
 
   const selectedGroups = parseGroups(form.watch("groupScope"));
@@ -635,6 +637,15 @@ function CreateUserForm({ onDone, allGroups, defaultTeamId, teams }: { onDone: (
                 {L("Blindtester", "Blind tester")}
               </label>
               <FormControl><Switch id="toggle-blind-create" checked={field.value} onCheckedChange={field.onChange} data-testid="checkbox-create-blind-tester" /></FormControl>
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="isTester" render={({ field }) => (
+            <FormItem className="flex items-center justify-between rounded-lg border border-border px-3 py-2 space-y-0">
+              <label htmlFor="toggle-tester-create" className="flex cursor-pointer items-center gap-2 text-sm select-none" title={L("Kun tilgang til Watch Queue — kjører tester fra klokke eller telefon", "Watch Queue only — runs tests from watch or phone")}>
+                <Watch className="h-3.5 w-3.5 text-muted-foreground" />
+                {L("Tester (kun Watch Queue)", "Tester (Watch Queue only)")}
+              </label>
+              <FormControl><Switch id="toggle-tester-create" checked={field.value} onCheckedChange={field.onChange} data-testid="checkbox-create-tester" /></FormControl>
             </FormItem>
           )} />
           <FormField control={form.control} name="isActive" render={({ field }) => (
@@ -942,6 +953,7 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
       isAdmin: !!user.isAdmin,
       isTeamAdmin: !!user.isTeamAdmin,
       isBlindTester: !!user.isBlindTester,
+      isTester: !!(user as any).isTester,
       permissions: user.permissions || JSON.stringify(DEFAULT_PERMISSIONS),
       isActive: !!user.isActive,
       teamId: user.teamId,
@@ -1101,6 +1113,15 @@ function EditUserForm({ user, onDone, allGroups, teams }: { user: ApiUser; onDon
                 {L("Blindtester", "Blind tester")}
               </label>
               <FormControl><Switch id="toggle-blind-edit" checked={field.value} onCheckedChange={field.onChange} data-testid="checkbox-edit-blind-tester" /></FormControl>
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="isTester" render={({ field }) => (
+            <FormItem className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5 space-y-0">
+              <label htmlFor="toggle-tester-edit" className="flex cursor-pointer items-center gap-2 text-sm select-none" title={L("Kun tilgang til Watch Queue — kjører tester fra klokke eller telefon", "Watch Queue only — runs tests from watch or phone")}>
+                <Watch className="h-3.5 w-3.5 text-muted-foreground" />
+                {L("Tester (kun Watch Queue)", "Tester (Watch Queue only)")}
+              </label>
+              <FormControl><Switch id="toggle-tester-edit" checked={field.value} onCheckedChange={field.onChange} data-testid="checkbox-edit-tester" /></FormControl>
             </FormItem>
           )} />
         </div>
@@ -5418,6 +5439,11 @@ export default function Admin() {
                           {!!u.isBlindTester && (
                             <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-600">
                               <EyeOff className="inline h-2.5 w-2.5 mr-0.5" />Blind
+                            </span>
+                          )}
+                          {!!(u as any).isTester && (
+                            <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-600" title={L("Kun Watch Queue", "Watch Queue only")}>
+                              <Watch className="inline h-2.5 w-2.5 mr-0.5" />Tester
                             </span>
                           )}
                           {!u.isActive && (

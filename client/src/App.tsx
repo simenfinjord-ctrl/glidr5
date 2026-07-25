@@ -181,7 +181,13 @@ function AuthGuard() {
   }
 
   if (user && location === "/login") {
-    return <Redirect to="/dashboard" />;
+    return <Redirect to={(user as any).isTester ? "/watch-queue" : "/dashboard"} />;
+  }
+
+  // Tester accounts live in the Watch Queue — every other in-app page redirects
+  // there (the server rejects other APIs regardless).
+  if (user && (user as any).isTester && location !== "/watch-queue" && !publicPaths.includes(location)) {
+    return <Redirect to="/watch-queue" />;
   }
 
   if (isSuperAdmin && adminMode && location === "/") {

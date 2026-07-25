@@ -801,6 +801,8 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
   const watchQueueCount = watchQueue.filter((q) => q.status === "active").length;
 
   const filteredNav = nav.filter((item) => {
+    // Tester accounts only work the Watch Queue — enforced server-side too.
+    if ((user as any)?.isTester) return item.href === "/watch-queue";
     // "All teams" needs the TA-granted permission AND >1 team; a Super Admin
     // always sees it (they can access every team inherently).
     if (item.multiTeamOnly && !(isSuperAdmin || (user?.canViewAllTeams && userTeams.length > 1))) return false;

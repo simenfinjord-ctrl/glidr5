@@ -273,6 +273,9 @@ export const users = pgTable("users", {
   stealth: integer("stealth").notNull().default(0),
   avatarUrl: text("avatar_url"),
   isAthleteAccess: integer("is_athlete_access").notNull().default(0),
+  // Tester role: account restricted to the Watch Queue (runs queued tests
+  // from watch or phone, enters results) — enforced server-side.
+  isTester: integer("is_tester").notNull().default(0),
   linkedAthleteId: integer("linked_athlete_id"),
   // Granted by a Team Admin: lets a multi-team user open the "All teams" glide
   // test view (also requires belonging to more than one team).

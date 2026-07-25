@@ -145,6 +145,27 @@ export async function setupAuth(app: Express) {
     return res.status(403).json({ message: "Terms must be accepted before using the service", code: "TERMS_NOT_ACCEPTED" });
   });
 
+  // Tester role: an account that ONLY works the Watch Queue. Enforced here so
+  // no menu tweak can widen it — everything outside the whitelist is 403.
+  // They can see what they test (single test + entries), run it from phone or
+  // watch (runsheet progress/results) and enter results manually.
+  const TESTER_ALLOW: { re: RegExp; methods?: string[] }[] = [
+    { re: /^\/api\/auth\// },
+    { re: /^\/api\/watch\// },
+    { re: /^\/api\/tests\/\d+$/, methods: ["GET"] },
+    { re: /^\/api\/tests\/\d+\/(entries(\/\d+)?|runsheet-progress(\/complete)?|runsheet-results)$/ },
+    { re: /^\/api\/(settings\/public|client-errors|action-log|feedback-button|user\/teams|inbox)/ },
+  ];
+  app.use((req, res, next) => {
+    if (!req.path.startsWith("/api")) return next();
+    if (!req.isAuthenticated?.() || !req.user) return next();
+    const u = req.user as any;
+    if (u.isTester !== 1) return next();
+    const ok = TESTER_ALLOW.some((r) => r.re.test(req.path) && (!r.methods || r.methods.includes(req.method)));
+    if (ok) return next();
+    return res.status(403).json({ message: "Tester accounts only have access to the Watch Queue", code: "TESTER_ONLY" });
+  });
+
   passport.use(
     new LocalStrategy(
       { usernameField: "username" },

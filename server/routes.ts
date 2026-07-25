@@ -447,6 +447,7 @@ export async function registerRoutes(
       DELETE FROM user_teams WHERE user_id IN (SELECT id FROM users WHERE is_admin = 1);
       DELETE FROM user_team_permissions WHERE user_id IN (SELECT id FROM users WHERE is_admin = 1);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS can_view_all_teams INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_tester INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_version TEXT;
@@ -4295,6 +4296,7 @@ export async function registerRoutes(
       permissions: JSON.stringify(sanitizedPerms),
       teamId,
       isBlindTester: req.body.isBlindTester ? 1 : 0,
+      isTester: req.body.isTester ? 1 : 0,
       isAthleteAccess,
       linkedAthleteId,
       language: req.body.language || "no",
@@ -4342,6 +4344,7 @@ export async function registerRoutes(
     if (req.body.isActive !== undefined) data.isActive = req.body.isActive ? 1 : 0;
     if (u.isAdmin === 1 && req.body.teamId !== undefined) data.teamId = req.body.teamId;
     if (req.body.isBlindTester !== undefined) data.isBlindTester = req.body.isBlindTester ? 1 : 0;
+    if (req.body.isTester !== undefined) data.isTester = req.body.isTester ? 1 : 0;
     if (req.body.isAthleteAccess !== undefined) data.isAthleteAccess = req.body.isAthleteAccess ? 1 : 0;
     if (req.body.linkedAthleteId !== undefined) data.linkedAthleteId = req.body.linkedAthleteId ? parseInt(req.body.linkedAthleteId) : null;
     const updated = await storage.updateUser(id, data);
@@ -4398,7 +4401,7 @@ export async function registerRoutes(
       await (pDel as any).query(`DELETE FROM password_reset_tokens WHERE user_id = $1`, [id]).catch(() => {});
       await (pDel as any).query(`DELETE FROM invitations WHERE email = $1`, [target?.email ?? ""]).catch(() => {});
       // Kill any live sessions so the account is signed out everywhere instantly.
-      await (pDel as any).query(`DELETE FROM session WHERE sess->'passport'->>'user' = $1`, [String(id)]).catch(() => {});
+      await (pDel as any).query(`DELETE FROM user_sessions WHERE sess->'passport'->>'user' = $1`, [String(id)]).catch(() => {});
     } catch (e) { console.error("[user-delete] cleanup failed:", e); }
     if (target) {
       const { password, totpSecret, totpBackupCodes, ...safe } = target as any;
@@ -9272,6 +9275,17 @@ export async function registerRoutes(
 
     // 4. Cannot create session
     res.json({ code: null, testName: item.test_name, seriesName: item.series_name, queueItemId: item.id });
+  });
+
+  // Mark queue item as completed (in-app: phone runsheet flow / testers)
+  app.post("/api/watch/queue/:id/complete", requireAuth, async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const { pool } = await import("./db");
+    await (pool as any).query(
+      `UPDATE watch_queue SET status = 'completed', completed_at = $1 WHERE id = $2 AND team_id = $3`,
+      [new Date().toISOString(), parseInt(req.params.id), teamId]
+    );
+    res.json({ ok: true });
   });
 
   // Mark queue item as completed (called by watch app after finishing)

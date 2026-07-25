@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Watch, Trash2, RotateCcw, RefreshCw, Eye, Archive, List, Copy, Check } from "lucide-react";
+import { Watch, Trash2, RotateCcw, RefreshCw, Eye, Archive, List, Copy, Check, Smartphone, Layers } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { RunsheetDialog, type BracketResult } from "@/components/runsheet-dialog";
 
 type QueueItem = {
   id: number;
@@ -78,13 +79,54 @@ function SessionCode({ item, isAdmin }: { item: QueueItem; isAdmin: boolean }) {
   );
 }
 
+// Run a queued test directly from the phone — same runsheet flow as the watch:
+// entries become ski pairs, results are applied to the test, the queue item is
+// marked done. This is the whole workspace for tester accounts.
+function RunFromPhone({ item, onClose }: { item: QueueItem; onClose: () => void }) {
+  const { toast } = useToast();
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { data: entries = [], isLoading } = useQuery<any[]>({
+    queryKey: [`/api/tests/${item.test_id}/entries`],
+    enabled: !!item.test_id,
+  });
+  const skiPairs = [...entries].sort((a, b) => a.skiNumber - b.skiNumber).map((e) => e.skiNumber);
+
+  const applyMutation = useMutation({
+    mutationFn: async ({ results, bracket }: { results: BracketResult[]; bracket: any[][] }) => {
+      await apiRequest("PATCH", `/api/tests/${item.test_id}/runsheet-results`, { results, bracket });
+      await apiRequest("POST", `/api/watch/queue/${item.id}/complete`).catch(() => {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/watch/queue"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/tests/${item.test_id}/entries`] });
+      toast({ title: L("Resultater lagret", "Results saved"), description: L("Testen er fullført og flyttet til arkivet.", "The test is completed and moved to the archive.") });
+      onClose();
+    },
+    onError: (e: Error) => toast({ title: L("Kunne ikke lagre", "Could not save"), description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <RunsheetDialog
+      open
+      onOpenChange={(v) => { if (!v) onClose(); }}
+      skiPairs={skiPairs}
+      loading={isLoading}
+      testId={item.test_id ?? undefined}
+      onApplyResults={(results, bracket) => applyMutation.mutate({ results, bracket })}
+    />
+  );
+}
+
 export default function WatchQueue() {
   const { toast } = useToast();
   const { t, language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const { user } = useAuth();
   const isAdmin = !!(user?.isAdmin || user?.isTeamAdmin);
+  const isTester = !!(user as any)?.isTester;
   const [tab, setTab] = useState<"active" | "archive">("active");
+  const [runItem, setRunItem] = useState<QueueItem | null>(null);
 
   const { data: queue = [], isLoading: queueLoading } = useQuery<QueueItem[]>({
     queryKey: ["/api/watch/queue"],
@@ -232,6 +274,12 @@ export default function WatchQueue() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold truncate">{displayName(item)}</p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-muted-foreground">
+                        {/* Testfleet — always visible so testers know which fleet they run */}
+                        {item.series_name && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary">
+                            <Layers className="h-3 w-3" />{item.series_name}
+                          </span>
+                        )}
                         <span>{t("watchQueue.addedBy")} {item.added_by_name}</span>
                         <span>·</span>
                         <span>{new Date(item.added_at).toLocaleDateString()}</span>
@@ -251,7 +299,18 @@ export default function WatchQueue() {
                       )}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      {item.test_id && (
+                      {tab === "active" && item.test_id && (
+                        <Button
+                          size="sm"
+                          className="h-8 gap-1.5"
+                          onClick={() => setRunItem(item)}
+                          data-testid={`button-run-phone-${item.id}`}
+                        >
+                          <Smartphone className="h-4 w-4" />
+                          {L("Kjør på telefon", "Run on phone")}
+                        </Button>
+                      )}
+                      {item.test_id && !isTester && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -274,7 +333,7 @@ export default function WatchQueue() {
                         >
                           <RotateCcw className="h-4 w-4" />
                         </Button>
-                      ) : (
+                      ) : !isTester ? (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -285,7 +344,7 @@ export default function WatchQueue() {
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </CardContent>
@@ -293,6 +352,9 @@ export default function WatchQueue() {
             ))}
           </div>
         )}
+
+        {/* Phone runsheet — same flow as the watch, straight from the queue */}
+        {runItem && <RunFromPhone item={runItem} onClose={() => setRunItem(null)} />}
       </div>
     </AppShell>
   );

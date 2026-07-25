@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {
-  Plus, Pencil, DollarSign, Trash2, KeyRound, Check, X, Clock, Download, Upload, EyeOff,
+  Plus, Pencil, DollarSign, Trash2, KeyRound, Check, X, Clock, Download, Upload, EyeOff, Eye,
   Users, FlaskConical, Package, Layers, CloudSun, Disc3, LogIn, Activity, BarChart3,
   Shield, LogOut, ToggleLeft, ToggleRight, Database, AlertTriangle, Sparkles,
   HardDrive, UserX, Eraser, RefreshCw, Building2, Settings2, Watch, ChevronDown, LockKeyhole, Hash, RotateCcw,
@@ -2433,6 +2433,113 @@ type UserHistoryData = {
   passwordChanges: ActivityEntry[];
 };
 
+// SA-only, read-only preview of a user's EFFECTIVE access — computed straight
+// from stored config. No session is created and nothing is logged, so there is
+// nothing for the user to trace.
+function AccessPreviewDialog({ user: pu, teams, onClose }: { user: ApiUser | null; teams: ApiTeam[]; onClose: () => void }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { data: teamPerms = [] } = useQuery<any[]>({
+    queryKey: [`/api/users/${pu?.id}/team-permissions`],
+    enabled: !!pu,
+  });
+
+  const team = pu ? teams.find((t) => t.id === pu.teamId) : undefined;
+  let enabledAreas: string[] | null = null;
+  try { enabledAreas = team?.enabledAreas ? JSON.parse(team.enabledAreas) : null; } catch { /* no clamp */ }
+  let perms: Record<string, string> = {};
+  try { perms = pu?.permissions ? JSON.parse(pu.permissions as any) : {}; } catch { /* empty */ }
+
+  const role = !pu ? "" : (pu as any).isAdmin ? "Super Admin"
+    : pu.isTeamAdmin ? "Team Admin"
+    : (pu as any).isAthleteAccess ? L("Utøvertilgang", "Athlete access")
+    : L("Medlem", "Member");
+  const roleGivesAll = !!pu && (!!(pu as any).isAdmin || !!pu.isTeamAdmin);
+
+  const levelOf = (area: string): { level: string; teamOff: boolean } => {
+    const enabling = area === "raceprepGlide" ? "raceprep" : area;
+    const teamOff = !!enabledAreas && !enabledAreas.includes(enabling);
+    const level = roleGivesAll ? "edit" : (perms[area] ?? "none");
+    return { level, teamOff };
+  };
+
+  return (
+    <Dialog open={!!pu} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Eye className="h-5 w-5 text-sky-500" />
+            {L("Tilganger", "Access")} — {pu?.name}
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            {L("Slik systemet ser brukeren akkurat nå. Ren lesevisning — ingenting logges, og brukeren kan ikke se dette.",
+               "How the system sees this user right now. Read-only — nothing is logged, and the user cannot see this.")}
+          </p>
+        </DialogHeader>
+        {pu && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 font-semibold">{role}</span>
+              {!!(pu as any).isBlindTester && <span className="rounded-full bg-muted px-2 py-0.5">{L("Blind-tester", "Blind tester")}</span>}
+              {!!(pu as any).garminWatch && <span className="rounded-full bg-muted px-2 py-0.5">Garmin</span>}
+              {!!(pu as any).canViewAllTeams && <span className="rounded-full bg-muted px-2 py-0.5">All teams</span>}
+              {!!(pu as any).fromOtherTeam && <span className="rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 px-2 py-0.5">{L("Delt fra annet lag", "Shared from other team")}</span>}
+              <span className="rounded-full bg-muted px-2 py-0.5">{L("Gruppescope", "Group scope")}: {pu.groupScope || L("alle", "all")}</span>
+            </div>
+
+            <div>
+              <div className="text-xs font-semibold mb-1.5">{L("Områder", "Areas")} {team ? `— ${team.name}` : ""}</div>
+              <div className="grid grid-cols-2 gap-1">
+                {PERMISSION_AREAS.map((a) => {
+                  const { level, teamOff } = levelOf(a);
+                  return (
+                    <div key={a} className="flex items-center justify-between gap-2 rounded-lg border border-border px-2 py-1.5 text-xs">
+                      <span className={cn("truncate", teamOff && "line-through text-muted-foreground")}>{a}</span>
+                      <span className={cn(
+                        "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                        teamOff ? "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                        : level === "edit" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                        : level === "view" ? "bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300"
+                        : "bg-muted text-muted-foreground"
+                      )}>
+                        {teamOff ? L("av for laget", "off for team") : level}{roleGivesAll && !teamOff ? ` (${L("rolle", "role")})` : ""}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {teamPerms.length > 0 && (
+              <div>
+                <div className="text-xs font-semibold mb-1.5">{L("Per-lag-overstyringer", "Per-team overrides")}</div>
+                <div className="space-y-1">
+                  {teamPerms.map((tp: any) => {
+                    const tpTeam = teams.find((t) => t.id === (tp.team_id ?? tp.teamId));
+                    let tpAreas: Record<string, string> = {};
+                    try { tpAreas = tp.permissions ? JSON.parse(tp.permissions) : {}; } catch { /* raw */ }
+                    const onAreas = Object.entries(tpAreas).filter(([, v]) => v !== "none").map(([k]) => k);
+                    return (
+                      <div key={tp.team_id ?? tp.teamId} className="rounded-lg border border-border px-2.5 py-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{tpTeam?.name ?? `Team ${tp.team_id ?? tp.teamId}`}</span>
+                          {(tp.is_team_admin === 1 || tp.isTeamAdmin) && <span className="rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-semibold">TA</span>}
+                          {(tp.group_scope ?? tp.groupScope) && <span className="text-muted-foreground">{L("grupper", "groups")}: {tp.group_scope ?? tp.groupScope}</span>}
+                        </div>
+                        <div className="mt-0.5 text-muted-foreground">{onAreas.length > 0 ? onAreas.join(", ") : L("ingen områder", "no areas")}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function UserHistoryDialog({ user: targetUser, open, onClose }: { user: ApiUser | null; open: boolean; onClose: () => void }) {
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
@@ -3648,6 +3755,7 @@ export default function Admin() {
   const [sharedPermUser, setSharedPermUser] = useState<ApiUser | undefined>();
   const [resetUser, setResetUser] = useState<ApiUser | undefined>();
   const [historyUser, setHistoryUser] = useState<ApiUser | null>(null);
+  const [previewUser, setPreviewUser] = useState<ApiUser | null>(null);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupTeamId, setNewGroupTeamId] = useState<number | undefined>(undefined);
   const [editingGroup, setEditingGroup] = useState<ApiGroup | null>(null);
@@ -5423,6 +5531,11 @@ export default function Admin() {
                                 <Activity className="h-4 w-4 text-violet-500" />{L("Vis historikk", "View history")}
                               </DropdownMenuItem>
                             )}
+                            {isSuperAdmin && (
+                              <DropdownMenuItem className="gap-2" data-testid={`button-preview-access-${u.id}`} onSelect={() => setPreviewUser(u)}>
+                                <Eye className="h-4 w-4 text-sky-500" />{L("Forhåndsvis tilganger", "Preview access")}
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="gap-2 text-red-600 focus:text-red-600"
@@ -5498,6 +5611,8 @@ export default function Admin() {
               open={historyUser != null}
               onClose={() => setHistoryUser(null)}
             />
+
+            <AccessPreviewDialog user={previewUser} teams={teams} onClose={() => setPreviewUser(null)} />
           </div>
         )}
 

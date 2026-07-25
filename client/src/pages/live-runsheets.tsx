@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth";
 
 type Heat = {
   pairA: number | null;
@@ -114,15 +115,43 @@ function timeAgo(iso: string): string {
 function LiveBracket({ session }: { session: LiveRunsheet }) {
   const [, navigate] = useLocation();
   const { t, language } = useI18n();
+  const { isBlindTester } = useAuth();
   const L = (no: string, en: string) => (language === "no" ? no : en);
+
+  // Viewer choice: show the product tested on each ski pair in the bracket
+  // slots. Persisted locally; ALWAYS off for blind testers.
+  const [showProducts, setShowProducts] = useState<boolean>(() => {
+    try { return localStorage.getItem("glidr-live-show-products") !== "off"; } catch { return true; }
+  });
+  const productsOn = showProducts && !isBlindTester;
+  const { data: liveEntries = [] } = useQuery<any[]>({
+    queryKey: [`/api/tests/${session.testId}/entries`],
+    enabled: productsOn && !!session.testId,
+    staleTime: 60_000,
+  });
+  const { data: liveProducts = [] } = useQuery<any[]>({
+    queryKey: ["/api/products"],
+    enabled: productsOn,
+    staleTime: 120_000,
+  });
+  const productBySki = useMemo(() => {
+    const pmap = new Map(liveProducts.map((p: any) => [p.id, `${p.brand ? p.brand + " " : ""}${p.name}`.trim()]));
+    const m = new Map<number, string>();
+    for (const e of liveEntries) {
+      if (e.productId != null && pmap.has(e.productId)) m.set(e.skiNumber, pmap.get(e.productId)!);
+    }
+    return m;
+  }, [liveEntries, liveProducts]);
+
   const bracket = session.bracket;
   if (!bracket || bracket.length === 0) return null;
 
   const pl = session.pairLabels;
   const label = (pair: number | null) => {
     if (pair === null) return "—";
-    if (pl && pl[String(pair)]) return pl[String(pair)];
-    return String(pair);
+    const base = pl && pl[String(pair)] ? pl[String(pair)] : String(pair);
+    const prod = productsOn ? productBySki.get(pair) : undefined;
+    return prod ? `${base} · ${prod}` : base;
   };
 
   const progress = getProgress(bracket);
@@ -183,6 +212,24 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {!isBlindTester && (
+            <button
+              type="button"
+              onClick={() => {
+                const next = !showProducts;
+                setShowProducts(next);
+                try { localStorage.setItem("glidr-live-show-products", next ? "on" : "off"); } catch {}
+              }}
+              data-testid={`toggle-live-products-${session.id}`}
+              title={L("Vis/skjul produktnavn per skipar", "Show/hide product names per ski pair")}
+              className={cn(
+                "rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 transition-colors",
+                productsOn ? "bg-primary/10 text-primary ring-primary/40" : "ring-border text-muted-foreground hover:bg-muted"
+              )}
+            >
+              {L("Produkter", "Products")}
+            </button>
+          )}
           <div className="text-right">
             <div className="text-xs text-muted-foreground">{t("liveRunsheets.heats")}</div>
             <div className="text-sm font-bold tabular-nums">{progress.completed}/{progress.total}</div>

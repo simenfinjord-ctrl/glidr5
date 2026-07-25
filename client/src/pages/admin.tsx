@@ -5608,7 +5608,7 @@ export default function Admin() {
                             <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">{L("Handlinger", "Actions")}</DropdownMenuLabel>
                             {u.fromOtherTeam ? (
                               <>
-                                <DropdownMenuItem className="gap-2" data-testid={`button-shared-perms-${u.id}`} onSelect={() => setSharedPermUser(u)}>
+                                <DropdownMenuItem className="gap-2" data-testid={`button-shared-perms-${u.id}`} onSelect={() => setTimeout(() => setSharedPermUser(u), 0)}>
                                   <Settings2 className="h-4 w-4" />{L("Administrer tilgang her", "Manage access here")}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
@@ -5620,11 +5620,11 @@ export default function Admin() {
                                 </DropdownMenuItem>
                               </>
                             ) : (
-                              <DropdownMenuItem className="gap-2" data-testid={`button-edit-user-${u.id}`} onSelect={() => setEditUser(u)}>
+                              <DropdownMenuItem className="gap-2" data-testid={`button-edit-user-${u.id}`} onSelect={() => setTimeout(() => setEditUser(u), 0)}>
                                 <Pencil className="h-4 w-4" />{L("Rediger bruker", "Edit user")}
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem className="gap-2" disabled={u.fromOtherTeam} data-testid={`button-reset-user-${u.id}`} onSelect={() => setResetUser(u)}>
+                            <DropdownMenuItem className="gap-2" disabled={u.fromOtherTeam} data-testid={`button-reset-user-${u.id}`} onSelect={() => setTimeout(() => setResetUser(u), 0)}>
                               <KeyRound className="h-4 w-4" />{L("Tilbakestill passord", "Reset password")}
                             </DropdownMenuItem>
                             {!!u.loginLocked && (
@@ -5636,12 +5636,12 @@ export default function Admin() {
                               <LogOut className="h-4 w-4" />{L("Tving utlogging", "Force logout")}
                             </DropdownMenuItem>
                             {canManage && (
-                              <DropdownMenuItem className="gap-2" data-testid={`button-history-user-${u.id}`} onSelect={() => setHistoryUser(u)}>
+                              <DropdownMenuItem className="gap-2" data-testid={`button-history-user-${u.id}`} onSelect={() => setTimeout(() => setHistoryUser(u), 0)}>
                                 <Activity className="h-4 w-4 text-violet-500" />{L("Vis historikk", "View history")}
                               </DropdownMenuItem>
                             )}
                             {isSuperAdmin && (
-                              <DropdownMenuItem className="gap-2" data-testid={`button-preview-access-${u.id}`} onSelect={() => setPreviewUser(u)}>
+                              <DropdownMenuItem className="gap-2" data-testid={`button-preview-access-${u.id}`} onSelect={() => setTimeout(() => setPreviewUser(u), 0)}>
                                 <Eye className="h-4 w-4 text-sky-500" />{L("Forhåndsvis tilganger", "Preview access")}
                               </DropdownMenuItem>
                             )}
@@ -6172,25 +6172,25 @@ export default function Admin() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-60">
-                            <DropdownMenuItem className="gap-2" onSelect={() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "", discountPercent: String((team as any).discountPercent ?? (team as any).discount_percent ?? 0), features: (() => { try { return JSON.parse((team as any).enabledAreas ?? (team as any).enabled_areas ?? "[]"); } catch { return []; } })(), maxUsers: String(team.maxUsers ?? (team as any).max_users ?? ""), maxGroups: String(team.maxGroups ?? (team as any).max_groups ?? "") }); }}>
+                            <DropdownMenuItem className="gap-2" onSelect={() => setTimeout(() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "", discountPercent: String((team as any).discountPercent ?? (team as any).discount_percent ?? 0), features: (() => { try { return JSON.parse((team as any).enabledAreas ?? (team as any).enabled_areas ?? "[]"); } catch { return []; } })(), maxUsers: String(team.maxUsers ?? (team as any).max_users ?? ""), maxGroups: String(team.maxGroups ?? (team as any).max_groups ?? "") }); }, 0)}>
                               <DollarSign className="h-4 w-4 text-muted-foreground" />{L("Plan og fakturering", "Plan & billing")}
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2" onSelect={() => { setLimitsTeam(team); setLimitsForm({ maxUsers: team.maxUsers ?? team.max_users ?? "", maxGroups: team.maxGroups ?? team.max_groups ?? "", maxTests: team.maxTests ?? team.max_tests ?? "", maxProducts: team.maxProducts ?? team.max_products ?? "" }); }}>
+                            <DropdownMenuItem className="gap-2" onSelect={() => setTimeout(() => { setLimitsTeam(team); setLimitsForm({ maxUsers: team.maxUsers ?? team.max_users ?? "", maxGroups: team.maxGroups ?? team.max_groups ?? "", maxTests: team.maxTests ?? team.max_tests ?? "", maxProducts: team.maxProducts ?? team.max_products ?? "" }); }, 0)}>
                               <Hash className="h-4 w-4 text-muted-foreground" />{L("Grenser (brukere, grupper …)", "Limits (users, groups …)")}
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2" data-testid={`button-parent-team-${team.id}`} onSelect={() => {
+                            <DropdownMenuItem className="gap-2" data-testid={`button-parent-team-${team.id}`} onSelect={() => setTimeout(() => {
                               setParentTeamDialog(team);
                               setParentForm({
                                 parentTeamId: (team as any).parentTeamId ?? (team as any).parent_team_id ?? null,
                                 sharedAreas: (() => { try { return JSON.parse((team as any).sharedAreas ?? (team as any).shared_areas ?? "[]"); } catch { return []; } })(),
                               });
-                            }}>
+                            }, 0)}>
                               <GitBranch className="h-4 w-4 text-muted-foreground" />{L("Moderlag / datterlag", "Parent / child team")}
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2" onSelect={() => setHistoryTeam(team)}>
+                            <DropdownMenuItem className="gap-2" onSelect={() => setTimeout(() => setHistoryTeam(team), 0)}>
                               <Clock className="h-4 w-4 text-muted-foreground" />{L("Planhistorikk", "Plan history")}
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2" onSelect={() => { setNotesTeam(team); setNotesValue(team.notes ?? ""); }}>
+                            <DropdownMenuItem className="gap-2" onSelect={() => setTimeout(() => { setNotesTeam(team); setNotesValue(team.notes ?? ""); }, 0)}>
                               <MessageSquare className={cn("h-4 w-4", team.notes ? "text-primary" : "text-muted-foreground")} />{L("Notater", "Notes")}{team.notes ? " •" : ""}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />

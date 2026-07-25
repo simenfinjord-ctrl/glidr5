@@ -5348,15 +5348,22 @@ export async function registerRoutes(
     const teamId = getActiveTeamId(req);
     const { pool: pg } = await import("./db");
     try {
+      // Optional ?sources=tests,weather,… — FILTER fields ask only for sources
+      // that actually have data of that kind (a tests filter must not suggest
+      // locations that only exist in weather logs); entry forms use the full
+      // union as a typing aid.
+      const SOURCE_TABLES: Record<string, string> = {
+        tests: "tests", weather: "daily_weather", kick: "kick_tests", raceprep: "race_preps",
+      };
+      const requested = typeof req.query.sources === "string" && req.query.sources.trim() !== ""
+        ? String(req.query.sources).split(",").map((s) => s.trim()).filter((s) => SOURCE_TABLES[s])
+        : Object.keys(SOURCE_TABLES);
+      const unions = requested
+        .map((s) => `SELECT location FROM ${SOURCE_TABLES[s]} WHERE team_id = $1 AND location IS NOT NULL AND location != ''`)
+        .join("\n           UNION\n           ");
       const result = await (pg as any).query(
         `SELECT DISTINCT location FROM (
-           SELECT location FROM tests         WHERE team_id = $1 AND location IS NOT NULL AND location != ''
-           UNION
-           SELECT location FROM daily_weather WHERE team_id = $1 AND location IS NOT NULL AND location != ''
-           UNION
-           SELECT location FROM kick_tests    WHERE team_id = $1 AND location IS NOT NULL AND location != ''
-           UNION
-           SELECT location FROM race_preps    WHERE team_id = $1 AND location IS NOT NULL AND location != ''
+           ${unions}
          ) AS all_locations
          ORDER BY location`,
         [teamId]

@@ -1671,6 +1671,7 @@ export default function Tests() {
                   onChange={setFilterLocation}
                   placeholder={t("common.location")}
                   data-testid="input-filter-location"
+                  sources="tests"
                 />
               </div>
               {/* Extras: product, snow type */}

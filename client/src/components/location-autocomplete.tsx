@@ -18,6 +18,9 @@ type Props = {
   onCommit?: (value: string) => void;
   /** Override the suggestion source (defaults to the team's location history) */
   options?: string[];
+  /** Limit history to specific sources, e.g. "tests" for the tests filter so
+   * locations that only exist in weather logs or race preps aren't suggested. */
+  sources?: string;
 };
 
 /**
@@ -35,6 +38,7 @@ export function LocationAutocomplete({
   inputClassName,
   onCommit,
   options,
+  sources,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -42,7 +46,7 @@ export function LocationAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: historyLocations = [] } = useQuery<string[]>({
-    queryKey: ["/api/locations/history"],
+    queryKey: [`/api/locations/history${sources ? `?sources=${sources}` : ""}`],
     staleTime: 5 * 60 * 1000,
     enabled: !options,
   });

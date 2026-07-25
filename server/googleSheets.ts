@@ -104,21 +104,29 @@ async function callWithQuotaRetry<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-/** Wrap the API methods we use so every call transparently retries on quota errors. */
+/** Wrap the API methods we use so every call transparently retries on quota errors.
+ * The googleapis client object is not extensible, so wrapped clients are
+ * tracked in a WeakSet instead of a flag property, and every method override
+ * is try/catch-guarded — a locked property just means that call skips retry. */
+const quotaWrappedClients = new WeakSet<object>();
 function wrapQuotaRetry(sheets: any) {
-  if (!sheets?.spreadsheets || (sheets as any).__quotaWrapped) return sheets;
+  if (!sheets?.spreadsheets || quotaWrappedClients.has(sheets)) return sheets;
   const wrap = (obj: any, key: string) => {
     if (typeof obj?.[key] !== "function") return;
     const orig = obj[key].bind(obj);
-    obj[key] = (...args: any[]) => callWithQuotaRetry(() => orig(...args));
+    try {
+      obj[key] = (...args: any[]) => callWithQuotaRetry(() => orig(...args));
+    } catch { /* read-only property — leave unwrapped */ }
   };
-  wrap(sheets.spreadsheets, "get");
-  wrap(sheets.spreadsheets, "batchUpdate");
-  wrap(sheets.spreadsheets, "create");
-  if (sheets.spreadsheets.values) {
-    for (const m of ["get", "update", "clear", "append", "batchGet", "batchUpdate"]) wrap(sheets.spreadsheets.values, m);
-  }
-  (sheets as any).__quotaWrapped = true;
+  try {
+    wrap(sheets.spreadsheets, "get");
+    wrap(sheets.spreadsheets, "batchUpdate");
+    wrap(sheets.spreadsheets, "create");
+    if (sheets.spreadsheets.values) {
+      for (const m of ["get", "update", "clear", "append", "batchGet", "batchUpdate"]) wrap(sheets.spreadsheets.values, m);
+    }
+    quotaWrappedClients.add(sheets);
+  } catch { /* never let wrapping break the client itself */ }
   return sheets;
 }
 

@@ -2642,7 +2642,14 @@ export async function registerRoutes(
   app.get("/api/weather", requirePermission("weather", "view"), async (req, res) => {
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);
-    const list = await storage.listWeather(u.groupScope, u.isScopeAdmin, teamId);
+    const list: any[] = await storage.listWeather(u.groupScope, u.isScopeAdmin, teamId);
+    // Child team: parent's weather logs (read-only) when 'weather' is shared —
+    // also lets shared tests resolve their linked weather.
+    const share = await getParentShare(teamId);
+    if (share && share.sharedAreas.includes("weather")) {
+      const parentList = await storage.listWeather("", true, share.parentTeamId);
+      for (const w of parentList) list.push({ ...w, sharedFromTeam: share.parentName, readOnly: true });
+    }
     res.json(list);
   });
 
@@ -2672,7 +2679,27 @@ export async function registerRoutes(
        WHERE team_id = $1`,
       [teamId]
     );
-    res.json(result.rows);
+    const rows: any[] = result.rows;
+    const shareW = await getParentShare(teamId);
+    if (shareW && shareW.sharedAreas.includes("weather")) {
+      const pr = await (pool as any).query(
+        `SELECT id, date, time, location,
+                air_temperature_c AS "airTemperatureC",
+                snow_temperature_c AS "snowTemperatureC",
+                air_humidity_pct AS "airHumidityPct",
+                snow_humidity_pct AS "snowHumidityPct",
+                clouds, visibility, wind, precipitation,
+                artificial_snow AS "artificialSnow",
+                natural_snow AS "naturalSnow",
+                grain_size AS "grainSize",
+                snow_humidity_type AS "snowHumidityType",
+                track_hardness AS "trackHardness",
+                test_quality AS "testQuality",
+                snow_type AS "snowType"
+         FROM daily_weather WHERE team_id = $1`, [shareW.parentTeamId]);
+      for (const w of pr.rows) rows.push({ ...w, sharedFromTeam: shareW.parentName, readOnly: true });
+    }
+    res.json(rows);
   });
 
   app.get("/api/weather/find", requirePermission("weather", "view"), async (req, res) => {
@@ -2943,8 +2970,11 @@ export async function registerRoutes(
         if ((t as any).testSkiSource === "raceskis") continue;
         // Grind tests are their own shared area — never implied by 'tests'.
         if ((t as any).testType === "Grind" && !share.sharedAreas.includes("grinding")) continue;
+        // Strip the raw runsheet bracket — it contains every pair's results
+        // and would reveal ski pairs the parent has hidden.
+        const { runsheetBracket: _rb, ...safeT } = t as any;
         enriched.push({
-          ...t,
+          ...safeT,
           seriesName: (t as any).seriesId ? (pSeriesNames[(t as any).seriesId] || null) : null,
           sharedFromTeam: share.parentName,
           readOnly: true,
@@ -3330,7 +3360,8 @@ export async function registerRoutes(
           && ((test as any).testType !== "Grind" || share.sharedAreas.includes("grinding"))) {
         const excl = await getChildExclusions(share.parentTeamId);
         if (!excl.tests.has(test.id) && u.permissions.tests !== "none") {
-          return res.json({ ...test, sharedFromTeam: share.parentName, readOnly: true });
+          const { runsheetBracket: _rb2, ...safeTest } = test as any;
+          return res.json({ ...safeTest, sharedFromTeam: share.parentName, readOnly: true });
         }
       }
       return res.status(403).json({ message: "Forbidden" });

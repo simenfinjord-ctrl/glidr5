@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useEffect, useRef } from "react";
+import { timeGreeting, dailyQuote } from "@/lib/greeting";
 import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package, Watch, MapPin, Settings2, Award, Activity, X, User, Disc3, Flag, BarChart2, Layers, ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -489,9 +490,12 @@ export default function Dashboard() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("dashboard.title")}</h1>
-            <p className="mt-1 text-sm text-muted-foreground" data-testid="text-dashboard-subtitle">
-              {user ? t("dashboard.welcome", { name: user.name }) : t("dashboard.subtitle")}
+            {/* Time-of-day greeting + a daily motivational quote */}
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-dashboard-greeting">
+              {user ? timeGreeting(language, user.name.split(" ")[0]) : t("dashboard.title")}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground italic" data-testid="text-dashboard-quote">
+              {user ? `«${dailyQuote(language, user.name)}»` : t("dashboard.subtitle")}
             </p>
           </div>
 

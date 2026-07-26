@@ -102,15 +102,16 @@ function getProgress(bracket: Heat[][]): { completed: number; total: number } {
   return { completed, total };
 }
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, lang: string): string {
+  const no = lang === "no";
   const diff = Date.now() - new Date(iso).getTime();
   const sec = Math.floor(diff / 1000);
-  if (sec < 10) return "just now";
-  if (sec < 60) return `${sec}s ago`;
+  if (sec < 10) return no ? "nå nettopp" : "just now";
+  if (sec < 60) return no ? `${sec} s siden` : `${sec}s ago`;
   const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
+  if (min < 60) return no ? `${min} min siden` : `${min}m ago`;
   const hrs = Math.floor(min / 60);
-  return `${hrs}h ago`;
+  return no ? `${hrs} t siden` : `${hrs}h ago`;
 }
 
 function LiveBracket({ session }: { session: LiveRunsheet }) {
@@ -208,7 +209,7 @@ function LiveBracket({ session }: { session: LiveRunsheet }) {
               </span>
             )}
             <span className="text-xs text-muted-foreground/60">
-              {session.testType} &middot; Updated {timeAgo(session.updatedAt)}
+              {session.testType} &middot; {L("Oppdatert", "Updated")} {timeAgo(session.updatedAt, language)}
             </span>
           </div>
         </div>

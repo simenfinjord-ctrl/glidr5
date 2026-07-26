@@ -1266,7 +1266,7 @@ export default function TestDetail() {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={generatePDF} disabled={pdfLoading}>
                     <FileText className="mr-2 h-4 w-4" />
-                    {pdfLoading ? "Generating…" : "PDF"}
+                    {pdfLoading ? L("Genererer…", "Generating…") : "PDF"}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={openEditTest}>
                     <Pencil className="mr-2 h-4 w-4" />
@@ -1286,7 +1286,7 @@ export default function TestDetail() {
             <div className="hidden sm:flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={generatePDF} disabled={pdfLoading} data-testid="button-download-pdf">
                 <FileText className="mr-2 h-4 w-4" />
-                {pdfLoading ? "Generating…" : "PDF"}
+                {pdfLoading ? L("Genererer…", "Generating…") : "PDF"}
               </Button>
               {!isShared && (
               <Button

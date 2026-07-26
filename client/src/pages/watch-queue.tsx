@@ -195,7 +195,7 @@ export default function WatchQueue() {
                     {pinData.pin}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Enter this code when setting up the Glidr watch app
+                    {L("Skriv inn denne koden når du setter opp Glidr-klokkeappen", "Enter this code when setting up the Glidr watch app")}
                   </p>
                 </div>
                 {isAdmin && (
@@ -207,7 +207,7 @@ export default function WatchQueue() {
                     className="shrink-0"
                   >
                     <RefreshCw className={cn("h-4 w-4 mr-1", regenPinMutation.isPending && "animate-spin")} />
-                    New PIN
+                    {L("Ny PIN", "New PIN")}
                   </Button>
                 )}
               </div>
@@ -287,7 +287,7 @@ export default function WatchQueue() {
                           <>
                             <span>·</span>
                             <span className="text-emerald-600 font-medium">
-                              Done {new Date(item.completed_at).toLocaleDateString()}
+                              {L("Ferdig", "Done")} {new Date(item.completed_at).toLocaleDateString()}
                             </span>
                           </>
                         )}

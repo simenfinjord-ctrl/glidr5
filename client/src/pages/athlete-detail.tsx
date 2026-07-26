@@ -1569,7 +1569,7 @@ export default function AthleteDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis`] });
       queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis/archived`] });
-      toast({ title: "Ski archived" });
+      toast({ title: L("Skipar arkivert", "Ski archived") });
     },
     onError: (e) => {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
@@ -1583,7 +1583,7 @@ export default function AthleteDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis`] });
       queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis/archived`] });
-      toast({ title: "Ski restored" });
+      toast({ title: L("Skipar gjenopprettet", "Ski restored") });
     },
     onError: (e) => {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
@@ -1607,7 +1607,7 @@ export default function AthleteDetail() {
         queryClient.invalidateQueries({ queryKey: [`/api/race-skis/${regrindSkiId}/regrinds`] });
       }
       queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/skis`] });
-      toast({ title: "Regrind added" });
+      toast({ title: L("Slip lagt til", "Regrind added") });
       setRegrindDialogOpen(false);
       resetRegrindForm();
     },
@@ -1626,7 +1626,7 @@ export default function AthleteDetail() {
       if (expandedSkiId) {
         queryClient.invalidateQueries({ queryKey: [`/api/race-skis/${expandedSkiId}/regrinds`] });
       }
-      toast({ title: "Regrind deleted" });
+      toast({ title: L("Slip slettet", "Regrind deleted") });
     },
     onError: (e) => {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
@@ -1640,7 +1640,7 @@ export default function AthleteDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/athletes/${athleteId}/access`] });
-      toast({ title: "Access updated" });
+      toast({ title: L("Tilgang oppdatert", "Access updated") });
       setAccessDialogOpen(false);
     },
     onError: (e) => {
@@ -1682,7 +1682,7 @@ export default function AthleteDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/athletes"] });
-      toast({ title: "Athlete deleted" });
+      toast({ title: L("Utøver slettet", "Athlete deleted") });
       navigate("/raceskis");
     },
     onError: (e) => {

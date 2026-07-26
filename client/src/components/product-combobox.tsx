@@ -42,7 +42,8 @@ export function ProductCombobox({
   onChange: (productId: number) => void;
   testId: string;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
   const [open, setOpen] = useState(false);
 
   const allowed = useMemo(() => {
@@ -62,7 +63,7 @@ export function ProductCombobox({
           data-testid={testId}
         >
           <span className={cn("truncate", !selected && "text-muted-foreground")}>
-            {selected ? `${selected.brand} ${selected.name}` : "Select product"}
+            {selected ? `${selected.brand} ${selected.name}` : L("Velg produkt", "Select product")}
           </span>
           {selected && !isStructureTool(selected.category) && (
             <span className="ml-1.5 shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -76,8 +77,8 @@ export function ProductCombobox({
         <Command>
           <CommandInput data-testid={`${testId}-search`} placeholder={t("products.searchPlaceholder")} />
           <CommandList>
-            <CommandEmpty>No matches.</CommandEmpty>
-            <CommandGroup heading="Products">
+            <CommandEmpty>{L("Ingen treff.", "No matches.")}</CommandEmpty>
+            <CommandGroup heading={L("Produkter", "Products")}>
               {allowed.map((p) => {
                 const isSelected = p.id === value;
                 return (

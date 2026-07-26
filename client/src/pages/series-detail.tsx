@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Trophy, Award, Plus, Trash2, Disc3 } from "lucide-react";
@@ -213,15 +214,7 @@ export default function SeriesDetail() {
   const testIds = seriesTests.map((t) => t.id);
   const { data: allEntries = [] } = useQuery<TestEntry[]>({
     queryKey: ["/api/series-entries", testIds],
-    queryFn: async () => {
-      if (testIds.length === 0) return [];
-      const results = await Promise.all(
-        testIds.map((id) =>
-          fetch(`/api/tests/${id}/entries`, { credentials: "include" }).then((r) => r.json()),
-        ),
-      );
-      return results.flat();
-    },
+    queryFn: () => fetchEntriesBulk(testIds),
     enabled: testIds.length > 0,
   });
 

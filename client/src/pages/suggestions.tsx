@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { productLabel } from "@/lib/product-label";
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -403,15 +404,7 @@ export default function Suggestions() {
   const allTestIds = useMemo(() => tests.map((t) => t.id), [tests]);
   const { data: allEntries = [], isLoading: entriesLoading } = useQuery<TestEntry[]>({
     queryKey: ["/api/tests/entries/all-suggestions", allTestIds],
-    queryFn: async () => {
-      if (allTestIds.length === 0) return [];
-      const results = await Promise.all(
-        allTestIds.map((id) =>
-          fetch(`/api/tests/${id}/entries`, { credentials: "include" }).then((r) => (r.ok ? r.json() : []))
-        )
-      );
-      return results.flat();
-    },
+    queryFn: () => fetchEntriesBulk(allTestIds),
     enabled: allTestIds.length > 0,
   });
 

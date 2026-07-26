@@ -960,6 +960,37 @@ export async function registerRoutes(
       CREATE INDEX IF NOT EXISTS grinding_records_team_id_idx ON grinding_records(team_id);
       CREATE INDEX IF NOT EXISTS grind_profiles_team_id_idx   ON grind_profiles(team_id);
       CREATE INDEX IF NOT EXISTS race_preps_team_id_idx       ON race_preps(team_id);
+      -- Winter-load hardening: indexes for every remaining hot lookup so no
+      -- request degrades to a sequential scan as the season's data grows.
+      CREATE INDEX IF NOT EXISTS tests_date_idx                 ON tests(date);
+      CREATE INDEX IF NOT EXISTS tests_weather_id_idx           ON tests(weather_id);
+      CREATE INDEX IF NOT EXISTS tests_athlete_id_idx           ON tests(athlete_id);
+      CREATE INDEX IF NOT EXISTS test_entries_product_id_idx    ON test_entries(product_id);
+      CREATE INDEX IF NOT EXISTS test_entries_race_ski_id_idx   ON test_entries(race_ski_id);
+      CREATE INDEX IF NOT EXISTS athletes_team_id_idx           ON athletes(team_id);
+      CREATE INDEX IF NOT EXISTS athlete_access_athlete_id_idx  ON athlete_access(athlete_id);
+      CREATE INDEX IF NOT EXISTS race_ski_regrinds_ski_idx      ON race_ski_regrinds(race_ski_id);
+      CREATE INDEX IF NOT EXISTS ski_race_usages_ski_idx        ON ski_race_usages(race_ski_id);
+      CREATE INDEX IF NOT EXISTS test_ski_series_team_id_idx    ON test_ski_series(team_id);
+      CREATE INDEX IF NOT EXISTS test_ski_regrinds_series_idx   ON test_ski_regrinds(series_id);
+      CREATE INDEX IF NOT EXISTS kick_tests_team_id_idx         ON kick_tests(team_id);
+      CREATE INDEX IF NOT EXISTS kick_skis_team_id_idx          ON kick_skis(team_id);
+      CREATE INDEX IF NOT EXISTS kick_mixes_team_id_idx         ON kick_mixes(team_id);
+      CREATE INDEX IF NOT EXISTS kick_test_entries_test_idx     ON kick_test_entries(kick_test_id);
+      CREATE INDEX IF NOT EXISTS race_prep_entries_prep_idx     ON race_prep_entries(race_prep_id);
+      CREATE INDEX IF NOT EXISTS watch_queue_team_status_idx    ON watch_queue(team_id, status);
+      CREATE INDEX IF NOT EXISTS runsheet_progress_test_idx     ON runsheet_progress(test_id);
+      CREATE INDEX IF NOT EXISTS runsheet_progress_user_idx     ON runsheet_progress(user_id);
+      CREATE INDEX IF NOT EXISTS inbox_messages_to_user_idx     ON inbox_messages(to_user_id);
+      CREATE INDEX IF NOT EXISTS user_teams_user_id_idx         ON user_teams(user_id);
+      CREATE INDEX IF NOT EXISTS utp_user_id_idx                ON user_team_permissions(user_id);
+      CREATE INDEX IF NOT EXISTS utp_team_id_idx                ON user_team_permissions(team_id);
+      CREATE INDEX IF NOT EXISTS activity_logs_created_at_idx   ON activity_logs(created_at);
+      CREATE INDEX IF NOT EXISTS activity_logs_action_idx       ON activity_logs(action);
+      CREATE INDEX IF NOT EXISTS cve_parent_team_idx            ON child_visibility_exclusions(parent_team_id);
+      CREATE INDEX IF NOT EXISTS test_attachments_test_idx      ON test_attachments(test_id);
+      CREATE INDEX IF NOT EXISTS daily_weather_date_idx         ON daily_weather(date);
+      CREATE INDEX IF NOT EXISTS grinding_sheets_team_idx       ON grinding_sheets(team_id);
     `);
   }
 
@@ -4510,6 +4541,69 @@ export async function registerRoutes(
     if (existing.rows[0].user_id !== u.id && !u.isAdmin) return res.status(403).json({ message: "Forbidden" });
     await (pool as any).query(`DELETE FROM test_comments WHERE id = $1`, [commentId]);
     return res.json({ ok: true });
+  });
+
+  // Bulk entries: ONE request/query for every test the pages need, replacing
+  // the old one-request-per-test fan-out (300 tests × 50 users would have been
+  // 15 000 parallel requests). Mirrors the exact access rules of the single
+  // endpoint — team, group scope, grind permission, athlete access — and the
+  // child-team share layer with curation + recompute.
+  app.post("/api/test-entries/bulk", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const ids: number[] = Array.isArray(req.body?.ids)
+      ? req.body.ids.map((n: any) => parseInt(String(n))).filter((n: number) => !isNaN(n)).slice(0, 3000)
+      : [];
+    if (ids.length === 0) return res.json([]);
+    const { pool: pB } = await import("./db");
+    const tr = await (pB as any).query(
+      `SELECT id, team_id, group_scope, test_type, test_ski_source, athlete_id, created_by_id
+       FROM tests WHERE id = ANY($1::int[])`, [ids]);
+    const share = await getParentShare(teamId);
+    const excl = share ? await getChildExclusions(share.parentTeamId) : null;
+    // The caller's athlete-access set, loaded once (for race-ski tests).
+    const accR = await (pB as any).query(`SELECT athlete_id FROM athlete_access WHERE user_id = $1`, [u.id]);
+    const accSet = new Set<number>(accR.rows.map((r: any) => r.athlete_id));
+
+    const own: number[] = [];
+    const sharedTests: number[] = [];
+    for (const t of tr.rows) {
+      if (t.team_id === teamId) {
+        let ok = t.created_by_id === u.id
+          || (userHasGroupAccess(u.groupScope, u.isScopeAdmin, t.group_scope || "") && u.permissions.tests !== "none");
+        if (!ok && t.test_ski_source === "raceskis" && t.athlete_id) ok = u.isScopeAdmin || accSet.has(t.athlete_id);
+        if (ok && t.test_type === "Grind" && u.permissions.grinding === "none" && t.created_by_id !== u.id) ok = false;
+        if (ok) own.push(t.id);
+      } else if (
+        share && excl && t.team_id === share.parentTeamId
+        && share.sharedAreas.includes("tests")
+        && t.test_ski_source !== "raceskis"
+        && (t.test_type !== "Grind" || share.sharedAreas.includes("grinding"))
+        && !excl.tests.has(t.id)
+        && u.permissions.tests !== "none"
+      ) {
+        sharedTests.push(t.id);
+      }
+    }
+
+    const out: any[] = [];
+    if (own.length > 0) {
+      out.push(...await db.select().from(testEntries).where(inArray(testEntries.testId, own)));
+    }
+    if (sharedTests.length > 0 && excl) {
+      const rows = await db.select().from(testEntries).where(inArray(testEntries.testId, sharedTests));
+      const byTest = new Map<number, any[]>();
+      for (const e of rows) {
+        if (!byTest.has(e.testId)) byTest.set(e.testId, []);
+        byTest.get(e.testId)!.push(e);
+      }
+      for (const [tid, all] of byTest) {
+        const visible = all.filter((e: any) => !excl.entries.has(e.id) && !(e.productId != null && excl.products.has(e.productId)));
+        out.push(...(visible.length !== all.length ? recomputeSharedEntries(visible) : visible));
+        void tid;
+      }
+    }
+    res.json(out);
   });
 
   app.get("/api/tests/:id/entries", requireAuth, async (req, res) => {

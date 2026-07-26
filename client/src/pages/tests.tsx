@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { Fragment, useMemo, useState, useRef, useCallback, useEffect } from "react";
+import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus, ChevronDown, Calendar, GitCompare } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -1200,15 +1201,7 @@ export default function Tests() {
   const allTestIds = tests.map((t) => t.id);
   const { data: allEntries = [] } = useQuery<TestEntry[]>({
     queryKey: ["/api/tests/entries/all", allTestIds],
-    queryFn: async () => {
-      if (allTestIds.length === 0) return [];
-      const results = await Promise.all(
-        allTestIds.map((id) =>
-          fetch(`/api/tests/${id}/entries`, { credentials: "include" }).then((r) => r.ok ? r.json() : [])
-        )
-      );
-      return results.flat();
-    },
+    queryFn: () => fetchEntriesBulk(allTestIds),
     enabled: allTestIds.length > 0,
   });
 

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1463,15 +1464,7 @@ export default function Grinding() {
   const grindTestIds = grindTests.map((t) => t.id);
   const { data: allEntries = [] } = useQuery<TestEntry[]>({
     queryKey: ["/api/tests/entries/grind", grindTestIds],
-    queryFn: async () => {
-      if (grindTestIds.length === 0) return [];
-      const results = await Promise.all(
-        grindTestIds.map((id) =>
-          fetch(`/api/tests/${id}/entries`, { credentials: "include" }).then((r) => r.json())
-        )
-      );
-      return results.flat();
-    },
+    queryFn: () => fetchEntriesBulk(grindTestIds),
     enabled: grindTestIds.length > 0,
   });
 

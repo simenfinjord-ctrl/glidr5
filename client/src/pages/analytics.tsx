@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useMemo, useState, useEffect } from "react";
+import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { productLabel } from "@/lib/product-label";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, TrendingUp, Thermometer, Award, Filter, Search, Trophy, Percent, Hash, FlaskConical, X, Snowflake, Droplets, Wind, MapPin, Activity, CalendarDays, Target, Layers, AlignLeft, FileDown, ChevronDown, ChevronUp, ChevronRight, ArrowRight, Footprints, FileText, Users, Cloud, Sparkles } from "lucide-react";
@@ -4138,15 +4139,7 @@ export default function Analytics() {
   const allTestIds = tests.map((t) => t.id);
   const { data: allEntries = [] } = useQuery<TestEntry[]>({
     queryKey: ["/api/tests/entries/all-analytics", allTestIds],
-    queryFn: async () => {
-      if (allTestIds.length === 0) return [];
-      const results = await Promise.all(
-        allTestIds.map((id) =>
-          fetch(`/api/tests/${id}/entries`, { credentials: "include" }).then((r) => r.ok ? r.json() : [])
-        )
-      );
-      return results.flat();
-    },
+    queryFn: () => fetchEntriesBulk(allTestIds),
     enabled: allTestIds.length > 0,
   });
 

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { useRoute, useLocation, useSearch } from "wouter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -5107,13 +5108,7 @@ function SkiSuggestionsSection({
   const testIds = useMemo(() => raceSkiTests.map((t) => t.id), [raceSkiTests]);
   const { data: allEntries = [] } = useQuery<TestEntry[]>({
     queryKey: [`/api/raceski-suggestions-entries/${athleteId}`, testIds],
-    queryFn: async () => {
-      if (testIds.length === 0) return [];
-      const results = await Promise.all(
-        testIds.map((id) => fetch(`/api/tests/${id}/entries`, { credentials: "include" }).then((r) => r.json()))
-      );
-      return results.flat();
-    },
+    queryFn: () => fetchEntriesBulk(testIds),
     enabled: open && testIds.length > 0,
     staleTime: 60_000,
   });

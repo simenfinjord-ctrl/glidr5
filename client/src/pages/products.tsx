@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { Fragment, useMemo, useState, useEffect } from "react";
+import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -534,14 +535,7 @@ export default function Products() {
   const { data: compareEntriesAll = [] } = useQuery<any[]>({
     queryKey: ["/api/tests/entries/all-analytics", compareTestIds],
     enabled: viewMode === "compare" && compareTestIds.length > 0,
-    queryFn: async () => {
-      const results = await Promise.all(
-        compareTestIds.map((id: number) =>
-          fetch(`/api/tests/${id}/entries`, { credentials: "include" }).then((r) => r.ok ? r.json() : [])
-        )
-      );
-      return results.flat();
-    },
+    queryFn: () => fetchEntriesBulk(compareTestIds),
   });
   const { data: compareWeatherAll = [] } = useQuery<any[]>({
     queryKey: ["/api/weather"],

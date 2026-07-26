@@ -2132,6 +2132,13 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const name = req.body.name?.trim();
     if (!name) return res.status(400).json({ message: "Name is required" });
+    // Team boundary: a TA may only rename groups in their ACTIVE team.
+    const { pool: pGrp } = await import("./db");
+    const grpRes = await (pGrp as any).query(`SELECT team_id FROM groups WHERE id = $1`, [id]);
+    if (!grpRes.rows.length) return res.status(404).json({ message: "Not found" });
+    if ((req.user as any).isAdmin !== 1 && grpRes.rows[0].team_id !== getActiveTeamId(req)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
     try {
       const updated = await storage.updateGroup(id, { name });
       if (!updated) return res.status(404).json({ message: "Not found" });
@@ -3800,6 +3807,11 @@ export async function registerRoutes(
   app.put("/api/tests/:id/runsheet-progress", requireAuth, async (req, res) => {
     const testId = parseInt(req.params.id);
     const u = userInfo(req);
+    // Progress rows surface in the test's team's Live Runsheets — never allow
+    // writing progress onto another team's test.
+    const rpTest = await storage.getTest(testId);
+    if (!rpTest) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(rpTest, req)) return res.status(403).json({ message: "Forbidden" });
     const { bracket } = req.body;
     if (!Array.isArray(bracket)) return res.status(400).json({ message: "bracket array required" });
     const now = new Date().toISOString();
@@ -4073,6 +4085,10 @@ export async function registerRoutes(
   // POST /api/tests/:id/attachments — upload base64 image (R2 or legacy base64)
   app.post("/api/tests/:id/attachments", requireAuth, async (req, res) => {
     const testId = parseInt(req.params.id);
+    // Ownership: uploads only to tests in the caller's active team.
+    const attTest = await storage.getTest(testId);
+    if (!attTest) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(attTest, req)) return res.status(403).json({ message: "Forbidden" });
     const { filename, mimeType, data } = req.body;
     if (!filename || !data) return res.status(400).json({ message: "filename and data required" });
     const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "application/pdf"];
@@ -4785,6 +4801,11 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const targetUser = await storage.getUser(id);
     if (!targetUser) return res.status(404).json({ message: "User not found" });
+    // Team boundary: a TA may only grant/revoke All-teams for users of their
+    // ACTIVE team (SA unrestricted).
+    if ((req.user as any).isAdmin !== 1 && targetUser.teamId !== getActiveTeamId(req)) {
+      return res.status(403).json({ message: "Can only manage users in your team" });
+    }
     const { pool: p } = await import("./db");
     const enabled = !!req.body.enabled;
     await (p as any).query("UPDATE users SET can_view_all_teams = $1 WHERE id = $2", [enabled ? 1 : 0, id]);
@@ -7426,6 +7447,10 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const athlete = await storage.getAthlete(id);
     if (!athlete) return res.status(404).json({ message: "Not found" });
+    // Team boundary first — TA rights never cross teams.
+    if (!u.isAdmin && (athlete as any).teamId !== getActiveTeamId(req)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
     if (!u.isScopeAdmin && athlete.createdById !== u.id) {
       return res.status(403).json({ message: "Only admin or creator can manage access" });
     }
@@ -8541,6 +8566,7 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const series = await storage.getSeries(id);
     if (!series) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(series, req)) return res.status(403).json({ message: "Forbidden" });
     if (!userHasGroupAccess(u.groupScope, u.isScopeAdmin, series.groupScope)) {
       return res.status(403).json({ message: "Forbidden" });
     }
@@ -8553,6 +8579,7 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     const series = await storage.getSeries(id);
     if (!series) return res.status(404).json({ message: "Not found" });
+    if (!verifyTeamOwnership(series, req)) return res.status(403).json({ message: "Forbidden" });
     if (!userHasGroupAccess(u.groupScope, u.isScopeAdmin, series.groupScope)) {
       return res.status(403).json({ message: "Forbidden" });
     }

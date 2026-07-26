@@ -970,7 +970,7 @@ export async function registerRoutes(
       CREATE INDEX IF NOT EXISTS athletes_team_id_idx           ON athletes(team_id);
       CREATE INDEX IF NOT EXISTS athlete_access_athlete_id_idx  ON athlete_access(athlete_id);
       CREATE INDEX IF NOT EXISTS race_ski_regrinds_ski_idx      ON race_ski_regrinds(race_ski_id);
-      CREATE INDEX IF NOT EXISTS ski_race_usages_ski_idx        ON ski_race_usages(race_ski_id);
+      CREATE INDEX IF NOT EXISTS ski_race_usages_ski_idx        ON ski_race_usages(ski_id);
       CREATE INDEX IF NOT EXISTS test_ski_series_team_id_idx    ON test_ski_series(team_id);
       CREATE INDEX IF NOT EXISTS test_ski_regrinds_series_idx   ON test_ski_regrinds(series_id);
       CREATE INDEX IF NOT EXISTS kick_tests_team_id_idx         ON kick_tests(team_id);
@@ -6349,7 +6349,7 @@ export async function registerRoutes(
       { area: "athletes",   table: "athletes",          keys: ["name"] },
       { area: "athletes",   table: "race_skis",         keys: ["athlete_id", "ski_id"], fk: { athlete_id: "athletes" }, requiredFk: ["athlete_id"] },
       { area: "athletes",   table: "race_ski_regrinds", keys: ["race_ski_id", "date"], fk: { race_ski_id: "race_skis" }, requiredFk: ["race_ski_id"] },
-      { area: "athletes",   table: "ski_race_usages",   keys: ["race_ski_id", "date"], fk: { race_ski_id: "race_skis", athlete_id: "athletes" }, requiredFk: ["race_ski_id"] },
+      { area: "athletes",   table: "ski_race_usages",   keys: ["ski_id", "date"], fk: { ski_id: "race_skis", athlete_id: "athletes" }, requiredFk: ["ski_id"] },
       { area: "kick",       table: "kick_skis",         keys: ["name"] },
       { area: "kick",       table: "kick_mixes",        keys: ["name"] },
       { area: "kick",       table: "kick_tests",        keys: ["date", "location"] },

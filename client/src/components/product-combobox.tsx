@@ -48,7 +48,10 @@ export function ProductCombobox({
 
   const allowed = useMemo(() => {
     const structure = testType === "Structure";
-    return products.filter((p) => structure ? isStructureTool(p.category) : !isStructureTool(p.category));
+    // Kick mixes are products too (700-series) but belong in kick testing,
+    // never in glide/structure pickers.
+    const nonKick = products.filter((p) => !/^kick$/i.test(p.category || ""));
+    return nonKick.filter((p) => structure ? isStructureTool(p.category) : !isStructureTool(p.category));
   }, [products, testType]);
 
   const selected = useMemo(() => allowed.find((p) => p.id === value), [allowed, value]);

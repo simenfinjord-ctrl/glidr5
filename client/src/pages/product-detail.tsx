@@ -383,6 +383,11 @@ function ProductDetailInner() {
                 {L("Arkivert", "Archived")}
               </span>
             )}
+            {(product as any)?.serialNumber && (
+              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary font-mono" data-testid="badge-product-serial">
+                #{(product as any).serialNumber}
+              </span>
+            )}
             {canManage && childTeams.length > 0 && (
               <button
                 type="button"
@@ -455,7 +460,39 @@ function ProductDetailInner() {
           />
         </div>
 
-        {/* ── Test history ────────────────────────────────────────────────── */}
+        {/* ── Mix recipe (mixes only) ─────────────────────────────────────── */}
+      {(product as any)?.isMix === 1 && (product as any)?.recipe && (() => {
+        let rec: any = null;
+        try { rec = JSON.parse((product as any).recipe); } catch { return null; }
+        if (!rec) return null;
+        const comps = Array.isArray(rec.components) ? rec.components : [];
+        return (
+          <Card className="fs-card rounded-2xl p-4 sm:p-5" data-testid="card-mix-recipe">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+                <FlaskConical className="h-4 w-4 text-primary" />
+              </div>
+              <h2 className="text-base font-semibold">{L("Oppskrift", "Recipe")}</h2>
+            </div>
+            <div className="space-y-1.5">
+              {comps.map((c: any, i: number) => {
+                const comp = c.productId != null ? allProducts.find((pp) => pp.id === c.productId) : null;
+                const label = comp ? `${comp.brand} ${comp.name}` : (c.freeText || c.name || `#${c.productId}`);
+                return (
+                  <div key={i} className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 text-sm">
+                    <span className="font-medium">{label}</span>
+                    {(c.note || c.amount) && <span className="text-xs text-muted-foreground">{c.note || c.amount}</span>}
+                  </div>
+                );
+              })}
+              {comps.length === 0 && <p className="text-sm text-muted-foreground">{L("Ingen komponenter registrert.", "No components recorded.")}</p>}
+              {rec.notes && <p className="pt-1 text-xs text-muted-foreground"><strong>{L("Notat:", "Note:")}</strong> {rec.notes}</p>}
+            </div>
+          </Card>
+        );
+      })()}
+
+      {/* ── Test history ────────────────────────────────────────────────── */}
         <div>
           <div className="mb-3 flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">

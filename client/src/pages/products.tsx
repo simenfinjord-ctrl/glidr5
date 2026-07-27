@@ -5,7 +5,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer, Droplets, Snowflake, ChevronDown, Archive, ArchiveRestore, MoreHorizontal, LayoutGrid, LayoutList, Table2 } from "lucide-react";
+import { Filter, PackagePlus, Pencil, Trash2, Users, Minus, Plus, Warehouse, History, ArrowUp, ArrowDown, CheckSquare, Square, FlaskConical, MapPin, Thermometer, Droplets, Snowflake, ChevronDown, Archive, ArchiveRestore, MoreHorizontal, LayoutGrid, LayoutList, Table2, Layers } from "lucide-react";
 import { ProductCompare } from "@/pages/analytics";
 import { EmptyState } from "@/components/empty-state";
 import { AppShell } from "@/components/app-shell";
@@ -480,6 +480,142 @@ function ProductSheetDialog({ teamId, lang }: { teamId: number; lang: string }) 
   );
 }
 
+// ── Glide mix builder ────────────────────────────────────────────────────────
+// A mix becomes a REAL product with a per-team 3-digit serial: pick the type
+// (which decides the serial range), compose it from existing products and/or
+// free text, and it is immediately testable, searchable and analysable.
+function GlideMixDialog({ products }: { products: Product[] }) {
+  const { language } = useI18n();
+  const L = (no: string, en: string) => (language === "no" ? no : en);
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [kind, setKind] = useState("powder");
+  const [notes, setNotes] = useState("");
+  const [components, setComponents] = useState<{ productId: string; freeText: string; note: string }[]>([
+    { productId: "", freeText: "", note: "" },
+    { productId: "", freeText: "", note: "" },
+  ]);
+
+  const KINDS = [
+    { v: "powder", label: L("Pulver", "Powder"), range: "001–300" },
+    { v: "liquid", label: "Liquid", range: "301–399" },
+    { v: "solid", label: L("Fast glider", "Solid glider"), range: "400–600" },
+    { v: "other", label: L("Annet", "Other"), range: "601–699" },
+  ];
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/glide-mixes", {
+        name: name.trim(),
+        mixKind: kind,
+        notes: notes.trim() || null,
+        components: components
+          .filter((c) => c.productId || c.freeText.trim())
+          .map((c) => ({
+            productId: c.productId ? parseInt(c.productId) : null,
+            freeText: c.freeText.trim() || null,
+            note: c.note.trim() || null,
+          })),
+      });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({
+        title: L("Mix opprettet", "Mix created"),
+        description: L(`«${data.name}» fikk serienummer ${data.serialNumber}.`, `"${data.name}" was assigned serial ${data.serialNumber}.`),
+      });
+      setOpen(false);
+      setName(""); setNotes("");
+      setComponents([{ productId: "", freeText: "", note: "" }, { productId: "", freeText: "", note: "" }]);
+    },
+    onError: (e: any) => toast({ title: L("Feil", "Error"), description: e?.message, variant: "destructive" }),
+  });
+
+  const glideProducts = products.filter((p) => !/structure|kick/i.test(p.category));
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" data-testid="button-add-glide-mix">
+          <Layers className="mr-2 h-4 w-4" />
+          {L("Ny mix", "New mix")}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{L("Ny glide-mix", "New glide mix")}</DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            {L("Mixen blir et eget produkt med serienummer — kan velges i tester, søkes opp og analyseres som alle andre produkter.",
+               "The mix becomes its own product with a serial number — testable, searchable and analysable like any other product.")}
+          </p>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">{L("Navn *", "Name *")}</label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={L("f.eks. Kaldføre spesial", "e.g. Cold special")} data-testid="input-mix-name" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">{L("Type (bestemmer serienummer)", "Type (decides serial range)")}</label>
+              <Select value={kind} onValueChange={setKind}>
+                <SelectTrigger data-testid="select-mix-kind"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {KINDS.map((k) => (
+                    <SelectItem key={k.v} value={k.v}>{k.label} ({k.range})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{L("Komponenter", "Components")}</label>
+            {components.map((c, i) => (
+              <div key={i} className="flex flex-wrap items-center gap-2">
+                <Select value={c.productId || "none"} onValueChange={(v) => setComponents((prev) => prev.map((x, j) => j === i ? { ...x, productId: v === "none" ? "" : v } : x))}>
+                  <SelectTrigger className="w-[210px] h-9 text-xs" data-testid={`select-mix-comp-${i}`}>
+                    <SelectValue placeholder={L("Velg produkt", "Pick product")} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[40vh]">
+                    <SelectItem value="none">{L("— fritekst —", "— free text —")}</SelectItem>
+                    {glideProducts.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>{p.brand} {p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!c.productId && (
+                  <Input className="h-9 w-[150px] text-xs" placeholder={L("Fritekst", "Free text")} value={c.freeText}
+                    onChange={(e) => setComponents((prev) => prev.map((x, j) => j === i ? { ...x, freeText: e.target.value } : x))} />
+                )}
+                <Input className="h-9 flex-1 min-w-[110px] text-xs" placeholder={L("Andel/notat (f.eks. 60 %)", "Share/note (e.g. 60%)")} value={c.note}
+                  onChange={(e) => setComponents((prev) => prev.map((x, j) => j === i ? { ...x, note: e.target.value } : x))} />
+                {components.length > 1 && (
+                  <button type="button" className="p-1 text-muted-foreground hover:text-red-500" onClick={() => setComponents((prev) => prev.filter((_, j) => j !== i))}>
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => setComponents((prev) => [...prev, { productId: "", freeText: "", note: "" }])}>
+              <Plus className="mr-1.5 h-3.5 w-3.5" />{L("Legg til komponent", "Add component")}
+            </Button>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{L("Notater", "Notes")}</label>
+            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={L("Påføring, temperaturvindu …", "Application, temperature window …")} />
+          </div>
+          <div className="flex justify-end">
+            <Button disabled={createMutation.isPending || !name.trim()} onClick={() => createMutation.mutate()} data-testid="button-save-glide-mix">
+              {createMutation.isPending ? L("Lagrer…", "Saving…") : L("Opprett mix", "Create mix")}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Products() {
   const { t, language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
@@ -584,7 +720,10 @@ export default function Products() {
     return products.filter((p) => {
       const okCategory = category === "All" ? true : p.category === category;
       const okBrand = selectedBrand === "All" ? true : p.brand === selectedBrand;
-      const okName = n ? p.name.toLowerCase().includes(n) : true;
+      const okName = n
+        ? (p.name.toLowerCase().includes(n)
+           || ((p as any).serialNumber ? String((p as any).serialNumber).includes(n) : false))
+        : true;
       const okGroup = groupFilter === "All" ? true : p.groupScope.split(",").map((g) => g.trim()).includes(groupFilter);
       const okRaced = racedFilter === "All" ? true : racedFilter === "Raced" ? racedSet.has(p.id) : !racedSet.has(p.id);
       const okTested = testedFilter === "All" ? true : testedFilter === "Tested" ? testedSet.has(p.id) : !testedSet.has(p.id);
@@ -628,7 +767,10 @@ export default function Products() {
     return archivedProducts.filter((p) => {
       const okCategory = category === "All" ? true : p.category === category;
       const okBrand = selectedBrand === "All" ? true : p.brand === selectedBrand;
-      const okName = n ? p.name.toLowerCase().includes(n) : true;
+      const okName = n
+        ? (p.name.toLowerCase().includes(n)
+           || ((p as any).serialNumber ? String((p as any).serialNumber).includes(n) : false))
+        : true;
       const okGroup = groupFilter === "All" ? true : p.groupScope.split(",").map((g) => g.trim()).includes(groupFilter);
       const okRaced = racedFilter === "All" ? true : racedFilter === "Raced" ? racedSet.has(p.id) : !racedSet.has(p.id);
       const okTested = testedFilter === "All" ? true : testedFilter === "Tested" ? testedSet.has(p.id) : !testedSet.has(p.id);
@@ -833,6 +975,9 @@ export default function Products() {
                   <SelectItem value="alpha">{L("A–Å", "A–Z")}</SelectItem>
                 </SelectContent>
               </Select>
+            )}
+            {viewMode === "products" && (
+              <GlideMixDialog products={products} />
             )}
             {viewMode === "products" && (
               <Dialog open={open} onOpenChange={setOpen}>
@@ -1055,7 +1200,7 @@ export default function Products() {
                             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold opacity-60", categoryBadgeClass(p.category))}>
                               {p.category}
                             </span>
-                            {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}
+                            {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}{(p as any).serialNumber && (<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono" title="Mix">#{(p as any).serialNumber}</span>)}
                           </td>
                           <td className="px-4 py-2.5">
                             <AppLink href={`/products/${p.id}`} className="font-medium hover:text-amber-600 transition-colors">
@@ -1099,7 +1244,7 @@ export default function Products() {
                     <AppLink href={`/products/${p.id}`} className="min-w-0 flex-1 group">
                       <div className="flex items-center gap-2">
                         <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold opacity-60", categoryBadgeClass(p.category))}>{p.category}</span>
-                            {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}
+                            {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}{(p as any).serialNumber && (<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono" title="Mix">#{(p as any).serialNumber}</span>)}
                         <span className="text-sm font-medium text-foreground group-hover:text-amber-600 transition-colors">{p.brand} {p.name}</span>
                       </div>
                       {p.archivedAt && (
@@ -1298,7 +1443,7 @@ export default function Products() {
                         return (
                           <tr key={p.id} className="border-t border-border hover:bg-muted/20 transition-colors">
                             <td className="px-4 py-2.5">
-                              {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}<span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap", categoryBadgeClass(p.category))}>
+                              {(p as any).sharedFromTeam && (<span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(p as any).sharedFromTeam}</span>)}{(p as any).serialNumber && (<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono" title="Mix">#{(p as any).serialNumber}</span>)}<span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap", categoryBadgeClass(p.category))}>
                                 {p.category}
                               </span>
                             </td>

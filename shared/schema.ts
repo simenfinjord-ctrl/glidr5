@@ -346,6 +346,11 @@ export const products = pgTable("products", {
   teamId: integer("team_id").notNull().default(1),
   stockQuantity: integer("stock_quantity").notNull().default(0),
   archivedAt: text("archived_at"),
+  // Mixes: per-team 3-digit serial (001–300 powders · 301–399 liquids ·
+  // 400–600 solid · 601–699 other · 700–999 kick) + the recipe.
+  serialNumber: text("serial_number"),
+  isMix: integer("is_mix").notNull().default(0),
+  recipe: text("recipe"),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });

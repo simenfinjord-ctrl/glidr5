@@ -785,7 +785,12 @@ export default function Kick() {
                   <Card key={mix.id} className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="font-semibold">{mix.name}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-semibold">{mix.name}</div>
+                          {(mix as any).serialNumber && (
+                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono">#{(mix as any).serialNumber}</span>
+                          )}
+                        </div>
                         <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs">
                           <span className={cn("rounded-full px-2 py-0.5 ring-1", mix.mixType === "klister" ? "bg-amber-100 text-amber-800 ring-amber-300 dark:bg-amber-900/30 dark:text-amber-300" : "bg-sky-100 text-sky-800 ring-sky-300 dark:bg-sky-900/30 dark:text-sky-300")}>
                             {mix.mixType === "klister" ? "Klister" : L("Hardvoks", "Hardwax")}

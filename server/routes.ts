@@ -232,6 +232,26 @@ function recomputeSharedEntries(entries: any[]): any[] {
   }));
 }
 
+// ── Mix serial numbers ───────────────────────────────────────────────────────
+// 3-digit ids per TEAM, shared across kick and glide mixes:
+//   001–300 powders · 301–399 liquids · 400–600 solid gliders ·
+//   601–699 other · 700–999 kick waxes
+const MIX_SERIAL_RANGES: Record<string, [number, number]> = {
+  powder: [1, 300], liquid: [301, 399], solid: [400, 600], other: [601, 699], kick: [700, 999],
+};
+const MIX_KIND_CATEGORY: Record<string, string> = {
+  powder: "Paraffin", liquid: "Liquid", solid: "Block", other: "Block", kick: "Kick",
+};
+async function nextMixSerial(teamId: number, kind: string): Promise<string | null> {
+  const [lo, hi] = MIX_SERIAL_RANGES[kind] ?? MIX_SERIAL_RANGES.other;
+  const { pool: pSer } = await import("./db");
+  const r = await (pSer as any).query(
+    `SELECT serial_number FROM products WHERE team_id = $1 AND serial_number IS NOT NULL`, [teamId]);
+  const used = new Set(r.rows.map((x: any) => parseInt(x.serial_number)).filter((n: number) => !isNaN(n)));
+  for (let n = lo; n <= hi; n++) if (!used.has(n)) return String(n).padStart(3, "0");
+  return null;
+}
+
 function requirePermission(area: PermissionArea, level: PermissionLevel) {
   return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated() || !req.user) {
@@ -533,6 +553,12 @@ export async function registerRoutes(
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_backup_error_at TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS discount_percent REAL NOT NULL DEFAULT 0;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_backup_rows INTEGER;
+      -- Mixes are real products: 3-digit serial per team, recipe stored on the
+      -- product so history/analytics work like any other product.
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS serial_number TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS is_mix INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS recipe TEXT;
+      ALTER TABLE kick_mixes ADD COLUMN IF NOT EXISTS product_id INTEGER;
       -- Parent/child teams: a child team is fully independent but gets READ
       -- access to the parent's data in the areas listed in shared_areas.
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS parent_team_id INTEGER;
@@ -994,6 +1020,29 @@ export async function registerRoutes(
       CREATE INDEX IF NOT EXISTS grinding_sheets_team_idx       ON grinding_sheets(team_id);
     `);
   }
+
+  // Retrofit: existing kick mixes without a linked product get a 700-series
+  // serial + product card, so search/history covers them from day one.
+  (async () => {
+    try {
+      const { pool: pRf } = await import("./db");
+      const orphans = await (pRf as any).query(`SELECT * FROM kick_mixes WHERE product_id IS NULL`);
+      for (const km of orphans.rows) {
+        const serial = await nextMixSerial(km.team_id, "kick");
+        if (!serial) continue;
+        const created = await storage.createProduct({
+          category: "Kick", brand: "Mix", name: km.name,
+          serialNumber: serial, isMix: 1,
+          recipe: JSON.stringify({ kind: "kick", components: km.products ? JSON.parse(km.products) : [], notes: km.notes || null }),
+          createdAt: km.created_at || new Date().toISOString(),
+          createdById: km.created_by_id, createdByName: km.created_by_name,
+          groupScope: km.group_scope || "", teamId: km.team_id,
+        } as any);
+        await (pRf as any).query(`UPDATE kick_mixes SET product_id = $1 WHERE id = $2`, [created.id, km.id]);
+      }
+      if (orphans.rows.length > 0) console.log(`[Mixes] Retrofitted ${orphans.rows.length} kick mix(es) with serials + product cards`);
+    } catch (e) { console.error('[Mixes] Retrofit failed:', e); }
+  })();
 
   // --- Maintenance mode gate (runs before all other /api routes) ---
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
@@ -1656,10 +1705,12 @@ export async function registerRoutes(
     const teamId = getActiveTeamId(req);
     const { pool } = await import("./db");
     const r = await (pool as any).query(
-      `SELECT id, team_id AS "teamId", group_scope AS "groupScope", name, mix_type AS "mixType",
-              roller_temperature AS "rollerTemperature", products, notes,
-              created_at AS "createdAt", created_by_name AS "createdByName"
-       FROM kick_mixes WHERE team_id=$1 ORDER BY id DESC`, [teamId]);
+      `SELECT km.id, km.team_id AS "teamId", km.group_scope AS "groupScope", km.name, km.mix_type AS "mixType",
+              km.roller_temperature AS "rollerTemperature", km.products, km.notes,
+              km.created_at AS "createdAt", km.created_by_name AS "createdByName",
+              km.product_id AS "productId", p.serial_number AS "serialNumber"
+       FROM kick_mixes km LEFT JOIN products p ON p.id = km.product_id
+       WHERE km.team_id=$1 ORDER BY km.id DESC`, [teamId]);
     const rows = r.rows.filter((row: any) =>
       userHasGroupAccess(u.groupScope, isEffectiveAdmin(req), row.groupScope || ""));
     // Child team: parent's kick mixes (read-only).
@@ -1687,7 +1738,22 @@ export async function registerRoutes(
       [teamId, resolveCreateGroupScope(req), b.name || "", b.mixType === "klister" ? "klister" : "hardwax",
        b.mixType === "klister" ? (b.rollerTemperature || null) : null, products, b.notes || null,
        new Date().toISOString(), u.id, u.name]);
-    res.json({ id: r.rows[0].id });
+    // Kick mixes are products too: 700-series serial, searchable, analysable.
+    let serialOut: string | null = null;
+    try {
+      serialOut = await nextMixSerial(teamId, "kick");
+      if (serialOut) {
+        const prod = await storage.createProduct({
+          category: "Kick", brand: "Mix", name: b.name || "",
+          serialNumber: serialOut, isMix: 1,
+          recipe: JSON.stringify({ kind: "kick", components: Array.isArray(b.products) ? b.products : [], notes: b.notes || null }),
+          createdAt: new Date().toISOString(), createdById: (u as any).id, createdByName: (u as any).name,
+          groupScope: resolveCreateGroupScope(req), teamId,
+        } as any);
+        await (pool as any).query(`UPDATE kick_mixes SET product_id = $1 WHERE id = $2`, [prod.id, r.rows[0].id]);
+      }
+    } catch (e) { console.error("[kick-mix] product link failed:", e); }
+    res.json({ id: r.rows[0].id, serialNumber: serialOut });
   });
 
   app.put("/api/kick-mixes/:id", requirePermission("kick", "edit"), async (req, res) => {
@@ -2332,6 +2398,41 @@ export async function registerRoutes(
       }
     }
     res.json(list);
+  });
+
+  // Create a GLIDE MIX: a real product with a per-team 3-digit serial and the
+  // recipe stored on it — selectable in tests, full history/analytics for free.
+  app.post("/api/glide-mixes", requirePermission("products", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const name = String(req.body.name ?? "").trim();
+    if (!name) return res.status(400).json({ message: "Name is required" });
+    const kind = ["powder", "liquid", "solid", "other"].includes(req.body.mixKind) ? req.body.mixKind : "other";
+    const serial = await nextMixSerial(teamId, kind);
+    if (!serial) return res.status(409).json({ message: "No free serial numbers left in this range" });
+    const components = Array.isArray(req.body.components)
+      ? req.body.components
+          .map((c: any) => ({
+            productId: c.productId != null ? parseInt(String(c.productId)) : null,
+            freeText: c.freeText ? String(c.freeText) : null,
+            note: c.note ? String(c.note) : null,
+          }))
+          .filter((c: any) => c.productId != null || c.freeText)
+      : [];
+    const created = await storage.createProduct({
+      category: MIX_KIND_CATEGORY[kind],
+      brand: "Mix",
+      name,
+      serialNumber: serial,
+      isMix: 1,
+      recipe: JSON.stringify({ kind, components, notes: req.body.notes || null }),
+      createdAt: new Date().toISOString(),
+      createdById: u.id,
+      createdByName: u.name,
+      groupScope: resolveCreateGroupScope(req),
+      teamId,
+    } as any);
+    res.json({ ...created, serialNumber: serial });
   });
 
   app.post("/api/products", requirePermission("products", "edit"), async (req, res) => {

@@ -1088,7 +1088,7 @@ async function dumpAllTables(teamId: number | null, includeOwnerCompliance: bool
     }
     // Terms-acceptance records are owner-level compliance data — SA only.
     if (table === 'activity_logs' && !includeOwnerCompliance) {
-      where += (where ? ' AND ' : ' WHERE ') + "action NOT IN ('accepted_terms','terms_reset')";
+      where += (where ? ' AND ' : ' WHERE ') + "action NOT IN ('accepted_terms','terms_reset','login_log_deleted')";
     }
     try {
       const r = await (pool as any).query(`SELECT ${selectCols} FROM "${table}"${where} ORDER BY 1 ASC`, params);

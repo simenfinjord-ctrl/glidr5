@@ -5098,7 +5098,7 @@ export async function registerRoutes(
     const teamId = getAdminTeamScope(req);
     let logs = await storage.listActivityLogs(limit, teamId);
     // Terms-acceptance records are owner-level compliance data — SA only.
-    if (userInfo(req).isAdmin !== true) logs = logs.filter((l: any) => l.action !== "accepted_terms" && l.action !== "terms_reset");
+    if (userInfo(req).isAdmin !== true) logs = logs.filter((l: any) => l.action !== "accepted_terms" && l.action !== "terms_reset" && l.action !== "login_log_deleted");
     if (actionFilter) logs = logs.filter((l: any) => l.action === actionFilter);
     res.json(logs);
   });
@@ -5108,7 +5108,7 @@ export async function registerRoutes(
     if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
     const teamId = getAdminTeamScope(req);
     let logs = await storage.listActivityLogs(10000, teamId);
-    if (userInfo(req).isAdmin !== true) logs = logs.filter((l: any) => l.action !== "accepted_terms" && l.action !== "terms_reset");
+    if (userInfo(req).isAdmin !== true) logs = logs.filter((l: any) => l.action !== "accepted_terms" && l.action !== "terms_reset" && l.action !== "login_log_deleted");
     const actions = [...new Set(logs.map((l: any) => l.action).filter(Boolean))].sort();
     res.json(actions);
   });
@@ -6206,7 +6206,7 @@ export async function registerRoutes(
       storage.listGroups(teamId),
       storage.listLoginLogs(teamId),
       // Terms-acceptance records are owner-level compliance data — SA only.
-      storage.listActivityLogs(5000, teamId).then((ls: any[]) => u.isAdmin ? ls : ls.filter((l: any) => l.action !== "accepted_terms" && l.action !== "terms_reset")),
+      storage.listActivityLogs(5000, teamId).then((ls: any[]) => u.isAdmin ? ls : ls.filter((l: any) => l.action !== "accepted_terms" && l.action !== "terms_reset" && l.action !== "login_log_deleted")),
       storage.listAthletes(u.id, true, teamId),
     ]);
     const testIds = allTests.map((t: any) => t.id);
@@ -6697,7 +6697,7 @@ export async function registerRoutes(
       ),
       (pg as any).query(
         `SELECT id, user_id, user_name, action, entity_type, entity_id, details, created_at, team_id
-         FROM activity_logs WHERE user_id = $1 AND created_at >= $2 AND action NOT IN ('accepted_terms','terms_reset') ORDER BY created_at DESC LIMIT 200`,
+         FROM activity_logs WHERE user_id = $1 AND created_at >= $2 AND action NOT IN ('accepted_terms','terms_reset','login_log_deleted') ORDER BY created_at DESC LIMIT 200`,
         [targetId, sinceIso]
       ),
     ]);
@@ -6745,7 +6745,7 @@ export async function registerRoutes(
       ),
       (pg as any).query(
         `SELECT id, user_id, user_name, action, entity_type, entity_id, details, created_at, team_id
-         FROM activity_logs WHERE user_id = $1 AND created_at >= $2 AND action NOT IN ('accepted_terms','terms_reset') ORDER BY created_at DESC LIMIT 200`,
+         FROM activity_logs WHERE user_id = $1 AND created_at >= $2 AND action NOT IN ('accepted_terms','terms_reset','login_log_deleted') ORDER BY created_at DESC LIMIT 200`,
         [targetId, sinceIso]
       ),
     ]);

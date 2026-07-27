@@ -9,6 +9,17 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// A stalled request must fail fast and retry instead of hanging the page
+// forever (Render cold start, mobile network dropping mid-request). Reads get
+// a shorter leash than writes — writes that time out are queued offline.
+const READ_TIMEOUT_MS = 20_000;
+const WRITE_TIMEOUT_MS = 30_000;
+function timeoutSignal(ms: number): AbortSignal | undefined {
+  return typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+    ? AbortSignal.timeout(ms)
+    : undefined;
+}
+
 export class OfflineError extends Error {
   constructor(
     public method: string,
@@ -62,6 +73,7 @@ export async function apiRequest(
       headers: data ? { "Content-Type": "application/json" } : {},
       body: data ? JSON.stringify(data) : undefined,
       credentials: "include",
+      signal: timeoutSignal(WRITE_TIMEOUT_MS),
     });
   } catch (networkErr) {
     // "Connected but no data" — the mountain case: navigator.onLine is true but
@@ -89,6 +101,7 @@ export const getQueryFn: <T>(options: {
     try {
       const res = await fetch(cacheKey as string, {
         credentials: "include",
+        signal: timeoutSignal(READ_TIMEOUT_MS),
       });
 
       if (unauthorizedBehavior === "returnNull" && res.status === 401) {

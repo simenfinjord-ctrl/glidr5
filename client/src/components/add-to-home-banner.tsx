@@ -23,6 +23,9 @@ export function AddToHomeBanner() {
     if (!isMobile || isStandalone()) return;
     try { if (localStorage.getItem(KEY)) return; } catch { /* show */ }
     setVisible(true);
+    // Shown ONCE per device: mark as seen the moment it appears, so it never
+    // comes back — whether they install, dismiss or just ignore it.
+    try { localStorage.setItem(KEY, String(Date.now())); } catch { /* ok */ }
     const onPrompt = (e: any) => { e.preventDefault(); setInstallEvt(e); };
     window.addEventListener("beforeinstallprompt", onPrompt);
     return () => window.removeEventListener("beforeinstallprompt", onPrompt);

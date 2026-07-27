@@ -532,6 +532,7 @@ export async function registerRoutes(
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_backup_error TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_backup_error_at TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS discount_percent REAL NOT NULL DEFAULT 0;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_backup_rows INTEGER;
       -- Parent/child teams: a child team is fully independent but gets READ
       -- access to the parent's data in the areas listed in shared_areas.
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS parent_team_id INTEGER;
@@ -1799,7 +1800,7 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Admin access required" });
     }
     const { runDriveBackupForTeam } = await import('./backup');
-    const result = await runDriveBackupForTeam(id);
+    const result = await runDriveBackupForTeam(id, { force: true });
     if (result.success) {
       res.json({ ok: true, pdfError: result.pdfError ?? null });
     } else {
@@ -1951,7 +1952,8 @@ export async function registerRoutes(
     if (!team) return res.status(404).json({ message: "Team not found" });
     if (!team.backupSheetUrl) return res.status(400).json({ message: "No backup sheet URL configured" });
     const { runBackupForTeam } = await import('./backup');
-    const result = await runBackupForTeam(id);
+    // Manual run = deliberate → bypasses the data-loss guard.
+    const result = await runBackupForTeam(id, { force: true });
     if (result.success) {
       res.json({ ok: true, lastBackupAt: new Date().toISOString() });
     } else {

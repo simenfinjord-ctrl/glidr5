@@ -3,6 +3,53 @@ import { getUncachableGoogleSheetClient, getGoogleDriveClient } from './googleSh
 import { storage } from './storage';
 import { pool } from './db';
 
+// ── Data-loss guard ──────────────────────────────────────────────────────────
+// Backups must survive Glidr itself dying: if the database suddenly looks
+// EMPTY compared to the last successful run (crash, wipe, migration accident),
+// the AUTOMATIC backups refuse to overwrite the good copies and alert the SA.
+// Deliberate deletions still propagate: normal deletes never cross the 80%%
+// threshold, and a manual "run backup now" always writes (force).
+async function countTeamRows(teamId: number): Promise<number> {
+  const { pool: pC } = await import('./db');
+  const r = await (pC as any).query(
+    `SELECT
+       (SELECT COUNT(*) FROM tests WHERE team_id = $1)
+     + (SELECT COUNT(*) FROM test_entries WHERE test_id IN (SELECT id FROM tests WHERE team_id = $1))
+     + (SELECT COUNT(*) FROM products WHERE team_id = $1)
+     + (SELECT COUNT(*) FROM athletes WHERE team_id = $1)
+     + (SELECT COUNT(*) FROM daily_weather WHERE team_id = $1)
+     + (SELECT COUNT(*) FROM kick_tests WHERE team_id = $1)
+     + (SELECT COUNT(*) FROM race_preps WHERE team_id = $1)
+     + (SELECT COUNT(*) FROM test_ski_series WHERE team_id = $1) AS total`, [teamId]);
+  return parseInt(r.rows[0]?.total ?? '0');
+}
+
+/** Returns an error string when the run must be blocked, else null (and
+ * remembers the new count for the next comparison). */
+async function dataLossGuard(teamId: number, force: boolean): Promise<string | null> {
+  const { pool: pG } = await import('./db');
+  const newTotal = await countTeamRows(teamId);
+  const prevRes = await (pG as any).query(`SELECT last_backup_rows FROM teams WHERE id = $1`, [teamId]);
+  const prev = parseInt(prevRes.rows[0]?.last_backup_rows ?? '0') || 0;
+  if (!force && prev >= 50 && newTotal < prev * 0.2) {
+    const msg = `Safety stop: data loss suspected (${prev} → ${newTotal} rows). The existing backup was PRESERVED. If this reduction is intentional, run a manual backup to overwrite.`;
+    try {
+      const saUsers = await (pG as any).query(`SELECT id FROM users WHERE is_admin = 1`);
+      const now = new Date().toISOString();
+      for (const sa of saUsers.rows) {
+        await (pG as any).query(
+          `INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at)
+           VALUES ($1, 'Glidr System', $2, $3, 0, $4)`,
+          [sa.id, `⚠️ Backup stoppet — mulig datatap (lag ${teamId})`,
+           `Automatisk backup for lag ${teamId} ble stoppet: antall rader falt fra ${prev} til ${newTotal}. Den eksisterende backupen er bevart. Er reduksjonen bevisst, kjør manuell backup for å overskrive.`, now]);
+      }
+    } catch { /* best-effort alert */ }
+    return msg;
+  }
+  await (pG as any).query(`UPDATE teams SET last_backup_rows = $1 WHERE id = $2`, [newTotal, teamId]).catch(() => {});
+  return null;
+}
+
 function extractSpreadsheetId(url: string): string | null {
   const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
   return m ? m[1] : null;
@@ -191,13 +238,19 @@ async function reorderSheets(sheets: any, spreadsheetId: string, orderedTitles: 
   }
 }
 
-export async function runBackupForTeam(teamId: number): Promise<{ success: boolean; error?: string }> {
+export async function runBackupForTeam(teamId: number, opts?: { force?: boolean }): Promise<{ success: boolean; error?: string }> {
   const team = await storage.getTeam(teamId);
   if (!team) return { success: false, error: 'Team not found' };
   if (!team.backupSheetUrl) return { success: false, error: 'No backup sheet URL configured' };
 
   const spreadsheetId = extractSpreadsheetId(team.backupSheetUrl);
   if (!spreadsheetId) return { success: false, error: 'Invalid Google Sheets URL' };
+
+  const guardMsg = await dataLossGuard(teamId, opts?.force === true);
+  if (guardMsg) {
+    await storage.updateTeam(teamId, { lastBackupError: guardMsg, lastBackupErrorAt: new Date().toISOString() } as any).catch(() => {});
+    return { success: false, error: guardMsg };
+  }
 
   try {
     const sheets = await getUncachableGoogleSheetClient();
@@ -1357,6 +1410,17 @@ function buildExportHtml(data: {
     ));
   }
 
+  // Series regrind timeline (sorted by date) so each test can show the grind
+  // that was actually on the skis at test time — same as the Sheets backup.
+  const regrindsBySeries = new Map<number, any[]>();
+  for (const r of (data.testSkiRegrinds || [])) {
+    const sid = (r as any).seriesId;
+    if (sid == null) continue;
+    if (!regrindsBySeries.has(sid)) regrindsBySeries.set(sid, []);
+    regrindsBySeries.get(sid)!.push(r);
+  }
+  for (const list of regrindsBySeries.values()) list.sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
+
   // Tests with entries
   const sortedTests = [...data.tests].sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''));
   const grindTests  = sortedTests.filter((t: any) => t.testType === 'Grind' || t.testType === 'Grinding');
@@ -1390,8 +1454,8 @@ function buildExportHtml(data: {
 
       const isClassic = test.testType === 'Classic';
       const heading = isAthleteTest
-        ? `${esc(test.date)} — ${esc(test.testType)} — ${esc(test.location || '')} — Athlete: ${esc(sourceName)}`
-        : `${esc(test.date)} — ${esc(test.testType)} — ${esc(test.location || '')}${sourceName ? ` — ${esc(sourceName)}` : ''}`;
+        ? `${esc(test.date)} — ${esc(test.testType)} — ${esc(test.location || '')} — Athlete: ${esc(sourceName)}${test.createdByName ? ` — ${esc(test.createdByName)}` : ''}`
+        : `${esc(test.date)} — ${esc(test.testType)} — ${esc(test.location || '')}${sourceName ? ` — ${esc(sourceName)}` : ''}${test.createdByName ? ` — ${esc(test.createdByName)}` : ''}`;
 
       const metaParts = [`Group: ${test.groupScope}`, test.createdByName ? `Created by: ${test.createdByName}` : null, test.notes ? `Notes: ${test.notes}` : null].filter(Boolean);
 
@@ -1419,24 +1483,65 @@ function buildExportHtml(data: {
         }
       }
 
-      const productColLabel = isGrind ? 'Grind Profile' : (isAthleteTest ? 'Ski (brand/ID)' : 'Product / Raceski');
-      const head = ['Rank', 'Ski #', productColLabel, 'Method'];
+      // Column layout mirrors the Google Sheets backup — the readable
+      // reference: Ski ID, resolved product, readable application, grind used,
+      // then result/rank per round side by side.
+      const productColLabel = isGrind ? 'Grind Profile' : (isAthleteTest ? 'Ski (brand/ID)' : 'Product');
+      const head = ['Rank', 'Ski #', 'Ski ID', productColLabel, 'Application / Method', 'Grind used'];
       for (const lbl of distanceLabels) { head.push(`${lbl} (cm)`); head.push('Rank'); }
-      if (isClassic) head.push('Kick');
+      if (isClassic) { head.push('Kick'); head.push('Kick solution'); }
       head.push('Feeling');
+      head.push('Feeling note');
+
+      // Readable application: methodology is stored pipe-separated per product.
+      const prettyApp = (m: string | null | undefined): string =>
+        (m || '').split('|').map((x: string) => x.trim()).filter(Boolean).join(' + ') || '—';
+      // Grind used at test time: grind test → profile; athlete ski → the ski's
+      // grind; series test → the latest regrind on/before the test date.
+      const grindUsed = (e: any): string => {
+        if (e.grindProfileId) {
+          const gp = grindProfileMap.get(e.grindProfileId);
+          if (gp) return [gp.grindType, gp.stone, gp.pattern].filter(Boolean).join(' · ') || gp.name || '—';
+        }
+        if (e.grindType || e.grindStone || e.grindPattern) {
+          return [e.grindType, e.grindStone, e.grindPattern].filter(Boolean).join(' · ');
+        }
+        if (e.raceSkiId) {
+          const ski = raceSkiMap.get(e.raceSkiId);
+          if (ski?.grind) return ski.grind;
+        }
+        if (!isAthleteTest && test.seriesId) {
+          const regs = regrindsBySeries.get(test.seriesId) || [];
+          const before = regs.filter((r: any) => (r.date || '') <= (test.date || ''));
+          if (before.length > 0) return before[before.length - 1].grindType || '—';
+          if (seriesObj?.grind) return seriesObj.grind;
+        }
+        return '—';
+      };
+      const skiIdOf = (e: any): string => {
+        if (e.raceSkiId) {
+          const ski = raceSkiMap.get(e.raceSkiId);
+          if (ski?.skiId) return String(ski.skiId);
+        }
+        return '';
+      };
 
       const rows = entries
         .map((e: any) => { const rounds = getEntryRounds(e, distanceLabels.length); return { e, rounds, firstRank: rounds[0]?.rank ?? 999 }; })
         .sort((a: any, b: any) => a.firstRank - b.firstRank)
         .map(({ e, rounds }: any) => {
-          const row: string[] = [rounds[0]?.rank != null ? String(rounds[0].rank) : '—', String(e.skiNumber || ''), getProductLabel(e, isAthleteTest), e.methodology || ''];
+          const row: string[] = [
+            rounds[0]?.rank != null ? String(rounds[0].rank) : '—',
+            String(e.skiNumber || ''),
+            skiIdOf(e) || '—',
+            getProductLabel(e, isAthleteTest),
+            prettyApp(e.methodology),
+            grindUsed(e),
+          ];
           for (const rr of rounds) { row.push(rr.result != null ? String(rr.result) : '—'); row.push(rr.rank != null ? String(rr.rank) : '—'); }
-          if (isClassic) row.push(e.kickRank != null ? String(e.kickRank) : '—');
-          row.push(
-            e.feelingRank != null
-              ? String(e.feelingRank) + (e.feelingNote ? ` — ${e.feelingNote}` : '')
-              : (e.feelingNote || '—')
-          );
+          if (isClassic) { row.push(e.kickRank != null ? String(e.kickRank) : '—'); row.push(e.kickSolution || '—'); }
+          row.push(e.feelingRank != null ? String(e.feelingRank) : '—');
+          row.push(e.feelingNote || '—');
           return row;
         });
 
@@ -1798,7 +1903,11 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
   }
 }
 
-export async function runDriveBackupForTeam(teamId: number): Promise<{ success: boolean; error?: string; pdfError?: string }> {
+export async function runDriveBackupForTeam(teamId: number, opts?: { force?: boolean }): Promise<{ success: boolean; error?: string; pdfError?: string }> {
+  {
+    const guardMsg = await dataLossGuard(teamId, opts?.force === true);
+    if (guardMsg) return { success: false, error: guardMsg };
+  }
   const team = await storage.getTeam(teamId);
   if (!team) return { success: false, error: 'Team not found' };
   if (!team.driveFolderId) return { success: false, error: 'No Drive folder configured' };
@@ -2095,6 +2204,20 @@ export async function runSystemDump(): Promise<{ success: boolean; error?: strin
     const folderId = extractDriveFolderId(folderRaw);
 
     const json = await buildDisasterDumpJson();
+    // Data-loss guard for the DR file too: never overwrite a good full dump
+    // with a suspiciously empty one. (SA can clear system_dump_last_rows in
+    // app_settings to force after an intentional mass wipe.)
+    {
+      const parsed = JSON.parse(json);
+      const newTotal = Object.values(parsed.meta?.tableCounts ?? {}).reduce((a: number, b: any) => a + (typeof b === 'number' && b > 0 ? b : 0), 0);
+      const prevRaw = await getAppSetting('system_dump_last_rows');
+      const prev = prevRaw ? parseInt(prevRaw) : 0;
+      if (prev >= 100 && newTotal < prev * 0.2) {
+        console.error(`[SystemDump] SAFETY STOP: ${prev} -> ${newTotal} rows — existing dump preserved`);
+        return { success: false, error: `Safety stop: data loss suspected (${prev} → ${newTotal} rows). Existing dump preserved.` };
+      }
+      await setAppSetting('system_dump_last_rows', String(newTotal)).catch(() => {});
+    }
     const { Readable } = await import('stream');
     let fileId = await getAppSetting('system_dump_file_id');
     if (fileId) {

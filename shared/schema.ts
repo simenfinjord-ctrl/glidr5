@@ -226,6 +226,8 @@ export const teams = pgTable("teams", {
   customPrice: real("custom_price"),
   // Percent discount applied to the computed/each price (0–100, set by SA).
   discountPercent: real("discount_percent").notNull().default(0),
+  // Data-loss guard: total row count at the last successful backup.
+  lastBackupRows: integer("last_backup_rows"),
   // Parent/child teams: child teams get READ access to the parent's data in
   // the areas listed in sharedAreas (JSON array, e.g. ["tests","products","kick"]).
   parentTeamId: integer("parent_team_id"),

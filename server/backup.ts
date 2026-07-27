@@ -1253,6 +1253,7 @@ function buildExportHtml(data: {
   grindingSheets: any[]; activities: any[]; loginLogs: any[];
   racePreps: any[]; racePrepEntries: any[]; raceUsage?: any[];
   kickSkis?: any[]; kickTests?: any[]; kickEntries?: any[]; kickMixes?: any[]; fleetSkis?: any[];
+  testComments?: any[]; testAttachmentsMeta?: any[]; racePrepComments?: any[]; raceCalendar?: any[];
 }): string {
   const productMap     = new Map(data.products.map((p: any)     => [p.id, p]));
   const raceSkiMap     = new Map(data.raceSkis.map((s: any)     => [s.id, s]));
@@ -1399,8 +1400,13 @@ function buildExportHtml(data: {
   // Athletes
   if (data.athletes.length > 0) {
     body += htmlSection(`Athletes (${data.athletes.length})`, htmlTable(
-      ['Name', 'Team'],
-      data.athletes.map((a: any) => [a.name, a.team || ''])
+      ['Name', 'Team', 'Class', 'Main waxer', 'Ski brand', 'Height', 'Weight', 'Pole (cl)', 'Pole (sk)', 'Binding', 'Service preferences'],
+      data.athletes.map((a: any) => [
+        a.name, a.team || '', a.sportClass || '', a.mainWaxerName || '', a.defaultSkiBrand || '',
+        a.heightCm || '', a.weightKg || '', a.poleHeight || '', a.poleHeightSkate || '',
+        a.bindingPosition || '', a.skiServicePreferences || '',
+      ]),
+      true
     ));
   }
 
@@ -1566,11 +1572,20 @@ function buildExportHtml(data: {
           return row;
         });
 
+      const tComments = (data.testComments ?? []).filter((c: any) => c.test_id === test.id);
+      const tAtts = (data.testAttachmentsMeta ?? []).filter((a: any) => a.test_id === test.id);
+      const commentsHtml = tComments.length > 0
+        ? `<div class="test-meta"><strong>Comments:</strong> ${tComments.map((c: any) => `${esc(c.user_name)}: ${esc(c.content)}`).join('  ·  ')}</div>`
+        : '';
+      const attsHtml = tAtts.length > 0
+        ? `<div class="test-meta"><strong>Photos/attachments (${tAtts.length}):</strong> ${tAtts.map((a: any) => esc(a.filename)).join(', ')} — files stored in Glidr / Drive backup</div>`
+        : '';
       html += `<div class="test-block">
         <div class="test-header">${heading}</div>
         <div class="test-meta">${esc(metaParts.join('  |  '))}</div>
         ${weatherHtml}${grindParamsHtml}
         ${entries.length > 0 ? htmlTable(head, rows, true) : '<p class="no-entries">No entries</p>'}
+        ${commentsHtml}${attsHtml}
       </div>`;
     }
     return html;
@@ -1644,10 +1659,10 @@ function buildExportHtml(data: {
   }
 
     body += htmlSection(`Weather Logs (${data.weather.length})`, htmlTable(
-      ['Date', 'Time', 'Location', 'Snow °C', 'Air °C', 'Snow Hum%', 'Air Hum%', 'Clouds', 'Wind', 'Precip.', 'Snow Type', 'Grain', 'Track', 'Group'],
+      ['Date', 'Time', 'Location', 'Snow °C', 'Air °C', 'Snow Hum%', 'Air Hum%', 'Clouds', 'Wind', 'Precip.', 'Visibility', 'Snow Type', 'Grain', 'Track', 'Quality', 'Group'],
       data.weather.map((w: any) => {
         const st = [w.artificialSnow ? `Art: ${w.artificialSnow}` : null, w.naturalSnow ? `Nat: ${w.naturalSnow}` : null].filter(Boolean).join(', ');
-        return [w.date || '', w.time || '', w.location || '', String(w.snowTemperatureC ?? ''), String(w.airTemperatureC ?? ''), String(w.snowHumidityPct ?? ''), String(w.airHumidityPct ?? ''), w.clouds != null ? `${w.clouds}/8` : '', w.wind || '', w.precipitation || '', st || '', w.grainSize || '', w.trackHardness || '', w.groupScope || ''];
+        return [w.date || '', w.time || '', w.location || '', String(w.snowTemperatureC ?? ''), String(w.airTemperatureC ?? ''), String(w.snowHumidityPct ?? ''), String(w.airHumidityPct ?? ''), w.clouds != null ? `${w.clouds}/8` : '', w.wind || '', w.precipitation || '', w.visibility || '', st || '', w.grainSize || '', w.trackHardness || '', w.testQuality != null ? String(w.testQuality) : '', w.groupScope || ''];
       }),
       true
     ));
@@ -1702,13 +1717,27 @@ function buildExportHtml(data: {
         e.notes || '',
         [e.athlete_rating, e.athlete_comment].filter(Boolean).join(' — ') || '',
       ]);
+      const rpComments = (data.racePrepComments ?? []).filter((c: any) => c.race_prep_id === rp.id);
+      const rpCommentsHtml = rpComments.length > 0
+        ? `<div class="test-meta"><strong>Comments:</strong> ${rpComments.map((c: any) => `${esc(c.user_name)}: ${esc(c.content)}`).join('  ·  ')}</div>`
+        : '';
       rpHtml += `<div class="test-block">
         <div class="test-header">${esc(rp.date)} — ${esc(rp.location || '—')} — ${esc(rp.race_type || '—')} — ${esc(rp.discipline || '—')}</div>
         <div class="test-meta">${details}</div>
         ${rpEntries.length > 0 ? htmlTable(['Athlete', isSkating ? 'Ski (Skating)' : 'Ski (Classic)', 'Glide Ski', 'Waxer', 'Notes', 'Athlete feedback'], athleteRows, true) : '<p class="no-entries">No athletes registered.</p>'}
+        ${rpCommentsHtml}
       </div>`;
     }
     body += htmlSection(`Race Preparations (${data.racePreps.length})`, rpHtml);
+  }
+
+  // Athlete race calendar — planned races per athlete.
+  if ((data.raceCalendar ?? []).length > 0) {
+    body += htmlSection(`Race Calendar (${data.raceCalendar!.length})`, htmlTable(
+      ['Athlete', 'Date', 'Race', 'Location', 'Discipline', 'Notes'],
+      data.raceCalendar!.map((c: any) => [c.athlete_name || '', c.date || '', c.race_name || '', c.location || '', c.discipline || '', c.notes || '']),
+      true
+    ));
   }
 
   // Race usage — waxer-logged race-use per ski pair + athlete feedback.
@@ -1819,12 +1848,18 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
   // Kick + team race fleet — so the reference PDF covers every area.
   const { pool: pdfPool } = await import('./db');
   const pq = (sql: string) => (pdfPool as any).query(sql, [teamId]).then((r: any) => r.rows).catch(() => []);
-  const [kickSkis, kickTests, kickEntries, kickMixes, fleetSkis] = await Promise.all([
+  const [kickSkis, kickTests, kickEntries, kickMixes, fleetSkis, testComments, testAttachmentsMeta, racePrepComments, raceCalendar] = await Promise.all([
     pq(`SELECT * FROM kick_skis WHERE team_id = $1 ORDER BY name`),
     pq(`SELECT * FROM kick_tests WHERE team_id = $1 ORDER BY date DESC`),
     pq(`SELECT * FROM kick_test_entries WHERE kick_test_id IN (SELECT id FROM kick_tests WHERE team_id = $1)`),
     pq(`SELECT * FROM kick_mixes WHERE team_id = $1 ORDER BY name`),
     pq(`SELECT * FROM race_skis WHERE athlete_id IS NULL AND team_id = $1 ORDER BY ski_id`),
+    pq(`SELECT test_id, user_name, content, created_at FROM test_comments WHERE test_id IN (SELECT id FROM tests WHERE team_id = $1) ORDER BY created_at`),
+    pq(`SELECT test_id, filename, created_at FROM test_attachments WHERE test_id IN (SELECT id FROM tests WHERE team_id = $1) ORDER BY created_at`),
+    pq(`SELECT race_prep_id, user_name, content, created_at FROM race_prep_comments WHERE team_id = $1 ORDER BY created_at`),
+    pq(`SELECT c.date, c.race_name, c.location, c.discipline, c.notes, a.name AS athlete_name
+        FROM athlete_race_calendar c JOIN athletes a ON a.id = c.athlete_id
+        WHERE c.team_id = $1 ORDER BY c.date`),
   ]);
 
   const allRaceSkisNested = await Promise.all(
@@ -1880,6 +1915,7 @@ export async function buildTeamPdfBuffer(teamId: number): Promise<Buffer> {
 
   const html = buildExportHtml({
     kickSkis, kickTests, kickEntries, kickMixes, fleetSkis,
+    testComments, testAttachmentsMeta, racePrepComments, raceCalendar,
     teamName: team?.name ?? 'Glidr',
     tests: allTests,
     entriesByTest,

@@ -1355,7 +1355,7 @@ export default function Tests() {
           }
         }
         map.set(t.id, {
-          productName: names.length > 0 ? names.join(" + ") : `Ski #${winner.skiNumber}`,
+          productName: names.length > 0 ? names.join(" + ") : ((winner as any).freeTextProduct || `Ski #${winner.skiNumber}`),
           skiNumber: winner.skiNumber,
         });
       } else {
@@ -1983,7 +1983,7 @@ export default function Tests() {
                     const rounds = getEntryRounds(e, getDistanceLabels(tst).length);
                     switch (key) {
                       case "ski": return e.skiNumber;
-                      case "product": { const p = e.productId ? productsById.get(e.productId) : null; return p ? `${p.brand} ${p.name}` : null; }
+                      case "product": { const p = e.productId ? productsById.get(e.productId) : null; return p ? `${p.brand} ${p.name}` : ((e as any).freeTextProduct ?? null); }
                       case "rank": return rounds[0]?.rank ?? null;
                       case "feeling": return e.feelingRank ?? null;
                       case "kick": return (e as any).kickRank ?? null;
@@ -2104,6 +2104,11 @@ export default function Tests() {
                                   return p ? { id: p.id, name: `${p.brand} ${p.name}`, app: parseApplication(appParts[i + 1]?.trim() ?? "").interpreted } : null;
                                 }),
                               ].filter((x): x is { id: number; name: string; app: string } => !!x);
+                              // Free-text products/ski pairs have no product id but must
+                              // still show in the day view — plain text, no analytics link.
+                              if (productEntries.length === 0 && (entry as any).freeTextProduct) {
+                                productEntries.push({ id: 0, name: (entry as any).freeTextProduct, app: parseApplication(appParts[0]?.trim() ?? "").interpreted });
+                              }
                               const rounds = getEntryRounds(entry, distLabels.length);
                               const firstRank = rounds[0]?.rank ?? null;
 
@@ -2127,6 +2132,9 @@ export default function Tests() {
                                         <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                                           {productEntries.map((pe, i) => (
                                             <span key={i} className="flex items-baseline gap-1">
+                                              {pe.id === 0 ? (
+                                                <span className="font-medium">{pe.name}</span>
+                                              ) : (
                                               <button
                                                 type="button"
                                                 onClick={(e) => { e.stopPropagation(); navigate(`/analytics?tab=products&product=${pe.id}`); }}
@@ -2134,6 +2142,7 @@ export default function Tests() {
                                                 title={L("Se analyse for produktet", "See product analytics")}
                                                 data-testid={`link-product-analytics-${pe.id}`}
                                               >{pe.name}</button>
+                                              )}
                                               {pe.app && <span className="text-muted-foreground">{pe.app}</span>}
                                             </span>
                                           ))}

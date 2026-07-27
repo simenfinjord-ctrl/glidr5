@@ -1908,73 +1908,61 @@ async function notifyBackupFailure(teamId: number, teamName: string | null | und
   } catch (e) { console.error('[Backup] failure notification failed:', e); }
 }
 
-const backupIntervals: Record<number, NodeJS.Timeout> = {};
-// JSON+PDF Drive backup runs once daily at 23:59 (Europe/Oslo) — it launches
-// headless Chromium (Puppeteer) for the PDF, which is memory-heavy, so it is
-// kept separate from the cheap 30-min Google Sheets backup.
-const drivePdfIntervals: Record<number, NodeJS.Timeout> = {};
+// ── Global backup scheduling ─────────────────────────────────────────────────
+// ONE rolling scheduler regardless of team count: teams are processed
+// SEQUENTIALLY, never in parallel — 100 teams cannot stampede the Sheets
+// quota, and the nightly Drive job runs one Puppeteer at a time instead of
+// launching a Chromium per team simultaneously. When scaling to multiple web
+// instances, set RUN_BACKGROUND_JOBS=0 on the extras so jobs run exactly once.
+const JOBS_ENABLED = process.env.RUN_BACKGROUND_JOBS !== "0";
+let sheetsSweepTimer: NodeJS.Timeout | null = null;
+let driveDailyTimer: NodeJS.Timeout | null = null;
+let sheetsSweepRunning = false;
+let driveRunRunning = false;
 
-export function startAutoBackup(teamId: number, intervalMs: number = 30 * 60 * 1000, staggerMs: number = 0) {
-  stopAutoBackup(teamId);
-  // Cheap Sheets backup every 30 min (no Chromium). Teams are staggered
-  // (staggerMs) so they don't all hit the Sheets API quota window at once —
-  // clearInterval also clears timeouts, so stopAutoBackup works in both states.
-  const tick = async () => {
-    try {
-      const team = await storage.getTeam(teamId);
-      if (team?.backupSheetUrl) {
-        console.log(`[Backup] Auto-backup starting for team ${teamId}`);
-        const result = await runBackupForTeam(teamId);
-        console.log(`[Backup] Auto-backup result for team ${teamId}:`, result.success ? 'OK' : result.error);
-      }
-    } catch (err) {
-      console.error(`[Backup] Auto-backup failed for team ${teamId}:`, err);
-    }
-  };
-  backupIntervals[teamId] = setTimeout(() => {
-    backupIntervals[teamId] = setInterval(tick, intervalMs);
-  }, staggerMs) as any;
-
-  // Heavy JSON+PDF Drive backup: once daily AT 23:59 (Europe/Oslo), not on a
-  // rolling 24h timer — a rolling timer resets on every deploy and therefore
-  // never fired on frequently-deployed servers. Scheduled with setTimeout and
-  // re-armed after each run.
-  const scheduleDriveDaily = () => {
-    drivePdfIntervals[teamId] = setTimeout(async () => {
+async function runSheetsSweep() {
+  if (sheetsSweepRunning) return;
+  sheetsSweepRunning = true;
+  try {
+    const teams = await storage.listTeams();
+    for (const team of teams) {
+      if (!team.backupSheetUrl) continue;
       try {
-        const team = await storage.getTeam(teamId);
-        if (team?.driveFolderId) {
-          const driveResult = await runDriveBackupForTeam(teamId);
-          console.log(`[DriveBackup] Daily 23:59 result for team ${teamId}:`, driveResult.success ? 'OK' : driveResult.error);
-        }
+        const result = await runBackupForTeam(team.id);
+        console.log(`[Backup] Sweep team ${team.id} (${team.name}):`, result.success ? 'OK' : result.error);
       } catch (err) {
-        console.error(`[DriveBackup] Daily 23:59 failed for team ${teamId}:`, err);
-      } finally {
-        scheduleDriveDaily();
+        console.error(`[Backup] Sweep failed for team ${team.id}:`, err);
       }
-    }, msUntilNextOslo2359()) as any;
-  };
-  scheduleDriveDaily();
+      // Pace between teams so the per-minute Sheets quota never saturates.
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+  } catch (err) {
+    console.error('[Backup] Sheets sweep failed:', err);
+  } finally {
+    sheetsSweepRunning = false;
+  }
+}
 
-  // Catch-up: if the last successful backup is more than ~25h old (e.g. the
-  // server was asleep or redeployed over 23:59), run one Drive backup shortly
-  // after boot so the daily files are never silently missing.
-  (async () => {
-    try {
-      const team = await storage.getTeam(teamId);
-      if (team?.driveFolderId) {
-        const last = team.lastBackupAt ? new Date(team.lastBackupAt).getTime() : 0;
-        if (Date.now() - last > 25 * 3600 * 1000) {
-          setTimeout(async () => {
-            try {
-              const r = await runDriveBackupForTeam(teamId);
-              console.log(`[DriveBackup] Catch-up result for team ${teamId}:`, r.success ? 'OK' : r.error);
-            } catch (e) { console.error(`[DriveBackup] Catch-up failed for team ${teamId}:`, e); }
-          }, 2 * 60 * 1000);
-        }
+async function runDriveDailyAll() {
+  if (driveRunRunning) return;
+  driveRunRunning = true;
+  try {
+    const teams = await storage.listTeams();
+    for (const team of teams) {
+      if (!(team as any).driveFolderId) continue;
+      try {
+        const r = await runDriveBackupForTeam(team.id);
+        console.log(`[DriveBackup] Daily team ${team.id} (${team.name}):`, r.success ? 'OK' : r.error);
+      } catch (err) {
+        console.error(`[DriveBackup] Daily failed for team ${team.id}:`, err);
       }
-    } catch {}
-  })();
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+  } catch (err) {
+    console.error('[DriveBackup] Daily run failed:', err);
+  } finally {
+    driveRunRunning = false;
+  }
 }
 
 // Milliseconds until the next 23:59 in Europe/Oslo (handles CET/CEST).
@@ -1994,37 +1982,49 @@ function msUntilNextOslo2359(): number {
   return 60 * 60 * 1000; // defensive fallback: an hour
 }
 
-export function stopAutoBackup(teamId: number) {
-  if (backupIntervals[teamId]) {
-    clearInterval(backupIntervals[teamId]);
-    delete backupIntervals[teamId];
-  }
-  if (drivePdfIntervals[teamId]) {
-    clearInterval(drivePdfIntervals[teamId]);
-    delete drivePdfIntervals[teamId];
-  }
+function armDriveDaily() {
+  if (driveDailyTimer) clearTimeout(driveDailyTimer);
+  driveDailyTimer = setTimeout(async () => {
+    await runDriveDailyAll();
+    armDriveDaily(); // re-arm for the next 23:59
+  }, msUntilNextOslo2359());
 }
 
-export function stopAllAutoBackups() {
-  for (const teamId of Object.keys(backupIntervals).map(Number)) {
-    stopAutoBackup(teamId);
+export function ensureBackupSchedulers() {
+  if (!JOBS_ENABLED) return;
+  if (!sheetsSweepTimer) {
+    sheetsSweepTimer = setInterval(runSheetsSweep, 30 * 60 * 1000);
+    setTimeout(runSheetsSweep, 60 * 1000); // first sweep shortly after boot
   }
+  if (!driveDailyTimer) armDriveDaily();
+}
+
+// Back-compat: per-team start/stop now just ensure the global schedulers are
+// armed — whether a team participates is read from its config at sweep time,
+// so saving/clearing a backup URL needs no timer bookkeeping.
+export function startAutoBackup(_teamId?: number) { ensureBackupSchedulers(); }
+export function stopAutoBackup(_teamId?: number) { /* config-driven — nothing per team to stop */ }
+
+export function stopAllAutoBackups() {
+  if (sheetsSweepTimer) { clearInterval(sheetsSweepTimer); sheetsSweepTimer = null; }
+  if (driveDailyTimer) { clearTimeout(driveDailyTimer); driveDailyTimer = null; }
 }
 
 export async function initAutoBackups() {
+  if (!JOBS_ENABLED) {
+    console.log('[Backup] Background jobs disabled on this instance (RUN_BACKGROUND_JOBS=0)');
+    return;
+  }
   try {
+    ensureBackupSchedulers();
     const teams = await storage.listTeams();
-    let idx = 0;
-    for (const team of teams) {
-      // Enable the scheduler if EITHER a Sheets backup URL or a Drive folder is
-      // set — the Drive folder link alone is enough for daily JSON+PDF backups.
-      if (team.backupSheetUrl || team.driveFolderId) {
-        // Stagger teams 3 min apart so their 30-min ticks never coincide and
-        // pile up against the Sheets per-minute quota.
-        startAutoBackup(team.id, undefined, idx++ * 3 * 60 * 1000);
-        console.log(`[Backup] Auto-backup enabled for team ${team.id} (${team.name}), offset ${(idx - 1) * 3} min`);
-      }
-    }
+    const configured = teams.filter((t: any) => t.backupSheetUrl || t.driveFolderId).length;
+    console.log(`[Backup] Global schedulers armed — ${configured} team(s) configured`);
+    // Drive catch-up: if any team's last backup is >25h old (server asleep or
+    // redeployed over 23:59), run one sequential Drive pass shortly after boot.
+    const stale = teams.some((t: any) => t.driveFolderId
+      && (Date.now() - (t.lastBackupAt ? new Date(t.lastBackupAt).getTime() : 0)) > 25 * 3600 * 1000);
+    if (stale) setTimeout(runDriveDailyAll, 2 * 60 * 1000);
     // Nightly RAW system dump (disaster recovery) — runs after team backups.
     scheduleSystemDump();
   } catch (err) {

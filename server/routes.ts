@@ -3400,6 +3400,15 @@ export async function registerRoutes(
       const p = await storage.getProduct(pid);
       if (p) productMap[pid] = { id: p.id, brand: p.brand, name: p.name };
     }
+    // Winner ski IDs for athlete race-ski tests — the dashboard shows the
+    // pair's actual Ski ID, never an anonymous "Pair X".
+    const winnerRaceSkiIds = [...new Set(entries.filter((e: any) => e.rank0km === 1 && (e as any).raceSkiId).map((e: any) => (e as any).raceSkiId))];
+    const skiIdMap: Record<number, string> = {};
+    if (winnerRaceSkiIds.length > 0) {
+      const { pool: pRR } = await import("./db");
+      const rr = await (pRR as any).query(`SELECT id, ski_id FROM race_skis WHERE id = ANY($1::int[])`, [winnerRaceSkiIds]);
+      for (const row of rr.rows) skiIdMap[row.id] = row.ski_id;
+    }
     const result = sorted.map((t: any) => {
       const testEntries = entries.filter((e: any) => e.testId === t.id);
       const winner = testEntries.find((e: any) => e.rank0km === 1);
@@ -3419,6 +3428,7 @@ export async function registerRoutes(
         hasResults,
         winnerProduct: isBlind ? null : winnerProduct,
         winnerSkiNumber: isBlind ? null : (winner?.skiNumber ?? null),
+        winnerSkiId: isBlind ? null : ((winner as any)?.raceSkiId ? skiIdMap[(winner as any).raceSkiId] ?? null : null),
       };
     });
     res.json(result);

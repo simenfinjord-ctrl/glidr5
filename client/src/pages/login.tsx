@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { useAppSettings } from "@/lib/app-settings";
+import { AddToHomeBanner } from "@/components/add-to-home-banner";
 import { useI18n } from "@/lib/i18n";
 import { GlidrLogo } from "@/components/glidr-logo";
 
@@ -295,6 +296,7 @@ export default function Login() {
           </p>
         </div>
       </div>
+    <AddToHomeBanner />
     </div>
   );
 }

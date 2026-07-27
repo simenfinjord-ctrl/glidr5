@@ -62,6 +62,7 @@ import { AppLink } from "@/components/app-link";
 import { CommandSearch } from "@/components/command-search";
 import { useGlobalShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { MobileNav, useMobileNav } from "@/components/mobile-nav";
+import { AddToHomeBanner } from "@/components/add-to-home-banner";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useI18n } from "@/lib/i18n";
@@ -285,6 +286,37 @@ const nav: NavItem[] = [
     adminOnly: true,
   },
 ];
+
+// Manual refresh for the installed PWA: no address bar means no pull-to-
+// refresh, so a visible button refetches everything (and picks up new app
+// versions via the service worker). Only rendered in standalone display mode.
+function StandaloneRefreshButton() {
+  const [spinning, setSpinning] = useState(false);
+  const standalone = typeof window !== "undefined" && (
+    window.matchMedia?.("(display-mode: standalone)").matches || (navigator as any).standalone === true
+  );
+  if (!standalone) return null;
+  return (
+    <Button
+      variant="ghost" size="sm"
+      className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+      title="Refresh"
+      data-testid="button-pwa-refresh"
+      onClick={async () => {
+        setSpinning(true);
+        try {
+          await queryClient.invalidateQueries();
+          const reg = await navigator.serviceWorker?.getRegistration();
+          reg?.update().catch(() => {});
+        } finally {
+          setTimeout(() => setSpinning(false), 800);
+        }
+      }}
+    >
+      <RefreshCw className={cn("h-4 w-4", spinning && "animate-spin")} />
+    </Button>
+  );
+}
 
 function ReportProblemDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { toast } = useToast();
@@ -1193,6 +1225,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
         <Sparkles className="h-4 w-4" />
         <WhatsNewDot />
       </Button>
+      <StandaloneRefreshButton />
       {!!user && (
         <Button variant="ghost" size="sm" data-testid="button-mail"
           onClick={() => setInboxOpen(true)}
@@ -1278,6 +1311,7 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
       </main>
       {/* Bottom nav is always available on small screens (mobile-by-default). */}
       <div className="lg:hidden"><MobileNav watchQueueCount={watchQueueCount} /></div>
+      <AddToHomeBanner />
     </>
   );
 
@@ -1411,8 +1445,8 @@ export function AppShell({ children, activeNav }: { children: ReactNode; activeN
 
         {/* ── Top header (48px) ── */}
         <header
-          className="h-12 shrink-0 flex items-center gap-2 px-4 bg-card dark:bg-zinc-900 border-b border-border sticky top-0 z-30"
-          style={{ paddingTop: "env(safe-area-inset-top)" }}
+          className="shrink-0 flex items-center gap-2 px-4 bg-card dark:bg-zinc-900 border-b border-border sticky top-0 z-30"
+          style={{ paddingTop: "env(safe-area-inset-top)", minHeight: "calc(3rem + env(safe-area-inset-top))" }}
         >
           {/* Left: hamburger (mobile) + page title */}
           <div className="flex items-center gap-2 flex-1 min-w-0">

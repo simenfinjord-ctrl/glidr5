@@ -127,7 +127,10 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
+      // Refetch when the app regains focus — critical for the installed PWA,
+      // where there is no address bar to pull-refresh with. staleTime still
+      // throttles so quick app switches don't hammer the API.
+      refetchOnWindowFocus: true,
       staleTime: 5 * 60 * 1000,
       retry: (failureCount, error) => {
         if (error instanceof Error && error.message.includes("401")) return false;

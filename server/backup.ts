@@ -1286,10 +1286,29 @@ function buildExportHtml(data: {
     return resolveIds(idsFallback);
   };
 
+  // Grind profile label = the profile's ACTUAL stored parameters (name, every
+  // standard field that is filled in, plus all custom extra params) — never a
+  // hardcoded subset.
+  const grindProfileLabel = (gp: any): string => {
+    const parts: string[] = [];
+    if (gp.name) parts.push(gp.name);
+    if (gp.grindType) parts.push(gp.grindType);
+    if (gp.stone) parts.push(`Stone: ${gp.stone}`);
+    if (gp.pattern) parts.push(`Pattern: ${gp.pattern}`);
+    if (gp.extraParams) {
+      try {
+        for (const [k, v] of Object.entries(JSON.parse(gp.extraParams))) {
+          if (v != null && String(v).trim() !== '') parts.push(`${k}: ${v}`);
+        }
+      } catch { parts.push(String(gp.extraParams)); }
+    }
+    return parts.join(' · ') || '—';
+  };
+
   const getProductLabel = (entry: any, forAthleteTest = false): string => {
     if (entry.grindProfileId) {
       const gp = grindProfileMap.get(entry.grindProfileId);
-      if (gp) return [gp.name, gp.grindType, gp.stone, gp.pattern].filter(Boolean).join(' · ');
+      if (gp) return grindProfileLabel(gp);
     }
     if (entry.raceSkiId) {
       const ski = raceSkiMap.get(entry.raceSkiId);
@@ -1470,12 +1489,14 @@ function buildExportHtml(data: {
         const seen = new Set<string>();
         for (const e of grindEntries) {
           const gp = e.grindProfileId ? grindProfileMap.get(e.grindProfileId) : null;
-          const parts = [
-            (gp?.grindType || e.grindType) ? `Type: ${gp?.grindType || e.grindType}` : null,
-            (gp?.stone || e.grindStone) ? `Stone: ${gp?.stone || e.grindStone}` : null,
-            (gp?.pattern || e.grindPattern) ? `Pattern: ${gp?.pattern || e.grindPattern}` : null,
-            e.grindExtraParams ? `Extra: ${e.grindExtraParams}` : null,
-          ].filter(Boolean).join('  ·  ');
+          const parts = gp
+            ? grindProfileLabel(gp)
+            : [
+                e.grindType ? `Type: ${e.grindType}` : null,
+                e.grindStone ? `Stone: ${e.grindStone}` : null,
+                e.grindPattern ? `Pattern: ${e.grindPattern}` : null,
+                e.grindExtraParams ? `Extra: ${e.grindExtraParams}` : null,
+              ].filter(Boolean).join('  ·  ');
           if (parts && !seen.has(parts)) {
             seen.add(parts);
             grindParamsHtml += `<div class="test-grind">Grind params: ${esc(parts)}</div>`;
@@ -1501,7 +1522,7 @@ function buildExportHtml(data: {
       const grindUsed = (e: any): string => {
         if (e.grindProfileId) {
           const gp = grindProfileMap.get(e.grindProfileId);
-          if (gp) return [gp.grindType, gp.stone, gp.pattern].filter(Boolean).join(' · ') || gp.name || '—';
+          if (gp) return grindProfileLabel(gp);
         }
         if (e.grindType || e.grindStone || e.grindPattern) {
           return [e.grindType, e.grindStone, e.grindPattern].filter(Boolean).join(' · ');

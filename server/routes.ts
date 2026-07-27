@@ -3409,6 +3409,14 @@ export async function registerRoutes(
       const rr = await (pRR as any).query(`SELECT id, ski_id FROM race_skis WHERE id = ANY($1::int[])`, [winnerRaceSkiIds]);
       for (const row of rr.rows) skiIdMap[row.id] = row.ski_id;
     }
+    // Grind tests: the winner IS the grind — resolve winning grind profiles.
+    const winnerGrindIds = [...new Set(entries.filter((e: any) => e.rank0km === 1 && (e as any).grindProfileId).map((e: any) => (e as any).grindProfileId))];
+    const grindMap2: Record<number, string> = {};
+    if (winnerGrindIds.length > 0) {
+      const { pool: pGr } = await import("./db");
+      const gr = await (pGr as any).query(`SELECT id, name, grind_type FROM grind_profiles WHERE id = ANY($1::int[])`, [winnerGrindIds]);
+      for (const row of gr.rows) grindMap2[row.id] = [row.name, row.grind_type].filter(Boolean).join(' · ');
+    }
     const result = sorted.map((t: any) => {
       const testEntries = entries.filter((e: any) => e.testId === t.id);
       const winner = testEntries.find((e: any) => e.rank0km === 1);
@@ -3429,6 +3437,11 @@ export async function registerRoutes(
         winnerProduct: isBlind ? null : winnerProduct,
         winnerSkiNumber: isBlind ? null : (winner?.skiNumber ?? null),
         winnerSkiId: isBlind ? null : ((winner as any)?.raceSkiId ? skiIdMap[(winner as any).raceSkiId] ?? null : null),
+        winnerGrind: isBlind ? null : (
+          (winner as any)?.grindProfileId ? grindMap2[(winner as any).grindProfileId] ?? null
+          : (winner as any)?.grindType ? [(winner as any).grindType, (winner as any).grindStone].filter(Boolean).join(' · ')
+          : null
+        ),
       };
     });
     res.json(result);

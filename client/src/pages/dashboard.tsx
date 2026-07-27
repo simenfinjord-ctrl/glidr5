@@ -121,6 +121,7 @@ type RecentResult = {
   winnerProduct: { id: number; brand: string; name: string } | null;
   winnerSkiNumber: number | null;
   winnerSkiId?: string | null;
+  winnerGrind?: string | null;
 };
 
 function StatCard({
@@ -1047,7 +1048,7 @@ export default function Dashboard() {
                         ) : item.hasResults ? (
                           <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-300 dark:border-yellow-700">
                             <Trophy className="mr-1 h-2.5 w-2.5" />
-                            {item.winnerSkiId ? `Ski ${item.winnerSkiId}` : `${t("dashboard.pair")} ${item.winnerSkiNumber}`}
+                            {item.winnerGrind ? item.winnerGrind : item.winnerSkiId ? `Ski ${item.winnerSkiId}` : `${t("dashboard.pair")} ${item.winnerSkiNumber}`}
                           </Badge>
                         ) : (
                           <span className="text-[10px] text-muted-foreground italic">{t("dashboard.noResultsYet")}</span>

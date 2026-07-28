@@ -244,7 +244,9 @@ export function convertFromNok(nok: number | null | undefined, currency: string 
   if (cur === "NOK") return { amount: Math.round(nok), currency: "NOK" };
   const rate = rates?.[cur] ?? DEFAULT_CURRENCY_RATES[cur];
   if (!rate || rate <= 0) return { amount: Math.round(nok), currency: "NOK" };
-  return { amount: Math.round(nok / rate), currency: cur };
+  // Round UP to the whole unit: the converted price can never dip below the
+  // NOK price of record, so a conversion is never an accidental discount.
+  return { amount: Math.ceil(nok / rate), currency: cur };
 }
 
 export function formatMoney(amount: number | null | undefined, currency: string | null | undefined): string {

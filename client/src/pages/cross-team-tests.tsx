@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
-import { Search, Layers, Snowflake, MapPin, Calendar, Clock, Users, Thermometer, LayoutGrid, List, X, SlidersHorizontal, Eye } from "lucide-react";
+import { Search, Layers, Snowflake, MapPin, Calendar, Clock, Users, Thermometer, LayoutGrid, List, X, SlidersHorizontal, Eye, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { useLocation } from "wouter";
 import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
@@ -100,7 +101,8 @@ export default function CrossTeamTests() {
 
   // Filters — mirrors the regular Tests page.
   const [search, setSearch] = useState("");
-  const [teamFilter, setTeamFilter] = useState("all");
+  // Multi-select: every team is ON by default; unchecking hides its tests.
+  const [excludedTeams, setExcludedTeams] = useState<Set<number>>(new Set());
   const [typeFilter, setTypeFilter] = useState("all");
   const [location, setLocation] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -141,7 +143,7 @@ export default function CrossTeamTests() {
     const [cMin, cMax] = swap(numv(cloudMin), numv(cloudMax));
     const txt = (val: string, field?: string | null) => !val || (field ?? "").toLowerCase().includes(val.toLowerCase());
     const list = tests.filter((t) => {
-      if (teamFilter !== "all" && String(t.teamId) !== teamFilter) return false;
+      if (excludedTeams.has(t.teamId)) return false;
       if (typeFilter !== "all" && t.testType !== typeFilter) return false;
       if (location && !t.location.toLowerCase().includes(location.toLowerCase())) return false;
       if (dateFrom && (t.date ?? "") < dateFrom) return false;
@@ -187,10 +189,10 @@ export default function CrossTeamTests() {
       }
     });
     return list;
-  }, [tests, teamFilter, typeFilter, location, dateFrom, dateTo, snowType, airMin, airMax, snowMin, snowMax, airHumMin, airHumMax, snowHumMin, snowHumMax, cloudMin, cloudMax, artSnow, natSnow, snowHumType, grainSize, trackHardness, precipitation, wind, visibility, q, sort]);
+  }, [tests, excludedTeams, typeFilter, location, dateFrom, dateTo, snowType, airMin, airMax, snowMin, snowMax, airHumMin, airHumMax, snowHumMin, snowHumMax, cloudMin, cloudMax, artSnow, natSnow, snowHumType, grainSize, trackHardness, precipitation, wind, visibility, q, sort]);
 
-  const hasFilters = !!(q || teamFilter !== "all" || typeFilter !== "all" || location || dateFrom || dateTo || snowType || airMin || airMax || snowMin || snowMax || airHumMin || airHumMax || snowHumMin || snowHumMax || cloudMin || cloudMax || artSnow !== "all" || natSnow !== "all" || snowHumType !== "all" || grainSize !== "all" || trackHardness !== "all" || precipitation || wind || visibility);
-  const clearFilters = () => { setSearch(""); setTeamFilter("all"); setTypeFilter("all"); setLocation(""); setDateFrom(""); setDateTo(""); setSnowType(""); setAirMin(""); setAirMax(""); setSnowMin(""); setSnowMax(""); setAirHumMin(""); setAirHumMax(""); setSnowHumMin(""); setSnowHumMax(""); setCloudMin(""); setCloudMax(""); setArtSnow("all"); setNatSnow("all"); setSnowHumType("all"); setGrainSize("all"); setTrackHardness("all"); setPrecipitation(""); setWind(""); setVisibility(""); };
+  const hasFilters = !!(q || excludedTeams.size > 0 || typeFilter !== "all" || location || dateFrom || dateTo || snowType || airMin || airMax || snowMin || snowMax || airHumMin || airHumMax || snowHumMin || snowHumMax || cloudMin || cloudMax || artSnow !== "all" || natSnow !== "all" || snowHumType !== "all" || grainSize !== "all" || trackHardness !== "all" || precipitation || wind || visibility);
+  const clearFilters = () => { setSearch(""); setExcludedTeams(new Set()); setTypeFilter("all"); setLocation(""); setDateFrom(""); setDateTo(""); setSnowType(""); setAirMin(""); setAirMax(""); setSnowMin(""); setSnowMax(""); setAirHumMin(""); setAirHumMax(""); setSnowHumMin(""); setSnowHumMax(""); setCloudMin(""); setCloudMax(""); setArtSnow("all"); setNatSnow("all"); setSnowHumType("all"); setGrainSize("all"); setTrackHardness("all"); setPrecipitation(""); setWind(""); setVisibility(""); };
 
   const isForbidden = (error as any)?.message?.includes("403");
 
@@ -347,13 +349,35 @@ export default function CrossTeamTests() {
               {hasFilters && <Button variant="ghost" size="sm" className="h-9 gap-1 text-xs text-muted-foreground" onClick={clearFilters} data-testid="allteams-clear"><X className="h-3.5 w-3.5" />{L("Nullstill", "Clear")}</Button>}
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              <Select value={teamFilter} onValueChange={setTeamFilter}>
-                <SelectTrigger className="h-9 gap-1 text-xs" data-testid="filter-crossteam-team"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{L("Alle lag", "All teams")}</SelectItem>
-                  {teamOptions.map(([id, name]) => (<SelectItem key={id} value={String(id)}>{name}</SelectItem>))}
-                </SelectContent>
-              </Select>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="h-9 justify-between gap-1 text-xs font-normal" data-testid="filter-crossteam-team">
+                    <span className="truncate">
+                      {excludedTeams.size === 0
+                        ? L("Alle lag", "All teams")
+                        : L(`${teamOptions.length - excludedTeams.size} av ${teamOptions.length} lag`, `${teamOptions.length - excludedTeams.size} of ${teamOptions.length} teams`)}
+                    </span>
+                    <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="max-h-[50vh] overflow-y-auto">
+                  {teamOptions.map(([id, name]) => (
+                    <DropdownMenuCheckboxItem
+                      key={id}
+                      checked={!excludedTeams.has(id)}
+                      onSelect={(e) => e.preventDefault()}
+                      onCheckedChange={(on) => setExcludedTeams((prev) => {
+                        const next = new Set(prev);
+                        on ? next.delete(id) : next.add(id);
+                        return next;
+                      })}
+                      data-testid={`filter-team-${id}`}
+                    >
+                      {name}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger className="h-9 gap-1 text-xs" data-testid="filter-crossteam-type"><SelectValue /></SelectTrigger>
                 <SelectContent>

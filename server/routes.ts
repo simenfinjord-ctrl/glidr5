@@ -1098,6 +1098,43 @@ export async function registerRoutes(
     } catch (e) { console.error('[Mixes] Retrofit failed:', e); }
   })();
 
+  // Orphan sweep: teams deleted BEFORE cascade deletion existed left their
+  // data behind (visible as tests from nonexistent teams on All teams).
+  // Idempotent, runs at every boot after migrations.
+  (async () => {
+    try {
+      const { pool: pOrf } = await import("./db");
+      const colRes = await (pOrf as any).query(
+        `SELECT DISTINCT table_name FROM information_schema.columns
+         WHERE table_schema = 'public' AND column_name = 'team_id'
+           AND table_name NOT IN ('teams', 'users')`);
+      let removed = 0;
+      for (const { table_name } of colRes.rows) {
+        const r = await (pOrf as any).query(
+          `DELETE FROM "${table_name}" WHERE team_id IS NOT NULL AND team_id NOT IN (SELECT id FROM teams)`).catch(() => null);
+        removed += r?.rowCount ?? 0;
+      }
+      // Children whose parents are gone.
+      const CHILD_SWEEP: [string, string, string][] = [
+        ["test_entries", "test_id", "tests"],
+        ["test_comments", "test_id", "tests"],
+        ["test_attachments", "test_id", "tests"],
+        ["runsheet_progress", "test_id", "tests"],
+        ["kick_test_entries", "kick_test_id", "kick_tests"],
+        ["race_prep_entries", "race_prep_id", "race_preps"],
+        ["race_ski_regrinds", "race_ski_id", "race_skis"],
+        ["test_ski_regrinds", "series_id", "test_ski_series"],
+        ["athlete_access", "athlete_id", "athletes"],
+      ];
+      for (const [child, col, parent] of CHILD_SWEEP) {
+        const r = await (pOrf as any).query(
+          `DELETE FROM "${child}" WHERE "${col}" IS NOT NULL AND "${col}" NOT IN (SELECT id FROM "${parent}")`).catch(() => null);
+        removed += r?.rowCount ?? 0;
+      }
+      if (removed > 0) console.log(`[OrphanSweep] Removed ${removed} rows left behind by pre-cascade team deletions`);
+    } catch (e) { console.error("[OrphanSweep] failed:", e); }
+  })();
+
   // --- Maintenance mode gate (runs before all other /api routes) ---
   app.use("/api", (req: Request, res: Response, next: NextFunction) => {
     if (!maintenanceMode) return next();

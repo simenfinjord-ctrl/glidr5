@@ -5817,10 +5817,14 @@ export default function Admin() {
             </Card>
 
             <Dialog open={!!editUser} onOpenChange={(v) => { if (!v) setEditUser(undefined); }}>
-              <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-                {/* Identity header inside the form doubles as the visible title. */}
+              {/* Scrolling lives on an INNER wrapper: Safari + Radix's scroll
+                  lock silently swallow wheel events when DialogContent itself
+                  is the scroll container. */}
+              <DialogContent className="sm:max-w-xl p-0">
                 <DialogHeader className="sr-only"><DialogTitle>{L("Rediger bruker", "Edit user")}</DialogTitle></DialogHeader>
-                {editUser && <EditUserForm user={editUser} onDone={() => setEditUser(undefined)} allGroups={apiGroups} teams={teams} />}
+                <div className="max-h-[85vh] overflow-y-auto overscroll-contain p-6">
+                  {editUser && <EditUserForm user={editUser} onDone={() => setEditUser(undefined)} allGroups={apiGroups} teams={teams} />}
+                </div>
               </DialogContent>
             </Dialog>
 

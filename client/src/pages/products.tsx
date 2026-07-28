@@ -580,7 +580,14 @@ function GlideMixDialog({ products }: { products: Product[] }) {
                   <SelectContent className="max-h-[40vh]">
                     <SelectItem value="none">{L("— fritekst —", "— free text —")}</SelectItem>
                     {glideProducts.map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>{p.brand} {p.name}</SelectItem>
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        <span className="flex items-center gap-1.5">
+                          {p.brand} {p.name}
+                          {p.category && (
+                            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{p.category}</span>
+                          )}
+                        </span>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

@@ -1458,6 +1458,79 @@ export async function registerRoutes(
     const team = await storage.getTeam(id);
     if (!team) return res.status(404).json({ message: "Not found" });
     if (team.isDefault === 1) return res.status(400).json({ message: "Cannot delete the default team. Set another team as default first." });
+
+    // Farewell snapshot: a final forced Drive backup so the team's data
+    // survives in the archive even after deletion. Best-effort — a team
+    // without Drive configured still deletes.
+    try {
+      const { runDriveBackupForTeam } = await import("./backup");
+      await runDriveBackupForTeam(id, { force: true });
+    } catch (e) { console.error(`[team-delete] farewell backup failed for team ${id}:`, e); }
+
+    // Cascade over EVERY table, discovered from the live schema like the
+    // export engine — a hand-kept list here would silently orphan data from
+    // tables added later.
+    try {
+      const { pool: pDel } = await import("./db");
+      const { EXPORT_CHILD_JOINS } = await import("./backup");
+      const colRes = await (pDel as any).query(
+        `SELECT DISTINCT table_name FROM information_schema.columns
+         WHERE table_schema = 'public' AND column_name = 'team_id' AND table_name <> 'teams'`);
+      const teamIdTables: string[] = colRes.rows.map((r: any) => r.table_name);
+      const withTeamId = new Set(teamIdTables);
+
+      // 1) Child tables without team_id first — their filters need the parent rows.
+      for (const [table, cond] of Object.entries(EXPORT_CHILD_JOINS)) {
+        if (withTeamId.has(table)) continue;
+        await (pDel as any).query(`DELETE FROM "${table}" WHERE ${cond}`, [id]).catch((e: any) =>
+          console.error(`[team-delete] ${table}:`, e?.message));
+      }
+
+      // 2) Member accounts: users whose PRIMARY team this is are repointed to
+      // another membership when they have one, otherwise fully purged (same
+      // no-trace cleanup as single-user deletion).
+      const members = await (pDel as any).query(
+        `SELECT id, email FROM users WHERE team_id = $1 AND is_admin <> 1`, [id]);
+      for (const m of members.rows) {
+        const other = await (pDel as any).query(
+          `SELECT team_id FROM user_teams WHERE user_id = $1 AND team_id <> $2 LIMIT 1`, [m.id, id]);
+        if (other.rows.length > 0) {
+          await (pDel as any).query(`UPDATE users SET team_id = $1 WHERE id = $2`, [other.rows[0].team_id, m.id]);
+        } else {
+          await (pDel as any).query(`DELETE FROM login_logs WHERE user_id = $1`, [m.id]).catch(() => {});
+          await (pDel as any).query(`DELETE FROM user_teams WHERE user_id = $1`, [m.id]).catch(() => {});
+          await (pDel as any).query(`DELETE FROM user_team_permissions WHERE user_id = $1`, [m.id]).catch(() => {});
+          await (pDel as any).query(`DELETE FROM athlete_access WHERE user_id = $1`, [m.id]).catch(() => {});
+          await (pDel as any).query(`DELETE FROM inbox_messages WHERE to_user_id = $1`, [m.id]).catch(() => {});
+          await (pDel as any).query(`DELETE FROM password_reset_tokens WHERE user_id = $1`, [m.id]).catch(() => {});
+          await (pDel as any).query(`DELETE FROM invitations WHERE email = $1`, [m.email ?? ""]).catch(() => {});
+          await (pDel as any).query(`DELETE FROM user_sessions WHERE sess->'passport'->>'user' = $1`, [String(m.id)]).catch(() => {});
+          await (pDel as any).query(`DELETE FROM users WHERE id = $1`, [m.id]).catch((e: any) =>
+            console.error(`[team-delete] user ${m.id}:`, e?.message));
+        }
+      }
+      // SA accounts parked on this team keep existing — repoint to the default team.
+      await (pDel as any).query(
+        `UPDATE users SET team_id = (SELECT id FROM teams WHERE is_default = 1 LIMIT 1)
+         WHERE team_id = $1 AND is_admin = 1`, [id]).catch(() => {});
+
+      // 3) Every table with a team_id column (users handled above).
+      for (const table of teamIdTables) {
+        if (table === "users") continue;
+        await (pDel as any).query(`DELETE FROM "${table}" WHERE team_id = $1`, [id]).catch((e: any) =>
+          console.error(`[team-delete] ${table}:`, e?.message));
+      }
+
+      // 4) Cross-team references: curation rows and child teams of this team.
+      await (pDel as any).query(`DELETE FROM child_visibility_exclusions WHERE parent_team_id = $1`, [id]).catch(() => {});
+      await (pDel as any).query(`UPDATE teams SET parent_team_id = NULL WHERE parent_team_id = $1`, [id]).catch(() => {});
+    } catch (e) {
+      console.error(`[team-delete] cascade failed for team ${id}:`, e);
+      return res.status(500).json({ message: "Deletion failed while removing the team's data — nothing was left in an unknown state, try again." });
+    }
+
+    // 5) The team row itself, with an audit snapshot under the SA's log.
+    await recordDeletion(req, "team", id, `Team deleted with all data: ${team.name}`, team);
     const deleted = await storage.deleteTeam(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
     res.json({ ok: true });
@@ -6466,7 +6539,7 @@ export async function registerRoutes(
     // Ordered import plan. keys = natural key for duplicate detection (checked
     // AFTER fk remap); fk maps old references to this database; requiredFk rows
     // are skipped when the reference can't be resolved, optional fks are nulled.
-    const SPECS: { area: string; table: string; keys: string[]; fk?: Record<string, string>; requiredFk?: string[] }[] = [
+    const SPECS: { area: string; table: string; keys: string[]; fk?: Record<string, string>; requiredFk?: string[]; defaults?: Record<string, any> }[] = [
       { area: "products",   table: "products",          keys: ["brand", "name"] },
       { area: "testfleets", table: "test_ski_series",   keys: ["name", "type"] },
       { area: "testfleets", table: "test_ski_regrinds", keys: ["series_id", "date"], fk: { series_id: "test_ski_series" }, requiredFk: ["series_id"] },
@@ -6484,6 +6557,17 @@ export async function registerRoutes(
       { area: "raceprep",   table: "race_prep_entries", keys: ["race_prep_id", "athlete_id"], fk: { race_prep_id: "race_preps", athlete_id: "athletes" }, requiredFk: ["race_prep_id"] },
       { area: "tests",      table: "tests",             keys: ["date", "location", "created_at"], fk: { series_id: "test_ski_series", athlete_id: "athletes", weather_id: "daily_weather" } },
       { area: "tests",      table: "test_entries",      keys: ["test_id", "ski_number"], fk: { test_id: "tests", product_id: "products", race_ski_id: "race_skis" }, requiredFk: ["test_id"] },
+      // Children of the rows above — restored so a disaster recovery loses nothing.
+      { area: "tests",      table: "test_comments",     keys: ["test_id", "user_id", "content"], fk: { test_id: "tests" }, requiredFk: ["test_id"] },
+      // Attachment binaries are stripped from exports; restore metadata with an
+      // empty body so the record (filename, uploader, date) survives.
+      { area: "tests",      table: "test_attachments",  keys: ["test_id", "filename", "created_at"], fk: { test_id: "tests" }, requiredFk: ["test_id"], defaults: { data: "" } },
+      { area: "grinding",   table: "grinding_records",  keys: ["date", "grind_type", "created_at"], fk: { series_id: "test_ski_series" } },
+      { area: "grinding",   table: "grinding_sheets",   keys: ["name", "url"] },
+      { area: "runsheets",  table: "runsheets",         keys: ["test_id", "label"], fk: { test_id: "tests" }, requiredFk: ["test_id"] },
+      { area: "athletes",   table: "athlete_race_calendar", keys: ["athlete_id", "date", "race_name"], fk: { athlete_id: "athletes" }, requiredFk: ["athlete_id"] },
+      { area: "athletes",   table: "feedback_links",    keys: ["token"], fk: { athlete_id: "athletes" }, requiredFk: ["athlete_id"] },
+      { area: "raceprep",   table: "race_prep_comments", keys: ["race_prep_id", "user_id", "content"], fk: { race_prep_id: "race_preps" }, requiredFk: ["race_prep_id"] },
     ];
 
     const keyOf = (row: any, keys: string[]) => keys.map((k) => String(row[k] ?? "").toLowerCase()).join("|");
@@ -6518,6 +6602,9 @@ export async function registerRoutes(
             else row[col] = null;
           }
           if (unresolvable) { skipped++; continue; }
+          for (const [dc, dv] of Object.entries(spec.defaults ?? {})) {
+            if (row[dc] === undefined && valid.includes(dc)) row[dc] = dv;
+          }
           if (hasTeam) row.team_id = teamId;
 
           const k = keyOf(row, spec.keys);
@@ -6548,7 +6635,24 @@ export async function registerRoutes(
       createdAt: new Date().toISOString(), groupScope: "", teamId,
     } as any).catch(() => {});
 
-    res.json({ ok: true, imported: counts, skipped, errors });
+    // A restore must never be silently partial: list every table present in
+    // the file that this import does not write, with the reason.
+    const NEVER_IMPORTED: Record<string, string> = {
+      users: "accounts are never imported", groups: "accounts are never imported",
+      user_teams: "accounts are never imported", user_team_permissions: "accounts are never imported",
+      activity_logs: "history stays in the export file", login_logs: "history stays in the export file",
+      inbox_messages: "history stays in the export file", invitations: "accounts are never imported",
+      runsheet_progress: "live state — rebuilt in use", watch_queue: "live state — rebuilt in use",
+      watch_sessions: "live state — rebuilt in use",
+      teams: "team settings are managed in Admin", billing_records: "billing is managed by the owner",
+      app_settings: "system settings", plan_change_log: "billing is managed by the owner",
+    };
+    const specTables = new Set(SPECS.map((sp) => sp.table));
+    const notRestored = Object.keys(tables)
+      .filter((t) => Array.isArray(tables[t]) && tables[t].length > 0 && !specTables.has(t))
+      .map((t) => ({ table: t, reason: NEVER_IMPORTED[t] ?? "not covered by import — data kept only in the export file" }));
+
+    res.json({ ok: true, imported: counts, skipped, errors, notRestored });
   });
 
   app.post("/api/admin/import", requireAuth, async (req, res) => {

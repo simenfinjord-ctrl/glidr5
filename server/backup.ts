@@ -2,6 +2,8 @@
 import { getUncachableGoogleSheetClient, getGoogleDriveClient } from './googleSheets';
 import { storage } from './storage';
 import { pool } from './db';
+import { EXPORT_AREA_TABLES } from '@shared/areas';
+export { EXPORT_AREA_TABLES };
 
 // ── Data-loss guard ──────────────────────────────────────────────────────────
 // Backups must survive Glidr itself dying: if the database suddenly looks
@@ -9,19 +11,27 @@ import { pool } from './db';
 // the AUTOMATIC backups refuse to overwrite the good copies and alert the SA.
 // Deliberate deletions still propagate: normal deletes never cross the 80%%
 // threshold, and a manual "run backup now" always writes (force).
+// Self-discovering, like the export engine: every table with a team_id column
+// counts, plus the known child tables without one — new tables are covered
+// automatically instead of a hand-kept list rotting as features are added.
 async function countTeamRows(teamId: number): Promise<number> {
   const { pool: pC } = await import('./db');
-  const r = await (pC as any).query(
-    `SELECT
-       (SELECT COUNT(*) FROM tests WHERE team_id = $1)
-     + (SELECT COUNT(*) FROM test_entries WHERE test_id IN (SELECT id FROM tests WHERE team_id = $1))
-     + (SELECT COUNT(*) FROM products WHERE team_id = $1)
-     + (SELECT COUNT(*) FROM athletes WHERE team_id = $1)
-     + (SELECT COUNT(*) FROM daily_weather WHERE team_id = $1)
-     + (SELECT COUNT(*) FROM kick_tests WHERE team_id = $1)
-     + (SELECT COUNT(*) FROM race_preps WHERE team_id = $1)
-     + (SELECT COUNT(*) FROM test_ski_series WHERE team_id = $1) AS total`, [teamId]);
-  return parseInt(r.rows[0]?.total ?? '0');
+  const colRes = await (pC as any).query(
+    `SELECT DISTINCT table_name FROM information_schema.columns
+     WHERE table_schema = 'public' AND column_name = 'team_id' AND table_name <> 'teams'`);
+  const teamIdTables: string[] = colRes.rows.map((r: any) => r.table_name);
+  let total = 0;
+  for (const table of teamIdTables) {
+    const r = await (pC as any).query(`SELECT COUNT(*)::int AS c FROM "${table}" WHERE team_id = $1`, [teamId]).catch(() => null);
+    total += r?.rows[0]?.c ?? 0;
+  }
+  const withTeamId = new Set(teamIdTables);
+  for (const [table, cond] of Object.entries(EXPORT_CHILD_JOINS)) {
+    if (withTeamId.has(table)) continue; // already counted directly
+    const r = await (pC as any).query(`SELECT COUNT(*)::int AS c FROM "${table}" WHERE ${cond}`, [teamId]).catch(() => null);
+    total += r?.rows[0]?.c ?? 0;
+  }
+  return total;
 }
 
 /** Returns an error string when the run must be blocked, else null (and
@@ -1093,8 +1103,9 @@ const EXPORT_COLUMN_EXCLUDES: Record<string, string[]> = {
   test_attachments: ["data"], // binary blobs — metadata + url are kept
   watch_app: ["data"],        // binary blob — metadata is kept
 };
-// Team filters for child tables that have no team_id of their own.
-const EXPORT_CHILD_JOINS: Record<string, string> = {
+// Team filters for child tables that have no team_id of their own. Also used
+// by the data-loss guard and the team-deletion cascade in routes.ts.
+export const EXPORT_CHILD_JOINS: Record<string, string> = {
   race_skis: "(team_id = $1 OR athlete_id IN (SELECT id FROM athletes WHERE team_id = $1))",
   test_entries: "test_id IN (SELECT id FROM tests WHERE team_id = $1)",
   test_comments: "test_id IN (SELECT id FROM tests WHERE team_id = $1)",
@@ -1154,21 +1165,8 @@ async function dumpAllTables(teamId: number | null, includeOwnerCompliance: bool
   return { tables, counts, skipped };
 }
 
-// Data areas → tables, for selective export/import. Tables not claimed by any
-// area (teams, settings, billing …) are ALWAYS included so a filtered export
-// stays restorable. Keep in sync with the checkbox lists in the admin UI.
-export const EXPORT_AREA_TABLES: Record<string, string[]> = {
-  tests:      ['tests', 'test_entries', 'test_attachments', 'test_comments'],
-  testfleets: ['test_ski_series', 'test_ski_regrinds'],
-  products:   ['products'],
-  weather:    ['daily_weather'],
-  athletes:   ['athletes', 'athlete_access', 'race_skis', 'race_ski_regrinds', 'ski_race_usages', 'athlete_race_calendar', 'feedback_links'],
-  kick:       ['kick_skis', 'kick_tests', 'kick_test_entries', 'kick_mixes'],
-  raceprep:   ['race_preps', 'race_prep_entries', 'race_prep_comments'],
-  grinding:   ['grind_profiles', 'grinding_records', 'grinding_sheets'],
-  runsheets:  ['runsheets', 'runsheet_progress', 'watch_queue', 'watch_sessions'],
-  people:     ['users', 'groups', 'user_teams', 'user_team_permissions', 'activity_logs', 'login_logs', 'inbox_messages', 'invitations'],
-};
+// Data areas → tables now live in shared/areas.ts (imported at the top), the
+// single registry the admin UI checkboxes derive from too — they cannot drift.
 
 /** Keep only tables in the selected areas, plus every table no area claims. */
 function filterTablesByAreas(tables: Record<string, any[]>, areas?: string[] | null): Record<string, any[]> {

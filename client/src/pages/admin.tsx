@@ -14,6 +14,7 @@ import {
   PERMISSION_AREAS, DEFAULT_PERMISSIONS, ROLE_PRESETS,
   TEAM_FEATURES, FEATURE_LABELS, FEATURE_CATEGORIES, PLAN_FEATURE_PRESETS,
 } from "@shared/schema";
+import { DATA_AREAS as SHARED_DATA_AREAS } from "@shared/areas";
 import type { UserPermissions, PermissionLevel } from "@shared/schema";
 import { computeTeamPrice, computeCustomPrice, CORE_FEATURES } from "@shared/pricing";
 import { useAppSettings } from "@/lib/app-settings";
@@ -7289,20 +7290,11 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
   const [xlsLoading, setXlsLoading] = useState(false);
   const [importing, setImporting] = useState(false);
 
-  // Every data area, matching EXPORT_AREA_TABLES on the server. Used for BOTH
-  // the selective JSON download and the import.
-  const DATA_AREAS = [
-    { key: "tests",      label: L("Tester & resultater", "Tests & Results") },
-    { key: "testfleets", label: L("Testfleets (serier + slip)", "Testfleets (series + regrinds)") },
-    { key: "products",   label: L("Produkter", "Products") },
-    { key: "weather",    label: L("Vær", "Weather") },
-    { key: "athletes",   label: L("Utøvere & skipark", "Athletes & Race Skis") },
-    { key: "kick",       label: "Kick" },
-    { key: "raceprep",   label: "Race Prep" },
-    { key: "grinding",   label: "Grinding" },
-    { key: "runsheets",  label: L("Runsheets & Watch", "Runsheets & Watch"), exportOnly: true },
-    { key: "people",     label: L("Brukere, grupper & logger", "Users, groups & logs"), exportOnly: true },
-  ] as const;
+  // Every data area, derived from the shared registry (shared/areas.ts) that
+  // the server export filter uses too — the two lists cannot drift apart.
+  const DATA_AREAS = SHARED_DATA_AREAS.map((a) => ({
+    key: a.key, label: L(a.labelNo, a.labelEn), exportOnly: a.exportOnly,
+  }));
   const [importSelections, setImportSelections] = useState<Record<string, boolean>>(
     () => Object.fromEntries(DATA_AREAS.map((a) => [a.key, true]))
   );
@@ -7325,9 +7317,10 @@ function DataManagementTab({ teamScopeParam, downloadFullPdf, pdfLoading, isSupe
         const res = await apiRequest("POST", "/api/admin/import-v2", { tables: raw.tables, areas: selectedAreas });
         result = await res.json();
         const parts = Object.entries(result.imported ?? {}).map(([t, n]) => `${t}: ${n}`);
+        const held = (result.notRestored ?? []).map((x: any) => x.table);
         toast({
           title: L("Import fullført", "Import complete"),
-          description: `${parts.length ? parts.join(", ") : L("Ingenting nytt", "Nothing new")} — ${result.skipped} ${L("duplikater hoppet over", "duplicates skipped")}${result.errors ? `, ${result.errors} ${L("rader feilet", "rows failed")}` : ""}`,
+          description: `${parts.length ? parts.join(", ") : L("Ingenting nytt", "Nothing new")} — ${result.skipped} ${L("duplikater hoppet over", "duplicates skipped")}${result.errors ? `, ${result.errors} ${L("rader feilet", "rows failed")}` : ""}${held.length ? ` — ${L("ikke gjenopprettet", "not restored")}: ${held.join(", ")}` : ""}`,
         });
       } else {
         // Legacy export format (series/products/tests/weather arrays).

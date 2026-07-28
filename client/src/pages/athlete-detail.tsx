@@ -2275,9 +2275,11 @@ export default function AthleteDetail() {
                   {L("Smører", "Waxer")}: {athlete.mainWaxerName}
                 </span>
               )}
-              <span className="text-xs text-muted-foreground" data-testid="text-athlete-created-by">
-                {athlete.createdByName}
-              </span>
+              {athlete.createdByName && athlete.createdByName !== athlete.mainWaxerName && (
+                <span className="text-xs text-muted-foreground" data-testid="text-athlete-created-by">
+                  {L("Opprettet av", "Created by")}: {athlete.createdByName}
+                </span>
+              )}
             </div>
             {/* Athlete profile metrics — shown in the same box as name & team */}
             {(athlete.defaultSkiBrand || athlete.heightCm || athlete.weightKg || athlete.poleHeight || athlete.poleHeightSkate || athlete.bindingPosition) && (

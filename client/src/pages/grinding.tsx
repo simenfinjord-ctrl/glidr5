@@ -1575,11 +1575,16 @@ export default function Grinding() {
       if (!filterDate && filterDateTo && t.date > filterDateTo) return false;
       if (filterGrinds.length > 0) {
         const testEntries = allEntries.filter((e) => e.testId === t.id);
-        const testGrindNames = new Set(testEntries.map((e) => e.grindType).filter(Boolean) as string[]);
+        const matchesGrind = (g: string) => {
+          const prof = grindProfiles.find((pr) => pr.name === g);
+          return testEntries.some((e) =>
+            (prof != null && (e as any).grindProfileId === prof.id) ||
+            (e.grindType != null && e.grindType.toLowerCase() === g.toLowerCase()));
+        };
         if (compareMode) {
-          if (!filterGrinds.every((g) => testGrindNames.has(g))) return false;
+          if (!filterGrinds.every(matchesGrind)) return false;
         } else {
-          if (!filterGrinds.some((g) => testGrindNames.has(g))) return false;
+          if (!filterGrinds.some(matchesGrind)) return false;
         }
       }
       // Weather filters — tests without linked weather are excluded when weather filters are active
@@ -1630,7 +1635,7 @@ export default function Grinding() {
       result.sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99"));
     }
     return result;
-  }, [grindTests, filterSeason, filterLocation, filterDate, filterGrinds, compareMode, allEntries, hasWeatherFiltersGrind, wfAirTempMin, wfAirTempMax, wfSnowTempMin, wfSnowTempMax, wfAirHumMin, wfAirHumMax, wfSnowHumMin, wfSnowHumMax, wfSnowType, wfTrackHardness, wfArtSnow, wfNatSnow, wfSnowHumidityType, wfGrainSize, wfPrecipitation, wfWind, wfVisibility, wfCloudMin, wfCloudMax, weatherById]);
+  }, [grindTests, filterSeason, filterLocation, filterDate, filterGrinds, compareMode, allEntries, grindProfiles, hasWeatherFiltersGrind, wfAirTempMin, wfAirTempMax, wfSnowTempMin, wfSnowTempMax, wfAirHumMin, wfAirHumMax, wfSnowHumMin, wfSnowHumMax, wfSnowType, wfTrackHardness, wfArtSnow, wfNatSnow, wfSnowHumidityType, wfGrainSize, wfPrecipitation, wfWind, wfVisibility, wfCloudMin, wfCloudMax, weatherById]);
 
   const filteredProfiles = useMemo(() => {
     const q = grindSearch.trim().toLowerCase();
@@ -3481,8 +3486,11 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
             <tbody>
               {sortedEntries.map((entry) => {
                 const rounds = getEntryRounds(entry, distLabels.length);
-                const entryName = entry.grindType || null;
-                const color = entryName ? grindHighlight.get(entryName) : undefined;
+                const profName = entry.grindProfileId != null
+                  ? grindProfiles.find((pr) => pr.id === entry.grindProfileId)?.name
+                  : undefined;
+                const color = (profName ? grindHighlight.get(profName) : undefined)
+                  ?? (entry.grindType ? grindHighlight.get(entry.grindType) : undefined);
                 return (
                   <tr
                     key={entry.id}

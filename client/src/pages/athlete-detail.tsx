@@ -1046,7 +1046,7 @@ export default function AthleteDetail() {
     notes: "",
   });
 
-  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", poleHeightSkate: "", bindingPosition: "", skiServicePreferences: "", sportClass: "", mainWaxerId: "", consentBy: "", consentNote: "" });
+  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", poleHeightSkate: "", bindingPosition: "", skiServicePreferences: "", sportClass: "", mainWaxerId: "" });
   // Team members for the main-waxer selector (TA/SA only, loaded when the edit dialog opens).
   const { data: teamMembers = [] } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/team/members"],
@@ -1663,8 +1663,6 @@ export default function AthleteDetail() {
         bindingPosition: data.bindingPosition.trim() || null,
         skiServicePreferences: data.skiServicePreferences.trim() || null,
         sportClass: data.sportClass.trim() || null,
-        consentBy: (data as any).consentBy?.trim() || null,
-        consentNote: (data as any).consentNote?.trim() || null,
         // Only TAs/SAs may reassign the main waxer — omit the field entirely for others.
         ...(canManage ? { mainWaxerId: data.mainWaxerId ? parseInt(data.mainWaxerId) : null } : {}),
       });
@@ -1834,8 +1832,6 @@ export default function AthleteDetail() {
         skiServicePreferences: athlete.skiServicePreferences || "",
         sportClass: athlete.sportClass || "",
         mainWaxerId: athlete.mainWaxerId != null ? String(athlete.mainWaxerId) : "",
-        consentBy: (athlete as any).consentBy || "",
-        consentNote: (athlete as any).consentNote || "",
       });
       setEditAthleteOpen(true);
     }
@@ -2359,15 +2355,7 @@ export default function AthleteDetail() {
                   {L("Opprettet av", "Created by")}: {athlete.createdByName}
                 </span>
               )}
-              {(athlete as any).consentBy ? (
-                <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-800" title={(athlete as any).consentNote ?? ""} data-testid="badge-consent">
-                  {L("Samtykke", "Consent")}: {(athlete as any).consentBy}{(athlete as any).consentAt ? ` · ${new Date((athlete as any).consentAt).toLocaleDateString()}` : ""}
-                </span>
-              ) : (
-                <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-800" data-testid="badge-consent-missing">
-                  {L("Samtykke ikke registrert", "Consent not recorded")}
-                </span>
-              )}
+
             </div>
             {/* Athlete profile metrics — shown in the same box as name & team */}
             {(athlete.defaultSkiBrand || athlete.heightCm || athlete.weightKg || athlete.poleHeight || athlete.poleHeightSkate || athlete.bindingPosition) && (
@@ -5038,20 +5026,7 @@ export default function AthleteDetail() {
                 data-testid="input-edit-athlete-service-prefs"
               />
             </div>
-              <div className="space-y-1.5 rounded-lg border border-dashed border-border p-3">
-                <label className="text-sm font-medium">{L("Samtykke (GDPR)", "Consent (GDPR)")}</label>
-                <p className="text-[11px] text-muted-foreground">
-                  {L("Registrer hvem som har samtykket til lagring av utøverens data (utøver selv, eller foresatt for mindreårige).",
-                     "Record who consented to storing the athlete's data (the athlete, or a guardian for minors).")}
-                </p>
-                <Input value={(athleteForm as any).consentBy}
-                  onChange={(e) => setAthleteForm((f) => ({ ...f, consentBy: e.target.value }))}
-                  placeholder={L("Navn på den som samtykket", "Name of the person who consented")}
-                  data-testid="input-consent-by" />
-                <Input value={(athleteForm as any).consentNote}
-                  onChange={(e) => setAthleteForm((f) => ({ ...f, consentNote: e.target.value }))}
-                  placeholder={L("Notat (f.eks. «foresatt», «skjema signert 12.08»)", "Note (e.g. \u201cguardian\u201d, \u201cform signed Aug 12\u201d)")} />
-              </div>
+
             <div className="flex items-center justify-end pt-2">
               <Button
                 type="submit"

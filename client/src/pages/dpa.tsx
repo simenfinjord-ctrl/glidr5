@@ -63,8 +63,8 @@ export default function Dpa() {
           <p>{no ? "Følgende kategorier behandles:" : "The following categories are processed:"}</p>
           <ul className="list-disc pl-5 space-y-1">
             <li>{no ? "Brukere: navn, e-postadresse, telefonnummer (valgfritt), innloggingshistorikk" : "Users: name, email address, phone number (optional), login history"}</li>
-            <li>{no ? "Utøvere: navn, klubb/lag, fysiske mål relevante for skitilpasning (høyde, vekt, stavlengder), utstyr- og testhistorikk, samtykkeregistrering" : "Athletes: name, club/team, physical measurements relevant to ski fitting (height, weight, pole lengths), equipment and test history, consent records"}</li>
-            <li>{no ? "Ingen særlige kategorier (sensitive opplysninger) behandles. For mindreårige utøvere er Kunden ansvarlig for å innhente foresattes samtykke; Glidr tilbyr samtykkeregistrering på utøverprofilen." : "No special categories (sensitive data) are processed. For minor athletes the Customer is responsible for obtaining guardian consent; Glidr provides consent registration on the athlete profile."}</li>
+            <li>{no ? "Utøvere: navn, klubb/lag, fysiske mål relevante for skitilpasning (høyde, vekt, stavlengder), utstyr- og testhistorikk" : "Athletes: name, club/team, physical measurements relevant to ski fitting (height, weight, pole lengths), equipment and test history"}</li>
+            <li>{no ? "Ingen særlige kategorier (sensitive opplysninger) behandles. Behandlingsgrunnlaget er Kundens berettigede interesse i utstyrsforvaltning for egne utøvere." : "No special categories (sensitive data) are processed. The legal basis is the Customer's legitimate interest in managing equipment for its own athletes."}</li>
           </ul>
         </S>
 

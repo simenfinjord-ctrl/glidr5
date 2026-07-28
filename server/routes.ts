@@ -782,9 +782,6 @@ export async function registerRoutes(
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'NOK';
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS vat_exempt INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_drive_backup_day TEXT;
-      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS consent_by TEXT;
-      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS consent_at TEXT;
-      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS consent_note TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TEXT;
       CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       INSERT INTO app_settings (key, value) VALUES ('commercialization_enabled', 'false') ON CONFLICT (key) DO NOTHING;
@@ -7848,9 +7845,6 @@ export async function registerRoutes(
       sportClass: req.body.sportClass || null,
       mainWaxerId,
       mainWaxerName,
-      consentBy: req.body.consentBy || null,
-      consentAt: req.body.consentBy ? (req.body.consentAt || now) : null,
-      consentNote: req.body.consentNote || null,
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
@@ -8383,11 +8377,6 @@ export async function registerRoutes(
     if (req.body.bindingPosition !== undefined) data.bindingPosition = req.body.bindingPosition || null;
     if (req.body.skiServicePreferences !== undefined) data.skiServicePreferences = req.body.skiServicePreferences || null;
     if (req.body.sportClass !== undefined) data.sportClass = req.body.sportClass || null;
-    if (req.body.consentBy !== undefined) {
-      data.consentBy = req.body.consentBy || null;
-      data.consentAt = req.body.consentBy ? (req.body.consentAt || new Date().toISOString()) : null;
-    }
-    if (req.body.consentNote !== undefined) data.consentNote = req.body.consentNote || null;
     if (req.body.archived !== undefined) data.archived = req.body.archived ? 1 : 0;
     // Main waxer: only Team Admins / Super Admins may reassign it. Name is
     // resolved server-side so the client can't write an arbitrary label.

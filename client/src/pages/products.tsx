@@ -725,7 +725,7 @@ export default function Products() {
   const filtered = useMemo(() => {
     const n = nameSearch.trim().toLowerCase();
     return products.filter((p) => {
-      const okCategory = category === "All" ? true : p.category === category;
+      const okCategory = category === "All" ? true : category === "Mixes" ? !!(p as any).isMix : p.category === category;
       const okBrand = selectedBrand === "All" ? true : p.brand === selectedBrand;
       const okName = n
         ? (p.name.toLowerCase().includes(n)
@@ -772,7 +772,7 @@ export default function Products() {
   const filteredArchived = useMemo(() => {
     const n = nameSearch.trim().toLowerCase();
     return archivedProducts.filter((p) => {
-      const okCategory = category === "All" ? true : p.category === category;
+      const okCategory = category === "All" ? true : category === "Mixes" ? !!(p as any).isMix : p.category === category;
       const okBrand = selectedBrand === "All" ? true : p.brand === selectedBrand;
       const okName = n
         ? (p.name.toLowerCase().includes(n)
@@ -1053,6 +1053,7 @@ export default function Products() {
                     <SelectItem value="Liquid">Liquid</SelectItem>
                     <SelectItem value="Block">Block</SelectItem>
                     <SelectItem value="Structure Tool">Structure Tool</SelectItem>
+                    <SelectItem value="Mixes">Mixes</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -2123,6 +2124,11 @@ function ProductCard({
               <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold", categoryBadgeClass(p.category))}>
                 {p.category}
               </span>
+              {(p as any).serialNumber && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary font-mono" title="Mix">
+                  #{(p as any).serialNumber}
+                </span>
+              )}
             </div>
             <AppLink href={`/products/${p.id}`} className="mt-2 block truncate text-base font-semibold hover:text-amber-600 transition-colors">{p.brand} {p.name}</AppLink>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">

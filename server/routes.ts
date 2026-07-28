@@ -920,6 +920,24 @@ export async function registerRoutes(
         created_by_id INTEGER,
         created_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS athlete_transfers (
+        id SERIAL PRIMARY KEY,
+        athlete_id INTEGER NOT NULL,
+        from_team_id INTEGER NOT NULL,
+        to_team_id INTEGER,
+        to_email TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        requested_by_id INTEGER NOT NULL,
+        requested_by_name TEXT NOT NULL DEFAULT '',
+        accepted_by_id INTEGER,
+        accepted_at TEXT,
+        grace_until TEXT,
+        prev_main_waxer_id INTEGER,
+        prev_main_waxer_name TEXT,
+        created_at TEXT NOT NULL DEFAULT ''
+      );
+      CREATE INDEX IF NOT EXISTS athlete_transfers_athlete_idx ON athlete_transfers(athlete_id);
+      CREATE INDEX IF NOT EXISTS athlete_transfers_from_idx ON athlete_transfers(from_team_id);
       CREATE TABLE IF NOT EXISTS race_preps (
         id SERIAL PRIMARY KEY,
         team_id INTEGER NOT NULL,
@@ -7611,6 +7629,27 @@ export async function registerRoutes(
     const includeArchived = req.query.includeArchived === "1";
     let list = await storage.listAthletes(u.id, u.isScopeAdmin, teamId);
     if (!includeArchived) list = list.filter((a: any) => !a.archived);
+    // Transferred athletes stay visible to the OLD team through the 14-day
+    // grace window, flagged so the UI can badge them and offer revoke.
+    if (teamId) {
+      try {
+        const { pool: pG } = await import("./db");
+        const g = await (pG as any).query(
+          `SELECT tr.athlete_id AS id, tr.grace_until AS "graceUntil", tr.id AS "transferId", tm.name AS "toTeamName"
+           FROM athlete_transfers tr LEFT JOIN teams tm ON tm.id = tr.to_team_id
+           WHERE tr.from_team_id = $1 AND tr.status = 'accepted' AND tr.grace_until > $2`,
+          [teamId, new Date().toISOString()]);
+        for (const row of g.rows) {
+          const ath: any = await storage.getAthlete(row.id);
+          if (!ath || (ath.archived && !includeArchived)) continue;
+          if (!u.isScopeAdmin && ath.createdById !== u.id) {
+            const acc = await (pG as any).query(`SELECT 1 FROM athlete_access WHERE athlete_id = $1 AND user_id = $2`, [row.id, u.id]);
+            if (acc.rows.length === 0) continue;
+          }
+          list.push({ ...ath, transferGrace: true, transferGraceUntil: row.graceUntil, transferToTeam: row.toTeamName, transferId: row.transferId });
+        }
+      } catch {}
+    }
     // Athlete-access users see every athlete they've been granted (athlete_access),
     // not only their currently-active one — so all show on the Athlete skis page.
     if ((req.user as any).isAthleteAccess === 1) {
@@ -7660,6 +7699,191 @@ export async function registerRoutes(
     const allAccessIds = [...new Set([...accessUserIds, u.id, ...(mainWaxerId != null ? [mainWaxerId] : [])])];
     await storage.setAthleteAccess(athlete.id, allAccessIds);
     res.json(athlete);
+  });
+
+  // ── Athlete transfer between teams ─────────────────────────────────────────
+  // A TA sends the athlete to another team's TA by email. On accept the whole
+  // profile moves (garage, regrinds, race usage, athlete ski tests) — product
+  // references are stripped so HOW skis were prepared travels, WHAT they were
+  // waxed with does not. The sending team keeps access for 14 days and its TA
+  // can pull the athlete back during that window.
+  const TRANSFER_GRACE_DAYS = 14;
+
+  app.post("/api/athletes/:id/transfer", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isScopeAdmin) return res.status(403).json({ message: "Only a team admin can transfer an athlete" });
+    const id = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    const athlete = await storage.getAthlete(id);
+    if (!athlete || (teamId && athlete.teamId !== teamId)) return res.status(404).json({ message: "Not found" });
+    const email = String(req.body?.email ?? "").trim().toLowerCase();
+    if (!email) return res.status(400).json({ message: "Email is required" });
+    const { pool: pT } = await import("./db");
+    const target = await (pT as any).query(
+      `SELECT id, name, email, team_id, is_team_admin FROM users WHERE LOWER(email) = $1 AND is_team_admin = 1 LIMIT 1`, [email]);
+    if (target.rows.length === 0) return res.status(400).json({ message: "No team admin with that email" });
+    const t = target.rows[0];
+    if (t.team_id === teamId) return res.status(400).json({ message: "That admin is on your own team" });
+    const dup = await (pT as any).query(
+      `SELECT 1 FROM athlete_transfers WHERE athlete_id = $1 AND (status = 'pending' OR (status = 'accepted' AND grace_until > $2))`,
+      [id, new Date().toISOString()]);
+    if (dup.rows.length > 0) return res.status(400).json({ message: "A transfer is already in progress for this athlete" });
+    const now = new Date().toISOString();
+    const ins = await (pT as any).query(
+      `INSERT INTO athlete_transfers (athlete_id, from_team_id, to_email, status, requested_by_id, requested_by_name, prev_main_waxer_id, prev_main_waxer_name, created_at)
+       VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8) RETURNING id`,
+      [id, teamId, email, u.id, u.name, athlete.mainWaxerId ?? null, athlete.mainWaxerName ?? null, now]);
+    const fromTeam = teamId ? await storage.getTeam(teamId) : null;
+    await (pT as any).query(
+      `INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at)
+       VALUES ($1, $2, $3, $4, 0, $5)`,
+      [t.id, u.name,
+       `Utøveroverføring: ${athlete.name}`,
+       `${u.name} (${fromTeam?.name ?? "annet lag"}) ønsker å overføre utøveren ${athlete.name} til laget ditt. Gå til Athlete Skis for å akseptere eller avslå. / ${u.name} (${fromTeam?.name ?? "another team"}) wants to transfer the athlete ${athlete.name} to your team. Open Athlete Skis to accept or decline.`,
+       now]);
+    try {
+      const { sendAthleteTransferRequestEmail } = await import("./email");
+      await sendAthleteTransferRequestEmail(t.email, { athleteName: athlete.name, fromTeam: fromTeam?.name ?? "", byName: u.name });
+    } catch (e) { console.error("[transfer] email failed:", e); }
+    res.json({ ok: true, transferId: ins.rows[0]?.id });
+  });
+
+  app.get("/api/athlete-transfers", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const { pool: pT } = await import("./db");
+    const nowIso = new Date().toISOString();
+    const me = await storage.getUser(u.id);
+    const incoming = u.isScopeAdmin && me?.email
+      ? (await (pT as any).query(
+          `SELECT tr.id, tr.athlete_id AS "athleteId", a.name AS "athleteName", tr.requested_by_name AS "requestedByName",
+                  tm.name AS "fromTeamName", tr.created_at AS "createdAt"
+           FROM athlete_transfers tr
+           JOIN athletes a ON a.id = tr.athlete_id
+           LEFT JOIN teams tm ON tm.id = tr.from_team_id
+           WHERE tr.status = 'pending' AND LOWER(tr.to_email) = LOWER($1)`, [me.email])).rows
+      : [];
+    const outgoing = teamId
+      ? (await (pT as any).query(
+          `SELECT tr.id, tr.athlete_id AS "athleteId", a.name AS "athleteName", tr.status, tr.to_email AS "toEmail",
+                  tr.grace_until AS "graceUntil", tm.name AS "toTeamName"
+           FROM athlete_transfers tr
+           JOIN athletes a ON a.id = tr.athlete_id
+           LEFT JOIN teams tm ON tm.id = tr.to_team_id
+           WHERE tr.from_team_id = $1 AND (tr.status = 'pending' OR (tr.status = 'accepted' AND tr.grace_until > $2))`,
+          [teamId, nowIso])).rows
+      : [];
+    res.json({ incoming, outgoing });
+  });
+
+  app.post("/api/athlete-transfers/:id/accept", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isScopeAdmin) return res.status(403).json({ message: "Only a team admin can accept" });
+    const trId = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    const { pool: pT } = await import("./db");
+    const me = await storage.getUser(u.id);
+    const trRes = await (pT as any).query(`SELECT * FROM athlete_transfers WHERE id = $1 AND status = 'pending'`, [trId]);
+    const tr = trRes.rows[0];
+    if (!tr || !me?.email || tr.to_email.toLowerCase() !== me.email.toLowerCase()) return res.status(404).json({ message: "Not found" });
+    if (!teamId || teamId === tr.from_team_id) return res.status(400).json({ message: "Switch to the receiving team first" });
+    const athlete = await storage.getAthlete(tr.athlete_id);
+    if (!athlete) return res.status(404).json({ message: "Athlete no longer exists" });
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const graceUntil = new Date(now.getTime() + TRANSFER_GRACE_DAYS * 24 * 3600 * 1000).toISOString();
+    // Move the profile and everything athlete-scoped to the new team.
+    await (pT as any).query(`UPDATE athletes SET team_id = $1, main_waxer_id = $2, main_waxer_name = $3 WHERE id = $4`,
+      [teamId, u.id, u.name, tr.athlete_id]);
+    await (pT as any).query(`UPDATE race_skis SET team_id = $1 WHERE athlete_id = $2`, [teamId, tr.athlete_id]);
+    await (pT as any).query(`UPDATE ski_race_usages SET team_id = $1 WHERE athlete_id = $2`, [teamId, tr.athlete_id]);
+    await (pT as any).query(`UPDATE athlete_race_calendar SET team_id = $1 WHERE athlete_id = $2`, [teamId, tr.athlete_id]).catch(() => {});
+    // Athlete ski tests follow; strip WHAT they were waxed with (products) —
+    // application/method and results stay.
+    await (pT as any).query(
+      `UPDATE test_entries SET product_id = NULL, free_text_product = NULL
+       WHERE test_id IN (SELECT id FROM tests WHERE athlete_id = $1 AND team_id = $2)`,
+      [tr.athlete_id, tr.from_team_id]).catch(() => {});
+    await (pT as any).query(`UPDATE tests SET team_id = $1 WHERE athlete_id = $2 AND team_id = $3`,
+      [teamId, tr.athlete_id, tr.from_team_id]);
+    // New TA gets main-waxer access; the old team's access rows stay for the
+    // grace window (the team gate cuts them off automatically after it ends).
+    await (pT as any).query(
+      `INSERT INTO athlete_access (athlete_id, user_id, can_edit)
+       SELECT $1, $2, 1 WHERE NOT EXISTS (SELECT 1 FROM athlete_access WHERE athlete_id = $1 AND user_id = $2)`,
+      [tr.athlete_id, u.id]);
+    await (pT as any).query(
+      `UPDATE athlete_transfers SET status = 'accepted', to_team_id = $1, accepted_by_id = $2, accepted_at = $3, grace_until = $4 WHERE id = $5`,
+      [teamId, u.id, nowIso, graceUntil, trId]);
+    const toTeam = await storage.getTeam(teamId);
+    await (pT as any).query(
+      `INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at)
+       VALUES ($1, $2, $3, $4, 0, $5)`,
+      [tr.requested_by_id, u.name,
+       `Utøveroverføring akseptert: ${athlete.name}`,
+       `${u.name} (${toTeam?.name ?? ""}) har akseptert overføringen av ${athlete.name}. Laget ditt har tilgang i ${TRANSFER_GRACE_DAYS} dager til, og du kan angre overføringen i samme periode fra Athlete Skis.`,
+       nowIso]);
+    await recordDeletion(req, "athlete_transfer", tr.athlete_id, `Athlete transferred in: ${athlete.name}`, { transferId: trId, fromTeamId: tr.from_team_id, toTeamId: teamId });
+    res.json({ ok: true });
+  });
+
+  app.post("/api/athlete-transfers/:id/decline", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isScopeAdmin) return res.status(403).json({ message: "Only a team admin can decline" });
+    const trId = parseInt(req.params.id);
+    const { pool: pT } = await import("./db");
+    const me = await storage.getUser(u.id);
+    const trRes = await (pT as any).query(`SELECT * FROM athlete_transfers WHERE id = $1 AND status = 'pending'`, [trId]);
+    const tr = trRes.rows[0];
+    if (!tr || !me?.email || tr.to_email.toLowerCase() !== me.email.toLowerCase()) return res.status(404).json({ message: "Not found" });
+    await (pT as any).query(`UPDATE athlete_transfers SET status = 'declined' WHERE id = $1`, [trId]);
+    const athlete = await storage.getAthlete(tr.athlete_id);
+    await (pT as any).query(
+      `INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at)
+       VALUES ($1, $2, $3, $4, 0, $5)`,
+      [tr.requested_by_id, u.name, `Utøveroverføring avslått: ${athlete?.name ?? ""}`,
+       `${u.name} har avslått overføringen av ${athlete?.name ?? "utøveren"}.`, new Date().toISOString()]);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/athlete-transfers/:id/revoke", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isScopeAdmin) return res.status(403).json({ message: "Only a team admin can revoke" });
+    const trId = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    const { pool: pT } = await import("./db");
+    const trRes = await (pT as any).query(`SELECT * FROM athlete_transfers WHERE id = $1`, [trId]);
+    const tr = trRes.rows[0];
+    if (!tr || tr.from_team_id !== teamId) return res.status(404).json({ message: "Not found" });
+    if (tr.status === 'pending') {
+      await (pT as any).query(`UPDATE athlete_transfers SET status = 'revoked' WHERE id = $1`, [trId]);
+      return res.json({ ok: true });
+    }
+    if (tr.status !== 'accepted' || !tr.grace_until || tr.grace_until <= new Date().toISOString()) {
+      return res.status(400).json({ message: "The 14-day window has ended — the athlete now belongs to the new team" });
+    }
+    // Pull the athlete back: reverse the move.
+    await (pT as any).query(`UPDATE athletes SET team_id = $1, main_waxer_id = $2, main_waxer_name = $3 WHERE id = $4`,
+      [tr.from_team_id, tr.prev_main_waxer_id ?? null, tr.prev_main_waxer_name ?? null, tr.athlete_id]);
+    await (pT as any).query(`UPDATE race_skis SET team_id = $1 WHERE athlete_id = $2`, [tr.from_team_id, tr.athlete_id]);
+    await (pT as any).query(`UPDATE ski_race_usages SET team_id = $1 WHERE athlete_id = $2`, [tr.from_team_id, tr.athlete_id]);
+    await (pT as any).query(`UPDATE athlete_race_calendar SET team_id = $1 WHERE athlete_id = $2`, [tr.from_team_id, tr.athlete_id]).catch(() => {});
+    await (pT as any).query(`UPDATE tests SET team_id = $1 WHERE athlete_id = $2 AND team_id = $3`,
+      [tr.from_team_id, tr.athlete_id, tr.to_team_id]);
+    if (tr.accepted_by_id != null) {
+      await (pT as any).query(`DELETE FROM athlete_access WHERE athlete_id = $1 AND user_id = $2`, [tr.athlete_id, tr.accepted_by_id]);
+    }
+    await (pT as any).query(`UPDATE athlete_transfers SET status = 'revoked' WHERE id = $1`, [trId]);
+    const athlete = await storage.getAthlete(tr.athlete_id);
+    if (tr.accepted_by_id != null) {
+      await (pT as any).query(
+        `INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at)
+         VALUES ($1, $2, $3, $4, 0, $5)`,
+        [tr.accepted_by_id, u.name, `Utøveroverføring trukket tilbake: ${athlete?.name ?? ""}`,
+         `${u.name} har trukket tilbake overføringen av ${athlete?.name ?? "utøveren"}. Utøveren er tilbake hos avsenderlaget.`, new Date().toISOString()]);
+    }
+    await recordDeletion(req, "athlete_transfer", tr.athlete_id, `Athlete transfer revoked: ${athlete?.name ?? tr.athlete_id}`, { transferId: trId });
+    res.json({ ok: true });
   });
 
   app.put("/api/athletes/:id", requirePermission("raceskis", "edit"), async (req, res) => {

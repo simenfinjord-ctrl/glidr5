@@ -721,8 +721,16 @@ export class DatabaseStorage implements IStorage {
   async hasAthleteAccess(athleteId: number, userId: number, isAdmin: boolean, teamId?: number): Promise<boolean> {
     const athlete = await this.getAthlete(athleteId);
     if (!athlete) return false;
-    // Always enforce team boundary — users cannot access athletes from other teams
-    if (teamId && athlete.teamId && athlete.teamId !== teamId) return false;
+    // Always enforce team boundary — users cannot access athletes from other
+    // teams. Exception: for 14 days after an athlete transfer the SENDING team
+    // keeps access (the transfer row carries the window); after that the gate
+    // closes by itself even though old athlete_access rows remain.
+    if (teamId && athlete.teamId && athlete.teamId !== teamId) {
+      const g = await db.execute(sql`SELECT 1 FROM athlete_transfers
+        WHERE athlete_id = ${athleteId} AND from_team_id = ${teamId}
+          AND status = 'accepted' AND grace_until > ${new Date().toISOString()} LIMIT 1`);
+      if (((g as any).rows ?? []).length === 0) return false;
+    }
     if (isAdmin) return true;
     if (athlete.createdById === userId) return true;
     const [access] = await db.select().from(athleteAccess).where(

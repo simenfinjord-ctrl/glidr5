@@ -92,6 +92,31 @@ export default function RaceSkis() {
   const athletes = (q ? allAthletes : (showArchived ? archivedAthletes : activeAthletes)).filter(matchesSearch);
 
   const canEdit = can("raceskis", "edit");
+  const isTA = user?.isTeamAdmin === 1 || user?.isAdmin === 1;
+
+  // Athlete transfers: incoming requests (banner) + outgoing (badges/revoke).
+  const { data: transfers } = useQuery<{ incoming: any[]; outgoing: any[] }>({
+    queryKey: ["/api/athlete-transfers"],
+  });
+  const outgoingByAthlete = new Map<number, any>((transfers?.outgoing ?? []).map((tr) => [tr.athleteId, tr]));
+  const transferAction = useMutation({
+    mutationFn: async (v: { id: number; action: "accept" | "decline" | "revoke" }) => {
+      const res = await apiRequest("POST", `/api/athlete-transfers/${v.id}/${v.action}`);
+      return res.json();
+    },
+    onSuccess: (_r, v) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/athlete-transfers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/athletes?includeArchived=1"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/athletes"] });
+      toast({ title: v.action === "accept" ? L("Utøver overtatt", "Athlete accepted") : v.action === "decline" ? L("Forespørsel avslått", "Request declined") : L("Overføring trukket tilbake", "Transfer revoked") });
+    },
+    onError: (e: any) => toast({ title: L("Handlingen mislyktes", "Action failed"), description: e?.message, variant: "destructive" }),
+  });
+  const fmtGraceDate = (iso: string | null | undefined) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+  };
 
   const archiveMutation = useMutation({
     mutationFn: async (data: { id: number; archived: boolean }) => {
@@ -316,6 +341,29 @@ export default function RaceSkis() {
           </div>
         </div>
 
+        {/* Incoming athlete-transfer requests (TA only) */}
+        {isTA && (transfers?.incoming ?? []).map((tr) => (
+          <Card key={tr.id} className="fs-card rounded-2xl p-4 ring-1 ring-sky-200 dark:ring-sky-900" data-testid={`transfer-request-${tr.id}`}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold">{L("Utøveroverføring", "Athlete transfer")}: {tr.athleteName}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  {L(`${tr.requestedByName} (${tr.fromTeamName ?? ""}) ønsker å overføre utøveren til laget ditt. Aksepterer du, blir du hovedsmører, og avsenderlaget beholder tilgang i 14 dager.`,
+                     `${tr.requestedByName} (${tr.fromTeamName ?? ""}) wants to transfer this athlete to your team. If you accept you become main waxer; the sending team keeps access for 14 days.`)}
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button size="sm" onClick={() => transferAction.mutate({ id: tr.id, action: "accept" })} disabled={transferAction.isPending} data-testid={`button-accept-transfer-${tr.id}`}>
+                  {L("Aksepter", "Accept")}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => transferAction.mutate({ id: tr.id, action: "decline" })} disabled={transferAction.isPending}>
+                  {L("Avslå", "Decline")}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))}
+
         {/* Search — spans both active and archived athletes */}
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -376,9 +424,31 @@ export default function RaceSkis() {
                             {L("Smører", "Waxer")}: {athlete.mainWaxerName}
                           </span>
                         )}
-                        <span className="text-xs text-muted-foreground" data-testid={`text-athlete-created-by-${athlete.id}`}>
-                          {athlete.createdByName}
-                        </span>
+                        {athlete.createdByName && athlete.createdByName !== athlete.mainWaxerName && (
+                          <span className="text-xs text-muted-foreground" data-testid={`text-athlete-created-by-${athlete.id}`}>
+                            {L("Opprettet av", "Created by")}: {athlete.createdByName}
+                          </span>
+                        )}
+                        {(() => {
+                          const tr = outgoingByAthlete.get(athlete.id) ?? ((athlete as any).transferId ? { id: (athlete as any).transferId, status: "accepted", toTeamName: (athlete as any).transferToTeam, graceUntil: (athlete as any).transferGraceUntil } : undefined);
+                          if (!tr) return null;
+                          return (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-800" data-testid={`athlete-transfer-badge-${athlete.id}`}>
+                              {tr.status === "pending"
+                                ? L("Overføring forespurt", "Transfer requested")
+                                : L(`Overført til ${tr.toTeamName ?? "annet lag"} · tilgang til ${fmtGraceDate(tr.graceUntil)}`, `Transferred to ${tr.toTeamName ?? "another team"} · access until ${fmtGraceDate(tr.graceUntil)}`)}
+                              {isTA && (
+                                <button
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); transferAction.mutate({ id: tr.id, action: "revoke" }); }}
+                                  className="font-semibold underline decoration-dotted hover:text-amber-900 dark:hover:text-amber-100"
+                                  data-testid={`button-revoke-transfer-${athlete.id}`}
+                                >
+                                  {tr.status === "pending" ? L("Avbryt", "Cancel") : L("Trekk tilbake", "Revoke")}
+                                </button>
+                              )}
+                            </span>
+                          );
+                        })()}
                       </div>
                       {athleteMetricChips(athlete, language).length > 0 && (
                         <div className="mt-2 flex flex-wrap items-center gap-1.5" data-testid={`athlete-metrics-${athlete.id}`}>
@@ -464,9 +534,28 @@ export default function RaceSkis() {
                         {athlete.team}
                       </span>
                     )}
-                    <span className="text-xs text-muted-foreground shrink-0" data-testid={`text-athlete-created-by-${athlete.id}`}>
-                      {athlete.createdByName}
-                    </span>
+                    {athlete.createdByName && athlete.createdByName !== athlete.mainWaxerName && (
+                      <span className="text-xs text-muted-foreground shrink-0" data-testid={`text-athlete-created-by-${athlete.id}`}>
+                        {L("Opprettet av", "Created by")}: {athlete.createdByName}
+                      </span>
+                    )}
+                    {(() => {
+                      const tr = outgoingByAthlete.get(athlete.id) ?? ((athlete as any).transferId ? { id: (athlete as any).transferId, status: "accepted", toTeamName: (athlete as any).transferToTeam, graceUntil: (athlete as any).transferGraceUntil } : undefined);
+                      if (!tr) return null;
+                      return (
+                        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-800">
+                          {tr.status === "pending" ? L("Overføring forespurt", "Transfer requested") : L("Overført", "Transferred")}
+                          {isTA && (
+                            <button
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); transferAction.mutate({ id: tr.id, action: "revoke" }); }}
+                              className="font-semibold underline decoration-dotted hover:text-amber-900 dark:hover:text-amber-100"
+                            >
+                              {tr.status === "pending" ? L("Avbryt", "Cancel") : L("Trekk tilbake", "Revoke")}
+                            </button>
+                          )}
+                        </span>
+                      );
+                    })()}
                     {canEdit && (
                       <button
                         onClick={(e) => toggleArchive(e, athlete)}

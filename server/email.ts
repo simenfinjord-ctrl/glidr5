@@ -105,6 +105,36 @@ async function sendEmail(payload: {
   console.log(`[email] Sent "${payload.subject}" to ${payload.to}`);
 }
 
+// ── Athlete transfer request ───────────────────────────────────────────────────
+
+export async function sendAthleteTransferRequestEmail(
+  to: string,
+  opts: { athleteName: string; fromTeam: string; byName: string }
+): Promise<void> {
+  const subject = `Glidr: Foresp\u00f8rsel om ut\u00f8veroverf\u00f8ring — ${opts.athleteName}`;
+  const content = `
+    <h2 style="margin:0 0 14px;font-size:19px;">Ut\u00f8veroverf\u00f8ring / Athlete transfer</h2>
+    <p style="font-size:14px;line-height:1.7;margin:0 0 14px;">
+      ${opts.byName}${opts.fromTeam ? ` (${opts.fromTeam})` : ""} \u00f8nsker \u00e5 overf\u00f8re ut\u00f8veren
+      <strong>${opts.athleteName}</strong> til laget ditt i Glidr.
+    </p>
+    <p style="font-size:13px;line-height:1.7;color:#4b5563;margin:0 0 20px;">
+      Aksepterer du, flyttes hele profilen (garasje, tester og rennhistorikk) til laget ditt,
+      og du blir hovedsm\u00f8rer. Avsenderlaget beholder tilgang i 14 dager og kan angre i samme periode.<br><br>
+      ${opts.byName} wants to transfer the athlete <strong>${opts.athleteName}</strong> to your team.
+      Accepting moves the full profile; the sending team keeps access for 14 days.
+    </p>
+    ${emailBtn("https://glidr.no/raceskis", "\u00c5pne Athlete Skis")}
+    ${emailHr()}
+    ${emailMeta("Foresp\u00f8rselen kan aksepteres eller avsl\u00e5s \u00f8verst p\u00e5 Athlete Skis-siden n\u00e5r du er logget inn.")}
+  `;
+  await sendEmail({
+    to, subject,
+    text: `${opts.byName} \u00f8nsker \u00e5 overf\u00f8re ut\u00f8veren ${opts.athleteName} til laget ditt i Glidr. Logg inn p\u00e5 glidr.no og \u00e5pne Athlete Skis for \u00e5 akseptere eller avsl\u00e5.`,
+    html: emailHtml(content),
+  });
+}
+
 // ── Password reset ─────────────────────────────────────────────────────────────
 
 const resetCopy: Record<string, {

@@ -1838,6 +1838,23 @@ export default function AthleteDetail() {
 
   // ── PDF Export ───────────────────────────────────────────────────────────────
   const [exportPdfOpen, setExportPdfOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferEmail, setTransferEmail] = useState("");
+  const isTA = user?.isTeamAdmin === 1 || user?.isAdmin === 1;
+  const transferMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/athletes/${athleteId}/transfer`, { email: transferEmail.trim() });
+      if (!res.ok) throw new Error((await res.json())?.message ?? "Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      setTransferOpen(false);
+      setTransferEmail("");
+      queryClient.invalidateQueries({ queryKey: ["/api/athlete-transfers"] });
+      toast({ title: L("Forespørsel sendt", "Request sent"), description: L("Mottakende TA får beskjed i innboksen og på e-post.", "The receiving team admin is notified by inbox and email.") });
+    },
+    onError: (e: any) => toast({ title: L("Kunne ikke sende", "Could not send"), description: e?.message, variant: "destructive" }),
+  });
   const [exportSections, setExportSections] = useState({
     inventory: true,
     tests: true,
@@ -2383,6 +2400,18 @@ export default function AthleteDetail() {
                   >
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                     {L("Slett", "Delete")}
+                  </Button>
+                )}
+                {isTA && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                    data-testid="button-transfer-athlete"
+                    onClick={() => setTransferOpen(true)}
+                  >
+                    <Users className="mr-1.5 h-3.5 w-3.5" />
+                    {L("Overfør utøver", "Transfer athlete")}
                   </Button>
                 )}
               </>
@@ -4980,7 +5009,34 @@ export default function AthleteDetail() {
       </Dialog>
 
       {/* ── Export PDF Dialog ────────────────────────────────────────────────── */}
-      <Dialog open={exportPdfOpen} onOpenChange={setExportPdfOpen}>
+      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{L("Overfør utøver til et annet lag", "Transfer athlete to another team")}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                {L("Skriv inn e-posten til Team Admin på laget som skal overta. Vedkommende får en forespørsel i innboksen og på e-post. Ved aksept flyttes hele profilen (garasje, tester og rennhistorikk — men ikke hvilke produkter som er brukt). Laget ditt beholder tilgang i 14 dager, og du kan angre i samme periode.",
+                   "Enter the email of the receiving team's admin. They get a request in their inbox and by email. On accept the full profile moves (garage, tests and race history — but not which products were used). Your team keeps access for 14 days, and you can revoke within that window.")}
+              </p>
+              <Input
+                type="email"
+                value={transferEmail}
+                onChange={(e) => setTransferEmail(e.target.value)}
+                placeholder={L("ta@annetlag.no", "ta@otherteam.com")}
+                data-testid="input-transfer-email"
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setTransferOpen(false)}>{L("Avbryt", "Cancel")}</Button>
+                <Button size="sm" disabled={!transferEmail.trim() || transferMutation.isPending} onClick={() => transferMutation.mutate()} data-testid="button-send-transfer">
+                  {transferMutation.isPending ? L("Sender…", "Sending…") : L("Send forespørsel", "Send request")}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={exportPdfOpen} onOpenChange={setExportPdfOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">

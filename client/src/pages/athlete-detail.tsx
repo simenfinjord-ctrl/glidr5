@@ -1840,10 +1840,12 @@ export default function AthleteDetail() {
   const [exportPdfOpen, setExportPdfOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferEmail, setTransferEmail] = useState("");
+  const [transferStrip, setTransferStrip] = useState(true);
+  const [saMoveStrip, setSaMoveStrip] = useState(false);
   const isTA = user?.isTeamAdmin === 1 || user?.isAdmin === 1;
   const transferMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/athletes/${athleteId}/transfer`, { email: transferEmail.trim() });
+      const res = await apiRequest("POST", `/api/athletes/${athleteId}/transfer`, { email: transferEmail.trim(), stripProducts: transferStrip });
       if (!res.ok) throw new Error((await res.json())?.message ?? "Failed");
       return res.json();
     },
@@ -1860,7 +1862,7 @@ export default function AthleteDetail() {
   const { data: saTeams = [] } = useQuery<any[]>({ queryKey: ["/api/teams"], enabled: isSA && transferOpen });
   const saMoveMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/athletes/${athleteId}/admin-move`, { teamId: parseInt(saMoveTeamId) });
+      const res = await apiRequest("POST", `/api/athletes/${athleteId}/admin-move`, { teamId: parseInt(saMoveTeamId), stripProducts: saMoveStrip });
       if (!res.ok) throw new Error((await res.json())?.message ?? "Failed");
       return res.json();
     },
@@ -5043,6 +5045,13 @@ export default function AthleteDetail() {
                 placeholder={L("ta@annetlag.no", "ta@otherteam.com")}
                 data-testid="input-transfer-email"
               />
+              <label className="flex items-start gap-2 text-xs cursor-pointer">
+                <Checkbox checked={transferStrip} onCheckedChange={(v) => setTransferStrip(v === true)} data-testid="checkbox-transfer-strip" />
+                <span>
+                  {L("Skjul hvilke produkter som er brukt (anbefalt). Påføring, metode og resultater følger alltid med.",
+                     "Hide which products were used (recommended). Application, method and results always travel.")}
+                </span>
+              </label>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setTransferOpen(false)}>{L("Avbryt", "Cancel")}</Button>
                 <Button size="sm" disabled={!transferEmail.trim() || transferMutation.isPending} onClick={() => transferMutation.mutate()} data-testid="button-send-transfer">
@@ -5053,9 +5062,13 @@ export default function AthleteDetail() {
                 <div className="mt-2 space-y-2 rounded-lg border border-dashed border-border p-3">
                   <div className="text-xs font-semibold">{L("SA: Flytt direkte", "SA: Move directly")}</div>
                   <p className="text-[11px] text-muted-foreground">
-                    {L("Flytter utøveren til valgt lag umiddelbart — uten forespørsel, aksept eller 14-dagers periode. Alle data følger med uendret.",
-                       "Moves the athlete to the chosen team instantly — no request, acceptance or 14-day window. All data moves intact.")}
+                    {L("Flytter utøveren til valgt lag umiddelbart — uten forespørsel, aksept eller 14-dagers periode.",
+                       "Moves the athlete to the chosen team instantly — no request, acceptance or 14-day window.")}
                   </p>
+                  <label className="flex items-start gap-2 text-[11px] cursor-pointer">
+                    <Checkbox checked={saMoveStrip} onCheckedChange={(v) => setSaMoveStrip(v === true)} data-testid="checkbox-sa-move-strip" />
+                    <span>{L("Skjul hvilke produkter som er brukt", "Hide which products were used")}</span>
+                  </label>
                   <div className="flex items-center gap-2">
                     <Select value={saMoveTeamId || "none"} onValueChange={(v) => setSaMoveTeamId(v === "none" ? "" : v)}>
                       <SelectTrigger className="h-9 flex-1 text-xs" data-testid="select-sa-move-team">

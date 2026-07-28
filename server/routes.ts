@@ -934,8 +934,10 @@ export async function registerRoutes(
         grace_until TEXT,
         prev_main_waxer_id INTEGER,
         prev_main_waxer_name TEXT,
+        strip_products INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL DEFAULT ''
       );
+      ALTER TABLE athlete_transfers ADD COLUMN IF NOT EXISTS strip_products INTEGER NOT NULL DEFAULT 1;
       CREATE INDEX IF NOT EXISTS athlete_transfers_athlete_idx ON athlete_transfers(athlete_id);
       CREATE INDEX IF NOT EXISTS athlete_transfers_from_idx ON athlete_transfers(from_team_id);
       CREATE TABLE IF NOT EXISTS race_preps (
@@ -7729,10 +7731,11 @@ export async function registerRoutes(
       [id, new Date().toISOString()]);
     if (dup.rows.length > 0) return res.status(400).json({ message: "A transfer is already in progress for this athlete" });
     const now = new Date().toISOString();
+    const stripProducts = req.body?.stripProducts === false ? 0 : 1;
     const ins = await (pT as any).query(
-      `INSERT INTO athlete_transfers (athlete_id, from_team_id, to_email, status, requested_by_id, requested_by_name, prev_main_waxer_id, prev_main_waxer_name, created_at)
-       VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8) RETURNING id`,
-      [id, teamId, email, u.id, u.name, athlete.mainWaxerId ?? null, athlete.mainWaxerName ?? null, now]);
+      `INSERT INTO athlete_transfers (athlete_id, from_team_id, to_email, status, requested_by_id, requested_by_name, prev_main_waxer_id, prev_main_waxer_name, strip_products, created_at)
+       VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [id, teamId, email, u.id, u.name, athlete.mainWaxerId ?? null, athlete.mainWaxerName ?? null, stripProducts, now]);
     const fromTeam = teamId ? await storage.getTeam(teamId) : null;
     await (pT as any).query(
       `INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at)
@@ -7767,7 +7770,12 @@ export async function registerRoutes(
     await (pM as any).query(`UPDATE race_skis SET team_id = $1 WHERE athlete_id = $2`, [toTeamId, id]);
     await (pM as any).query(`UPDATE ski_race_usages SET team_id = $1 WHERE athlete_id = $2`, [toTeamId, id]);
     await (pM as any).query(`UPDATE athlete_race_calendar SET team_id = $1 WHERE athlete_id = $2`, [toTeamId, id]).catch(() => {});
-    // SA moves everything intact — no product stripping; the owner decides.
+    // SA chooses whether product references travel (default: they do).
+    if (req.body?.stripProducts === true) {
+      await (pM as any).query(
+        `UPDATE test_entries SET product_id = NULL, free_text_product = NULL
+         WHERE test_id IN (SELECT id FROM tests WHERE athlete_id = $1)`, [id]).catch(() => {});
+    }
     await (pM as any).query(`UPDATE tests SET team_id = $1 WHERE athlete_id = $2`, [toTeamId, id]);
     // Close out any in-flight transfer so no stale grace window lingers.
     const nowIso = new Date().toISOString();
@@ -7827,12 +7835,15 @@ export async function registerRoutes(
     await (pT as any).query(`UPDATE race_skis SET team_id = $1 WHERE athlete_id = $2`, [teamId, tr.athlete_id]);
     await (pT as any).query(`UPDATE ski_race_usages SET team_id = $1 WHERE athlete_id = $2`, [teamId, tr.athlete_id]);
     await (pT as any).query(`UPDATE athlete_race_calendar SET team_id = $1 WHERE athlete_id = $2`, [teamId, tr.athlete_id]).catch(() => {});
-    // Athlete ski tests follow; strip WHAT they were waxed with (products) —
-    // application/method and results stay.
-    await (pT as any).query(
-      `UPDATE test_entries SET product_id = NULL, free_text_product = NULL
-       WHERE test_id IN (SELECT id FROM tests WHERE athlete_id = $1 AND team_id = $2)`,
-      [tr.athlete_id, tr.from_team_id]).catch(() => {});
+    // Athlete ski tests follow. The sender chose whether WHAT they were waxed
+    // with travels: when stripping, product references go — application/method
+    // and results always stay.
+    if (tr.strip_products !== 0) {
+      await (pT as any).query(
+        `UPDATE test_entries SET product_id = NULL, free_text_product = NULL
+         WHERE test_id IN (SELECT id FROM tests WHERE athlete_id = $1 AND team_id = $2)`,
+        [tr.athlete_id, tr.from_team_id]).catch(() => {});
+    }
     await (pT as any).query(`UPDATE tests SET team_id = $1 WHERE athlete_id = $2 AND team_id = $3`,
       [teamId, tr.athlete_id, tr.from_team_id]);
     // New TA gets main-waxer access; the old team's access rows stay for the

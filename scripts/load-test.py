@@ -42,17 +42,22 @@ GETS = [
 CTX = ssl.create_default_context()
 lock = threading.Lock()
 stats = {"ok": 0, "fail": 0, "times": [], "codes": {}}
-test_ids: dict[str, list[int]] = {}
+test_ids = {}
 
 
-def connect() -> http.client.HTTPSConnection | http.client.HTTPConnection:
+def connect():
     if BASE.scheme == "https":
         return http.client.HTTPSConnection(BASE.netloc, context=CTX, timeout=30)
     return http.client.HTTPConnection(BASE.netloc, timeout=30)
 
 
-def request(conn, method: str, path: str, cookie: str, body: str | None = None):
+LOAD_TEST_KEY = __import__("os").environ.get("LOAD_TEST_KEY", "")
+
+
+def request(conn, method, path, cookie, body=None):
     headers = {"Cookie": cookie, "Accept": "application/json"}
+    if LOAD_TEST_KEY:
+        headers["X-Load-Test"] = LOAD_TEST_KEY
     if body is not None:
         headers["Content-Type"] = "application/json"
     conn.request(method, path, body=body, headers=headers)
@@ -61,7 +66,7 @@ def request(conn, method: str, path: str, cookie: str, body: str | None = None):
     return res.status, data
 
 
-def prime(cookie: str):
+def prime(cookie):
     """Fetch test ids once per cookie so VUs can exercise the bulk endpoint."""
     try:
         conn = connect()
@@ -74,7 +79,7 @@ def prime(cookie: str):
         test_ids[cookie] = []
 
 
-def vu(index: int, end_at: float):
+def vu(index, end_at):
     cookie = COOKIES[index % len(COOKIES)]
     time.sleep(RAMP_S * index / max(1, USERS))  # ramp-up
     conn = connect()

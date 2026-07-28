@@ -49,12 +49,25 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-// ── General API rate limit: 200 req / 15 min per IP ────────────────────────
+// ── General API rate limit: 3000 req / 15 min PER SESSION ──────────────────
+// Keyed by session, not IP: a whole team at a race venue shares ONE public
+// IP (stadium wifi), and live runsheets alone poll every 3 s — per-IP
+// limiting would starve legitimate users mid-race. Anonymous traffic still
+// keys by IP. 3000/15 min ≈ 200/min per user: far above real use, still a
+// hard stop for runaway loops and scrapers.
 export const generalApiLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 3000,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false, // custom key below — v7's IP-fallback validation doesn't apply
+  keyGenerator: (req) => {
+    const m = /connect\.sid=([^;]+)/.exec(req.headers.cookie ?? "");
+    return m ? `sid:${m[1]}` : `ip:${req.ip}`;
+  },
+  // Authorized load tests bypass with a secret: set LOAD_TEST_KEY in the
+  // environment and send the same value in an X-Load-Test header.
+  skip: (req) => !!process.env.LOAD_TEST_KEY && req.get("x-load-test") === process.env.LOAD_TEST_KEY,
   message: { message: "Too many requests, please try again later." },
 });
 

@@ -1855,6 +1855,23 @@ export default function AthleteDetail() {
     },
     onError: (e: any) => toast({ title: L("Kunne ikke sende", "Could not send"), description: e?.message, variant: "destructive" }),
   });
+  const isSA = user?.isAdmin === 1;
+  const [saMoveTeamId, setSaMoveTeamId] = useState("");
+  const { data: saTeams = [] } = useQuery<any[]>({ queryKey: ["/api/teams"], enabled: isSA && transferOpen });
+  const saMoveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/athletes/${athleteId}/admin-move`, { teamId: parseInt(saMoveTeamId) });
+      if (!res.ok) throw new Error((await res.json())?.message ?? "Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      setTransferOpen(false);
+      setSaMoveTeamId("");
+      queryClient.invalidateQueries();
+      toast({ title: L("Utøver flyttet", "Athlete moved"), description: L("Flyttet umiddelbart — ingen karanteneperiode.", "Moved instantly — no grace window.") });
+    },
+    onError: (e: any) => toast({ title: L("Kunne ikke flytte", "Could not move"), description: e?.message, variant: "destructive" }),
+  });
   const [exportSections, setExportSections] = useState({
     inventory: true,
     tests: true,
@@ -5032,6 +5049,31 @@ export default function AthleteDetail() {
                   {transferMutation.isPending ? L("Sender…", "Sending…") : L("Send forespørsel", "Send request")}
                 </Button>
               </div>
+              {isSA && (
+                <div className="mt-2 space-y-2 rounded-lg border border-dashed border-border p-3">
+                  <div className="text-xs font-semibold">{L("SA: Flytt direkte", "SA: Move directly")}</div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {L("Flytter utøveren til valgt lag umiddelbart — uten forespørsel, aksept eller 14-dagers periode. Alle data følger med uendret.",
+                       "Moves the athlete to the chosen team instantly — no request, acceptance or 14-day window. All data moves intact.")}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Select value={saMoveTeamId || "none"} onValueChange={(v) => setSaMoveTeamId(v === "none" ? "" : v)}>
+                      <SelectTrigger className="h-9 flex-1 text-xs" data-testid="select-sa-move-team">
+                        <SelectValue placeholder={L("Velg lag", "Pick team")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{L("— velg lag —", "— pick team —")}</SelectItem>
+                        {saTeams.filter((tm: any) => tm.id !== athlete?.teamId).map((tm: any) => (
+                          <SelectItem key={tm.id} value={String(tm.id)}>{tm.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" variant="destructive" disabled={!saMoveTeamId || saMoveMutation.isPending} onClick={() => saMoveMutation.mutate()} data-testid="button-sa-move">
+                      {saMoveMutation.isPending ? L("Flytter…", "Moving…") : L("Flytt nå", "Move now")}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </DialogContent>
         </Dialog>

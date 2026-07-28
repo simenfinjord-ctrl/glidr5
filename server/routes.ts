@@ -7748,6 +7748,35 @@ export async function registerRoutes(
     res.json({ ok: true, transferId: ins.rows[0]?.id });
   });
 
+  // SA override: move an athlete to any team instantly — no request, no
+  // acceptance, no grace window. Any in-flight transfer is closed out.
+  app.post("/api/athletes/:id/admin-move", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if ((req.user as any).isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const id = parseInt(req.params.id);
+    const toTeamId = parseInt(String(req.body?.teamId));
+    if (isNaN(toTeamId)) return res.status(400).json({ message: "teamId is required" });
+    const athlete = await storage.getAthlete(id);
+    if (!athlete) return res.status(404).json({ message: "Not found" });
+    const toTeam = await storage.getTeam(toTeamId);
+    if (!toTeam) return res.status(400).json({ message: "Team not found" });
+    if (athlete.teamId === toTeamId) return res.status(400).json({ message: "Athlete is already on that team" });
+    const fromTeamId = athlete.teamId;
+    const { pool: pM } = await import("./db");
+    await (pM as any).query(`UPDATE athletes SET team_id = $1 WHERE id = $2`, [toTeamId, id]);
+    await (pM as any).query(`UPDATE race_skis SET team_id = $1 WHERE athlete_id = $2`, [toTeamId, id]);
+    await (pM as any).query(`UPDATE ski_race_usages SET team_id = $1 WHERE athlete_id = $2`, [toTeamId, id]);
+    await (pM as any).query(`UPDATE athlete_race_calendar SET team_id = $1 WHERE athlete_id = $2`, [toTeamId, id]).catch(() => {});
+    // SA moves everything intact — no product stripping; the owner decides.
+    await (pM as any).query(`UPDATE tests SET team_id = $1 WHERE athlete_id = $2`, [toTeamId, id]);
+    // Close out any in-flight transfer so no stale grace window lingers.
+    const nowIso = new Date().toISOString();
+    await (pM as any).query(`UPDATE athlete_transfers SET status = 'revoked' WHERE athlete_id = $1 AND status = 'pending'`, [id]);
+    await (pM as any).query(`UPDATE athlete_transfers SET grace_until = $1 WHERE athlete_id = $2 AND status = 'accepted' AND grace_until > $1`, [nowIso, id]);
+    await recordDeletion(req, "athlete_transfer", id, `SA moved athlete ${athlete.name} to team ${toTeam.name}`, { fromTeamId, toTeamId });
+    res.json({ ok: true });
+  });
+
   app.get("/api/athlete-transfers", requireAuth, async (req, res) => {
     const u = userInfo(req);
     const teamId = getActiveTeamId(req);

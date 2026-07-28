@@ -771,6 +771,21 @@ function ColToggle({ label, active, onClick }: { label: string; active: boolean;
 
 // ─── Grind Profile Detail Dialog ──────────────────────────────────────────────
 
+function parsePairLabelMap(pairLabels: string | null | undefined): Record<number, string> | undefined {
+  if (!pairLabels) return undefined;
+  try {
+    const parsed = JSON.parse(pairLabels);
+    if (typeof parsed === "object" && parsed !== null) {
+      const labels: Record<number, string> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        if (typeof v === "string" && v) labels[Number(k)] = v;
+      }
+      if (Object.keys(labels).length > 0) return labels;
+    }
+  } catch {}
+  return undefined;
+}
+
 function GrindProfileDetailDialog({
   profile,
   open,
@@ -793,6 +808,12 @@ function GrindProfileDetailDialog({
   });
 
   const tests = data?.tests ?? [];
+  const { data: dlgSeries = [] } = useQuery<any[]>({ queryKey: ["/api/series"], enabled: open });
+  const dlgLabelsBySeries = useMemo(() => {
+    const m = new Map<number, Record<number, string> | undefined>();
+    for (const sr of dlgSeries) m.set(sr.id, parsePairLabelMap((sr as any).pairLabels));
+    return m;
+  }, [dlgSeries]);
 
   // All toggleable column keys: only include stone/pattern if the profile actually has them
   const allCols = useMemo((): GrindCol[] => {
@@ -1014,7 +1035,7 @@ function GrindProfileDetailDialog({
                                   !hasGrind && "opacity-40",
                                 )}
                               >
-                                <td className="py-1.5 pr-3 font-medium text-xs">{entry.skiNumber}</td>
+                                <td className="py-1.5 pr-3 font-medium text-xs">{(test.seriesId != null ? dlgLabelsBySeries.get(test.seriesId)?.[entry.skiNumber] : undefined) ?? entry.skiNumber}</td>
                                 {hasSkiInfo && (
                                   <td className="py-1.5 pr-3 text-xs text-muted-foreground">
                                     {[entry.skiBrand, entry.skiModel].filter(Boolean).join(" ") || "—"}
@@ -2233,7 +2254,7 @@ export default function Grinding() {
                     {t("grinding.noGrindTests")}
                   </Card>
                 ) : (
-                  filtered.map((t) => <GrindTestCard key={t.id} test={t} entries={allEntries.filter((e) => e.testId === t.id)} seriesById={seriesById} weatherById={weatherById} grindProfiles={grindProfiles} grindHighlight={grindHighlight} />)
+                  filtered.map((t) => <GrindTestCard key={t.id} test={t} entries={allEntries.filter((e) => e.testId === t.id)} seriesById={seriesById} weatherById={weatherById} grindProfiles={grindProfiles} grindHighlight={grindHighlight} seriesList={series} />)
                 )}
               </div>
             ) : filtered.length === 0 ? (
@@ -2254,6 +2275,7 @@ export default function Grinding() {
                     weatherById={weatherById}
                     grindProfiles={grindProfiles}
                     grindHighlight={grindHighlight}
+                    seriesList={series}
                   />
                 ))}
               </div>
@@ -3264,7 +3286,7 @@ function GrindingAnalytics({
   );
 }
 
-function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles = [], grindHighlight = new Map() }: {
+function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles = [], grindHighlight = new Map(), seriesList = [] }: {
   test: Test;
   entries: TestEntry[];
   seriesById: Map<number, string>;
@@ -3272,11 +3294,17 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
   grindProfiles?: GrindProfile[];
   // maps profile name → color config (from GRIND_COMPARE_COLORS)
   grindHighlight?: Map<string, typeof GRIND_COMPARE_COLORS[number]>;
+  seriesList?: any[];
 }) {
   const { language } = useI18n();
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const distLabels = getDistanceLabels(test);
   const sortedEntries = [...entries].sort((a, b) => a.skiNumber - b.skiNumber);
+  const cardSkiLabels = useMemo(() => {
+    if (test.seriesId == null) return undefined;
+    const sr: any = seriesList.find((x: any) => x.id === test.seriesId);
+    return parsePairLabelMap(sr?.pairLabels);
+  }, [seriesList, test.seriesId]);
   const w = test.weatherId ? weatherById.get(test.weatherId) : null;
   const gp = parseGrindParams(test.grindParameters);
 
@@ -3461,7 +3489,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
                     className={cn("border-b border-border/20 transition-colors", color?.row)}
                     data-testid={`row-grind-entry-${entry.id}`}
                   >
-                    <td className="py-1.5 pr-4 font-medium text-xs">{entry.skiNumber}</td>
+                    <td className="py-1.5 pr-4 font-medium text-xs">{cardSkiLabels?.[entry.skiNumber] ?? entry.skiNumber}</td>
                     {visibleGrindCols.map((col) => (
                       <td key={col} className="py-1.5 pr-4">
                         <span className={cn("text-xs", color ? "font-medium" : "text-muted-foreground")}>

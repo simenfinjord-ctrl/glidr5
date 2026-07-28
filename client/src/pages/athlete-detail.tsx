@@ -1842,6 +1842,11 @@ export default function AthleteDetail() {
   const [transferEmail, setTransferEmail] = useState("");
   const [transferStrip, setTransferStrip] = useState(true);
   const [saMoveStrip, setSaMoveStrip] = useState(false);
+  const [transferMode, setTransferMode] = useState<"transfer" | "loan">("transfer");
+  const [loanExpires, setLoanExpires] = useState("");
+  const [loanCanEdit, setLoanCanEdit] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [saMergeId, setSaMergeId] = useState("");
   const isTA = user?.isTeamAdmin === 1 || user?.isAdmin === 1;
   const transferMutation = useMutation({
     mutationFn: async () => {
@@ -1858,6 +1863,39 @@ export default function AthleteDetail() {
     onError: (e: any) => toast({ title: L("Kunne ikke sende", "Could not send"), description: e?.message, variant: "destructive" }),
   });
   const isSA = user?.isAdmin === 1;
+  const loanMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/athletes/${athleteId}/loan`, {
+        email: transferEmail.trim(), expiresAt: loanExpires || null, canEdit: loanCanEdit,
+      });
+      if (!res.ok) throw new Error((await res.json())?.message ?? "Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      setTransferOpen(false); setTransferEmail(""); setLoanExpires("");
+      queryClient.invalidateQueries({ queryKey: ["/api/athlete-loans"] });
+      toast({ title: L("Forespørsel sendt", "Request sent"), description: L("Mottakende TA får beskjed i innboksen og på e-post.", "The receiving team admin is notified by inbox and email.") });
+    },
+    onError: (e: any) => toast({ title: L("Kunne ikke sende", "Could not send"), description: e?.message, variant: "destructive" }),
+  });
+  const { data: timeline } = useQuery<any>({
+    queryKey: [`/api/athletes/${athleteId}/timeline`],
+    enabled: historyOpen,
+  });
+  const { data: saAllAthletes = [] } = useQuery<any[]>({ queryKey: ["/api/admin/athletes-all"], enabled: isSA && transferOpen });
+  const saMergeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/admin/athletes/merge`, { keepId: athleteId, mergeId: parseInt(saMergeId) });
+      if (!res.ok) throw new Error((await res.json())?.message ?? "Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      setTransferOpen(false); setSaMergeId("");
+      queryClient.invalidateQueries();
+      toast({ title: L("Utøvere slått sammen", "Athletes merged"), description: L("Alt er samlet på denne profilen.", "Everything is gathered on this profile.") });
+    },
+    onError: (e: any) => toast({ title: L("Kunne ikke slå sammen", "Could not merge"), description: e?.message, variant: "destructive" }),
+  });
   const [saMoveTeamId, setSaMoveTeamId] = useState("");
   const { data: saTeams = [] } = useQuery<any[]>({ queryKey: ["/api/teams"], enabled: isSA && transferOpen });
   const saMoveMutation = useMutation({
@@ -2430,9 +2468,18 @@ export default function AthleteDetail() {
                     onClick={() => setTransferOpen(true)}
                   >
                     <Users className="mr-1.5 h-3.5 w-3.5" />
-                    {L("Overfør utøver", "Transfer athlete")}
+                    {L("Overfør / lån ut", "Transfer / loan")}
                   </Button>
                 )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  data-testid="button-athlete-history"
+                  onClick={() => setHistoryOpen(true)}
+                >
+                  {L("Historikk", "History")}
+                </Button>
               </>
             )}
           </div>
@@ -5028,15 +5075,75 @@ export default function AthleteDetail() {
       </Dialog>
 
       {/* ── Export PDF Dialog ────────────────────────────────────────────────── */}
-      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>{L("Overfør utøver til et annet lag", "Transfer athlete to another team")}</DialogTitle>
+              <DialogTitle>{L("Historikk", "History")} — {athlete?.name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 text-sm">
+              {timeline ? (
+                <>
+                  <div className="rounded-lg bg-muted/50 px-3 py-2">
+                    <div className="text-xs text-muted-foreground">{L("Opprettet", "Created")}</div>
+                    <div className="text-xs">{new Date(timeline.createdAt).toLocaleDateString()} · {timeline.createdByName}{timeline.currentTeamName ? ` · ${L("nå hos", "now with")} ${timeline.currentTeamName}` : ""}</div>
+                  </div>
+                  {(timeline.transfers ?? []).map((tr: any, i: number) => (
+                    <div key={`tr-${i}`} className="rounded-lg bg-muted/50 px-3 py-2">
+                      <div className="text-xs font-medium">
+                        {L("Overføring", "Transfer")}: {tr.fromTeamName ?? "?"} → {tr.toTeamName ?? "?"}
+                        <span className="ml-1.5 text-muted-foreground font-normal">({tr.status})</span>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {new Date(tr.createdAt).toLocaleDateString()} · {tr.requestedByName}
+                      </div>
+                    </div>
+                  ))}
+                  {(timeline.loans ?? []).map((lo: any, i: number) => (
+                    <div key={`lo-${i}`} className="rounded-lg bg-muted/50 px-3 py-2">
+                      <div className="text-xs font-medium">
+                        {L("Utlån", "Loan")}: {lo.fromTeamName ?? "?"} → {lo.toTeamName ?? (lo.status === "pending" ? L("venter", "pending") : "?")}
+                        <span className="ml-1.5 text-muted-foreground font-normal">({lo.status}{lo.expiresAt ? ` · ${L("til", "until")} ${lo.expiresAt}` : ""})</span>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {new Date(lo.createdAt).toLocaleDateString()} · {lo.requestedByName}
+                      </div>
+                    </div>
+                  ))}
+                  {(timeline.transfers ?? []).length === 0 && (timeline.loans ?? []).length === 0 && (
+                    <p className="text-xs text-muted-foreground">{L("Ingen overføringer eller utlån ennå — utøveren har vært hos samme lag hele tiden.", "No transfers or loans yet — the athlete has been with the same team throughout.")}</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">{L("Laster…", "Loading…")}</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{L("Overfør eller lån ut utøver", "Transfer or loan athlete")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+                <button type="button" onClick={() => setTransferMode("transfer")}
+                  className={cn("rounded-md px-2 py-1.5 text-xs font-medium transition-colors", transferMode === "transfer" ? "bg-background shadow-sm" : "text-muted-foreground")}
+                  data-testid="tab-transfer">
+                  {L("Overfør permanent", "Transfer permanently")}
+                </button>
+                <button type="button" onClick={() => setTransferMode("loan")}
+                  className={cn("rounded-md px-2 py-1.5 text-xs font-medium transition-colors", transferMode === "loan" ? "bg-background shadow-sm" : "text-muted-foreground")}
+                  data-testid="tab-loan">
+                  {L("Lån ut", "Loan out")}
+                </button>
+              </div>
               <p className="text-xs text-muted-foreground">
-                {L("Skriv inn e-posten til Team Admin på laget som skal overta. Vedkommende får en forespørsel i innboksen og på e-post. Ved aksept flyttes hele profilen (garasje, tester og rennhistorikk — men ikke hvilke produkter som er brukt). Laget ditt beholder tilgang i 14 dager, og du kan angre i samme periode.",
-                   "Enter the email of the receiving team's admin. They get a request in their inbox and by email. On accept the full profile moves (garage, tests and race history — but not which products were used). Your team keeps access for 14 days, and you can revoke within that window.")}
+                {transferMode === "transfer"
+                  ? L("Skriv inn e-posten til Team Admin på laget som skal overta. Ved aksept flyttes hele profilen (garasje, tester og rennhistorikk). Laget ditt beholder tilgang i 14 dager, og du kan angre i samme periode.",
+                      "Enter the email of the receiving team's admin. On accept the full profile moves (garage, tests and race history). Your team keeps access for 14 days, and you can revoke within that window.")
+                  : L("Utøveren blir værende på laget ditt, men det andre laget får tilgang til profil, garasje og tester i låneperioden. Du kan avslutte lånet når som helst.",
+                      "The athlete stays on your team, but the other team gets access to the profile, garage and tests for the loan period. You can end the loan at any time.")}
               </p>
               <Input
                 type="email"
@@ -5045,17 +5152,33 @@ export default function AthleteDetail() {
                 placeholder={L("ta@annetlag.no", "ta@otherteam.com")}
                 data-testid="input-transfer-email"
               />
-              <label className="flex items-start gap-2 text-xs cursor-pointer">
-                <Checkbox checked={transferStrip} onCheckedChange={(v) => setTransferStrip(v === true)} data-testid="checkbox-transfer-strip" />
-                <span>
-                  {L("Skjul hvilke produkter som er brukt (anbefalt). Påføring, metode og resultater følger alltid med.",
-                     "Hide which products were used (recommended). Application, method and results always travel.")}
-                </span>
-              </label>
+              {transferMode === "transfer" ? (
+                <label className="flex items-start gap-2 text-xs cursor-pointer">
+                  <Checkbox checked={transferStrip} onCheckedChange={(v) => setTransferStrip(v === true)} data-testid="checkbox-transfer-strip" />
+                  <span>
+                    {L("Skjul hvilke produkter som er brukt (anbefalt). Påføring, metode og resultater følger alltid med.",
+                       "Hide which products were used (recommended). Application, method and results always travel.")}
+                  </span>
+                </label>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">{L("Lånet varer til (valgfritt)", "Loan lasts until (optional)")}</label>
+                    <Input type="date" value={loanExpires} onChange={(e) => setLoanExpires(e.target.value)} data-testid="input-loan-expires" />
+                  </div>
+                  <label className="flex items-start gap-2 text-xs cursor-pointer">
+                    <Checkbox checked={loanCanEdit} onCheckedChange={(v) => setLoanCanEdit(v === true)} data-testid="checkbox-loan-edit" />
+                    <span>{L("Det andre laget kan også registrere og endre (ikke bare se)", "The other team can also register and edit (not just view)")}</span>
+                  </label>
+                </>
+              )}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setTransferOpen(false)}>{L("Avbryt", "Cancel")}</Button>
-                <Button size="sm" disabled={!transferEmail.trim() || transferMutation.isPending} onClick={() => transferMutation.mutate()} data-testid="button-send-transfer">
-                  {transferMutation.isPending ? L("Sender…", "Sending…") : L("Send forespørsel", "Send request")}
+                <Button size="sm"
+                  disabled={!transferEmail.trim() || transferMutation.isPending || loanMutation.isPending}
+                  onClick={() => (transferMode === "transfer" ? transferMutation.mutate() : loanMutation.mutate())}
+                  data-testid="button-send-transfer">
+                  {(transferMutation.isPending || loanMutation.isPending) ? L("Sender…", "Sending…") : L("Send forespørsel", "Send request")}
                 </Button>
               </div>
               {isSA && (
@@ -5084,6 +5207,32 @@ export default function AthleteDetail() {
                     <Button size="sm" variant="destructive" disabled={!saMoveTeamId || saMoveMutation.isPending} onClick={() => saMoveMutation.mutate()} data-testid="button-sa-move">
                       {saMoveMutation.isPending ? L("Flytter…", "Moving…") : L("Flytt nå", "Move now")}
                     </Button>
+                  </div>
+                  <div className="mt-3 space-y-2 border-t border-dashed border-border pt-3">
+                    <div className="text-xs font-semibold">{L("SA: Slå sammen duplikater", "SA: Merge duplicates")}</div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {L("Velg en duplikatprofil — alle ski, tester og rennbruk flyttes inn i DENNE profilen, og duplikatet slettes.",
+                         "Pick a duplicate profile — all skis, tests and race usage move into THIS profile, and the duplicate is deleted.")}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Select value={saMergeId || "none"} onValueChange={(v) => setSaMergeId(v === "none" ? "" : v)}>
+                        <SelectTrigger className="h-9 flex-1 text-xs" data-testid="select-sa-merge">
+                          <SelectValue placeholder={L("Velg duplikat", "Pick duplicate")} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[40vh]">
+                          <SelectItem value="none">{L("— velg duplikat —", "— pick duplicate —")}</SelectItem>
+                          {saAllAthletes.filter((a: any) => a.id !== athleteId).map((a: any) => (
+                            <SelectItem key={a.id} value={String(a.id)}>{a.name} · {a.teamName ?? "?"}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" variant="destructive"
+                        disabled={!saMergeId || saMergeMutation.isPending}
+                        onClick={() => { if (confirm(L("Slå sammen? Duplikatprofilen slettes permanent.", "Merge? The duplicate profile is permanently deleted."))) saMergeMutation.mutate(); }}
+                        data-testid="button-sa-merge">
+                        {saMergeMutation.isPending ? L("Slår sammen…", "Merging…") : L("Slå sammen", "Merge")}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}

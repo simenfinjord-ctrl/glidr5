@@ -940,6 +940,32 @@ export async function registerRoutes(
       ALTER TABLE athlete_transfers ADD COLUMN IF NOT EXISTS strip_products INTEGER NOT NULL DEFAULT 1;
       CREATE INDEX IF NOT EXISTS athlete_transfers_athlete_idx ON athlete_transfers(athlete_id);
       CREATE INDEX IF NOT EXISTS athlete_transfers_from_idx ON athlete_transfers(from_team_id);
+      CREATE TABLE IF NOT EXISTS athlete_loans (
+        id SERIAL PRIMARY KEY,
+        athlete_id INTEGER NOT NULL,
+        owner_team_id INTEGER NOT NULL,
+        to_team_id INTEGER,
+        to_email TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        can_edit INTEGER NOT NULL DEFAULT 0,
+        expires_at TEXT,
+        requested_by_id INTEGER NOT NULL,
+        requested_by_name TEXT NOT NULL DEFAULT '',
+        accepted_by_id INTEGER,
+        accepted_at TEXT,
+        created_at TEXT NOT NULL DEFAULT ''
+      );
+      CREATE INDEX IF NOT EXISTS athlete_loans_athlete_idx ON athlete_loans(athlete_id);
+      CREATE INDEX IF NOT EXISTS athlete_loans_to_idx ON athlete_loans(to_team_id);
+      CREATE TABLE IF NOT EXISTS team_join_requests (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        team_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        requested_by_id INTEGER NOT NULL,
+        requested_by_name TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT ''
+      );
       CREATE TABLE IF NOT EXISTS race_preps (
         id SERIAL PRIMARY KEY,
         team_id INTEGER NOT NULL,
@@ -7650,6 +7676,18 @@ export async function registerRoutes(
           }
           list.push({ ...ath, transferGrace: true, transferGraceUntil: row.graceUntil, transferToTeam: row.toTeamName, transferId: row.transferId });
         }
+        // Borrowed athletes: active loans TO this team.
+        const lo = await (pG as any).query(
+          `SELECT lo.athlete_id AS id, lo.expires_at AS "expiresAt", lo.id AS "loanId", lo.can_edit AS "canEdit", tm.name AS "ownerTeamName"
+           FROM athlete_loans lo LEFT JOIN teams tm ON tm.id = lo.owner_team_id
+           WHERE lo.to_team_id = $1 AND lo.status = 'active' AND (lo.expires_at IS NULL OR lo.expires_at > $2)`,
+          [teamId, new Date().toISOString()]);
+        for (const row of lo.rows) {
+          if (list.some((a: any) => a.id === row.id)) continue;
+          const ath: any = await storage.getAthlete(row.id);
+          if (!ath || (ath.archived && !includeArchived)) continue;
+          list.push({ ...ath, loan: true, loanUntil: row.expiresAt, loanFromTeam: row.ownerTeamName, loanId: row.loanId, loanCanEdit: row.canEdit });
+        }
       } catch {}
     }
     // Athlete-access users see every athlete they've been granted (athlete_access),
@@ -7782,6 +7820,288 @@ export async function registerRoutes(
     await (pM as any).query(`UPDATE athlete_transfers SET status = 'revoked' WHERE athlete_id = $1 AND status = 'pending'`, [id]);
     await (pM as any).query(`UPDATE athlete_transfers SET grace_until = $1 WHERE athlete_id = $2 AND status = 'accepted' AND grace_until > $1`, [nowIso, id]);
     await recordDeletion(req, "athlete_transfer", id, `SA moved athlete ${athlete.name} to team ${toTeam.name}`, { fromTeamId, toTeamId });
+    res.json({ ok: true });
+  });
+
+  // ── Athlete loans: share an athlete with another team for a period ─────────
+  // The athlete STAYS on the owning team; the borrowing team gets access until
+  // the loan expires or the owner revokes it. Covers juniors riding for club
+  // and region in the same season without a permanent move.
+  app.post("/api/athletes/:id/loan", requirePermission("raceskis", "edit"), async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isScopeAdmin) return res.status(403).json({ message: "Only a team admin can loan an athlete" });
+    const id = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    const athlete = await storage.getAthlete(id);
+    if (!athlete || (teamId && athlete.teamId !== teamId)) return res.status(404).json({ message: "Not found" });
+    const email = String(req.body?.email ?? "").trim().toLowerCase();
+    if (!email) return res.status(400).json({ message: "Email is required" });
+    const expiresAt = req.body?.expiresAt ? String(req.body.expiresAt) : null;
+    const canEdit = req.body?.canEdit === true ? 1 : 0;
+    const { pool: pL } = await import("./db");
+    const target = await (pL as any).query(
+      `SELECT id, name, email, team_id FROM users WHERE LOWER(email) = $1 AND is_team_admin = 1 LIMIT 1`, [email]);
+    if (target.rows.length === 0) return res.status(400).json({ message: "No team admin with that email" });
+    const t = target.rows[0];
+    if (t.team_id === teamId) return res.status(400).json({ message: "That admin is on your own team" });
+    const nowIso = new Date().toISOString();
+    const dup = await (pL as any).query(
+      `SELECT 1 FROM athlete_loans WHERE athlete_id = $1 AND status IN ('pending','active') AND (expires_at IS NULL OR expires_at > $2)`,
+      [id, nowIso]);
+    if (dup.rows.length > 0) return res.status(400).json({ message: "A loan is already in progress for this athlete" });
+    await (pL as any).query(
+      `INSERT INTO athlete_loans (athlete_id, owner_team_id, to_email, status, can_edit, expires_at, requested_by_id, requested_by_name, created_at)
+       VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8)`,
+      [id, teamId, email, canEdit, expiresAt, u.id, u.name, nowIso]);
+    const fromTeam = teamId ? await storage.getTeam(teamId) : null;
+    await (pL as any).query(
+      `INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at) VALUES ($1, $2, $3, $4, 0, $5)`,
+      [t.id, u.name, `Utlån av utøver: ${athlete.name}`,
+       `${u.name} (${fromTeam?.name ?? ""}) tilbyr å låne ut utøveren ${athlete.name} til laget ditt${expiresAt ? ` frem til ${expiresAt}` : ""}. Gå til Athlete Skis for å akseptere eller avslå.`, nowIso]);
+    try {
+      const { sendAthleteLoanRequestEmail } = await import("./email");
+      await sendAthleteLoanRequestEmail(t.email, { athleteName: athlete.name, fromTeam: fromTeam?.name ?? "", byName: u.name, expiresAt });
+    } catch (e) { console.error("[loan] email failed:", e); }
+    res.json({ ok: true });
+  });
+
+  app.get("/api/athlete-loans", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const { pool: pL } = await import("./db");
+    const nowIso = new Date().toISOString();
+    const me = await storage.getUser(u.id);
+    const incoming = u.isScopeAdmin && me?.email
+      ? (await (pL as any).query(
+          `SELECT lo.id, lo.athlete_id AS "athleteId", a.name AS "athleteName", lo.requested_by_name AS "requestedByName",
+                  tm.name AS "fromTeamName", lo.expires_at AS "expiresAt", lo.can_edit AS "canEdit"
+           FROM athlete_loans lo JOIN athletes a ON a.id = lo.athlete_id LEFT JOIN teams tm ON tm.id = lo.owner_team_id
+           WHERE lo.status = 'pending' AND LOWER(lo.to_email) = LOWER($1)`, [me.email])).rows
+      : [];
+    const outgoing = teamId
+      ? (await (pL as any).query(
+          `SELECT lo.id, lo.athlete_id AS "athleteId", a.name AS "athleteName", lo.status, lo.expires_at AS "expiresAt", tm.name AS "toTeamName"
+           FROM athlete_loans lo JOIN athletes a ON a.id = lo.athlete_id LEFT JOIN teams tm ON tm.id = lo.to_team_id
+           WHERE lo.owner_team_id = $1 AND (lo.status = 'pending' OR (lo.status = 'active' AND (lo.expires_at IS NULL OR lo.expires_at > $2)))`,
+          [teamId, nowIso])).rows
+      : [];
+    res.json({ incoming, outgoing });
+  });
+
+  app.post("/api/athlete-loans/:id/accept", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isScopeAdmin) return res.status(403).json({ message: "Only a team admin can accept" });
+    const loId = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    const { pool: pL } = await import("./db");
+    const me = await storage.getUser(u.id);
+    const loRes = await (pL as any).query(`SELECT * FROM athlete_loans WHERE id = $1 AND status = 'pending'`, [loId]);
+    const lo = loRes.rows[0];
+    if (!lo || !me?.email || lo.to_email.toLowerCase() !== me.email.toLowerCase()) return res.status(404).json({ message: "Not found" });
+    if (!teamId || teamId === lo.owner_team_id) return res.status(400).json({ message: "Switch to the receiving team first" });
+    const nowIso = new Date().toISOString();
+    await (pL as any).query(
+      `UPDATE athlete_loans SET status = 'active', to_team_id = $1, accepted_by_id = $2, accepted_at = $3 WHERE id = $4`,
+      [teamId, u.id, nowIso, loId]);
+    const athlete = await storage.getAthlete(lo.athlete_id);
+    const toTeam = await storage.getTeam(teamId);
+    await (pL as any).query(
+      `INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at) VALUES ($1, $2, $3, $4, 0, $5)`,
+      [lo.requested_by_id, u.name, `Utlån akseptert: ${athlete?.name ?? ""}`,
+       `${u.name} (${toTeam?.name ?? ""}) har akseptert utlånet av ${athlete?.name ?? "utøveren"}${lo.expires_at ? ` frem til ${lo.expires_at}` : ""}.`, nowIso]);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/athlete-loans/:id/decline", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isScopeAdmin) return res.status(403).json({ message: "Only a team admin can decline" });
+    const loId = parseInt(req.params.id);
+    const { pool: pL } = await import("./db");
+    const me = await storage.getUser(u.id);
+    const loRes = await (pL as any).query(`SELECT * FROM athlete_loans WHERE id = $1 AND status = 'pending'`, [loId]);
+    const lo = loRes.rows[0];
+    if (!lo || !me?.email || lo.to_email.toLowerCase() !== me.email.toLowerCase()) return res.status(404).json({ message: "Not found" });
+    await (pL as any).query(`UPDATE athlete_loans SET status = 'declined' WHERE id = $1`, [loId]);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/athlete-loans/:id/revoke", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    if (!u.isScopeAdmin) return res.status(403).json({ message: "Only a team admin can revoke" });
+    const loId = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    const { pool: pL } = await import("./db");
+    const loRes = await (pL as any).query(`SELECT * FROM athlete_loans WHERE id = $1`, [loId]);
+    const lo = loRes.rows[0];
+    if (!lo || lo.owner_team_id !== teamId) return res.status(404).json({ message: "Not found" });
+    await (pL as any).query(`UPDATE athlete_loans SET status = 'revoked' WHERE id = $1`, [loId]);
+    if (lo.accepted_by_id != null) {
+      const athlete = await storage.getAthlete(lo.athlete_id);
+      await (pL as any).query(
+        `INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at) VALUES ($1, $2, $3, $4, 0, $5)`,
+        [lo.accepted_by_id, u.name, `Utlån avsluttet: ${athlete?.name ?? ""}`,
+         `${u.name} har avsluttet utlånet av ${athlete?.name ?? "utøveren"}.`, new Date().toISOString()]);
+    }
+    res.json({ ok: true });
+  });
+
+  // ── Athlete timeline: career history across teams ───────────────────────────
+  app.get("/api/athletes/:id/timeline", requirePermission("raceskis", "view"), async (req, res) => {
+    const u = userInfo(req);
+    const id = parseInt(req.params.id);
+    const hasAccess = await storage.hasAthleteAccess(id, u.id, u.isScopeAdmin, getActiveTeamId(req));
+    if (!hasAccess) return res.status(403).json({ message: "Forbidden" });
+    const athlete = await storage.getAthlete(id);
+    if (!athlete) return res.status(404).json({ message: "Not found" });
+    const { pool: pTl } = await import("./db");
+    const transfers = (await (pTl as any).query(
+      `SELECT tr.status, tr.created_at AS "createdAt", tr.accepted_at AS "acceptedAt", tr.grace_until AS "graceUntil",
+              tr.requested_by_name AS "requestedByName", f.name AS "fromTeamName", t.name AS "toTeamName"
+       FROM athlete_transfers tr LEFT JOIN teams f ON f.id = tr.from_team_id LEFT JOIN teams t ON t.id = tr.to_team_id
+       WHERE tr.athlete_id = $1 ORDER BY tr.created_at ASC`, [id])).rows;
+    const loans = (await (pTl as any).query(
+      `SELECT lo.status, lo.created_at AS "createdAt", lo.accepted_at AS "acceptedAt", lo.expires_at AS "expiresAt",
+              lo.requested_by_name AS "requestedByName", f.name AS "fromTeamName", t.name AS "toTeamName"
+       FROM athlete_loans lo LEFT JOIN teams f ON f.id = lo.owner_team_id LEFT JOIN teams t ON t.id = lo.to_team_id
+       WHERE lo.athlete_id = $1 ORDER BY lo.created_at ASC`, [id])).rows;
+    const currentTeam = athlete.teamId ? await storage.getTeam(athlete.teamId) : null;
+    res.json({
+      createdAt: athlete.createdAt, createdByName: athlete.createdByName,
+      currentTeamName: currentTeam?.name ?? null,
+      transfers, loans,
+    });
+  });
+
+  // ── SA: merge duplicate athletes ───────────────────────────────────────────
+  app.get("/api/admin/athletes-all", requireAuth, async (req, res) => {
+    if ((req.user as any).isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const { pool: pA } = await import("./db");
+    const rows = (await (pA as any).query(
+      `SELECT a.id, a.name, a.team_id AS "teamId", tm.name AS "teamName", a.archived
+       FROM athletes a LEFT JOIN teams tm ON tm.id = a.team_id ORDER BY a.name ASC`)).rows;
+    res.json(rows);
+  });
+
+  app.post("/api/admin/athletes/merge", requireAuth, async (req, res) => {
+    if ((req.user as any).isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const keepId = parseInt(String(req.body?.keepId));
+    const mergeId = parseInt(String(req.body?.mergeId));
+    if (isNaN(keepId) || isNaN(mergeId) || keepId === mergeId) return res.status(400).json({ message: "Pick two different athletes" });
+    const keep = await storage.getAthlete(keepId);
+    const merge = await storage.getAthlete(mergeId);
+    if (!keep || !merge) return res.status(404).json({ message: "Athlete not found" });
+    const { pool: pM } = await import("./db");
+    // Repoint everything athlete-scoped onto the kept profile, in its team.
+    await (pM as any).query(`UPDATE race_skis SET athlete_id = $1, team_id = $2 WHERE athlete_id = $3`, [keepId, keep.teamId, mergeId]);
+    await (pM as any).query(`UPDATE ski_race_usages SET athlete_id = $1, team_id = $2 WHERE athlete_id = $3`, [keepId, keep.teamId, mergeId]);
+    await (pM as any).query(`UPDATE tests SET athlete_id = $1, team_id = $2 WHERE athlete_id = $3`, [keepId, keep.teamId, mergeId]);
+    await (pM as any).query(`UPDATE athlete_race_calendar SET athlete_id = $1, team_id = $2 WHERE athlete_id = $3`, [keepId, keep.teamId, mergeId]).catch(() => {});
+    await (pM as any).query(`UPDATE race_prep_entries SET athlete_id = $1 WHERE athlete_id = $2`, [keepId, mergeId]).catch(() => {});
+    await (pM as any).query(
+      `INSERT INTO athlete_access (athlete_id, user_id, can_edit)
+       SELECT $1, user_id, can_edit FROM athlete_access WHERE athlete_id = $2
+       ON CONFLICT DO NOTHING`, [keepId, mergeId]).catch(() => {});
+    await (pM as any).query(`DELETE FROM athlete_access WHERE athlete_id = $1`, [mergeId]).catch(() => {});
+    await (pM as any).query(`DELETE FROM feedback_links WHERE athlete_id = $1`, [mergeId]).catch(() => {});
+    await (pM as any).query(`UPDATE athlete_transfers SET athlete_id = $1 WHERE athlete_id = $2`, [keepId, mergeId]).catch(() => {});
+    await (pM as any).query(`UPDATE athlete_loans SET athlete_id = $1 WHERE athlete_id = $2`, [keepId, mergeId]).catch(() => {});
+    await (pM as any).query(`DELETE FROM athletes WHERE id = $1`, [mergeId]);
+    await recordDeletion(req, "athlete_merge", keepId, `SA merged athlete "${merge.name}" (#${mergeId}) into "${keep.name}" (#${keepId})`, { keep, merged: merge });
+    res.json({ ok: true });
+  });
+
+  // ── Team join requests: invite a waxer from another team, THEY consent ─────
+  app.post("/api/team/invite-user", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    if (!teamId) return res.status(400).json({ message: "No active team" });
+    const email = String(req.body?.email ?? "").trim().toLowerCase();
+    if (!email) return res.status(400).json({ message: "Email is required" });
+    const target = await storage.getUserByEmail(email);
+    if (!target) return res.status(404).json({ message: "User does not exist" });
+    if ((target as any).isAdmin === 1) return res.status(400).json({ message: "Super Admins already have access to every team" });
+    if (target.teamId === teamId) return res.status(400).json({ message: "User is already on this team" });
+    const { pool: pJ } = await import("./db");
+    const member = await (pJ as any).query(`SELECT 1 FROM user_teams WHERE user_id = $1 AND team_id = $2`, [target.id, teamId]);
+    if (member.rows.length > 0) return res.status(400).json({ message: "User is already a member of this team" });
+    const dup = await (pJ as any).query(`SELECT 1 FROM team_join_requests WHERE user_id = $1 AND team_id = $2 AND status = 'pending'`, [target.id, teamId]);
+    if (dup.rows.length > 0) return res.status(400).json({ message: "An invitation is already pending" });
+    const nowIso = new Date().toISOString();
+    await (pJ as any).query(
+      `INSERT INTO team_join_requests (user_id, team_id, status, requested_by_id, requested_by_name, created_at)
+       VALUES ($1, $2, 'pending', $3, $4, $5)`, [target.id, teamId, u.id, u.name, nowIso]);
+    const team = await storage.getTeam(teamId);
+    await (pJ as any).query(
+      `INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at) VALUES ($1, $2, $3, $4, 0, $5)`,
+      [target.id, u.name, `Invitasjon til laget ${team?.name ?? ""}`,
+       `${u.name} inviterer deg til å bli med i laget ${team?.name ?? ""} i Glidr. Du finner forespørselen på dashbordet ditt — du beholder tilgangen til laget du er på i dag.`, nowIso]);
+    try {
+      const { sendTeamJoinRequestEmail } = await import("./email");
+      await sendTeamJoinRequestEmail(target.email, { teamName: team?.name ?? "", byName: u.name });
+    } catch (e) { console.error("[join-request] email failed:", e); }
+    res.json({ ok: true });
+  });
+
+  app.get("/api/team-join-requests", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const teamId = getActiveTeamId(req);
+    const { pool: pJ } = await import("./db");
+    const incoming = (await (pJ as any).query(
+      `SELECT r.id, r.requested_by_name AS "requestedByName", r.created_at AS "createdAt", tm.name AS "teamName"
+       FROM team_join_requests r LEFT JOIN teams tm ON tm.id = r.team_id
+       WHERE r.user_id = $1 AND r.status = 'pending'`, [u.id])).rows;
+    const outgoing = (canManageTeam(req) && teamId)
+      ? (await (pJ as any).query(
+          `SELECT r.id, r.status, r.created_at AS "createdAt", us.name AS "userName", us.email AS "userEmail"
+           FROM team_join_requests r JOIN users us ON us.id = r.user_id
+           WHERE r.team_id = $1 AND r.status = 'pending'`, [teamId])).rows
+      : [];
+    res.json({ incoming, outgoing });
+  });
+
+  app.post("/api/team-join-requests/:id/accept", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const rId = parseInt(req.params.id);
+    const { pool: pJ } = await import("./db");
+    const rRes = await (pJ as any).query(`SELECT * FROM team_join_requests WHERE id = $1 AND status = 'pending' AND user_id = $2`, [rId, u.id]);
+    const r = rRes.rows[0];
+    if (!r) return res.status(404).json({ message: "Not found" });
+    await storage.addUserToTeam(u.id, r.team_id);
+    let perms: Record<string, string> = Object.fromEntries(PERMISSION_AREAS.map((a) => [a, "edit"]));
+    perms = await enforceTeamAreas(perms, r.team_id);
+    await (pJ as any).query(
+      `INSERT INTO user_team_permissions (user_id, team_id, permissions, group_scope, is_team_admin)
+       VALUES ($1, $2, $3, '', 0)
+       ON CONFLICT ON CONSTRAINT utp_user_team_unique DO UPDATE SET permissions = $3`,
+      [u.id, r.team_id, JSON.stringify(perms)]);
+    await (pJ as any).query(`UPDATE team_join_requests SET status = 'accepted' WHERE id = $1`, [rId]);
+    const team = await storage.getTeam(r.team_id);
+    await (pJ as any).query(
+      `INSERT INTO inbox_messages (to_user_id, from_name, subject, body, is_read, created_at) VALUES ($1, $2, $3, $4, 0, $5)`,
+      [r.requested_by_id, u.name, `Invitasjon akseptert`,
+       `${u.name} har takket ja og er nå medlem av ${team?.name ?? "laget"}.`, new Date().toISOString()]);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/team-join-requests/:id/decline", requireAuth, async (req, res) => {
+    const u = userInfo(req);
+    const rId = parseInt(req.params.id);
+    const { pool: pJ } = await import("./db");
+    const rRes = await (pJ as any).query(`SELECT * FROM team_join_requests WHERE id = $1 AND status = 'pending' AND user_id = $2`, [rId, u.id]);
+    if (!rRes.rows[0]) return res.status(404).json({ message: "Not found" });
+    await (pJ as any).query(`UPDATE team_join_requests SET status = 'declined' WHERE id = $1`, [rId]);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/team-join-requests/:id/cancel", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const rId = parseInt(req.params.id);
+    const teamId = getActiveTeamId(req);
+    const { pool: pJ } = await import("./db");
+    const rRes = await (pJ as any).query(`SELECT * FROM team_join_requests WHERE id = $1 AND status = 'pending' AND team_id = $2`, [rId, teamId]);
+    if (!rRes.rows[0]) return res.status(404).json({ message: "Not found" });
+    await (pJ as any).query(`UPDATE team_join_requests SET status = 'cancelled' WHERE id = $1`, [rId]);
     res.json({ ok: true });
   });
 

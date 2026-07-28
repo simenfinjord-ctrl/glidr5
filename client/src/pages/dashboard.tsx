@@ -8,6 +8,9 @@ import { AppShell } from "@/components/app-shell";
 import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
 import { cn, fmtDate } from "@/lib/utils";
@@ -487,9 +490,44 @@ export default function Dashboard() {
     return pref ? pref.enabled : WIDGET_REGISTRY.find((w) => w.id === id)?.defaultEnabled ?? false;
   }
 
+
+  const { toast: joinToast } = useToast();
+  const { data: joinRequests } = useQuery<{ incoming: any[]; outgoing: any[] }>({ queryKey: ["/api/team-join-requests"] });
+  const joinAction = useMutation({
+    mutationFn: async (v: { id: number; action: "accept" | "decline" }) => {
+      const res = await apiRequest("POST", `/api/team-join-requests/${v.id}/${v.action}`);
+      return res.json();
+    },
+    onSuccess: (_r, v) => {
+      queryClient.invalidateQueries();
+      joinToast({ title: v.action === "accept" ? (language === "no" ? "Du er med!" : "You're in!") : (language === "no" ? "Invitasjon avslått" : "Invitation declined") });
+    },
+  });
   return (
     <AppShell>
       <div className="flex flex-col gap-6">
+        {(joinRequests?.incoming ?? []).map((r: any) => (
+          <Card key={`join-${r.id}`} className="fs-card rounded-2xl p-4 ring-1 ring-sky-200 dark:ring-sky-900" data-testid={`join-request-${r.id}`}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold">{language === "no" ? "Laginvitasjon" : "Team invitation"}: {r.teamName}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  {language === "no"
+                    ? `${r.requestedByName} inviterer deg til å bli med i laget. Du beholder tilgangen til laget ditt i dag.`
+                    : `${r.requestedByName} invites you to join the team. You keep access to your current team.`}
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button size="sm" onClick={() => joinAction.mutate({ id: r.id, action: "accept" })} disabled={joinAction.isPending} data-testid={`button-accept-join-${r.id}`}>
+                  {language === "no" ? "Bli med" : "Join"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => joinAction.mutate({ id: r.id, action: "decline" })} disabled={joinAction.isPending}>
+                  {language === "no" ? "Avslå" : "Decline"}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))}
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             {/* Time-of-day greeting + a daily motivational quote */}

@@ -99,6 +99,23 @@ export default function RaceSkis() {
     queryKey: ["/api/athlete-transfers"],
   });
   const outgoingByAthlete = new Map<number, any>((transfers?.outgoing ?? []).map((tr) => [tr.athleteId, tr]));
+  const { data: loans } = useQuery<{ incoming: any[]; outgoing: any[] }>({
+    queryKey: ["/api/athlete-loans"],
+  });
+  const outgoingLoanByAthlete = new Map<number, any>((loans?.outgoing ?? []).map((lo) => [lo.athleteId, lo]));
+  const loanAction = useMutation({
+    mutationFn: async (v: { id: number; action: "accept" | "decline" | "revoke" }) => {
+      const res = await apiRequest("POST", `/api/athlete-loans/${v.id}/${v.action}`);
+      return res.json();
+    },
+    onSuccess: (_r, v) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/athlete-loans"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/athletes?includeArchived=1"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/athletes"] });
+      toast({ title: v.action === "accept" ? L("Utlån akseptert", "Loan accepted") : v.action === "decline" ? L("Utlån avslått", "Loan declined") : L("Utlån avsluttet", "Loan ended") });
+    },
+    onError: (e: any) => toast({ title: L("Handlingen mislyktes", "Action failed"), description: e?.message, variant: "destructive" }),
+  });
   const transferAction = useMutation({
     mutationFn: async (v: { id: number; action: "accept" | "decline" | "revoke" }) => {
       const res = await apiRequest("POST", `/api/athlete-transfers/${v.id}/${v.action}`);
@@ -364,6 +381,29 @@ export default function RaceSkis() {
           </Card>
         ))}
 
+        {/* Incoming loan requests (TA only) */}
+        {isTA && (loans?.incoming ?? []).map((lo) => (
+          <Card key={`loan-${lo.id}`} className="fs-card rounded-2xl p-4 ring-1 ring-emerald-200 dark:ring-emerald-900" data-testid={`loan-request-${lo.id}`}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold">{L("Utlån av utøver", "Athlete loan")}: {lo.athleteName}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  {L(`${lo.requestedByName} (${lo.fromTeamName ?? ""}) tilbyr å låne ut utøveren til laget ditt${lo.expiresAt ? ` frem til ${lo.expiresAt}` : ""}. Utøveren blir værende hos eierlaget; dere får tilgang${lo.canEdit ? " med redigering" : " (kun lesing for vanlige brukere)"}.`,
+                     `${lo.requestedByName} (${lo.fromTeamName ?? ""}) offers to loan this athlete to your team${lo.expiresAt ? ` until ${lo.expiresAt}` : ""}. The athlete stays with the owner; you get access${lo.canEdit ? " with editing" : ""}.`)}
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button size="sm" onClick={() => loanAction.mutate({ id: lo.id, action: "accept" })} disabled={loanAction.isPending} data-testid={`button-accept-loan-${lo.id}`}>
+                  {L("Aksepter", "Accept")}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => loanAction.mutate({ id: lo.id, action: "decline" })} disabled={loanAction.isPending}>
+                  {L("Avslå", "Decline")}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))}
+
         {/* Search — spans both active and archived athletes */}
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -444,6 +484,31 @@ export default function RaceSkis() {
                                   data-testid={`button-revoke-transfer-${athlete.id}`}
                                 >
                                   {tr.status === "pending" ? L("Avbryt", "Cancel") : L("Trekk tilbake", "Revoke")}
+                                </button>
+                              )}
+                            </span>
+                          );
+                        })()}
+                        {(athlete as any).loan && (
+                          <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-800" data-testid={`athlete-loan-badge-${athlete.id}`}>
+                            {L(`Lånt fra ${(athlete as any).loanFromTeam ?? "annet lag"}${(athlete as any).loanUntil ? ` · til ${fmtGraceDate((athlete as any).loanUntil)}` : ""}`,
+                               `On loan from ${(athlete as any).loanFromTeam ?? "another team"}${(athlete as any).loanUntil ? ` · until ${fmtGraceDate((athlete as any).loanUntil)}` : ""}`)}
+                          </span>
+                        )}
+                        {(() => {
+                          const lo = outgoingLoanByAthlete.get(athlete.id);
+                          if (!lo) return null;
+                          return (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-800">
+                              {lo.status === "pending"
+                                ? L("Utlån forespurt", "Loan requested")
+                                : L(`Utlånt til ${lo.toTeamName ?? "annet lag"}${lo.expiresAt ? ` · til ${fmtGraceDate(lo.expiresAt)}` : ""}`, `On loan to ${lo.toTeamName ?? "another team"}${lo.expiresAt ? ` · until ${fmtGraceDate(lo.expiresAt)}` : ""}`)}
+                              {isTA && (
+                                <button
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); loanAction.mutate({ id: lo.id, action: "revoke" }); }}
+                                  className="font-semibold underline decoration-dotted hover:text-emerald-900 dark:hover:text-emerald-100"
+                                >
+                                  {lo.status === "pending" ? L("Avbryt", "Cancel") : L("Avslutt", "End")}
                                 </button>
                               )}
                             </span>
@@ -556,6 +621,11 @@ export default function RaceSkis() {
                         </span>
                       );
                     })()}
+                    {((athlete as any).loan || outgoingLoanByAthlete.get(athlete.id)) && (
+                      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-800">
+                        {(athlete as any).loan ? L("Lånt inn", "On loan") : (outgoingLoanByAthlete.get(athlete.id)?.status === "pending" ? L("Utlån forespurt", "Loan requested") : L("Utlånt", "Loaned out"))}
+                      </span>
+                    )}
                     {canEdit && (
                       <button
                         onClick={(e) => toggleArchive(e, athlete)}

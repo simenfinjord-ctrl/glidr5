@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Users, Shield, Mail, Search, X,
   ArrowUpDown, ChevronDown, List, LayoutGrid, AlignJustify, Calendar,
@@ -108,6 +111,30 @@ export default function MyTeam() {
   const L = (no: string, en: string) => (language === "no" ? no : en);
   const { user } = useAuth();
   const isTeamAdmin = !!(user as any)?.isTeamAdmin || !!(user as any)?.isAdmin;
+  const { toast } = useToast();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const { data: joinRequests } = useQuery<{ incoming: any[]; outgoing: any[] }>({
+    queryKey: ["/api/team-join-requests"],
+    enabled: isTeamAdmin,
+  });
+  const inviteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/team/invite-user", { email: inviteEmail.trim() });
+      if (!res.ok) throw new Error((await res.json())?.message ?? "Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      setInviteOpen(false); setInviteEmail("");
+      queryClient.invalidateQueries({ queryKey: ["/api/team-join-requests"] });
+      toast({ title: L("Invitasjon sendt", "Invitation sent"), description: L("Brukeren får forespørselen på dashbordet, i innboksen og på e-post.", "The user gets the request on their dashboard, inbox and email.") });
+    },
+    onError: (e: any) => toast({ title: L("Kunne ikke invitere", "Could not invite"), description: e?.message, variant: "destructive" }),
+  });
+  const cancelInvite = useMutation({
+    mutationFn: async (id: number) => (await apiRequest("POST", `/api/team-join-requests/${id}/cancel`)).json(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/team-join-requests"] }),
+  });
 
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("name-asc");
@@ -182,10 +209,49 @@ export default function MyTeam() {
   return (
     <AppShell>
       <div className="space-y-5">
+        <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{L("Inviter bruker fra et annet lag", "Invite a user from another team")}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                {L("Skriv inn e-posten til en eksisterende Glidr-bruker. Vedkommende får forespørselen på sitt dashbord og må selv takke ja — de beholder tilgangen til sitt nåværende lag.",
+                   "Enter the email of an existing Glidr user. They get the request on their dashboard and must accept it themselves — they keep access to their current team.")}
+              </p>
+              <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder={L("bruker@annetlag.no", "user@otherteam.com")} data-testid="input-invite-email" />
+              {(joinRequests?.outgoing ?? []).length > 0 && (
+                <div className="space-y-1">
+                  <div className="text-[11px] font-medium text-muted-foreground">{L("Venter på svar", "Awaiting reply")}</div>
+                  {(joinRequests?.outgoing ?? []).map((r: any) => (
+                    <div key={r.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-2.5 py-1.5 text-xs">
+                      <span className="truncate">{r.userName} · {r.userEmail}</span>
+                      <button type="button" className="ml-2 shrink-0 text-muted-foreground underline decoration-dotted hover:text-foreground" onClick={() => cancelInvite.mutate(r.id)}>
+                        {L("Avbryt", "Cancel")}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setInviteOpen(false)}>{L("Lukk", "Close")}</Button>
+                <Button size="sm" disabled={!inviteEmail.trim() || inviteMutation.isPending} onClick={() => inviteMutation.mutate()} data-testid="button-send-invite">
+                  {inviteMutation.isPending ? L("Sender…", "Sending…") : L("Send invitasjon", "Send invitation")}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         {/* Header */}
         <div className="flex items-center gap-3">
           <Users className="h-7 w-7 text-green-500 shrink-0" />
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{L("Mitt lag", "My Team")}</h1>
+          {isTeamAdmin && (
+            <Button variant="outline" size="sm" className="ml-auto" onClick={() => setInviteOpen(true)} data-testid="button-invite-user">
+              {L("Inviter fra annet lag", "Invite from another team")}
+            </Button>
+          )}
           {!isLoading && (
             <span className="ml-1 text-sm text-muted-foreground">
               {filtered.length}/{members.length}

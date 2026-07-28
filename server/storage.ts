@@ -726,10 +726,17 @@ export class DatabaseStorage implements IStorage {
     // keeps access (the transfer row carries the window); after that the gate
     // closes by itself even though old athlete_access rows remain.
     if (teamId && athlete.teamId && athlete.teamId !== teamId) {
+      const nowIso = new Date().toISOString();
       const g = await db.execute(sql`SELECT 1 FROM athlete_transfers
         WHERE athlete_id = ${athleteId} AND from_team_id = ${teamId}
-          AND status = 'accepted' AND grace_until > ${new Date().toISOString()} LIMIT 1`);
-      if (((g as any).rows ?? []).length === 0) return false;
+          AND status = 'accepted' AND grace_until > ${nowIso} LIMIT 1`);
+      if (((g as any).rows ?? []).length === 0) {
+        // Active loan TO this team also opens the gate until it expires.
+        const lo = await db.execute(sql`SELECT 1 FROM athlete_loans
+          WHERE athlete_id = ${athleteId} AND to_team_id = ${teamId}
+            AND status = 'active' AND (expires_at IS NULL OR expires_at > ${nowIso}) LIMIT 1`);
+        if (((lo as any).rows ?? []).length === 0) return false;
+      }
     }
     if (isAdmin) return true;
     if (athlete.createdById === userId) return true;

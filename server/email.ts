@@ -135,6 +135,64 @@ export async function sendAthleteTransferRequestEmail(
   });
 }
 
+// ── Athlete loan request ───────────────────────────────────────────────────────
+
+export async function sendAthleteLoanRequestEmail(
+  to: string,
+  opts: { athleteName: string; fromTeam: string; byName: string; expiresAt?: string | null }
+): Promise<void> {
+  const period = opts.expiresAt ? ` frem til <strong>${opts.expiresAt}</strong>` : "";
+  const subject = `Glidr: Utl\u00e5n av ut\u00f8ver — ${opts.athleteName}`;
+  const content = `
+    <h2 style="margin:0 0 14px;font-size:19px;">Utl\u00e5n av ut\u00f8ver / Athlete loan</h2>
+    <p style="font-size:14px;line-height:1.7;margin:0 0 14px;">
+      ${opts.byName}${opts.fromTeam ? ` (${opts.fromTeam})` : ""} tilbyr \u00e5 l\u00e5ne ut ut\u00f8veren
+      <strong>${opts.athleteName}</strong> til laget ditt${period}.
+    </p>
+    <p style="font-size:13px;line-height:1.7;color:#4b5563;margin:0 0 20px;">
+      Ut\u00f8veren blir v\u00e6rende p\u00e5 eierlaget, men laget ditt f\u00e5r tilgang til profil, garasje og tester
+      i l\u00e5neperioden. Eierlaget kan avslutte l\u00e5net n\u00e5r som helst.<br><br>
+      ${opts.byName} offers to loan the athlete <strong>${opts.athleteName}</strong> to your team.
+      The athlete stays with the owning team; yours gets access for the loan period.
+    </p>
+    ${emailBtn("https://glidr.no/raceskis", "\u00c5pne Athlete Skis")}
+    ${emailHr()}
+    ${emailMeta("Foresp\u00f8rselen kan aksepteres eller avsl\u00e5s \u00f8verst p\u00e5 Athlete Skis-siden n\u00e5r du er logget inn.")}
+  `;
+  await sendEmail({
+    to, subject,
+    text: `${opts.byName} tilbyr \u00e5 l\u00e5ne ut ut\u00f8veren ${opts.athleteName} til laget ditt i Glidr. Logg inn p\u00e5 glidr.no og \u00e5pne Athlete Skis for \u00e5 svare.`,
+    html: emailHtml(content),
+  });
+}
+
+// ── Team join request ──────────────────────────────────────────────────────────
+
+export async function sendTeamJoinRequestEmail(
+  to: string,
+  opts: { teamName: string; byName: string }
+): Promise<void> {
+  const subject = `Glidr: Invitasjon til laget ${opts.teamName}`;
+  const content = `
+    <h2 style="margin:0 0 14px;font-size:19px;">Laginvitasjon / Team invitation</h2>
+    <p style="font-size:14px;line-height:1.7;margin:0 0 14px;">
+      ${opts.byName} inviterer deg til \u00e5 bli med i laget <strong>${opts.teamName}</strong> i Glidr.
+    </p>
+    <p style="font-size:13px;line-height:1.7;color:#4b5563;margin:0 0 20px;">
+      Du beholder tilgangen til laget du er p\u00e5 i dag — dette gir deg tilgang til begge.
+      Foresp\u00f8rselen ligger p\u00e5 dashbordet ditt.<br><br>
+      ${opts.byName} invites you to join the team <strong>${opts.teamName}</strong> in Glidr.
+      You keep access to your current team; the request is waiting on your dashboard.
+    </p>
+    ${emailBtn("https://glidr.no/dashboard", "\u00c5pne Glidr")}
+  `;
+  await sendEmail({
+    to, subject,
+    text: `${opts.byName} inviterer deg til laget ${opts.teamName} i Glidr. Logg inn p\u00e5 glidr.no — foresp\u00f8rselen ligger p\u00e5 dashbordet.`,
+    html: emailHtml(content),
+  });
+}
+
 // ── Password reset ─────────────────────────────────────────────────────────────
 
 const resetCopy: Record<string, {

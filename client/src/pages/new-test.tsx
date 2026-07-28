@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
+import { fmtT } from "@/lib/temperature";
 import { useLocation } from "wouter";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -790,7 +791,7 @@ export default function NewTest() {
                               autoWeather ? (
                                 <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400" data-testid="text-auto-weather-match">
                                   <Check className="h-3 w-3" />
-                                  {autoWeather.location} {autoWeather.time} · {autoWeather.airTemperatureC}°C
+                                  {autoWeather.location} {autoWeather.time} · {fmtT(autoWeather.airTemperatureC)}
                                 </span>
                               ) : (
                                 <span className="text-xs text-muted-foreground" data-testid="text-auto-weather-none">
@@ -816,7 +817,7 @@ export default function NewTest() {
                                     value={String(w.id)}
                                     data-testid={`option-weather-${w.id}`}
                                   >
-                                    {fmtDate(w.date)} · {w.location} · {w.time} · Air {w.airTemperatureC}°C
+                                    {fmtDate(w.date)} · {w.location} · {w.time} · Air {fmtT(w.airTemperatureC)}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useEffect, useRef } from "react";
+import { fmtT } from "@/lib/temperature";
 import { timeGreeting, dailyQuote } from "@/lib/greeting";
 import { CalendarPlus, PackagePlus, Snowflake, Plus, ListChecks, Zap, CloudSun, Trophy, Package, Watch, MapPin, Settings2, Award, Activity, X, User, Disc3, Flag, BarChart2, Layers, ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -1123,8 +1124,8 @@ export default function Dashboard() {
                       <span className="text-muted-foreground">{fmtDate(w.date)}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-green-600">{t("dashboard.air")} {w.airTemperatureC}°C</span>
-                      <span className="text-cyan-600">{t("dashboard.snow")} {w.snowTemperatureC}°C</span>
+                      <span className="text-green-600">{t("dashboard.air")} {fmtT(w.airTemperatureC)}</span>
+                      <span className="text-cyan-600">{t("dashboard.snow")} {fmtT(w.snowTemperatureC)}</span>
                     </div>
                   </div>
                 ))}

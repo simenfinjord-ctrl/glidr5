@@ -4,6 +4,7 @@
 // (date, weather, location, test persons, per-ski binder + kick solution +
 // feeling rank + notes), and an interpreted report tied to weather/conditions.
 import { useMemo, useState } from "react";
+import { fmtT } from "@/lib/temperature";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Footprints, Pencil, Trash2, Cloud, MapPin, Users, FileText, Copy, FlaskConical, Layers } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
@@ -137,8 +138,8 @@ function buildKickReport(
     const band = t <= -8 ? L("kaldt føre", "cold conditions") : t >= -2 ? L("mildt føre", "mild conditions") : L("variert føre", "varied conditions");
     const snow = weather.snowType || weather.snowHumidityType;
     parts.push(L(
-      `Testet i ${band} (lufttemp ${t.toFixed(0)}°C${snow ? `, ${snow.toLowerCase()}` : ""}).`,
-      `Tested in ${band} (air temp ${t.toFixed(0)}°C${snow ? `, ${snow.toLowerCase()}` : ""}).`,
+      `Testet i ${band} (lufttemp ${fmtT(t.toFixed(0))}${snow ? `, ${snow.toLowerCase()}` : ""}).`,
+      `Tested in ${band} (air temp ${fmtT(t.toFixed(0))}${snow ? `, ${snow.toLowerCase()}` : ""}).`,
     ));
   }
 
@@ -339,7 +340,7 @@ function KickTestDialog({ open, onClose, editing, skis, weather }: {
                 <SelectContent>
                   {weather.map((w) => (
                     <SelectItem key={w.id} value={String(w.id)}>
-                      {w.date} · {w.location}{w.airTemperatureC != null ? ` · ${w.airTemperatureC}°C` : ""}
+                      {w.date} · {w.location}{w.airTemperatureC != null ? ` · ${fmtT(w.airTemperatureC)}` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -701,7 +702,7 @@ export default function Kick() {
                           <span className="rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300">{(test as any).sharedFromTeam}</span>
                         )}
                         {test.location && <span className="inline-flex items-center gap-1 text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{test.location}</span>}
-                        {w && <span className="inline-flex items-center gap-1 text-muted-foreground"><Cloud className="h-3.5 w-3.5" />{w.airTemperatureC != null ? `${w.airTemperatureC}°C` : w.location}</span>}
+                        {w && <span className="inline-flex items-center gap-1 text-muted-foreground"><Cloud className="h-3.5 w-3.5" />{w.airTemperatureC != null ? `${fmtT(w.airTemperatureC)}` : w.location}</span>}
                         {test.testPersons && <span className="inline-flex items-center gap-1 text-muted-foreground"><Users className="h-3.5 w-3.5" />{test.testPersons}</span>}
                       </div>
                       <div className="flex gap-1 shrink-0">

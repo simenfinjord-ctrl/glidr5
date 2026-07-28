@@ -227,3 +227,29 @@ export function computeTeamPrice(
   const period = monthly == null ? null : (billingPeriod === "annual" ? monthly * ANNUAL_MONTHS : monthly);
   return { baseMonthly, discountPercent, monthly, period, billingPeriod, dynamic, breakdown };
 }
+
+// ── Currency ─────────────────────────────────────────────────────────────────
+// All prices are computed and stored in NOK. Foreign teams get a DISPLAY
+// currency with an SA-maintained rate (app_settings 'currency_rates': NOK per
+// one unit of the foreign currency, e.g. { "EUR": 11.8, "USD": 10.9 }).
+
+export type CurrencyCode = "NOK" | "EUR" | "USD";
+export type CurrencyRates = Partial<Record<CurrencyCode, number>>;
+
+export const DEFAULT_CURRENCY_RATES: CurrencyRates = { EUR: 11.8, USD: 10.9 };
+
+export function convertFromNok(nok: number | null | undefined, currency: string | null | undefined, rates?: CurrencyRates | null): { amount: number | null; currency: CurrencyCode } {
+  const cur = (currency ?? "NOK").toUpperCase() as CurrencyCode;
+  if (nok == null) return { amount: null, currency: cur };
+  if (cur === "NOK") return { amount: Math.round(nok), currency: "NOK" };
+  const rate = rates?.[cur] ?? DEFAULT_CURRENCY_RATES[cur];
+  if (!rate || rate <= 0) return { amount: Math.round(nok), currency: "NOK" };
+  return { amount: Math.round(nok / rate), currency: cur };
+}
+
+export function formatMoney(amount: number | null | undefined, currency: string | null | undefined): string {
+  if (amount == null) return "—";
+  const cur = (currency ?? "NOK").toUpperCase();
+  const sym = cur === "EUR" ? "€" : cur === "USD" ? "$" : "kr";
+  return cur === "NOK" ? `${amount.toLocaleString("nb-NO")} kr` : `${sym}${amount.toLocaleString("en-US")}`;
+}

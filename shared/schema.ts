@@ -246,6 +246,10 @@ export const teams = pgTable("teams", {
   driveFolderId: text("drive_folder_id"),
   driveJsonFileId: text("drive_json_file_id"),
   drivePdfFileId: text("drive_pdf_file_id"),
+  timezone: text("timezone").notNull().default("Europe/Oslo"),
+  currency: text("currency").notNull().default("NOK"),
+  vatExempt: integer("vat_exempt").notNull().default(0),
+  lastDriveBackupDay: text("last_drive_backup_day"),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true });
@@ -575,6 +579,9 @@ export const athletes = pgTable("athletes", {
   // switches technician. Name denormalized like createdByName.
   mainWaxerId: integer("main_waxer_id"),
   mainWaxerName: text("main_waxer_name"),
+  consentBy: text("consent_by"),
+  consentAt: text("consent_at"),
+  consentNote: text("consent_note"),
   createdAt: text("created_at").notNull(),
   createdById: integer("created_by_id").notNull(),
   createdByName: text("created_by_name").notNull(),

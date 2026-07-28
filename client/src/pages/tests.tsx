@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { Fragment, useMemo, useState, useRef, useCallback, useEffect } from "react";
+import { fmtT } from "@/lib/temperature";
 import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { Plus, Trophy, Filter, MapPin, Thermometer, Droplets, CalendarDays, Award, EyeOff, Eye, LayoutGrid, LayoutList, Table2, Camera, Loader2, CheckCircle2, AlertCircle, ImagePlus, ChevronDown, Calendar, GitCompare } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1946,10 +1947,10 @@ export default function Tests() {
                             </td>
                             <td className="px-4 py-3 text-xs text-muted-foreground">{(t as any).seriesName || seriesById.get(t.seriesId) || "—"}</td>
                             <td className="px-4 py-3 text-xs">
-                              {w ? <span className="text-sky-600">{w.airTemperatureC}°C</span> : "—"}
+                              {w ? <span className="text-sky-600">{fmtT(w.airTemperatureC)}</span> : "—"}
                             </td>
                             <td className="px-4 py-3 text-xs">
-                              {w ? <span className="text-emerald-600">{w.snowTemperatureC}°C</span> : "—"}
+                              {w ? <span className="text-emerald-600">{fmtT(w.snowTemperatureC)}</span> : "—"}
                             </td>
                             <td className="px-4 py-3 text-xs text-muted-foreground">{t.createdByName}</td>
                             {!isBlindTester && (
@@ -2043,10 +2044,10 @@ export default function Tests() {
                         {w && (
                           <>
                             <span className="inline-flex items-center gap-1 rounded-full fs-gradient-blue px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-500/10">
-                              <Thermometer className="h-2.5 w-2.5" /> Air {w.airTemperatureC}°C
+                              <Thermometer className="h-2.5 w-2.5" /> Air {fmtT(w.airTemperatureC)}
                             </span>
                             <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
-                              <Thermometer className="h-2.5 w-2.5" /> Snow {w.snowTemperatureC}°C
+                              <Thermometer className="h-2.5 w-2.5" /> Snow {fmtT(w.snowTemperatureC)}
                             </span>
                           </>
                         )}
@@ -2233,14 +2234,14 @@ export default function Tests() {
                           <td className="px-4 py-3 text-xs">
                             {w ? (
                               <span className="inline-flex items-center gap-1 text-sky-600">
-                                {w.airTemperatureC}°C
+                                {fmtT(w.airTemperatureC)}
                               </span>
                             ) : "—"}
                           </td>
                           <td className="px-4 py-3 text-xs">
                             {w ? (
                               <span className="inline-flex items-center gap-1 text-emerald-600">
-                                {w.snowTemperatureC}°C
+                                {fmtT(w.snowTemperatureC)}
                               </span>
                             ) : "—"}
                           </td>
@@ -2319,10 +2320,10 @@ export default function Tests() {
                           {w && (
                             <div className="mt-2 flex flex-wrap gap-1.5">
                               <span className="inline-flex items-center gap-1 rounded-full fs-gradient-blue px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-500/10">
-                                <Thermometer className="h-2.5 w-2.5" /> Air {w.airTemperatureC}°C
+                                <Thermometer className="h-2.5 w-2.5" /> Air {fmtT(w.airTemperatureC)}
                               </span>
                               <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
-                                <Thermometer className="h-2.5 w-2.5" /> Snow {w.snowTemperatureC}°C
+                                <Thermometer className="h-2.5 w-2.5" /> Snow {fmtT(w.snowTemperatureC)}
                               </span>
                               {w.artificialSnow && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-2 py-0.5 text-[10px] font-medium text-pink-700 ring-1 ring-pink-500/10">

@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { fmtT } from "@/lib/temperature";
 import { productLabel } from "@/lib/product-label";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1022,8 +1023,8 @@ export default function TestDetail() {
       doc.setFont("helvetica", "normal");
       doc.setTextColor(80);
       const wx = [
-        pdfWeather.air_temperature_c != null ? `${isNo ? "Lufttemp" : "Air Temp"}: ${pdfWeather.air_temperature_c}°C` : null,
-        pdfWeather.snow_temperature_c != null ? `${isNo ? "Snøtemp" : "Snow Temp"}: ${pdfWeather.snow_temperature_c}°C` : null,
+        pdfWeather.air_temperature_c != null ? `${isNo ? "Lufttemp" : "Air Temp"}: ${fmtT(pdfWeather.air_temperature_c)}` : null,
+        pdfWeather.snow_temperature_c != null ? `${isNo ? "Snøtemp" : "Snow Temp"}: ${fmtT(pdfWeather.snow_temperature_c)}` : null,
         pdfWeather.air_humidity_pct != null ? `${isNo ? "Luftfuktighet" : "Air Humidity"}: ${pdfWeather.air_humidity_pct}%rH` : null,
         pdfWeather.snow_humidity_pct != null ? `${isNo ? "Snøfukt (Doser)" : "Snow Hum (Doser)"}: ${pdfWeather.snow_humidity_pct}%` : null,
         pdfWeather.snow_type ? `${isNo ? "Snøtype" : "Snow Type"}: ${pdfWeather.snow_type}` : null,
@@ -1514,13 +1515,13 @@ export default function TestDetail() {
                   <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-emerald-700/70">
                     <Thermometer className="h-3 w-3" /> {t("testDetail.snowTemp")}
                   </div>
-                  <div className="mt-1 text-lg font-bold text-emerald-700">{weather.snowTemperatureC}°C</div>
+                  <div className="mt-1 text-lg font-bold text-emerald-700">{fmtT(weather.snowTemperatureC)}</div>
                 </div>
                 <div className="rounded-xl fs-gradient-blue px-3 py-3 ring-1 ring-sky-500/10" data-testid="text-weather-air-temp">
                   <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-sky-700/70">
                     <Thermometer className="h-3 w-3" /> {t("testDetail.airTemp")}
                   </div>
-                  <div className="mt-1 text-lg font-bold text-sky-700">{weather.airTemperatureC}°C</div>
+                  <div className="mt-1 text-lg font-bold text-sky-700">{fmtT(weather.airTemperatureC)}</div>
                 </div>
                 {weather.snowHumidityPct != null && (
                   <div className="rounded-xl fs-gradient-amber px-3 py-3 ring-1 ring-amber-500/10" data-testid="text-weather-snow-humidity">

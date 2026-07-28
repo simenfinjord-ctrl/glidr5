@@ -381,9 +381,11 @@ export async function setupAuth(app: Express) {
     }
     // Fetch extra user fields not stored in session
     let dateFormat: string = 'european';
+    let tempUnit: string = 'C';
     try {
-      const dfRow = await pool.query(`SELECT date_format FROM users WHERE id = $1`, [safe.id]);
+      const dfRow = await pool.query(`SELECT date_format, temp_unit FROM users WHERE id = $1`, [safe.id]);
       if (dfRow.rows[0]?.date_format) dateFormat = dfRow.rows[0].date_format;
+      if (dfRow.rows[0]?.temp_unit) tempUnit = dfRow.rows[0].temp_unit;
     } catch {}
     // Share-view accounts: which of their athletes they may edit (canEdit=1).
     let editableAthleteIds: number[] = [];
@@ -399,7 +401,7 @@ export async function setupAuth(app: Express) {
     const effectiveIsTeamAdmin = safe.isAdmin === 1
       ? safe.isTeamAdmin
       : (activeTid === safe.teamId ? safe.isTeamAdmin : (((req.session as any)?.activeTeamIsAdmin) ? 1 : 0));
-    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: effectiveIsTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat, isAthleteAccess: !!(safe as any).isAthleteAccess, linkedAthleteId: (safe as any).linkedAthleteId ?? null, editableAthleteIds, canViewAllTeams: !!(safe as any).canViewAllTeams, termsAcceptedAt: (safe as any).termsAcceptedAt ?? null, termsAcceptedVersion: (safe as any).termsAcceptedVersion ?? null, currentTermsVersion: CURRENT_TERMS_VERSION });
+    return res.json({ ...safe, teamId: safe.teamId, isTeamAdmin: effectiveIsTeamAdmin, activeTeamId: safe.activeTeamId, parsedPermissions: perms, incognito, stealth, isBlindTester: !!safe.isBlindTester, garminWatch: !!safe.garminWatch, teamEnabledAreas, dateFormat, tempUnit, isAthleteAccess: !!(safe as any).isAthleteAccess, linkedAthleteId: (safe as any).linkedAthleteId ?? null, editableAthleteIds, canViewAllTeams: !!(safe as any).canViewAllTeams, termsAcceptedAt: (safe as any).termsAcceptedAt ?? null, termsAcceptedVersion: (safe as any).termsAcceptedVersion ?? null, currentTermsVersion: CURRENT_TERMS_VERSION });
   });
 
   // One-time acceptance of the Terms & Policy. Stores a server-side timestamp +

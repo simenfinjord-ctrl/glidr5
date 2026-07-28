@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { fmtT } from "@/lib/temperature";
 import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { productLabel } from "@/lib/product-label";
 import React from "react";
@@ -802,10 +803,10 @@ export default function Suggestions() {
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                        <Snowflake className="h-2.5 w-2.5" /> {w.snowTemperatureC}°C
+                        <Snowflake className="h-2.5 w-2.5" /> {fmtT(w.snowTemperatureC)}
                       </span>
                       <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-900/20 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-400">
-                        <Thermometer className="h-2.5 w-2.5" /> {w.airTemperatureC}°C
+                        <Thermometer className="h-2.5 w-2.5" /> {fmtT(w.airTemperatureC)}
                       </span>
                       {w.snowHumidityPct != null && (
                         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{L("Snøfukt", "Snow hum")} {w.snowHumidityPct}%</span>

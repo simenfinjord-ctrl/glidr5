@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useMemo, useRef } from "react";
+import { fmtT } from "@/lib/temperature";
 import { useQuery } from "@tanstack/react-query";
 import { Flag, Plus, X, ChevronRight, Pencil, Check, Trash2, Users, Search, Snowflake, FileDown, ChevronsUpDown } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -828,8 +829,8 @@ function SkiIdCell({
 function WeatherRow({ weather, lang }: { weather: Weather; lang: string }) {
   const L = (no: string, en: string) => lang === "en" ? en : no;
   const rows: { label: string; value: string | number | null | undefined }[] = [
-    { label: L("Snøtemp", "Snow temp"), value: weather.snowTemperatureC != null ? `${weather.snowTemperatureC}°C` : null },
-    { label: L("Lufttemp", "Air temp"), value: weather.airTemperatureC != null ? `${weather.airTemperatureC}°C` : null },
+    { label: L("Snøtemp", "Snow temp"), value: weather.snowTemperatureC != null ? `${fmtT(weather.snowTemperatureC)}` : null },
+    { label: L("Lufttemp", "Air temp"), value: weather.airTemperatureC != null ? `${fmtT(weather.airTemperatureC)}` : null },
     { label: L("Snøfukt", "Snow humidity"), value: weather.snowHumidityPct != null ? `${weather.snowHumidityPct}%` : null },
     { label: L("Luftfukt", "Air humidity"), value: weather.airHumidityPct != null ? `${weather.airHumidityPct}%` : null },
     { label: L("Kunstig snø", "Artificial snow"), value: weather.artificialSnow },
@@ -1552,7 +1553,7 @@ function PrepFormDialog({
                   {weatherOptions.map((w) => (
                     <SelectItem key={w.id} value={String(w.id)}>
                       {fmtDate(w.date, lang)} — {w.location}
-                      {w.snowTemperatureC != null && ` (${w.snowTemperatureC}°C)`}
+                      {w.snowTemperatureC != null && ` (${fmtT(w.snowTemperatureC)})`}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1988,7 +1989,7 @@ export default function RacePrep() {
                       {linkedWeather && (
                         <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
                           <Snowflake className="h-3 w-3" />
-                          {linkedWeather.snowTemperatureC != null ? `${linkedWeather.snowTemperatureC}°C` : ""}
+                          {linkedWeather.snowTemperatureC != null ? `${fmtT(linkedWeather.snowTemperatureC)}` : ""}
                         </span>
                       )}
                     </div>

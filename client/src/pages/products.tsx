@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { Fragment, useMemo, useState, useEffect } from "react";
+import { fmtT } from "@/lib/temperature";
 import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1961,10 +1962,10 @@ function ProductTestHistoryDialog({ product, open, onClose }: { product: Product
                 {test.weather && (
                   <div className="flex flex-wrap gap-1 mb-2">
                     <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
-                      <Thermometer className="h-2.5 w-2.5" /> {L("Luft", "Air")} {test.weather.airTemperatureC}°C
+                      <Thermometer className="h-2.5 w-2.5" /> {L("Luft", "Air")} {fmtT(test.weather.airTemperatureC)}
                     </span>
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10">
-                      <Snowflake className="h-2.5 w-2.5" /> {L("Snø", "Snow")} {test.weather.snowTemperatureC}°C
+                      <Snowflake className="h-2.5 w-2.5" /> {L("Snø", "Snow")} {fmtT(test.weather.snowTemperatureC)}
                     </span>
                     {test.weather.airHumidityPct != null && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700 ring-1 ring-violet-200">

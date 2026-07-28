@@ -777,6 +777,14 @@ export async function registerRoutes(
       ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'no';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS date_format TEXT DEFAULT 'european';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS temp_unit TEXT DEFAULT 'C';
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'Europe/Oslo';
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'NOK';
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS vat_exempt INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_drive_backup_day TEXT;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS consent_by TEXT;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS consent_at TEXT;
+      ALTER TABLE athletes ADD COLUMN IF NOT EXISTS consent_note TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TEXT;
       CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       INSERT INTO app_settings (key, value) VALUES ('commercialization_enabled', 'false') ON CONFLICT (key) DO NOTHING;
@@ -1203,6 +1211,28 @@ export async function registerRoutes(
     res.json(resolvePricing(overrides));
   });
 
+  // GET /api/settings/currency-rates — NOK per foreign unit (SA-maintained).
+  app.get("/api/settings/currency-rates", requireAuth, async (_req, res) => {
+    try {
+      const rows = await db.execute(sql`SELECT value FROM app_settings WHERE key = 'currency_rates'`);
+      const row = ((rows as any).rows ?? rows)[0];
+      return res.json(row?.value ? JSON.parse(row.value) : {});
+    } catch { return res.json({}); }
+  });
+
+  app.patch("/api/admin/currency-rates", requireAuth, async (req, res) => {
+    if ((req.user as any).isAdmin !== 1) return res.status(403).json({ message: "Super admin only" });
+    const clean: Record<string, number> = {};
+    for (const k of ["EUR", "USD"]) {
+      const v = Number(req.body?.[k]);
+      if (!isNaN(v) && v > 0) clean[k] = v;
+    }
+    await db.execute(sql`
+      INSERT INTO app_settings (key, value) VALUES ('currency_rates', ${JSON.stringify(clean)})
+      ON CONFLICT (key) DO UPDATE SET value = ${JSON.stringify(clean)}`);
+    res.json({ ok: true, rates: clean });
+  });
+
   // PATCH /api/admin/plan-builder-pricing — SA only: override feature prices
   // and limit pricing for the plan builder. Merged with existing overrides.
   app.patch("/api/admin/plan-builder-pricing", requireAuth, async (req, res) => {
@@ -1468,6 +1498,7 @@ export async function registerRoutes(
     if (req.body.enabledAreas !== undefined) {
       data.enabledAreas = JSON.stringify(req.body.enabledAreas);
     }
+    if (req.body.timezone) data.timezone = String(req.body.timezone);
     const team = await storage.createTeam(data);
     res.json(team);
   });
@@ -1482,6 +1513,13 @@ export async function registerRoutes(
     if (req.body.enabledAreas !== undefined) {
       data.enabledAreas = JSON.stringify(req.body.enabledAreas);
     }
+    if (req.body.timezone !== undefined) data.timezone = String(req.body.timezone) || "Europe/Oslo";
+    if (req.body.currency !== undefined) {
+      const cur = String(req.body.currency).toUpperCase();
+      if (!["NOK", "EUR", "USD"].includes(cur)) return res.status(400).json({ message: "currency must be NOK, EUR or USD" });
+      data.currency = cur;
+    }
+    if (req.body.vatExempt !== undefined) data.vatExempt = req.body.vatExempt ? 1 : 0;
     const updated = await storage.updateTeam(id, data);
     if (!updated) return res.status(404).json({ message: "Not found" });
     res.json(updated);
@@ -5583,6 +5621,14 @@ export async function registerRoutes(
       updates.push(`date_format = $${values.length + 1}`);
       values.push(dateFormat);
     }
+    const { tempUnit } = req.body;
+    if (tempUnit !== undefined) {
+      if (tempUnit !== 'C' && tempUnit !== 'F') {
+        return res.status(400).json({ message: "tempUnit must be 'C' or 'F'" });
+      }
+      updates.push(`temp_unit = $${values.length + 1}`);
+      values.push(tempUnit);
+    }
     if (updates.length === 0) return res.status(400).json({ message: "No fields to update" });
     values.push(u.id);
     const { pool } = await import("./db");
@@ -5611,6 +5657,24 @@ export async function registerRoutes(
     await storage.updateUser(u.id, { avatarUrl } as any);
     (u as any).avatarUrl = avatarUrl;
     return res.json({ ok: true, avatarUrl });
+  });
+
+  // PATCH /api/team/settings — a Team Admin adjusts their own team's timezone.
+  // (Currency and VAT status are commercial terms — SA only, via PUT /api/teams/:id.)
+  app.patch("/api/team/settings", requireAuth, async (req, res) => {
+    if (!canManageTeam(req)) return res.status(403).json({ message: "Admin only" });
+    const teamId = getActiveTeamId(req);
+    if (!teamId) return res.status(400).json({ message: "No active team" });
+    const data: any = {};
+    if (req.body.timezone !== undefined) {
+      const tz = String(req.body.timezone);
+      try { new Date().toLocaleString("sv-SE", { timeZone: tz }); }
+      catch { return res.status(400).json({ message: "Unknown timezone" }); }
+      data.timezone = tz;
+    }
+    if (Object.keys(data).length === 0) return res.status(400).json({ message: "No fields to update" });
+    const updated = await storage.updateTeam(teamId, data);
+    res.json({ ok: true, timezone: (updated as any)?.timezone });
   });
 
   // PATCH /api/team/plan — a Team Admin adjusts THEIR OWN team's plan
@@ -7207,6 +7271,23 @@ export async function registerRoutes(
       await (pool as any).query(`UPDATE teams SET discount_percent = $1 WHERE id = $2`, [d, teamId]);
     }
 
+    // Commercial terms for foreign teams: display currency, VAT exemption
+    // (reverse charge), and the team's timezone — SA only, any plan type.
+    if (req.body.currency !== undefined) {
+      const cur = String(req.body.currency).toUpperCase();
+      if (!["NOK", "EUR", "USD"].includes(cur)) return res.status(400).json({ message: "currency must be NOK, EUR or USD" });
+      await (pool as any).query(`UPDATE teams SET currency = $1 WHERE id = $2`, [cur, teamId]);
+    }
+    if (req.body.vatExempt !== undefined) {
+      await (pool as any).query(`UPDATE teams SET vat_exempt = $1 WHERE id = $2`, [req.body.vatExempt ? 1 : 0, teamId]);
+    }
+    if (req.body.timezone !== undefined) {
+      const tz = String(req.body.timezone);
+      try { new Date().toLocaleString("sv-SE", { timeZone: tz }); }
+      catch { return res.status(400).json({ message: "Unknown timezone" }); }
+      await (pool as any).query(`UPDATE teams SET timezone = $1 WHERE id = $2`, [tz, teamId]);
+    }
+
     // Fetch current team state for change log
     const currentResult = await (pool as any).query(`SELECT * FROM teams WHERE id = $1`, [teamId]);
     const currentTeam = currentResult.rows[0];
@@ -7730,6 +7811,9 @@ export async function registerRoutes(
       sportClass: req.body.sportClass || null,
       mainWaxerId,
       mainWaxerName,
+      consentBy: req.body.consentBy || null,
+      consentAt: req.body.consentBy ? (req.body.consentAt || now) : null,
+      consentNote: req.body.consentNote || null,
       createdAt: now,
       createdById: u.id,
       createdByName: u.name,
@@ -8262,6 +8346,11 @@ export async function registerRoutes(
     if (req.body.bindingPosition !== undefined) data.bindingPosition = req.body.bindingPosition || null;
     if (req.body.skiServicePreferences !== undefined) data.skiServicePreferences = req.body.skiServicePreferences || null;
     if (req.body.sportClass !== undefined) data.sportClass = req.body.sportClass || null;
+    if (req.body.consentBy !== undefined) {
+      data.consentBy = req.body.consentBy || null;
+      data.consentAt = req.body.consentBy ? (req.body.consentAt || new Date().toISOString()) : null;
+    }
+    if (req.body.consentNote !== undefined) data.consentNote = req.body.consentNote || null;
     if (req.body.archived !== undefined) data.archived = req.body.archived ? 1 : 0;
     // Main waxer: only Team Admins / Super Admins may reassign it. Name is
     // resolved server-side so the client can't write an arbitrary label.
@@ -11660,6 +11749,11 @@ RULES:
       billingPeriod: cfg.billingPeriod,
       maxUsers: cfg.maxUsers,
       maxGroups: cfg.maxGroups,
+      timezone: (() => {
+        const tz = String(req.body.timezone ?? "");
+        try { if (tz) { new Date().toLocaleString("sv-SE", { timeZone: tz }); return tz; } } catch {}
+        return "Europe/Oslo";
+      })(),
       notes: `Self-service signup ${now} — contact: ${contactName.trim()} <${email.trim().toLowerCase()}>. Accepted billing: ${price.periodTotal} NOK/${cfg.billingPeriod === "annual" ? "yr" : "mo"} (monthly base ${price.monthlyTotal} NOK).`,
     } as any);
 

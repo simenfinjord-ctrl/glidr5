@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { Fragment, useMemo } from "react";
+import { fmtT } from "@/lib/temperature";
 import { useRoute } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
@@ -550,11 +551,11 @@ function ProductDetailInner() {
                       <div className="mb-2 flex flex-wrap gap-1">
                         <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200 dark:bg-sky-950/30 dark:text-sky-300 dark:ring-sky-800">
                           <Thermometer className="h-2.5 w-2.5" />
-                          {L("Luft", "Air")} {test.weather.airTemperatureC}°C
+                          {L("Luft", "Air")} {fmtT(test.weather.airTemperatureC)}
                         </span>
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-500/10 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800">
                           <Snowflake className="h-2.5 w-2.5" />
-                          {L("Snø", "Snow")} {test.weather.snowTemperatureC}°C
+                          {L("Snø", "Snow")} {fmtT(test.weather.snowTemperatureC)}
                         </span>
                         {test.weather.airHumidityPct != null && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700 ring-1 ring-violet-200 dark:bg-violet-950/30 dark:text-violet-300 dark:ring-violet-800">
@@ -742,7 +743,7 @@ function ProductDetailInner() {
                           </td>
                           <td className="px-4 py-2 text-xs text-muted-foreground">
                             {[
-                              s.avgTemp != null ? `${s.avgTemp.toFixed(1)}°C` : null,
+                              s.avgTemp != null ? `${fmtT(s.avgTemp.toFixed(1))}` : null,
                               s.commonSnow,
                             ].filter(Boolean).join(", ") || "—"}
                           </td>
@@ -813,12 +814,12 @@ function ProductDetailInner() {
                           <div className="flex flex-wrap gap-1">
                             {rp.airTemperatureC != null && (
                               <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-900/20 px-2 py-0.5 text-[10px] text-sky-700 dark:text-sky-300">
-                                <Thermometer className="h-2.5 w-2.5" />{rp.airTemperatureC}°C
+                                <Thermometer className="h-2.5 w-2.5" />{fmtT(rp.airTemperatureC)}
                               </span>
                             )}
                             {rp.snowTemperatureC != null && (
                               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-[10px] text-emerald-700 dark:text-emerald-300">
-                                <Snowflake className="h-2.5 w-2.5" />{rp.snowTemperatureC}°C
+                                <Snowflake className="h-2.5 w-2.5" />{fmtT(rp.snowTemperatureC)}
                               </span>
                             )}
                             {rp.snowType && (

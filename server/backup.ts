@@ -2146,12 +2146,48 @@ function msUntilNextOslo2359(): number {
   return 60 * 60 * 1000; // defensive fallback: an hour
 }
 
+// Nightly Drive backups follow EACH TEAM'S OWN CLOCK: a half-hourly tick runs
+// any team whose local time (teams.timezone) is in the 23:00 hour and that has
+// not been backed up on its local date yet. A US team backs up during its own
+// night, not mid-afternoon.
+async function runDriveTzTick() {
+  if (driveRunRunning) return;
+  driveRunRunning = true;
+  try {
+    const { pool: pTz } = await import('./db');
+    const teams = await storage.listTeams();
+    for (const team of teams) {
+      if (!(team as any).driveFolderId) continue;
+      const tz = (team as any).timezone || 'Europe/Oslo';
+      let local: string;
+      try { local = new Date().toLocaleString('sv-SE', { timeZone: tz }); }
+      catch { local = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Oslo' }); }
+      const [localDate, localTime] = local.split(' ');
+      if (parseInt(localTime?.slice(0, 2) ?? '0') !== 23) continue;
+      if ((team as any).lastDriveBackupDay === localDate) continue;
+      try {
+        const r = await runDriveBackupForTeam(team.id);
+        console.log(`[DriveBackup] Nightly (${tz}) team ${team.id} (${team.name}):`, r.success ? 'OK' : r.error);
+        if (r.success) {
+          await (pTz as any).query(`UPDATE teams SET last_drive_backup_day = $1 WHERE id = $2`, [localDate, team.id]).catch(() => {});
+        }
+      } catch (err) {
+        console.error(`[DriveBackup] Nightly failed for team ${team.id}:`, err);
+      }
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+  } catch (err) {
+    console.error('[DriveBackup] Tz tick failed:', err);
+  } finally {
+    driveRunRunning = false;
+  }
+}
+
 function armDriveDaily() {
   if (driveDailyTimer) clearTimeout(driveDailyTimer);
-  driveDailyTimer = setTimeout(async () => {
-    await runDriveDailyAll();
-    armDriveDaily(); // re-arm for the next 23:59
-  }, msUntilNextOslo2359());
+  // Half-hourly tick — each team fires once per local day inside its 23:xx hour.
+  driveDailyTimer = setInterval(runDriveTzTick, 30 * 60 * 1000) as any;
+  setTimeout(runDriveTzTick, 2 * 60 * 1000);
 }
 
 export function ensureBackupSchedulers() {

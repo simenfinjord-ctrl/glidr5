@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useMemo, useState, useEffect } from "react";
+import { fmtT } from "@/lib/temperature";
 import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { productLabel } from "@/lib/product-label";
 import { useQuery } from "@tanstack/react-query";
@@ -1627,7 +1628,7 @@ function ProductSearchStats({
                               </td>
                               <td className="px-3 py-1.5 text-xs text-muted-foreground">
                                 {[
-                                  s.avgTemp != null ? `${s.avgTemp}°C` : null,
+                                  s.avgTemp != null ? `${fmtT(s.avgTemp)}` : null,
                                   s.commonSnow,
                                 ].filter(Boolean).join(", ") || "—"}
                               </td>
@@ -2124,12 +2125,12 @@ function CombinationSearch({
                                       <div className="flex items-center gap-1">
                                         <Snowflake className="h-3 w-3 text-blue-400 shrink-0" />
                                         <span className="text-muted-foreground">{L("Snø:", "Snow:")}</span>
-                                        <span className="font-medium ml-1">{w.snowTemperatureC}°C</span>
+                                        <span className="font-medium ml-1">{fmtT(w.snowTemperatureC)}</span>
                                       </div>
                                       <div className="flex items-center gap-1">
                                         <Thermometer className="h-3 w-3 text-orange-400 shrink-0" />
                                         <span className="text-muted-foreground">{L("Luft:", "Air:")}</span>
-                                        <span className="font-medium ml-1">{w.airTemperatureC}°C</span>
+                                        <span className="font-medium ml-1">{fmtT(w.airTemperatureC)}</span>
                                       </div>
                                       {w.snowHumidityPct != null && (
                                         <div className="flex items-center gap-1">
@@ -3316,8 +3317,8 @@ function WeatherFields({ w, L }: { w: Weather; L: (no: string, en: string) => st
     ) : null;
   return (
     <>
-      {cell(L("Snøtemp", "Snow temp"), w.snowTemperatureC != null ? `${w.snowTemperatureC}°C` : null)}
-      {cell(L("Lufttemp", "Air temp"), w.airTemperatureC != null ? `${w.airTemperatureC}°C` : null)}
+      {cell(L("Snøtemp", "Snow temp"), w.snowTemperatureC != null ? `${fmtT(w.snowTemperatureC)}` : null)}
+      {cell(L("Lufttemp", "Air temp"), w.airTemperatureC != null ? `${fmtT(w.airTemperatureC)}` : null)}
       {cell(L("Snøfukt", "Snow humidity"), w.snowHumidityPct != null ? `${w.snowHumidityPct}%` : null)}
       {cell(L("Luftfukt", "Air humidity"), w.airHumidityPct != null ? `${w.airHumidityPct}%` : null)}
       {cell(L("Snøtype", "Snow type"), w.snowType)}
@@ -3411,7 +3412,7 @@ function buildKickSolutionSummary(uses: KickUse[], lang: string): string {
 
   if (temps.length) {
     const lo = Math.min(...temps), hi = Math.max(...temps);
-    const range = lo === hi ? `${lo.toFixed(0)}°C` : `${lo.toFixed(0)}–${hi.toFixed(0)}°C`;
+    const range = lo === hi ? `${fmtT(lo.toFixed(0))}` : `${fmtT(lo.toFixed(0))}–${fmtT(hi.toFixed(0))}`;
     const snowFreq = new Map<string, number>();
     for (const u of uses) { const s = (u.snowType || "").trim(); if (s) snowFreq.set(s, (snowFreq.get(s) ?? 0) + 1); }
     const topSnow = [...snowFreq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
@@ -3423,7 +3424,7 @@ function buildKickSolutionSummary(uses: KickUse[], lang: string): string {
   if (rated.length >= 2) {
     const best = [...rated].sort((a, b) => a.feelingRank! - b.feelingRank!)[0];
     const band = best.airTemp! <= -8 ? L("kaldt føre", "cold conditions") : best.airTemp! >= -2 ? L("mildt føre", "mild conditions") : L("variert føre", "varied conditions");
-    parts.push(L(`Best i ${band} (${best.airTemp!.toFixed(0)}°C, feeling ${best.feelingRank}).`, `Best in ${band} (${best.airTemp!.toFixed(0)}°C, feeling ${best.feelingRank}).`));
+    parts.push(L(`Best i ${band} (${fmtT(best.airTemp!.toFixed(0))}, feeling ${best.feelingRank}).`, `Best in ${band} (${fmtT(best.airTemp!.toFixed(0))}, feeling ${best.feelingRank}).`));
   }
 
   const allText = uses.map((u) => (u.feelingNotes || "").toLowerCase()).join(" ");
@@ -3528,7 +3529,7 @@ function KickReportView() {
                                 <td className="py-1.5 pr-3 whitespace-nowrap">{u.date}</td>
                                 <td className="py-1.5 pr-3">{skiName(u.skiId)}</td>
                                 <td className="py-1.5 pr-3">{u.binder || "—"}</td>
-                                <td className="py-1.5 pr-3 whitespace-nowrap">{u.airTemp != null ? `${u.airTemp}°C` : "—"}{u.snowType ? ` · ${u.snowType}` : ""}</td>
+                                <td className="py-1.5 pr-3 whitespace-nowrap">{u.airTemp != null ? `${fmtT(u.airTemp)}` : "—"}{u.snowType ? ` · ${u.snowType}` : ""}</td>
                                 <td className="py-1.5 pr-3">{u.feelingRank ?? "—"}</td>
                                 <td className="py-1.5 text-muted-foreground">{u.feelingNotes || "—"}</td>
                               </tr>
@@ -3559,7 +3560,7 @@ function KickReportView() {
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <span className="font-semibold">{test.date}</span>
               {test.location && <span className="inline-flex items-center gap-1 text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{test.location}</span>}
-              {w && <span className="inline-flex items-center gap-1 text-muted-foreground"><Cloud className="h-3.5 w-3.5" />{w.airTemperatureC != null ? `${w.airTemperatureC}°C` : w.location}</span>}
+              {w && <span className="inline-flex items-center gap-1 text-muted-foreground"><Cloud className="h-3.5 w-3.5" />{w.airTemperatureC != null ? `${fmtT(w.airTemperatureC)}` : w.location}</span>}
               {test.testPersons && <span className="inline-flex items-center gap-1 text-muted-foreground"><Users className="h-3.5 w-3.5" />{test.testPersons}</span>}
             </div>
             {test.report && (
@@ -3760,8 +3761,8 @@ function RacedSkisView({ initialSearch = "" }: { initialSearch?: string }) {
               <span className="text-muted-foreground">· {u.location || "—"} {fmtDate(u.date)}</span>
               {u.discipline && <span className="rounded-full bg-sky-50 dark:bg-sky-950/30 px-2 py-0.5 text-[10px] text-sky-700 dark:text-sky-300">{u.discipline}</span>}
               <div className="ml-auto flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
-                {u.snowT != null && <span>{L("Snø", "Snow")} {u.snowT}°C</span>}
-                {u.airT != null && <span>{L("Luft", "Air")} {u.airT}°C</span>}
+                {u.snowT != null && <span>{L("Snø", "Snow")} {fmtT(u.snowT)}</span>}
+                {u.airT != null && <span>{L("Luft", "Air")} {fmtT(u.airT)}</span>}
                 {u.snowTypeV && <span>{u.snowTypeV}</span>}
               </div>
             </div>
@@ -4757,7 +4758,7 @@ export default function Analytics() {
                         return (
                           <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs shadow-lg">
                             <div className="font-semibold">{d.product}</div>
-                            <div>Snow temp: {d.snowTemp}°C</div>
+                            <div>Snow temp: {fmtT(d.snowTemp)}</div>
                             <div>Rank: {d.avgRank}</div>
                           </div>
                         );

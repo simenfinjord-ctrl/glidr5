@@ -311,6 +311,7 @@ function PlanBuilder({ lang }: { lang: "en" | "no" }) {
           maxUsers, maxGroups, billingPeriod,
           acceptBilling: accepted,
           language: lang,
+          timezone: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return null; } })(),
         }),
       });
       const body = await res.json().catch(() => ({}));

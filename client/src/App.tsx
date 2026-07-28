@@ -46,6 +46,8 @@ import Overview from "@/pages/overview";
 import WhatIsGlidr from "@/pages/what-is-glidr";
 import LogoPreview from "@/pages/logo-preview";
 import Legal from "@/pages/legal";
+import Dpa from "@/pages/dpa";
+import Status from "@/pages/status";
 import Pricing from "@/pages/pricing";
 import Contact from "@/pages/contact";
 import Inbox from "@/pages/inbox";
@@ -108,6 +110,8 @@ function Router() {
       <Route path="/what-is-glidr" component={WhatIsGlidr} />
       <Route path="/logo-preview" component={LogoPreview} />
       <Route path="/legal" component={Legal} />
+      <Route path="/dpa" component={Dpa} />
+      <Route path="/status" component={Status} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/contact" component={Contact} />
       <Route path="/inbox" component={Inbox} />
@@ -177,7 +181,7 @@ function AuthGuard() {
     );
   }
 
-  const publicPaths = ["/login", "/forgot-password", "/reset-password", "/what-is-glidr", "/legal", "/pricing", "/contact", "/demo", "/get-started"];
+  const publicPaths = ["/login", "/forgot-password", "/reset-password", "/what-is-glidr", "/legal", "/pricing", "/contact", "/demo", "/get-started", "/dpa", "/status"];
   if (!user && !publicPaths.includes(location) && !location.startsWith("/invite/") && !location.startsWith("/share/") && !location.startsWith("/feedback/")) {
     return <Redirect to="/login" />;
   }

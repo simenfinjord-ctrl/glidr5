@@ -956,6 +956,15 @@ export default function MyAccount() {
     setGlidrDateFormat(fmt);
     updateProfileMutation.mutate({ dateFormat: fmt });
   }
+  const [tempUnit, setTempUnitState] = useState<'C' | 'F'>('C');
+  useEffect(() => {
+    const tu = (user as any)?.tempUnit as 'C' | 'F' | undefined;
+    if (tu) setTempUnitState(tu);
+  }, [(user as any)?.tempUnit]);
+  function handleTempUnit(tu: 'C' | 'F') {
+    setTempUnitState(tu);
+    updateProfileMutation.mutate({ tempUnit: tu });
+  }
 
   const { data: watchCodeData, isLoading: watchCodeLoading } = useQuery<{ watchCode: string }>({
     queryKey: ["/api/auth/my-watch-code"],
@@ -1370,6 +1379,41 @@ export default function MyAccount() {
                   aria-pressed={dateFormat === "american"}
                 >
                   {t("preferences.dateFormatAmerican")}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-muted/50 px-4 py-3 space-y-2">
+              <div>
+                <div className="text-sm font-medium">{L("Temperaturenhet", "Temperature unit")}</div>
+                <div className="text-xs text-muted-foreground">{L("Alle temperaturer registreres i °C — dette styrer bare visningen for deg.", "All temperatures are registered in °C — this only changes how they are shown to you.")}</div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => handleTempUnit("C")}
+                  className={cn(
+                    "flex-1 rounded-lg border-2 px-3 py-2 text-xs font-medium transition-colors",
+                    tempUnit === "C"
+                      ? ACCENT_NAV[accentColor].selectedBtn
+                      : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                  )}
+                  aria-pressed={tempUnit === "C"}
+                  data-testid="button-temp-c"
+                >
+                  Celsius (°C)
+                </button>
+                <button
+                  onClick={() => handleTempUnit("F")}
+                  className={cn(
+                    "flex-1 rounded-lg border-2 px-3 py-2 text-xs font-medium transition-colors",
+                    tempUnit === "F"
+                      ? ACCENT_NAV[accentColor].selectedBtn
+                      : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                  )}
+                  aria-pressed={tempUnit === "F"}
+                  data-testid="button-temp-f"
+                >
+                  Fahrenheit (°F)
                 </button>
               </div>
             </div>

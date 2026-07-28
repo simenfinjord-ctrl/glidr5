@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { fmtT } from "@/lib/temperature";
 import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { useRoute, useLocation, useSearch } from "wouter";
 import {
@@ -595,7 +596,7 @@ function summarizeFeelingNotes(
   let conditions = "";
   if (temps.length) {
     const lo = Math.min(...temps), hi = Math.max(...temps);
-    const range = lo === hi ? `${lo.toFixed(0)}°C` : `${lo.toFixed(0)}–${hi.toFixed(0)}°C`;
+    const range = lo === hi ? `${fmtT(lo.toFixed(0))}` : `${fmtT(lo.toFixed(0))}–${fmtT(hi.toFixed(0))}`;
     const band = hi <= -8 ? L("kaldt føre", "cold conditions")
       : lo >= -2 ? L("mildt føre", "mild conditions")
       : L("variert føre", "varied conditions");
@@ -1045,7 +1046,7 @@ export default function AthleteDetail() {
     notes: "",
   });
 
-  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", poleHeightSkate: "", bindingPosition: "", skiServicePreferences: "", sportClass: "", mainWaxerId: "" });
+  const [athleteForm, setAthleteForm] = useState({ name: "", team: "", brand: "", heightCm: "", weightKg: "", poleHeight: "", poleHeightSkate: "", bindingPosition: "", skiServicePreferences: "", sportClass: "", mainWaxerId: "", consentBy: "", consentNote: "" });
   // Team members for the main-waxer selector (TA/SA only, loaded when the edit dialog opens).
   const { data: teamMembers = [] } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/team/members"],
@@ -1662,6 +1663,8 @@ export default function AthleteDetail() {
         bindingPosition: data.bindingPosition.trim() || null,
         skiServicePreferences: data.skiServicePreferences.trim() || null,
         sportClass: data.sportClass.trim() || null,
+        consentBy: (data as any).consentBy?.trim() || null,
+        consentNote: (data as any).consentNote?.trim() || null,
         // Only TAs/SAs may reassign the main waxer — omit the field entirely for others.
         ...(canManage ? { mainWaxerId: data.mainWaxerId ? parseInt(data.mainWaxerId) : null } : {}),
       });
@@ -1831,6 +1834,8 @@ export default function AthleteDetail() {
         skiServicePreferences: athlete.skiServicePreferences || "",
         sportClass: athlete.sportClass || "",
         mainWaxerId: athlete.mainWaxerId != null ? String(athlete.mainWaxerId) : "",
+        consentBy: (athlete as any).consentBy || "",
+        consentNote: (athlete as any).consentNote || "",
       });
       setEditAthleteOpen(true);
     }
@@ -2352,6 +2357,15 @@ export default function AthleteDetail() {
               {athlete.createdByName && athlete.createdByName !== athlete.mainWaxerName && (
                 <span className="text-xs text-muted-foreground" data-testid="text-athlete-created-by">
                   {L("Opprettet av", "Created by")}: {athlete.createdByName}
+                </span>
+              )}
+              {(athlete as any).consentBy ? (
+                <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-800" title={(athlete as any).consentNote ?? ""} data-testid="badge-consent">
+                  {L("Samtykke", "Consent")}: {(athlete as any).consentBy}{(athlete as any).consentAt ? ` · ${new Date((athlete as any).consentAt).toLocaleDateString()}` : ""}
+                </span>
+              ) : (
+                <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-800" data-testid="badge-consent-missing">
+                  {L("Samtykke ikke registrert", "Consent not recorded")}
                 </span>
               )}
             </div>
@@ -3008,8 +3022,8 @@ export default function AthleteDetail() {
                       {/* ── Weather conditions grid ── */}
                       {rw && (() => {
                         const cells: { val: string; lbl: string }[] = [];
-                        if (rw.snowTemperatureC != null) cells.push({ val: `${rw.snowTemperatureC}°C`, lbl: "Snow Temp" });
-                        if (rw.airTemperatureC != null)  cells.push({ val: `${rw.airTemperatureC}°C`,  lbl: "Air Temp" });
+                        if (rw.snowTemperatureC != null) cells.push({ val: `${fmtT(rw.snowTemperatureC)}`, lbl: "Snow Temp" });
+                        if (rw.airTemperatureC != null)  cells.push({ val: `${fmtT(rw.airTemperatureC)}`,  lbl: "Air Temp" });
                         if (rw.snowHumidityPct != null)  cells.push({ val: `${rw.snowHumidityPct}%`,   lbl: "Snow RH" });
                         if (rw.airHumidityPct != null)   cells.push({ val: `${rw.airHumidityPct}%`,    lbl: "Air RH" });
                         if (rw.snowType)                 cells.push({ val: rw.snowType,                lbl: "Snow Type" });
@@ -3979,7 +3993,7 @@ export default function AthleteDetail() {
                           </SelectItem>
                           {weather.map((w) => (
                             <SelectItem key={w.id} value={String(w.id)} data-testid={`option-weather-${w.id}`}>
-                              {fmtDate(w.date)} · {w.location} · {w.time} · Air {w.airTemperatureC}°C
+                              {fmtDate(w.date)} · {w.location} · {w.time} · Air {fmtT(w.airTemperatureC)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -5024,6 +5038,20 @@ export default function AthleteDetail() {
                 data-testid="input-edit-athlete-service-prefs"
               />
             </div>
+              <div className="space-y-1.5 rounded-lg border border-dashed border-border p-3">
+                <label className="text-sm font-medium">{L("Samtykke (GDPR)", "Consent (GDPR)")}</label>
+                <p className="text-[11px] text-muted-foreground">
+                  {L("Registrer hvem som har samtykket til lagring av utøverens data (utøver selv, eller foresatt for mindreårige).",
+                     "Record who consented to storing the athlete's data (the athlete, or a guardian for minors).")}
+                </p>
+                <Input value={(athleteForm as any).consentBy}
+                  onChange={(e) => setAthleteForm((f) => ({ ...f, consentBy: e.target.value }))}
+                  placeholder={L("Navn på den som samtykket", "Name of the person who consented")}
+                  data-testid="input-consent-by" />
+                <Input value={(athleteForm as any).consentNote}
+                  onChange={(e) => setAthleteForm((f) => ({ ...f, consentNote: e.target.value }))}
+                  placeholder={L("Notat (f.eks. «foresatt», «skjema signert 12.08»)", "Note (e.g. \u201cguardian\u201d, \u201cform signed Aug 12\u201d)")} />
+              </div>
             <div className="flex items-center justify-end pt-2">
               <Button
                 type="submit"
@@ -5937,8 +5965,8 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
                   {usage.discipline && <span className="text-muted-foreground"> · {usage.discipline}</span>}
                   {w && (
                     <div className="flex flex-wrap gap-x-2 text-[10px] text-muted-foreground mt-0.5">
-                      {w.snowTemperatureC != null && <span>{L("Snø", "Snow")} {w.snowTemperatureC}°C</span>}
-                      {w.airTemperatureC != null && <span>{L("Luft", "Air")} {w.airTemperatureC}°C</span>}
+                      {w.snowTemperatureC != null && <span>{L("Snø", "Snow")} {fmtT(w.snowTemperatureC)}</span>}
+                      {w.airTemperatureC != null && <span>{L("Luft", "Air")} {fmtT(w.airTemperatureC)}</span>}
                       {w.snowType && <span>{w.snowType}</span>}
                     </div>
                   )}
@@ -6021,7 +6049,7 @@ function SkiRaceUsageSection({ ski, weatherList, raceWeatherById, canEdit = true
                     <SelectTrigger><SelectValue placeholder={L("Velg", "Choose")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">{L("Ingen", "None")}</SelectItem>
-                      {usageWeatherOptions.map((w) => (<SelectItem key={w.id} value={String(w.id)}>{w.location}{w.snowTemperatureC != null ? ` (${w.snowTemperatureC}°C)` : ""}</SelectItem>))}
+                      {usageWeatherOptions.map((w) => (<SelectItem key={w.id} value={String(w.id)}>{w.location}{w.snowTemperatureC != null ? ` (${fmtT(w.snowTemperatureC)})` : ""}</SelectItem>))}
                     </SelectContent>
                   </Select>
                 )
@@ -6206,8 +6234,8 @@ function SkiDetailPanel({
                     </div>
                     {w && (
                       <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-[10px]">
-                        {w.snowTemperatureC != null && <span>Snow {w.snowTemperatureC}°C</span>}
-                        {w.airTemperatureC != null && <span>Air {w.airTemperatureC}°C</span>}
+                        {w.snowTemperatureC != null && <span>Snow {fmtT(w.snowTemperatureC)}</span>}
+                        {w.airTemperatureC != null && <span>Air {fmtT(w.airTemperatureC)}</span>}
                         {w.snowHumidityPct != null && <span>Snow RH {w.snowHumidityPct}%</span>}
                         {w.airHumidityPct != null && <span>Air RH {w.airHumidityPct}%</span>}
                         {w.snowType && <span>{w.snowType}</span>}
@@ -6908,8 +6936,8 @@ function SkiCard({
                         </div>
                         {w && (
                           <div className="flex flex-wrap gap-x-2 gap-y-0 mt-0.5">
-                            {w.snowTemperatureC != null && <span>Snow {w.snowTemperatureC}°C</span>}
-                            {w.airTemperatureC != null && <span>Air {w.airTemperatureC}°C</span>}
+                            {w.snowTemperatureC != null && <span>Snow {fmtT(w.snowTemperatureC)}</span>}
+                            {w.airTemperatureC != null && <span>Air {fmtT(w.airTemperatureC)}</span>}
                             {w.snowHumidityPct != null && <span>SRH {w.snowHumidityPct}%</span>}
                             {w.airHumidityPct != null && <span>ARH {w.airHumidityPct}%</span>}
                             {w.snowType && <span>{w.snowType}</span>}
@@ -6953,8 +6981,8 @@ function SkiCard({
                         {usage.discipline && <span className="text-muted-foreground"> · {usage.discipline}</span>}
                         {w && (
                           <div className="flex flex-wrap gap-x-2 text-[10px] text-muted-foreground mt-0.5">
-                            {w.snowTemperatureC != null && <span>{L("Snø", "Snow")} {w.snowTemperatureC}°C</span>}
-                            {w.airTemperatureC != null && <span>{L("Luft", "Air")} {w.airTemperatureC}°C</span>}
+                            {w.snowTemperatureC != null && <span>{L("Snø", "Snow")} {fmtT(w.snowTemperatureC)}</span>}
+                            {w.airTemperatureC != null && <span>{L("Luft", "Air")} {fmtT(w.airTemperatureC)}</span>}
                             {w.snowType && <span>{w.snowType}</span>}
                           </div>
                         )}
@@ -7012,7 +7040,7 @@ function SkiCard({
                     <SelectTrigger><SelectValue placeholder={L("Velg", "Choose")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">{L("Ingen", "None")}</SelectItem>
-                      {usageWeatherOptions.map((w) => (<SelectItem key={w.id} value={String(w.id)}>{w.location}{w.snowTemperatureC != null ? ` (${w.snowTemperatureC}°C)` : ""}</SelectItem>))}
+                      {usageWeatherOptions.map((w) => (<SelectItem key={w.id} value={String(w.id)}>{w.location}{w.snowTemperatureC != null ? ` (${fmtT(w.snowTemperatureC)})` : ""}</SelectItem>))}
                     </SelectContent>
                   </Select>
                 )
@@ -7463,8 +7491,8 @@ function RaceSkiTestCard({
             {test.weatherId != null && weatherMap.get(test.weatherId) && (() => {
               const w = weatherMap.get(test.weatherId!)!;
               const badges: { label: string; value: string; color: string }[] = [];
-              if (w.snowTemperatureC != null) badges.push({ label: "Snow", value: `${w.snowTemperatureC}°C`, color: "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-800" });
-              if (w.airTemperatureC != null) badges.push({ label: "Air", value: `${w.airTemperatureC}°C`, color: "bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-300 ring-orange-200 dark:ring-orange-800" });
+              if (w.snowTemperatureC != null) badges.push({ label: "Snow", value: `${fmtT(w.snowTemperatureC)}`, color: "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 ring-sky-200 dark:ring-sky-800" });
+              if (w.airTemperatureC != null) badges.push({ label: "Air", value: `${fmtT(w.airTemperatureC)}`, color: "bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-300 ring-orange-200 dark:ring-orange-800" });
               if (w.snowHumidityPct != null) badges.push({ label: "Snow RH", value: `${w.snowHumidityPct}%`, color: "bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 ring-cyan-200 dark:ring-cyan-800" });
               if (w.airHumidityPct != null) badges.push({ label: "Air RH", value: `${w.airHumidityPct}%`, color: "bg-slate-50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 ring-slate-200 dark:ring-slate-700" });
               if (w.wind) badges.push({ label: "Wind", value: w.wind, color: "bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-300 ring-teal-200 dark:ring-teal-800" });
@@ -8284,7 +8312,7 @@ function AthleteAnalyticsView({
       const totalEntries = [...buckets.values()].flat().length;
       return {
         ski,
-        bestTempRange: bestBucket !== null ? `${bestBucket}°C to ${Number(bestBucket) + 2}°C` : null,
+        bestTempRange: bestBucket !== null ? `${fmtT(bestBucket)} to ${fmtT(Number(bestBucket) + 2)}` : null,
         avgRank: bestBucket !== null ? bestAvg : null,
         tests: bestTests,
         totalEntries,

@@ -15,8 +15,13 @@ import {
   TEAM_FEATURES, FEATURE_LABELS, FEATURE_CATEGORIES, PLAN_FEATURE_PRESETS,
 } from "@shared/schema";
 import { DATA_AREAS as SHARED_DATA_AREAS } from "@shared/areas";
+const COMMON_TIMEZONES = [
+  "Europe/Oslo", "Europe/Stockholm", "Europe/Helsinki", "Europe/Berlin", "Europe/Ljubljana",
+  "Europe/Zurich", "Europe/Paris", "Europe/London", "America/New_York", "America/Chicago",
+  "America/Denver", "America/Los_Angeles", "America/Anchorage", "Asia/Tokyo", "Australia/Sydney",
+];
 import type { UserPermissions, PermissionLevel } from "@shared/schema";
-import { computeTeamPrice, computeCustomPrice, CORE_FEATURES } from "@shared/pricing";
+import { computeTeamPrice, computeCustomPrice, CORE_FEATURES, convertFromNok, formatMoney } from "@shared/pricing";
 import { useAppSettings } from "@/lib/app-settings";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -2125,15 +2130,44 @@ function TeamPlanTab({ teams }: { teams: ApiTeam[] }) {
   const plan = (team.planName ?? (team as any).plan_name ?? "free").toLowerCase();
   const discount = Math.min(100, Math.max(0, Number((team as any).discountPercent ?? (team as any).discount_percent) || 0));
 
+  const timezoneCard = (
+    <Card className="rounded-2xl p-6 space-y-2">
+      <h3 className="font-semibold">{L("Tidssone", "Timezone")}</h3>
+      <p className="text-xs text-muted-foreground">
+        {L("Styrer når lagets nattlige backup kjøres (kl. 23 lokal tid).", "Controls when the team's nightly backup runs (11 PM local time).")}
+      </p>
+      <Select
+        value={(team as any).timezone ?? "Europe/Oslo"}
+        onValueChange={async (v) => {
+          try {
+            await apiRequest("PATCH", "/api/team/settings", { timezone: v });
+            queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
+            toast({ title: L("Tidssone oppdatert", "Timezone updated"), description: v });
+          } catch (e: any) {
+            toast({ title: L("Feil", "Error"), description: e?.message, variant: "destructive" });
+          }
+        }}
+      >
+        <SelectTrigger className="w-full sm:w-[280px]" data-testid="select-team-timezone"><SelectValue /></SelectTrigger>
+        <SelectContent className="max-h-[40vh]">
+          {COMMON_TIMEZONES.map((tz) => (<SelectItem key={tz} value={tz}>{tz}</SelectItem>))}
+        </SelectContent>
+      </Select>
+    </Card>
+  );
+
   if (plan !== "custom") {
     return (
-      <Card className="rounded-2xl p-6 space-y-2">
-        <h3 className="font-semibold">{L("Lagets plan", "Team plan")} — {team.name}</h3>
-        <p className="text-sm text-muted-foreground">
-          {L(`Laget er på planen «${plan}». Kontakt Glidr (hei@glidr.no) for å endre funksjoner eller bytte til en fleksibel plan.`,
-             `The team is on the "${plan}" plan. Contact Glidr (hei@glidr.no) to change features or switch to a flexible plan.`)}
-        </p>
-      </Card>
+      <div className="flex flex-col gap-4">
+        <Card className="rounded-2xl p-6 space-y-2">
+          <h3 className="font-semibold">{L("Lagets plan", "Team plan")} — {team.name}</h3>
+          <p className="text-sm text-muted-foreground">
+            {L(`Laget er på planen «${plan}». Kontakt Glidr (hei@glidr.no) for å endre funksjoner eller bytte til en fleksibel plan.`,
+               `The team is on the "${plan}" plan. Contact Glidr (hei@glidr.no) to change features or switch to a flexible plan.`)}
+          </p>
+        </Card>
+        {timezoneCard}
+      </div>
     );
   }
 
@@ -2222,6 +2256,7 @@ function TeamPlanTab({ teams }: { teams: ApiTeam[] }) {
           >{saveMutation.isPending ? L("Lagrer…", "Saving…") : L("Lagre plan", "Save plan")}</Button>
         </div>
       </Card>
+      {timezoneCard}
     </div>
   );
 }
@@ -3224,6 +3259,27 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
     free: 0, starter: 490, team: 790, pro: 1490, enterprise: 0,
   };
 
+  // Foreign-team display currency: SA-maintained NOK-per-unit rates.
+  const { data: currencyRates } = useQuery<any>({ queryKey: ["/api/settings/currency-rates"] });
+  const [rateForm, setRateForm] = useState<{ EUR: string; USD: string } | null>(null);
+  const saveRatesMutation = useMutation({
+    mutationFn: async (rates: { EUR: number; USD: number }) => {
+      const res = await apiRequest("PATCH", "/api/admin/currency-rates", rates);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/currency-rates"] });
+      toast({ title: L("Valutakurser lagret", "Currency rates saved") });
+    },
+  });
+  /** "1 190 kr" / "€99 (eks. mva)" for a team's NOK monthly price. */
+  function displayPrice(team: ApiTeam, nok: number | null): string {
+    const conv = convertFromNok(nok, (team as any).currency ?? "NOK", currencyRates ?? null);
+    const base = formatMoney(conv.amount, conv.currency);
+    const vatX = ((team as any).vatExempt ?? (team as any).vat_exempt) ? L(" (eks. mva)", " (ex. VAT)") : "";
+    return base + vatX;
+  }
+
   // Dynamic pricing: custom-plan teams are priced LIVE from their enabled
   // features + limits against the current price list, and the per-team percent
   // discount applies on top — so price-list edits, feature toggles and
@@ -3512,7 +3568,7 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
             <Button variant="outline" size="sm" data-testid="button-export-invoice-csv" onClick={() => {
               // Invoice basis: one row per paying team, ready for the accountant.
               const esc = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-              const header = ["Team", "Plan", L("Pris (NOK)", "Price (NOK)"), L("Rabatt %", "Discount %"), L("Periode", "Period"), L("Neste fakturering", "Next billing"), L("Status", "Status"), L("Funksjoner (pris/mnd)", "Features (price/mo)"), L("Notater", "Notes")];
+              const header = ["Team", "Plan", L("Pris (NOK)", "Price (NOK)"), L("Valuta", "Currency"), L("Pris (valuta)", "Price (currency)"), L("Mva", "VAT"), L("Rabatt %", "Discount %"), L("Periode", "Period"), L("Neste fakturering", "Next billing"), L("Status", "Status"), L("Funksjoner (pris/mnd)", "Features (price/mo)"), L("Notater", "Notes")];
               const rows = payingTeams.map((tm) => {
                 const st = teamState(tm);
                 const priced = teamPriceDetail(tm);
@@ -3531,10 +3587,14 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                     spec = feats.map((f) => (FEATURE_LABELS as any)[f] ?? f).join("; ");
                   } catch { /* leave empty */ }
                 }
+                const conv = convertFromNok(effectivePrice(tm), (tm as any).currency ?? "NOK", currencyRates ?? null);
                 return [
                   tm.name,
                   (tm.planName ?? (tm as any).plan_name ?? ""),
                   effectivePrice(tm) ?? "",
+                  conv.currency,
+                  conv.amount ?? "",
+                  ((tm as any).vatExempt ?? (tm as any).vat_exempt) ? L("eks. mva (reverse charge)", "ex. VAT (reverse charge)") : L("inkl. mva", "incl. VAT"),
                   priced.discountPercent || "",
                   (tm.billingPeriod ?? (tm as any).billing_period ?? "monthly"),
                   (tm.nextBillingDate ?? (tm as any).next_billing_date ?? ""),
@@ -3582,8 +3642,11 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                       </span>
                       {amount != null && (
                         <span className="text-sm font-bold">
-                          {amount.toLocaleString("no-NO")} NOK/{period === "annual" ? "år" : "mnd"} inkl. mva
+                          {displayPrice(team, amount)}/{period === "annual" ? "år" : "mnd"}{((team as any).vatExempt ?? (team as any).vat_exempt) ? "" : " inkl. mva"}
                         </span>
+                      )}
+                      {((team as any).currency ?? "NOK") !== "NOK" && amount != null && (
+                        <span className="text-[10px] text-muted-foreground">({amount.toLocaleString("no-NO")} NOK)</span>
                       )}
                     </div>
                     <div className="text-[11px] mt-1">
@@ -3786,6 +3849,29 @@ function AccountingTab({ teams }: { teams: ApiTeam[] }) {
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{L("Valutakurser (NOK per enhet)", "Currency rates (NOK per unit)")}</div>
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              {(["EUR", "USD"] as const).map((cur) => (
+                <div key={cur} className="flex items-center gap-2">
+                  <span className="text-xs">1 {cur} =</span>
+                  <Input type="number" step="0.1" className="h-7 w-20 text-xs text-right"
+                    value={rateForm ? rateForm[cur] : String(currencyRates?.[cur] ?? "")}
+                    placeholder={cur === "EUR" ? "11.8" : "10.9"}
+                    onChange={(e) => setRateForm((f) => ({ EUR: String(currencyRates?.EUR ?? ""), USD: String(currencyRates?.USD ?? ""), ...(f ?? {}), [cur]: e.target.value }))}
+                    data-testid={`input-rate-${cur}`} />
+                  <span className="text-xs text-muted-foreground">NOK</span>
+                </div>
+              ))}
+              <Button size="sm" variant="outline" className="h-7"
+                disabled={!rateForm || saveRatesMutation.isPending}
+                onClick={() => rateForm && saveRatesMutation.mutate({ EUR: parseFloat(rateForm.EUR) || 0, USD: parseFloat(rateForm.USD) || 0 })}
+                data-testid="button-save-rates">
+                {L("Lagre kurser", "Save rates")}
+              </Button>
+              <span className="text-[11px] text-muted-foreground">{L("Brukes kun til visning/fakturagrunnlag for lag med utenlandsk valuta.", "Used only for display/invoice basis for foreign-currency teams.")}</span>
             </div>
           </div>
         </div>
@@ -6042,6 +6128,32 @@ export default function Admin() {
                     <label className="text-sm font-medium">{t("admin.editPlanNextDate")}</label>
                     <Input type="date" value={editPlanForm.nextBillingDate} onChange={(e) => setEditPlanForm((f: any) => ({ ...f, nextBillingDate: e.target.value }))} />
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium">{L("Valuta (visning)", "Currency (display)")}</label>
+                      <Select value={editPlanForm.currency ?? "NOK"} onValueChange={(v) => setEditPlanForm((f: any) => ({ ...f, currency: v }))}>
+                        <SelectTrigger data-testid="select-plan-currency"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="NOK">NOK (kr)</SelectItem>
+                          <SelectItem value="EUR">EUR (€)</SelectItem>
+                          <SelectItem value="USD">USD ($)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium">{L("Tidssone", "Timezone")}</label>
+                      <Select value={editPlanForm.timezone ?? "Europe/Oslo"} onValueChange={(v) => setEditPlanForm((f: any) => ({ ...f, timezone: v }))}>
+                        <SelectTrigger data-testid="select-plan-timezone"><SelectValue /></SelectTrigger>
+                        <SelectContent className="max-h-[40vh]">
+                          {COMMON_TIMEZONES.map((tz) => (<SelectItem key={tz} value={tz}>{tz}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <label className="flex items-start gap-2 text-xs cursor-pointer">
+                    <Checkbox checked={!!editPlanForm.vatExempt} onCheckedChange={(v) => setEditPlanForm((f: any) => ({ ...f, vatExempt: v === true }))} data-testid="checkbox-vat-exempt" />
+                    <span>{L("Mva-fritatt (utenlandsk B2B / reverse charge) — prisene vises «eks. mva»", "VAT exempt (foreign B2B / reverse charge) — prices shown \u00abex. VAT\u00bb")}</span>
+                  </label>
                   <div className="flex gap-2 justify-end pt-1">
                     <Button variant="outline" onClick={() => setEditPlanTeam(null)}>{t("common.cancel")}</Button>
                     <Button
@@ -6055,6 +6167,9 @@ export default function Admin() {
                           billingPeriod: editPlanForm.billingPeriod,
                           nextBillingDate: editPlanForm.nextBillingDate || null,
                           discountPercent: editPlanForm.discountPercent !== "" ? Math.min(100, Math.max(0, parseFloat(editPlanForm.discountPercent) || 0)) : 0,
+                          currency: editPlanForm.currency ?? "NOK",
+                          vatExempt: !!editPlanForm.vatExempt,
+                          timezone: editPlanForm.timezone ?? "Europe/Oslo",
                           ...(editPlanForm.planName === "custom" ? {
                             features: editPlanForm.features ?? [],
                             maxUsers: editPlanForm.maxUsers !== "" ? parseInt(editPlanForm.maxUsers) : null,
@@ -6239,7 +6354,7 @@ export default function Admin() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-60">
-                            <DropdownMenuItem className="gap-2" onSelect={() => setTimeout(() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "", discountPercent: String((team as any).discountPercent ?? (team as any).discount_percent ?? 0), features: (() => { try { return JSON.parse((team as any).enabledAreas ?? (team as any).enabled_areas ?? "[]"); } catch { return []; } })(), maxUsers: String(team.maxUsers ?? (team as any).max_users ?? ""), maxGroups: String(team.maxGroups ?? (team as any).max_groups ?? "") }); }, 0)}>
+                            <DropdownMenuItem className="gap-2" onSelect={() => setTimeout(() => { setEditPlanTeam(team); setEditPlanForm({ planName: team.planName ?? (team as any).plan_name ?? "free", customPrice: team.customPrice ?? (team as any).custom_price ?? "", billingPeriod: team.billingPeriod ?? (team as any).billing_period ?? "monthly", nextBillingDate: team.nextBillingDate ?? (team as any).next_billing_date ?? "", discountPercent: String((team as any).discountPercent ?? (team as any).discount_percent ?? 0), features: (() => { try { return JSON.parse((team as any).enabledAreas ?? (team as any).enabled_areas ?? "[]"); } catch { return []; } })(), maxUsers: String(team.maxUsers ?? (team as any).max_users ?? ""), maxGroups: String(team.maxGroups ?? (team as any).max_groups ?? ""), currency: (team as any).currency ?? "NOK", vatExempt: !!((team as any).vatExempt ?? (team as any).vat_exempt), timezone: (team as any).timezone ?? "Europe/Oslo" }); }, 0)}>
                               <DollarSign className="h-4 w-4 text-muted-foreground" />{L("Plan og fakturering", "Plan & billing")}
                             </DropdownMenuItem>
                             <DropdownMenuItem className="gap-2" onSelect={() => setTimeout(() => { setLimitsTeam(team); setLimitsForm({ maxUsers: team.maxUsers ?? team.max_users ?? "", maxGroups: team.maxGroups ?? team.max_groups ?? "", maxTests: team.maxTests ?? team.max_tests ?? "", maxProducts: team.maxProducts ?? team.max_products ?? "" }); }, 0)}>

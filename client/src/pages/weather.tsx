@@ -1,5 +1,6 @@
 // © 2025 Glidr — Proprietary and confidential. All rights reserved.
 import { useState, useMemo } from "react";
+import { fmtT } from "@/lib/temperature";
 import { fmtDate, cn } from "@/lib/utils";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1330,13 +1331,13 @@ export default function WeatherPage() {
                         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-700/70">
                           <Thermometer className="h-3 w-3" /> {L("Snøtemp", "Snow Temp")}
                         </div>
-                        <div className="mt-0.5 text-sm font-bold text-emerald-700">{w.snowTemperatureC}°C</div>
+                        <div className="mt-0.5 text-sm font-bold text-emerald-700">{fmtT(w.snowTemperatureC)}</div>
                       </div>
                       <div className="rounded-xl fs-gradient-blue px-3 py-2.5 ring-1 ring-sky-500/10" data-testid={`text-airtemp-${w.id}`}>
                         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-sky-700/70">
                           <Thermometer className="h-3 w-3" /> {L("Lufttemp", "Air Temp")}
                         </div>
-                        <div className="mt-0.5 text-sm font-bold text-sky-700">{w.airTemperatureC}°C</div>
+                        <div className="mt-0.5 text-sm font-bold text-sky-700">{fmtT(w.airTemperatureC)}</div>
                       </div>
                       <div className="rounded-xl fs-gradient-amber px-3 py-2.5 ring-1 ring-amber-500/10" data-testid={`text-snowhum-${w.id}`}>
                         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-amber-300/70">

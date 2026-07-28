@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { fmtT } from "@/lib/temperature";
 import { fetchEntriesBulk } from "@/lib/entries-bulk";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
@@ -980,10 +981,10 @@ function GrindProfileDetailDialog({
                       {test.weather && (
                         <div className="flex flex-wrap items-center gap-1">
                           <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-200">
-                            <Wind className="h-2.5 w-2.5" /> Air {test.weather.airTemperatureC}°C
+                            <Wind className="h-2.5 w-2.5" /> Air {fmtT(test.weather.airTemperatureC)}
                           </span>
                           <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-primary ring-1 ring-primary/10">
-                            <Snowflake className="h-2.5 w-2.5" /> Snow {test.weather.snowTemperatureC}°C
+                            <Snowflake className="h-2.5 w-2.5" /> Snow {fmtT(test.weather.snowTemperatureC)}
                           </span>
                           {test.weather.humidity != null && (
                             <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -2316,7 +2317,7 @@ export default function Grinding() {
                             )}
                             {w && (
                               <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-primary ring-1 ring-primary/10">
-                                <Thermometer className="h-2.5 w-2.5" /> Snow {w.snowTemperatureC}°C
+                                <Thermometer className="h-2.5 w-2.5" /> Snow {fmtT(w.snowTemperatureC)}
                               </span>
                             )}
                           </div>
@@ -2961,7 +2962,7 @@ function GrindingAnalytics({
                                         <span className="text-yellow-500 font-bold">🥇</span>
                                         <span className="font-medium tabular-nums">{bt.date.slice(0, 10)}</span>
                                         <span className="text-muted-foreground truncate max-w-[120px]">{bt.location}</span>
-                                        {bt.snowTemp !== null && <span className="text-muted-foreground">{bt.snowTemp.toFixed(1)}°C</span>}
+                                        {bt.snowTemp !== null && <span className="text-muted-foreground">{fmtT(bt.snowTemp.toFixed(1))}</span>}
                                         {bt.snowType && <span className="rounded-full bg-muted px-1.5 py-0.5">{bt.snowType}</span>}
                                         {bt.trackHardness && <span className="rounded-full bg-muted px-1.5 py-0.5">{bt.trackHardness}</span>}
                                         {bt.result !== null && <span className="text-muted-foreground">{bt.result > 0 ? `+${bt.result}` : bt.result} cm</span>}
@@ -2986,7 +2987,7 @@ function GrindingAnalytics({
                                       <div key={test.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-background/50 px-2.5 py-1.5 text-xs">
                                         <span className="font-medium tabular-nums">{test.date.slice(0, 10)}</span>
                                         <span className="text-muted-foreground truncate max-w-[120px]">{test.location}</span>
-                                        {w && <span className="text-muted-foreground">{w.snowTemperatureC.toFixed(1)}°C</span>}
+                                        {w && <span className="text-muted-foreground">{fmtT(w.snowTemperatureC.toFixed(1))}</span>}
                                         {w?.snowType && <span className="rounded-full bg-muted px-1.5 py-0.5">{w.snowType}</span>}
                                         {wins2 > 0 && <span className="text-yellow-500 font-bold">🥇{wins2 > 1 ? `×${wins2}` : ""}</span>}
                                         {bestR !== null && avgR2 !== null && (
@@ -3424,7 +3425,7 @@ function GrindTestCard({ test, entries, seriesById, weatherById, grindProfiles =
           )}
           {w && (
             <span className="inline-flex items-center gap-1 rounded-full fs-gradient-emerald px-2 py-0.5 text-[10px] font-medium text-primary ring-1 ring-primary/10">
-              <Thermometer className="h-2.5 w-2.5" /> Snow {w.snowTemperatureC}°C
+              <Thermometer className="h-2.5 w-2.5" /> Snow {fmtT(w.snowTemperatureC)}
             </span>
           )}
           {/* Highlighted grind name badges */}

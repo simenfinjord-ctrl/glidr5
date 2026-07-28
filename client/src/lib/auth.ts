@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest, getQueryFn, queryClient } from "@/lib/queryClient";
 import { setGlidrDateFormat } from "@/lib/utils";
+import { setGlidrTempUnit } from "@/lib/temperature";
 
 // A stable, first-party random id for THIS browser. Not tied to identity or
 // behaviour — it only lets an admin tell two devices on the same network apart.
@@ -67,6 +68,9 @@ export function useAuth() {
   useEffect(() => {
     setGlidrDateFormat(user?.dateFormat ?? 'european');
   }, [user?.dateFormat]);
+  useEffect(() => {
+    setGlidrTempUnit((user as any)?.tempUnit ?? 'C');
+  }, [(user as any)?.tempUnit]);
 
   const { data: userTeams = [], isLoading: userTeamsLoading } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/user/teams"],

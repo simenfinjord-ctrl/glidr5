@@ -2822,6 +2822,28 @@ export async function registerRoutes(
     res.json(rows.map((r: any) => ({ ...r, items: (() => { try { return JSON.parse(r.items); } catch { return []; } })() })));
   });
 
+  // Push Glidr-only products into the linked sheet as new rows — the
+  // reconciliation's "add the missing ones to the sheet" action.
+  app.post("/api/products/push-to-sheet", requirePermission("products", "edit"), async (req, res) => {
+    const teamId = getActiveTeamId(req);
+    const ids: number[] = Array.isArray(req.body?.ids) ? req.body.ids.map((n: any) => parseInt(n)).filter((n: number) => !isNaN(n)) : [];
+    if (ids.length === 0 || ids.length > 100) return res.status(400).json({ message: "ids (1-100) required" });
+    const { pushProductToSheet } = await import("./productSync");
+    let pushed = 0;
+    for (const id of ids) {
+      const prod = await storage.getProduct(id);
+      if (!prod || !verifyTeamOwnership(prod, req)) continue;
+      try {
+        await pushProductToSheet(teamId, id);
+        pushed++;
+      } catch (e: any) {
+        console.warn(`[ProductSync] push-to-sheet failed for #${id}:`, e?.message);
+      }
+      await new Promise((r) => setTimeout(r, 400)); // pace the Sheets API
+    }
+    res.json({ ok: true, pushed });
+  });
+
   // Order quantity — the "to order" counter that turns Glidr into an ordering
   // terminal. Mirrors the stock endpoint; changes push to the linked sheet.
   app.patch("/api/products/:id/order", requirePermission("products", "view"), async (req, res) => {

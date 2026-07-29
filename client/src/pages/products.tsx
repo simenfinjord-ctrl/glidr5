@@ -415,6 +415,16 @@ function ProductSheetDialog({ teamId, lang }: { teamId: number; lang: string }) 
   });
 
   const [report, setReport] = useState<any>(null);
+  const pushMissing = useMutation({
+    mutationFn: async (ids: number[]) => {
+      const res = await apiRequest("POST", "/api/products/push-to-sheet", { ids });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: L(`${data.pushed} produkter lagt inn i arket`, `${data.pushed} products added to the sheet`), description: L("Kjør «Synkroniser nå» igjen for oppdatert avstemming.", "Run Sync now again for a fresh reconciliation.") });
+    },
+    onError: (e: any) => toast({ title: L("Kunne ikke legge til", "Could not add"), description: e?.message, variant: "destructive" }),
+  });
   const syncMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/teams/${teamId}/product-sync`, {});
@@ -488,12 +498,22 @@ function ProductSheetDialog({ teamId, lang }: { teamId: number; lang: string }) 
                 </div>
               )}
               {(report.notInSheet ?? []).length > 0 && (
-                <div>
+                <div className="space-y-1">
                   <div className="font-medium">{L(`${report.notInSheet.length} Glidr-produkter finnes ikke i arket:`, `${report.notInSheet.length} Glidr products not in the sheet:`)}</div>
                   <div className="text-muted-foreground">
                     {report.notInSheet.slice(0, 15).map((x: any) => `${x.label}${x.isMix ? L(" (mix)", " (mix)") : ""}${x.archived ? L(" (arkivert)", " (archived)") : ""}`).join(" · ")}
                     {report.notInSheet.length > 15 ? " …" : ""}
                   </div>
+                  {report.notInSheet.some((x: any) => !x.archived) && (
+                    <Button size="sm" variant="outline" className="h-7 text-[11px]"
+                      disabled={pushMissing.isPending}
+                      onClick={() => pushMissing.mutate(report.notInSheet.filter((x: any) => !x.archived).map((x: any) => x.id))}
+                      data-testid="button-push-missing">
+                      {pushMissing.isPending
+                        ? L("Legger til i arket…", "Adding to sheet…")
+                        : L(`Legg de ${report.notInSheet.filter((x: any) => !x.archived).length} aktive inn i arket`, `Add the ${report.notInSheet.filter((x: any) => !x.archived).length} active ones to the sheet`)}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

@@ -191,17 +191,21 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
     // type word written inside the sheet name itself.
     const catToks = new Set<string>([catK, ...rowRemoved].filter(Boolean));
     const cands = (bySig.get(sig) ?? []).filter((e) => !e.deleted);
-    // Type-compatible candidates: products whose NAME carries a matching type
-    // word (authoritative — legacy categories are often wrong), or whose
-    // stored category matches when the name carries no type word.
-    const strong = cands.filter((e) =>
-      e.removed.size > 0 ? [...e.removed].some((t) => catToks.has(t)) : key(e.category).replace(/[^a-z0-9]/g, "") === catK);
+    // Type compatibility: a type word in the product NAME is authoritative
+    // (legacy categories are often wrong); otherwise the stored category must
+    // match the row's type.
+    const typeOk = (e: Entry) =>
+      e.removed.size > 0 ? [...e.removed].some((t) => catToks.has(t)) : key(e.category).replace(/[^a-z0-9]/g, "") === catK;
+    const sigUnique = (sheetSigCounts.get(sig) ?? 0) <= 1;
+    // Exact brand+name equality ranks first, but NEVER across types when the
+    // sheet holds several rows of this signature — "UHX Cold" (Block) must
+    // not steal "UHX Cold" (Powder) just because the names are equal.
+    const exact = cands.filter((e) =>
+      key(`${e.brand} ${e.name}`) === key(`${brand} ${name}`) && (typeOk(e) || sigUnique));
+    const strong = cands.filter(typeOk);
     // Loose fallback only when this signature is unique in the sheet — then
     // there is exactly one possible identity regardless of type labels.
-    const loose = (sheetSigCounts.get(sig) ?? 0) <= 1 ? cands : [];
-    // Exact brand+name equality outranks everything — keeps "Blue" and
-    // "Blue Block" (same signature) glued to their own rows.
-    const exact = cands.filter((e) => key(`${e.brand} ${e.name}`) === key(`${brand} ${name}`));
+    const loose = sigUnique ? cands : [];
     const candidates = [...exact, ...strong, ...loose].filter((e, i, arr) => arr.indexOf(e) === i);
     // Prefer a product with human history over a sync-created copy — the copy
     // is the duplicate, the legacy product owns the test references.

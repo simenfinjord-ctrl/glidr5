@@ -118,16 +118,33 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
   const existingRes = await (pool as any).query(
     `SELECT id, brand, name, category, stock_quantity, order_quantity, created_by_name FROM products WHERE team_id = $1`, [teamId]
   );
-  type Entry = { id: number; brand: string; name: string; category: string; stock: number; order: number; createdByName?: string };
-  const existing = new Map<string, Entry>();
-  // Second index on the FULL "brand name" string: teams split brand/name
-  // differently in Glidr vs the sheet ("Star"+"Cold" vs ""+"Star Cold"),
-  // and counts must land regardless of where the split sits.
-  const existingFull = new Map<string, Entry>();
+  type Entry = { id: number; brand: string; name: string; category: string; stock: number; order: number; createdByName?: string; deleted?: boolean };
+  // Products are indexed two ways, each holding a LIST because sheets can
+  // legitimately carry the same brand+name in several rows that differ only
+  // by type (Skigo "Yellow" Powder AND "Yellow" Paraffin). Matching must be
+  // category-aware or the rows overwrite each other's products.
+  //   byPair: "brand|name"        byFull: "brand name" (split-agnostic)
+  const byPair = new Map<string, Entry[]>();
+  const byFull = new Map<string, Entry[]>();
+  const addToIndex = (entry: Entry) => {
+    const pk = `${key(entry.brand)}|${key(entry.name)}`;
+    const fk = key(`${entry.brand} ${entry.name}`);
+    if (!byPair.has(pk)) byPair.set(pk, []);
+    if (!byPair.get(pk)!.includes(entry)) byPair.get(pk)!.push(entry);
+    if (!byFull.has(fk)) byFull.set(fk, []);
+    if (!byFull.get(fk)!.includes(entry)) byFull.get(fk)!.push(entry);
+  };
   for (const p of existingRes.rows) {
-    const entry: Entry = { id: p.id, brand: p.brand, name: p.name, category: p.category, stock: p.stock_quantity ?? 0, order: p.order_quantity ?? 0, createdByName: p.created_by_name };
-    existing.set(`${key(p.brand)}|${key(p.name)}`, entry);
-    existingFull.set(key(`${p.brand} ${p.name}`), entry);
+    addToIndex({ id: p.id, brand: p.brand, name: p.name, category: p.category, stock: p.stock_quantity ?? 0, order: p.order_quantity ?? 0, createdByName: p.created_by_name });
+  }
+  // How many sheet rows share each brand+name — when >1, category is the
+  // only safe disambiguator and loose matching is disabled.
+  const sheetPairCounts = new Map<string, number>();
+  for (const row of values.slice(1)) {
+    const b = norm(row[colOf.brand!]); const n = norm(row[colOf.name!]);
+    if (!b || !n) continue;
+    const pk = `${key(b)}|${key(n)}`;
+    sheetPairCounts.set(pk, (sheetPairCounts.get(pk) ?? 0) + 1);
   }
 
   const now = new Date().toISOString();
@@ -141,27 +158,39 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
     const name = norm(row[colOf.name!]);
     if (!brand || !name) { skipped++; continue; }
     const category = normalizeCategory(colOf.category !== undefined ? norm(row[colOf.category!]) : "");
-    const matchKey = `${key(brand)}|${key(name)}`;
-    // Legacy Glidr names often carry the type word ("FF1 Blue powder" vs the
-    // sheet's "FF1 Blue" + type Powder) — match on that shape too.
-    const pairHit = existing.get(matchKey);
-    const suffixHit = existingFull.get(key(`${brand} ${name}`))
-      ?? (category ? existingFull.get(key(`${brand} ${name} ${category}`)) : undefined);
-    let found = pairHit ?? suffixHit;
-    // Heal earlier duplicate creation: if BOTH shapes exist as different
-    // products and the pair-shaped one was created by the sheet sync itself
-    // (no human history), delete the sync duplicate and keep the legacy one.
-    if (pairHit && suffixHit && pairHit.id !== suffixHit.id && pairHit.createdByName === "Google Sheet sync") {
-      const refs = await (pool as any).query(
-        `SELECT (SELECT COUNT(*) FROM test_entries WHERE product_id = $1)
-              + (SELECT COUNT(*) FROM race_preps WHERE product_ids LIKE '%' || $1 || '%'
-                   OR structure_ids LIKE '%' || $1 || '%' OR kick_product_ids LIKE '%' || $1 || '%') AS c`,
-        [pairHit.id]).catch(() => ({ rows: [{ c: 1 }] }));
-      if (parseInt(refs.rows[0]?.c ?? "1") === 0) {
-        await (pool as any).query(`DELETE FROM products WHERE id = $1`, [pairHit.id]).catch(() => {});
-        existing.delete(matchKey);
-        console.log(`[ProductSync] Removed sync-created duplicate #${pairHit.id} (${brand} ${name}) — kept legacy #${suffixHit.id}`);
-        found = suffixHit;
+    const pairKey = `${key(brand)}|${key(name)}`;
+    const catK = key(category);
+    const alive = (list?: Entry[]) => (list ?? []).filter((e) => !e.deleted);
+    // Match priority (category-aware):
+    //   1. Legacy name-with-type: product full name == "brand name TYPE".
+    //   2. Same brand+name AND same stored category.
+    //   3. Only if this brand+name appears ONCE in the sheet: loose pair or
+    //      full-name match (any category) — safe because unambiguous.
+    const nameWithType = alive(byFull.get(key(`${brand} ${name} ${category}`)))[0];
+    const pairSameCat = alive(byPair.get(pairKey)).find((e) => key(e.category) === catK)
+      ?? alive(byFull.get(key(`${brand} ${name}`))).find((e) => key(e.category) === catK);
+    const unique = (sheetPairCounts.get(pairKey) ?? 0) <= 1;
+    const loose = unique
+      ? (alive(byPair.get(pairKey))[0] ?? alive(byFull.get(key(`${brand} ${name}`)))[0])
+      : undefined;
+    let found = nameWithType ?? pairSameCat ?? loose;
+    // Heal duplicates the old sync created: if the strongest match is a LEGACY
+    // product and a sync-created twin also answers to this row, delete the
+    // unreferenced twin.
+    if (found) {
+      const twins = [...alive(byPair.get(pairKey)), ...alive(byFull.get(key(`${brand} ${name}`)))]
+        .filter((e) => e.id !== found!.id && e.createdByName === "Google Sheet sync");
+      for (const twin of twins) {
+        const refs = await (pool as any).query(
+          `SELECT (SELECT COUNT(*) FROM test_entries WHERE product_id = $1)
+                + (SELECT COUNT(*) FROM race_preps WHERE product_ids LIKE '%' || $1 || '%'
+                     OR structure_ids LIKE '%' || $1 || '%' OR kick_product_ids LIKE '%' || $1 || '%') AS c`,
+          [twin.id]).catch(() => ({ rows: [{ c: 1 }] }));
+        if (parseInt(refs.rows[0]?.c ?? "1") === 0) {
+          await (pool as any).query(`DELETE FROM products WHERE id = $1`, [twin.id]).catch(() => {});
+          twin.deleted = true;
+          console.log(`[ProductSync] Removed sync-created duplicate #${twin.id} (${brand} ${name}) — kept #${found.id}`);
+        }
       }
     }
 
@@ -176,6 +205,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
         if (norm(found.brand) !== brand || norm(found.name) !== name) {
           await (pool as any).query(`UPDATE products SET brand = $1, name = $2 WHERE id = $3`, [brand, name, found.id]);
           found.brand = brand; found.name = name;
+          addToIndex(found); // reachable under the new keys for later rows
           changed = true;
         }
         if (norm(found.category) !== category) {
@@ -216,9 +246,7 @@ export async function syncProductsFromSheet(teamId: number, groupScope?: string)
         groupScope: effectiveGroup,
         teamId,
       } as any);
-      const newEntry = { id: (created as any).id, category, stock: stockQuantity, order: orderQuantity };
-      existing.set(matchKey, newEntry);
-      existingFull.set(key(`${brand} ${name}`), newEntry);
+      addToIndex({ id: (created as any).id, brand, name, category, stock: stockQuantity, order: orderQuantity, createdByName: "Google Sheet sync" });
       added++;
     } catch {
       skipped++;
@@ -265,15 +293,21 @@ export async function pushProductToSheet(teamId: number, productId: number): Pro
   if (colOf.brand === undefined || colOf.name === undefined) return;
 
   const fullKey = key(`${product.brand} ${product.name}`);
-  const rowIdx = values.findIndex((row, i) => {
-    if (i === 0) return false;
+  const nameMatches = (row: any[]) => {
     if (key(row[colOf.brand!]) === key(product.brand) && key(row[colOf.name!]) === key(product.name)) return true;
     const rowFull = key(`${row[colOf.brand!]} ${row[colOf.name!]}`);
     if (rowFull === fullKey) return true;
     // Sheet name + its type word == Glidr's legacy name-with-type.
     if (colOf.category !== undefined && key(`${rowFull} ${row[colOf.category!] ?? ""}`) === fullKey) return true;
     return false;
-  });
+  };
+  // Sheets can hold the same name in several rows differing only by type
+  // (Skigo Yellow Powder AND Paraffin) — prefer the row whose category
+  // matches this product before falling back to any name match.
+  const catMatches = (row: any[]) =>
+    colOf.category === undefined || key(row[colOf.category!] ?? "") === key(product.category ?? "");
+  let rowIdx = values.findIndex((row, i) => i > 0 && nameMatches(row) && catMatches(row));
+  if (rowIdx < 0) rowIdx = values.findIndex((row, i) => i > 0 && nameMatches(row));
 
   const data: { range: string; values: any[][] }[] = [];
   if (rowIdx > 0) {
